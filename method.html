@@ -11,9 +11,10 @@
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
 </head>
-<body>
+<body class="method-flashlight">
 <div class="deep-atmosphere" aria-hidden="true"></div>
 <div class="noise-overlay" aria-hidden="true"></div>
+<div class="cursor-flashlight" aria-hidden="true"></div>
 
 <nav class="navbar">
   <div class="container navbar-inner">
@@ -54,23 +55,20 @@
 </nav>
 
 <!-- Hero -->
-<section style="padding:8rem 0 4rem;">
+<section class="method-hero" style="padding:8rem 0 4rem;">
   <div class="container max-w-4xl">
     <div class="fade-up">
       <p class="eyebrow">Метод</p>
-      <h1 class="heading-space" style="font-size:clamp(2rem,4vw+1rem,3rem);color:var(--text-primary);margin:0 0 1.5rem 0;">
-        Тревожность, выгорание, зависимости — за всем этим стоит одна причина
+      <h1 class="heading-space h2-block large" style="color:var(--text-primary);margin:0 0 1.5rem 0;">
+        <span class="na-glow">Внимание</span> — центральная функция мозга, объединяющая когнитивные, эмоциональные и телесные процессы
       </h1>
-      <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-muted);margin:0 0 1.5rem 0;">
-        Информационная перегрузка, миграция, смена карьер, разрушение семейных структур — технологический скачок создал нагрузку, к которой нервная система не была готова. Но в основе всех этих проблем лежит потеря контроля над одной функцией — <strong style="color:var(--text-primary);">вниманием</strong>.
+      <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-muted);margin:0 0 1.25rem 0;">
+        Технологический скачок последних десятилетий создал нагрузку, к которой нервная система не была готова: информационная перегрузка, миграция, смена карьер, разрушение семейных структур. В основе тревожности, выгорания и зависимостей лежит потеря контроля над <span class="na-glow">вниманием</span>.
       </p>
-      <div class="quote">
-        Внимание — это тренируемая нейрофункциональная способность, а не фиксированная черта характера.
+      <div class="method-pulse-line">
+        <span class="na-glow">НейроВнимание</span> — практический метод тренировки внимания как ключевой функции мозга. Основанный на нейропластичности, он возвращает способность управлять своим состоянием, восприятием и действиями.
       </div>
-      <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-muted);margin:0;">
-        NeuroAttention — практический метод тренировки внимания как ключевой функции мозга. Основанный на нейропластичности, он возвращает человеку способность управлять своим состоянием, восприятием и действиями.
-      </p>
-      <div class="media-box aspect-wide" style="margin-top:2rem;max-width:480px;">
+      <div class="media-box aspect-wide" style="margin-top:2rem;max-width:480px;margin-left:auto;margin-right:auto;">
         <img src="assets/images/geo-beam.jpg" alt="" loading="lazy" />
       </div>
     </div>
@@ -475,6 +473,58 @@
 <script src="assets/redesign.js"></script>
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
+
+// Flashlight cursor effect (method page only, desktop only)
+(function(){
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  var fl = document.querySelector('.cursor-flashlight');
+  if (!fl) return;
+  var fx = window.innerWidth/2, fy = window.innerHeight/2;
+  window.addEventListener('mousemove', function(e){
+    fx = e.clientX; fy = e.clientY;
+  }, {passive:true});
+  (function tick(){
+    fl.style.transform = 'translate3d('+fx+'px,'+fy+'px,0) translate(-50%,-50%)';
+    requestAnimationFrame(tick);
+  })();
+  window.addEventListener('mouseleave', function(){ fl.style.opacity='0'; });
+  window.addEventListener('mouseenter', function(){ fl.style.opacity='1'; });
+})();
+
+// Auto-wrap "внимание/Внимание/внимания/вниманием/вниманию" and "NeuroAttention/НейроВнимание" with glow
+(function(){
+  var pattern = /(внимани[еяюём]|NeuroAttention|НейроВнимани[еяюём])/gi;
+  var walker = document.createTreeWalker(
+    document.querySelector('.method-hero') ? document.body : document.body,
+    NodeFilter.SHOW_TEXT, null, false
+  );
+  var nodes = [];
+  while (walker.nextNode()) {
+    if (walker.currentNode.parentElement &&
+        !walker.currentNode.parentElement.closest('.navbar, .footer, script, style, .na-glow, .eyebrow')) {
+      if (pattern.test(walker.currentNode.textContent)) {
+        nodes.push(walker.currentNode);
+      }
+      pattern.lastIndex = 0;
+    }
+  }
+  nodes.forEach(function(node){
+    var frag = document.createDocumentFragment();
+    var parts = node.textContent.split(pattern);
+    parts.forEach(function(part){
+      if (pattern.test(part)) {
+        var span = document.createElement('span');
+        span.className = 'na-glow';
+        span.textContent = part;
+        frag.appendChild(span);
+      } else {
+        frag.appendChild(document.createTextNode(part));
+      }
+      pattern.lastIndex = 0;
+    });
+    node.parentNode.replaceChild(frag, node);
+  });
+})();
 
 // Language-aware article buttons
 (function(){

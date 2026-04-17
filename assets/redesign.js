@@ -189,36 +189,42 @@
   }
 
   // 8b) Sync vibration with drop-ripple.mp4 loop
-  //     The video is ~4s with a drop landing around 1.8–2s.
-  //     We fire a soft pulse each loop at that moment.
+  //     Video is 6s. Drop impacts surface at ~3.0s (verified via frame extraction).
+  //     We fire a soft pulse at impact and a secondary ripple pulse at ~3.6s.
   var dropVideo = document.querySelector('#screen-4 video');
   if (dropVideo && canVibrate) {
-    var dropFired = false;
+    var dropImpactFired = false;
+    var dropRippleFired = false;
     dropVideo.addEventListener('timeupdate', function () {
       var t = dropVideo.currentTime;
-      if (t >= 1.8 && t < 2.3 && !dropFired) {
-        haptic(15);          // single soft tap — drop landing
-        dropFired = true;
+      // Primary impact pulse at 3.0s
+      if (t >= 2.95 && t < 3.3 && !dropImpactFired) {
+        haptic(18);
+        dropImpactFired = true;
       }
-      if (t < 1.0) dropFired = false; // reset for next loop
+      // Secondary softer ripple pulse at 3.6s
+      if (t >= 3.55 && t < 3.9 && !dropRippleFired) {
+        haptic(8);
+        dropRippleFired = true;
+      }
+      // Reset flags when video loops back
+      if (t < 1.0) {
+        dropImpactFired = false;
+        dropRippleFired = false;
+      }
     });
   }
 
-  // 8c) Subtle pulse when key sections scroll into view
-  if (canVibrate && 'IntersectionObserver' in window) {
-    var hapticSections = document.querySelectorAll('.section .fade-up, .section .fade-left');
-    var hapticFired = new WeakSet();
-    var hapticObs = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting && !hapticFired.has(e.target)) {
-          hapticFired.add(e.target);
-          haptic(8);           // barely-there tap
-        }
+  // 8c) (removed — scroll vibration was too frequent)
+
+  // 8.5) Close mobile menu on link tap
+  var mobileMenu = document.querySelector('.mobile-menu');
+  if (mobileMenu) {
+    mobileMenu.querySelectorAll('.mobile-link').forEach(function(link) {
+      link.addEventListener('click', function() {
+        mobileMenu.classList.remove('open');
       });
-    }, { threshold: 0.3 });
-    // Limit to first 12 elements to avoid vibration fatigue
-    var hapticEls = Array.prototype.slice.call(hapticSections, 0, 12);
-    hapticEls.forEach(function (el) { hapticObs.observe(el); });
+    });
   }
 
   // 8d) Button / option tap feedback
