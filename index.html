@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NeuroAttention Lab — Операционная система для человеческого внимания</title>
+<meta name="description" content="NeuroAttention Lab — научно обоснованный метод регуляции нервной системы и развития внимания, XR-платформа, исследовательская лаборатория и сообщество DOM Unity." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+</head>
+<body>
+<div class="deep-atmosphere" aria-hidden="true"></div>
+<div class="noise-overlay" aria-hidden="true"></div>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav class="navbar">
+  <div class="container navbar-inner">
+    <a href="index.html" class="nav-logo">
+      Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Главная</a>
+      <a href="test.html" class="nav-link">Тест</a>
+      <a href="method.html" class="nav-link">Метод</a>
+      <a href="programs.html" class="nav-link">Программы</a>
+      <a href="xr.html" class="nav-link">XR Платформа</a>
+      <a href="lab.html" class="nav-link">Лаборатория</a>
+      <a href="dom.html" class="nav-link">DOM</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button class="lang-btn active">RU</button>
+        <button class="lang-btn">EN</button>
+        <button class="lang-btn">ES</button>
+      </div>
+      <a href="account.html" class="nav-login" aria-label="Личный кабинет">
+        <span class="login-dot"></span>
+        <span>Кабинет</span>
+      </a>
+      <button class="mobile-menu-btn" aria-label="Меню">
+        <svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu">
+    <div class="container mobile-menu-inner">
+      <a href="index.html" class="mobile-link">Главная</a>
+      <a href="test.html" class="mobile-link">Тест</a>
+      <a href="method.html" class="mobile-link">Метод</a>
+      <a href="programs.html" class="mobile-link">Программы</a>
+      <a href="xr.html" class="mobile-link">XR Платформа</a>
+      <a href="lab.html" class="mobile-link">Лаборатория</a>
+      <a href="dom.html" class="mobile-link">DOM</a>
+      <a href="account.html" class="mobile-link">Личный кабинет</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ SCREEN 1: HERO ═══ -->
+<section class="hero">
+  <div class="container" style="position:relative;z-index:2;">
+    <div class="grid grid-2" style="gap:clamp(1.5rem,4vw,4rem);align-items:center;">
+      <div class="hero-max" style="max-width:none;">
+        <div class="fade-up">
+          <div class="line-accent"></div>
+          <p class="eyebrow">NeuroAttention Lab</p>
+          <h1 class="heading-space">
+            Мир вошёл в <span class="text-gradient-cyan">новую эпоху</span>
+          </h1>
+          <p class="hero-sub">Человек не успевает адаптироваться к её скорости.</p>
+        </div>
+        <div class="fade-up delay-1">
+          <p class="hero-desc">
+            Сегодня адаптация к изменениям становится главным условием здоровья и качества жизни.
+          </p>
+        </div>
+        <div class="fade-up delay-2 hero-cta">
+          <a href="test.html" class="btn btn-solid">
+            Оценить свою адаптацию
+            <svg class="icon icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="#screen-4" class="btn btn-primary">
+            Как это работает
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="fade-right delay-1">
+        <div class="media-box aspect-sq" style="max-width:600px;margin-left:auto;">
+          <video autoplay loop muted playsinline preload="auto">
+            <source src="assets/media/hero-orbit.mp4" type="video/mp4" />
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <div class="mouse"><div class="dot"></div></div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 2: PROBLEM ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-4xl fade-up mb-10">
+      <p class="eyebrow">Проблема</p>
+      <h2 class="heading-space h2-block">
+        За последние 30 лет технологический скачок радикально изменил нашу жизнь, создав нагрузку, к которой человеческий организм не был подготовлен в ходе эволюции.
+      </h2>
+      <p class="sub-muted" style="color:var(--text-muted);font-size:1.05rem;">
+        Это привело к масштабным последствиям на всех уровнях.
+      </p>
+    </div>
+
+    <div class="grid grid-2 max-w-5xl">
+      <div class="fade-left glass-card card-base card-hover">
+        <div class="media-box aspect-wide" style="border-radius:12px;margin-bottom:1.25rem;">
+          <img src="assets/images/crowd-phones.jpg" alt="Люди в телефонах" loading="lazy" />
+        </div>
+        <div class="card-row">
+          <div class="icon-box glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+          </div>
+          <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);">Индивидуальные последствия</h3>
+        </div>
+        <ul class="list-bullet">
+          <li><span class="dot"></span>Тревожность</li>
+          <li><span class="dot"></span>Эмоциональное выгорание</li>
+          <li><span class="dot"></span>Зависимости</li>
+          <li><span class="dot"></span>Расстройства внимания</li>
+          <li><span class="dot"></span>Снижение когнитивных функций</li>
+        </ul>
+      </div>
+
+      <div class="fade-right glass-card card-base card-hover delay-1">
+        <div class="media-box aspect-wide" style="border-radius:12px;margin-bottom:1.25rem;">
+          <img src="assets/images/world-map.jpg" alt="Глобальные миграции" loading="lazy" />
+        </div>
+        <div class="card-row">
+          <div class="icon-box glass-icon">
+            <svg class="icon md" style="color:var(--accent-blue)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/></svg>
+          </div>
+          <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);">Социальные последствия</h3>
+        </div>
+        <ul class="list-bullet">
+          <li><span class="dot blue"></span>Снижение устойчивости общества к стрессовым событиям</li>
+          <li><span class="dot blue"></span>Ухудшение качества коммуникации</li>
+          <li><span class="dot blue"></span>Снижение демографии населения</li>
+          <li><span class="dot blue"></span>Рост конфликтов и агрессии</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 3: FACTS ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="text-center mb-14 fade-up" style="margin-left:auto;margin-right:auto;">
+      <p class="eyebrow">Факты</p>
+      <h2 class="heading-space h2-block large" style="max-width:none;">Масштаб изменений, к которым мы не готовы</h2>
+    </div>
+
+    <div class="max-w-4xl mb-14" style="display:flex;flex-direction:column;gap:1.75rem;">
+      <div class="fact-slide-left glass-card-elevated fact-card card-hover reverse">
+        <div class="text">
+          <div class="num-badge glass-icon">01</div>
+          <p>Информационная нагрузка выросла в десятки раз: от книг и телевидения — к круглосуточному потоку интернета, социальных сетей и уведомлений.</p>
+        </div>
+        <div class="img-wrap" style="padding:0;background:#020306;border-radius:16px;overflow:hidden;">
+          <img src="assets/images/geo-tunnel.jpg" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+      </div>
+
+      <div class="fact-slide-right glass-card-elevated fact-card card-hover">
+        <div class="text">
+          <div class="num-badge glass-icon">02</div>
+          <p>Число людей, живущих за пределами родной страны, за последние десятилетия выросло вдвое — до более чем 300 миллионов человек.</p>
+        </div>
+        <div class="img-wrap" style="padding:0;background:#020306;border-radius:16px;overflow:hidden;">
+          <img src="assets/images/geo-ring.jpg" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+      </div>
+
+      <div class="fact-slide-left glass-card-elevated fact-card card-hover reverse">
+        <div class="text">
+          <div class="num-badge glass-icon">03</div>
+          <p>Если раньше одна профессия могла сопровождать человека всю жизнь, то сегодня средний работник меняет от 5 до 7 карьерных направлений.</p>
+        </div>
+        <div class="img-wrap" style="padding:0;background:#020306;border-radius:16px;overflow:hidden;">
+          <img src="assets/images/geo-horizon.jpg" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+      </div>
+
+      <div class="fact-slide-right glass-card-elevated fact-card card-hover">
+        <div class="text">
+          <div class="num-badge glass-icon">04</div>
+          <p>Семейные модели тоже изменились: ещё недавно брак сохранялся на всю жизнь, сегодня же под давлением трендов распадается почти половина союзов.</p>
+        </div>
+        <div class="img-wrap" style="padding:0;background:#020306;border-radius:16px;overflow:hidden;">
+          <img src="assets/images/geo-curve.jpg" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+      </div>
+    </div>
+
+    <div class="fade-up text-center max-w-2xl">
+      <div class="glass-card-bright glow-cyan" style="border-radius:16px;padding:2rem 2.5rem;">
+        <p class="heading-space" style="font-size:1.35rem;color:var(--text-primary);margin:0 0 1.25rem 0;">
+          Человеку жизненно необходимы новые инструменты адаптации.
+        </p>
+        <a href="#screen-4" class="btn" style="color:var(--accent-cyan);padding:0.5rem 0;">
+          Найти инструмент адаптации
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 4: ATTENTION ═══ -->
+<section id="screen-4" class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="text-center mb-8 fade-up">
+      <p class="eyebrow">Решение</p>
+    </div>
+
+    <div class="grid grid-2 max-w-5xl" style="align-items:center;gap:3rem;">
+      <div class="fade-left" style="display:flex;justify-content:center;">
+        <div class="media-box aspect-sq" style="width:22rem;max-width:100%;border-radius:999px;">
+          <video autoplay loop muted playsinline><source src="assets/media/drop-ripple.mp4" type="video/mp4" /></video>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:1.25rem;">
+        <div class="fade-up glass-card-elevated card-base card-hover" style="display:flex;align-items:flex-start;gap:1.25rem;">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+          </div>
+          <p style="font-size:15px;line-height:1.7;color:#CBD5E1;margin:0;">В основе вышеперечисленных проблем лежит потеря контроля над вниманием и состоянием нервной системы.</p>
+        </div>
+        <div class="fade-up delay-1 glass-card-elevated card-base card-hover" style="display:flex;align-items:flex-start;gap:1.25rem;">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></svg>
+          </div>
+          <p style="font-size:15px;line-height:1.7;color:#CBD5E1;margin:0;">Внимание — центральная функция мозга, объединяющая когнитивные, эмоциональные и телесные процессы.</p>
+        </div>
+        <div class="fade-up delay-2 glass-card-elevated card-base card-hover" style="display:flex;align-items:flex-start;gap:1.25rem;">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+          </div>
+          <p style="font-size:15px;line-height:1.7;color:#CBD5E1;margin:0;">Поэтому развитие внимания становится фундаментальным инструментом адаптации человека к современному миру.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 5: METHOD ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 380px;align-items:center;gap:4rem;">
+      <div class="fade-left">
+        <p class="eyebrow">Метод</p>
+        <h2 class="heading-space h2-block">
+          Мы разработали научно обоснованный метод регуляции нервной системы и развития внимания — <span class="text-gradient-cyan">NeuroAttention</span>.
+        </h2>
+
+        <div style="display:flex;flex-direction:column;gap:0.85rem;margin:0 0 2.5rem 0;">
+          <div class="flex items-start gap-3">
+            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
+              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;">Практики интероцептивной и проприоцептивной осознанности</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
+              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;">Тренировки сенсомоторной координации</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
+              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;">Методы физиологической саморегуляции</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
+              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;">Техники управления вниманием</p>
+          </div>
+        </div>
+
+        <div class="grid grid-3 mb-10 fade-up delay-2" style="gap:1rem;">
+          <div class="stat-box glass-card">
+            <p class="num"><span data-count="12" data-suffix="+">0+</span></p>
+            <p class="label">лет разработки</p>
+          </div>
+          <div class="stat-box glass-card">
+            <p class="num"><span data-count="500" data-suffix="+">0+</span></p>
+            <p class="label">обучено людей</p>
+          </div>
+          <div class="stat-box glass-card">
+            <p class="num"><span data-count="300" data-suffix="M+">0M+</span></p>
+            <p class="label">людей мигрантов</p>
+          </div>
+        </div>
+
+        <div class="hero-cta">
+          <a href="method.html" class="btn btn-solid">
+            Узнать о методе
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="programs.html" class="btn btn-primary">Начать практику</a>
+        </div>
+      </div>
+
+      <div class="fade-right">
+        <div class="media-box aspect-tall" style="width:100%;">
+          <img src="assets/images/prism.jpg" alt="Призма света" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 6: XR PLATFORM ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div style="display:grid;grid-template-columns:380px 1fr;align-items:center;gap:4rem;">
+      <div class="fade-left">
+        <div class="glass-image-frame" style="opacity:0.85;">
+          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/xr-hands_a4c93a9e.png" alt="XR NeuroAttention Platform" style="width:100%;filter:brightness(0.85);" />
+        </div>
+      </div>
+      <div class="fade-right">
+        <p class="eyebrow">Платформа</p>
+        <h2 class="heading-space h2-block">
+          <span class="text-gradient-cyan">XR NeuroAttention</span> Platform
+        </h2>
+        <p class="sub-muted mb-8">
+          Для применения протоколов NeuroAttention пользователями разрабатывается XR-платформа виртуальной и дополненной реальности.
+        </p>
+        <p class="eyebrow" style="color:var(--text-secondary);margin-bottom:1rem;">Платформа позволяет:</p>
+        <ul class="list-bullet mb-10">
+          <li><span class="dot"></span>Пройти диагностику состояния нервной системы</li>
+          <li><span class="dot"></span>Получить персональные программы тренировок</li>
+          <li><span class="dot"></span>Видеть и влиять на физиологические сигналы организма в реальном времени</li>
+          <li><span class="dot"></span>Прогрессировать по уровням развития через систему обучения и достижений</li>
+          <li><span class="dot"></span>Развиваться вместе с другими пользователями в общих тренировочных XR-пространствах</li>
+        </ul>
+        <a href="xr.html" class="btn btn-solid">
+          Как работает XR-платформа
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 7: LAB ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div style="display:grid;grid-template-columns:1fr 400px;align-items:center;gap:4rem;">
+      <div class="fade-left">
+        <p class="eyebrow">Лаборатория</p>
+        <h2 class="heading-space h2-block">NeuroAttention Lab</h2>
+        <p class="sub-muted mb-4" style="color:var(--text-secondary);font-size:1.0625rem;">
+          Физическая исследовательская и реабилитационная инфраструктура проекта.
+        </p>
+        <p class="sub-muted mb-10">
+          Здесь объединяются человек, технологии, данные и искусственный интеллект для исследования и разработки новых методов работы с вниманием, мозгом и когнитивными процессами.
+        </p>
+        <a href="lab.html" class="btn btn-primary">
+          Подробнее о Лаборатории
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+      <div class="fade-right">
+        <div class="img-stack">
+          <div class="stack-layer">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab — Research Center" />
+          </div>
+          <div class="stack-layer">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/lab-people_16bf681d.png" alt="NeuroAttention Lab — Team" />
+          </div>
+          <div class="stack-layer">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/9FLlIapWX4OsEeRQFNPo4_bec1ef8e.png" alt="NeuroAttention Headband Device" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 8: DOM UNITY ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-3xl fade-up">
+      <p class="eyebrow">Сообщество</p>
+      <div class="planet-inline">
+        <video autoplay loop muted playsinline><source src="assets/media/planet.mp4" type="video/mp4" /></video>
+      </div>
+      <p class="heading-space" style="font-size:1.35rem;line-height:1.35;color:var(--text-secondary);margin-bottom:0.75rem;">
+        Вся структура проекта создаётся для решения той самой проблемы:
+      </p>
+      <h2 class="heading-space h2-block mb-8">Адаптации человека к новой эпохе.</h2>
+      <p class="sub-muted mb-4">
+        Это касается каждого из нас — вне зависимости от статуса, профессии или страны.
+      </p>
+      <p class="sub-muted mb-10">
+        В одиночку, в нынешних условиях среды человеческий организм не справляется с этими изменениями.
+      </p>
+      <div class="glass-card-bright" style="border-radius:16px;padding:2rem;margin-bottom:2rem;">
+        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">
+          Поэтому возник <span class="text-gradient-cyan">DOM Unity</span>
+        </h3>
+        <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;">
+          Сообщество людей, объединившихся ради формирования новой онлайн и офлайн среды, способствующей адаптации к быстро меняющемуся миру и развитию человеческого потенциала при помощи технологий и совместного обучения.
+        </p>
+      </div>
+      <a href="dom.html" class="btn btn-solid">
+        Подробнее о сообществе
+        <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 9: TEAM ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-5xl">
+      <div class="grid grid-2 mb-14" style="align-items:center;gap:3.5rem;">
+        <div class="fade-left">
+          <div class="glass-image-frame">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/M_DTf7X8DKDIl-UQ20mDL_36123af8.png" alt="Nick Ivanov — Founder" style="width:100%;max-width:22rem;" />
+          </div>
+        </div>
+        <div class="fade-right">
+          <p class="eyebrow">Основатель</p>
+          <h2 class="heading-space" style="font-size:2rem;color:var(--text-primary);margin:0 0 1rem 0;">Nick Ivanov</h2>
+          <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 1rem 0;">
+            Founder &amp; System Architect
+          </p>
+          <p style="font-size:15px;line-height:1.75;color:var(--text-secondary);margin:0 0 0.75rem 0;">
+            Creator of NeuroAttention Method. Researcher in attention and self-regulation with 12+ years of method development.
+          </p>
+          <p style="font-size:15px;line-height:1.75;color:var(--text-secondary);margin:0;">
+            Trained 500+ people and established first international clients in the US, Asia, and Europe.
+          </p>
+        </div>
+      </div>
+
+      <div class="text-center mb-10 fade-up">
+        <p class="eyebrow" style="color:var(--text-muted);">Команда</p>
+        <h3 class="heading-space" style="font-size:1.5rem;color:var(--text-primary);margin:0;">
+          Ядром сообщества DOM Unity является команда создателей проекта.
+        </h3>
+      </div>
+
+      <div class="grid grid-3 fade-up">
+        <div class="glass-card-elevated card-base card-hover text-center">
+          <div class="team-photo">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/takhir_5840163f.png" alt="Takhir Kennedy" />
+          </div>
+          <h4 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.25rem 0;">Takhir Kennedy</h4>
+          <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 0.5rem 0;">Co-founder &amp; CTO</p>
+          <p style="font-size:12px;line-height:1.55;color:var(--text-muted);margin:0;">Leads XR platform architecture, technology development and training systems.</p>
+        </div>
+        <div class="glass-card-elevated card-base card-hover text-center">
+          <div class="team-photo">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/siya_573676f8.png" alt="Sia Ivanova" />
+          </div>
+          <h4 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.25rem 0;">Sia Ivanova</h4>
+          <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 0.5rem 0;">Creative Director</p>
+          <p style="font-size:12px;line-height:1.55;color:var(--text-muted);margin:0;">Designs NeuroAttention environments integrating aesthetics, perception &amp; therapeutic impact.</p>
+        </div>
+        <div class="glass-card-elevated card-base card-hover text-center">
+          <div class="team-photo">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/egor_c0f29eba.png" alt="Yegor Kondratev" />
+          </div>
+          <h4 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.25rem 0;">Yegor Kondratev</h4>
+          <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 0.5rem 0;">Media Director</p>
+          <p style="font-size:12px;line-height:1.55;color:var(--text-muted);margin:0;">Leads content production, media systems &amp; brand expression.</p>
+        </div>
+      </div>
+
+      <p class="text-center fade-up" style="font-size:14px;margin-top:2rem;color:var(--text-dim);font-style:italic;">
+        Проект также поддерживается командой специалистов и партнёров в области исследований, технологий и медиа.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCREEN 10: ECOSYSTEM + CTA ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-4xl">
+      <div class="text-center mb-14 fade-up">
+        <p class="eyebrow">Экосистема</p>
+      </div>
+
+      <div class="grid grid-4 mb-12 fade-up">
+        <a href="method.html" class="pillar glass-card-elevated card-hover">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></svg>
+          </div>
+          <p>NeuroAttention Method</p>
+        </a>
+        <a href="xr.html" class="pillar glass-card-elevated card-hover">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </div>
+          <p>XR NeuroAttention Platform</p>
+        </a>
+        <a href="lab.html" class="pillar glass-card-elevated card-hover">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 2v6.17a2 2 0 0 1-.59 1.42L3 15h18l-5.41-5.41A2 2 0 0 1 15 8.17V2M9 2h6"/></svg>
+          </div>
+          <p>NeuroAttention Lab</p>
+        </a>
+        <a href="dom.html" class="pillar glass-card-elevated card-hover">
+          <div class="icon-box lg glass-icon">
+            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <p>DOM Unity</p>
+        </a>
+      </div>
+
+      <div class="text-center fade-up mb-12">
+        <p class="heading-space" style="font-size:1.35rem;color:var(--text-primary);margin:0 0 0.75rem 0;">
+          Все они являются частью единой экосистемы — <span class="text-gradient-cyan" style="font-weight:700;">DOM</span>
+        </p>
+        <p class="sub-muted max-w-2xl">
+          Это открытая экосистема, объединяющая технологии, исследования и сообщество людей, работающих над развитием человеческого потенциала.
+        </p>
+      </div>
+
+      <div class="cta-video-wrap glass-card-bright glow-cyan fade-up">
+        <div class="cta-video-bg">
+          <video autoplay loop muted playsinline><source src="assets/media/spiral.mp4" type="video/mp4" /></video>
+        </div>
+        <div class="cta-content">
+          <h3 class="heading-space text-center" style="font-size:1.25rem;color:var(--text-primary);margin:0 0 1.5rem 0;">
+            Мы открыты к сотрудничеству
+          </h3>
+          <div class="grid grid-3 mb-8">
+            <div class="flex items-center gap-3" style="color:var(--text-secondary);font-size:14px;"><span class="dot" style="width:6px;height:6px;border-radius:999px;background:var(--accent-cyan);"></span>Исследователями</div>
+            <div class="flex items-center gap-3" style="color:var(--text-secondary);font-size:14px;"><span class="dot" style="width:6px;height:6px;border-radius:999px;background:var(--accent-cyan);"></span>Инженерами и разработчиками</div>
+            <div class="flex items-center gap-3" style="color:var(--text-secondary);font-size:14px;"><span class="dot" style="width:6px;height:6px;border-radius:999px;background:var(--accent-cyan);"></span>Инвесторами и фондами</div>
+            <div class="flex items-center gap-3" style="color:var(--text-secondary);font-size:14px;"><span class="dot" style="width:6px;height:6px;border-radius:999px;background:var(--accent-cyan);"></span>Партнёрскими организациями</div>
+            <div class="flex items-center gap-3" style="color:var(--text-secondary);font-size:14px;"><span class="dot" style="width:6px;height:6px;border-radius:999px;background:var(--accent-cyan);"></span>Людьми, разделяющими идеи проекта</div>
+          </div>
+          <div class="flex flex-wrap justify-center gap-4">
+            <a href="dom.html" class="btn btn-solid">
+              Присоединиться к сообществу
+              <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a href="mailto:info@neuroattention.com" class="btn btn-ghost">Связаться с командой</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="index.html" class="nav-logo" style="margin-bottom:1rem;display:inline-flex;">
+          Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span>
+        </a>
+        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0.75rem 0 0.75rem 0;">
+          Операционная система для человеческого внимания.
+        </p>
+        <p style="font-size:12px;color:var(--text-dim);margin:0;">NeuroAttention Lab LLC, USA</p>
+      </div>
+      <div>
+        <h4>Навигация</h4>
+        <div class="footer-links">
+          <a href="index.html">Главная</a>
+          <a href="test.html">Тест</a>
+          <a href="method.html">Метод</a>
+          <a href="programs.html">Программы</a>
+        </div>
+      </div>
+      <div>
+        <h4>Проект</h4>
+        <div class="footer-links">
+          <a href="xr.html">XR Платформа</a>
+          <a href="lab.html">Лаборатория</a>
+          <a href="dom.html">DOM Unity</a>
+        </div>
+      </div>
+      <div>
+        <h4>Контакт</h4>
+        <div class="footer-links">
+          <a href="mailto:info@neuroattention.com">info@neuroattention.com</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; <span id="year">2026</span> NeuroAttention Lab LLC. All rights reserved.</p>
+      <p class="tag">Операционная система для человеческого внимания</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

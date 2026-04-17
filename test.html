@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Диагностика внимания — NeuroAttention Lab</title>
+<meta name="description" content="Интерактивная диагностика внимания NeuroAttention. Оцените своё состояние концентрации, стресса и когнитивных функций." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+</head>
+<body class="test-body">
+<div class="deep-atmosphere" aria-hidden="true"></div>
+<div class="noise-overlay" aria-hidden="true"></div>
+
+<nav class="navbar">
+  <div class="container navbar-inner">
+    <a href="index.html" class="nav-logo">Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Главная</a>
+      <a href="test.html" class="nav-link">Тест</a>
+      <a href="method.html" class="nav-link">Метод</a>
+      <a href="programs.html" class="nav-link">Программы</a>
+      <a href="xr.html" class="nav-link">XR Платформа</a>
+      <a href="lab.html" class="nav-link">Лаборатория</a>
+      <a href="dom.html" class="nav-link">DOM</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button class="lang-btn active">RU</button>
+        <button class="lang-btn">EN</button>
+        <button class="lang-btn">ES</button>
+      </div>
+      <a href="account.html" class="nav-login"><span class="login-dot"></span><span>Кабинет</span></a>
+      <button class="mobile-menu-btn" aria-label="Меню">
+        <svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu">
+    <div class="container mobile-menu-inner">
+      <a href="index.html" class="mobile-link">Главная</a>
+      <a href="test.html" class="mobile-link">Тест</a>
+      <a href="method.html" class="mobile-link">Метод</a>
+      <a href="programs.html" class="mobile-link">Программы</a>
+      <a href="xr.html" class="mobile-link">XR Платформа</a>
+      <a href="lab.html" class="mobile-link">Лаборатория</a>
+      <a href="dom.html" class="mobile-link">DOM</a>
+      <a href="account.html" class="mobile-link">Личный кабинет</a>
+    </div>
+  </div>
+</nav>
+
+<main class="test-wrap">
+  <div class="test-header">
+    <div class="container max-w-3xl">
+      <div class="test-header-inner">
+        <a href="index.html" class="test-back" aria-label="Назад">
+          <svg class="icon md" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </a>
+        <div class="icon-box lg glass-icon">
+          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9.5 2a3 3 0 0 0-3 3v.25c0 .3.05.59.13.86A3 3 0 0 0 4 8.75v.5a3 3 0 0 0 1.5 2.59v.5A3 3 0 0 0 4 14.75v.5c0 1.24.75 2.3 1.82 2.74A3 3 0 0 0 9.5 21h1V2zM14.5 2a3 3 0 0 1 3 3v.25c0 .3-.05.59-.13.86A3 3 0 0 1 20 8.75v.5a3 3 0 0 1-1.5 2.59v.5A3 3 0 0 1 20 14.75v.5c0 1.24-.75 2.3-1.82 2.74A3 3 0 0 1 14.5 21h-1V2z"/></svg>
+        </div>
+        <div>
+          <h1 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0;">Диагностика внимания</h1>
+          <p class="mono-label" style="margin:0;">NeuroAttention Test</p>
+        </div>
+      </div>
+      <div class="media-box aspect-wide" style="max-width:320px;margin:1rem auto;opacity:0.5;">
+        <img src="assets/images/geo-dot.jpg" alt="" loading="lazy" />
+      </div>
+    </div>
+  </div>
+
+  <div class="test-messages" id="messages">
+    <div class="container max-w-3xl" id="messages-inner">
+      <!-- messages will be injected here -->
+    </div>
+  </div>
+
+  <div class="test-input-bar">
+    <div class="container max-w-3xl">
+      <div class="test-input-row">
+        <input type="text" id="chat-input" class="glass-input" placeholder="Введите сообщение..." />
+        <button id="chat-send" class="btn btn-solid" aria-label="Отправить">
+          <svg class="icon md" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script>
+(function(){
+  var initial = [
+    { sender:'bot', text:'Добро пожаловать в диагностику NeuroAttention. Я помогу оценить текущее состояние вашего внимания.' },
+    { sender:'bot', text:'Тест состоит из нескольких вопросов о вашем повседневном опыте с концентрацией, стрессом и когнитивными функциями.' },
+    { sender:'bot', text:'Как часто вам сложно сосредоточиться на одной задаче более 15 минут?', options:['Почти всегда','Часто','Иногда','Редко'] }
+  ];
+  var followUps = [
+    { text:'Замечаете ли вы, что часто переключаетесь между задачами, не завершив ни одну из них?', options:['Да, постоянно','Довольно часто','Иногда','Нет, редко'] },
+    { text:'Как вы оцениваете свой уровень стресса в повседневной жизни?', options:['Очень высокий','Высокий','Умеренный','Низкий'] },
+    { text:'Испытываете ли вы трудности с засыпанием из-за «бегающих мыслей»?', options:['Каждый день','Несколько раз в неделю','Иногда','Нет'] },
+    { text:'Насколько легко вам удаётся осознавать сигналы своего тела (дыхание, напряжение, сердцебиение)?', options:['Очень сложно','Сложно','Средне','Легко'] },
+    { text:'Спасибо за ответы! На основе ваших данных мы подготовим персональный отчёт о состоянии вашего внимания. Хотите узнать больше о методе NeuroAttention?', options:['Да, расскажите','Перейти к методу','Позже'] }
+  ];
+  var idx = 0;
+  var container = document.getElementById('messages-inner');
+  var scroller = document.getElementById('messages');
+  var input = document.getElementById('chat-input');
+  var sendBtn = document.getElementById('chat-send');
+
+  function scrollBottom(){
+    scroller.scrollTop = scroller.scrollHeight;
+  }
+
+  function makeBot(text, options){
+    var wrap = document.createElement('div');
+    wrap.className = 'chat-row bot';
+    wrap.innerHTML = ''+
+      '<div class="chat-avatar glass-icon">'+
+        '<svg class="icon sm" viewBox="0 0 24 24" style="color:var(--accent-cyan)"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg>'+
+      '</div>'+
+      '<div class="chat-stack">'+
+        '<div class="chat-bubble-bot">'+escapeHtml(text)+'</div>'+
+      '</div>';
+    if (options && options.length) {
+      var opts = document.createElement('div');
+      opts.className = 'chat-options';
+      options.forEach(function(o){
+        var b = document.createElement('button');
+        b.className = 'option-btn';
+        b.textContent = o;
+        b.addEventListener('click', function(){ handleSend(o); });
+        opts.appendChild(b);
+      });
+      wrap.querySelector('.chat-stack').appendChild(opts);
+    }
+    container.appendChild(wrap);
+    scrollBottom();
+  }
+
+  function makeUser(text){
+    var wrap = document.createElement('div');
+    wrap.className = 'chat-row user';
+    wrap.innerHTML = '<div class="chat-bubble-user">'+escapeHtml(text)+'</div>';
+    container.appendChild(wrap);
+    scrollBottom();
+  }
+
+  function makeTyping(){
+    var wrap = document.createElement('div');
+    wrap.className = 'chat-row bot typing';
+    wrap.id = 'typing-indicator';
+    wrap.innerHTML = ''+
+      '<div class="chat-avatar glass-icon">'+
+        '<svg class="icon sm" viewBox="0 0 24 24" style="color:var(--accent-cyan)"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 16h.01M16 16h.01"/></svg>'+
+      '</div>'+
+      '<div class="chat-bubble-bot"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+    container.appendChild(wrap);
+    scrollBottom();
+  }
+  function removeTyping(){
+    var t = document.getElementById('typing-indicator');
+    if (t) t.parentNode.removeChild(t);
+  }
+
+  function disableLastOptions(){
+    var rows = container.querySelectorAll('.chat-row.bot');
+    if (!rows.length) return;
+    var last = rows[rows.length-1];
+    last.querySelectorAll('.option-btn').forEach(function(b){
+      b.disabled = true;
+      b.classList.add('disabled');
+    });
+  }
+
+  function handleSend(text){
+    if (!text || !text.trim()) return;
+    disableLastOptions();
+    makeUser(text.trim());
+    input.value = '';
+    makeTyping();
+    setTimeout(function(){
+      removeTyping();
+      if (idx < followUps.length) {
+        var q = followUps[idx];
+        makeBot(q.text, q.options);
+        idx++;
+      } else {
+        makeBot('Тест завершён. Перейдите к методу или программам, чтобы узнать больше.');
+      }
+    }, 1100);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>\"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  // Render initial messages with slight delays for feel
+  initial.forEach(function(m, i){
+    setTimeout(function(){ makeBot(m.text, m.options); }, 300 + i*500);
+  });
+
+  sendBtn.addEventListener('click', function(){ handleSend(input.value); });
+  input.addEventListener('keydown', function(e){ if (e.key === 'Enter') handleSend(input.value); });
+})();
+</script>
+</body>
+</html>

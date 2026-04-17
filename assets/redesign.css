@@ -1,0 +1,621 @@
+/*
+ * NeuroAttention — Redesign overlay
+ * Loaded AFTER styles.css. Softens the look:
+ *   - lighter, more transparent glass
+ *   - no loud cyan→blue gradient text on every headline
+ *   - all buttons glass (no solid gradient button)
+ *   - FlipLink navbar, custom cursor, video containers
+ * Everything here is additive/overrides — existing markup keeps working.
+ */
+
+/* ══════════════════════════════════════════
+   TOKENS — softer palette
+   ══════════════════════════════════════════ */
+:root {
+  --accent-soft: rgba(200, 225, 220, 0.9);       /* cool near-white accent */
+  --accent-soft-dim: rgba(200, 225, 220, 0.55);
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --line-softer: rgba(255, 255, 255, 0.04);
+  --glass-ultra: rgba(255, 255, 255, 0.025);
+  --glass-ultra-hover: rgba(255, 255, 255, 0.045);
+  --dot-attention: 255, 255, 255;                 /* cursor dot color (rgba tuple) */
+  --hero-font: 'Unbounded', 'Space Grotesk', sans-serif;
+  --body-font: 'Inter', 'DM Sans', system-ui, sans-serif;
+  --mono-font: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Use Inter as body font (metrics are cleaner than DM Sans, excellent RU/EN/ES) */
+body {
+  font-family: var(--body-font);
+  letter-spacing: -0.005em;
+  cursor: none;  /* use custom cursor */
+}
+
+/* keep native cursor on touch devices */
+@media (hover: none), (pointer: coarse) {
+  body { cursor: auto; }
+  .cursor-stylus, .cursor-dot { display: none !important; }
+}
+
+.heading-space {
+  font-family: var(--hero-font);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+/* Kill the global cyan→blue gradient text.
+   Keep gradient only on logo wordmark "Attention". */
+.text-gradient-cyan {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text-primary);
+}
+.nav-logo .text-gradient-cyan {
+  background: linear-gradient(135deg, rgba(220,245,240,0.95) 0%, rgba(180,210,230,0.85) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Softer eyebrow — white at low opacity instead of cyan */
+.eyebrow, .tag, .mono-label {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ══════════════════════════════════════════
+   ATMOSPHERE — calmer background (less color spots)
+   ══════════════════════════════════════════ */
+.deep-atmosphere {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255,255,255,0.025), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 20% 100%, rgba(255,255,255,0.015), transparent 70%),
+    linear-gradient(180deg, #04060A 0%, #05070C 50%, #04060A 100%);
+}
+.noise-overlay {
+  opacity: 0.25;
+}
+
+/* ══════════════════════════════════════════
+   GLASS — lighter, thinner borders, more transparent
+   ══════════════════════════════════════════ */
+.glass-card,
+.glass-card-elevated,
+.glass-card-bright {
+  background: var(--glass-ultra);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  border: 1px solid var(--line-soft);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.03) inset,
+    0 10px 40px rgba(0,0,0,0.35);
+  transition: background 0.4s, border-color 0.4s, transform 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+
+.glass-card-bright {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%);
+  border-color: rgba(255,255,255,0.09);
+}
+
+.card-hover:hover {
+  background: var(--glass-ultra-hover);
+  border-color: rgba(255,255,255,0.14);
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.06) inset,
+    0 20px 60px rgba(0,0,0,0.45);
+}
+
+.glass-icon {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 0.5px rgba(255,255,255,0.03) inset;
+}
+
+.glass-image-frame {
+  border: 1px solid var(--line-soft);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.03) inset,
+    0 20px 50px rgba(0,0,0,0.45);
+}
+
+.glow-cyan {
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.08) inset,
+    0 12px 40px rgba(0,0,0,0.45),
+    0 0 80px rgba(255,255,255,0.04);
+}
+
+/* ══════════════════════════════════════════
+   BUTTONS — all glass (no solid gradient)
+   ══════════════════════════════════════════ */
+.btn-solid {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.05) inset,
+    0 4px 18px rgba(0,0,0,0.35);
+}
+.btn-solid:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.22);
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.08) inset,
+    0 8px 28px rgba(0,0,0,0.45);
+}
+
+.btn-primary {
+  background: rgba(255,255,255,0.025);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.btn-primary:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-2px);
+}
+
+/* ══════════════════════════════════════════
+   NAVBAR — FlipLink hover + glass bar
+   ══════════════════════════════════════════ */
+.navbar {
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  background: rgba(4,6,10,0.35);
+  border-bottom: 1px solid transparent;
+}
+.navbar.scrolled {
+  background: rgba(4,6,10,0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  box-shadow: none;
+}
+
+.nav-link {
+  position: relative;
+  overflow: hidden;
+  padding: 0.5rem 0.9rem;
+  height: 2rem;
+  line-height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  color: rgba(255,255,255,0.55);
+  font-weight: 500;
+  border: 0;
+  letter-spacing: -0.01em;
+}
+
+/* FlipLink: fast vertical flip effect on hover */
+.nav-link .flip-inner {
+  position: relative;
+  display: inline-block;
+  line-height: 1rem;
+  perspective: 120px;
+}
+.nav-link .flip-inner::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--text-primary);
+  transform: rotateX(-90deg);
+  transform-origin: bottom center;
+  backface-visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-link .flip-inner > span {
+  display: inline-block;
+  transform-origin: top center;
+  backface-visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-link:hover .flip-inner > span,
+.nav-link.active .flip-inner > span {
+  transform: rotateX(90deg);
+}
+.nav-link:hover .flip-inner::before,
+.nav-link.active .flip-inner::before {
+  transform: rotateX(0deg);
+}
+.nav-link:hover { color: rgba(255,255,255,0.55); }
+.nav-link.active { color: rgba(255,255,255,0.55); }
+
+/* wrap the span so FlipLink clips */
+.nav-link::after { display: none; }  /* remove underline if any */
+
+/* Lang switch — thinner */
+.lang-switch {
+  border: 1px solid rgba(255,255,255,0.06);
+  background: transparent;
+  backdrop-filter: none;
+}
+.lang-btn {
+  color: rgba(255,255,255,0.4);
+}
+.lang-btn.active {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+}
+
+/* Login pill */
+.nav-login {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+.nav-login:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text-primary);
+}
+.nav-login .login-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 0 8px rgba(255,255,255,0.5);
+}
+
+/* ══════════════════════════════════════════
+   CUSTOM CURSOR — stylus + trailing attention dot
+   ══════════════════════════════════════════ */
+.cursor-stylus,
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+
+.cursor-stylus {
+  width: 14px;
+  height: 14px;
+  margin: -1px 0 0 -1px;
+  transform: translate(-50%, -50%);
+}
+.cursor-stylus svg { width: 100%; height: 100%; display: block; }
+
+.cursor-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(var(--dot-attention),0.95) 0%, rgba(var(--dot-attention),0.45) 40%, rgba(var(--dot-attention),0) 70%);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s, opacity 0.3s;
+}
+.cursor-dot.hover {
+  width: 44px;
+  height: 44px;
+}
+.cursor-dot.down {
+  width: 9px;
+  height: 9px;
+}
+
+/* ══════════════════════════════════════════
+   VIDEO MEDIA — animated GIFs as UI components
+   ══════════════════════════════════════════ */
+.media-box {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  background: #020306;
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.03) inset,
+    0 20px 60px rgba(0,0,0,0.5);
+}
+.media-box video,
+.media-box img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+.media-box.aspect-hero { aspect-ratio: 4 / 3; }
+.media-box.aspect-sq   { aspect-ratio: 1 / 1; }
+.media-box.aspect-tall { aspect-ratio: 3 / 4; }
+.media-box.aspect-wide { aspect-ratio: 16 / 9; }
+
+.media-inline {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--line-soft);
+}
+.media-inline video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.media-round {
+  border-radius: 999px;
+  overflow: hidden;
+  background: #020306;
+  border: 1px solid var(--line-soft);
+}
+.media-round video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Small attention-token chip with GIF inside (decoration) */
+.chip-media {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.9rem 0.4rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px);
+}
+.chip-media .chip-video {
+  width: 24px; height: 24px; border-radius: 999px; overflow: hidden;
+  background: #020306;
+}
+.chip-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ══════════════════════════════════════════
+   SCROLL-DROP — hero→facts→solution ripple transition
+   ══════════════════════════════════════════ */
+.scroll-drop-stage {
+  position: relative;
+  min-height: 100vh;
+}
+.scroll-drop-fixed {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scroll-drop-video {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(var(--drop-scale, 1));
+  width: min(520px, 80vw);
+  aspect-ratio: 1 / 1;
+  opacity: var(--drop-opacity, 0);
+  transition: opacity 0.4s;
+  mix-blend-mode: screen;
+}
+.scroll-drop-video video {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+}
+
+/* ══════════════════════════════════════════
+   GENERIC — small polish
+   ══════════════════════════════════════════ */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+
+.btn {
+  font-family: var(--body-font);
+}
+
+.h2-block.large {
+  font-family: var(--hero-font);
+  font-weight: 500;
+}
+
+/* fade-up starting state stronger so motion is more felt */
+.fade-up, .fade-left, .fade-right, .fade-scale {
+  transition-duration: 0.9s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Magnetic hover class (added by JS) */
+.magnetic {
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  will-change: transform;
+}
+
+/* ══════════════════════════════════════════
+   LAYOUT — wider container, tighter spacing
+   ══════════════════════════════════════════ */
+
+/* Widen the main container from 1200px to 1440px */
+.container {
+  max-width: 1440px !important;
+  padding: 0 2.5rem !important;
+}
+@media (min-width: 1600px) {
+  .container { max-width: 1520px !important; }
+}
+
+/* Widen max-width helpers so content fills the container */
+.max-w-2xl { max-width: 100% !important; }
+.max-w-3xl { max-width: 100% !important; }
+.max-w-4xl { max-width: 100% !important; }
+.max-w-5xl { max-width: 100% !important; }
+
+/* Keep chat interface narrower — it's a chat, not a page block */
+.test-wrap .max-w-3xl { max-width: 52rem !important; }
+
+/* Reduce vertical section spacing — less whitespace between blocks */
+.section {
+  padding: 3.5rem 0 !important;
+}
+@media (min-width: 1024px) {
+  .section {
+    padding: 4.5rem 0 !important;
+  }
+}
+
+/* Standardize grid layouts — wider image columns */
+.grid.grid-2 {
+  gap: 3rem;
+}
+@media (min-width: 768px) {
+  .grid.grid-2 {
+    gap: 4rem;
+  }
+}
+
+/* ══════════════════════════════════════════
+   HERO — tighter spacing
+   ══════════════════════════════════════════ */
+.hero {
+  padding-top: 5.5rem !important;
+  padding-bottom: 2rem !important;
+}
+
+/* Larger body text for wider layouts */
+@media (min-width: 1024px) {
+  .hero-desc, .sub-muted {
+    font-size: 1.1rem;
+  }
+  .h2-block {
+    font-size: clamp(1.75rem, 2.4vw, 2.5rem);
+  }
+  .hero .heading-space {
+    font-size: clamp(2.5rem, 3.5vw, 3.5rem);
+  }
+}
+
+/* Fix font sizing inside cards for wider view */
+@media (min-width: 1200px) {
+  .card-base p, .list-bullet li {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+}
+
+/* Responsive fallback for inline grids on narrow screens */
+@media (max-width: 768px) {
+  [style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
+/* ══════════════════════════════════════════
+   FACT CARDS — slide in from sides on scroll
+   ══════════════════════════════════════════ */
+/* Fact cards: visible by default; JS adds .slide-ready when observer is active */
+.slide-ready .fact-slide-left {
+  opacity: 0;
+  transform: translateX(-80px);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+}
+.slide-ready .fact-slide-right {
+  opacity: 0;
+  transform: translateX(80px);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+}
+.slide-ready .fact-slide-left.in-view,
+.slide-ready .fact-slide-right.in-view {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ══════════════════════════════════════════
+   IMAGE STACK — fan on hover
+   ══════════════════════════════════════════ */
+.img-stack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  cursor: pointer;
+}
+.img-stack .stack-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.img-stack .stack-layer img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: brightness(0.85);
+  opacity: 0.85;
+}
+/* stacked: already fanned slightly so edges are visible */
+.img-stack .stack-layer:nth-child(1) { z-index: 3; transform: rotate(-4deg) translate(-12px, 4px); }
+.img-stack .stack-layer:nth-child(2) { z-index: 2; transform: rotate(0deg) translate(0, -4px); }
+.img-stack .stack-layer:nth-child(3) { z-index: 1; transform: rotate(4deg) translate(12px, 4px); }
+/* fan opens wider on hover */
+.img-stack:hover .stack-layer:nth-child(1) { transform: rotate(-10deg) translate(-40px, 10px); z-index: 3; }
+.img-stack:hover .stack-layer:nth-child(2) { transform: rotate(0deg) translate(0, -14px) scale(1.03); z-index: 4; }
+.img-stack:hover .stack-layer:nth-child(3) { transform: rotate(10deg) translate(40px, 10px); z-index: 3; }
+/* click-to-front: .front class brings layer to top */
+.img-stack .stack-layer.front { z-index: 10 !important; transform: rotate(0deg) translate(0, 0) scale(1.02) !important; box-shadow: 0 12px 50px rgba(0,0,0,0.6); }
+
+/* ══════════════════════════════════════════
+   CTA — video background with glass overlay
+   ══════════════════════════════════════════ */
+.cta-video-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.cta-video-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.25;
+}
+.cta-video-bg video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.cta-video-wrap .cta-content {
+  position: relative;
+  z-index: 1;
+  padding: 2.5rem;
+}
+
+/* ══════════════════════════════════════════
+   COMMUNITY — small inline planet gif
+   ══════════════════════════════════════════ */
+.planet-inline {
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  float: right;
+  margin: 0 0 1rem 1.5rem;
+  opacity: 0.7;
+}
+.planet-inline video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+/* ══════════════════════════════════════════
+   ECOSYSTEM — clickable pillar cards
+   ══════════════════════════════════════════ */
+a.pillar {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+}
+a.pillar:hover {
+  border-color: rgba(255,255,255,0.18);
+  background: var(--glass-ultra-hover);
+  transform: translateY(-4px);
+}

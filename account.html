@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Личный кабинет — NeuroAttention Lab</title>
+<meta name="description" content="Личный кабинет NeuroAttention Lab: тариф, прогресс по программам, статистика внимания." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+  .auth-wrap { max-width: 440px; margin: 9rem auto 4rem; padding: 2.5rem; border-radius: 22px; }
+  .auth-wrap h1 { font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1.6rem; margin: 0 0 0.5rem; color: var(--text-primary); }
+  .auth-wrap p.sub { color: var(--text-muted); margin: 0 0 2rem; font-size: 14px; }
+  .auth-field { margin-bottom: 1rem; }
+  .auth-field label { display:block; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.4rem; }
+  .auth-field input { width: 100%; padding: 0.85rem 1rem; border-radius: 12px; font-size: 14px; }
+  .auth-submit { width: 100%; justify-content: center; margin-top: 0.5rem; }
+  .auth-hint { font-size: 12px; color: var(--text-muted); margin-top: 1.25rem; text-align: center; }
+  .auth-hint code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  .dashboard { max-width: 1100px; margin: 6rem auto 4rem; padding: 0 1.5rem; display: none; }
+  .dash-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom: 2.5rem; }
+  .dash-title { font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1.8rem; color: var(--text-primary); margin: 0; }
+  .dash-role { display:inline-flex; align-items:center; gap:0.5rem; padding: 0.4rem 0.85rem; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+  .dash-role .pulse { width:6px; height:6px; border-radius:999px; background:#fff; box-shadow:0 0 10px rgba(255,255,255,0.6); }
+  .logout-btn { font-size: 12px; color: var(--text-muted); padding: 0.4rem 0.85rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: transparent; }
+  .logout-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+
+  .dash-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.25rem; }
+  .dash-card { grid-column: span 12; padding: 1.75rem; border-radius: 18px; }
+  @media (min-width: 768px) {
+    .dash-card.span-4 { grid-column: span 4; }
+    .dash-card.span-6 { grid-column: span 6; }
+    .dash-card.span-8 { grid-column: span 8; }
+  }
+  .dash-card h3 { font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1rem; color: var(--text-primary); margin: 0 0 1rem; }
+  .dash-metric { font-family: 'Unbounded', sans-serif; font-weight: 400; font-size: 2.6rem; line-height: 1; color: var(--text-primary); margin: 0.25rem 0 0.5rem; }
+  .dash-label { font-size: 12px; color: var(--text-muted); letter-spacing: 0.08em; }
+
+  .progress-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 1rem; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4)); border-radius: 999px; }
+  .program-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: 0.9rem 0; border-bottom: 1px solid var(--line-softer); }
+  .program-row:last-child { border-bottom: 0; }
+  .program-row .name { color: var(--text-primary); font-size: 14px; }
+  .program-row .week { color: var(--text-muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table th { text-align: left; color: rgba(255,255,255,0.5); font-weight: 500; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--line-soft); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .admin-table td { padding: 0.75rem 0.5rem; color: var(--text-primary); border-bottom: 1px solid var(--line-softer); }
+  .admin-table td:last-child, .admin-table th:last-child { text-align: right; }
+</style>
+</head>
+<body>
+<div class="deep-atmosphere" aria-hidden="true"></div>
+<div class="noise-overlay" aria-hidden="true"></div>
+
+<nav class="navbar">
+  <div class="container navbar-inner">
+    <a href="index.html" class="nav-logo">Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Главная</a>
+      <a href="test.html" class="nav-link">Тест</a>
+      <a href="method.html" class="nav-link">Метод</a>
+      <a href="programs.html" class="nav-link">Программы</a>
+      <a href="xr.html" class="nav-link">XR Платформа</a>
+      <a href="lab.html" class="nav-link">Лаборатория</a>
+      <a href="dom.html" class="nav-link">DOM</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button class="lang-btn active">RU</button>
+        <button class="lang-btn">EN</button>
+        <button class="lang-btn">ES</button>
+      </div>
+      <a href="account.html" class="nav-login"><span class="login-dot"></span><span>Кабинет</span></a>
+      <button class="mobile-menu-btn" aria-label="Меню"><svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+  <div class="mobile-menu">
+    <div class="container mobile-menu-inner">
+      <a href="index.html" class="mobile-link">Главная</a>
+      <a href="test.html" class="mobile-link">Тест</a>
+      <a href="method.html" class="mobile-link">Метод</a>
+      <a href="programs.html" class="mobile-link">Программы</a>
+      <a href="xr.html" class="mobile-link">XR Платформа</a>
+      <a href="lab.html" class="mobile-link">Лаборатория</a>
+      <a href="dom.html" class="mobile-link">DOM</a>
+      <a href="account.html" class="mobile-link">Личный кабинет</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Login screen -->
+<section id="auth-screen" class="auth-wrap glass-card-elevated">
+  <p class="eyebrow">Вход</p>
+  <h1>Личный кабинет</h1>
+  <p class="sub">Войдите, чтобы увидеть свой прогресс и программы.</p>
+  <form id="auth-form">
+    <div class="auth-field">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required />
+    </div>
+    <div class="auth-field">
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" class="glass-input" placeholder="••••••••" autocomplete="current-password" required />
+    </div>
+    <button type="submit" class="btn btn-solid auth-submit">
+      Войти
+      <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </form>
+  <p class="auth-hint">Демо: клиент — <code>demo@user</code> / <code>demo</code> · админ — <code>admin@lab</code> / <code>admin</code></p>
+</section>
+
+<!-- Client dashboard -->
+<section id="client-dashboard" class="dashboard">
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title" id="client-greeting">Здравствуйте, Takhir</h1>
+      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Пульс вашей практики на этой неделе</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <span class="dash-role"><span class="pulse"></span>Клиент</span>
+      <button class="logout-btn" data-logout>Выйти</button>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Тариф</h3>
+      <p class="dash-metric">Глубокое&nbsp;внимание</p>
+      <p class="dash-label">12 недель · неделя 5 из 12</p>
+      <div class="progress-track"><div class="progress-fill" style="width:42%"></div></div>
+    </div>
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Практика</h3>
+      <p class="dash-metric">24<span style="font-size:1rem;color:var(--text-muted);margin-left:6px;">мин/день</span></p>
+      <p class="dash-label">Средняя длительность сессии</p>
+      <div class="progress-track"><div class="progress-fill" style="width:68%"></div></div>
+    </div>
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Серия дней</h3>
+      <p class="dash-metric">17</p>
+      <p class="dash-label">Подряд без пропуска</p>
+      <div class="progress-track"><div class="progress-fill" style="width:85%"></div></div>
+    </div>
+
+    <div class="dash-card glass-card-elevated span-8">
+      <h3>Модули программы</h3>
+      <div class="program-row"><span class="name">Фокус и удержание внимания</span><span class="week">нед 1–3 · пройдено</span></div>
+      <div class="program-row"><span class="name">Гибкость и переключение</span><span class="week">нед 4–5 · в процессе</span></div>
+      <div class="program-row"><span class="name">Множественное внимание</span><span class="week">нед 6–7</span></div>
+      <div class="program-row"><span class="name">Объёмное восприятие</span><span class="week">нед 8–9</span></div>
+      <div class="program-row"><span class="name">Интероцепция и саморегуляция</span><span class="week">нед 10–12</span></div>
+    </div>
+
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Сигналы нервной системы</h3>
+      <p class="dash-label" style="margin-bottom:0.6rem;">Вариабельность ритма (HRV)</p>
+      <p class="dash-metric" style="font-size:1.8rem;">64<span style="font-size:0.9rem;color:var(--text-muted);margin-left:4px;">мс</span></p>
+      <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
+      <p class="dash-label" style="margin-top:1rem;">+8% к прошлой неделе</p>
+    </div>
+  </div>
+</section>
+
+<!-- Admin dashboard -->
+<section id="admin-dashboard" class="dashboard">
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">Администрирование</h1>
+      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Статистика платформы в реальном времени</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <span class="dash-role"><span class="pulse"></span>Администратор</span>
+      <button class="logout-btn" data-logout>Выйти</button>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Активных клиентов</h3>
+      <p class="dash-metric">524</p>
+      <p class="dash-label">+38 за 7 дней</p>
+    </div>
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Выручка за месяц</h3>
+      <p class="dash-metric">$18,420</p>
+      <p class="dash-label">+12% к прошлому месяцу</p>
+    </div>
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Завершили программу</h3>
+      <p class="dash-metric">67%</p>
+      <p class="dash-label">Среди прошедших 8+ недель</p>
+    </div>
+
+    <div class="dash-card glass-card-elevated span-8">
+      <h3>Активные клиенты</h3>
+      <table class="admin-table">
+        <thead><tr><th>Клиент</th><th>Программа</th><th>Неделя</th><th>Прогресс</th></tr></thead>
+        <tbody>
+          <tr><td>Takhir K.</td><td>Глубокое внимание</td><td>5 / 12</td><td>42%</td></tr>
+          <tr><td>Sia I.</td><td>Мастер внимания</td><td>11 / 16</td><td>68%</td></tr>
+          <tr><td>Yegor K.</td><td>Основы внимания</td><td>6 / 8</td><td>75%</td></tr>
+          <tr><td>Alex R.</td><td>Глубокое внимание</td><td>2 / 12</td><td>16%</td></tr>
+          <tr><td>Maria L.</td><td>Основы внимания</td><td>8 / 8</td><td>100%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="dash-card glass-card-elevated span-4">
+      <h3>Продажи по программам</h3>
+      <div class="program-row"><span class="name">Основы внимания</span><span class="week">312</span></div>
+      <div class="program-row"><span class="name">Глубокое внимание</span><span class="week">184</span></div>
+      <div class="program-row"><span class="name">Мастер внимания</span><span class="week">96</span></div>
+      <div class="program-row"><span class="name">XR Beta доступ</span><span class="week">41</span></div>
+    </div>
+  </div>
+</section>
+
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script>
+(function(){
+  var auth = document.getElementById('auth-screen');
+  var client = document.getElementById('client-dashboard');
+  var admin = document.getElementById('admin-dashboard');
+  var form = document.getElementById('auth-form');
+
+  function show(which){
+    auth.style.display    = which === 'auth'   ? 'block' : 'none';
+    client.style.display  = which === 'client' ? 'block' : 'none';
+    admin.style.display   = which === 'admin'  ? 'block' : 'none';
+  }
+
+  // Demo session in memory only (no localStorage in this env)
+  var session = null;
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var email = document.getElementById('email').value.trim().toLowerCase();
+    var pass  = document.getElementById('password').value;
+    if (email === 'admin@lab' && pass === 'admin') {
+      session = 'admin'; show('admin');
+    } else if (email === 'demo@user' && pass === 'demo') {
+      session = 'client'; show('client');
+    } else {
+      // default: treat as client
+      session = 'client'; show('client');
+    }
+  });
+
+  document.querySelectorAll('[data-logout]').forEach(function(b){
+    b.addEventListener('click', function(){
+      session = null; form.reset(); show('auth');
+    });
+  });
+
+  show('auth');
+})();
+</script>
+</body>
+</html>
