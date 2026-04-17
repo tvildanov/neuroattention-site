@@ -483,12 +483,40 @@ body {
   padding-bottom: 2rem !important;
 }
 
-/* ── Unified hero h1 sizing across ALL pages ──
-   Match the main page hero: clamp(2.25rem, 5vw + 1rem, 4.25rem)
-   Subpages use inline clamp(2rem,4vw+1rem,3rem) → override with !important */
+/* ══════════════════════════════════════════
+   UNIFIED TYPOGRAPHY — match main page sizes
+   ══════════════════════════════════════════ */
+
+/* Hero h1 — all pages match main: clamp(2.25rem, 5vw+1rem, 4.25rem) */
 section:first-of-type h1.heading-space,
 .method-hero h1.heading-space {
   font-size: clamp(2.25rem, 5vw + 1rem, 4.25rem) !important;
+}
+
+/* Hero subtitle / first description paragraph — match main page .hero-sub */
+section:first-of-type > .container > .grid > div:first-child > p[style*="1.0625rem"],
+section:first-of-type > .container > .fade-up > p[style*="1.0625rem"],
+.method-hero p[style*="1.0625rem"] {
+  font-size: clamp(1rem, 1.2vw + 0.5rem, 1.25rem) !important;
+  line-height: 1.75 !important;
+}
+
+/* Card body text — standardise to 15px across all pages */
+.glass-card-elevated p,
+.glass-card-bright p,
+.glass-card p,
+.skill-row p:not(.brain) {
+  font-size: 15px !important;
+  line-height: 1.7;
+}
+/* Keep brain/meta labels small */
+.skill-row .brain {
+  font-size: 11px !important;
+}
+
+/* Sub-muted — consistent 1rem baseline */
+.sub-muted {
+  font-size: 1rem;
 }
 
 /* Larger body text for wider layouts */
