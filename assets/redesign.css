@@ -483,6 +483,14 @@ body {
   padding-bottom: 2rem !important;
 }
 
+/* ── Unified hero h1 sizing across ALL pages ──
+   Match the main page hero: clamp(2.25rem, 5vw + 1rem, 4.25rem)
+   Subpages use inline clamp(2rem,4vw+1rem,3rem) → override with !important */
+section:first-of-type h1.heading-space,
+.method-hero h1.heading-space {
+  font-size: clamp(2.25rem, 5vw + 1rem, 4.25rem) !important;
+}
+
 /* Larger body text for wider layouts */
 @media (min-width: 1024px) {
   .hero-desc, .sub-muted {
