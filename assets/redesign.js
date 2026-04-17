@@ -167,4 +167,65 @@
       });
     });
   });
+
+  // ───────────────────────────────────────
+  // 8) Haptic vibration (Android Chrome)
+  //    - micropulse on page load
+  //    - sync with drop-ripple.mp4 loop (Solution block)
+  //    - subtle pulse on card/section appear
+  //    - tap feedback on buttons
+  // ───────────────────────────────────────
+  var canVibrate = 'vibrate' in navigator;
+
+  function haptic(pattern) {
+    if (canVibrate) {
+      try { navigator.vibrate(pattern); } catch(e) {}
+    }
+  }
+
+  // 8a) Micropulse welcome — gentle double-tap on page load
+  if (canVibrate) {
+    setTimeout(function () { haptic([12, 40, 12]); }, 600);
+  }
+
+  // 8b) Sync vibration with drop-ripple.mp4 loop
+  //     The video is ~4s with a drop landing around 1.8–2s.
+  //     We fire a soft pulse each loop at that moment.
+  var dropVideo = document.querySelector('#screen-4 video');
+  if (dropVideo && canVibrate) {
+    var dropFired = false;
+    dropVideo.addEventListener('timeupdate', function () {
+      var t = dropVideo.currentTime;
+      if (t >= 1.8 && t < 2.3 && !dropFired) {
+        haptic(15);          // single soft tap — drop landing
+        dropFired = true;
+      }
+      if (t < 1.0) dropFired = false; // reset for next loop
+    });
+  }
+
+  // 8c) Subtle pulse when key sections scroll into view
+  if (canVibrate && 'IntersectionObserver' in window) {
+    var hapticSections = document.querySelectorAll('.section .fade-up, .section .fade-left');
+    var hapticFired = new WeakSet();
+    var hapticObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting && !hapticFired.has(e.target)) {
+          hapticFired.add(e.target);
+          haptic(8);           // barely-there tap
+        }
+      });
+    }, { threshold: 0.3 });
+    // Limit to first 12 elements to avoid vibration fatigue
+    var hapticEls = Array.prototype.slice.call(hapticSections, 0, 12);
+    hapticEls.forEach(function (el) { hapticObs.observe(el); });
+  }
+
+  // 8d) Button / option tap feedback
+  if (canVibrate) {
+    document.addEventListener('pointerdown', function (e) {
+      var tgt = e.target.closest && e.target.closest('.btn, .option-btn, .lang-btn, .nav-link, .card-hover');
+      if (tgt) haptic(10);
+    }, { passive: true });
+  }
 })();
