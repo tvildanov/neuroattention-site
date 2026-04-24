@@ -238,25 +238,55 @@
   </div>
 </nav>
 
-<!-- ═══ LOGIN ═══ -->
+<!-- ═══ AUTH ═══ -->
 <section id="auth-screen" class="auth-wrap glass-card-elevated">
-  <p class="eyebrow">Вход</p>
-  <h1>Личный кабинет</h1>
-  <p class="sub">Войдите, чтобы увидеть свой прогресс и программы.</p>
-  <form id="auth-form">
-    <div class="auth-field">
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required />
-    </div>
-    <div class="auth-field">
-      <label for="password">Пароль</label>
-      <input id="password" name="password" type="password" class="glass-input" placeholder="••••••••" autocomplete="current-password" required />
-    </div>
-    <button type="submit" class="btn btn-solid auth-submit">
-      Войти <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </button>
-  </form>
-  <p class="auth-hint">Демо: <code>demo@user</code> / <code>demo</code> · админ — <code>admin@lab</code> / <code>admin</code></p>
+  <!-- Login form -->
+  <div id="auth-login">
+    <p class="eyebrow">Вход</p>
+    <h1>Личный кабинет</h1>
+    <p class="sub">Войдите, чтобы увидеть свой прогресс и программы.</p>
+    <form id="auth-form">
+      <div class="auth-field">
+        <label for="login-id">Email или телефон</label>
+        <input id="login-id" name="login-id" type="text" class="glass-input" placeholder="you@example.com или +7..." autocomplete="email" required />
+      </div>
+      <div class="auth-field">
+        <label for="login-pass">Пароль</label>
+        <input id="login-pass" name="login-pass" type="password" class="glass-input" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <p id="auth-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
+      <button type="submit" class="btn btn-solid auth-submit">
+        Войти <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <p class="auth-hint" style="margin-top:1.25rem;">Нет аккаунта? <a href="#" onclick="toggleAuthMode('register');return false;" style="color:var(--accent-cyan);text-decoration:none;">Зарегистрироваться</a></p>
+    <p class="auth-hint" style="margin-top:0.5rem;font-size:10px;color:var(--text-dim);">Демо: <code>nik@na</code> · <code>takhir@na</code> (основатели) · <code>demo@user</code> (клиент) — пароль: <code>demo</code></p>
+  </div>
+  <!-- Register form -->
+  <div id="auth-register" style="display:none;">
+    <p class="eyebrow">Регистрация</p>
+    <h1>Создать аккаунт</h1>
+    <p class="sub">Зарегистрируйтесь, чтобы начать работу с NeuroAttention.</p>
+    <form id="register-form">
+      <div class="auth-field">
+        <label for="reg-name">Имя</label>
+        <input id="reg-name" type="text" class="glass-input" placeholder="Ваше имя" required />
+      </div>
+      <div class="auth-field">
+        <label for="reg-id">Email или телефон</label>
+        <input id="reg-id" type="text" class="glass-input" placeholder="you@example.com или +7..." required />
+      </div>
+      <div class="auth-field">
+        <label for="reg-pass">Пароль</label>
+        <input id="reg-pass" type="password" class="glass-input" placeholder="Минимум 4 символа" required />
+      </div>
+      <p id="reg-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
+      <button type="submit" class="btn btn-solid auth-submit">
+        Создать аккаунт <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </form>
+    <p class="auth-hint" style="margin-top:1.25rem;">Уже есть аккаунт? <a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;">Войти</a></p>
+  </div>
 </section>
 
 <!-- ═══ CLIENT DASHBOARD ═══ -->
@@ -271,6 +301,9 @@
       <button class="logout-btn" data-logout>Выйти</button>
     </div>
   </div>
+
+  <!-- Back to admin button (hidden by default) -->
+  <button id="back-to-admin-btn" class="btn btn-ghost" style="display:none;margin-bottom:1rem;font-size:12px;" onclick="backToAdmin()">← Вернуться в панель управления</button>
 
   <!-- Tabs -->
   <div class="dash-tabs">
@@ -802,38 +835,112 @@
 <section id="admin-dashboard" class="dashboard">
   <div class="dash-header">
     <div>
-      <h1 class="dash-title">Администрирование</h1>
-      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Статистика платформы</p>
+      <h1 class="dash-title" id="admin-greeting">Панель управления</h1>
+      <p id="admin-role-text" style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Администрирование</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
-      <span class="dash-role"><span class="pulse"></span>Администратор</span>
+      <span class="dash-role" id="admin-role-badge"><span class="pulse"></span><span id="admin-role-label">Админ</span></span>
+      <!-- View-as banner -->
+      <button id="admin-exit-view" class="btn btn-ghost" style="display:none;font-size:11px;padding:0.35rem 0.75rem;" onclick="exitViewAs()">← Вернуться к панели</button>
       <button class="logout-btn" data-logout>Выйти</button>
     </div>
   </div>
-  <div class="dash-grid">
-    <div class="dash-card glass-card-elevated span-3"><h3>Активных</h3><p class="dash-metric">524</p><p class="dash-label">+38 за 7 дней</p></div>
-    <div class="dash-card glass-card-elevated span-3"><h3>Выручка</h3><p class="dash-metric">$18.4k</p><p class="dash-label">+12% к прошлому</p></div>
-    <div class="dash-card glass-card-elevated span-3"><h3>Завершили</h3><p class="dash-metric">67%</p><p class="dash-label">8+ недель</p></div>
-    <div class="dash-card glass-card-elevated span-3"><h3>Средняя серия</h3><p class="dash-metric">14</p><p class="dash-label">дней подряд</p></div>
-    <div class="dash-card glass-card-elevated span-8">
-      <h3>Активные клиенты</h3>
-      <table class="admin-table">
-        <thead><tr><th>Клиент</th><th>Программа</th><th>Неделя</th><th>Прогресс</th></tr></thead>
-        <tbody>
-          <tr><td>Takhir K.</td><td>Guided Program</td><td>5 / 12</td><td>42%</td></tr>
-          <tr><td>Sia I.</td><td>Self-Guided</td><td>11 / 12</td><td>92%</td></tr>
-          <tr><td>Yegor K.</td><td>Group Program</td><td>6 / 12</td><td>50%</td></tr>
-          <tr><td>Alex R.</td><td>Guided Program</td><td>2 / 12</td><td>16%</td></tr>
-          <tr><td>Maria L.</td><td>Self-Guided</td><td>12 / 12</td><td>100%</td></tr>
-        </tbody>
-      </table>
+
+  <!-- Admin tabs -->
+  <div class="dash-tabs" id="admin-tabs">
+    <button class="dash-tab active" data-tab="admin-stats">Статистика</button>
+    <button class="dash-tab" data-tab="admin-users">Пользователи</button>
+    <button class="dash-tab" data-tab="admin-tools">Инструменты</button>
+  </div>
+
+  <!-- TAB: Stats -->
+  <div class="tab-panel active" id="tab-admin-stats">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated span-3"><h3>Активных</h3><p class="dash-metric" id="stat-active">0</p><p class="dash-label">пользователей</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3>Клиентов</h3><p class="dash-metric" id="stat-clients">0</p><p class="dash-label">зарегистрировано</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3>Специалистов</h3><p class="dash-metric" id="stat-specs">0</p><p class="dash-label">средний уровень</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3>С программой</h3><p class="dash-metric" id="stat-paid">0</p><p class="dash-label">оплачена</p></div>
+      <div class="dash-card glass-card-elevated span-8">
+        <h3>Последние регистрации</h3>
+        <table class="admin-table">
+          <thead><tr><th>Имя</th><th>Email / Телефон</th><th>Роль</th><th>Программа</th><th></th></tr></thead>
+          <tbody id="admin-users-table"></tbody>
+        </table>
+      </div>
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>Продажи по программам</h3>
+        <div id="admin-sales-list"></div>
+      </div>
     </div>
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Продажи по программам</h3>
-      <div class="program-row"><span class="name">Self-Guided</span><span class="week">312</span></div>
-      <div class="program-row"><span class="name">Guided Program</span><span class="week">184</span></div>
-      <div class="program-row"><span class="name">Group Program</span><span class="week">96</span></div>
-      <div class="program-row"><span class="name">XR Beta</span><span class="week">41</span></div>
+  </div>
+
+  <!-- TAB: Users (full list + view-as) -->
+  <div class="tab-panel" id="tab-admin-users">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <h3 style="margin:0;">Все пользователи</h3>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="nm-filter-btn active" onclick="filterAdminUsers('all',this)">Все</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('founder',this)">Основатели</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('specialist',this)">Специалисты</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('admin_basic',this)">Админы</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('client',this)">Клиенты</button>
+          </div>
+        </div>
+        <table class="admin-table" id="admin-full-users-table">
+          <thead><tr><th>Имя</th><th>Контакт</th><th>Роль</th><th>Программа</th><th>Доступ</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <!-- Restricted message for basic admins -->
+        <div id="admin-restricted-msg" style="display:none;text-align:center;padding:3rem 1rem;">
+          <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;">Доступ ограничен</p>
+          <p style="font-size:12px;color:var(--text-dim);margin:0;">Ваш уровень доступа не позволяет просматривать список пользователей. Обратитесь к основателям проекта для расширения прав.</p>
+        </div>
+      </div>
+    </div>
+    <!-- View-as overlay (shows client dashboard in read-only) -->
+    <div id="view-as-panel" style="display:none;">
+      <div class="dash-card glass-card-elevated" style="padding:1rem 1.5rem;margin-bottom:1rem;background:rgba(0,224,255,0.03);border-color:rgba(0,224,255,0.12);">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <p style="font-size:13px;color:var(--accent-cyan);margin:0;"><strong>Режим просмотра:</strong> <span id="view-as-name">—</span></p>
+          <button class="btn btn-ghost" style="font-size:11px;padding:0.3rem 0.65rem;" onclick="exitViewAs()">← Закрыть просмотр</button>
+        </div>
+      </div>
+      <div id="view-as-content"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Tools (practices, neuromap for admins) -->
+  <div class="tab-panel" id="tab-admin-tools">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <div id="admin-tools-unlocked" style="display:none;">
+          <h3>Инструменты и практики</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('practices')">
+              <h4>Аудиопрактики</h4>
+              <p>Все блоки и практики доступны</p>
+            </div>
+            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('neuromap')">
+              <h4>NeuroMap</h4>
+              <p>Карта мыслей, эмоций и состояний</p>
+            </div>
+            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('calendar')">
+              <h4>Календарь + Дневник</h4>
+              <p>Дневник нейроресурса</p>
+            </div>
+          </div>
+        </div>
+        <div id="admin-tools-locked" style="display:none;text-align:center;padding:3rem 1rem;">
+          <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;">Доступ к инструментам ограничен</p>
+          <p style="font-size:12px;color:var(--text-dim);margin:0 0 1rem;">Для использования практик и инструментов необходима оплата одной из программ.</p>
+          <button class="btn btn-solid" style="font-size:13px;" onclick="switchTab('enroll')">Выбрать программу</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -841,38 +948,342 @@
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
 <script>
-(function(){
-  var auth = document.getElementById('auth-screen');
-  var client = document.getElementById('client-dashboard');
-  var admin = document.getElementById('admin-dashboard');
-  var form = document.getElementById('auth-form');
-  var session = null;
+// ══════════════════════════════════════════
+// USER DATABASE + AUTH SYSTEM
+// ══════════════════════════════════════════
+var users = [
+  {id:1,name:'Ник',email:'nik@na',phone:'',pass:'demo',role:'founder',program:'guided',specialistId:null,allowSpecialist:true,week:5,progress:42},
+  {id:2,name:'Тахир',email:'takhir@na',phone:'',pass:'demo',role:'founder',program:'guided',specialistId:null,allowSpecialist:true,week:8,progress:67},
+  {id:3,name:'Dr. Сергей',email:'sergey@na',phone:'+79001234567',pass:'demo',role:'specialist',program:null,specialistId:null,allowSpecialist:false,week:0,progress:0},
+  {id:4,name:'Анна К.',email:'anna@spec',phone:'',pass:'demo',role:'specialist',program:null,specialistId:null,allowSpecialist:false,week:0,progress:0},
+  {id:5,name:'Стажёр Макс',email:'max@na',phone:'',pass:'demo',role:'admin_basic',program:null,specialistId:null,allowSpecialist:false,week:0,progress:0},
+  {id:6,name:'Takhir K.',email:'demo@user',phone:'+79119876543',pass:'demo',role:'client',program:'guided',specialistId:3,allowSpecialist:true,week:5,progress:42},
+  {id:7,name:'Sia I.',email:'sia@test',phone:'',pass:'demo',role:'client',program:'self',specialistId:null,allowSpecialist:false,week:11,progress:92},
+  {id:8,name:'Yegor K.',email:'yegor@test',phone:'',pass:'demo',role:'client',program:'group',specialistId:4,allowSpecialist:true,week:6,progress:50},
+  {id:9,name:'Alex R.',email:'alex@test',phone:'',pass:'demo',role:'client',program:'guided',specialistId:3,allowSpecialist:false,week:2,progress:16},
+  {id:10,name:'Maria L.',email:'maria@test',phone:'',pass:'demo',role:'client',program:'self',specialistId:null,allowSpecialist:false,week:12,progress:100}
+];
+var nextId = 11;
+var currentUser = null;
+var viewAsUser = null;
 
-  function show(which){
-    auth.style.display = which==='auth' ? 'block' : 'none';
-    client.style.display = which==='client' ? 'block' : 'none';
-    admin.style.display = which==='admin' ? 'block' : 'none';
+var ROLE_LABELS = {founder:'Основатель',specialist:'Специалист',admin_basic:'Админ',client:'Клиент'};
+var PROG_LABELS = {self:'Self-Guided',guided:'Guided Program',group:'Group Program'};
+
+function findUser(loginId){
+  var id=loginId.toLowerCase().trim();
+  return users.find(function(u){ return u.email===id || u.phone===id; });
+}
+
+function toggleAuthMode(mode){
+  document.getElementById('auth-login').style.display=mode==='login'?'':'none';
+  document.getElementById('auth-register').style.display=mode==='register'?'':'none';
+}
+
+// Show/hide sections
+function showSection(which){
+  document.getElementById('auth-screen').style.display = which==='auth' ? 'block' : 'none';
+  document.getElementById('client-dashboard').style.display = which==='client' ? 'block' : 'none';
+  document.getElementById('admin-dashboard').style.display = which==='admin' ? 'block' : 'none';
+}
+
+// After login
+function onLogin(user){
+  currentUser = user;
+  viewAsUser = null;
+  if(user.role==='client'){
+    document.getElementById('client-greeting').textContent = 'Здравствуйте, '+user.name;
+    // Check feature access: client needs program
+    updateClientAccess(user);
+    showSection('client');
+  } else {
+    setupAdminDashboard(user);
+    showSection('admin');
+  }
+}
+
+// Client feature access
+function updateClientAccess(user){
+  var hasProg = !!user.program;
+  // Tabs that require program
+  var restrictedTabs = ['program','practices','neuromap'];
+  document.querySelectorAll('#client-dashboard .dash-tab[data-tab]').forEach(function(t){
+    if(restrictedTabs.indexOf(t.dataset.tab)!==-1 && !hasProg){
+      t.style.opacity='0.35';
+      t.style.pointerEvents='none';
+      t.title='Доступно после оплаты программы';
+    } else {
+      t.style.opacity='';
+      t.style.pointerEvents='';
+      t.title='';
+    }
+  });
+}
+
+// ── Admin Dashboard Setup ──
+function setupAdminDashboard(user){
+  var role=user.role;
+  var isFounder=role==='founder';
+  var isSpec=role==='specialist';
+  var isBasic=role==='admin_basic';
+
+  document.getElementById('admin-greeting').textContent=user.name;
+  document.getElementById('admin-role-label').textContent=ROLE_LABELS[role];
+  document.getElementById('admin-role-text').textContent=isFounder?'Полный доступ · Основатель':isSpec?'Специалист · доступ к клиентам по разрешению':'Базовый доступ · по запросу';
+
+  // Role badge color
+  var badge=document.getElementById('admin-role-badge');
+  if(isFounder) badge.style.borderColor='rgba(0,224,255,0.3)';
+  else if(isSpec) badge.style.borderColor='rgba(120,255,160,0.3)';
+  else badge.style.borderColor='rgba(255,255,255,0.1)';
+
+  // Stats tab — visible to founder and specialist
+  var statsTab=document.querySelector('[data-tab="admin-stats"]');
+  statsTab.style.display=(isFounder||isSpec)?'':'none';
+
+  // Users tab — visible to founder and specialist
+  var usersTab=document.querySelector('[data-tab="admin-users"]');
+  usersTab.style.display=(isFounder||isSpec)?'':'none';
+
+  // Tools tab
+  var toolsUnlocked=document.getElementById('admin-tools-unlocked');
+  var toolsLocked=document.getElementById('admin-tools-locked');
+  if(isFounder||isSpec){
+    toolsUnlocked.style.display='';
+    toolsLocked.style.display='none';
+  } else {
+    toolsUnlocked.style.display='none';
+    toolsLocked.style.display='';
   }
 
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    var email = document.getElementById('email').value.trim().toLowerCase();
-    var pass = document.getElementById('password').value;
-    if(email==='admin@lab' && pass==='admin'){ session='admin'; show('admin'); }
-    else { session='client'; show('client'); }
+  // For basic admin: show only tools tab, and restricted message
+  if(isBasic){
+    switchAdminTab('admin-tools');
+    document.getElementById('admin-restricted-msg').style.display='block';
+  } else {
+    switchAdminTab('admin-stats');
+    document.getElementById('admin-restricted-msg').style.display='none';
+  }
+
+  // Populate stats
+  if(isFounder||isSpec) populateAdminStats(user);
+  // Populate users list
+  if(isFounder||isSpec) populateUsersList(user);
+}
+
+function switchAdminTab(id){
+  document.querySelectorAll('#admin-dashboard .dash-tab[data-tab]').forEach(function(t){t.classList.toggle('active',t.dataset.tab===id);});
+  document.querySelectorAll('#admin-dashboard .tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-'+id);});
+}
+
+// Hook admin tabs
+document.querySelectorAll('#admin-dashboard .dash-tab[data-tab]').forEach(function(t){
+  t.addEventListener('click',function(){
+    if(t.style.display==='none') return;
+    switchAdminTab(t.dataset.tab);
+  });
+});
+
+function populateAdminStats(user){
+  var clients=users.filter(function(u){return u.role==='client';});
+  var specs=users.filter(function(u){return u.role==='specialist';});
+  var paid=users.filter(function(u){return u.program;});
+  document.getElementById('stat-active').textContent=users.length;
+  document.getElementById('stat-clients').textContent=clients.length;
+  document.getElementById('stat-specs').textContent=specs.length;
+  document.getElementById('stat-paid').textContent=paid.length;
+
+  // Recent users table
+  var tbody=document.getElementById('admin-users-table');
+  tbody.innerHTML='';
+  var shown=users.slice(-5).reverse();
+  shown.forEach(function(u){
+    var tr=document.createElement('tr');
+    var canView=user.role==='founder'||(user.role==='specialist'&&u.specialistId===user.id&&u.allowSpecialist);
+    tr.innerHTML='<td>'+u.name+'</td><td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+(u.email||u.phone)+'</td><td>'+ROLE_LABELS[u.role]+'</td><td>'+(PROG_LABELS[u.program]||'—')+'</td><td>'+(canView&&u.role==='client'?'<button class="event-edit" onclick="viewUserAs('+u.id+')">Просмотр ЛК</button>':'')+'</td>';
+    tbody.appendChild(tr);
   });
 
-  document.querySelectorAll('[data-logout]').forEach(function(b){
-    b.addEventListener('click', function(){ session=null; form.reset(); show('auth'); });
+  // Sales
+  var salesEl=document.getElementById('admin-sales-list');
+  var progCounts={self:0,guided:0,group:0};
+  users.forEach(function(u){if(u.program)progCounts[u.program]++;});
+  salesEl.innerHTML='';
+  Object.keys(progCounts).forEach(function(p){
+    salesEl.innerHTML+='<div class="program-row"><span class="name">'+(PROG_LABELS[p]||p)+'</span><span class="week">'+progCounts[p]+'</span></div>';
   });
+}
 
-  show('auth');
-})();
+var adminUserFilter='all';
+function filterAdminUsers(filter,btn){
+  adminUserFilter=filter;
+  btn.parentElement.querySelectorAll('.nm-filter-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  populateUsersList(currentUser);
+}
+
+function populateUsersList(admin){
+  var table=document.getElementById('admin-full-users-table');
+  var tbody=table.querySelector('tbody');
+  var restricted=document.getElementById('admin-restricted-msg');
+  var isFounder=admin.role==='founder';
+  var isSpec=admin.role==='specialist';
+
+  if(admin.role==='admin_basic'){
+    table.style.display='none';
+    restricted.style.display='';
+    return;
+  }
+  table.style.display='';
+  restricted.style.display='none';
+  tbody.innerHTML='';
+
+  var list=users;
+  if(adminUserFilter!=='all') list=users.filter(function(u){return u.role===adminUserFilter;});
+  // Specialist sees only clients
+  if(isSpec) list=list.filter(function(u){return u.role==='client';});
+
+  list.forEach(function(u){
+    var canView=false;
+    var accessText='—';
+    if(isFounder){
+      canView=true;
+      accessText='<span style="color:var(--accent-cyan);">Полный</span>';
+    } else if(isSpec){
+      if(u.specialistId===admin.id && u.allowSpecialist){
+        canView=true;
+        accessText='<span style="color:rgba(120,255,160,0.9);">Разрешён</span>';
+      } else if(u.specialistId===admin.id){
+        accessText='<span style="color:rgba(255,120,120,0.8);">Клиент не дал доступ</span>';
+      } else {
+        accessText='<span style="color:var(--text-dim);">Не ваш клиент</span>';
+      }
+    }
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+u.name+'</td><td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+(u.email||u.phone)+'</td><td>'+ROLE_LABELS[u.role]+'</td><td>'+(PROG_LABELS[u.program]||'—')+'</td><td style="font-size:11px;">'+accessText+'</td><td>'+(canView?'<button class="event-edit" onclick="viewUserAs('+u.id+')">Просмотр ЛК</button>':'')+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+// View-As mode
+function viewUserAs(userId){
+  var u=users.find(function(u){return u.id===userId;});
+  if(!u) return;
+  viewAsUser=u;
+  // Show view-as panel
+  document.getElementById('view-as-panel').style.display='block';
+  document.getElementById('view-as-name').textContent=u.name+' · '+ROLE_LABELS[u.role]+(u.program?' · '+PROG_LABELS[u.program]:'');
+  document.getElementById('admin-exit-view').style.display='';
+
+  // Build view-as content
+  var content=document.getElementById('view-as-content');
+  var h='<div class="dash-grid">';
+  // Program info
+  h+='<div class="dash-card glass-card-elevated span-4"><h3>Программа</h3>';
+  if(u.program){
+    h+='<p class="dash-metric" style="font-size:1.4rem;">'+PROG_LABELS[u.program]+'</p>';
+    h+='<p class="dash-label">Неделя '+u.week+' · Прогресс '+u.progress+'%</p>';
+    h+='<div class="progress-track"><div class="progress-fill" style="width:'+u.progress+'%"></div></div>';
+  } else {
+    h+='<p style="font-size:13px;color:var(--text-muted);">Программа не оплачена</p>';
+  }
+  h+='</div>';
+  // Access permissions
+  h+='<div class="dash-card glass-card-elevated span-4"><h3>Доступы</h3>';
+  h+='<p style="font-size:12px;color:var(--text-muted);margin:0 0 0.5rem;">Доступ специалисту: '+(u.allowSpecialist?'<span style="color:rgba(120,255,160,0.9);">Разрешён</span>':'<span style="color:rgba(255,120,120,0.8);">Запрещён</span>')+'</p>';
+  h+='<p style="font-size:12px;color:var(--text-muted);margin:0;">Привязан к: '+(u.specialistId?users.find(function(s){return s.id===u.specialistId;}).name:'—')+'</p>';
+  h+='</div>';
+  // Contact
+  h+='<div class="dash-card glass-card-elevated span-4"><h3>Контакт</h3>';
+  h+='<p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;">'+u.name+'</p>';
+  h+='<p style="font-size:12px;color:var(--text-muted);margin:0;">'+(u.email||'—')+' · '+(u.phone||'—')+'</p>';
+  h+='</div>';
+  h+='</div>';
+  // Note about NeuroMap/Calendar (placeholder for real data)
+  h+='<div class="dash-card glass-card-elevated" style="margin-top:1rem;"><h3>NeuroMap & Дневник</h3>';
+  h+='<p style="font-size:13px;color:var(--text-muted);margin:0;">Данные NeuroMap и дневника нейроресурса этого пользователя будут отображаться здесь при наличии записей.</p>';
+  h+='</div>';
+  content.innerHTML=h;
+
+  // Scroll to it
+  document.getElementById('view-as-panel').scrollIntoView({behavior:'smooth'});
+}
+
+function exitViewAs(){
+  viewAsUser=null;
+  document.getElementById('view-as-panel').style.display='none';
+  document.getElementById('admin-exit-view').style.display='none';
+}
+
+// ── Auth handlers ──
+document.getElementById('auth-form').addEventListener('submit',function(e){
+  e.preventDefault();
+  var id=document.getElementById('login-id').value.trim();
+  var pass=document.getElementById('login-pass').value;
+  var errEl=document.getElementById('auth-error');
+  var user=findUser(id);
+  if(!user){errEl.textContent='Пользователь не найден';return;}
+  if(user.pass!==pass){errEl.textContent='Неверный пароль';return;}
+  errEl.textContent='';
+  onLogin(user);
+});
+
+document.getElementById('register-form').addEventListener('submit',function(e){
+  e.preventDefault();
+  var name=document.getElementById('reg-name').value.trim();
+  var id=document.getElementById('reg-id').value.trim();
+  var pass=document.getElementById('reg-pass').value;
+  var errEl=document.getElementById('reg-error');
+  if(!name||!id||pass.length<4){errEl.textContent='Заполните все поля (пароль мин. 4 символа)';return;}
+  if(findUser(id)){errEl.textContent='Этот email/телефон уже зарегистрирован';return;}
+  var isPhone=id.match(/^\+?\d{7,}/);
+  var newUser={
+    id:nextId++,name:name,
+    email:isPhone?'':id.toLowerCase(),
+    phone:isPhone?id:'',
+    pass:pass,role:'client',program:null,
+    specialistId:null,allowSpecialist:false,week:0,progress:0
+  };
+  users.push(newUser);
+  errEl.textContent='';
+  onLogin(newUser);
+});
+
+document.querySelectorAll('[data-logout]').forEach(function(b){
+  b.addEventListener('click',function(){
+    currentUser=null;viewAsUser=null;
+    document.getElementById('auth-form').reset();
+    document.getElementById('auth-error').textContent='';
+    toggleAuthMode('login');
+    showSection('auth');
+  });
+});
+
+showSection('auth');
 
 // ── Tabs ──
 function switchTab(id){
-  document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
-  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-'+id); });
+  // If admin uses client tools, show client dashboard temporarily
+  var clientTabs=['overview','program','practices','calendar','neuromap','enroll'];
+  if(currentUser && currentUser.role!=='client' && clientTabs.indexOf(id)!==-1){
+    document.getElementById('client-dashboard').style.display='block';
+    document.getElementById('admin-dashboard').style.display='none';
+    document.getElementById('client-greeting').textContent=currentUser.name+' (режим инструментов)';
+    document.getElementById('back-to-admin-btn').style.display='';
+    // Enable all tabs for founder/specialist
+    document.querySelectorAll('#client-dashboard .dash-tab[data-tab]').forEach(function(t){
+      t.style.opacity='';t.style.pointerEvents='';t.title='';
+    });
+  }
+  document.querySelectorAll('#client-dashboard .dash-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
+  document.querySelectorAll('#client-dashboard .tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-'+id); });
+}
+function backToAdmin(){
+  if(currentUser && currentUser.role!=='client'){
+    document.getElementById('client-dashboard').style.display='none';
+    document.getElementById('admin-dashboard').style.display='block';
+    document.getElementById('back-to-admin-btn').style.display='none';
+  }
 }
 document.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
   t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
