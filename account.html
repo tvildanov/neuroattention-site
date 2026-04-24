@@ -138,7 +138,7 @@
 .diary-event-card .ev-comment { margin:0;font-size:11px;color:var(--text-muted); }
 .diary-event-card .ev-rating { font-size:10px;margin:0.25rem 0 0;font-family:'JetBrains Mono',monospace; }
 #diary-col-minus .diary-event-card { background:rgba(255,100,100,0.06);border:1px solid rgba(255,100,100,0.12); }
-#diary-col-mixed .diary-event-card { background:rgba(255,200,100,0.06);border:1px solid rgba(255,200,100,0.12); }
+#diary-col-mixed .diary-event-card { background:rgba(140,180,255,0.06);border:1px solid rgba(140,180,255,0.12); }
 #diary-col-plus .diary-event-card { background:rgba(100,255,150,0.06);border:1px solid rgba(100,255,150,0.12); }
 
 @keyframes diarySlideIn {
@@ -163,7 +163,7 @@
 /* Diary calendar day colors */
 .cal-day.diary-green { background:rgba(100,255,150,0.1);color:rgba(120,255,160,1); }
 .cal-day.diary-red { background:rgba(255,100,100,0.1);color:rgba(255,120,120,1); }
-.cal-day.diary-yellow { background:rgba(255,200,100,0.1);color:rgba(255,200,100,1); }
+.cal-day.diary-yellow { background:rgba(140,180,255,0.1);color:rgba(140,180,255,1); }
 .cal-day.diary-active { box-shadow:0 0 0 2px var(--accent-cyan);background:rgba(0,224,255,0.06); }
 
 /* Modal overlay */
@@ -173,6 +173,23 @@
 .modal-close { position:absolute;top:1rem;right:1rem;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
 .modal-close:hover { background:rgba(255,255,255,0.08);color:var(--text-primary); }
 @keyframes modalIn { from { opacity:0;transform:scale(0.95) translateY(10px); } to { opacity:1;transform:scale(1) translateY(0); } }
+
+/* ── NeuroMap ── */
+.nm-view-btn { padding:0.35rem 0.7rem;border-radius:8px;font-size:11px;font-weight:500;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:var(--text-muted);cursor:pointer;transition:all 0.2s; }
+.nm-view-btn:hover { border-color:rgba(255,255,255,0.15);color:var(--text-secondary); }
+.nm-view-btn.active { background:rgba(0,224,255,0.08);border-color:rgba(0,224,255,0.2);color:var(--accent-cyan); }
+.nm-filter-btn { padding:0.3rem 0.6rem;border-radius:6px;font-size:10px;font-weight:500;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
+.nm-filter-btn:hover { color:var(--text-muted);border-color:rgba(255,255,255,0.12); }
+.nm-filter-btn.active { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15);color:var(--accent-cyan); }
+.nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
+.nm-chip:hover { border-color:rgba(255,255,255,0.18); }
+.nm-chip.selected { background:rgba(0,224,255,0.08);border-color:rgba(0,224,255,0.25);color:var(--accent-cyan); }
+.nm-chip.neg.selected { background:rgba(255,120,120,0.08);border-color:rgba(255,120,120,0.25);color:rgba(255,140,140,1); }
+.nm-chip.pos.selected { background:rgba(120,255,160,0.08);border-color:rgba(120,255,160,0.25);color:rgba(140,255,170,1); }
+.nm-slider-wrap { display:flex;align-items:center;gap:1rem;margin-top:0.75rem; }
+.nm-slider-wrap input[type=range] { flex:1;accent-color:var(--accent-cyan);height:6px; }
+.nm-slider-val { font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--text-primary);min-width:2rem;text-align:center; }
+.nm-emotion-badge { display:inline-flex;padding:0.2rem 0.5rem;border-radius:6px;font-size:10px;font-weight:500; }
 </style>
 </head>
 <body>
@@ -257,6 +274,7 @@
     <button class="dash-tab" data-tab="program">Программа</button>
     <button class="dash-tab" data-tab="practices">Практики</button>
     <button class="dash-tab" data-tab="calendar">Календарь</button>
+    <button class="dash-tab" data-tab="neuromap">NeuroMap</button>
     <button class="dash-tab" data-tab="enroll">Выбрать программу</button>
   </div>
 
@@ -528,7 +546,7 @@
                 <div id="diary-col-minus" class="diary-col"></div>
               </div>
               <div>
-                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,200,100,0.7);margin:0 0 0.75rem;text-align:center;">± Смешанное</p>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(140,180,255,0.7);margin:0 0 0.75rem;text-align:center;">± Смешанное</p>
                 <div id="diary-col-mixed" class="diary-col"></div>
               </div>
               <div>
@@ -605,6 +623,100 @@
             <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()">Следующее событие</button>
             <button class="btn btn-solid" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndClose()">Выйти и сохранить</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: NeuroMap -->
+  <div class="tab-panel" id="tab-neuromap">
+    <div class="dash-grid">
+      <!-- Left: Graph + Survey -->
+      <div class="dash-card glass-card-elevated span-8">
+        <!-- View mode toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
+          <div>
+            <h3 style="margin:0;">NeuroMap</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0 0;">Карта мыслей, эмоций и состояний</p>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button class="nm-view-btn active" onclick="setNmView('day')">День</button>
+            <button class="nm-view-btn" onclick="setNmView('week')">Неделя</button>
+            <button class="nm-view-btn" onclick="setNmView('month')">Месяц</button>
+            <button class="nm-view-btn" onclick="setNmView('all')">Всё</button>
+          </div>
+        </div>
+        <!-- Graph canvas -->
+        <div id="nm-graph-wrap" style="position:relative;width:100%;height:420px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04);">
+          <canvas id="nm-canvas" style="width:100%;height:100%;"></canvas>
+          <div id="nm-tooltip" style="display:none;position:absolute;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(10,12,18,0.92);border:1px solid rgba(255,255,255,0.12);font-size:12px;color:var(--text-primary);pointer-events:none;z-index:5;max-width:220px;line-height:1.4;"></div>
+          <div id="nm-empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;">
+            <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <p style="font-size:13px;color:var(--text-dim);margin:0;text-align:center;">Заполните карту дня, чтобы увидеть<br>вашу сеть мыслей и эмоций</p>
+          </div>
+        </div>
+        <!-- Filter row -->
+        <div id="nm-filters" style="display:none;margin-top:0.75rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;">Фильтр:</span>
+            <button class="nm-filter-btn active" onclick="nmFilter('all')">Все</button>
+            <button class="nm-filter-btn" onclick="nmFilter('emotions')">Эмоции</button>
+            <button class="nm-filter-btn" onclick="nmFilter('areas')">Области</button>
+            <button class="nm-filter-btn" onclick="nmFilter('thoughts')">Мысли</button>
+            <button class="nm-filter-btn" onclick="nmFilter('repeat')" style="margin-left:auto;">Только повторяющиеся</button>
+          </div>
+        </div>
+        <!-- Analysis block -->
+        <div id="nm-analysis" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
+          <h3 style="font-size:0.9rem;margin:0 0 0.75rem;">Что показывает ваша карта</h3>
+          <div id="nm-analysis-content"></div>
+        </div>
+      </div>
+      <!-- Right panel -->
+      <div class="dash-card glass-card-elevated span-4">
+        <h3 style="margin:0 0 0.25rem;">Карта дня</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;">Отслеживайте, какие эмоции, мысли и внутренние сценарии чаще всего формируют ваше состояние.</p>
+        <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openNmSurvey()">
+          Заполнить карту дня
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <!-- Today entries -->
+        <div style="margin-top:1.5rem;">
+          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;">Эмоции сегодня</p>
+          <div id="nm-today-emotions" style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+            <p style="font-size:12px;color:var(--text-muted);margin:0;">—</p>
+          </div>
+        </div>
+        <div style="margin-top:1rem;">
+          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;">Главная мысль</p>
+          <p id="nm-today-thought" style="font-size:13px;color:var(--text-secondary);margin:0;font-style:italic;">—</p>
+        </div>
+        <div style="margin-top:1rem;">
+          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.5rem;">Средняя интенсивность</p>
+          <p id="nm-today-intensity" style="font-size:1.8rem;font-family:'Unbounded',sans-serif;color:var(--text-primary);margin:0;">—</p>
+        </div>
+        <!-- Specialist access toggle -->
+        <div style="margin-top:1.75rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);">
+          <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:12px;color:var(--text-muted);">
+            <input type="checkbox" id="nm-specialist-access" style="accent-color:var(--accent-cyan);width:16px;height:16px;" />
+            Разрешить специалисту видеть мою NeuroMap
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- NeuroMap SURVEY MODAL -->
+    <div class="modal-overlay" id="nmSurveyModal">
+      <div class="modal-box" style="max-width:520px;">
+        <button class="modal-close" onclick="closeNmSurvey()">&times;</button>
+        <!-- Progress dots -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:1.25rem;" id="nm-step-dots"></div>
+        <!-- Step container -->
+        <div id="nm-step-content"></div>
+        <!-- Nav buttons -->
+        <div style="display:flex;gap:0.75rem;margin-top:1.5rem;" id="nm-nav-btns">
+          <button class="btn btn-ghost" id="nm-prev" onclick="nmPrev()" style="display:none;">← Назад</button>
+          <button class="btn btn-solid" id="nm-next" onclick="nmNext()" style="flex:1;justify-content:center;">Далее →</button>
         </div>
       </div>
     </div>
@@ -758,7 +870,7 @@ function switchTab(id){
   document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
   document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-'+id); });
 }
-document.querySelectorAll('.dash-tab').forEach(function(t){
+document.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
   t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
 });
 
@@ -864,10 +976,10 @@ function goStep(n){
 // ══════════════════════════════════════════
 // DIARY SYSTEM
 // ══════════════════════════════════════════
-var diaryData = {}; // { 'YYYY-MM-DD': [ {text,comment,rating,ratingCount} ] }
+var diaryData = {}; // { 'YYYY-MM-DD': [ {text,comment,plusCount,minusCount} ] }
 var diaryMonth = 3, diaryYear = 2026; // April 0-indexed
-var currentRating = null;
-var currentRatingCount = 0;
+var currentPlusCount = 0;
+var currentMinusCount = 0;
 var selectedDiaryDay = null;
 
 // Mode toggle
@@ -914,7 +1026,7 @@ function renderDiaryCalendar(){
     var entries = diaryData[key];
     if(entries && entries.length){
       var score = 0;
-      entries.forEach(function(e){ score += (e.rating==='plus'?e.ratingCount:e.rating==='minus'?-e.ratingCount:0); });
+      entries.forEach(function(e){ score += (e.plusCount||0) - (e.minusCount||0); });
       if(score>0) cls += ' diary-green';
       else if(score<0) cls += ' diary-red';
       else cls += ' diary-yellow';
@@ -944,12 +1056,14 @@ function renderDayColumns(key){
     var card = document.createElement('div');
     card.className = 'diary-event-card';
     var ratingStr = '';
-    if(ev.rating==='plus') ratingStr = '+'.repeat(ev.ratingCount);
-    else if(ev.rating==='minus') ratingStr = '−'.repeat(ev.ratingCount);
-    else ratingStr = '±';
+    var p = ev.plusCount||0, m = ev.minusCount||0;
+    if(p>0) ratingStr += '+'.repeat(p);
+    if(m>0) ratingStr += (p>0?' ':'') + '−'.repeat(m);
+    if(!ratingStr) ratingStr = '±';
     card.innerHTML = '<p class="ev-text">'+ev.text+'</p>'+(ev.comment?'<p class="ev-comment">'+ev.comment+'</p>':'')+'<p class="ev-rating">'+ratingStr+'</p>';
-    if(ev.rating==='minus') colMinus.appendChild(card);
-    else if(ev.rating==='mixed') colMixed.appendChild(card);
+    // Sort into column: mixed if both present, else by sign
+    if(p>0 && m>0) colMixed.appendChild(card);
+    else if(m>0) colMinus.appendChild(card);
     else colPlus.appendChild(card);
   });
   if(!colMinus.children.length) colMinus.innerHTML='<p style="font-size:11px;color:var(--text-dim);text-align:center;margin:0;">—</p>';
@@ -965,12 +1079,12 @@ function updateTodaySummary(){
   var el = document.getElementById('diary-today-summary');
   if(!entries.length){ el.innerHTML='<p style="font-size:13px;color:var(--text-muted);margin:0;">Нет записей</p>'; return; }
   var plus=0, minus=0, mixed=0;
-  entries.forEach(function(e){ if(e.rating==='plus') plus++; else if(e.rating==='minus') minus++; else mixed++; });
+  entries.forEach(function(e){ var p=e.plusCount||0,m=e.minusCount||0; if(p>0&&m>0) mixed++; else if(m>0) minus++; else plus++; });
   el.innerHTML = '<p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;">'+entries.length+' событ'+(entries.length===1?'ие':'ий')+'</p>'
     +'<p style="font-size:12px;color:var(--text-muted);margin:0;">'+
     (plus?'<span style="color:rgba(120,255,160,0.9);">+'+plus+'</span> ':'')+
     (minus?'<span style="color:rgba(255,120,120,0.9);">−'+minus+'</span> ':'')+
-    (mixed?'<span style="color:rgba(255,200,100,0.9);">±'+mixed+'</span>':'')+'</p>';
+    (mixed?'<span style="color:rgba(140,180,255,0.9);">±'+mixed+'</span>':'')+'</p>';
 }
 
 // Diary modal
@@ -987,8 +1101,8 @@ function resetDiaryForm(){
   document.getElementById('diary-event-comment').value='';
   document.getElementById('rating-step').style.display='none';
   document.getElementById('diary-actions').style.display='none';
-  currentRating=null;
-  currentRatingCount=0;
+  currentPlusCount=0;
+  currentMinusCount=0;
   // Reset rating area to initial state
   document.getElementById('minus-area').innerHTML='<button class="rating-btn minus" onclick="addRating(\'minus\')" title="Хуже"><span>−</span></button>';
   document.getElementById('plus-area').innerHTML='<button class="rating-btn plus" onclick="addRating(\'plus\')" title="Лучше"><span>+</span></button>';
@@ -1007,59 +1121,59 @@ function onDiaryTextInput(){
 
 function addRating(type){
   var hint = document.getElementById('rating-hint');
-  // If user picks opposite after already choosing, make it mixed
-  if(currentRating && currentRating!==type && currentRating!=='mixed'){
-    currentRating='mixed';
-    currentRatingCount=1;
-    hint.textContent='Смешанное влияние — и плюс, и минус';
-    hint.style.opacity='1';
-    document.getElementById('diary-actions').style.display='flex';
-    // Reset both areas visually
-    document.getElementById('minus-area').innerHTML='<button class="rating-btn minus chosen" onclick="addRating(\'minus\')"><span>−</span></button>';
-    document.getElementById('plus-area').innerHTML='<button class="rating-btn plus chosen" onclick="addRating(\'plus\')"><span>+</span></button>';
-    return;
+  var cur = type==='plus' ? currentPlusCount : currentMinusCount;
+  var opp = type==='plus' ? currentMinusCount : currentPlusCount;
+  // Max 3 per sign
+  if(cur>=3) return;
+  // Block if adding would create 3:3 tie (max total 5, or equal at 3)
+  if(cur+1===3 && opp===3) return;
+  // Increment
+  if(type==='plus') currentPlusCount++;
+  else currentMinusCount++;
+  // Render both areas
+  renderRatingArea('minus', currentMinusCount);
+  renderRatingArea('plus', currentPlusCount);
+  // Hint text
+  var p=currentPlusCount, m=currentMinusCount;
+  if(p>0 && m>0){
+    var diff=p-m;
+    if(diff===0) hint.textContent='Смешанное влияние — баланс';
+    else if(diff>0) hint.textContent='Смешанное, с преобладанием плюса (+'+p+'/−'+m+')';
+    else hint.textContent='Смешанное, с преобладанием минуса (+'+p+'/−'+m+')';
+  } else if(p>0){
+    if(p===1) hint.textContent='Немного лучше';
+    else if(p===2) hint.textContent='Значительно лучше';
+    else hint.textContent='Сильно лучше!';
+  } else if(m>0){
+    if(m===1) hint.textContent='Немного хуже';
+    else if(m===2) hint.textContent='Значительно хуже';
+    else hint.textContent='Сильно хуже!';
   }
-  if(currentRating==='mixed'){
-    // Already mixed, ignore further clicks
-    return;
-  }
-  if(currentRating===type && currentRatingCount>=3){
-    return; // Max 3
-  }
-  if(!currentRating || currentRating!==type){
-    currentRating=type;
-    currentRatingCount=1;
-  } else {
-    currentRatingCount++;
-  }
-  // Render buttons
+  hint.style.opacity='1';
+  document.getElementById('diary-actions').style.display='flex';
+  if(navigator.vibrate) navigator.vibrate(20);
+}
+
+function renderRatingArea(type, count){
   var area = document.getElementById(type==='minus'?'minus-area':'plus-area');
+  var opp = type==='plus' ? currentMinusCount : currentPlusCount;
   area.innerHTML='';
-  for(var i=0;i<currentRatingCount;i++){
-    var btn = document.createElement('button');
-    btn.className = 'rating-btn '+type+' chosen'+(i>0?' extra':'');
-    btn.onclick = (function(t){ return function(){ addRating(t); }; })(type);
-    btn.innerHTML = '<span>'+(type==='minus'?'−':'+')+'</span>';
+  for(var i=0;i<count;i++){
+    var btn=document.createElement('button');
+    btn.className='rating-btn '+type+' chosen'+(i>0?' extra':'');
+    btn.onclick=(function(t){return function(){addRating(t);};})(type);
+    btn.innerHTML='<span>'+(type==='minus'?'−':'+')+'</span>';
     area.appendChild(btn);
   }
-  // Add next clickable if under max
-  if(currentRatingCount<3){
-    var next = document.createElement('button');
-    next.className = 'rating-btn '+type;
-    next.onclick = (function(t){ return function(){ addRating(t); }; })(type);
-    next.innerHTML = '<span>'+(type==='minus'?'−':'+')+'</span>';
+  // Show ghost button if under max and won't create 3:3
+  if(count<3 && !(count+1===3 && opp===3)){
+    var next=document.createElement('button');
+    next.className='rating-btn '+type;
+    next.onclick=(function(t){return function(){addRating(t);};})(type);
+    next.innerHTML='<span>'+(type==='minus'?'−':'+')+'</span>';
     next.style.opacity='0.35';
     area.appendChild(next);
   }
-  // Hint text
-  if(currentRatingCount===1) hint.textContent = type==='plus'?'Немного лучше':'Немного хуже';
-  else if(currentRatingCount===2) hint.textContent = type==='plus'?'Значительно лучше':'Значительно хуже';
-  else hint.textContent = type==='plus'?'Сильно лучше!':'Сильно хуже!';
-  hint.style.opacity='1';
-  document.getElementById('diary-actions').style.display='flex';
-
-  // Vibration feedback
-  if(navigator.vibrate) navigator.vibrate(20);
 }
 
 function saveDiaryEvent(){
@@ -1072,8 +1186,8 @@ function saveDiaryEvent(){
   diaryData[key].push({
     text: text,
     comment: comment,
-    rating: currentRating||'mixed',
-    ratingCount: currentRatingCount||1,
+    plusCount: currentPlusCount,
+    minusCount: currentMinusCount,
     time: today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
   });
   // Update views
@@ -1117,9 +1231,11 @@ function analyzeDiary(){
   var totalPlus=0, totalMinus=0, totalMixed=0;
   var plusScore=0, minusScore=0;
   allEvents.forEach(function(e){
-    if(e.rating==='plus'){ totalPlus++; plusScore+=e.ratingCount; }
-    else if(e.rating==='minus'){ totalMinus++; minusScore+=e.ratingCount; }
-    else totalMixed++;
+    var p=e.plusCount||0, m=e.minusCount||0;
+    plusScore+=p; minusScore+=m;
+    if(p>0&&m>0) totalMixed++;
+    else if(m>0) totalMinus++;
+    else totalPlus++;
   });
   var total = allEvents.length;
   var daysCount = Object.keys(diaryData).length;
@@ -1129,13 +1245,601 @@ function analyzeDiary(){
   content.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem;">'
     +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(120,255,160,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalPlus+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Ресурсных</p></div>'
-    +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(255,200,100,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalMixed+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Смешанных</p></div>'
+    +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(140,180,255,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalMixed+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Смешанных</p></div>'
     +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(255,120,120,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalMinus+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Отнимающих</p></div>'
     +'</div>'
     +'<div style="padding:1rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">'
     +'<p style="font-size:13px;color:var(--text-primary);margin:0 0 0.5rem;">Общая динамика: <strong>'+trend+'</strong></p>'
     +'<p style="font-size:12px;color:var(--text-muted);margin:0;">'+total+' событий за '+daysCount+' '+(daysCount===1?'день':daysCount<5?'дня':'дней')+' · Нетто-ресурс: '+(netScore>=0?'+':'')+netScore+'</p>'
     +'</div>';
+}
+
+// ══════════════════════════════════════════
+// NEUROMAP SYSTEM
+// ══════════════════════════════════════════
+var nmData = {}; // { 'YYYY-MM-DD': [ {emotions,areas,causes,thoughts,customThoughts,intensity,context} ] }
+var nmCustomThoughts = []; // user-added thoughts persisted in session
+var nmCurrentStep = 0;
+var nmSurveyState = {}; // temp state while filling survey
+var nmCurrentView = 'day';
+var nmCurrentFilter = 'all';
+var nmNodes = [];
+var nmLinks = [];
+var nmAnimFrame = null;
+
+// Emotion categories
+var NM_EMOTIONS_NEG = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
+var NM_EMOTIONS_POS = ['интерес','спокойствие','радость','благодарность','вдохновение','уверенность','любовь','ясность'];
+var NM_ALL_EMOTIONS = NM_EMOTIONS_NEG.concat(NM_EMOTIONS_POS);
+
+var NM_AREAS = ['тело и здоровье','работа / деньги','отношения','семья','будущее','прошлое','самооценка','безопасность','творчество','обучение','социальная среда','неопределённость','другое'];
+
+var NM_CAUSES = {
+  'работа / деньги':['нехватка денег','неопределённость дохода','перегрузка задачами','ощущение, что усилия не дают результата','конфликт на работе','страх ошибки','сравнение себя с другими','отсутствие ясного плана','другое'],
+  'отношения':['конфликт','холодность / дистанция','чувство непонятости','обида','страх потерять человека','зависимость от оценки','невозможность выразить себя','другое'],
+  'тело и здоровье':['усталость','боль','напряжение','переедание','недостаток сна','тревога за здоровье','отсутствие энергии','другое'],
+  'будущее':['неопределённость','страх ошибки','отсутствие плана','ощущение нестабильности','давление ответственности','невозможность выбрать направление','другое'],
+  'прошлое':['сожаление','вина','незавершённая ситуация','травматичный опыт','повторяющийся сценарий','чувство потери','другое'],
+  'самооценка':['сравнение себя с другими','ощущение недостаточности','страх оценки','стыд','невозможность признать свой результат','внутренний критик','другое'],
+  'безопасность':['финансовая нестабильность','страх за здоровье','страх за близких','нестабильность среды','ощущение угрозы','отсутствие опоры','другое'],
+  '_default':['неопределённость','перегрузка','конфликт','отсутствие ясности','страх ошибки','внутреннее напряжение','другое']
+};
+
+var NM_THOUGHTS = [
+  'Я не справляюсь','Мне не хватает сил','Я не понимаю, что делать дальше','Я теряю контроль',
+  'Меня не слышат','Я недостаточно хорош','Я слишком много отдаю','Я не успеваю',
+  'Мне нужно всё контролировать','Я хочу остановиться',
+  'У меня получится','Я вижу следующий шаг','Мне становится яснее',
+  'Я могу пройти это постепенно','Я чувствую больше опоры'
+];
+
+function isNegEmotion(e){ return NM_EMOTIONS_NEG.indexOf(e)!==-1; }
+
+// Survey modal
+function openNmSurvey(){
+  nmCurrentStep=0;
+  nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:''};
+  document.getElementById('nmSurveyModal').classList.add('open');
+  renderNmStep();
+}
+function closeNmSurvey(){
+  document.getElementById('nmSurveyModal').classList.remove('open');
+}
+
+function renderNmStepDots(){
+  var el=document.getElementById('nm-step-dots');
+  el.innerHTML='';
+  for(var i=0;i<6;i++){
+    var dot=document.createElement('span');
+    dot.style.cssText='width:8px;height:8px;border-radius:50%;transition:all 0.3s;';
+    if(i<nmCurrentStep) dot.style.background='rgba(255,255,255,0.3)';
+    else if(i===nmCurrentStep) dot.style.background='var(--accent-cyan)';
+    else dot.style.background='rgba(255,255,255,0.08)';
+    if(i===nmCurrentStep) dot.style.boxShadow='0 0 8px rgba(0,224,255,0.3)';
+    el.appendChild(dot);
+    if(i<5){ var line=document.createElement('span'); line.style.cssText='flex:1;height:1px;background:rgba(255,255,255,0.06);'; el.appendChild(line); }
+  }
+}
+
+function renderNmStep(){
+  renderNmStepDots();
+  var content=document.getElementById('nm-step-content');
+  var prev=document.getElementById('nm-prev');
+  var next=document.getElementById('nm-next');
+  prev.style.display=nmCurrentStep>0?'':'none';
+  next.textContent=nmCurrentStep===5?'Сохранить':'Далее →';
+
+  if(nmCurrentStep===0){
+    // Step 1: Emotions
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 1 из 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что вы сегодня чаще всего чувствовали?</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать несколько</p>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
+    NM_ALL_EMOTIONS.forEach(function(em){
+      var neg=isNegEmotion(em);
+      var sel=nmSurveyState.emotions.indexOf(em)!==-1;
+      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+em+'</span>';
+    });
+    h+='</div>';
+    content.innerHTML=h;
+  }
+  else if(nmCurrentStep===1){
+    // Step 2: Areas for each emotion
+    var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
+    if(!emo){ nmNext(); return; }
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 2 из 6 · <span style="color:var(--accent-cyan);">'+emo+'</span></p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">С чем это было связано?</h3>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
+    var chain=nmSurveyState.emotionChains[nmSurveyState._chainIdx||0]||{};
+    NM_AREAS.forEach(function(a){
+      var sel=chain.area===a;
+      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmSelectArea(this,\''+a+'\')">'+a+'</span>';
+    });
+    h+='</div>';
+    content.innerHTML=h;
+  }
+  else if(nmCurrentStep===2){
+    // Step 3: Causes
+    var idx=nmSurveyState._chainIdx||0;
+    var chain=nmSurveyState.emotionChains[idx]||{};
+    var area=chain.area||'';
+    var causes=NM_CAUSES[area]||NM_CAUSES['_default'];
+    var emo=nmSurveyState.emotions[idx];
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 3 из 6 · <span style="color:var(--accent-cyan);">'+emo+' → '+area+'</span></p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что именно вызвало это состояние?</h3>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
+    causes.forEach(function(c){
+      var sel=chain.cause===c;
+      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmSelectCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</span>';
+    });
+    h+='</div>';
+    content.innerHTML=h;
+  }
+  else if(nmCurrentStep===3){
+    // Step 4: Thoughts
+    var idx=nmSurveyState._chainIdx||0;
+    var chain=nmSurveyState.emotionChains[idx]||{};
+    var emo=nmSurveyState.emotions[idx];
+    var allThoughts=NM_THOUGHTS.concat(nmCustomThoughts);
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 4 из 6 · <span style="color:var(--accent-cyan);">'+emo+'</span></p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Какая мысль чаще всего сопровождала это состояние?</h3>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;">';
+    allThoughts.forEach(function(t){
+      var neg=NM_THOUGHTS.indexOf(t)<10;
+      var sel=chain.thought===t;
+      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmSelectThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+t+'</span>';
+    });
+    h+='</div>';
+    h+='<div style="display:flex;gap:0.5rem;"><input type="text" id="nm-custom-thought" class="glass-input" placeholder="Добавить свою мысль..." style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
+    h+='<button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomThought()">+</button></div>';
+    content.innerHTML=h;
+  }
+  else if(nmCurrentStep===4){
+    // Step 5: Intensity
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 5 из 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Насколько сильным было это состояние?</h3>';
+    h+='<div class="nm-slider-wrap"><span style="font-size:11px;color:var(--text-dim);">1</span><input type="range" min="1" max="10" value="'+(nmSurveyState.intensity||5)+'" oninput="nmSetIntensity(this.value)" /><span style="font-size:11px;color:var(--text-dim);">10</span></div>';
+    h+='<div style="text-align:center;margin-top:0.5rem;"><span class="nm-slider-val" id="nm-int-val">'+(nmSurveyState.intensity||5)+'</span><span style="font-size:11px;color:var(--text-dim);margin-left:4px;">/10</span></div>';
+    content.innerHTML=h;
+  }
+  else if(nmCurrentStep===5){
+    // Step 6: Context
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 6 из 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Хотите добавить контекст?</h3>';
+    h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="Свободное текстовое поле..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
+    content.innerHTML=h;
+  }
+}
+
+function nmToggleEmotion(el,emo){
+  var idx=nmSurveyState.emotions.indexOf(emo);
+  if(idx===-1){ nmSurveyState.emotions.push(emo); el.classList.add('selected'); }
+  else { nmSurveyState.emotions.splice(idx,1); el.classList.remove('selected'); }
+}
+
+function nmSelectArea(el,area){
+  var idx=nmSurveyState._chainIdx||0;
+  if(!nmSurveyState.emotionChains[idx]) nmSurveyState.emotionChains[idx]={};
+  nmSurveyState.emotionChains[idx].area=area;
+  el.parentElement.querySelectorAll('.nm-chip').forEach(function(c){c.classList.remove('selected');});
+  el.classList.add('selected');
+}
+
+function nmSelectCause(el,cause){
+  var idx=nmSurveyState._chainIdx||0;
+  if(!nmSurveyState.emotionChains[idx]) nmSurveyState.emotionChains[idx]={};
+  nmSurveyState.emotionChains[idx].cause=cause;
+  el.parentElement.querySelectorAll('.nm-chip').forEach(function(c){c.classList.remove('selected');});
+  el.classList.add('selected');
+}
+
+function nmSelectThought(el,thought){
+  var idx=nmSurveyState._chainIdx||0;
+  if(!nmSurveyState.emotionChains[idx]) nmSurveyState.emotionChains[idx]={};
+  nmSurveyState.emotionChains[idx].thought=thought;
+  el.parentElement.querySelectorAll('.nm-chip').forEach(function(c){c.classList.remove('selected');});
+  el.classList.add('selected');
+}
+
+function nmAddCustomThought(){
+  var inp=document.getElementById('nm-custom-thought');
+  var val=inp.value.trim();
+  if(!val) return;
+  if(nmCustomThoughts.indexOf(val)===-1) nmCustomThoughts.push(val);
+  var idx=nmSurveyState._chainIdx||0;
+  if(!nmSurveyState.emotionChains[idx]) nmSurveyState.emotionChains[idx]={};
+  nmSurveyState.emotionChains[idx].thought=val;
+  renderNmStep();
+}
+
+function nmSetIntensity(v){
+  nmSurveyState.intensity=parseInt(v);
+  var el=document.getElementById('nm-int-val');
+  if(el) el.textContent=v;
+}
+
+function nmNext(){
+  // Validate current step
+  if(nmCurrentStep===0 && !nmSurveyState.emotions.length) return;
+  // For steps 1-3, iterate through emotion chains
+  if(nmCurrentStep>=1 && nmCurrentStep<=3){
+    var ci=nmSurveyState._chainIdx||0;
+    // If more emotions to process for this step range
+    if(ci<nmSurveyState.emotions.length-1 && nmCurrentStep<3){
+      // Stay on step but next emotion? No — go through all steps per emotion
+    }
+    if(nmCurrentStep===3){
+      // Finished thought for this emotion chain, move to next emotion or next step
+      ci++;
+      if(ci<nmSurveyState.emotions.length){
+        nmSurveyState._chainIdx=ci;
+        nmCurrentStep=1; // Go back to area for next emotion
+        renderNmStep();
+        return;
+      }
+    }
+  }
+  if(nmCurrentStep===5){
+    // Save context
+    var ta=document.getElementById('nm-context');
+    if(ta) nmSurveyState.context=ta.value.trim();
+    nmSaveSurvey();
+    return;
+  }
+  // Init chain idx for step 1
+  if(nmCurrentStep===0){ nmSurveyState._chainIdx=0; nmSurveyState.emotionChains=[]; }
+  nmCurrentStep++;
+  renderNmStep();
+}
+
+function nmPrev(){
+  if(nmCurrentStep===1){
+    var ci=nmSurveyState._chainIdx||0;
+    if(ci>0){ nmSurveyState._chainIdx=ci-1; nmCurrentStep=3; renderNmStep(); return; }
+  }
+  if(nmCurrentStep>0) nmCurrentStep--;
+  renderNmStep();
+}
+
+function nmSaveSurvey(){
+  var today=new Date();
+  var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  if(!nmData[key]) nmData[key]=[];
+  // Build chains array
+  var chains=[];
+  nmSurveyState.emotions.forEach(function(emo,i){
+    var c=nmSurveyState.emotionChains[i]||{};
+    chains.push({emotion:emo,area:c.area||'',cause:c.cause||'',thought:c.thought||''});
+  });
+  nmData[key].push({
+    chains:chains,
+    intensity:nmSurveyState.intensity||5,
+    context:nmSurveyState.context||'',
+    time:today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
+  });
+  closeNmSurvey();
+  if(navigator.vibrate) navigator.vibrate([20,40,20]);
+  updateNmToday();
+  buildNmGraph();
+}
+
+// Update today summary
+function updateNmToday(){
+  var today=new Date();
+  var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var entries=nmData[key]||[];
+  var emEl=document.getElementById('nm-today-emotions');
+  var thEl=document.getElementById('nm-today-thought');
+  var intEl=document.getElementById('nm-today-intensity');
+  if(!entries.length){
+    emEl.innerHTML='<p style="font-size:12px;color:var(--text-muted);margin:0;">—</p>';
+    thEl.textContent='—';
+    intEl.textContent='—';
+    return;
+  }
+  // Gather all emotions
+  var emos={},thoughts={},intSum=0,intCount=0;
+  entries.forEach(function(e){
+    intSum+=e.intensity; intCount++;
+    e.chains.forEach(function(c){
+      emos[c.emotion]=(emos[c.emotion]||0)+1;
+      if(c.thought) thoughts[c.thought]=(thoughts[c.thought]||0)+1;
+    });
+  });
+  var emHtml='';
+  Object.keys(emos).forEach(function(e){
+    var neg=isNegEmotion(e);
+    var bg=neg?'rgba(255,120,120,0.1)':'rgba(120,255,160,0.1)';
+    var cl=neg?'rgba(255,140,140,1)':'rgba(140,255,170,1)';
+    emHtml+='<span class="nm-emotion-badge" style="background:'+bg+';color:'+cl+';">'+e+(emos[e]>1?' ×'+emos[e]:'')+'</span> ';
+  });
+  emEl.innerHTML=emHtml;
+  // Top thought
+  var topThought='—';var topC=0;
+  Object.keys(thoughts).forEach(function(t){ if(thoughts[t]>topC){topC=thoughts[t];topThought=t;} });
+  thEl.textContent='"'+topThought+'"';
+  intEl.textContent=intCount?Math.round(intSum/intCount):'—';
+}
+
+// View toggle
+function setNmView(view){
+  nmCurrentView=view;
+  document.querySelectorAll('.nm-view-btn').forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase().replace('всё','all').replace('день','day').replace('неделя','week').replace('месяц','month')===view);});
+  // Simpler: re-toggle by index
+  var btns=document.querySelectorAll('.nm-view-btn');
+  var views=['day','week','month','all'];
+  btns.forEach(function(b,i){ b.classList.toggle('active',views[i]===view); });
+  buildNmGraph();
+}
+
+function nmFilter(f){
+  nmCurrentFilter=f;
+  document.querySelectorAll('.nm-filter-btn').forEach(function(b){
+    b.classList.toggle('active',b.textContent==='Все'&&f==='all' || b.textContent==='Эмоции'&&f==='emotions' || b.textContent==='Области'&&f==='areas' || b.textContent==='Мысли'&&f==='thoughts' || b.textContent==='Только повторяющиеся'&&f==='repeat');
+  });
+  buildNmGraph();
+}
+
+// ── Network Graph ──
+function getEntriesForView(){
+  var entries=[];
+  var today=new Date();
+  var keys=Object.keys(nmData).sort();
+  keys.forEach(function(k){
+    var d=new Date(k);
+    var diff=Math.floor((today-d)/(86400000));
+    if(nmCurrentView==='day' && diff>0) return;
+    if(nmCurrentView==='week' && diff>6) return;
+    if(nmCurrentView==='month' && diff>29) return;
+    nmData[k].forEach(function(e){ entries.push(e); });
+  });
+  return entries;
+}
+
+function buildNmGraph(){
+  var entries=getEntriesForView();
+  var empty=document.getElementById('nm-empty');
+  var filters=document.getElementById('nm-filters');
+  var analysis=document.getElementById('nm-analysis');
+  if(!entries.length){
+    empty.style.display='flex';
+    filters.style.display='none';
+    analysis.style.display='none';
+    if(nmAnimFrame){cancelAnimationFrame(nmAnimFrame);nmAnimFrame=null;}
+    var c=document.getElementById('nm-canvas');
+    var ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    return;
+  }
+  empty.style.display='none';
+  filters.style.display='block';
+
+  // Build node/link data
+  var nodeMap={};
+  var linkMap={};
+  function addNode(id,type,label,intensity){
+    if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,x:0,y:0,vx:0,vy:0};
+    nodeMap[id].count++;
+    nodeMap[id].intensity=Math.max(nodeMap[id].intensity,intensity||5);
+  }
+  function addLink(a,b){
+    var key=a+'||'+b;
+    if(!linkMap[key]) linkMap[key]={source:a,target:b,count:0};
+    linkMap[key].count++;
+  }
+
+  entries.forEach(function(e){
+    e.chains.forEach(function(c){
+      if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity);
+      if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity);
+      if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity);
+      if(c.thought) addNode('t:'+c.thought,'thought',c.thought,e.intensity);
+      if(c.emotion&&c.area) addLink('e:'+c.emotion,'a:'+c.area);
+      if(c.area&&c.cause) addLink('a:'+c.area,'c:'+c.cause);
+      if(c.cause&&c.thought) addLink('c:'+c.cause,'t:'+c.thought);
+    });
+  });
+
+  // Apply filter
+  nmNodes=[];nmLinks=[];
+  var validIds={};
+  Object.keys(nodeMap).forEach(function(id){
+    var n=nodeMap[id];
+    if(nmCurrentFilter==='emotions' && n.type!=='emotion') return;
+    if(nmCurrentFilter==='areas' && n.type!=='area') return;
+    if(nmCurrentFilter==='thoughts' && n.type!=='thought') return;
+    if(nmCurrentFilter==='repeat' && n.count<2) return;
+    validIds[id]=true;
+    nmNodes.push(n);
+  });
+  Object.keys(linkMap).forEach(function(k){
+    var l=linkMap[k];
+    if(nmCurrentFilter==='repeat' && l.count<2) return;
+    if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
+  });
+
+  // Init positions
+  var canvas=document.getElementById('nm-canvas');
+  var rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*2; canvas.height=rect.height*2;
+  var cx=canvas.width/2, cy=canvas.height/2;
+  nmNodes.forEach(function(n,i){
+    var a=(i/nmNodes.length)*Math.PI*2;
+    var r=Math.min(cx,cy)*0.55;
+    n.x=cx+Math.cos(a)*r*(0.5+Math.random()*0.5);
+    n.y=cy+Math.sin(a)*r*(0.5+Math.random()*0.5);
+    n.vx=0;n.vy=0;
+  });
+
+  // Run simulation
+  nmSimulate(canvas);
+  nmRunAnalysis(entries);
+}
+
+function nmSimulate(canvas){
+  if(nmAnimFrame) cancelAnimationFrame(nmAnimFrame);
+  var ctx=canvas.getContext('2d');
+  var W=canvas.width, H=canvas.height;
+  var iter=0;
+
+  function tick(){
+    iter++;
+    var alpha=Math.max(0.001, 0.3*Math.pow(0.98,iter));
+
+    // Repulsion
+    for(var i=0;i<nmNodes.length;i++){
+      for(var j=i+1;j<nmNodes.length;j++){
+        var dx=nmNodes[j].x-nmNodes[i].x;
+        var dy=nmNodes[j].y-nmNodes[i].y;
+        var d2=dx*dx+dy*dy+1;
+        var f=alpha*800/d2;
+        nmNodes[i].vx-=dx*f; nmNodes[i].vy-=dy*f;
+        nmNodes[j].vx+=dx*f; nmNodes[j].vy+=dy*f;
+      }
+    }
+    // Attraction (links)
+    var nodeIdx={};
+    nmNodes.forEach(function(n,i){nodeIdx[n.id]=i;});
+    nmLinks.forEach(function(l){
+      var si=nodeIdx[l.source],ti=nodeIdx[l.target];
+      if(si===undefined||ti===undefined) return;
+      var s=nmNodes[si],t=nmNodes[ti];
+      var dx=t.x-s.x, dy=t.y-s.y;
+      var d=Math.sqrt(dx*dx+dy*dy)+0.1;
+      var f=alpha*(d-120)*0.01;
+      s.vx+=dx*f; s.vy+=dy*f;
+      t.vx-=dx*f; t.vy-=dy*f;
+    });
+    // Center gravity
+    nmNodes.forEach(function(n){
+      n.vx+=(W/2-n.x)*alpha*0.01;
+      n.vy+=(H/2-n.y)*alpha*0.01;
+      n.vx*=0.85; n.vy*=0.85;
+      n.x+=n.vx; n.y+=n.vy;
+      n.x=Math.max(40,Math.min(W-40,n.x));
+      n.y=Math.max(40,Math.min(H-40,n.y));
+    });
+
+    // Draw
+    ctx.clearRect(0,0,W,H);
+    // Links
+    nmLinks.forEach(function(l){
+      var si=nodeIdx[l.source],ti=nodeIdx[l.target];
+      if(si===undefined||ti===undefined) return;
+      var s=nmNodes[si],t=nmNodes[ti];
+      ctx.beginPath();
+      ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.03+Math.min(l.count*0.04,0.15))+')';
+      ctx.lineWidth=Math.min(1+l.count,5);
+      ctx.stroke();
+    });
+    // Nodes
+    nmNodes.forEach(function(n){
+      var r=8+n.count*3+n.intensity*0.5;
+      r=Math.min(r,28);
+      // Color by type
+      var col;
+      if(n.type==='emotion'){
+        col=isNegEmotion(n.label)?'rgba(255,120,120,':'rgba(120,255,160,';
+      } else if(n.type==='area') col='rgba(140,180,255,';
+      else if(n.type==='cause') col='rgba(255,180,100,';
+      else col='rgba(200,160,255,';
+      // Glow
+      var brightness=0.3+Math.min(n.intensity/10,0.7);
+      ctx.beginPath();ctx.arc(n.x,n.y,r+6,0,Math.PI*2);
+      ctx.fillStyle=col+(brightness*0.2)+')';ctx.fill();
+      // Node
+      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.fillStyle=col+brightness+')';ctx.fill();
+      // Label
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      var label=n.label.length>18?n.label.substring(0,16)+'…':n.label;
+      ctx.fillText(label,n.x,n.y+r+16);
+    });
+
+    if(iter<250) nmAnimFrame=requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+// Hover tooltip
+(function(){
+  var canvas=document.getElementById('nm-canvas');
+  var tip=document.getElementById('nm-tooltip');
+  if(!canvas) return;
+  canvas.addEventListener('mousemove',function(ev){
+    var rect=canvas.getBoundingClientRect();
+    var sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+    var mx=(ev.clientX-rect.left)*sx, my=(ev.clientY-rect.top)*sy;
+    var found=null;
+    nmNodes.forEach(function(n){
+      var r=8+n.count*3+n.intensity*0.5;
+      var dx=n.x-mx,dy=n.y-my;
+      if(dx*dx+dy*dy<(r+10)*(r+10)) found=n;
+    });
+    if(found){
+      var types={emotion:'Эмоция',area:'Область',cause:'Причина',thought:'Мысль'};
+      tip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">'+types[found.type]+'</span><br>Частота: '+found.count+' · Интенсивность: '+found.intensity;
+      tip.style.display='block';
+      tip.style.left=(ev.clientX-rect.left+12)+'px';
+      tip.style.top=(ev.clientY-rect.top-10)+'px';
+    } else {
+      tip.style.display='none';
+    }
+  });
+  canvas.addEventListener('mouseleave',function(){tip.style.display='none';});
+})();
+
+// Analysis
+function nmRunAnalysis(entries){
+  var panel=document.getElementById('nm-analysis');
+  var content=document.getElementById('nm-analysis-content');
+  if(!entries.length){panel.style.display='none';return;}
+  panel.style.display='block';
+
+  var emoCounts={},areaCounts={},thoughtCounts={},chains=[];
+  var totalInt=0,intN=0;
+  entries.forEach(function(e){
+    totalInt+=e.intensity;intN++;
+    e.chains.forEach(function(c){
+      if(c.emotion) emoCounts[c.emotion]=(emoCounts[c.emotion]||0)+1;
+      if(c.area) areaCounts[c.area]=(areaCounts[c.area]||0)+1;
+      if(c.thought) thoughtCounts[c.thought]=(thoughtCounts[c.thought]||0)+1;
+      if(c.emotion&&c.area&&c.thought){
+        chains.push(c.emotion+' → '+c.area+(c.cause?' → '+c.cause:'')+' → '+c.thought);
+      }
+    });
+  });
+
+  // Find top items
+  function topN(obj,n){
+    return Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}).slice(0,n);
+  }
+  var topEmo=topN(emoCounts,3);
+  var topArea=topN(areaCounts,2);
+  var topThought=topN(thoughtCounts,1);
+
+  // Count chain frequencies
+  var chainFreq={};
+  chains.forEach(function(c){chainFreq[c]=(chainFreq[c]||0)+1;});
+  var topChains=topN(chainFreq,2);
+
+  var insights=[];
+  if(topEmo.length) insights.push('Самые частые эмоции: <strong>'+topEmo.join(', ')+'</strong>');
+  if(topArea.length) insights.push('Основные области: <strong>'+topArea.join(', ')+'</strong>');
+  if(topThought.length&&topThought[0]) insights.push('Повторяющаяся мысль: <em>"'+topThought[0]+'"</em>'+(thoughtCounts[topThought[0]]>1?' (×'+thoughtCounts[topThought[0]]+')':''));
+  if(topChains.length) insights.push('Возможная повторяющаяся цепочка: <span style="color:var(--accent-cyan);">'+topChains[0]+'</span>');
+  if(intN) insights.push('Средняя интенсивность: <strong>'+Math.round(totalInt/intN)+'/10</strong>');
+
+  // Soft recommendations
+  var negCount=0,posCount=0;
+  topEmo.forEach(function(e){if(isNegEmotion(e))negCount++;else posCount++;});
+  if(negCount>posCount) insights.push('<span style="color:var(--text-muted);font-style:italic;">Похоже, что напряжение преобладает — обратите внимание на восстановление ресурса</span>');
+  else if(posCount>0) insights.push('<span style="color:var(--text-muted);font-style:italic;">Ресурсные состояния присутствуют — может быть полезно отметить, что их поддерживает</span>');
+
+  content.innerHTML=insights.map(function(i){return '<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.5rem;line-height:1.5;">'+i+'</p>';}).join('');
 }
 
 // ── Service Worker registration ──
