@@ -4,53 +4,132 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Личный кабинет — NeuroAttention Lab</title>
-<meta name="description" content="Личный кабинет NeuroAttention Lab: тариф, прогресс по программам, статистика внимания." />
+<meta name="description" content="Личный кабинет NeuroAttention Lab: программы, практики, прогресс, календарь." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
 <style>
-  .auth-wrap { max-width: 440px; margin: 9rem auto 4rem; padding: 2.5rem; border-radius: 22px; }
-  .auth-wrap h1 { font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1.6rem; margin: 0 0 0.5rem; color: var(--text-primary); }
-  .auth-wrap p.sub { color: var(--text-muted); margin: 0 0 2rem; font-size: 14px; }
-  .auth-field { margin-bottom: 1rem; }
-  .auth-field label { display:block; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.4rem; }
-  .auth-field input { width: 100%; padding: 0.85rem 1rem; border-radius: 12px; font-size: 14px; }
-  .auth-submit { width: 100%; justify-content: center; margin-top: 0.5rem; }
-  .auth-hint { font-size: 12px; color: var(--text-muted); margin-top: 1.25rem; text-align: center; }
-  .auth-hint code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+/* ── Auth ── */
+.auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
+.auth-wrap h1 { font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.6rem;margin:0 0 0.5rem;color:var(--text-primary); }
+.auth-wrap p.sub { color:var(--text-muted);margin:0 0 2rem;font-size:14px; }
+.auth-field { margin-bottom:1rem; }
+.auth-field label { display:block;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:0.4rem; }
+.auth-field input { width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:14px; }
+.auth-submit { width:100%;justify-content:center;margin-top:0.5rem; }
+.auth-hint { font-size:12px;color:var(--text-muted);margin-top:1.25rem;text-align:center; }
+.auth-hint code { background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace; }
 
-  .dashboard { max-width: 1100px; margin: 6rem auto 4rem; padding: 0 1.5rem; display: none; }
-  .dash-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom: 2.5rem; }
-  .dash-title { font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1.8rem; color: var(--text-primary); margin: 0; }
-  .dash-role { display:inline-flex; align-items:center; gap:0.5rem; padding: 0.4rem 0.85rem; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
-  .dash-role .pulse { width:6px; height:6px; border-radius:999px; background:#fff; box-shadow:0 0 10px rgba(255,255,255,0.6); }
-  .logout-btn { font-size: 12px; color: var(--text-muted); padding: 0.4rem 0.85rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: transparent; }
-  .logout-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+/* ── Dashboard layout ── */
+.dashboard { max-width:1100px;margin:6rem auto 4rem;padding:0 1.5rem;display:none; }
+.dash-header { display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem; }
+.dash-title { font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.8rem;color:var(--text-primary);margin:0; }
+.dash-role { display:inline-flex;align-items:center;gap:0.5rem;padding:0.4rem 0.85rem;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.7); }
+.dash-role .pulse { width:6px;height:6px;border-radius:999px;background:#fff;box-shadow:0 0 10px rgba(255,255,255,0.6); }
+.logout-btn { font-size:12px;color:var(--text-muted);padding:0.4rem 0.85rem;border-radius:999px;border:1px solid rgba(255,255,255,0.08);background:transparent;cursor:pointer; }
+.logout-btn:hover { color:var(--text-primary);border-color:rgba(255,255,255,0.2); }
 
-  .dash-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.25rem; }
-  .dash-card { grid-column: span 12; padding: 1.75rem; border-radius: 18px; }
-  @media (min-width: 768px) {
-    .dash-card.span-4 { grid-column: span 4; }
-    .dash-card.span-6 { grid-column: span 6; }
-    .dash-card.span-8 { grid-column: span 8; }
-  }
-  .dash-card h3 { font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1rem; color: var(--text-primary); margin: 0 0 1rem; }
-  .dash-metric { font-family: 'Unbounded', sans-serif; font-weight: 400; font-size: 2.6rem; line-height: 1; color: var(--text-primary); margin: 0.25rem 0 0.5rem; }
-  .dash-label { font-size: 12px; color: var(--text-muted); letter-spacing: 0.08em; }
+/* ── Tabs ── */
+.dash-tabs { display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:2rem; }
+.dash-tab { padding:0.75rem 1.25rem;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.25s;background:none;border-top:none;border-left:none;border-right:none; }
+.dash-tab:hover { color:var(--text-secondary); }
+.dash-tab.active { color:var(--accent-cyan);border-bottom-color:var(--accent-cyan); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
 
-  .progress-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 1rem; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, rgba(255,255,255,0.8), rgba(255,255,255,0.4)); border-radius: 999px; }
-  .program-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: 0.9rem 0; border-bottom: 1px solid var(--line-softer); }
-  .program-row:last-child { border-bottom: 0; }
-  .program-row .name { color: var(--text-primary); font-size: 14px; }
-  .program-row .week { color: var(--text-muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+/* ── Grid ── */
+.dash-grid { display:grid;grid-template-columns:repeat(12,1fr);gap:1.25rem; }
+.dash-card { grid-column:span 12;padding:1.75rem;border-radius:18px; }
+@media(min-width:768px){
+  .dash-card.span-3{grid-column:span 3} .dash-card.span-4{grid-column:span 4}
+  .dash-card.span-6{grid-column:span 6} .dash-card.span-8{grid-column:span 8}
+}
+.dash-card h3 { font-family:'Unbounded',sans-serif;font-weight:500;font-size:1rem;color:var(--text-primary);margin:0 0 1rem; }
+.dash-metric { font-family:'Unbounded',sans-serif;font-weight:400;font-size:2.6rem;line-height:1;color:var(--text-primary);margin:0.25rem 0 0.5rem; }
+.dash-label { font-size:12px;color:var(--text-muted);letter-spacing:0.08em; }
+.progress-track { height:6px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:1rem; }
+.progress-fill { height:100%;background:linear-gradient(90deg,rgba(255,255,255,0.8),rgba(255,255,255,0.4));border-radius:999px; }
 
-  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .admin-table th { text-align: left; color: rgba(255,255,255,0.5); font-weight: 500; padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--line-soft); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
-  .admin-table td { padding: 0.75rem 0.5rem; color: var(--text-primary); border-bottom: 1px solid var(--line-softer); }
-  .admin-table td:last-child, .admin-table th:last-child { text-align: right; }
+/* ── Program selection cards ── */
+.program-select-card { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:1.5rem;cursor:pointer;transition:all 0.3s; }
+.program-select-card:hover,.program-select-card.selected { border-color:rgba(0,224,255,0.25);background:rgba(0,224,255,0.03); }
+.program-select-card.selected { box-shadow:0 0 20px rgba(0,224,255,0.08); }
+.program-select-card h4 { font-size:1rem;font-weight:600;color:var(--text-primary);margin:0 0 0.4rem; }
+.program-select-card p { font-size:13px;color:var(--text-muted);margin:0 0 0.75rem;line-height:1.5; }
+.program-select-card .price { font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent-cyan);font-weight:600; }
+
+/* ── Module list ── */
+.module-item { display:flex;align-items:center;gap:1rem;padding:1rem 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+.module-item:last-child { border-bottom:0; }
+.module-status { width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700; }
+.module-status.done { background:rgba(0,224,255,0.1);color:var(--accent-cyan); }
+.module-status.current { background:rgba(255,255,255,0.08);color:var(--text-primary);box-shadow:0 0 8px rgba(0,224,255,0.2); }
+.module-status.locked { background:rgba(255,255,255,0.03);color:var(--text-dim); }
+.module-info .name { font-size:14px;color:var(--text-primary);margin:0 0 0.2rem; }
+.module-info .meta { font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace; }
+.module-action { margin-left:auto; }
+.module-action .btn { font-size:11px;padding:0.35rem 0.75rem; }
+
+/* ── Practice card ── */
+.practice-card { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.25rem;margin-bottom:0.75rem;transition:border-color 0.3s; }
+.practice-card:hover { border-color:rgba(0,224,255,0.12); }
+.practice-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem; }
+.practice-title { font-size:14px;font-weight:600;color:var(--text-primary);margin:0; }
+.practice-dur { font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace; }
+.practice-desc { font-size:12px;color:var(--text-secondary);line-height:1.5;margin:0 0 0.75rem; }
+.practice-player { display:flex;align-items:center;gap:0.75rem; }
+.play-btn { width:36px;height:36px;border-radius:10px;background:rgba(0,224,255,0.08);border:1px solid rgba(0,224,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s; }
+.play-btn:hover { background:rgba(0,224,255,0.15); }
+.play-btn svg { width:14px;height:14px;fill:none;stroke:var(--accent-cyan);stroke-width:2; }
+.player-bar { flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,0.06); }
+.player-bar-fill { height:100%;border-radius:999px;background:var(--accent-cyan);width:0%;transition:width 0.3s; }
+.player-time { font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;min-width:3rem;text-align:right; }
+
+/* ── Calendar ── */
+.cal-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem; }
+.cal-header h3 { margin:0; }
+.cal-nav { display:flex;gap:0.5rem; }
+.cal-nav button { width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.cal-nav button:hover { border-color:rgba(255,255,255,0.15);color:var(--text-primary); }
+.cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:4px; }
+.cal-day-header { text-align:center;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);padding:0.5rem 0; }
+.cal-day { aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-size:13px;color:var(--text-muted);cursor:pointer;transition:all 0.2s;position:relative;gap:2px; }
+.cal-day:hover { background:rgba(255,255,255,0.04); }
+.cal-day.today { color:var(--text-primary);background:rgba(255,255,255,0.06);font-weight:600; }
+.cal-day.has-practice { color:var(--accent-cyan); }
+.cal-day.has-practice::after { content:'';width:4px;height:4px;border-radius:50%;background:var(--accent-cyan);position:absolute;bottom:4px; }
+.cal-day.completed::after { background:rgba(255,255,255,0.3); }
+.cal-day.empty { cursor:default; }
+
+/* ── Event list ── */
+.event-item { display:flex;align-items:flex-start;gap:1rem;padding:0.85rem 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+.event-item:last-child { border-bottom:0; }
+.event-time { font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-cyan);min-width:3.5rem;padding-top:2px; }
+.event-info .event-name { font-size:13px;color:var(--text-primary);margin:0 0 0.15rem; }
+.event-info .event-type { font-size:11px;color:var(--text-muted); }
+.event-edit { margin-left:auto;font-size:11px;color:var(--text-dim);cursor:pointer;padding:0.25rem 0.5rem;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:none; }
+.event-edit:hover { color:var(--text-muted);border-color:rgba(255,255,255,0.12); }
+
+/* ── Admin table ── */
+.admin-table { width:100%;border-collapse:collapse;font-size:13px; }
+.admin-table th { text-align:left;color:rgba(255,255,255,0.5);font-weight:500;padding:0.6rem 0.5rem;border-bottom:1px solid rgba(255,255,255,0.08);font-size:11px;letter-spacing:0.12em;text-transform:uppercase; }
+.admin-table td { padding:0.75rem 0.5rem;color:var(--text-primary);border-bottom:1px solid rgba(255,255,255,0.04); }
+.admin-table td:last-child,.admin-table th:last-child { text-align:right; }
+.program-row { display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.9rem 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+.program-row:last-child { border-bottom:0; }
+.program-row .name { color:var(--text-primary);font-size:14px; }
+.program-row .week { color:var(--text-muted);font-size:12px;font-family:'JetBrains Mono',monospace; }
+
+/* ── Purchase flow ── */
+.purchase-step { display:none; }
+.purchase-step.active { display:block; }
+.step-indicator { display:flex;align-items:center;gap:0.5rem;margin-bottom:2rem; }
+.step-dot { width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.1); }
+.step-dot.active { background:var(--accent-cyan);box-shadow:0 0 8px rgba(0,224,255,0.3); }
+.step-dot.done { background:rgba(255,255,255,0.3); }
+.step-line { flex:1;height:1px;background:rgba(255,255,255,0.06); }
 </style>
 </head>
 <body>
@@ -95,7 +174,7 @@
   </div>
 </nav>
 
-<!-- Login screen -->
+<!-- ═══ LOGIN ═══ -->
 <section id="auth-screen" class="auth-wrap glass-card-elevated">
   <p class="eyebrow">Вход</p>
   <h1>Личный кабинет</h1>
@@ -110,19 +189,18 @@
       <input id="password" name="password" type="password" class="glass-input" placeholder="••••••••" autocomplete="current-password" required />
     </div>
     <button type="submit" class="btn btn-solid auth-submit">
-      Войти
-      <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      Войти <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </button>
   </form>
-  <p class="auth-hint">Демо: клиент — <code>demo@user</code> / <code>demo</code> · админ — <code>admin@lab</code> / <code>admin</code></p>
+  <p class="auth-hint">Демо: <code>demo@user</code> / <code>demo</code> · админ — <code>admin@lab</code> / <code>admin</code></p>
 </section>
 
-<!-- Client dashboard -->
+<!-- ═══ CLIENT DASHBOARD ═══ -->
 <section id="client-dashboard" class="dashboard">
   <div class="dash-header">
     <div>
-      <h1 class="dash-title" id="client-greeting">Здравствуйте, Takhir</h1>
-      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Пульс вашей практики на этой неделе</p>
+      <h1 class="dash-title" id="client-greeting">Здравствуйте</h1>
+      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Ваш путь с NeuroAttention</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
       <span class="dash-role"><span class="pulse"></span>Клиент</span>
@@ -130,95 +208,377 @@
     </div>
   </div>
 
-  <div class="dash-grid">
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Тариф</h3>
-      <p class="dash-metric">Глубокое&nbsp;внимание</p>
-      <p class="dash-label">12 недель · неделя 5 из 12</p>
-      <div class="progress-track"><div class="progress-fill" style="width:42%"></div></div>
-    </div>
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Практика</h3>
-      <p class="dash-metric">24<span style="font-size:1rem;color:var(--text-muted);margin-left:6px;">мин/день</span></p>
-      <p class="dash-label">Средняя длительность сессии</p>
-      <div class="progress-track"><div class="progress-fill" style="width:68%"></div></div>
-    </div>
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Серия дней</h3>
-      <p class="dash-metric">17</p>
-      <p class="dash-label">Подряд без пропуска</p>
-      <div class="progress-track"><div class="progress-fill" style="width:85%"></div></div>
-    </div>
+  <!-- Tabs -->
+  <div class="dash-tabs">
+    <button class="dash-tab active" data-tab="overview">Обзор</button>
+    <button class="dash-tab" data-tab="program">Программа</button>
+    <button class="dash-tab" data-tab="practices">Практики</button>
+    <button class="dash-tab" data-tab="calendar">Календарь</button>
+    <button class="dash-tab" data-tab="enroll">Выбрать программу</button>
+  </div>
 
-    <div class="dash-card glass-card-elevated span-8">
-      <h3>Модули программы</h3>
-      <div class="program-row"><span class="name">Фокус и удержание внимания</span><span class="week">нед 1–3 · пройдено</span></div>
-      <div class="program-row"><span class="name">Гибкость и переключение</span><span class="week">нед 4–5 · в процессе</span></div>
-      <div class="program-row"><span class="name">Множественное внимание</span><span class="week">нед 6–7</span></div>
-      <div class="program-row"><span class="name">Объёмное восприятие</span><span class="week">нед 8–9</span></div>
-      <div class="program-row"><span class="name">Интероцепция и саморегуляция</span><span class="week">нед 10–12</span></div>
+  <!-- TAB: Overview -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>Программа</h3>
+        <p class="dash-metric" style="font-size:1.6rem;">Guided<br>Program</p>
+        <p class="dash-label">3 месяца · неделя 5 из 12</p>
+        <div class="progress-track"><div class="progress-fill" style="width:42%"></div></div>
+      </div>
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>Практика</h3>
+        <p class="dash-metric">24<span style="font-size:1rem;color:var(--text-muted);margin-left:6px;">мин/день</span></p>
+        <p class="dash-label">Средняя длительность сессии</p>
+        <div class="progress-track"><div class="progress-fill" style="width:68%"></div></div>
+      </div>
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>Серия дней</h3>
+        <p class="dash-metric">17</p>
+        <p class="dash-label">Подряд без пропуска</p>
+        <div class="progress-track"><div class="progress-fill" style="width:85%"></div></div>
+      </div>
+      <div class="dash-card glass-card-elevated span-6">
+        <h3>Ближайшие события</h3>
+        <div class="event-item">
+          <span class="event-time">10:00</span>
+          <div class="event-info">
+            <p class="event-name">Утренняя практика — Фокус</p>
+            <p class="event-type">Аудиопрактика · 15 мин</p>
+          </div>
+        </div>
+        <div class="event-item">
+          <span class="event-time">14:00</span>
+          <div class="event-info">
+            <p class="event-name">Встреча со специалистом</p>
+            <p class="event-type">Онлайн · 45 мин</p>
+          </div>
+        </div>
+        <div class="event-item">
+          <span class="event-time">20:00</span>
+          <div class="event-info">
+            <p class="event-name">Вечерняя практика — Саморегуляция</p>
+            <p class="event-type">Аудиопрактика · 20 мин</p>
+          </div>
+        </div>
+      </div>
+      <div class="dash-card glass-card-elevated span-6">
+        <h3>Сигналы нервной системы</h3>
+        <p class="dash-label" style="margin-bottom:0.6rem;">Вариабельность ритма (HRV)</p>
+        <p class="dash-metric" style="font-size:1.8rem;">64<span style="font-size:0.9rem;color:var(--text-muted);margin-left:4px;">мс</span></p>
+        <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
+        <p class="dash-label" style="margin-top:1rem;">+8% к прошлой неделе</p>
+        <p class="dash-label" style="margin-top:0.5rem;">Уровень стресса: <span style="color:var(--text-primary);">средний</span></p>
+        <p class="dash-label" style="margin-top:0.25rem;">Качество сна: <span style="color:var(--text-primary);">хорошее</span></p>
+      </div>
     </div>
+  </div>
 
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Сигналы нервной системы</h3>
-      <p class="dash-label" style="margin-bottom:0.6rem;">Вариабельность ритма (HRV)</p>
-      <p class="dash-metric" style="font-size:1.8rem;">64<span style="font-size:0.9rem;color:var(--text-muted);margin-left:4px;">мс</span></p>
-      <div class="progress-track"><div class="progress-fill" style="width:72%"></div></div>
-      <p class="dash-label" style="margin-top:1rem;">+8% к прошлой неделе</p>
+  <!-- TAB: Program (modules) -->
+  <div class="tab-panel" id="tab-program">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated span-8">
+        <h3>Модули программы — Guided Program</h3>
+        <div class="module-item">
+          <div class="module-status done">✓</div>
+          <div class="module-info">
+            <p class="name">Блок 1 · Вход в практику</p>
+            <p class="meta">нед 1–2 · 4 практики · завершён</p>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-status done">✓</div>
+          <div class="module-info">
+            <p class="name">Блок 2 · Фокус и удержание внимания</p>
+            <p class="meta">нед 3–4 · 4 практики · завершён</p>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-status current">▶</div>
+          <div class="module-info">
+            <p class="name">Блок 3 · Гибкость и переключение</p>
+            <p class="meta">нед 5–6 · 3 из 4 практик</p>
+          </div>
+          <div class="module-action">
+            <button class="btn btn-solid" style="font-size:11px;padding:0.35rem 0.75rem;" onclick="switchTab('practices')">Продолжить</button>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-status locked">4</div>
+          <div class="module-info">
+            <p class="name">Блок 4 · Множественное внимание</p>
+            <p class="meta">нед 7–8 · 4 практики</p>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-status locked">5</div>
+          <div class="module-info">
+            <p class="name">Блок 5 · Объёмное восприятие тела</p>
+            <p class="meta">нед 9–10 · 3 практики</p>
+          </div>
+        </div>
+        <div class="module-item">
+          <div class="module-status locked">6</div>
+          <div class="module-info">
+            <p class="name">Блок 6 · Интероцепция и саморегуляция</p>
+            <p class="meta">нед 11–12 · 2 практики + интеграция</p>
+          </div>
+        </div>
+      </div>
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>Прогресс</h3>
+        <p class="dash-metric" style="font-size:2rem;">11<span style="font-size:1rem;color:var(--text-muted);">/21</span></p>
+        <p class="dash-label">Практик выполнено</p>
+        <div class="progress-track" style="margin-top:0.75rem;"><div class="progress-fill" style="width:52%"></div></div>
+        <div style="margin-top:1.5rem;">
+          <p class="dash-label" style="margin-bottom:0.4rem;">Теоретические модули</p>
+          <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">5 / 8</p>
+          <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:62%"></div></div>
+        </div>
+        <div style="margin-top:1.5rem;">
+          <p class="dash-label" style="margin-bottom:0.4rem;">Домашние задания</p>
+          <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">8 / 12</p>
+          <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:66%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Practices -->
+  <div class="tab-panel" id="tab-practices">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated span-8">
+        <h3>Блок 3 · Гибкость и переключение</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Текущий блок — 3 из 4 практик выполнено</p>
+
+        <div class="practice-card" style="border-color:rgba(255,255,255,0.12);">
+          <div class="practice-header">
+            <p class="practice-title">Практика 9 · Переключение фокуса</p>
+            <span class="practice-dur">15:30</span>
+          </div>
+          <p class="practice-desc">Тренировка управляемого перехода внимания между объектами. Работа с ритмом и точностью переключения.</p>
+          <div class="practice-player">
+            <button class="play-btn" onclick="togglePlay(this)">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
+            </button>
+            <div class="player-bar"><div class="player-bar-fill"></div></div>
+            <span class="player-time">0:00</span>
+          </div>
+        </div>
+
+        <div class="practice-card">
+          <div class="practice-header">
+            <p class="practice-title">Практика 10 · Периферическое внимание</p>
+            <span class="practice-dur">18:00</span>
+          </div>
+          <p class="practice-desc">Расширение поля внимания без потери центрального фокуса. Интеграция зрительного и телесного восприятия.</p>
+          <div class="practice-player">
+            <button class="play-btn" onclick="togglePlay(this)">
+              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
+            </button>
+            <div class="player-bar"><div class="player-bar-fill"></div></div>
+            <span class="player-time">0:00</span>
+          </div>
+        </div>
+
+        <div class="practice-card" style="opacity:0.5;">
+          <div class="practice-header">
+            <p class="practice-title">Практика 11 · Динамическая гибкость</p>
+            <span class="practice-dur">20:00</span>
+          </div>
+          <p class="practice-desc">Интеграция переключения и удержания в условиях меняющейся нагрузки.</p>
+          <div style="text-align:center;padding:0.5rem;font-size:12px;color:var(--text-dim);">Откроется после выполнения практики 10</div>
+        </div>
+
+        <div class="practice-card" style="opacity:0.35;">
+          <div class="practice-header">
+            <p class="practice-title">Практика 12 · Интеграция блока</p>
+            <span class="practice-dur">22:00</span>
+          </div>
+          <p class="practice-desc">Завершающая практика блока. Объединение всех навыков переключения.</p>
+          <div style="text-align:center;padding:0.5rem;font-size:12px;color:var(--text-dim);">Заблокировано</div>
+        </div>
+      </div>
+
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>Теория к блоку</h3>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          <div style="padding:1rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
+            <p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;font-weight:500;">Модуль 5 · Гибкость внимания</p>
+            <p style="font-size:11px;color:var(--text-muted);margin:0;">Видео · 12 мин · Прочитано</p>
+          </div>
+          <div style="padding:1rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
+            <p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;font-weight:500;">Модуль 6 · Нейропластичность</p>
+            <p style="font-size:11px;color:var(--text-muted);margin:0;">Текст + видео · 18 мин</p>
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;">
+          <h3>Задание</h3>
+          <div style="padding:1rem;background:rgba(0,224,255,0.04);border-left:2px solid rgba(0,224,255,0.2);border-radius:0 10px 10px 0;">
+            <p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;font-weight:500;">Дневник переключений</p>
+            <p style="font-size:12px;color:var(--text-muted);margin:0;">Записывайте моменты осознанного переключения внимания в течение дня</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Calendar -->
+  <div class="tab-panel" id="tab-calendar">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated span-8">
+        <div class="cal-header">
+          <h3 id="cal-month-title">Апрель 2026</h3>
+          <div class="cal-nav">
+            <button onclick="changeMonth(-1)">‹</button>
+            <button onclick="changeMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="dash-card glass-card-elevated span-4">
+        <h3>События дня</h3>
+        <div id="day-events">
+          <div class="event-item">
+            <span class="event-time">10:00</span>
+            <div class="event-info">
+              <p class="event-name">Утренняя практика</p>
+              <p class="event-type">Фокус · 15 мин</p>
+            </div>
+            <button class="event-edit" onclick="editEvent(this)">✎</button>
+          </div>
+          <div class="event-item">
+            <span class="event-time">14:00</span>
+            <div class="event-info">
+              <p class="event-name">Встреча со специалистом</p>
+              <p class="event-type">Онлайн · 45 мин</p>
+            </div>
+            <button class="event-edit" onclick="editEvent(this)">✎</button>
+          </div>
+          <div class="event-item">
+            <span class="event-time">20:00</span>
+            <div class="event-info">
+              <p class="event-name">Вечерняя практика</p>
+              <p class="event-type">Саморегуляция · 20 мин</p>
+            </div>
+            <button class="event-edit" onclick="editEvent(this)">✎</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;font-size:12px;" onclick="addEvent()">
+          + Добавить событие
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Enroll (purchase flow) -->
+  <div class="tab-panel" id="tab-enroll">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <!-- Step indicator -->
+        <div class="step-indicator">
+          <span class="step-dot active" id="sd1"></span>
+          <span class="step-line"></span>
+          <span class="step-dot" id="sd2"></span>
+          <span class="step-line"></span>
+          <span class="step-dot" id="sd3"></span>
+        </div>
+
+        <!-- Step 1: Choose program -->
+        <div class="purchase-step active" id="pstep1">
+          <h3>Шаг 1 · Выберите программу</h3>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0;">
+            <div class="program-select-card" data-prog="self" onclick="selectProgram(this)">
+              <h4>Self-Guided</h4>
+              <p>Самостоятельная работа с протоколами и материалами</p>
+              <span class="price">$297</span>
+            </div>
+            <div class="program-select-card" data-prog="guided" onclick="selectProgram(this)">
+              <h4>Guided Program</h4>
+              <p>С личным специалистом и адаптацией под ваше состояние</p>
+              <span class="price">$897</span>
+            </div>
+            <div class="program-select-card" data-prog="group" onclick="selectProgram(this)">
+              <h4>Group Program</h4>
+              <p>Групповое прохождение с ведущим и общей динамикой</p>
+              <span class="price">$497</span>
+            </div>
+          </div>
+          <button class="btn btn-solid" id="toStep2" style="opacity:0.4;pointer-events:none;" onclick="goStep(2)">
+            Далее <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+
+        <!-- Step 2: Confirm & Pay -->
+        <div class="purchase-step" id="pstep2">
+          <h3>Шаг 2 · Подтверждение и оплата</h3>
+          <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;margin:1.5rem 0;">
+            <p style="font-size:14px;color:var(--text-primary);margin:0 0 0.5rem;font-weight:600;" id="confirm-prog-name">—</p>
+            <p style="font-size:13px;color:var(--text-muted);margin:0 0 0.75rem;">3 месяца · 21 практика · теория + задания</p>
+            <p style="font-family:'JetBrains Mono',monospace;font-size:1.25rem;color:var(--accent-cyan);font-weight:600;margin:0;" id="confirm-price">—</p>
+          </div>
+          <div style="display:flex;gap:0.75rem;">
+            <button class="btn btn-ghost" onclick="goStep(1)">← Назад</button>
+            <button class="btn btn-solid" onclick="goStep(3)">
+              Оплатить <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Success -->
+        <div class="purchase-step" id="pstep3">
+          <div style="text-align:center;padding:2rem 0;">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,224,255,0.1);border:2px solid rgba(0,224,255,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;">
+              <svg style="width:28px;height:28px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+            </div>
+            <h3 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 0.5rem;">Программа активирована</h3>
+            <p style="font-size:14px;color:var(--text-muted);margin:0 0 1.5rem;">Теперь вы можете начать прохождение. Первый блок практик уже доступен.</p>
+            <button class="btn btn-solid" onclick="switchTab('program')">
+              Перейти к программе <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- Admin dashboard -->
+<!-- ═══ ADMIN DASHBOARD ═══ -->
 <section id="admin-dashboard" class="dashboard">
   <div class="dash-header">
     <div>
       <h1 class="dash-title">Администрирование</h1>
-      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Статистика платформы в реальном времени</p>
+      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Статистика платформы</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
       <span class="dash-role"><span class="pulse"></span>Администратор</span>
       <button class="logout-btn" data-logout>Выйти</button>
     </div>
   </div>
-
   <div class="dash-grid">
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Активных клиентов</h3>
-      <p class="dash-metric">524</p>
-      <p class="dash-label">+38 за 7 дней</p>
-    </div>
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Выручка за месяц</h3>
-      <p class="dash-metric">$18,420</p>
-      <p class="dash-label">+12% к прошлому месяцу</p>
-    </div>
-    <div class="dash-card glass-card-elevated span-4">
-      <h3>Завершили программу</h3>
-      <p class="dash-metric">67%</p>
-      <p class="dash-label">Среди прошедших 8+ недель</p>
-    </div>
-
+    <div class="dash-card glass-card-elevated span-3"><h3>Активных</h3><p class="dash-metric">524</p><p class="dash-label">+38 за 7 дней</p></div>
+    <div class="dash-card glass-card-elevated span-3"><h3>Выручка</h3><p class="dash-metric">$18.4k</p><p class="dash-label">+12% к прошлому</p></div>
+    <div class="dash-card glass-card-elevated span-3"><h3>Завершили</h3><p class="dash-metric">67%</p><p class="dash-label">8+ недель</p></div>
+    <div class="dash-card glass-card-elevated span-3"><h3>Средняя серия</h3><p class="dash-metric">14</p><p class="dash-label">дней подряд</p></div>
     <div class="dash-card glass-card-elevated span-8">
       <h3>Активные клиенты</h3>
       <table class="admin-table">
         <thead><tr><th>Клиент</th><th>Программа</th><th>Неделя</th><th>Прогресс</th></tr></thead>
         <tbody>
-          <tr><td>Takhir K.</td><td>Глубокое внимание</td><td>5 / 12</td><td>42%</td></tr>
-          <tr><td>Sia I.</td><td>Мастер внимания</td><td>11 / 16</td><td>68%</td></tr>
-          <tr><td>Yegor K.</td><td>Основы внимания</td><td>6 / 8</td><td>75%</td></tr>
-          <tr><td>Alex R.</td><td>Глубокое внимание</td><td>2 / 12</td><td>16%</td></tr>
-          <tr><td>Maria L.</td><td>Основы внимания</td><td>8 / 8</td><td>100%</td></tr>
+          <tr><td>Takhir K.</td><td>Guided Program</td><td>5 / 12</td><td>42%</td></tr>
+          <tr><td>Sia I.</td><td>Self-Guided</td><td>11 / 12</td><td>92%</td></tr>
+          <tr><td>Yegor K.</td><td>Group Program</td><td>6 / 12</td><td>50%</td></tr>
+          <tr><td>Alex R.</td><td>Guided Program</td><td>2 / 12</td><td>16%</td></tr>
+          <tr><td>Maria L.</td><td>Self-Guided</td><td>12 / 12</td><td>100%</td></tr>
         </tbody>
       </table>
     </div>
-
     <div class="dash-card glass-card-elevated span-4">
       <h3>Продажи по программам</h3>
-      <div class="program-row"><span class="name">Основы внимания</span><span class="week">312</span></div>
-      <div class="program-row"><span class="name">Глубокое внимание</span><span class="week">184</span></div>
-      <div class="program-row"><span class="name">Мастер внимания</span><span class="week">96</span></div>
-      <div class="program-row"><span class="name">XR Beta доступ</span><span class="week">41</span></div>
+      <div class="program-row"><span class="name">Self-Guided</span><span class="week">312</span></div>
+      <div class="program-row"><span class="name">Guided Program</span><span class="week">184</span></div>
+      <div class="program-row"><span class="name">Group Program</span><span class="week">96</span></div>
+      <div class="program-row"><span class="name">XR Beta</span><span class="week">41</span></div>
     </div>
   </div>
 </section>
@@ -231,38 +591,136 @@
   var client = document.getElementById('client-dashboard');
   var admin = document.getElementById('admin-dashboard');
   var form = document.getElementById('auth-form');
+  var session = null;
 
   function show(which){
-    auth.style.display    = which === 'auth'   ? 'block' : 'none';
-    client.style.display  = which === 'client' ? 'block' : 'none';
-    admin.style.display   = which === 'admin'  ? 'block' : 'none';
+    auth.style.display = which==='auth' ? 'block' : 'none';
+    client.style.display = which==='client' ? 'block' : 'none';
+    admin.style.display = which==='admin' ? 'block' : 'none';
   }
-
-  // Demo session in memory only (no localStorage in this env)
-  var session = null;
 
   form.addEventListener('submit', function(e){
     e.preventDefault();
     var email = document.getElementById('email').value.trim().toLowerCase();
-    var pass  = document.getElementById('password').value;
-    if (email === 'admin@lab' && pass === 'admin') {
-      session = 'admin'; show('admin');
-    } else if (email === 'demo@user' && pass === 'demo') {
-      session = 'client'; show('client');
-    } else {
-      // default: treat as client
-      session = 'client'; show('client');
-    }
+    var pass = document.getElementById('password').value;
+    if(email==='admin@lab' && pass==='admin'){ session='admin'; show('admin'); }
+    else { session='client'; show('client'); }
   });
 
   document.querySelectorAll('[data-logout]').forEach(function(b){
-    b.addEventListener('click', function(){
-      session = null; form.reset(); show('auth');
-    });
+    b.addEventListener('click', function(){ session=null; form.reset(); show('auth'); });
   });
 
   show('auth');
 })();
+
+// ── Tabs ──
+function switchTab(id){
+  document.querySelectorAll('.dash-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-'+id); });
+}
+document.querySelectorAll('.dash-tab').forEach(function(t){
+  t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
+});
+
+// ── Practice player (demo) ──
+function togglePlay(btn){
+  var card = btn.closest('.practice-card');
+  var fill = card.querySelector('.player-bar-fill');
+  var time = card.querySelector('.player-time');
+  var playing = btn.dataset.playing === 'true';
+  if(playing){
+    btn.dataset.playing = 'false';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>';
+    clearInterval(btn._int);
+  } else {
+    btn.dataset.playing = 'true';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    var sec = parseInt(btn.dataset.sec||'0');
+    var total = 930;
+    btn._int = setInterval(function(){
+      sec++;
+      btn.dataset.sec = sec;
+      fill.style.width = (sec/total*100)+'%';
+      var m = Math.floor(sec/60), s = sec%60;
+      time.textContent = m+':'+(s<10?'0':'')+s;
+      if(sec>=total){ clearInterval(btn._int); btn.dataset.playing='false'; btn.innerHTML='<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>'; }
+    }, 1000);
+  }
+}
+
+// ── Calendar ──
+var calMonth = 3; // April (0-indexed)
+var calYear = 2026;
+var practiceDays = [1,2,3,5,6,7,9,10,12,13,14,16,17,19,20,21,23,24];
+var completedDays = [1,2,3,5,6,7,9,10,12,13,14,16,17,19,20,21,23];
+var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+var dayNames = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function renderCalendar(){
+  var grid = document.getElementById('cal-grid');
+  document.getElementById('cal-month-title').textContent = monthNames[calMonth]+' '+calYear;
+  grid.innerHTML = '';
+  dayNames.forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
+  var first = new Date(calYear, calMonth, 1).getDay();
+  first = first===0 ? 6 : first-1;
+  var days = new Date(calYear, calMonth+1, 0).getDate();
+  var today = new Date();
+  for(var i=0;i<first;i++) grid.innerHTML += '<div class="cal-day empty"></div>';
+  for(var d=1;d<=days;d++){
+    var cls = 'cal-day';
+    if(calYear===today.getFullYear() && calMonth===today.getMonth() && d===today.getDate()) cls += ' today';
+    if(practiceDays.includes(d)) cls += ' has-practice';
+    if(completedDays.includes(d)) cls += ' completed';
+    grid.innerHTML += '<div class="'+cls+'" onclick="selectDay('+d+')">'+d+'</div>';
+  }
+}
+renderCalendar();
+
+function changeMonth(dir){ calMonth+=dir; if(calMonth<0){calMonth=11;calYear--;} if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function selectDay(d){ /* could show day details */ }
+
+// ── Events ──
+function editEvent(btn){
+  var name = btn.parentElement.querySelector('.event-name');
+  var newName = prompt('Изменить событие:', name.textContent);
+  if(newName) name.textContent = newName;
+}
+function addEvent(){
+  var evts = document.getElementById('day-events');
+  var time = prompt('Время (HH:MM):', '12:00');
+  if(!time) return;
+  var name = prompt('Название события:', '');
+  if(!name) return;
+  var div = document.createElement('div');
+  div.className = 'event-item';
+  div.innerHTML = '<span class="event-time">'+time+'</span><div class="event-info"><p class="event-name">'+name+'</p><p class="event-type">Пользовательское</p></div><button class="event-edit" onclick="editEvent(this)">✎</button>';
+  evts.appendChild(div);
+}
+
+// ── Purchase flow ──
+var selectedProg = null;
+function selectProgram(card){
+  document.querySelectorAll('.program-select-card').forEach(function(c){ c.classList.remove('selected'); });
+  card.classList.add('selected');
+  selectedProg = card.dataset.prog;
+  var btn = document.getElementById('toStep2');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
+}
+function goStep(n){
+  document.querySelectorAll('.purchase-step').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('pstep'+n).classList.add('active');
+  document.getElementById('sd1').className = n>=1 ? (n>1?'step-dot done':'step-dot active') : 'step-dot';
+  document.getElementById('sd2').className = n>=2 ? (n>2?'step-dot done':'step-dot active') : 'step-dot';
+  document.getElementById('sd3').className = n>=3 ? 'step-dot active' : 'step-dot';
+  if(n===2){
+    var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program'};
+    var prices = {self:'$297',guided:'$897',group:'$497'};
+    document.getElementById('confirm-prog-name').textContent = names[selectedProg]||'—';
+    document.getElementById('confirm-price').textContent = prices[selectedProg]||'—';
+  }
+}
 </script>
 </body>
 </html>
