@@ -312,6 +312,7 @@
     <button class="dash-tab" data-tab="practices">Практики</button>
     <button class="dash-tab" data-tab="calendar">Календарь</button>
     <button class="dash-tab" data-tab="neuromap">NeuroMap</button>
+    <button class="dash-tab" data-tab="pointab">Точка А → B</button>
     <button class="dash-tab" data-tab="enroll">Выбрать программу</button>
   </div>
 
@@ -775,6 +776,76 @@
     </div>
   </div>
 
+  <!-- TAB: Точка А → Точка B -->
+  <div class="tab-panel" id="tab-pointab">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+
+        <!-- Main screen (before exercise) -->
+        <div id="ab-main">
+          <p class="eyebrow" style="margin-bottom:0.5rem;">Карта реализации потенциала</p>
+          <h2 style="font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.6rem;color:var(--text-primary);margin:0 0 0.75rem;">Точка А → Точка B</h2>
+          <p style="color:var(--text-secondary);font-size:14px;line-height:1.65;margin:0 0 1.5rem;max-width:640px;">Определите, где вы находитесь сейчас, куда хотите прийти и какие внутренние ограничения мешают движению.</p>
+          <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 2rem;max-width:640px;">Это упражнение помогает увидеть разницу между текущим образом жизни и желаемым направлением развития. На основе ответов вы сформируете личную программу корректировки и запишете её своим голосом.</p>
+          <button class="btn btn-solid" style="font-size:14px;padding:0.85rem 2rem;" onclick="abStartExercise()">
+            Начать упражнение <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <!-- Previously saved result -->
+          <div id="ab-saved-result" style="display:none;margin-top:2rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+            <h3 style="font-size:0.95rem;margin:0 0 0.5rem;color:var(--text-primary);">Последняя карта</h3>
+            <p id="ab-saved-date" style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;"></p>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              <button class="btn btn-ghost" style="font-size:12px;" onclick="abShowResult()">Просмотреть</button>
+              <button class="btn btn-ghost" style="font-size:12px;" id="ab-play-saved" onclick="abPlaySaved()">Прослушать программу</button>
+            </div>
+          </div>
+          <!-- Calendar integration -->
+          <div style="margin-top:2rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+              <div>
+                <h3 style="font-size:0.9rem;margin:0 0 0.25rem;color:var(--text-primary);">Прослушивание программы</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin:0;">Напоминание в вашем календаре</p>
+              </div>
+              <select id="ab-listen-freq" onchange="abSetFrequency(this.value)" style="padding:0.5rem 0.75rem;border-radius:10px;font-size:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-primary);">
+                <option value="daily">Каждый день</option>
+                <option value="3week" selected>3 раза в неделю</option>
+                <option value="1week">1 раз в неделю</option>
+                <option value="manual">Вручную</option>
+              </select>
+            </div>
+          </div>
+          <!-- Specialist toggle (Guided only) -->
+          <div id="ab-specialist-toggle" style="display:none;margin-top:1rem;padding:1rem 1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+              <input type="checkbox" id="ab-share-specialist" onchange="abToggleSpecialist(this.checked)" style="width:18px;height:18px;accent-color:var(--accent-cyan);" />
+              <span style="font-size:13px;color:var(--text-secondary);">Разрешить специалисту видеть мою карту А → B</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Exercise modal (5 steps) -->
+        <div id="ab-exercise" style="display:none;">
+          <!-- Progress bar -->
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">
+            <span id="ab-step-label" style="font-size:12px;color:var(--text-muted);letter-spacing:0.12em;text-transform:uppercase;">Шаг 1 из 5</span>
+            <div style="flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,0.06);overflow:hidden;">
+              <div id="ab-progress-bar" style="height:100%;width:20%;border-radius:4px;background:linear-gradient(90deg,var(--accent-cyan),rgba(120,80,255,0.8));transition:width 0.4s;"></div>
+            </div>
+          </div>
+          <div id="ab-step-content"></div>
+          <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+            <button class="btn btn-ghost" id="ab-prev" onclick="abPrev()" style="display:none;">← Назад</button>
+            <button class="btn btn-solid" id="ab-next" onclick="abNext()" style="flex:1;justify-content:center;">Далее →</button>
+          </div>
+        </div>
+
+        <!-- Result screen -->
+        <div id="ab-result" style="display:none;"></div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- TAB: Enroll (purchase flow) -->
   <div class="tab-panel" id="tab-enroll">
     <div class="dash-grid">
@@ -1011,6 +1082,7 @@ function onLogin(user){
     document.getElementById('client-greeting').textContent = 'Здравствуйте, '+user.name;
     // Check feature access: client needs program
     updateClientAccess(user);
+    abCheckGuided();
     showSection('client');
   } else {
     setupAdminDashboard(user);
@@ -2520,6 +2592,454 @@ function nmRunAnalysis(entries){
   else if(posCount>0) insights.push('<span style="color:var(--text-muted);font-style:italic;">Ресурсные состояния присутствуют — может быть полезно отметить, что их поддерживает</span>');
 
   content.innerHTML=insights.map(function(i){return '<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.5rem;line-height:1.5;">'+i+'</p>';}).join('');
+}
+
+// ══════════════════════════════════════════
+// ТОЧКА А → ТОЧКА B MODULE
+// ══════════════════════════════════════════
+var abStep=0;
+var abState={
+  pointA:{image:'',skills:'',achievements:'',health:''},
+  changeA:{image:'',skills:'',achievements:'',health:''},
+  pointB:{image:'',skills:'',achievements:'',health:''},
+  reasons:[],
+  corrections:[],
+  audioBlob:null,
+  audioUrl:null,
+  listenFreq:'3week',
+  shareSpecialist:false,
+  savedDate:null
+};
+var abMediaRec=null;
+var abAudioChunks=[];
+var abRecording=false;
+
+function abStartExercise(){
+  abStep=0;
+  abState.reasons=[];abState.corrections=[];
+  abState.audioBlob=null;abState.audioUrl=null;
+  document.getElementById('ab-main').style.display='none';
+  document.getElementById('ab-result').style.display='none';
+  document.getElementById('ab-exercise').style.display='block';
+  abRenderStep();
+}
+
+function abRenderStep(){
+  var c=document.getElementById('ab-step-content');
+  var pbar=document.getElementById('ab-progress-bar');
+  var label=document.getElementById('ab-step-label');
+  var prev=document.getElementById('ab-prev');
+  var next=document.getElementById('ab-next');
+  pbar.style.width=((abStep+1)*20)+'%';
+  label.textContent='Шаг '+(abStep+1)+' из 5';
+  prev.style.display=abStep>0?'':'none';
+  next.textContent=abStep===4?'Завершить':'Далее →';
+  var h='';
+
+  if(abStep===0){
+    // Step 1: Point A
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Точка А — кто я сейчас?</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">Опишите себя в текущей реальности. Не нужно копать глубоко — важно зафиксировать тот образ, навыки, достижения и состояние, которые уже есть в вашей жизни сейчас.</p>';
+    h+=abField('Образ в социуме','Как вы выглядите и проявляетесь в обществе сейчас? Какой образ уже считывают другие люди? Например: спокойный, яркий, закрытый, уверенный, незаметный, эпатажный, профессиональный, творческий.','Опишите свой текущий образ','pointA','image');
+    h+=abField('Уже имеющиеся навыки','Какие навыки у вас уже есть? Языки, профессия, спорт, творчество, коммуникация, обучение, управление, технические навыки.','Опишите свои текущие навыки','pointA','skills');
+    h+=abField('Измеримые достижения','Что вы уже реально сделали или получили? Образование, работа, доход, семья, проекты, клиенты, спортивные результаты, переезды, покупки, созданные продукты.','Опишите свои достижения','pointA','achievements');
+    h+=abField('Состояние тела, здоровья и психики','Как вы оцениваете своё текущее состояние тела, энергии, здоровья, нервной системы и психики?','Опишите своё текущее состояние','pointA','health');
+    h+='<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.06);">';
+    h+='<h3 style="font-size:1rem;color:var(--text-primary);margin:0 0 1rem;">Что в этой точке А вы хотите изменить?</h3>';
+    h+=abField('Что вы хотите изменить в своём образе?','','Опишите желаемые изменения в образе','changeA','image');
+    h+=abField('Какие навыки хотите усилить или добавить?','','Опишите навыки для развития','changeA','skills');
+    h+=abField('Каких достижений вам не хватает?','','Опишите недостающие достижения','changeA','achievements');
+    h+=abField('Что хотите изменить в состоянии тела, здоровья или психики?','','Опишите желаемые изменения','changeA','health');
+    h+='</div>';
+  }
+  else if(abStep===1){
+    // Step 2: Point B
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Точка B — куда я иду?</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">Опишите желаемое направление. Здесь важно не ограничивать себя текущими обстоятельствами. Опишите тот образ, навыки, достижения и состояние, к которым вы хотите прийти.</p>';
+    h+=abField('Желаемый образ в социуме','Каким человеком вы хотите восприниматься? Какой образ хотите проявлять в мире?','Опишите желаемый образ','pointB','image');
+    h+=abField('Желаемые навыки','Какими навыками вы хотите овладеть? Что хотите уметь делать лучше?','Опишите желаемые навыки','pointB','skills');
+    h+=abField('Желаемые достижения','Какие измеримые результаты вы хотите получить? В деньгах, профессии, семье, теле, проектах, статусе, свободе, образовании или реализации.','Опишите желаемые достижения','pointB','achievements');
+    h+=abField('Желаемое состояние тела, здоровья и психики','Как вы хотите чувствовать себя в теле, энергии, здоровье, нервной системе и психике?','Опишите желаемое состояние','pointB','health');
+  }
+  else if(abStep===2){
+    // Step 3: Reasons
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Что мешает перейти из точки А в точку B?</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.25rem;">Посмотрите на свою точку B и выпишите всё, что, по вашему ощущению, мешает вам уже сейчас быть в этой точке. Пишите всё, что всплывает первым: страхи, привычки, убеждения, отсутствие навыков, внутренние конфликты, состояние тела, окружение, действия или бездействие.</p>';
+    // Quick chips
+    var chips=['Я не довожу начатое до конца','Я боюсь ошибиться','Мне не хватает дисциплины','Я не отвечаю за свои слова действиями','Я откладываю важные решения','Я не умею просить поддержку','Я быстро теряю энергию','Я боюсь быть заметным','Я не верю, что могу заработать больше','Мне сложно удерживать внимание','У меня нет ясного плана','Я не умею стабильно действовать'];
+    h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1.25rem;">';
+    chips.forEach(function(ch){
+      var sel=abState.reasons.indexOf(ch)!==-1;
+      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="abToggleReason(this,\''+ch.replace(/'/g,"\\'")+'\')" style="font-size:12px;">'+ch+'</span>';
+    });
+    h+='</div>';
+    // Custom input
+    h+='<div style="display:flex;gap:0.5rem;margin-bottom:1rem;"><input type="text" id="ab-custom-reason" class="glass-input" placeholder="Причина несоответствия" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
+    h+='<button class="btn btn-primary" style="font-size:12px;padding:0.5rem 0.85rem;white-space:nowrap;" onclick="abAddCustomReason()">Добавить</button></div>';
+    // List of added reasons
+    if(abState.reasons.length){
+      h+='<div style="margin-top:0.5rem;">';
+      abState.reasons.forEach(function(r,i){
+        h+='<div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">';
+        h+='<span style="font-size:13px;color:var(--text-secondary);flex:1;">'+r+'</span>';
+        h+='<button style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:0 4px;" onclick="abRemoveReason('+i+')">&times;</button>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+  }
+  else if(abStep===3){
+    // Step 4: Corrections
+    if(!abState.corrections.length || abState.corrections.length!==abState.reasons.length){
+      abState.corrections=abState.reasons.map(function(){ return ''; });
+    }
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Сформируйте программу корректировки</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 0.75rem;">Теперь для каждой причины создайте обратную формулировку в настоящем времени. Не пишите «я хочу» или «я буду». Формулируйте так, как будто это качество уже становится вашей текущей реальностью.</p>';
+    h+='<div style="font-size:11px;color:var(--text-dim);margin-bottom:1.5rem;line-height:1.6;padding:0.85rem;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);">';
+    h+='<strong style="color:var(--text-muted);">Примеры:</strong><br>';
+    h+='«Я не довожу начатое до конца» → «Я завершаю начатые действия и довожу важные процессы до результата.»<br>';
+    h+='«Мне сложно удерживать внимание» → «Я постепенно укрепляю внимание и возвращаю его к выбранному направлению.»<br>';
+    h+='«Я боюсь ошибиться» → «Я позволяю себе действовать, учиться и корректировать путь через опыт.»</div>';
+    if(!abState.reasons.length){
+      h+='<p style="font-size:13px;color:var(--text-dim);">Вы не добавили причин на предыдущем шаге. Вернитесь назад, чтобы добавить.</p>';
+    } else {
+      abState.reasons.forEach(function(r,i){
+        h+='<div style="margin-bottom:1.25rem;padding:1rem;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">';
+        h+='<p style="font-size:12px;color:rgba(255,140,140,0.8);margin:0 0 0.5rem;">'+r+'</p>';
+        h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0.5rem;"><span style="color:var(--text-dim);font-size:14px;">→</span><span style="font-size:11px;color:var(--text-dim);">Новая формулировка:</span></div>';
+        h+='<textarea class="glass-input ab-correction" data-idx="'+i+'" rows="2" placeholder="Напишите инверсию этой причины в настоящем времени" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;resize:vertical;" oninput="abSetCorrection('+i+',this.value)">'+abState.corrections[i]+'</textarea>';
+        h+='</div>';
+      });
+    }
+  }
+  else if(abStep===4){
+    // Step 5: Audio
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Запишите программу своим голосом</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1rem;">Прочитайте вслух все новые формулировки из предыдущего шага и запишите их в аудио. Ваш голос помогает закрепить программу как личное внутреннее направление.</p>';
+    // Show corrections as reference
+    if(abState.corrections.filter(function(c){return c;}).length){
+      h+='<div style="margin-bottom:1.5rem;padding:1rem;border-radius:12px;background:rgba(0,224,255,0.03);border:1px solid rgba(0,224,255,0.08);">';
+      h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.5rem;letter-spacing:0.12em;text-transform:uppercase;">Ваши формулировки для чтения:</p>';
+      abState.corrections.forEach(function(c,i){
+        if(c) h+='<p style="font-size:13px;color:var(--text-secondary);margin:0.35rem 0;line-height:1.5;">'+(i+1)+'. '+c+'</p>';
+      });
+      h+='</div>';
+    }
+    // Recorder UI
+    h+='<div style="text-align:center;padding:2rem 0;">';
+    h+='<div id="ab-rec-status" style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Нажмите для начала записи</div>';
+    h+='<button id="ab-rec-btn" class="btn btn-solid" onclick="abToggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:0;padding:0;display:inline-flex;align-items:center;justify-content:center;">';
+    h+='<svg id="ab-rec-icon" style="width:32px;height:32px;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+    h+='</button>';
+    h+='<div id="ab-rec-timer" style="font-size:20px;font-family:JetBrains Mono,monospace;color:var(--text-primary);margin-top:0.75rem;display:none;">0:00</div>';
+    h+='</div>';
+    // Playback
+    h+='<div id="ab-playback" style="display:none;margin-top:1rem;text-align:center;">';
+    h+='<audio id="ab-audio-player" controls style="width:100%;max-width:400px;margin:0 auto;"></audio>';
+    h+='<div style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem;">';
+    h+='<button class="btn btn-ghost" style="font-size:12px;" onclick="abReRecord()">Перезаписать</button>';
+    h+='</div></div>';
+  }
+  c.innerHTML=h;
+}
+
+function abField(title,desc,placeholder,group,key){
+  var val=abState[group][key]||'';
+  var h='<div style="margin-bottom:1.25rem;">';
+  h+='<label style="display:block;font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:0.25rem;">'+title+'</label>';
+  if(desc) h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.5rem;line-height:1.5;">'+desc+'</p>';
+  h+='<textarea class="glass-input" rows="3" placeholder="'+placeholder+'" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;resize:vertical;" oninput="abSetField(\''+group+'\',\''+key+'\',this.value)">'+val+'</textarea>';
+  h+='</div>';
+  return h;
+}
+
+function abSetField(group,key,val){ abState[group][key]=val; }
+
+function abToggleReason(el,reason){
+  var idx=abState.reasons.indexOf(reason);
+  if(idx===-1){ abState.reasons.push(reason); }
+  else { abState.reasons.splice(idx,1); }
+  abRenderStep();
+}
+
+function abAddCustomReason(){
+  var inp=document.getElementById('ab-custom-reason');
+  var v=inp.value.trim();
+  if(!v) return;
+  if(abState.reasons.indexOf(v)===-1) abState.reasons.push(v);
+  abRenderStep();
+}
+
+function abRemoveReason(i){
+  abState.reasons.splice(i,1);
+  abRenderStep();
+}
+
+function abSetCorrection(i,val){ abState.corrections[i]=val; }
+
+function abNext(){
+  if(abStep===4){
+    abFinish();
+    return;
+  }
+  abStep++;
+  abRenderStep();
+  // Scroll to top of exercise
+  document.getElementById('ab-exercise').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function abPrev(){
+  if(abStep>0) abStep--;
+  abRenderStep();
+}
+
+// ── Audio Recorder ──
+var abRecTimer=null;
+var abRecSeconds=0;
+
+function abToggleRecord(){
+  if(!abRecording) abStartRec();
+  else abStopRec();
+}
+
+function abStartRec(){
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    abAudioChunks=[];
+    abMediaRec=new MediaRecorder(stream);
+    abMediaRec.ondataavailable=function(e){ if(e.data.size>0) abAudioChunks.push(e.data); };
+    abMediaRec.onstop=function(){
+      stream.getTracks().forEach(function(t){t.stop();});
+      abState.audioBlob=new Blob(abAudioChunks,{type:'audio/webm'});
+      abState.audioUrl=URL.createObjectURL(abState.audioBlob);
+      document.getElementById('ab-audio-player').src=abState.audioUrl;
+      document.getElementById('ab-playback').style.display='block';
+      document.getElementById('ab-rec-status').textContent='Запись завершена';
+    };
+    abMediaRec.start();
+    abRecording=true;
+    abRecSeconds=0;
+    document.getElementById('ab-rec-btn').style.background='rgba(255,80,80,0.6)';
+    document.getElementById('ab-rec-icon').innerHTML='<rect x="6" y="6" width="12" height="12" rx="2"/>';
+    document.getElementById('ab-rec-status').textContent='Запись...';
+    document.getElementById('ab-rec-timer').style.display='block';
+    document.getElementById('ab-playback').style.display='none';
+    abRecTimer=setInterval(function(){
+      abRecSeconds++;
+      var m=Math.floor(abRecSeconds/60);
+      var s=abRecSeconds%60;
+      document.getElementById('ab-rec-timer').textContent=m+':'+(s<10?'0':'')+s;
+    },1000);
+  }).catch(function(err){
+    document.getElementById('ab-rec-status').textContent='Нет доступа к микрофону. Разрешите доступ в настройках браузера.';
+  });
+}
+
+function abStopRec(){
+  if(abMediaRec&&abMediaRec.state==='recording') abMediaRec.stop();
+  abRecording=false;
+  clearInterval(abRecTimer);
+  document.getElementById('ab-rec-btn').style.background='';
+  document.getElementById('ab-rec-icon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>';
+}
+
+function abReRecord(){
+  document.getElementById('ab-playback').style.display='none';
+  document.getElementById('ab-rec-status').textContent='Нажмите для начала записи';
+  document.getElementById('ab-rec-timer').style.display='none';
+  abState.audioBlob=null;abState.audioUrl=null;
+}
+
+// ── Finish & Result ──
+function abFinish(){
+  var now=new Date();
+  abState.savedDate=now.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('ab-exercise').style.display='none';
+  abBuildResult();
+  document.getElementById('ab-result').style.display='block';
+  // Add calendar entries
+  abAddCalendarEntries();
+  if(navigator.vibrate) navigator.vibrate([20,40,20]);
+}
+
+function abBuildResult(){
+  var r=document.getElementById('ab-result');
+  var h='<h2 style="font-family:Unbounded,sans-serif;font-weight:500;font-size:1.4rem;color:var(--text-primary);margin:0 0 0.5rem;">Ваша карта реализации потенциала создана</h2>';
+  h+='<p style="font-size:12px;color:var(--text-muted);margin:0 0 2rem;">'+abState.savedDate+'</p>';
+
+  // Visualization: A → Reasons → Corrections → B
+  h+='<div style="display:flex;align-items:stretch;gap:0;margin-bottom:2rem;overflow-x:auto;padding-bottom:0.5rem;">';
+  // Point A
+  h+='<div style="flex:0 0 180px;padding:1rem;border-radius:14px 0 0 14px;background:rgba(255,140,140,0.06);border:1px solid rgba(255,140,140,0.12);">';
+  h+='<h4 style="font-size:12px;color:rgba(255,140,140,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Точка А</h4>';
+  h+='<p style="font-size:11px;color:var(--text-muted);margin:0;line-height:1.5;">'+abShort(abState.pointA.image)+'</p>';
+  h+='</div>';
+  // Arrow
+  h+='<div style="flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:18px;">→</div>';
+  // Reasons
+  h+='<div style="flex:1;min-width:200px;padding:1rem;background:rgba(255,180,100,0.04);border:1px solid rgba(255,180,100,0.1);">';
+  h+='<h4 style="font-size:12px;color:rgba(255,180,100,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Причины</h4>';
+  abState.reasons.forEach(function(re){
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0.2rem 0;">• '+re+'</p>';
+  });
+  h+='</div>';
+  // Arrow
+  h+='<div style="flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:18px;">→</div>';
+  // Corrections
+  h+='<div style="flex:1;min-width:200px;padding:1rem;background:rgba(0,224,255,0.04);border:1px solid rgba(0,224,255,0.1);">';
+  h+='<h4 style="font-size:12px;color:rgba(0,224,255,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Программа</h4>';
+  abState.corrections.forEach(function(co){
+    if(co) h+='<p style="font-size:11px;color:var(--text-dim);margin:0.2rem 0;">• '+co+'</p>';
+  });
+  h+='</div>';
+  // Arrow
+  h+='<div style="flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:18px;">→</div>';
+  // Point B
+  h+='<div style="flex:0 0 180px;padding:1rem;border-radius:0 14px 14px 0;background:rgba(120,255,160,0.06);border:1px solid rgba(120,255,160,0.12);">';
+  h+='<h4 style="font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Точка B</h4>';
+  h+='<p style="font-size:11px;color:var(--text-muted);margin:0;line-height:1.5;">'+abShort(abState.pointB.image)+'</p>';
+  h+='</div>';
+  h+='</div>';
+
+  // Detail blocks
+  h+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.5rem;">';
+  // A
+  h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(255,140,140,0.9);">Точка А</h3>';
+  h+=abSummaryBlock(abState.pointA);
+  h+='</div>';
+  // B
+  h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(120,255,160,0.9);">Точка B</h3>';
+  h+=abSummaryBlock(abState.pointB);
+  h+='</div>';
+  // Reasons
+  h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(255,180,100,0.9);">Причины несоответствия</h3>';
+  abState.reasons.forEach(function(re){ h+='<p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0;line-height:1.5;">• '+re+'</p>'; });
+  h+='</div>';
+  // Corrections
+  h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(0,224,255,0.9);">Программа корректировки</h3>';
+  abState.corrections.forEach(function(co,i){ if(co) h+='<p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0;line-height:1.5;">'+(i+1)+'. '+co+'</p>'; });
+  h+='</div>';
+  h+='</div>';
+
+  // Audio player
+  if(abState.audioUrl){
+    h+='<div style="margin-bottom:1.5rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);text-align:center;">';
+    h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;">Аудиоактивация</h3>';
+    h+='<audio id="ab-result-player" controls src="'+abState.audioUrl+'" style="width:100%;max-width:440px;"></audio>';
+    h+='</div>';
+  }
+
+  // Buttons
+  h+='<div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">';
+  if(abState.audioUrl) h+='<button class="btn btn-solid" style="font-size:13px;" onclick="document.getElementById(\'ab-result-player\').play()">Прослушать программу</button>';
+  h+='<button class="btn btn-ghost" style="font-size:13px;" onclick="abDownloadText()">Скачать текст программы</button>';
+  h+='<button class="btn btn-ghost" style="font-size:13px;" onclick="abBackToMain()">Вернуться в кабинет</button>';
+  h+='<button class="btn btn-ghost" style="font-size:13px;" onclick="abStartExercise()">Обновить карту</button>';
+  h+='</div>';
+  r.innerHTML=h;
+}
+
+function abShort(t){ return t?(t.length>80?t.substring(0,77)+'…':t):'—'; }
+
+function abSummaryBlock(obj){
+  var labels={image:'Образ',skills:'Навыки',achievements:'Достижения',health:'Состояние'};
+  var h='';
+  Object.keys(labels).forEach(function(k){
+    var v=obj[k]||'—';
+    h+='<p style="font-size:12px;margin:0.3rem 0;line-height:1.5;"><strong style="color:var(--text-secondary);">'+labels[k]+':</strong> <span style="color:var(--text-muted);">'+v+'</span></p>';
+  });
+  return h;
+}
+
+function abBackToMain(){
+  document.getElementById('ab-result').style.display='none';
+  document.getElementById('ab-main').style.display='block';
+  // Show saved result card
+  if(abState.savedDate){
+    document.getElementById('ab-saved-result').style.display='block';
+    document.getElementById('ab-saved-date').textContent=abState.savedDate;
+    document.getElementById('ab-play-saved').style.display=abState.audioUrl?'':'none';
+  }
+}
+
+function abShowResult(){
+  document.getElementById('ab-main').style.display='none';
+  abBuildResult();
+  document.getElementById('ab-result').style.display='block';
+}
+
+function abPlaySaved(){
+  if(abState.audioUrl){
+    var a=new Audio(abState.audioUrl);
+    a.play();
+  }
+}
+
+function abDownloadText(){
+  var text='ПРОГРАММА РЕАЛИЗАЦИИ ПОТЕНЦИАЛА\n';
+  text+='Дата: '+abState.savedDate+'\n\n';
+  text+='═══ ТОЧКА А ═══\n';
+  text+='Образ: '+(abState.pointA.image||'—')+'\n';
+  text+='Навыки: '+(abState.pointA.skills||'—')+'\n';
+  text+='Достижения: '+(abState.pointA.achievements||'—')+'\n';
+  text+='Состояние: '+(abState.pointA.health||'—')+'\n\n';
+  text+='═══ ТОЧКА B ═══\n';
+  text+='Образ: '+(abState.pointB.image||'—')+'\n';
+  text+='Навыки: '+(abState.pointB.skills||'—')+'\n';
+  text+='Достижения: '+(abState.pointB.achievements||'—')+'\n';
+  text+='Состояние: '+(abState.pointB.health||'—')+'\n\n';
+  text+='═══ ПРИЧИНЫ НЕСООТВЕТСТВИЯ ═══\n';
+  abState.reasons.forEach(function(r,i){ text+=(i+1)+'. '+r+'\n'; });
+  text+='\n═══ ПРОГРАММА КОРРЕКТИРОВКИ ═══\n';
+  abState.corrections.forEach(function(c,i){ if(c) text+=(i+1)+'. '+c+'\n'; });
+  var blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='Программа реализации потенциала — '+abState.savedDate+'.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Calendar integration ──
+function abSetFrequency(val){
+  abState.listenFreq=val;
+  abAddCalendarEntries();
+}
+
+function abAddCalendarEntries(){
+  if(!abState.audioUrl || abState.listenFreq==='manual') return;
+  // Add diary entries for listening reminders
+  var today=new Date();
+  var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  // Store in diaryData to show in calendar
+  if(!window.diaryData) window.diaryData={};
+  // Mark today
+  if(!window.abCalendarMarks) window.abCalendarMarks={};
+  // Generate upcoming dates based on frequency
+  var freq=abState.listenFreq;
+  var days=freq==='daily'?1:freq==='3week'?2:7;
+  for(var i=0;i<14;i++){
+    var d=new Date(today);
+    d.setDate(d.getDate()+i*days);
+    var dk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    window.abCalendarMarks[dk]={task:'Прослушать программу реализации потенциала',done:false};
+  }
+}
+
+function abToggleSpecialist(checked){
+  abState.shareSpecialist=checked;
+}
+
+// Show specialist toggle for guided users
+function abCheckGuided(){
+  var u=currentUser;
+  if(u&&u.program==='guided'){
+    document.getElementById('ab-specialist-toggle').style.display='block';
+  }
 }
 
 // ── Service Worker registration ──
