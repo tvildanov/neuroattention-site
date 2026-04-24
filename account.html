@@ -703,6 +703,13 @@
             <button class="nm-filter-btn" onclick="nmFilter('repeat')" style="margin-left:auto;">Только повторяющиеся</button>
           </div>
         </div>
+        <!-- Analyze button -->
+        <div id="nm-analyze-btn-wrap" style="display:none;margin-top:1rem;text-align:center;">
+          <button class="btn btn-solid" onclick="nmTriggerAnalysis()" style="padding:0.85rem 2rem;font-size:14px;border-radius:14px;background:linear-gradient(135deg,rgba(0,224,255,0.15),rgba(120,80,255,0.15));border:1px solid rgba(0,224,255,0.25);gap:0.5rem;">
+            <svg style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            Проанализировать карту личности
+          </button>
+        </div>
         <!-- Analysis block -->
         <div id="nm-analysis" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
           <h3 style="font-size:0.9rem;margin:0 0 0.75rem;">Что показывает ваша карта</h3>
@@ -742,18 +749,27 @@
       </div>
     </div>
 
-    <!-- NeuroMap SURVEY MODAL -->
+    <!-- NeuroMap SURVEY MODAL (split: form left, live graph right) -->
     <div class="modal-overlay" id="nmSurveyModal">
-      <div class="modal-box" style="max-width:520px;">
-        <button class="modal-close" onclick="closeNmSurvey()">&times;</button>
-        <!-- Progress dots -->
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:1.25rem;" id="nm-step-dots"></div>
-        <!-- Step container -->
-        <div id="nm-step-content"></div>
-        <!-- Nav buttons -->
-        <div style="display:flex;gap:0.75rem;margin-top:1.5rem;" id="nm-nav-btns">
-          <button class="btn btn-ghost" id="nm-prev" onclick="nmPrev()" style="display:none;">← Назад</button>
-          <button class="btn btn-solid" id="nm-next" onclick="nmNext()" style="flex:1;justify-content:center;">Далее →</button>
+      <div style="display:flex;gap:1.5rem;width:95%;max-width:1100px;max-height:90vh;align-items:stretch;">
+        <!-- Left: survey form -->
+        <div class="modal-box" style="max-width:480px;flex:0 0 480px;overflow-y:auto;margin:0;">
+          <button class="modal-close" onclick="closeNmSurvey()">&times;</button>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:1.25rem;" id="nm-step-dots"></div>
+          <!-- Chain breadcrumb -->
+          <div id="nm-chain-breadcrumb" style="margin-bottom:1rem;display:none;"></div>
+          <div id="nm-step-content"></div>
+          <div style="display:flex;gap:0.75rem;margin-top:1.5rem;" id="nm-nav-btns">
+            <button class="btn btn-ghost" id="nm-prev" onclick="nmPrev()" style="display:none;">← Назад</button>
+            <button class="btn btn-solid" id="nm-next" onclick="nmNext()" style="flex:1;justify-content:center;">Далее →</button>
+          </div>
+        </div>
+        <!-- Right: live graph preview -->
+        <div style="flex:1;min-width:300px;border-radius:20px;overflow:hidden;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);position:relative;">
+          <canvas id="nm-live-canvas" style="width:100%;height:100%;"></canvas>
+          <div id="nm-live-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+            <p style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;margin:0;">Ваша карта появится<br>по мере ответов</p>
+          </div>
         </div>
       </div>
     </div>
@@ -1731,6 +1747,11 @@ var NM_THOUGHTS = [
 
 function isNegEmotion(e){ return NM_EMOTIONS_NEG.indexOf(e)!==-1; }
 
+// Emoji maps
+var EMOJI_EMOTIONS = {'тревога':'😰','страх':'😨','раздражение':'😤','злость':'🔥','вина':'😔','стыд':'🫣','грусть':'😢','усталость':'🥱','апатия':'😶','напряжение':'😬','интерес':'🤔','спокойствие':'😌','радость':'😊','благодарность':'🙏','вдохновение':'✨','уверенность':'💪','любовь':'❤️','ясность':'🔮'};
+var EMOJI_AREAS = {'тело и здоровье':'🏃','работа / деньги':'💼','отношения':'💑','семья':'👨‍👩‍👧','будущее':'🔭','прошлое':'⏳','самооценка':'🪞','безопасность':'🛡️','творчество':'🎨','обучение':'📚','социальная среда':'👥','неопределённость':'🌫️','другое':'📝'};
+var EMOJI_THOUGHTS = {'Я не справляюсь':'😞','Мне не хватает сил':'🪫','Я не понимаю, что делать дальше':'🤷','Я теряю контроль':'🌀','Меня не слышат':'🔇','Я недостаточно хорош':'👤','Я слишком много отдаю':'💸','Я не успеваю':'⏰','Мне нужно всё контролировать':'🎛️','Я хочу остановиться':'🛑','У меня получится':'🌟','Я вижу следующий шаг':'👁️','Мне становится яснее':'💡','Я могу пройти это постепенно':'🚶','Я чувствую больше опоры':'🏔️'};
+
 // Survey modal
 function openNmSurvey(){
   nmCurrentStep=0;
@@ -1757,8 +1778,29 @@ function renderNmStepDots(){
   }
 }
 
+function nmEmoji(map,key){ return map[key]?map[key]+' ':''; }
+
+function renderNmBreadcrumb(){
+  var bc=document.getElementById('nm-chain-breadcrumb');
+  if(nmCurrentStep===0){ bc.style.display='none'; return; }
+  bc.style.display='block';
+  var idx=nmSurveyState._chainIdx||0;
+  var emo=nmSurveyState.emotions[idx];
+  var chain=nmSurveyState.emotionChains[idx]||{};
+  var parts=[];
+  if(emo) parts.push('<span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+emo+'</span>');
+  if(chain.areas&&chain.areas.length) parts.push('<span style="color:rgba(140,180,255,1);">'+chain.areas.map(function(a){return (EMOJI_AREAS[a]||'')+' '+a;}).join(', ')+'</span>');
+  if(chain.causes&&chain.causes.length&&nmCurrentStep>=3) parts.push('<span style="color:rgba(255,180,100,1);">'+chain.causes.join(', ')+'</span>');
+  if(chain.thoughts&&chain.thoughts.length&&nmCurrentStep>=4) parts.push('<span style="color:rgba(200,160,255,1);">'+chain.thoughts.map(function(t){return (EMOJI_THOUGHTS[t]||'')+' '+t;}).join(', ')+'</span>');
+  // Chain index indicator if multiple emotions
+  var chainLabel='';
+  if(nmSurveyState.emotions.length>1) chainLabel='<span style="font-size:10px;color:var(--text-dim);margin-right:6px;">цепочка '+(idx+1)+'/'+nmSurveyState.emotions.length+'</span>';
+  bc.innerHTML=chainLabel+'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:13px;font-weight:500;line-height:1.6;">'+parts.join('<span style="color:rgba(255,255,255,0.2);margin:0 2px;">→</span>')+'</div>';
+}
+
 function renderNmStep(){
   renderNmStepDots();
+  renderNmBreadcrumb();
   var content=document.getElementById('nm-step-content');
   var prev=document.getElementById('nm-prev');
   var next=document.getElementById('nm-next');
@@ -1766,7 +1808,6 @@ function renderNmStep(){
   next.textContent=nmCurrentStep===5?'Сохранить':'Далее →';
 
   if(nmCurrentStep===0){
-    // Step 1: Emotions
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 1 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что вы сегодня чаще всего чувствовали?</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Выберите 1–2 эмоции. Вы сможете дозаполнить карту позже.</p>';
@@ -1774,16 +1815,15 @@ function renderNmStep(){
     NM_ALL_EMOTIONS.forEach(function(em){
       var neg=isNegEmotion(em);
       var sel=nmSurveyState.emotions.indexOf(em)!==-1;
-      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+em+'</span>';
+      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+nmEmoji(EMOJI_EMOTIONS,em)+em+'</span>';
     });
     h+='</div>';
     content.innerHTML=h;
   }
   else if(nmCurrentStep===1){
-    // Step 2: Areas for each emotion (up to 2)
     var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     if(!emo){ nmNext(); return; }
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 2 из 6 · <span style="color:var(--accent-cyan);">'+emo+'</span></p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 2 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">С чем это было связано?</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 2</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
@@ -1791,29 +1831,26 @@ function renderNmStep(){
     var selAreas=chain.areas||[];
     NM_AREAS.forEach(function(a){
       var sel=selAreas.indexOf(a)!==-1;
-      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleArea(this,\''+a+'\')">'+a+'</span>';
+      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleArea(this,\''+a+'\')">'+nmEmoji(EMOJI_AREAS,a)+a+'</span>';
     });
     h+='</div>';
-    // Custom input for "другое"
     if(selAreas.indexOf('другое')!==-1){
       h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-area" class="glass-input" placeholder="Опишите область..." style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customArea||'')+'" oninput="nmSetCustomArea(this.value)" /></div>';
     }
     content.innerHTML=h;
   }
   else if(nmCurrentStep===2){
-    // Step 3: Causes (up to 2)
     var idx=nmSurveyState._chainIdx||0;
     var chain=nmSurveyState.emotionChains[idx]||{};
     var areas=chain.areas||[];
     var emo=nmSurveyState.emotions[idx];
     var emoIsNeg=isNegEmotion(emo);
-    // Merge causes from all selected areas
     var causesSet={};
     areas.forEach(function(a){ if(a==='другое') return; getCausesForChain(a,emoIsNeg).forEach(function(c){causesSet[c]=true;}); });
     if(!Object.keys(causesSet).length){ getCausesForChain('_default',emoIsNeg).forEach(function(c){causesSet[c]=true;}); }
     var causes=Object.keys(causesSet);
     var selCauses=chain.causes||[];
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 3 из 6 · <span style="color:var(--accent-cyan);">'+emo+' → '+areas.join(', ')+'</span></p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 3 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что именно вызвало это состояние?</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 2</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
@@ -1822,27 +1859,25 @@ function renderNmStep(){
       h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</span>';
     });
     h+='</div>';
-    // Custom input for "другое"
     if(selCauses.indexOf('другое')!==-1){
       h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-cause" class="glass-input" placeholder="Опишите причину..." style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customCause||'')+'" oninput="nmSetCustomCause(this.value)" /></div>';
     }
     content.innerHTML=h;
   }
   else if(nmCurrentStep===3){
-    // Step 4: Thoughts (up to 2)
     var idx=nmSurveyState._chainIdx||0;
     var chain=nmSurveyState.emotionChains[idx]||{};
     var emo=nmSurveyState.emotions[idx];
     var allThoughts=NM_THOUGHTS.concat(nmCustomThoughts);
     var selThoughts=chain.thoughts||[];
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 4 из 6 · <span style="color:var(--accent-cyan);">'+emo+'</span></p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 4 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Какая мысль чаще всего сопровождала это состояние?</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 2</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;">';
     allThoughts.forEach(function(t){
       var neg=NM_THOUGHTS.indexOf(t)<10;
       var sel=selThoughts.indexOf(t)!==-1;
-      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+t+'</span>';
+      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+nmEmoji(EMOJI_THOUGHTS,t)+t+'</span>';
     });
     h+='</div>';
     h+='<div style="display:flex;gap:0.5rem;"><input type="text" id="nm-custom-thought" class="glass-input" placeholder="Добавить свою мысль..." style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
@@ -1850,7 +1885,6 @@ function renderNmStep(){
     content.innerHTML=h;
   }
   else if(nmCurrentStep===4){
-    // Step 5: Intensity
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 5 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Насколько сильным было это состояние?</h3>';
     h+='<div class="nm-slider-wrap"><span style="font-size:11px;color:var(--text-dim);">1</span><input type="range" min="1" max="10" value="'+(nmSurveyState.intensity||5)+'" oninput="nmSetIntensity(this.value)" /><span style="font-size:11px;color:var(--text-dim);">10</span></div>';
@@ -1858,22 +1892,148 @@ function renderNmStep(){
     content.innerHTML=h;
   }
   else if(nmCurrentStep===5){
-    // Step 6: Context
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 6 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Хотите добавить контекст?</h3>';
     h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="Свободное текстовое поле..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
     content.innerHTML=h;
   }
+  // Update live graph preview
+  buildLiveGraph();
+}
+
+// ── Live Graph Preview in Survey Modal ──
+var nmLiveAnimFrame=null;
+function buildLiveGraph(){
+  var canvas=document.getElementById('nm-live-canvas');
+  var emptyMsg=document.getElementById('nm-live-empty');
+  if(!canvas) return;
+  var rect=canvas.parentElement.getBoundingClientRect();
+  canvas.width=rect.width*2; canvas.height=rect.height*2;
+  var ctx=canvas.getContext('2d');
+
+  // Build nodes/links from current survey state
+  var nodeMap={},linkMap={};
+  function addN(id,type,label){ if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,x:0,y:0,vx:0,vy:0}; }
+  function addL(a,b){ var k=a+'||'+b; if(!linkMap[k]) linkMap[k]={source:a,target:b}; }
+
+  nmSurveyState.emotions.forEach(function(emo,i){
+    addN('e:'+emo,'emotion',emo);
+    var chain=nmSurveyState.emotionChains[i]||{};
+    if(chain.areas) chain.areas.forEach(function(a){
+      var label=a==='другое'&&chain.customArea?chain.customArea:a;
+      addN('a:'+label,'area',label);
+      addL('e:'+emo,'a:'+label);
+      if(chain.causes) chain.causes.forEach(function(c){
+        var cl=c==='другое'&&chain.customCause?chain.customCause:c;
+        addN('c:'+cl,'cause',cl);
+        addL('a:'+label,'c:'+cl);
+        if(chain.thoughts) chain.thoughts.forEach(function(t){
+          addN('t:'+t,'thought',t);
+          addL('c:'+cl,'t:'+t);
+        });
+      });
+    });
+  });
+
+  var nodes=[];Object.keys(nodeMap).forEach(function(k){nodes.push(nodeMap[k]);});
+  var links=[];Object.keys(linkMap).forEach(function(k){links.push(linkMap[k]);});
+
+  if(!nodes.length){
+    emptyMsg.style.display='flex';
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(nmLiveAnimFrame){cancelAnimationFrame(nmLiveAnimFrame);nmLiveAnimFrame=null;}
+    return;
+  }
+  emptyMsg.style.display='none';
+
+  var W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+  nodes.forEach(function(n,i){
+    var a=(i/nodes.length)*Math.PI*2;
+    var r=Math.min(cx,cy)*0.45;
+    n.x=cx+Math.cos(a)*r*(0.6+Math.random()*0.4);
+    n.y=cy+Math.sin(a)*r*(0.6+Math.random()*0.4);
+    n.vx=0;n.vy=0;
+  });
+
+  if(nmLiveAnimFrame) cancelAnimationFrame(nmLiveAnimFrame);
+  var iter=0;
+  function tick(){
+    iter++;
+    var alpha=Math.max(0.001,0.4*Math.pow(0.96,iter));
+    // Repulsion
+    for(var i=0;i<nodes.length;i++){
+      for(var j=i+1;j<nodes.length;j++){
+        var dx=nodes[j].x-nodes[i].x,dy=nodes[j].y-nodes[i].y;
+        var d2=dx*dx+dy*dy+1;
+        var f=alpha*600/d2;
+        nodes[i].vx-=dx*f;nodes[i].vy-=dy*f;
+        nodes[j].vx+=dx*f;nodes[j].vy+=dy*f;
+      }
+    }
+    // Attraction
+    var ni={};nodes.forEach(function(n,i){ni[n.id]=i;});
+    links.forEach(function(l){
+      var si=ni[l.source],ti=ni[l.target];
+      if(si===undefined||ti===undefined)return;
+      var s=nodes[si],t=nodes[ti];
+      var dx=t.x-s.x,dy=t.y-s.y;
+      var d=Math.sqrt(dx*dx+dy*dy)+0.1;
+      var f=alpha*(d-90)*0.015;
+      s.vx+=dx*f;s.vy+=dy*f;
+      t.vx-=dx*f;t.vy-=dy*f;
+    });
+    // Center + damping
+    nodes.forEach(function(n){
+      n.vx+=(cx-n.x)*alpha*0.012;
+      n.vy+=(cy-n.y)*alpha*0.012;
+      n.vx*=0.82;n.vy*=0.82;
+      n.x+=n.vx;n.y+=n.vy;
+      n.x=Math.max(50,Math.min(W-50,n.x));
+      n.y=Math.max(50,Math.min(H-50,n.y));
+    });
+    // Draw
+    ctx.clearRect(0,0,W,H);
+    links.forEach(function(l){
+      var si=ni[l.source],ti=ni[l.target];
+      if(si===undefined||ti===undefined)return;
+      var s=nodes[si],t=nodes[ti];
+      ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=2;ctx.stroke();
+    });
+    nodes.forEach(function(n){
+      var r=14;
+      var col;
+      if(n.type==='emotion') col=isNegEmotion(n.label)?'rgba(255,120,120,':'rgba(120,255,160,';
+      else if(n.type==='area') col='rgba(140,180,255,';
+      else if(n.type==='cause') col='rgba(255,180,100,';
+      else col='rgba(200,160,255,';
+      // Glow
+      ctx.beginPath();ctx.arc(n.x,n.y,r+8,0,Math.PI*2);
+      ctx.fillStyle=col+'0.15)';ctx.fill();
+      // Node
+      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.fillStyle=col+'0.7)';ctx.fill();
+      // Label
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      ctx.font='500 18px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      var label=n.label.length>14?n.label.substring(0,12)+'…':n.label;
+      ctx.fillText(label,n.x,n.y+r+14);
+    });
+    if(iter<200) nmLiveAnimFrame=requestAnimationFrame(tick);
+  }
+  tick();
 }
 
 function nmToggleEmotion(el,emo){
   var idx=nmSurveyState.emotions.indexOf(emo);
   if(idx===-1){
-    if(nmSurveyState.emotions.length>=2) return; // Max 2
+    if(nmSurveyState.emotions.length>=2) return;
     nmSurveyState.emotions.push(emo); el.classList.add('selected');
   } else {
     nmSurveyState.emotions.splice(idx,1); el.classList.remove('selected');
   }
+  buildLiveGraph();
 }
 
 function nmToggleArea(el,area){
@@ -1930,6 +2090,7 @@ function nmToggleThought(el,thought){
     chain.thoughts.splice(ti,1);
   }
   el.classList.toggle('selected',chain.thoughts.indexOf(thought)!==-1);
+  buildLiveGraph();
 }
 
 function nmAddCustomThought(){
@@ -2110,6 +2271,7 @@ function buildNmGraph(){
     empty.style.display='flex';
     filters.style.display='none';
     analysis.style.display='none';
+    var abw=document.getElementById('nm-analyze-btn-wrap');if(abw)abw.style.display='none';
     if(nmAnimFrame){cancelAnimationFrame(nmAnimFrame);nmAnimFrame=null;}
     var c=document.getElementById('nm-canvas');
     var ctx=c.getContext('2d');
@@ -2118,6 +2280,9 @@ function buildNmGraph(){
   }
   empty.style.display='none';
   filters.style.display='block';
+  var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
+  if(analyzeBtn) analyzeBtn.style.display='block';
+  analysis.style.display='none'; // hide until button pressed
 
   // Build node/link data
   var nodeMap={};
@@ -2178,7 +2343,17 @@ function buildNmGraph(){
 
   // Run simulation
   nmSimulate(canvas);
+}
+
+function nmTriggerAnalysis(){
+  var entries=getEntriesForView();
+  if(!entries.length) return;
   nmRunAnalysis(entries);
+  var panel=document.getElementById('nm-analysis');
+  if(panel) panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // Hide button after click
+  var btn=document.getElementById('nm-analyze-btn-wrap');
+  if(btn) btn.style.display='none';
 }
 
 function nmSimulate(canvas){
@@ -2346,6 +2521,104 @@ function nmRunAnalysis(entries){
 
   content.innerHTML=insights.map(function(i){return '<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.5rem;line-height:1.5;">'+i+'</p>';}).join('');
 }
+
+// ── Cursor Light Clustering Effect ──
+(function(){
+  var cvs=document.createElement('canvas');
+  cvs.id='cursor-light-canvas';
+  cvs.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;opacity:0.6;';
+  document.body.appendChild(cvs);
+  var ctx=cvs.getContext('2d');
+  var mx=-999,my=-999,tx=-999,ty=-999;
+  var particles=[];
+  var MAX_P=40;
+  var stopped=0; // how long cursor has been still
+
+  function resize(){ cvs.width=window.innerWidth*2; cvs.height=window.innerHeight*2; }
+  resize();
+  window.addEventListener('resize',resize);
+
+  document.addEventListener('mousemove',function(e){
+    mx=e.clientX*2; my=e.clientY*2;
+    stopped=0;
+  });
+  document.addEventListener('mouseleave',function(){ mx=-999;my=-999; });
+
+  function spawn(){
+    if(mx<0) return;
+    // Spawn more when cursor is still
+    var count=stopped>30?3:1;
+    for(var i=0;i<count;i++){
+      if(particles.length>=MAX_P) break;
+      var angle=Math.random()*Math.PI*2;
+      var speed=0.3+Math.random()*0.8;
+      var spread=stopped>30?60+Math.random()*40:20+Math.random()*20;
+      particles.push({
+        x:tx+Math.cos(angle)*spread*(0.3+Math.random()*0.7),
+        y:ty+Math.sin(angle)*spread*(0.3+Math.random()*0.7),
+        vx:Math.cos(angle)*speed,
+        vy:Math.sin(angle)*speed,
+        life:1,
+        decay:0.008+Math.random()*0.012,
+        r:4+Math.random()*8,
+        hue:190+Math.random()*40 // cyan-blue range
+      });
+    }
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+
+    // Smooth follow
+    tx+=(mx-tx)*0.12;
+    ty+=(my-ty)*0.12;
+    stopped++;
+
+    // Spawn
+    if(stopped<200) spawn();
+
+    // Update & draw
+    for(var i=particles.length-1;i>=0;i--){
+      var p=particles[i];
+      // When cursor is still, particles orbit/cluster
+      if(stopped>20){
+        var dx=tx-p.x, dy=ty-p.y;
+        var dist=Math.sqrt(dx*dx+dy*dy)+1;
+        // Gentle attraction
+        p.vx+=dx/dist*0.15;
+        p.vy+=dy/dist*0.15;
+        // Slight tangential drift for orbiting look
+        p.vx+=(-dy/dist)*0.08;
+        p.vy+=(dx/dist)*0.08;
+      }
+      p.vx*=0.97; p.vy*=0.97;
+      p.x+=p.vx; p.y+=p.vy;
+      p.life-=p.decay;
+      if(p.life<=0){ particles.splice(i,1); continue; }
+
+      var alpha=p.life*0.4;
+      var grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2);
+      grad.addColorStop(0,'hsla('+p.hue+',80%,70%,'+alpha+')');
+      grad.addColorStop(1,'hsla('+p.hue+',80%,70%,0)');
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*2,0,Math.PI*2);
+      ctx.fillStyle=grad;ctx.fill();
+    }
+
+    // Core glow at cursor
+    if(mx>0){
+      var coreAlpha=Math.min(stopped/60,1)*0.15+0.05;
+      var coreR=30+Math.min(stopped,100)*0.5;
+      var cg=ctx.createRadialGradient(tx,ty,0,tx,ty,coreR);
+      cg.addColorStop(0,'hsla(200,80%,75%,'+coreAlpha+')');
+      cg.addColorStop(0.5,'hsla(210,70%,60%,'+(coreAlpha*0.4)+')');
+      cg.addColorStop(1,'hsla(220,60%,50%,0)');
+      ctx.beginPath();ctx.arc(tx,ty,coreR,0,Math.PI*2);
+      ctx.fillStyle=cg;ctx.fill();
+    }
+  }
+  animate();
+})();
 
 // ── Service Worker registration ──
 if('serviceWorker' in navigator){
