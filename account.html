@@ -130,6 +130,49 @@
 .step-dot.active { background:var(--accent-cyan);box-shadow:0 0 8px rgba(0,224,255,0.3); }
 .step-dot.done { background:rgba(255,255,255,0.3); }
 .step-line { flex:1;height:1px;background:rgba(255,255,255,0.06); }
+
+/* ── Diary ── */
+.diary-col { display:flex;flex-direction:column;gap:0.5rem;min-height:60px; }
+.diary-event-card { padding:0.65rem 0.75rem;border-radius:10px;font-size:12px;line-height:1.4;color:var(--text-primary);animation:diarySlideIn 0.35s ease; }
+.diary-event-card .ev-text { margin:0 0 0.15rem;font-weight:500; }
+.diary-event-card .ev-comment { margin:0;font-size:11px;color:var(--text-muted); }
+.diary-event-card .ev-rating { font-size:10px;margin:0.25rem 0 0;font-family:'JetBrains Mono',monospace; }
+#diary-col-minus .diary-event-card { background:rgba(255,100,100,0.06);border:1px solid rgba(255,100,100,0.12); }
+#diary-col-mixed .diary-event-card { background:rgba(255,200,100,0.06);border:1px solid rgba(255,200,100,0.12); }
+#diary-col-plus .diary-event-card { background:rgba(100,255,150,0.06);border:1px solid rgba(100,255,150,0.12); }
+
+@keyframes diarySlideIn {
+  from { opacity:0;transform:translateY(8px); }
+  to { opacity:1;transform:translateY(0); }
+}
+
+/* Rating buttons */
+.rating-btn { width:48px;height:48px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-size:22px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:all 0.25s;color:var(--text-muted); }
+.rating-btn:hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.18); }
+.rating-btn.minus { color:rgba(255,120,120,0.8); }
+.rating-btn.minus:hover,.rating-btn.minus.chosen { background:rgba(255,100,100,0.1);border-color:rgba(255,100,100,0.3);color:rgba(255,120,120,1); }
+.rating-btn.plus { color:rgba(120,255,160,0.8); }
+.rating-btn.plus:hover,.rating-btn.plus.chosen { background:rgba(100,255,150,0.1);border-color:rgba(100,255,150,0.3);color:rgba(120,255,160,1); }
+.rating-btn.extra { animation:ratingPop 0.3s ease; }
+@keyframes ratingPop {
+  0% { opacity:0;transform:scale(0.3); }
+  60% { transform:scale(1.15); }
+  100% { opacity:1;transform:scale(1); }
+}
+
+/* Diary calendar day colors */
+.cal-day.diary-green { background:rgba(100,255,150,0.1);color:rgba(120,255,160,1); }
+.cal-day.diary-red { background:rgba(255,100,100,0.1);color:rgba(255,120,120,1); }
+.cal-day.diary-yellow { background:rgba(255,200,100,0.1);color:rgba(255,200,100,1); }
+.cal-day.diary-active { box-shadow:0 0 0 2px var(--accent-cyan);background:rgba(0,224,255,0.06); }
+
+/* Modal overlay */
+.modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px); }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--bg-card,#0e1117);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:2rem;position:relative;width:90%;animation:modalIn 0.3s ease; }
+.modal-close { position:absolute;top:1rem;right:1rem;width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.modal-close:hover { background:rgba(255,255,255,0.08);color:var(--text-primary); }
+@keyframes modalIn { from { opacity:0;transform:scale(0.95) translateY(10px); } to { opacity:1;transform:scale(1) translateY(0); } }
 </style>
 </head>
 <body>
@@ -423,50 +466,146 @@
     </div>
   </div>
 
-  <!-- TAB: Calendar -->
+  <!-- TAB: Calendar + Diary -->
   <div class="tab-panel" id="tab-calendar">
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated span-8">
-        <div class="cal-header">
-          <h3 id="cal-month-title">Апрель 2026</h3>
-          <div class="cal-nav">
-            <button onclick="changeMonth(-1)">‹</button>
-            <button onclick="changeMonth(1)">›</button>
+    <!-- Mode toggle -->
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <button class="dash-tab active" id="mode-cal" onclick="setCalMode('cal')" style="border:none;border-bottom:2px solid var(--accent-cyan);">Календарь практик</button>
+      <button class="dash-tab" id="mode-diary" onclick="setCalMode('diary')" style="border:none;border-bottom:2px solid transparent;">Дневник нейроресурса</button>
+    </div>
+
+    <!-- === CALENDAR MODE === -->
+    <div id="cal-mode-cal">
+      <div class="dash-grid">
+        <div class="dash-card glass-card-elevated span-8">
+          <div class="cal-header">
+            <h3 id="cal-month-title">Апрель 2026</h3>
+            <div class="cal-nav">
+              <button onclick="changeMonth(-1)">‹</button>
+              <button onclick="changeMonth(1)">›</button>
+            </div>
           </div>
+          <div class="cal-grid" id="cal-grid"></div>
         </div>
-        <div class="cal-grid" id="cal-grid"></div>
+        <div class="dash-card glass-card-elevated span-4">
+          <h3>События дня</h3>
+          <div id="day-events">
+            <div class="event-item"><span class="event-time">10:00</span><div class="event-info"><p class="event-name">Утренняя практика</p><p class="event-type">Фокус · 15 мин</p></div><button class="event-edit" onclick="editEvent(this)">✎</button></div>
+            <div class="event-item"><span class="event-time">14:00</span><div class="event-info"><p class="event-name">Встреча со специалистом</p><p class="event-type">Онлайн · 45 мин</p></div><button class="event-edit" onclick="editEvent(this)">✎</button></div>
+            <div class="event-item"><span class="event-time">20:00</span><div class="event-info"><p class="event-name">Вечерняя практика</p><p class="event-type">Саморегуляция · 20 мин</p></div><button class="event-edit" onclick="editEvent(this)">✎</button></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;font-size:12px;" onclick="addEvent()">+ Добавить событие</button>
+        </div>
       </div>
-      <div class="dash-card glass-card-elevated span-4">
-        <h3>События дня</h3>
-        <div id="day-events">
-          <div class="event-item">
-            <span class="event-time">10:00</span>
-            <div class="event-info">
-              <p class="event-name">Утренняя практика</p>
-              <p class="event-type">Фокус · 15 мин</p>
+    </div>
+
+    <!-- === DIARY MODE === -->
+    <div id="cal-mode-diary" style="display:none;">
+      <div class="dash-grid">
+        <!-- Diary calendar -->
+        <div class="dash-card glass-card-elevated span-8">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <div class="cal-header" style="margin-bottom:0;">
+              <h3 id="diary-month-title">Апрель 2026</h3>
+              <div class="cal-nav" style="margin-left:1rem;">
+                <button onclick="changeDiaryMonth(-1)">‹</button>
+                <button onclick="changeDiaryMonth(1)">›</button>
+              </div>
             </div>
-            <button class="event-edit" onclick="editEvent(this)">✎</button>
+            <button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.85rem;" onclick="analyzeDiary()">
+              <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
+              Проанализировать
+            </button>
           </div>
-          <div class="event-item">
-            <span class="event-time">14:00</span>
-            <div class="event-info">
-              <p class="event-name">Встреча со специалистом</p>
-              <p class="event-type">Онлайн · 45 мин</p>
+          <div class="cal-grid" id="diary-cal-grid"></div>
+
+          <!-- Day columns view -->
+          <div id="diary-day-view" style="margin-top:1.5rem;display:none;">
+            <h3 id="diary-day-title" style="font-size:0.9rem;margin-bottom:1rem;">—</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+              <div>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,100,100,0.7);margin:0 0 0.75rem;text-align:center;">− Отняло ресурс</p>
+                <div id="diary-col-minus" class="diary-col"></div>
+              </div>
+              <div>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,200,100,0.7);margin:0 0 0.75rem;text-align:center;">± Смешанное</p>
+                <div id="diary-col-mixed" class="diary-col"></div>
+              </div>
+              <div>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(100,255,150,0.7);margin:0 0 0.75rem;text-align:center;">+ Дало ресурс</p>
+                <div id="diary-col-plus" class="diary-col"></div>
+              </div>
             </div>
-            <button class="event-edit" onclick="editEvent(this)">✎</button>
           </div>
-          <div class="event-item">
-            <span class="event-time">20:00</span>
-            <div class="event-info">
-              <p class="event-name">Вечерняя практика</p>
-              <p class="event-type">Саморегуляция · 20 мин</p>
-            </div>
-            <button class="event-edit" onclick="editEvent(this)">✎</button>
+
+          <!-- Analysis panel -->
+          <div id="diary-analysis" style="display:none;margin-top:1.5rem;padding:1.5rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
+            <h3 style="font-size:0.95rem;margin:0 0 1rem;">Анализ движения нейроресурса</h3>
+            <div id="analysis-content"></div>
           </div>
         </div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;font-size:12px;" onclick="addEvent()">
-          + Добавить событие
-        </button>
+
+        <!-- Right panel: add event button + today summary -->
+        <div class="dash-card glass-card-elevated span-4">
+          <h3>Дневник нейроресурса</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.6;">Записывайте события дня и оценивайте их влияние на ваш внутренний ресурс</p>
+          <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openDiaryInput()">
+            Внести события
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <div style="margin-top:1.5rem;">
+            <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;">Сегодня</p>
+            <div id="diary-today-summary">
+              <p style="font-size:13px;color:var(--text-muted);margin:0;">Нет записей</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIARY INPUT MODAL -->
+    <div class="modal-overlay" id="diaryModal">
+      <div class="modal-box" style="max-width:440px;">
+        <button class="modal-close" onclick="closeDiaryInput()">&times;</button>
+        <p class="eyebrow" style="margin-bottom:0.5rem;">Дневник нейроресурса</p>
+        <h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1.25rem;">Что произошло сегодня?</h3>
+
+        <!-- Event input -->
+        <div id="diary-input-form">
+          <div style="margin-bottom:1rem;">
+            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;">Событие</label>
+            <input type="text" id="diary-event-text" class="glass-input" placeholder="Опишите событие..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:14px;" />
+          </div>
+          <div style="margin-bottom:1.25rem;">
+            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;">Комментарий (по желанию)</label>
+            <input type="text" id="diary-event-comment" class="glass-input" placeholder="Дополнительные мысли..." style="width:100%;padding:0.75rem 1rem;border-radius:12px;font-size:13px;" />
+          </div>
+
+          <!-- Rating step -->
+          <div id="rating-step" style="display:none;">
+            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem;text-align:center;">После этого события вам стало...</p>
+            <div style="display:flex;align-items:center;justify-content:center;gap:2rem;" id="rating-area">
+              <div id="minus-area" style="display:flex;align-items:center;gap:4px;">
+                <button class="rating-btn minus" onclick="addRating('minus')" title="Хуже">
+                  <span>−</span>
+                </button>
+              </div>
+              <div style="width:1px;height:40px;background:rgba(255,255,255,0.08);"></div>
+              <div id="plus-area" style="display:flex;align-items:center;gap:4px;">
+                <button class="rating-btn plus" onclick="addRating('plus')" title="Лучше">
+                  <span>+</span>
+                </button>
+              </div>
+            </div>
+            <p id="rating-hint" style="font-size:11px;color:var(--accent-cyan);text-align:center;margin:0.75rem 0 0;min-height:1rem;opacity:0;transition:opacity 0.3s;"></p>
+          </div>
+
+          <!-- Action buttons -->
+          <div style="display:none;gap:0.75rem;margin-top:1.5rem;" id="diary-actions">
+            <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()">Следующее событие</button>
+            <button class="btn btn-solid" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndClose()">Выйти и сохранить</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -720,6 +859,288 @@ function goStep(n){
     document.getElementById('confirm-prog-name').textContent = names[selectedProg]||'—';
     document.getElementById('confirm-price').textContent = prices[selectedProg]||'—';
   }
+}
+
+// ══════════════════════════════════════════
+// DIARY SYSTEM
+// ══════════════════════════════════════════
+var diaryData = {}; // { 'YYYY-MM-DD': [ {text,comment,rating,ratingCount} ] }
+var diaryMonth = 3, diaryYear = 2026; // April 0-indexed
+var currentRating = null;
+var currentRatingCount = 0;
+var selectedDiaryDay = null;
+
+// Mode toggle
+function setCalMode(mode){
+  var calPanel = document.getElementById('cal-mode-cal');
+  var diaryPanel = document.getElementById('cal-mode-diary');
+  var btnCal = document.getElementById('mode-cal');
+  var btnDiary = document.getElementById('mode-diary');
+  if(mode==='cal'){
+    calPanel.style.display='';
+    diaryPanel.style.display='none';
+    btnCal.classList.add('active');
+    btnCal.style.borderBottomColor='var(--accent-cyan)';
+    btnDiary.classList.remove('active');
+    btnDiary.style.borderBottomColor='transparent';
+  } else {
+    calPanel.style.display='none';
+    diaryPanel.style.display='';
+    btnDiary.classList.add('active');
+    btnDiary.style.borderBottomColor='var(--accent-cyan)';
+    btnCal.classList.remove('active');
+    btnCal.style.borderBottomColor='transparent';
+    renderDiaryCalendar();
+  }
+}
+
+// Diary calendar
+function renderDiaryCalendar(){
+  var grid = document.getElementById('diary-cal-grid');
+  document.getElementById('diary-month-title').textContent = monthNames[diaryMonth]+' '+diaryYear;
+  grid.innerHTML = '';
+  dayNames.forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
+  var first = new Date(diaryYear, diaryMonth, 1).getDay();
+  first = first===0 ? 6 : first-1;
+  var days = new Date(diaryYear, diaryMonth+1, 0).getDate();
+  var today = new Date();
+  for(var i=0;i<first;i++) grid.innerHTML += '<div class="cal-day empty"></div>';
+  for(var d=1;d<=days;d++){
+    var key = diaryYear+'-'+String(diaryMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var cls = 'cal-day';
+    if(diaryYear===today.getFullYear() && diaryMonth===today.getMonth() && d===today.getDate()) cls += ' today';
+    if(selectedDiaryDay===key) cls += ' diary-active';
+    // Color by day sentiment
+    var entries = diaryData[key];
+    if(entries && entries.length){
+      var score = 0;
+      entries.forEach(function(e){ score += (e.rating==='plus'?e.ratingCount:e.rating==='minus'?-e.ratingCount:0); });
+      if(score>0) cls += ' diary-green';
+      else if(score<0) cls += ' diary-red';
+      else cls += ' diary-yellow';
+    }
+    grid.innerHTML += '<div class="'+cls+'" onclick="selectDiaryDay(\''+key+'\','+d+')">'+d+'</div>';
+  }
+}
+
+function changeDiaryMonth(dir){ diaryMonth+=dir; if(diaryMonth<0){diaryMonth=11;diaryYear--;} if(diaryMonth>11){diaryMonth=0;diaryYear++;} selectedDiaryDay=null; document.getElementById('diary-day-view').style.display='none'; renderDiaryCalendar(); }
+
+function selectDiaryDay(key, d){
+  selectedDiaryDay = key;
+  renderDiaryCalendar();
+  var view = document.getElementById('diary-day-view');
+  view.style.display = 'block';
+  document.getElementById('diary-day-title').textContent = d+' '+monthNames[diaryMonth]+' '+diaryYear;
+  renderDayColumns(key);
+}
+
+function renderDayColumns(key){
+  var colMinus = document.getElementById('diary-col-minus');
+  var colMixed = document.getElementById('diary-col-mixed');
+  var colPlus = document.getElementById('diary-col-plus');
+  colMinus.innerHTML = ''; colMixed.innerHTML = ''; colPlus.innerHTML = '';
+  var entries = diaryData[key] || [];
+  entries.forEach(function(ev){
+    var card = document.createElement('div');
+    card.className = 'diary-event-card';
+    var ratingStr = '';
+    if(ev.rating==='plus') ratingStr = '+'.repeat(ev.ratingCount);
+    else if(ev.rating==='minus') ratingStr = '−'.repeat(ev.ratingCount);
+    else ratingStr = '±';
+    card.innerHTML = '<p class="ev-text">'+ev.text+'</p>'+(ev.comment?'<p class="ev-comment">'+ev.comment+'</p>':'')+'<p class="ev-rating">'+ratingStr+'</p>';
+    if(ev.rating==='minus') colMinus.appendChild(card);
+    else if(ev.rating==='mixed') colMixed.appendChild(card);
+    else colPlus.appendChild(card);
+  });
+  if(!colMinus.children.length) colMinus.innerHTML='<p style="font-size:11px;color:var(--text-dim);text-align:center;margin:0;">—</p>';
+  if(!colMixed.children.length) colMixed.innerHTML='<p style="font-size:11px;color:var(--text-dim);text-align:center;margin:0;">—</p>';
+  if(!colPlus.children.length) colPlus.innerHTML='<p style="font-size:11px;color:var(--text-dim);text-align:center;margin:0;">—</p>';
+  updateTodaySummary();
+}
+
+function updateTodaySummary(){
+  var today = new Date();
+  var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var entries = diaryData[key] || [];
+  var el = document.getElementById('diary-today-summary');
+  if(!entries.length){ el.innerHTML='<p style="font-size:13px;color:var(--text-muted);margin:0;">Нет записей</p>'; return; }
+  var plus=0, minus=0, mixed=0;
+  entries.forEach(function(e){ if(e.rating==='plus') plus++; else if(e.rating==='minus') minus++; else mixed++; });
+  el.innerHTML = '<p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;">'+entries.length+' событ'+(entries.length===1?'ие':'ий')+'</p>'
+    +'<p style="font-size:12px;color:var(--text-muted);margin:0;">'+
+    (plus?'<span style="color:rgba(120,255,160,0.9);">+'+plus+'</span> ':'')+
+    (minus?'<span style="color:rgba(255,120,120,0.9);">−'+minus+'</span> ':'')+
+    (mixed?'<span style="color:rgba(255,200,100,0.9);">±'+mixed+'</span>':'')+'</p>';
+}
+
+// Diary modal
+function openDiaryInput(){
+  document.getElementById('diaryModal').classList.add('open');
+  resetDiaryForm();
+}
+function closeDiaryInput(){
+  document.getElementById('diaryModal').classList.remove('open');
+}
+
+function resetDiaryForm(){
+  document.getElementById('diary-event-text').value='';
+  document.getElementById('diary-event-comment').value='';
+  document.getElementById('rating-step').style.display='none';
+  document.getElementById('diary-actions').style.display='none';
+  currentRating=null;
+  currentRatingCount=0;
+  // Reset rating area to initial state
+  document.getElementById('minus-area').innerHTML='<button class="rating-btn minus" onclick="addRating(\'minus\')" title="Хуже"><span>−</span></button>';
+  document.getElementById('plus-area').innerHTML='<button class="rating-btn plus" onclick="addRating(\'plus\')" title="Лучше"><span>+</span></button>';
+  document.getElementById('rating-hint').style.opacity='0';
+  document.getElementById('rating-hint').textContent='';
+  // Show rating on text input
+  var inp = document.getElementById('diary-event-text');
+  inp.removeEventListener('input', onDiaryTextInput);
+  inp.addEventListener('input', onDiaryTextInput);
+}
+
+function onDiaryTextInput(){
+  var val = document.getElementById('diary-event-text').value.trim();
+  document.getElementById('rating-step').style.display = val.length>0 ? 'block' : 'none';
+}
+
+function addRating(type){
+  var hint = document.getElementById('rating-hint');
+  // If user picks opposite after already choosing, make it mixed
+  if(currentRating && currentRating!==type && currentRating!=='mixed'){
+    currentRating='mixed';
+    currentRatingCount=1;
+    hint.textContent='Смешанное влияние — и плюс, и минус';
+    hint.style.opacity='1';
+    document.getElementById('diary-actions').style.display='flex';
+    // Reset both areas visually
+    document.getElementById('minus-area').innerHTML='<button class="rating-btn minus chosen" onclick="addRating(\'minus\')"><span>−</span></button>';
+    document.getElementById('plus-area').innerHTML='<button class="rating-btn plus chosen" onclick="addRating(\'plus\')"><span>+</span></button>';
+    return;
+  }
+  if(currentRating==='mixed'){
+    // Already mixed, ignore further clicks
+    return;
+  }
+  if(currentRating===type && currentRatingCount>=3){
+    return; // Max 3
+  }
+  if(!currentRating || currentRating!==type){
+    currentRating=type;
+    currentRatingCount=1;
+  } else {
+    currentRatingCount++;
+  }
+  // Render buttons
+  var area = document.getElementById(type==='minus'?'minus-area':'plus-area');
+  area.innerHTML='';
+  for(var i=0;i<currentRatingCount;i++){
+    var btn = document.createElement('button');
+    btn.className = 'rating-btn '+type+' chosen'+(i>0?' extra':'');
+    btn.onclick = (function(t){ return function(){ addRating(t); }; })(type);
+    btn.innerHTML = '<span>'+(type==='minus'?'−':'+')+'</span>';
+    area.appendChild(btn);
+  }
+  // Add next clickable if under max
+  if(currentRatingCount<3){
+    var next = document.createElement('button');
+    next.className = 'rating-btn '+type;
+    next.onclick = (function(t){ return function(){ addRating(t); }; })(type);
+    next.innerHTML = '<span>'+(type==='minus'?'−':'+')+'</span>';
+    next.style.opacity='0.35';
+    area.appendChild(next);
+  }
+  // Hint text
+  if(currentRatingCount===1) hint.textContent = type==='plus'?'Немного лучше':'Немного хуже';
+  else if(currentRatingCount===2) hint.textContent = type==='plus'?'Значительно лучше':'Значительно хуже';
+  else hint.textContent = type==='plus'?'Сильно лучше!':'Сильно хуже!';
+  hint.style.opacity='1';
+  document.getElementById('diary-actions').style.display='flex';
+
+  // Vibration feedback
+  if(navigator.vibrate) navigator.vibrate(20);
+}
+
+function saveDiaryEvent(){
+  var text = document.getElementById('diary-event-text').value.trim();
+  if(!text) return false;
+  var comment = document.getElementById('diary-event-comment').value.trim();
+  var today = new Date();
+  var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  if(!diaryData[key]) diaryData[key]=[];
+  diaryData[key].push({
+    text: text,
+    comment: comment,
+    rating: currentRating||'mixed',
+    ratingCount: currentRatingCount||1,
+    time: today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
+  });
+  // Update views
+  renderDiaryCalendar();
+  if(selectedDiaryDay===key) renderDayColumns(key);
+  updateTodaySummary();
+  return true;
+}
+
+function saveAndNext(){
+  if(saveDiaryEvent()){
+    resetDiaryForm();
+    document.getElementById('diary-event-text').focus();
+    if(navigator.vibrate) navigator.vibrate([15,50,15]);
+  }
+}
+
+function saveAndClose(){
+  saveDiaryEvent();
+  closeDiaryInput();
+  if(navigator.vibrate) navigator.vibrate([20,40,20,40,20]);
+  // Auto-select today in diary calendar
+  var today = new Date();
+  var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  selectDiaryDay(key, today.getDate());
+}
+
+// Diary analysis
+function analyzeDiary(){
+  var panel = document.getElementById('diary-analysis');
+  var content = document.getElementById('analysis-content');
+  panel.style.display='block';
+  var allEvents = [];
+  Object.keys(diaryData).forEach(function(k){
+    diaryData[k].forEach(function(e){ allEvents.push(Object.assign({date:k},e)); });
+  });
+  if(!allEvents.length){
+    content.innerHTML='<p style="font-size:13px;color:var(--text-muted);">Пока нет записей для анализа. Начните вносить события в дневник.</p>';
+    return;
+  }
+  var totalPlus=0, totalMinus=0, totalMixed=0;
+  var plusScore=0, minusScore=0;
+  allEvents.forEach(function(e){
+    if(e.rating==='plus'){ totalPlus++; plusScore+=e.ratingCount; }
+    else if(e.rating==='minus'){ totalMinus++; minusScore+=e.ratingCount; }
+    else totalMixed++;
+  });
+  var total = allEvents.length;
+  var daysCount = Object.keys(diaryData).length;
+  var netScore = plusScore - minusScore;
+  var trend = netScore>0?'Положительная':'Негативная';
+  if(Math.abs(netScore)<=1) trend='Нейтральная';
+  content.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem;">'
+    +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(120,255,160,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalPlus+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Ресурсных</p></div>'
+    +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(255,200,100,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalMixed+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Смешанных</p></div>'
+    +'<div style="text-align:center;"><p style="font-size:1.6rem;color:rgba(255,120,120,0.9);margin:0;font-family:\'Unbounded\',sans-serif;">'+totalMinus+'</p><p style="font-size:11px;color:var(--text-muted);margin:0.25rem 0 0;">Отнимающих</p></div>'
+    +'</div>'
+    +'<div style="padding:1rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">'
+    +'<p style="font-size:13px;color:var(--text-primary);margin:0 0 0.5rem;">Общая динамика: <strong>'+trend+'</strong></p>'
+    +'<p style="font-size:12px;color:var(--text-muted);margin:0;">'+total+' событий за '+daysCount+' '+(daysCount===1?'день':daysCount<5?'дня':'дней')+' · Нетто-ресурс: '+(netScore>=0?'+':'')+netScore+'</p>'
+    +'</div>';
+}
+
+// ── Service Worker registration ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 </script>
 </body>
