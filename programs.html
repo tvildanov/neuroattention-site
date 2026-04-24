@@ -3,13 +3,127 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Программы обучения — NeuroAttention Lab</title>
-<meta name="description" content="Структурированные программы тренировки внимания: базовый курс, продвинутый, экспертный, а также корпоративные и исследовательские программы." />
+<title>Программы — NeuroAttention Lab</title>
+<meta name="description" content="Программы NeuroAttention: протоколы тренировки внимания и адаптации нервной системы — от самостоятельной работы до профессиональной подготовки." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
+<style>
+.xr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(0,224,255,0.08);
+  border: 1px solid rgba(0,224,255,0.2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 1.25rem;
+}
+.xr-badge .pulse-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-cyan);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%,100% { opacity: 0.5; box-shadow: 0 0 4px rgba(0,224,255,0.3); }
+  50% { opacity: 1; box-shadow: 0 0 10px rgba(0,224,255,0.6); }
+}
+.prog-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.prog-card:hover {
+  border-color: rgba(0,224,255,0.12);
+  transform: translateY(-3px);
+}
+.prog-card h3 {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 500;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem 0;
+}
+.prog-card .desc {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 1.25rem 0;
+}
+.prog-format {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+.prog-format li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 13px;
+  color: var(--text-muted);
+  list-style: none;
+}
+.prog-format li::before {
+  content: '';
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  flex-shrink: 0;
+}
+.prog-result {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  padding: 0.85rem 1rem;
+  background: rgba(0,224,255,0.04);
+  border-left: 2px solid rgba(0,224,255,0.2);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 1.5rem;
+}
+.prog-card .btn { margin-top: auto; justify-content: center; }
+
+.level-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 1.5rem;
+  transition: border-color 0.3s;
+}
+.level-card:hover { border-color: rgba(0,224,255,0.12); }
+.level-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--accent-cyan);
+  margin: 0 0 0.5rem 0;
+}
+.level-card h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.4rem 0;
+}
+.level-card p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+</style>
 </head>
 <body>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -55,132 +169,186 @@
   </div>
 </nav>
 
-<section style="padding:8rem 0 3rem;">
-  <div class="container max-w-4xl fade-up">
+<!-- ═══ БЛОК 1 — HERO (минимальный, без картинки) ═══ -->
+<section style="padding:8rem 0 2rem;">
+  <div class="container max-w-3xl fade-up">
+    <div class="line-accent"></div>
     <p class="eyebrow">Программы</p>
-    <h1 class="heading-space" style="font-size:clamp(2rem,4vw+1rem,3rem);color:var(--text-primary);margin:0 0 1.5rem 0;">Программы обучения</h1>
-    <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-muted);max-width:36rem;margin:0;">
-      Структурированные программы тренировки внимания с прогрессивной сложностью — от базовых навыков до полной интеграции метода.
+    <h1 class="heading-space" style="font-size:clamp(2rem,4vw+1rem,3rem);color:var(--text-primary);margin:0 0 1rem 0;">
+      Программы <span class="text-gradient-cyan">NeuroAttention</span>
+    </h1>
+    <p class="hero-sub" style="margin:0 0 0.75rem 0;">Протоколы тренировки внимания и адаптации нервной системы</p>
+    <p style="font-size:1rem;line-height:1.75;color:var(--text-muted);margin:0;max-width:40rem;">
+      Выберите формат участия: от самостоятельной работы до глубокой персональной трансформации и профессиональной подготовки
     </p>
-    <div class="media-box aspect-wide" style="margin-top:2rem;max-width:480px;">
-      <video autoplay loop muted playsinline><source src="assets/media/field-1.mp4" type="video/mp4" /></video>
-    </div>
   </div>
 </section>
 
-<!-- Main programs -->
+<!-- ═══ БЛОК 2 — XR (ключевой акцент) ═══ -->
 <section class="section">
   <div class="section-divider"></div>
   <div class="container">
-    <div class="grid grid-3">
-
-      <div class="fade-up program-card glass-card-elevated card-hover">
-        <p class="tag">Базовый курс</p>
-        <h3>Основы внимания</h3>
-        <p class="desc">Фундаментальные навыки фокуса, переключения и удержания внимания. Идеально для тех, кто хочет вернуть контроль над концентрацией.</p>
-        <div class="program-meta">
-          <span>⏱ 8 недель</span>
-          <span>Онлайн</span>
-          <span>Начинающий</span>
+    <div class="max-w-4xl fade-up">
+      <div class="glass-card-bright glow-cyan" style="border-radius:20px;padding:2.5rem;">
+        <div class="xr-badge"><span class="pulse-dot"></span>Coming soon · Beta Access</div>
+        <p class="eyebrow" style="margin-bottom:0.5rem;">Следующий этап</p>
+        <h2 class="heading-space h2-block" style="margin-bottom:0.75rem;">NeuroAttention <span class="text-gradient-cyan">XR</span></h2>
+        <p class="hero-sub" style="font-size:1rem;margin:0 0 1.25rem 0;">
+          Следующий этап развития метода — управление вниманием и состоянием в иммерсивной среде с биометрической обратной связью
+        </p>
+        <p style="font-size:14px;line-height:1.75;color:var(--text-secondary);margin:0 0 0.5rem 0;">
+          XR-платформа переводит протоколы NeuroAttention в цифровую среду, где внимание становится измеримым, управляемым и обучаемым в реальном времени.
+        </p>
+        <p style="font-size:14px;line-height:1.75;color:var(--text-muted);margin:0 0 2rem 0;">
+          Это направление сейчас находится в разработке и формирует основу всей будущей системы.
+        </p>
+        <div class="flex flex-wrap gap-4">
+          <a href="account.html#beta" class="btn btn-solid">
+            Встать в бета-тестирование
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a href="xr.html" class="btn btn-primary">Узнать о платформе</a>
         </div>
-        <ul class="list-check">
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Фокус и удержание</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Переключение внимания</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Базовая интероцепция</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Дыхательные практики</li>
-        </ul>
-        <a href="test.html" class="btn btn-primary" style="justify-content:center;">
-          Начать
-          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
       </div>
-
-      <div class="fade-up delay-1 program-card glass-card-bright glow-cyan card-hover accent">
-        <p class="tag">Продвинутый курс</p>
-        <h3>Глубокое внимание</h3>
-        <p class="desc">Расширенная работа с множественным вниманием, объёмным восприятием тела и саморегуляцией через внимание.</p>
-        <div class="program-meta">
-          <span>⏱ 12 недель</span>
-          <span>Онлайн + живые сессии</span>
-          <span>Средний</span>
-        </div>
-        <ul class="list-check">
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Множественное внимание</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Объёмное восприятие</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Саморегуляция</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Интероцепция + проприоцепция</li>
-        </ul>
-        <a href="test.html" class="btn btn-solid" style="justify-content:center;">
-          Начать
-          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-      </div>
-
-      <div class="fade-up delay-2 program-card glass-card-elevated card-hover">
-        <p class="tag">Экспертный курс</p>
-        <h3>Мастер внимания</h3>
-        <p class="desc">Полная интеграция всех 7 навыков внимания. Включает XR-тренировки и индивидуальное сопровождение.</p>
-        <div class="program-meta">
-          <span>⏱ 16 недель</span>
-          <span>Гибрид + XR</span>
-          <span>Продвинутый</span>
-        </div>
-        <ul class="list-check">
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Все 7 навыков</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>XR-тренировки</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>ЭЭГ-мониторинг</li>
-          <li><svg class="icon sm check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>Персональный наставник</li>
-        </ul>
-        <a href="test.html" class="btn btn-primary" style="justify-content:center;">
-          Начать
-          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-      </div>
-
     </div>
   </div>
 </section>
 
-<!-- Special programs -->
+<!-- ═══ БЛОК 3 — ОСНОВНЫЕ ПРОГРАММЫ ═══ -->
 <section class="section">
   <div class="section-divider"></div>
-  <div class="container max-w-4xl">
-    <div class="fade-up mb-12">
-      <p class="eyebrow">Специальные программы</p>
-      <h2 class="heading-space h2-block large">Для организаций и специалистов</h2>
-    </div>
-    <div class="grid grid-3 fade-up">
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">Корпоративная программа</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Тренировка внимания для команд. Повышение продуктивности, снижение стресса, улучшение коммуникации.</p>
+  <div class="container">
+    <div class="max-w-5xl">
+      <div class="fade-up mb-10">
+        <p class="eyebrow">Основные программы</p>
+        <h2 class="heading-space h2-block">Программы работы с NeuroAttention Method</h2>
+        <p class="sub-muted" style="max-width:38rem;">
+          Долгосрочная работа с вниманием и состоянием, направленная на реальное изменение качества жизни и адаптацию к нагрузкам современной среды
+        </p>
       </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+
+      <div class="grid grid-3 fade-up delay-1">
+        <!-- Self-Guided -->
+        <div class="prog-card">
+          <h3>Self-Guided Program</h3>
+          <p class="desc">Самостоятельная программа по протоколам NeuroAttention. Включает структурированную работу с вниманием, телом и состоянием через практики, теорию и задания.</p>
+          <ul class="prog-format">
+            <li>3 месяца</li>
+            <li>21 практика (разбитая на блоки)</li>
+            <li>Теоретические модули</li>
+            <li>Домашние задания</li>
+            <li>Личный кабинет</li>
+          </ul>
+          <div class="prog-result">Восстановление базового контроля над вниманием и состоянием</div>
+          <a href="account.html" class="btn btn-primary">
+            Начать самостоятельно
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
         </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">Для специалистов</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Программа для врачей, психологов, коучей. Интеграция метода в профессиональную практику.</p>
-      </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
+
+        <!-- Guided -->
+        <div class="prog-card" style="border-color:rgba(0,224,255,0.12);">
+          <h3>Guided Program</h3>
+          <p class="desc">Глубокая работа с NeuroAttention Method с личным специалистом. Программа адаптируется под состояние человека и усиливается за счёт сопровождения.</p>
+          <ul class="prog-format">
+            <li>3 месяца</li>
+            <li>Всё из Self-Guided</li>
+            <li>Регулярные встречи со специалистом</li>
+            <li>Разбор состояния и обратной связи</li>
+            <li>Корректировка прохождения</li>
+          </ul>
+          <div class="prog-result">Более быстрые и устойчивые изменения состояния и поведения</div>
+          <a href="account.html" class="btn btn-solid">
+            Выбрать сопровождение
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
         </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">Исследовательская программа</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Участие в научных исследованиях. Доступ к данным, публикациям и лабораторному оборудованию.</p>
+
+        <!-- Group -->
+        <div class="prog-card">
+          <h3>Group Program</h3>
+          <p class="desc">Групповое прохождение NeuroAttention в управляемом формате. Совмещает личную работу с динамикой группы и регулярными практиками.</p>
+          <ul class="prog-format">
+            <li>3 месяца</li>
+            <li>Групповые онлайн-сессии</li>
+            <li>Общая траектория развития</li>
+            <li>Поддержка ведущего</li>
+            <li>Будущие офлайн-программы в центрах NeuroAttention</li>
+          </ul>
+          <div class="prog-result">Ускорение прогресса за счёт структуры и среды</div>
+          <a href="account.html" class="btn btn-primary">
+            Узнать о наборе
+            <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- CTA -->
+<!-- ═══ БЛОК 4 — ПОДГОТОВКА СПЕЦИАЛИСТОВ ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-4xl">
+      <div class="fade-up mb-10">
+        <p class="eyebrow">Профессиональное направление</p>
+        <h2 class="heading-space h2-block">Подготовка специалистов</h2>
+        <p class="sub-muted">Обучение работе с NeuroAttention Method для интеграции в профессиональную практику</p>
+      </div>
+
+      <div class="grid grid-3 fade-up delay-1">
+        <div class="level-card">
+          <p class="level-num">УРОВЕНЬ 01</p>
+          <h4>База метода</h4>
+          <p>Понимание внимания, нервной системы и базовых протоколов</p>
+        </div>
+        <div class="level-card">
+          <p class="level-num">УРОВЕНЬ 02</p>
+          <h4>Практика</h4>
+          <p>Работа с людьми, проведение практик, диагностика</p>
+        </div>
+        <div class="level-card">
+          <p class="level-num">УРОВЕНЬ 03</p>
+          <h4>Специалист NeuroAttention</h4>
+          <p>Полная подготовка к самостоятельной работе и передаче метода</p>
+        </div>
+      </div>
+
+      <div class="fade-up text-center" style="margin-top:2rem;">
+        <a href="account.html" class="btn btn-solid">
+          Стать специалистом
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 5 — ИССЛЕДОВАТЕЛЬСКАЯ ПРОГРАММА ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-3xl fade-up">
+      <p class="eyebrow">Наука</p>
+      <h2 class="heading-space h2-block">Research Program</h2>
+      <p class="sub-muted mb-8" style="font-size:1.0625rem;line-height:1.75;">
+        Участие в исследованиях NeuroAttention Lab. Работа с вниманием в рамках научной модели, сбор данных и участие в развитии технологии.
+      </p>
+      <a href="account.html" class="btn btn-primary">
+        Участвовать в исследовании
+        <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 6 — CTA ═══ -->
 <section class="section">
   <div class="section-divider"></div>
   <div class="container max-w-2xl text-center fade-up">
-    <h2 class="heading-space h2-block large mb-6">Не знаете, с чего начать?</h2>
-    <p class="sub-muted mb-8">Пройдите диагностический тест — мы подберём оптимальную программу для вашего уровня.</p>
+    <h2 class="heading-space h2-block large mb-4">Не знаете, с чего начать?</h2>
+    <p class="sub-muted mb-8">Пройдите диагностику — мы определим текущее состояние и подберём оптимальный формат работы</p>
     <a href="test.html" class="btn btn-solid" style="font-size:1rem;padding:1rem 2rem;">
       Пройти тест
       <svg class="icon md" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -211,6 +379,7 @@
           <a href="xr.html">XR Платформа</a>
           <a href="lab.html">Лаборатория</a>
           <a href="dom.html">DOM Unity</a>
+          <a href="custom.html">DOM Custom Group</a>
         </div>
       </div>
       <div>
@@ -225,6 +394,5 @@
 
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
