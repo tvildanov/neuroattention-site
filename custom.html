@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DOM Custom Group — Система реализации потенциала</title>
+<meta name="description" content="DOM Custom Group — экспозиция, система реализации продуктов, практик, знаний и проектов внутри экосистемы DOM." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+/* ── DOM Custom Group specific styles ── */
+.lot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+@media (max-width: 768px) {
+  .lot-grid { grid-template-columns: 1fr; }
+}
+.lot-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.lot-card:hover {
+  border-color: rgba(0,224,255,0.15);
+  transform: translateY(-4px);
+}
+.lot-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: #020306;
+}
+.lot-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.7;
+}
+.lot-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0,224,255,0.12);
+  border: 1px solid rgba(0,224,255,0.25);
+  color: var(--accent-cyan);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+}
+.lot-num {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.1em;
+}
+.lot-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+.lot-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin: 0 0 0.5rem 0;
+}
+.lot-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.35rem 0;
+}
+.lot-author {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem 0;
+}
+.lot-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 1rem 0;
+}
+.lot-price {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0 0 1.25rem 0;
+}
+.lot-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+.lot-actions .btn {
+  font-size: 12px;
+  padding: 0.5rem 1rem;
+}
+
+/* Category cards */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+@media (max-width: 768px) {
+  .cat-grid { grid-template-columns: 1fr; }
+}
+.cat-card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 1.75rem;
+  transition: border-color 0.3s;
+}
+.cat-card:hover {
+  border-color: rgba(0,224,255,0.12);
+}
+.cat-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--accent-cyan);
+  margin: 0 0 0.75rem 0;
+}
+.cat-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+.cat-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Filter tag */
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.filter-tag:hover, .filter-tag.active {
+  border-color: rgba(0,224,255,0.3);
+  color: var(--accent-cyan);
+  background: rgba(0,224,255,0.05);
+}
+.filter-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+}
+
+/* Steps */
+.step-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+.step-num {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0,224,255,0.06);
+  border: 1px solid rgba(0,224,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active {
+  display: flex;
+}
+.modal-box {
+  background: #0a0c14;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 2.5rem;
+  max-width: 480px;
+  width: 90%;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.modal-close:hover { color: var(--text-primary); }
+</style>
+</head>
+<body>
+<div class="deep-atmosphere" aria-hidden="true"></div>
+<div class="noise-overlay" aria-hidden="true"></div>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav class="navbar">
+  <div class="container navbar-inner">
+    <a href="index.html" class="nav-logo">
+      Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Главная</a>
+      <a href="test.html" class="nav-link">Тест</a>
+      <a href="method.html" class="nav-link">Метод</a>
+      <a href="programs.html" class="nav-link">Программы</a>
+      <a href="xr.html" class="nav-link">XR Платформа</a>
+      <a href="lab.html" class="nav-link">Лаборатория</a>
+      <a href="dom.html" class="nav-link">DOM</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button class="lang-btn active">RU</button>
+        <button class="lang-btn">EN</button>
+        <button class="lang-btn">ES</button>
+      </div>
+      <a href="account.html" class="nav-login" aria-label="Личный кабинет">
+        <span class="login-dot"></span>
+        <span>Кабинет</span>
+      </a>
+      <button class="mobile-menu-btn" aria-label="Меню">
+        <svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu">
+    <div class="container mobile-menu-inner">
+      <a href="index.html" class="mobile-link">Главная</a>
+      <a href="test.html" class="mobile-link">Тест</a>
+      <a href="method.html" class="mobile-link">Метод</a>
+      <a href="programs.html" class="mobile-link">Программы</a>
+      <a href="xr.html" class="mobile-link">XR Платформа</a>
+      <a href="lab.html" class="mobile-link">Лаборатория</a>
+      <a href="dom.html" class="mobile-link">DOM</a>
+      <a href="account.html" class="mobile-link">Личный кабинет</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ БЛОК 1 — HERO ═══ -->
+<section class="hero">
+  <div class="container" style="position:relative;z-index:2;">
+    <div class="grid grid-2" style="gap:clamp(1.5rem,4vw,4rem);align-items:center;">
+      <div class="hero-max" style="max-width:none;">
+        <div class="fade-up">
+          <div class="line-accent"></div>
+          <p class="eyebrow">DOM Ecosystem</p>
+          <h1 class="heading-space">
+            DOM <span class="text-gradient-cyan">Custom Group</span>
+          </h1>
+          <p class="hero-sub">Один шаг от внутреннего развития к внешней реализации</p>
+        </div>
+      </div>
+      <div class="fade-right delay-1">
+        <div class="media-box aspect-sq" style="max-width:600px;margin-left:auto;">
+          <video autoplay loop muted playsinline preload="auto">
+            <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <div class="mouse"><div class="dot"></div></div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 2 — СМЫСЛ ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-3xl fade-up">
+      <p class="eyebrow">Смысл</p>
+      <h2 class="heading-space h2-block">Экономика развития</h2>
+      <p class="sub-muted mb-4" style="font-size:1.0625rem;line-height:1.75;">
+        По мере развития человека раскрывается его потенциал — и вместе с этим появляются новые формы выражения: объекты, практики, знания и проекты.
+      </p>
+      <p class="sub-muted" style="font-size:1.0625rem;line-height:1.75;">
+        DOM Custom Group формирует среду, в которой эти формы получают реализацию, находят свою ценность и становятся частью единой экосистемы.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 3 — ДОСТУПНО СЕЙЧАС ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-5xl">
+      <div class="fade-up mb-10">
+        <p class="eyebrow">Экспозиция</p>
+        <h2 class="heading-space h2-block">Доступно сейчас</h2>
+        <p class="sub-muted" style="font-size:14px;">Ранний доступ к первым лотам DOM Custom Group</p>
+      </div>
+
+      <div class="lot-grid fade-up delay-1">
+        <!-- Лот 01 -->
+        <div class="lot-card">
+          <div class="lot-media">
+            <video autoplay loop muted playsinline>
+              <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+            </video>
+            <span class="lot-num">ЛОТ 01</span>
+            <span class="lot-badge">Preview</span>
+          </div>
+          <div class="lot-body">
+            <p class="lot-type">Объект</p>
+            <h3 class="lot-title">Формируется лот</h3>
+            <p class="lot-author">Создатель: DOM Custom Group</p>
+            <p class="lot-desc">В ближайшее время будет представлен в рамках DOM Custom Group</p>
+            <p class="lot-price">Начальная ставка: ожидается</p>
+            <div class="lot-actions">
+              <button class="btn btn-primary" onclick="openModal('detail')">Подробнее</button>
+              <button class="btn btn-solid" onclick="openModal('offer')">Сделать предложение</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Лот 02 -->
+        <div class="lot-card">
+          <div class="lot-media">
+            <video autoplay loop muted playsinline>
+              <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+            </video>
+            <span class="lot-num">ЛОТ 02</span>
+            <span class="lot-badge">Preview</span>
+          </div>
+          <div class="lot-body">
+            <p class="lot-type">Практика</p>
+            <h3 class="lot-title">Ожидается к открытию</h3>
+            <p class="lot-author">Создатель: DOM Custom Group</p>
+            <p class="lot-desc">В ближайшее время будет представлен в рамках DOM Custom Group</p>
+            <p class="lot-price">Начальная ставка: ожидается</p>
+            <div class="lot-actions">
+              <button class="btn btn-primary" onclick="openModal('detail')">Подробнее</button>
+              <button class="btn btn-solid" onclick="openModal('offer')">Сделать предложение</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Лот 03 -->
+        <div class="lot-card">
+          <div class="lot-media">
+            <video autoplay loop muted playsinline>
+              <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+            </video>
+            <span class="lot-num">ЛОТ 03</span>
+            <span class="lot-badge">Coming soon</span>
+          </div>
+          <div class="lot-body">
+            <p class="lot-type">Знание</p>
+            <h3 class="lot-title">Формируется лот</h3>
+            <p class="lot-author">Создатель: DOM Custom Group</p>
+            <p class="lot-desc">В ближайшее время будет представлен в рамках DOM Custom Group</p>
+            <p class="lot-price">Начальная ставка: ожидается</p>
+            <div class="lot-actions">
+              <button class="btn btn-primary" onclick="openModal('detail')">Подробнее</button>
+              <button class="btn btn-solid" onclick="openModal('offer')">Сделать предложение</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center fade-up" style="margin-top:2rem;">
+        <a href="#directions" class="btn btn-primary" style="font-size:14px;">
+          Смотреть все направления ↓
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 4 — НАПРАВЛЕНИЯ ═══ -->
+<section id="directions" class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-4xl">
+      <div class="fade-up mb-10">
+        <p class="eyebrow">Структура</p>
+        <h2 class="heading-space h2-block">Направления</h2>
+      </div>
+
+      <div class="cat-grid fade-up delay-1">
+        <div class="cat-card">
+          <p class="cat-num">01</p>
+          <h3 class="cat-title">Объекты</h3>
+          <p class="cat-desc">Физические изделия, одежда, артефакты, предметы пространства и натуральные продукты</p>
+        </div>
+        <div class="cat-card">
+          <p class="cat-num">02</p>
+          <h3 class="cat-title">Практики и взаимодействие</h3>
+          <p class="cat-desc">Работа с человеком: сопровождение, практики, прикладные форматы развития</p>
+        </div>
+        <div class="cat-card">
+          <p class="cat-num">03</p>
+          <h3 class="cat-title">Знание</h3>
+          <p class="cat-desc">Методы, курсы и интеллектуальные продукты</p>
+        </div>
+        <div class="cat-card">
+          <p class="cat-num">04</p>
+          <h3 class="cat-title">Проекты</h3>
+          <p class="cat-desc">Инициативы, направления и бизнесы внутри экосистемы</p>
+        </div>
+      </div>
+
+      <div class="filter-tags fade-up">
+        <span class="filter-tag">
+          <span class="filter-dot"></span>
+          Все
+        </span>
+        <span class="filter-tag">
+          <span class="filter-dot"></span>
+          Объекты
+        </span>
+        <span class="filter-tag">
+          <span class="filter-dot"></span>
+          Практики
+        </span>
+        <span class="filter-tag">
+          <span class="filter-dot"></span>
+          Знание
+        </span>
+        <span class="filter-tag">
+          <span class="filter-dot"></span>
+          Проекты
+        </span>
+        <span class="filter-tag">
+          <svg class="icon sm" style="width:12px;height:12px;color:var(--accent-cyan);" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Технологии
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 5 — КАК ЭТО РАБОТАЕТ ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-3xl">
+      <div class="fade-up mb-10">
+        <p class="eyebrow">Процесс</p>
+        <h2 class="heading-space h2-block">Как это работает</h2>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:2rem;">
+        <div class="step-row fade-up">
+          <div class="step-num">01</div>
+          <div>
+            <h3 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.4rem 0;">Создание</h3>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Создатель реализует продукт, практику, знание или проект как результат своего развития</p>
+          </div>
+        </div>
+        <div class="step-row fade-up delay-1">
+          <div class="step-num">02</div>
+          <div>
+            <h3 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.4rem 0;">Интеграция</h3>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">DOM Custom Group помогает оформить, представить и встроить его в систему</p>
+          </div>
+        </div>
+        <div class="step-row fade-up delay-2">
+          <div class="step-num">03</div>
+          <div>
+            <h3 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.4rem 0;">Взаимодействие</h3>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Пользователи взаимодействуют с результатами через участие, приобретение или поддержку</p>
+          </div>
+        </div>
+        <div class="step-row fade-up delay-3">
+          <div class="step-num">04</div>
+          <div>
+            <h3 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.4rem 0;">Развитие</h3>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Создатель получает ресурсы и продолжает развитие внутри экосистемы</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 6 — СУТЬ ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-3xl fade-up">
+      <p class="eyebrow">Философия</p>
+      <h2 class="heading-space h2-block">Система ценности</h2>
+      <div class="glass-card-bright" style="border-radius:16px;padding:2rem 2.5rem;">
+        <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-secondary);margin:0 0 0.75rem 0;">
+          DOM Custom Group соединяет развитие и реализацию.
+        </p>
+        <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-secondary);margin:0 0 0.75rem 0;">
+          Ценность формируется через качество состояния и уровня.
+        </p>
+        <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-primary);margin:0;font-weight:500;">
+          Результаты становятся формами, а экономика выстраивается вокруг человеческого потенциала.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 7 — CTA ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-4xl fade-up">
+      <div class="grid grid-2" style="align-items:center;gap:clamp(1.5rem,4vw,4rem);">
+        <div>
+          <h2 class="heading-space h2-block">Стать частью <span class="text-gradient-cyan">DOM Custom Group</span></h2>
+          <p class="sub-muted mb-8">
+            Создавайте, реализуйте и развивайте свои проекты внутри экосистемы
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <a href="account.html#beta" class="btn btn-solid">
+              Подать заявку как создатель
+              <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a href="#lots" class="btn btn-primary" onclick="document.querySelector('.section:nth-of-type(3)').scrollIntoView({behavior:'smooth'});return false;">
+              Изучить доступное
+            </a>
+          </div>
+        </div>
+        <div>
+          <div class="media-box aspect-sq" style="max-width:340px;margin-left:auto;">
+            <video autoplay loop muted playsinline>
+              <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="index.html" class="nav-logo" style="margin-bottom:1rem;display:inline-flex;">
+          Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span>
+        </a>
+        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0.75rem 0 0.75rem 0;">
+          Операционная система для человеческого внимания.
+        </p>
+        <p style="font-size:12px;color:var(--text-dim);margin:0;">NeuroAttention Lab LLC, USA</p>
+      </div>
+      <div>
+        <h4>Навигация</h4>
+        <div class="footer-links">
+          <a href="index.html">Главная</a>
+          <a href="test.html">Тест</a>
+          <a href="method.html">Метод</a>
+          <a href="programs.html">Программы</a>
+        </div>
+      </div>
+      <div>
+        <h4>Проект</h4>
+        <div class="footer-links">
+          <a href="xr.html">XR Платформа</a>
+          <a href="lab.html">Лаборатория</a>
+          <a href="dom.html">DOM Unity</a>
+          <a href="custom.html">DOM Custom Group</a>
+        </div>
+      </div>
+      <div>
+        <h4>Контакт</h4>
+        <div class="footer-links">
+          <a href="mailto:info@neuroattention.com">info@neuroattention.com</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; <span id="year">2026</span> NeuroAttention Lab LLC. All rights reserved.</p>
+      <p class="tag">Операционная система для человеческого внимания</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ MODALS ═══ -->
+<div class="modal-overlay" id="modalDetail">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('detail')">&times;</button>
+    <p class="eyebrow" style="margin-bottom:0.75rem;">Информация о лоте</p>
+    <h3 class="heading-space" style="font-size:1.25rem;color:var(--text-primary);margin:0 0 1rem 0;">Скоро доступно</h3>
+    <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1.5rem 0;">
+      Этот лот находится в стадии подготовки. Подробная информация о содержании, создателе и условиях участия будет опубликована в ближайшее время.
+    </p>
+    <a href="account.html#beta" class="btn btn-solid" style="width:100%;justify-content:center;">
+      Получить уведомление
+    </a>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOffer">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('offer')">&times;</button>
+    <p class="eyebrow" style="margin-bottom:0.75rem;">Заявка на участие</p>
+    <h3 class="heading-space" style="font-size:1.25rem;color:var(--text-primary);margin:0 0 1rem 0;">Сделать предложение</h3>
+    <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1.5rem 0;">
+      Оставьте контакт, и мы свяжемся с вами, как только лот будет доступен для взаимодействия.
+    </p>
+    <form onsubmit="event.preventDefault();this.innerHTML='<p style=\'text-align:center;color:var(--accent-cyan);padding:2rem 0;\'>Заявка принята. Мы свяжемся с вами.</p>';">
+      <input type="text" placeholder="Ваше имя" required style="width:100%;padding:0.75rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-primary);font-size:14px;margin-bottom:0.75rem;outline:none;" />
+      <input type="email" placeholder="Email" required style="width:100%;padding:0.75rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-primary);font-size:14px;margin-bottom:0.75rem;outline:none;" />
+      <textarea placeholder="Комментарий (необязательно)" rows="3" style="width:100%;padding:0.75rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-primary);font-size:14px;margin-bottom:1rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
+      <button type="submit" class="btn btn-solid" style="width:100%;justify-content:center;">
+        Отправить заявку
+      </button>
+    </form>
+  </div>
+</div>
+
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+function openModal(type) {
+  if (type === 'detail') document.getElementById('modalDetail').classList.add('active');
+  if (type === 'offer') document.getElementById('modalOffer').classList.add('active');
+}
+function closeModal(type) {
+  if (type === 'detail') document.getElementById('modalDetail').classList.remove('active');
+  if (type === 'offer') document.getElementById('modalOffer').classList.remove('active');
+}
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+
+// Filter tags interactive
+document.querySelectorAll('.filter-tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+    tag.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
