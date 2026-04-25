@@ -260,6 +260,45 @@
       </button>
     </form>
     <p class="auth-hint" style="margin-top:1.25rem;">Нет аккаунта? <a href="#" onclick="toggleAuthMode('register');return false;" style="color:var(--accent-cyan);text-decoration:none;">Зарегистрироваться</a></p>
+    <p class="auth-hint" style="margin-top:0.5rem;"><a href="#" onclick="toggleAuthMode('forgot');return false;" style="color:var(--text-dim);text-decoration:none;font-size:12px;">Забыли пароль?</a></p>
+  </div>
+  <!-- Forgot password form -->
+  <div id="auth-forgot" style="display:none;">
+    <p class="eyebrow">Восстановление</p>
+    <h1>Забыли пароль?</h1>
+    <p class="sub">Введите email, и мы отправим ссылку для сброса пароля.</p>
+    <form id="forgot-form">
+      <div class="auth-field">
+        <label for="forgot-email">Email</label>
+        <input id="forgot-email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required />
+      </div>
+      <p id="forgot-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
+      <p id="forgot-success" style="font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.75rem;min-height:1rem;display:none;"></p>
+      <button type="submit" class="btn btn-solid auth-submit">
+        Отправить ссылку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <p class="auth-hint" style="margin-top:1.25rem;"><a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;">Вернуться ко входу</a></p>
+  </div>
+  <!-- Reset password form (shown via ?reset=TOKEN) -->
+  <div id="auth-reset" style="display:none;">
+    <p class="eyebrow">Новый пароль</p>
+    <h1>Установите новый пароль</h1>
+    <p class="sub">Придумайте новый пароль для вашего аккаунта.</p>
+    <form id="reset-form">
+      <div class="auth-field">
+        <label for="reset-pass">Новый пароль</label>
+        <input id="reset-pass" type="password" class="glass-input" placeholder="Минимум 6 символов" autocomplete="new-password" required />
+      </div>
+      <div class="auth-field">
+        <label for="reset-pass2">Подтвердите пароль</label>
+        <input id="reset-pass2" type="password" class="glass-input" placeholder="Повторите пароль" autocomplete="new-password" required />
+      </div>
+      <p id="reset-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
+      <button type="submit" class="btn btn-solid auth-submit">
+        Сохранить пароль <svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+      </button>
+    </form>
   </div>
   <!-- Register form -->
   <div id="auth-register" style="display:none;">
@@ -1064,12 +1103,16 @@ function naAuthHeaders(){
 }
 // Adapt API user → internal user object (for admin/client dashboard compat)
 function naAdaptUser(apiUser){
+  var serverRole = apiUser.role || 'user';
+  // Map server roles to dashboard roles
+  var dashRole = serverRole === 'superadmin' ? 'founder' : serverRole === 'specialist' ? 'specialist' : 'client';
   return {
     id: apiUser.id,
     name: apiUser.display_name || apiUser.email.split('@')[0],
     email: apiUser.email,
     phone: apiUser.phone || '',
-    role: 'client',       // default role — admin roles will come later
+    role: dashRole,
+    serverRole: serverRole,
     program: null,        // will come from subscription system later
     specialistId: null,
     allowSpecialist: false,
@@ -1081,6 +1124,8 @@ function naAdaptUser(apiUser){
 function toggleAuthMode(mode){
   document.getElementById('auth-login').style.display=mode==='login'?'':'none';
   document.getElementById('auth-register').style.display=mode==='register'?'':'none';
+  document.getElementById('auth-forgot').style.display=mode==='forgot'?'':'none';
+  document.getElementById('auth-reset').style.display=mode==='reset'?'':'none';
 }
 
 // Show/hide sections
@@ -1095,7 +1140,17 @@ function onLogin(user){
   currentUser = user;
   viewAsUser = null;
   if(user.role==='client'){
-    document.getElementById('client-greeting').textContent = 'Здравствуйте, '+user.name;
+    var greetText = 'Здравствуйте, '+user.name;
+    document.getElementById('client-greeting').textContent = greetText;
+    // Superadmin badge for clients with founder-level access
+    var roleEl = document.querySelector('#client-dashboard .dash-role');
+    if(user.serverRole==='superadmin' && roleEl){
+      roleEl.innerHTML = '<span class="pulse"></span>Superadmin';
+      roleEl.style.borderColor = 'rgba(0,224,255,0.3)';
+    } else if(roleEl){
+      roleEl.innerHTML = '<span class="pulse"></span>Клиент';
+      roleEl.style.borderColor = '';
+    }
     // Check feature access: client needs program
     updateClientAccess(user);
     abCheckGuided();
@@ -1370,8 +1425,63 @@ document.querySelectorAll('[data-logout]').forEach(function(b){
   });
 });
 
+// ── Forgot password handler ──
+document.getElementById('forgot-form').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var email=document.getElementById('forgot-email').value.trim();
+  var errEl=document.getElementById('forgot-error');
+  var okEl=document.getElementById('forgot-success');
+  errEl.textContent='';okEl.style.display='none';
+  if(!email){errEl.textContent='Введите email';return;}
+  try {
+    var resp=await fetch(AUTH_API+'/api/auth/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
+    await resp.json();
+    okEl.textContent='Если аккаунт с таким email существует, мы отправили ссылку для сброса пароля.';
+    okEl.style.display='';
+  } catch(err){
+    errEl.textContent='Ошибка сети. Попробуйте позже.';
+  }
+});
+
+// ── Reset password handler ──
+document.getElementById('reset-form').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var pass=document.getElementById('reset-pass').value;
+  var pass2=document.getElementById('reset-pass2').value;
+  var errEl=document.getElementById('reset-error');
+  errEl.textContent='';
+  if(pass.length<6){errEl.textContent='Пароль должен быть не менее 6 символов';return;}
+  if(pass!==pass2){errEl.textContent='Пароли не совпадают';return;}
+  var resetToken=new URLSearchParams(window.location.search).get('reset');
+  if(!resetToken){errEl.textContent='Недействительная ссылка';return;}
+  try {
+    var resp=await fetch(AUTH_API+'/api/auth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:resetToken,password:pass})});
+    var data=await resp.json();
+    if(!resp.ok){errEl.textContent=data.error||'Ошибка сброса пароля';return;}
+    // Success — redirect to login
+    window.history.replaceState({},'',window.location.pathname);
+    toggleAuthMode('login');
+    document.getElementById('auth-error').textContent='';
+    var loginHint=document.createElement('p');
+    loginHint.style.cssText='font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.75rem;';
+    loginHint.textContent='Пароль обнов��ён. Войдите с новым паролем.';
+    document.getElementById('auth-error').parentNode.insertBefore(loginHint,document.getElementById('auth-error'));
+    setTimeout(function(){loginHint.remove();},8000);
+  } catch(err){
+    errEl.textContent='Ошибка сети. Попробуйте позже.';
+  }
+});
+
 // ── Auto-login on page load ──
 (async function(){
+  // Check for ?reset=TOKEN
+  var resetToken=new URLSearchParams(window.location.search).get('reset');
+  if(resetToken){
+    showSection('auth');
+    toggleAuthMode('reset');
+    return;
+  }
+
   var token=naGetToken();
   if(!token){ showSection('auth'); return; }
   try {

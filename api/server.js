@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { neon } = require('@neondatabase/serverless');
 
 const app = express();
@@ -9,6 +10,11 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET;
 const BCRYPT_ROUNDS = 10;
 const TOKEN_EXPIRY = '30d';
+const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+const SUPERADMIN_LIMIT = 2;
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'DOM Unity <noreply@neuroattention.org>';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://neuroattention.org';
 
 // DB connection
 if (!process.env.DATABASE_URL) {
@@ -76,17 +82,26 @@ app.post('/api/auth/register', async (req, res) => {
     const existing = await sql`SELECT id FROM users WHERE LOWER(email) = ${email}`;
     if (existing.length) return res.status(409).json({ error: 'Email already registered' });
 
+    // Determine role: superadmin if email is in SUPERADMIN_EMAILS and limit not reached
+    let role = 'user';
+    if (SUPERADMIN_EMAILS.includes(email)) {
+      const saCount = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'superadmin'`;
+      if (parseInt(saCount[0].cnt) < SUPERADMIN_LIMIT) {
+        role = 'superadmin';
+      }
+    }
+
     const inserted = await sql`
-      INSERT INTO users (email, password_hash, display_name, phone)
-      VALUES (${email}, ${passwordHash}, ${display_name || null}, ${phone || null})
-      RETURNING id, email, display_name, phone, created_at
+      INSERT INTO users (email, password_hash, display_name, phone, role)
+      VALUES (${email}, ${passwordHash}, ${display_name || null}, ${phone || null}, ${role})
+      RETURNING id, email, display_name, phone, role, created_at
     `;
     const user = inserted[0];
     const token = signToken(user);
 
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone }
+      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role }
     });
   } catch (err) {
     console.error('POST /api/auth/register:', err);
@@ -105,7 +120,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     email = email.toLowerCase().trim();
     const rows = await sql`
-      SELECT id, email, password_hash, display_name, phone
+      SELECT id, email, password_hash, display_name, phone, role
       FROM users WHERE LOWER(email) = ${email}
     `;
     if (!rows.length) return res.status(401).json({ error: 'Invalid email or password' });
@@ -120,7 +135,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone }
+      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role }
     });
   } catch (err) {
     console.error('POST /api/auth/login:', err);
@@ -132,7 +147,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
-      SELECT id, email, display_name, phone, created_at, last_login_at
+      SELECT id, email, display_name, phone, role, created_at, last_login_at
       FROM users WHERE id = ${req.user.id}
     `;
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
@@ -146,6 +161,91 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
 // Logout (placeholder for future token blacklist)
 app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
+});
+
+// ── PASSWORD RESET ──
+
+// Helper: send email via Resend (or log in dev mode)
+async function sendResetEmail(to, resetToken) {
+  const resetUrl = `${FRONTEND_URL}/account.html?reset=${resetToken}`;
+
+  if (!RESEND_API_KEY) {
+    console.log('══ DEV MODE: Password reset ══');
+    console.log(`To: ${to}`);
+    console.log(`Reset URL: ${resetUrl}`);
+    console.log(`Token: ${resetToken}`);
+    console.log('══════════════════════════════');
+    return { dev: true };
+  }
+
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+    body: JSON.stringify({
+      from: EMAIL_FROM,
+      to: [to],
+      subject: 'Сброс пароля — NeuroAttention',
+      html: `<p>Вы запросили сброс пароля.</p><p><a href="${resetUrl}">Нажмите здесь, чтобы установить новый пароль</a></p><p>Ссылка действительна 1 час.</p><p>Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>`
+    })
+  });
+  return resp.json();
+}
+
+// Forgot password
+app.post('/api/auth/forgot', async (req, res) => {
+  try {
+    let { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    email = email.toLowerCase().trim();
+
+    // Always return 200 to prevent email enumeration
+    const rows = await sql`SELECT id FROM users WHERE LOWER(email) = ${email}`;
+    if (!rows.length) return res.json({ ok: true });
+
+    const userId = rows[0].id;
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await sql`
+      INSERT INTO password_resets (token, user_id, expires_at)
+      VALUES (${token}, ${userId}, ${expiresAt.toISOString()})
+    `;
+
+    await sendResetEmail(email, token);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/auth/forgot:', err);
+    res.json({ ok: true }); // Always 200
+  }
+});
+
+// Reset password
+app.post('/api/auth/reset', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Token and password required' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    const rows = await sql`
+      SELECT token, user_id, expires_at, used
+      FROM password_resets WHERE token = ${token}
+    `;
+    if (!rows.length) return res.status(400).json({ error: 'Invalid or expired reset link' });
+
+    const reset = rows[0];
+    if (reset.used) return res.status(400).json({ error: 'This reset link has already been used' });
+    if (new Date(reset.expires_at) < new Date()) return res.status(400).json({ error: 'Reset link has expired' });
+
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    await sql`UPDATE users SET password_hash = ${passwordHash} WHERE id = ${reset.user_id}`;
+    await sql`UPDATE password_resets SET used = true WHERE token = ${token}`;
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/auth/reset:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
 // ── POINT AB: Save / Load (all require auth) ──

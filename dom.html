@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DOM — экосистема нового этапа развития человека | NeuroAttention Lab</title>
+<title>DOM — экосистема раскрытия человеческого потенциала | NeuroAttention Lab</title>
 <meta name="description" content="DOM — экосистема, в которой человек перестаёт жить как реакция на среду и начинает осознанно формировать своё состояние, решения и направление жизни." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,7 +14,6 @@
   /* DOM page specific styles */
   .dom-hero {
     padding: 8rem 0 4rem;
-    text-align: center;
   }
   .dom-hero h1 {
     font-size: clamp(2rem, 4vw + 1rem, 3.2rem);
@@ -233,12 +232,26 @@
 
 <!-- БЛОК 1 — HERO -->
 <section class="dom-hero">
-  <div class="container max-w-4xl fade-up">
-    <h1 class="heading-space">DOM — экосистема нового этапа развития человека</h1>
-    <p class="hero-sub">
-      <span>От адаптации к осознанному участию</span>
-      <span>От Homo sapiens к Homo conscious</span>
-    </p>
+  <div class="container" style="position:relative;z-index:2;">
+    <div class="grid grid-2" style="gap:clamp(1.5rem,4vw,4rem);align-items:center;">
+      <div class="fade-up" style="text-align:left;">
+        <h1 class="heading-space">DOM — экосистема раскрытия человеческого потенциала</h1>
+        <p class="hero-sub">
+          <span>От адаптации к осознанному участию</span>
+          <span>От Homo sapiens к Homo conscious</span>
+        </p>
+      </div>
+      <div class="fade-right delay-1">
+        <div style="position:relative;">
+          <div class="glow-orb"></div>
+          <div class="media-box aspect-sq" style="max-width:600px;margin-left:auto;">
+            <video autoplay loop muted playsinline preload="auto">
+              <source src="assets/media/dom-hero.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -312,18 +325,33 @@
   </div>
 </section>
 
-<!-- БЛОК 6 — ЗАЧЕМ ЭТО -->
-<section class="dom-section">
+<!-- БЛОК 6 — ДЛЯ КОГО DOM -->
+<section class="dom-section centered">
   <div class="section-divider"></div>
-  <div class="container max-w-3xl fade-up">
-    <h2>Зачем это</h2>
-    <ul class="dom-why-list">
-      <li>чтобы управлять своим состоянием, а не зависеть от среды</li>
-      <li>чтобы повысить устойчивость в быстро меняющемся мире</li>
-      <li>чтобы ускорить развитие через среду и взаимодействие</li>
-      <li>чтобы улучшить качество жизни системно</li>
-      <li>чтобы двигаться в понятном направлении</li>
-    </ul>
+  <div class="container fade-up">
+    <h2>Для кого DOM</h2>
+    <div class="dom-cards-grid" style="max-width:1100px;margin:2rem auto 0;">
+      <div class="dom-card">
+        <p class="card-category">Для людей</p>
+        <p>Которые чувствуют перегруз среды, нестабильность и потерю контроля и хотят развиваться быстрее, осознаннее и устойчивее</p>
+      </div>
+      <div class="dom-card">
+        <p class="card-category">Для специалистов</p>
+        <p>Психологи, коучи, нейро- и телесные практики, которые хотят углубить работу с вниманием и состоянием</p>
+      </div>
+      <div class="dom-card">
+        <p class="card-category">Для предпринимателей и лидеров</p>
+        <p>Которым важно сохранять ясность, устойчивость и качество решений в условиях постоянных изменений</p>
+      </div>
+      <div class="dom-card">
+        <p class="card-category">Для исследователей и энтузиастов</p>
+        <p>Кто изучает человека, сознание и возможности развития</p>
+      </div>
+      <div class="dom-card">
+        <p class="card-category">Для компаний</p>
+        <p>Которые хотят повышать устойчивость, эффективность и адаптивность команд</p>
+      </div>
+    </div>
   </div>
 </section>
 
