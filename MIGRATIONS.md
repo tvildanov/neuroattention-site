@@ -16,6 +16,9 @@
 | `na_token` | JWT auth token |
 | `na_user` | Cached user object (JSON) |
 | `na_neuromap_data` | NeuroMap entries cache (JSON, mirrors DB) |
+| `na_diary_data` | Neuro-resource diary entries cache (JSON, mirrors DB) |
+| `na_calendar_events` | Calendar events cache (JSON, mirrors DB) |
+| `na_course_progress` | Course progress array cache (JSON, mirrors DB) |
 
 ### 2. Database Schema Changes (Neon)
 - Always use `ALTER TABLE ... ADD COLUMN ... DEFAULT ...` (nullable or with default) for backward compatibility.
@@ -32,6 +35,7 @@
 | 003 | Add `role` column (if missing), index | 2025-04-xx |
 | 004 | Create `password_resets` table | 2025-04-xx |
 | 005 | Create `neuro_map_entries` table | 2026-04-25 |
+| 006 | Create `neuro_resource_diary`, `calendar_events`, `course_progress` tables | 2026-04-25 |
 
 ### 3. Pre-Deploy Checklist
 Before every deploy that touches data storage:
@@ -45,6 +49,9 @@ Neon has built-in point-in-time recovery (PITR). Ensure the project has branchin
 
 ### 5. Frontend Data Flow
 - NeuroMap data: saved to Neon DB via API on every entry, cached in localStorage for fast load.
+- Diary data: saved to Neon DB via API on every entry, cached in localStorage for fast load.
+- Calendar events: saved to Neon DB via API on add/toggle/delete, cached in localStorage for fast load.
+- Course progress: saved to Neon DB via API on status change (upsert), cached in localStorage for fast load.
 - Point A→B data: saved to Neon DB via API.
 - Auth tokens: localStorage only (not persisted server-side beyond JWT validation).
 
