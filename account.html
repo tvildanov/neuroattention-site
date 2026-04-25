@@ -1200,6 +1200,10 @@ function onLogin(user){
     // Check feature access: client needs program
     updateClientAccess(user);
     abCheckGuided();
+    // Load NeuroMap: fast from localStorage cache, then sync from API
+    nmLoadFromLocal();
+    updateNmToday();
+    nmLoadFromAPI(); // async, will refresh graph when done
     showSection('client');
   } else {
     setupAdminDashboard(user);
@@ -2520,16 +2524,65 @@ function nmSaveSurvey(){
       });
     });
   });
-  nmData[key].push({
+  var entry={
     chains:chains,
     intensity:nmSurveyState.intensity||5,
     context:nmSurveyState.context||'',
     time:today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
-  });
+  };
+  nmData[key].push(entry);
+  // Persist to API
+  nmSaveToAPI(key, entry);
+  // Cache to localStorage
+  nmCacheToLocal();
   closeNmSurvey();
   if(navigator.vibrate) navigator.vibrate([20,40,20]);
   updateNmToday();
   buildNmGraph();
+}
+
+// ── NeuroMap Persistence ──
+var NM_API_BASE='https://neuroattention-api-production.up.railway.app';
+var NM_LOCAL_KEY='na_neuromap_data';
+
+function nmSaveToAPI(dateKey, entry){
+  var token=naGetToken();
+  if(!token) return;
+  fetch(NM_API_BASE+'/api/neuromap/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({date_key:dateKey, entry:entry})
+  }).catch(function(err){ console.warn('NeuroMap save failed:',err); });
+}
+
+function nmCacheToLocal(){
+  try { localStorage.setItem(NM_LOCAL_KEY, JSON.stringify(nmData)); } catch(e){}
+}
+
+function nmLoadFromLocal(){
+  try {
+    var raw=localStorage.getItem(NM_LOCAL_KEY);
+    if(raw){ nmData=JSON.parse(raw); return true; }
+  } catch(e){}
+  return false;
+}
+
+async function nmLoadFromAPI(){
+  var token=naGetToken();
+  if(!token) return;
+  try {
+    var resp=await fetch(NM_API_BASE+'/api/neuromap',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!resp.ok) return;
+    var json=await resp.json();
+    if(json.ok && json.data){
+      nmData=json.data;
+      nmCacheToLocal();
+      updateNmToday();
+      buildNmGraph();
+    }
+  } catch(err){ console.warn('NeuroMap load failed:',err); }
 }
 
 // Update today summary

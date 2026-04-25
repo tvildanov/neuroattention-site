@@ -62,7 +62,19 @@ app.post('/api/run-migrations', async (req, res) => {
     // Also add last_login_at if missing
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`;
 
-    res.json({ ok: true, message: 'Migrations 003+004 applied successfully' });
+    // Migration 005: NeuroMap entries table
+    await sql`CREATE TABLE IF NOT EXISTS neuro_map_entries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date_key TEXT NOT NULL,
+      payload JSONB NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_neuromap_user ON neuro_map_entries(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_neuromap_user_date ON neuro_map_entries(user_id, date_key)`;
+
+    res.json({ ok: true, message: 'Migrations 003+004+005 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -505,6 +517,65 @@ app.patch('/api/pointab/reminders/:id', requireAuth, async (req, res) => {
     res.json({ ok: true, done: rows[0].done });
   } catch (err) {
     console.error('PATCH /api/pointab/reminders/:id:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── NEUROMAP PERSISTENCE ──
+// IMPORTANT: Never change the data format without a migration script.
+// See MIGRATIONS.md for the data-safety contract.
+
+// Save a NeuroMap entry (one survey submission)
+app.post('/api/neuromap/save', requireAuth, async (req, res) => {
+  try {
+    const { date_key, entry } = req.body;
+    if (!date_key || !entry) return res.status(400).json({ error: 'date_key and entry required' });
+    const rows = await sql`
+      INSERT INTO neuro_map_entries (user_id, date_key, payload)
+      VALUES (${req.user.id}, ${date_key}, ${JSON.stringify(entry)})
+      RETURNING id, date_key, created_at
+    `;
+    res.json({ ok: true, id: rows[0].id, date_key: rows[0].date_key });
+  } catch (err) {
+    console.error('POST /api/neuromap/save:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Load all NeuroMap entries for current user
+app.get('/api/neuromap', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, date_key, payload, created_at
+      FROM neuro_map_entries
+      WHERE user_id = ${req.user.id}
+      ORDER BY date_key ASC, created_at ASC
+    `;
+    // Reconstruct nmData format: { 'YYYY-MM-DD': [ entry, entry, ... ] }
+    const data = {};
+    rows.forEach(r => {
+      if (!data[r.date_key]) data[r.date_key] = [];
+      data[r.date_key].push(r.payload);
+    });
+    res.json({ ok: true, data: data, count: rows.length });
+  } catch (err) {
+    console.error('GET /api/neuromap:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Delete a specific NeuroMap entry
+app.delete('/api/neuromap/:id', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      DELETE FROM neuro_map_entries
+      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      RETURNING id
+    `;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/neuromap/:id:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
