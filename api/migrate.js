@@ -10,29 +10,32 @@ async function migrate() {
   }
   const sql = neon(process.env.DATABASE_URL);
 
-  // Read and split migration file by statements
-  const migration = fs.readFileSync(
-    path.join(__dirname, '..', 'migrations', '001_point_ab.sql'),
-    'utf8'
-  );
+  // Run all migration files in order
+  const migrationsDir = path.join(__dirname, '..', 'migrations');
+  const files = fs.readdirSync(migrationsDir)
+    .filter(f => f.endsWith('.sql'))
+    .sort();
 
-  const statements = migration
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--'));
+  for (const file of files) {
+    const migration = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+    const statements = migration
+      .split(';')
+      .map(s => s.replace(/--[^\n]*/g, '').trim())
+      .filter(s => s.length > 0);
 
-  console.log(`Running migration 001_point_ab.sql (${statements.length} statements)...`);
+    console.log(`Running ${file} (${statements.length} statements)...`);
 
-  for (const stmt of statements) {
-    try {
-      await sql(stmt);
-      console.log('  OK:', stmt.substring(0, 60).replace(/\n/g, ' ') + '...');
-    } catch (err) {
-      console.error('  FAIL:', stmt.substring(0, 60), err.message);
+    for (const stmt of statements) {
+      try {
+        await sql(stmt);
+        console.log('  OK:', stmt.substring(0, 60).replace(/\n/g, ' ') + '...');
+      } catch (err) {
+        console.error('  FAIL:', stmt.substring(0, 60), err.message);
+      }
     }
   }
 
-  console.log('Done.');
+  console.log('All migrations done.');
 }
 
 migrate().catch(err => { console.error(err); process.exit(1); });
