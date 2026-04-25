@@ -21,16 +21,22 @@
     margin: 0 0 1.25rem 0;
     line-height: 1.2;
   }
-  .dom-hero .hero-sub {
-    font-size: clamp(1.1rem, 1.5vw + 0.5rem, 1.65rem);
+  .dom-hero-h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.1rem, 2vw + 0.5rem, 1.65rem);
+    font-weight: 400;
     line-height: 1.35;
     color: var(--text-secondary);
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 400;
-    margin: 0 0 1.5rem 0;
+    margin: 0 0 1.25rem 0;
   }
-  .dom-hero .hero-sub span {
-    display: block;
+  .dom-hero-subline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(0.75rem, 1vw + 0.3rem, 0.9rem);
+    letter-spacing: 0.04em;
+    color: var(--accent-cyan, #4ecdc4);
+    opacity: 0.85;
+    margin: 0;
+    line-height: 1.5;
   }
 
   .dom-section {
@@ -202,16 +208,12 @@
       gap: 1.25rem !important;
       padding: 1.5rem !important;
     }
-    .dom-unity-big img:first-of-type {
+    .dom-unity-big img {
       margin: 0 auto;
-      width: 60px !important;
-      height: 60px !important;
-    }
-    .dom-unity-big img:last-of-type {
-      margin: 0 auto;
-      width: 100% !important;
-      max-width: 200px;
+      width: auto !important;
       height: auto !important;
+      max-width: 200px !important;
+      max-height: 200px !important;
     }
   }
 </style>
@@ -265,11 +267,9 @@
   <div class="container" style="position:relative;z-index:2;">
     <div class="grid grid-2" style="gap:clamp(1.5rem,4vw,4rem);align-items:center;">
       <div class="fade-up" style="text-align:left;">
-        <h1 class="heading-space"><img src="assets/logo-dom.png" alt="" class="hero-inline-logo" style="height:1.1em;vertical-align:middle;margin-right:0.3em;display:inline-block;" />DOM — экосистема раскрытия человеческого потенциала</h1>
-        <p class="hero-sub">
-          <span>От адаптации к осознанному участию</span>
-          <span>От Homo sapiens к Homo conscious</span>
-        </p>
+        <h1 class="heading-space">От адаптации к осознанному участию</h1>
+        <h2 class="dom-hero-h2">От Homo sapiens к Homo conscious</h2>
+        <p class="dom-hero-subline"><img src="assets/logo-dom.png" alt="" style="height:1em;vertical-align:middle;margin-right:0.25em;display:inline-block;" />DOM — экосистема раскрытия человеческого потенциала</p>
       </div>
       <div class="fade-right delay-1">
         <div style="position:relative;">
@@ -334,17 +334,17 @@
     </div>
 
     <!-- Big DOM Unity card -->
-    <a href="https://t.me/domunity/68" target="_blank" rel="noopener" class="dom-unity-big" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2rem;margin-top:1.25rem;padding:2rem 2.5rem;background:linear-gradient(135deg,rgba(78,205,196,0.08) 0%,rgba(78,205,196,0.02) 100%);border:1px solid rgba(78,205,196,0.15);border-radius:20px;text-decoration:none;transition:border-color 0.3s ease,transform 0.2s ease;position:relative;overflow:hidden;">
-      <div style="flex-shrink:0;">
-        <img src="assets/logo-dom.png" alt="DOM" style="width:80px;height:80px;object-fit:contain;border-radius:12px;" />
+    <a href="https://t.me/domunity/68" target="_blank" rel="noopener" class="dom-unity-big" style="display:grid;grid-template-columns:140px 1fr 140px;align-items:stretch;gap:2rem;margin-top:1.25rem;padding:0;background:linear-gradient(135deg,rgba(78,205,196,0.08) 0%,rgba(78,205,196,0.02) 100%);border:1px solid rgba(78,205,196,0.15);border-radius:20px;text-decoration:none;transition:border-color 0.3s ease,transform 0.2s ease;position:relative;overflow:hidden;min-height:160px;">
+      <div style="display:flex;align-items:center;justify-content:center;padding:1rem;">
+        <img src="assets/logo-dom.png" alt="DOM" style="width:100%;height:100%;max-width:140px;max-height:140px;object-fit:contain;border-radius:12px;" />
       </div>
-      <div style="text-align:center;">
+      <div style="text-align:center;display:flex;flex-direction:column;justify-content:center;padding:1.5rem 0;">
         <p class="card-category" style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--accent-cyan,#4ecdc4);margin:0 0 0.5rem 0;opacity:0.8;">Люди</p>
         <h3 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:600;color:var(--accent-cyan,#4ecdc4);margin:0 0 0.625rem 0;">DOM Unity</h3>
         <p style="font-size:0.95rem;line-height:1.7;color:var(--text-muted);margin:0;max-width:480px;margin-left:auto;margin-right:auto;">Сообщество людей, которые движутся в одном направлении — развитие, осознанность и улучшение качества жизни. Здесь среда становится фактором роста.</p>
       </div>
-      <div style="flex-shrink:0;">
-        <img src="assets/dom-unity.gif" alt="DOM Unity" style="width:120px;height:120px;object-fit:cover;border-radius:12px;" />
+      <div style="display:flex;align-items:center;justify-content:center;padding:1rem;">
+        <img src="assets/dom-unity.gif" alt="DOM Unity" style="width:100%;height:100%;max-width:140px;max-height:140px;object-fit:cover;border-radius:12px;" />
       </div>
     </a>
 

@@ -4,12 +4,197 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NeuroAttention Lab — исследовательская лаборатория внимания</title>
-<meta name="description" content="NeuroAttention Lab — физическая исследовательская и реабилитационная инфраструктура проекта. Исследования внимания, нейропластичности и интероцепции." />
+<meta name="description" content="NeuroAttention Lab — исследовательская платформа, изучающ��я внимание, состояние и поведение человека через нейронауку, технологии и практические протоколы." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
+<style>
+  /* Lab page specific */
+  .lab-section {
+    padding: 4rem 0;
+    position: relative;
+  }
+  .lab-section h2 {
+    font-family: 'Unbounded', 'Space Grotesk', sans-serif;
+    font-size: clamp(1.5rem, 2.5vw + 0.5rem, 2rem);
+    color: var(--text-primary);
+    margin: 0 0 1.25rem 0;
+    font-weight: 500;
+  }
+  .lab-section .section-text {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--text-muted);
+    margin: 0;
+    max-width: 720px;
+  }
+  .lab-section.centered {
+    text-align: center;
+  }
+  .lab-section.centered .section-text {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Research cards — same style as dom.html "Для кого DOM" */
+  .lab-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+  .lab-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 1.75rem;
+    transition: border-color 0.3s ease, transform 0.3s ease, opacity 0.5s ease;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .lab-card.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .lab-card:hover {
+    border-color: rgba(78,205,196,0.3);
+    transform: translateY(-2px);
+  }
+  .lab-card .card-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent-cyan, #4ecdc4);
+    margin: 0 0 0.75rem 0;
+    opacity: 0.8;
+  }
+  .lab-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+  }
+  .lab-card p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    padding: 2rem 0;
+  }
+  .stat-item {
+    text-align: center;
+    padding: 0 2rem;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .stat-item:last-child {
+    border-right: none;
+  }
+  .stat-item .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .stats-footnote {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-top: 0.75rem;
+    letter-spacing: 0.03em;
+  }
+
+  /* List items */
+  .lab-list {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .lab-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+  .lab-list li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-cyan, #4ecdc4);
+    margin-top: 0.55rem;
+  }
+
+  /* XR pulse highlight */
+  .lab-list li.xr-highlight {
+    color: var(--accent-cyan, #4ecdc4);
+    font-weight: 500;
+  }
+  .lab-list li.xr-highlight::before {
+    animation: xr-pulse 2.5s ease-in-out infinite;
+    width: 8px;
+    height: 8px;
+  }
+  @keyframes xr-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(78,205,196,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 8px 4px rgba(78,205,196,0.2); }
+  }
+
+  /* CTA */
+  .lab-cta {
+    text-align: center;
+    padding: 4rem 0 2rem;
+  }
+  .lab-cta h2 {
+    font-family: 'Unbounded', 'Space Grotesk', sans-serif;
+    font-size: clamp(1.5rem, 2.5vw + 0.5rem, 2rem);
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+    font-weight: 500;
+  }
+  .lab-cta .cta-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    .lab-section { padding: 3rem 0; }
+    .lab-cards-grid { grid-template-columns: 1fr; }
+    .stats-bar {
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .stat-item {
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 0 0 1rem 0;
+    }
+    .stat-item:last-child { border-bottom: none; padding-bottom: 0; }
+  }
+</style>
 </head>
 <body>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -55,30 +240,29 @@
   </div>
 </nav>
 
+<!-- БЛОК 1 — HERO -->
 <section style="padding:8rem 0 4rem;">
-  <div class="container">
+  <div class="container" style="position:relative;z-index:2;">
     <div class="grid grid-2" style="align-items:center;gap:3rem;">
-      <div class="fade-left">
-        <p class="eyebrow">Лаборатория</p>
-        <h1 class="heading-space" style="font-size:clamp(2rem,4vw+1rem,3rem);color:var(--text-primary);margin:0 0 1.5rem 0;">
-          NeuroAttention Lab <img src="assets/logo-na.png" alt="" class="hero-inline-logo" style="height:1em;vertical-align:middle;margin-left:0.25em;display:inline-block;" />
+      <div class="fade-up">
+        <p class="eyebrow">NeuroAttention Lab</p>
+        <h1 class="heading-space" style="font-size:clamp(2.25rem,5vw+1rem,4.25rem);color:var(--text-primary);margin:0 0 1.5rem 0;">
+          Операционна�� система человеческого внимания <img src="assets/logo-na.png" alt="" style="height:0.85em;vertical-align:middle;margin-left:0.2em;display:inline-block;" />
         </h1>
-        <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-secondary);margin:0 0 1rem 0;">
-          Физическая исследовательская и реабилитационная инфраструктура проекта.
+        <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-secondary);margin:0;">
+          И��фраструктура данных и исследований, формирующая новые подходы к адаптации и развитию чел��века в технологическом мире
         </p>
-        <p style="font-size:1rem;line-height:1.75;color:var(--text-muted);margin:0 0 2rem 0;">
-          Здесь объединяются человек, технологии, данные и искусственный интеллект для исследования и разработки новых методов работы с вниманием.
-        </p>
-        <a href="dom.html" class="btn btn-solid">
-          Присоединиться
-          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
       </div>
-      <div class="fade-right">
-        <div style="position:relative;">
-          <div class="glow-orb"></div>
-          <div class="media-box aspect-sq" style="max-width:600px;margin-left:auto;">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab" style="width:100%;height:100%;object-fit:cover;filter:brightness(0.85);" />
+      <div class="fade-right delay-1">
+        <div class="img-stack">
+          <div class="stack-layer">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab — Research Center" />
+          </div>
+          <div class="stack-layer">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/lab-people_16bf681d.png" alt="NeuroAttention Lab — Team" />
+          </div>
+          <div class="stack-layer">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/9FLlIapWX4OsEeRQFNPo4_bec1ef8e.png" alt="NeuroAttention Headband Device" />
           </div>
         </div>
       </div>
@@ -86,140 +270,180 @@
   </div>
 </section>
 
-<!-- Research Areas -->
-<section class="section">
+<!-- БЛОК 2 — ПЛАТФОРМА -->
+<section class="lab-section centered">
   <div class="section-divider"></div>
-  <div class="container">
-    <div class="text-center mb-12 fade-up">
-      <h2 class="heading-space h2-block large">Направления исследований</h2>
-    </div>
-    <div class="grid grid-2 max-w-4xl fade-up">
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Нейронаука внимания</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Исследование нейронных механизмов произвольного и непроизвольного внимания с использованием ЭЭГ и фМРТ</p>
+  <div class="container max-w-3xl fade-up">
+    <h2>NeuroAttention Lab —</h2>
+    <p class="section-text">Это исследовательская платформа, которая изучает внимание, состояние и поведение человека через сочетание нейронауки, технологий и практических протоколов.</p>
+    <p class="section-text" style="margin-top:1.5rem;font-size:0.95rem;color:var(--text-secondary);">Платформа объединяет:</p>
+    <ul class="lab-list" style="max-width:480px;margin-left:auto;margin-right:auto;">
+      <li>исследовательские методики</li>
+      <li>системы сбора и анализа данных</li>
+      <li>цифровые и физические среды</li>
+      <li>разработки на основе искусственного интеллекта</li>
+    </ul>
+  </div>
+</section>
+
+<!-- БЛОК 3 — ЦЕЛЬ -->
+<section class="lab-section centered">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Цель</h2>
+    <p class="section-text">Создание среды и инструментов, которые улучшают качество жизни и расширяют функциональные возможности человека.</p>
+  </div>
+</section>
+
+<!-- БЛОК 4 — НАПРАВЛЕНИЯ ИССЛЕДОВАНИЙ -->
+<section class="lab-section">
+  <div class="section-divider"></div>
+  <div class="container fade-up">
+    <h2 class="text-center">Направления исследований</h2>
+    <div class="lab-cards-grid" style="max-width:1200px;margin:2rem auto 0;">
+
+      <div class="lab-card">
+        <p class="card-num">01</p>
+        <h3>Нейронаука внимания</h3>
+        <p>Механизмы концентрации и управления вниманием</p>
       </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Психофизиология</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Изучение связи между физиологическими маркерами и когнитивными процессами</p>
+
+      <div class="lab-card">
+        <p class="card-num">02</p>
+        <h3>Психофизиология состояния</h3>
+        <p>Связь тела, эмоций и когнитивных процессов</p>
       </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Нейропластичность</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Разработка протоколов тренировки, основанных на принципах нейропластичности мозга</p>
+
+      <div class="lab-card">
+        <p class="card-num">03</p>
+        <h3>Нейропластичность</h3>
+        <p>Развитие мозга через обучение и практику</p>
       </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Интероцепция</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Исследование роли телесной осознанности в регуляции внимания и эмоций</p>
+
+      <div class="lab-card">
+        <p class="card-num">04</p>
+        <h3>Интероцепция</h3>
+        <p>Осознанность тела и её влияние на поведение</p>
       </div>
+
+      <div class="lab-card">
+        <p class="card-num">05</p>
+        <h3>Поведенческие паттерны</h3>
+        <p>Формирование решений, реакций и привычек</p>
+      </div>
+
+      <div class="lab-card">
+        <p class="card-num">06</p>
+        <h3>Человек × AI</h3>
+        <p>Новые формы взаимодействия и управления через внимание</p>
+      </div>
+
+      <div class="lab-card">
+        <p class="card-num">07</p>
+        <h3>Среда и форма</h3>
+        <p>Влияние пространства, объектов �� материалов</p>
+      </div>
+
+      <div class="lab-card">
+        <p class="card-num">08</p>
+        <h3>Сенсоры и носимые технологии</h3>
+        <p>Сбор и интерпретация данных о состоянии человека</p>
+      </div>
+
     </div>
   </div>
 </section>
 
-<!-- Stats -->
-<section class="section" style="padding:3rem 0 4rem;">
+<!-- БЛОК 5 — СТАТИСТИКА -->
+<section class="lab-section">
   <div class="section-divider"></div>
-  <div class="container">
-    <div class="grid grid-4 fade-up">
-      <div class="stat-box glass-card-elevated">
-        <p class="num">12+</p>
-        <p class="label">Лет исследований</p>
+  <div class="container fade-up">
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-value">12+ лет</span>
+        <br><span style="font-size:0.8rem;color:var(--text-muted);">практической работы</span>
       </div>
-      <div class="stat-box glass-card-elevated">
-        <p class="num">500+</p>
-        <p class="label">Обученных людей</p>
+      <div class="stat-item">
+        <span class="stat-value">500+</span>
+        <br><span style="font-size:0.8rem;color:var(--text-muted);">участников программ</span>
       </div>
-      <div class="stat-box glass-card-elevated">
-        <p class="num">15+</p>
-        <p class="label">Публикаций</p>
+      <div class="stat-item">
+        <span class="stat-value">3 страны</span>
+        <br><span style="font-size:0.8rem;color:var(--text-muted);">присутствия</span>
       </div>
-      <div class="stat-box glass-card-elevated">
-        <p class="num">4</p>
-        <p class="label">Страны присутствия</p>
+      <div class="stat-item">
+        <span class="stat-value">Data layer</span>
+        <br><span style="font-size:0.8rem;color:var(--text-muted);">формирование собственной базы данных</span>
       </div>
     </div>
+    <p class="stats-footnote">Data layer в стадии активного масштабирования</p>
   </div>
 </section>
 
-<!-- Publications -->
-<section class="section">
+<!-- БЛОК 6 — ЦЕННОСТЬ ДАННЫХ -->
+<section class="lab-section centered">
   <div class="section-divider"></div>
-  <div class="container max-w-4xl">
-    <div class="text-center mb-12 fade-up">
-      <h2 class="heading-space h2-block large">Ключевые публикации</h2>
-    </div>
-    <div class="fade-up">
-      <div class="glass-card-elevated pub-card card-hover">
-        <div class="icon-box glass-icon">
-          <svg class="icon" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
-        </div>
-        <div>
-          <p class="title">The Attention System of the Human Brain</p>
-          <p class="meta">Posner &amp; Petersen (1990) — <em>Annual Review of Neuroscience</em></p>
-        </div>
-      </div>
-      <div class="glass-card-elevated pub-card card-hover">
-        <div class="icon-box glass-icon">
-          <svg class="icon" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
-        </div>
-        <div>
-          <p class="title">Short-term meditation training improves attention and self-regulation</p>
-          <p class="meta">Tang et al. (2007) — <em>PNAS</em></p>
-        </div>
-      </div>
-      <div class="glass-card-elevated pub-card card-hover">
-        <div class="icon-box glass-icon">
-          <svg class="icon" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
-        </div>
-        <div>
-          <p class="title">Mindfulness practice leads to increases in regional brain gray matter density</p>
-          <p class="meta">Hölzel et al. (2011) — <em>Psychiatry Research</em></p>
-        </div>
-      </div>
-      <div class="glass-card-elevated pub-card card-hover">
-        <div class="icon-box glass-icon">
-          <svg class="icon" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
-        </div>
-        <div>
-          <p class="title">The polyvagal perspective</p>
-          <p class="meta">Porges (2007) — <em>Biological Psychology</em></p>
-        </div>
-      </div>
-      <div class="glass-card-elevated pub-card card-hover">
-        <div class="icon-box glass-icon">
-          <svg class="icon" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
-        </div>
-        <div>
-          <p class="title">How do you feel? Interoception: the sense of the physiological condition of the body</p>
-          <p class="meta">Craig (2002) — <em>Nature Reviews Neuroscience</em></p>
-        </div>
-      </div>
-    </div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Ценность данных</h2>
+    <p class="section-text">Платформа собирает и анализирует данные о внимании, состоянии и поведении человека. Это позволяет:</p>
+    <ul class="lab-list" style="max-width:520px;margin-left:auto;margin-right:auto;">
+      <li>создавать персонализированные протоко��ы развития</li>
+      <li>повышать когнитивные и поведенческие показатели</li>
+      <li>обучать системы искусственного интеллекта</li>
+      <li>разрабатывать новые продукты и технологические решения</li>
+    </ul>
   </div>
 </section>
 
-<!-- CTA -->
-<section class="section">
+<!-- БЛОК 7 — ИНФРАСТРУКТУРА -->
+<section class="lab-section centered">
   <div class="section-divider"></div>
-  <div class="container max-w-2xl text-center fade-up">
-    <h2 class="heading-space h2-block large mb-6">Присоединяйтесь к исследованиям</h2>
-    <p class="sub-muted mb-8">Мы открыты для сотрудничества с исследователями, университетами и организациями.</p>
-    <div class="flex flex-wrap justify-center gap-4">
-      <a href="dom.html" class="btn btn-solid">
-        Сообщество DOM
+  <div class="container max-w-3xl fade-up">
+    <h2>Инфраструктура</h2>
+    <ul class="lab-list" style="max-width:520px;margin-left:auto;margin-right:auto;">
+      <li>онлайн-платформа</li>
+      <li>офлайн-центры и лаборатории</li>
+      <li>исследовательские протоколы</li>
+      <li>систе��ы сбора и обработки данных</li>
+      <li class="xr-highlight"><a href="xr.html" style="color:inherit;text-decoration:none;">XR NeuroAttention Platform</a></li>
+      <li>разработка носимых и интегрированных технологий</li>
+    </ul>
+  </div>
+</section>
+
+<!-- БЛОК 8 — РОЛЬ В СИСТЕМЕ DOM -->
+<section class="lab-section centered">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Роль в системе DOM</h2>
+    <p class="section-text">NeuroAttention Lab — исследовательская основа экосистемы DOM. Здесь создаются:</p>
+    <ul class="lab-list" style="max-width:320px;margin-left:auto;margin-right:auto;">
+      <li>методы</li>
+      <li>технологии</li>
+      <li>данные</li>
+    </ul>
+    <p class="section-text" style="margin-top:1.25rem;">которые используются для развития человека и построения среды нового типа.</p>
+  </div>
+</section>
+
+<!-- БЛОК 9 — CTA -->
+<section class="lab-cta">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Присоединиться к исследованиям</h2>
+    <p class="section-text" style="text-align:center;margin:0 auto;max-width:480px;">Мы открыты для сотрудничества:</p>
+    <ul class="lab-list" style="max-width:360px;margin:1rem auto 0;">
+      <li>исследователи</li>
+      <li>специалисты</li>
+      <li>технологические партнёры</li>
+      <li>компании и организации</li>
+    </ul>
+    <div class="cta-buttons">
+      <a href="account.html" class="btn btn-solid">
+        Присоединиться
         <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
-      <a href="programs.html" class="btn btn-primary">Программы обучения</a>
+      <a href="mailto:info@neuroattention.com" class="btn btn-primary">Сотрудничество</a>
     </div>
   </div>
 </section>
@@ -246,7 +470,8 @@
         <div class="footer-links">
           <a href="xr.html">XR Платформа</a>
           <a href="lab.html">Лаборатория</a>
-          <a href="dom.html">DOM Unity</a>
+          <a href="dom.html">DOM</a>
+          <a href="custom.html">Custom Group</a>
         </div>
       </div>
       <div>
@@ -261,6 +486,22 @@
 
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script>
+// Animate lab cards on scroll
+(function() {
+  const cards = document.querySelectorAll('.lab-card');
+  if (!cards.length) return;
+  const io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        var i = Array.from(cards).indexOf(e.target);
+        setTimeout(function() { e.target.classList.add('in-view'); }, i * 80);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  cards.forEach(function(c) { io.observe(c); });
+})();
+</script>
 </body>
 </html>
