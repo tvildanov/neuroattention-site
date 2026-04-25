@@ -1184,25 +1184,16 @@ function onLogin(user){
   currentUser = user;
   viewAsUser = null;
 
-  // Load ALL user data regardless of role (admins also use NeuroMap, diary, etc.)
-  nmLoadFromLocal();
-  updateNmToday();
-  nmLoadFromAPI(); // async, will refresh graph when done
-  diaryLoadFromLocal();
-  renderDiaryCalendar();
-  updateTodaySummary();
-  diaryLoadFromAPI();
-  calLoadFromLocal();
-  renderCalendar();
-  calLoadFromAPI();
-  progLoadFromLocal();
-  renderCourseProgress();
-  progLoadFromAPI();
+  // STEP 1: Load data from localStorage caches (sync, safe — no DOM needed)
+  try { nmLoadFromLocal(); } catch(e){ console.warn('nmLoadFromLocal error:', e); }
+  try { diaryLoadFromLocal(); } catch(e){ console.warn('diaryLoadFromLocal error:', e); }
+  try { calLoadFromLocal(); } catch(e){ console.warn('calLoadFromLocal error:', e); }
+  try { progLoadFromLocal(); } catch(e){ console.warn('progLoadFromLocal error:', e); }
 
+  // STEP 2: Show the correct dashboard FIRST so DOM is visible for renders
   if(user.role==='client'){
     var greetText = 'Здравствуйте, '+user.name;
     document.getElementById('client-greeting').textContent = greetText;
-    // Superadmin badge for clients with founder-level access
     var roleEl = document.querySelector('#client-dashboard .dash-role');
     if(user.serverRole==='superadmin' && roleEl){
       roleEl.innerHTML = '<span class="pulse"></span>Superadmin';
@@ -1211,12 +1202,10 @@ function onLogin(user){
       roleEl.innerHTML = '<span class="pulse"></span>Клиент';
       roleEl.style.borderColor = '';
     }
-    // Check feature access: client needs program
     updateClientAccess(user);
     abCheckGuided();
     showSection('client');
   } else {
-    // Admin/founder — also set up greeting for when they switch to client tools
     var greetText = 'Здравствуйте, '+user.name;
     document.getElementById('client-greeting').textContent = greetText;
     var roleEl = document.querySelector('#client-dashboard .dash-role');
@@ -1227,6 +1216,19 @@ function onLogin(user){
     setupAdminDashboard(user);
     showSection('admin');
   }
+
+  // STEP 3: Now DOM is visible — safe to render UI components
+  try { updateNmToday(); } catch(e){ console.warn('updateNmToday error:', e); }
+  try { renderDiaryCalendar(); } catch(e){ console.warn('renderDiaryCalendar error:', e); }
+  try { updateTodaySummary(); } catch(e){ console.warn('updateTodaySummary error:', e); }
+  try { renderCalendar(); } catch(e){ console.warn('renderCalendar error:', e); }
+  try { renderCourseProgress(); } catch(e){ console.warn('renderCourseProgress error:', e); }
+
+  // STEP 4: Fetch fresh data from API (async, will re-render when done)
+  try { nmLoadFromAPI(); } catch(e){ console.warn('nmLoadFromAPI error:', e); }
+  try { diaryLoadFromAPI(); } catch(e){ console.warn('diaryLoadFromAPI error:', e); }
+  try { calLoadFromAPI(); } catch(e){ console.warn('calLoadFromAPI error:', e); }
+  try { progLoadFromAPI(); } catch(e){ console.warn('progLoadFromAPI error:', e); }
 }
 
 // Client feature access
@@ -1559,7 +1561,11 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
     try {
       var cached = JSON.parse(cachedStr);
       onLogin(naAdaptUser(cached));
-    } catch(e){}
+    } catch(e){
+      console.error('Optimistic onLogin failed:', e);
+      // Safety: ensure loader is hidden even if onLogin crashes
+      showSection('auth');
+    }
   }
 
   // Validate token in background
