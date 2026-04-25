@@ -36,6 +36,7 @@
 | 004 | Create `password_resets` table | 2025-04-xx |
 | 005 | Create `neuro_map_entries` table | 2026-04-25 |
 | 006 | Create `neuro_resource_diary`, `calendar_events`, `course_progress` tables | 2026-04-25 |
+| 007 | Create `nm_nodes` + `nm_links` tables for NeuroMap graph | 2026-04-25 |
 
 ### 3. Pre-Deploy Checklist
 Before every deploy that touches data storage:
