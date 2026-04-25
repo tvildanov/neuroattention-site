@@ -3519,54 +3519,130 @@ function drawDdTimeline(node){
   });
 }
 
-// Analysis
+// Analysis — Enhanced Insights Panel
 function nmRunAnalysis(entries){
   var panel=document.getElementById('nm-analysis');
   var content=document.getElementById('nm-analysis-content');
   if(!entries.length){panel.style.display='none';return;}
   panel.style.display='block';
 
-  var emoCounts={},areaCounts={},thoughtCounts={},chains=[];
+  var emoCounts={},areaCounts={},causeCounts={},thoughtCounts={},chains=[];
   var totalInt=0,intN=0;
+  var leaks={},supports={};
   entries.forEach(function(e){
     totalInt+=e.intensity;intN++;
     e.chains.forEach(function(c){
-      if(c.emotion) emoCounts[c.emotion]=(emoCounts[c.emotion]||0)+1;
+      if(c.emotion){
+        emoCounts[c.emotion]=(emoCounts[c.emotion]||0)+1;
+        if(isNegEmotion(c.emotion)) leaks[c.emotion]=(leaks[c.emotion]||0)+1;
+        else supports[c.emotion]=(supports[c.emotion]||0)+1;
+      }
       if(c.area) areaCounts[c.area]=(areaCounts[c.area]||0)+1;
+      if(c.cause){
+        causeCounts[c.cause]=(causeCounts[c.cause]||0)+1;
+        // Causes also go to leaks/supports based on emotion
+        if(c.emotion && isNegEmotion(c.emotion)) leaks[c.cause]=(leaks[c.cause]||0)+1;
+        else if(c.emotion) supports[c.cause]=(supports[c.cause]||0)+1;
+      }
       if(c.thought) thoughtCounts[c.thought]=(thoughtCounts[c.thought]||0)+1;
-      if(c.emotion&&c.area&&c.thought){
-        chains.push(c.emotion+' → '+c.area+(c.cause?' → '+c.cause:'')+' → '+c.thought);
+      if(c.emotion&&c.area){
+        chains.push(c.emotion+' → '+c.area+(c.cause?' → '+c.cause:'')+(c.thought?' → '+c.thought:''));
       }
     });
   });
 
-  // Find top items
   function topN(obj,n){
     return Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}).slice(0,n);
   }
-  var topEmo=topN(emoCounts,3);
-  var topArea=topN(areaCounts,2);
-  var topThought=topN(thoughtCounts,1);
 
-  // Count chain frequencies
+  // Top-3 chains
   var chainFreq={};
   chains.forEach(function(c){chainFreq[c]=(chainFreq[c]||0)+1;});
-  var topChains=topN(chainFreq,2);
+  var topChains=topN(chainFreq,3);
 
-  var insights=[];
-  if(topEmo.length) insights.push('Самые частые эмоции: <strong>'+topEmo.join(', ')+'</strong>');
-  if(topArea.length) insights.push('Основные области: <strong>'+topArea.join(', ')+'</strong>');
-  if(topThought.length&&topThought[0]) insights.push('Повторяющаяся мысль: <em>"'+topThought[0]+'"</em>'+(thoughtCounts[topThought[0]]>1?' (×'+thoughtCounts[topThought[0]]+')':''));
-  if(topChains.length) insights.push('Возможная повторяющаяся цепочка: <span style="color:var(--accent-cyan);">'+topChains[0]+'</span>');
-  if(intN) insights.push('Средняя интенсивность: <strong>'+Math.round(totalInt/intN)+'/10</strong>');
+  // Leaks & Supports
+  var topLeaks=topN(leaks,3);
+  var topSupports=topN(supports,3);
 
-  // Soft recommendations
+  // Triggers (causes that appear with negative emotions) & Restorers (with positive)
+  var triggerCauses={}, restorerCauses={};
+  entries.forEach(function(e){
+    e.chains.forEach(function(c){
+      if(c.cause && c.emotion){
+        if(isNegEmotion(c.emotion)) triggerCauses[c.cause]=(triggerCauses[c.cause]||0)+1;
+        else restorerCauses[c.cause]=(restorerCauses[c.cause]||0)+1;
+      }
+    });
+  });
+  var topTriggers=topN(triggerCauses,3);
+  var topRestorers=topN(restorerCauses,3);
+
+  // Build HTML
+  var html='';
+
+  // Section: Top chains
+  if(topChains.length){
+    html+='<div style="margin-bottom:1rem;"><p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Повторяющиеся цепочки</p>';
+    topChains.forEach(function(c,i){
+      html+='<p style="font-size:13px;color:var(--accent-cyan);margin:0 0 0.3rem;">'+(i+1)+'. '+c+' <span style="color:var(--text-muted);">×'+chainFreq[c]+'</span></p>';
+    });
+    html+='</div>';
+  }
+
+  // Section: Leaks & Supports
+  html+='<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">';
+  if(topLeaks.length){
+    html+='<div style="flex:1;min-width:140px;padding:0.75rem;background:rgba(255,100,100,0.06);border-radius:10px;border:1px solid rgba(255,100,100,0.12);"><p style="font-size:11px;color:rgba(255,140,140,0.8);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Утечки энергии</p>';
+    topLeaks.forEach(function(l){
+      html+='<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.2rem;">'+l+' <span style="color:var(--text-muted);">×'+leaks[l]+'</span></p>';
+    });
+    html+='</div>';
+  }
+  if(topSupports.length){
+    html+='<div style="flex:1;min-width:140px;padding:0.75rem;background:rgba(100,255,160,0.06);border-radius:10px;border:1px solid rgba(100,255,160,0.12);"><p style="font-size:11px;color:rgba(140,255,180,0.8);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Ресурсы</p>';
+    topSupports.forEach(function(s){
+      html+='<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.2rem;">'+s+' <span style="color:var(--text-muted);">×'+supports[s]+'</span></p>';
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+
+  // Section: Triggers & Restorers
+  if(topTriggers.length || topRestorers.length){
+    html+='<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">';
+    if(topTriggers.length){
+      html+='<div style="flex:1;min-width:140px;"><p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Триггеры</p>';
+      topTriggers.forEach(function(t){
+        html+='<p style="font-size:12px;color:rgba(255,180,100,0.8);margin:0 0 0.2rem;">'+t+' ×'+triggerCauses[t]+'</p>';
+      });
+      html+='</div>';
+    }
+    if(topRestorers.length){
+      html+='<div style="flex:1;min-width:140px;"><p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Восстановители</p>';
+      topRestorers.forEach(function(r){
+        html+='<p style="font-size:12px;color:rgba(140,230,180,0.8);margin:0 0 0.2rem;">'+r+' ×'+restorerCauses[r]+'</p>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+
+  // Section: Summary stats
+  var topEmo=topN(emoCounts,3);
+  var topArea=topN(areaCounts,2);
+  html+='<div style="padding:0.75rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);margin-bottom:1rem;">';
+  if(topEmo.length) html+='<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.3rem;">Частые эмоции: <strong>'+topEmo.join(', ')+'</strong></p>';
+  if(topArea.length) html+='<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.3rem;">Области: <strong>'+topArea.join(', ')+'</strong></p>';
+  if(intN) html+='<p style="font-size:13px;color:var(--text-secondary);margin:0;">Средняя интенсивность: <strong>'+Math.round(totalInt/intN)+'/10</strong> | Записей: '+entries.length+'</p>';
+  html+='</div>';
+
+  // Soft recommendation
   var negCount=0,posCount=0;
   topEmo.forEach(function(e){if(isNegEmotion(e))negCount++;else posCount++;});
-  if(negCount>posCount) insights.push('<span style="color:var(--text-muted);font-style:italic;">Похоже, что напряжение преобладает — обратите внимание на восстановление ресурса</span>');
-  else if(posCount>0) insights.push('<span style="color:var(--text-muted);font-style:italic;">Ресурсные состояния присутствуют — может быть полезно отметить, что их поддерживает</span>');
+  if(negCount>posCount) html+='<p style="font-size:13px;color:var(--text-muted);font-style:italic;margin:0;">Напряжение преобладает — обратите внимание на восстановление ресурса</p>';
+  else if(posCount>0) html+='<p style="font-size:13px;color:var(--text-muted);font-style:italic;margin:0;">Ресурсные состояния присутствуют — отметьте, что их поддерживает</p>';
 
-  content.innerHTML=insights.map(function(i){return '<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.5rem;line-height:1.5;">'+i+'</p>';}).join('');
+  content.innerHTML=html;
 }
 
 // ══════════════════════════════════════════
