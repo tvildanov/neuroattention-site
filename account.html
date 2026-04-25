@@ -238,14 +238,80 @@
   </div>
 </nav>
 
-<!-- ═══ AUTH LOADING ═══ -->
+<!-- ═══ AUTH LOADING — NeuroAttention style ═══ -->
 <div id="auth-loading" style="display:flex;justify-content:center;align-items:center;min-height:60vh;">
-  <div style="text-align:center;">
-    <div style="width:40px;height:40px;border:2px solid rgba(78,205,196,0.2);border-top-color:var(--accent-cyan,#4ecdc4);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem;"></div>
-    <p style="font-size:14px;color:var(--text-muted);">Загрузка...</p>
+  <div style="text-align:center;position:relative;">
+    <canvas id="na-loader-canvas" width="180" height="180" style="display:block;margin:0 auto 1.2rem;"></canvas>
+    <p id="na-loader-text" style="font-size:13px;color:rgba(78,205,196,0.8);letter-spacing:0.5px;margin:0;font-family:inherit;">загружаем вашу карту...</p>
   </div>
 </div>
-<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+<script>
+(function(){
+  var c=document.getElementById('na-loader-canvas');
+  if(!c) return;
+  var ctx=c.getContext('2d');
+  var W=180, H=180, cx=W/2, cy=H/2;
+  var t0=performance.now();
+  var nodes=[
+    {r:0,a:0,rad:6,color:'rgba(0,224,255,0.9)',label:''},
+    {r:38,a:0,rad:4,color:'rgba(255,107,107,0.8)'},
+    {r:38,a:Math.PI*0.5,rad:4,color:'rgba(78,205,196,0.8)'},
+    {r:38,a:Math.PI,rad:4,color:'rgba(155,89,182,0.8)'},
+    {r:38,a:Math.PI*1.5,rad:4,color:'rgba(241,196,15,0.8)'},
+    {r:64,a:0.3,rad:2.5,color:'rgba(255,107,107,0.5)'},
+    {r:64,a:1.1,rad:2.5,color:'rgba(78,205,196,0.5)'},
+    {r:64,a:2.2,rad:2.5,color:'rgba(155,89,182,0.5)'},
+    {r:64,a:3.3,rad:2.5,color:'rgba(241,196,15,0.5)'},
+    {r:64,a:4.4,rad:2.5,color:'rgba(0,224,255,0.4)'},
+    {r:64,a:5.2,rad:2.5,color:'rgba(255,107,107,0.4)'}
+  ];
+  var links=[[0,1],[0,2],[0,3],[0,4],[1,5],[2,6],[3,7],[4,8],[1,2],[3,4],[5,9],[8,10]];
+  function draw(ts){
+    var t=(ts-t0)/1000;
+    ctx.clearRect(0,0,W,H);
+    // Concentric rings
+    for(var i=1;i<=3;i++){
+      var rr=i*28;
+      var alpha=0.06+0.04*Math.sin(t*1.2+i);
+      ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);
+      ctx.strokeStyle='rgba(0,224,255,'+alpha+')';ctx.lineWidth=1;ctx.stroke();
+    }
+    // Rotating ring
+    ctx.beginPath();
+    ctx.arc(cx,cy,78, t*0.5, t*0.5+Math.PI*1.2);
+    ctx.strokeStyle='rgba(0,224,255,0.12)';ctx.lineWidth=1.5;ctx.stroke();
+    // Node positions
+    var pos=nodes.map(function(n,i){
+      var a=n.a+t*(i<5?0.3:0.5)*(i%2?1:-1);
+      var pulse=1+0.08*Math.sin(t*2.5+i*0.7);
+      return {x:cx+n.r*Math.cos(a), y:cy+n.r*Math.sin(a), rad:n.rad*pulse, color:n.color};
+    });
+    // Links
+    links.forEach(function(l){
+      var a=pos[l[0]], b=pos[l[1]];
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle='rgba(0,224,255,0.1)';ctx.lineWidth=0.8;ctx.stroke();
+    });
+    // Pulse wave from center
+    var pw=(t%2.5)/2.5;
+    ctx.beginPath();ctx.arc(cx,cy,pw*80,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,224,255,'+(0.15*(1-pw))+')';ctx.lineWidth=1.5;ctx.stroke();
+    // Nodes
+    pos.forEach(function(p,i){
+      ctx.beginPath();ctx.arc(p.x,p.y,p.rad,0,Math.PI*2);
+      ctx.fillStyle=p.color;ctx.fill();
+      if(i===0){
+        ctx.beginPath();ctx.arc(p.x,p.y,p.rad+3+2*Math.sin(t*2),0,Math.PI*2);
+        ctx.strokeStyle='rgba(0,224,255,0.2)';ctx.lineWidth=1;ctx.stroke();
+      }
+    });
+    if(document.getElementById('auth-loading').style.display!=='none'){
+      requestAnimationFrame(draw);
+    }
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
 
 <!-- ═══ AUTH ═══ -->
 <section id="auth-screen" class="auth-wrap glass-card-elevated" style="display:none;">
