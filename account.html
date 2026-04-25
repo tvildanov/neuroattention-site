@@ -1199,6 +1199,10 @@
 // AUTH SYSTEM (JWT + API)
 // ══════════════════════════════════════════
 var AUTH_API = 'https://neuroattention-api-production.up.railway.app';
+var NM_API_BASE = AUTH_API;
+var DIARY_API_BASE = AUTH_API;
+var CAL_API_BASE = AUTH_API;
+var PROG_API_BASE = AUTH_API;
 var currentUser = null;
 var viewAsUser = null;
 
@@ -2738,12 +2742,16 @@ var NM_LOCAL_KEY='na_neuromap_data';
 
 function nmSaveToAPI(dateKey, entry){
   var token=naGetToken();
-  if(!token) return;
-  fetch(NM_API_BASE+'/api/neuromap/save',{
+  if(!token){ console.warn('[NM] nmSaveToAPI: no token'); return; }
+  var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  fetch(base+'/api/neuromap/save',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify({date_key:dateKey, entry:entry})
-  }).catch(function(err){ console.warn('NeuroMap save failed:',err); });
+  }).then(function(r){
+    if(!r.ok) console.warn('[NM] nmSaveToAPI: status='+r.status);
+    else console.log('[NM] nmSaveToAPI OK for '+dateKey);
+  }).catch(function(err){ console.warn('[NM] nmSaveToAPI FAILED:',err); });
 }
 
 function nmCacheToLocal(){
@@ -2760,20 +2768,24 @@ function nmLoadFromLocal(){
 
 async function nmLoadFromAPI(){
   var token=naGetToken();
-  if(!token) return;
+  if(!token){ console.warn('[NM] nmLoadFromAPI: no token, skipping'); return; }
+  var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  console.log('[NM] nmLoadFromAPI called, base='+base+', NM_API_BASE='+(typeof NM_API_BASE)+':'+NM_API_BASE);
   try {
-    var resp=await fetch(NM_API_BASE+'/api/neuromap',{
+    var resp=await fetch(base+'/api/neuromap',{
       headers:{'Authorization':'Bearer '+token}
     });
-    if(!resp.ok) return;
+    console.log('[NM] nmLoadFromAPI response status='+resp.status);
+    if(!resp.ok){ console.warn('[NM] nmLoadFromAPI: resp not ok, status='+resp.status); return; }
     var json=await resp.json();
+    console.log('[NM] nmLoadFromAPI json.ok='+json.ok+', count='+(json.count||0)+', keys='+Object.keys(json.data||{}).join(','));
     if(json.ok && json.data){
       nmData=json.data;
       nmCacheToLocal();
-      updateNmToday();
-      buildNmGraph();
+      try { updateNmToday(); } catch(e){ console.warn('[NM] updateNmToday after load:', e); }
+      try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after load:', e); }
     }
-  } catch(err){ console.warn('NeuroMap load failed:',err); }
+  } catch(err){ console.warn('[NM] nmLoadFromAPI FAILED:',err); }
 }
 
 // ── Diary Persistence ──
