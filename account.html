@@ -1510,7 +1510,7 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
     document.getElementById('auth-error').textContent='';
     var loginHint=document.createElement('p');
     loginHint.style.cssText='font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.75rem;';
-    loginHint.textContent='Пароль обнов��ён. Войдите с новым паролем.';
+    loginHint.textContent='Пароль обновлён. Войдите с новым паролем.';
     document.getElementById('auth-error').parentNode.insertBefore(loginHint,document.getElementById('auth-error'));
     setTimeout(function(){loginHint.remove();},8000);
   } catch(err){
@@ -1977,6 +1977,8 @@ var nmCurrentFilter = 'all';
 var nmNodes = [];
 var nmLinks = [];
 var nmAnimFrame = null;
+var nmPrevPositions = {}; // {id: {x,y}} — snapshot of positions before rebuild
+var nmNewNodeIds = {};    // ids of nodes that are new in this rebuild (for fade-in)
 
 // Emotion categories
 var NM_EMOTIONS_NEG = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
@@ -2036,6 +2038,7 @@ var EMOJI_THOUGHTS = {'Я не справляюсь':'😞','Мне не хва�
 function openNmSurvey(){
   nmCurrentStep=0;
   nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:''};
+  nmLivePrevPos={};
   document.getElementById('nmSurveyModal').classList.add('open');
   renderNmStep();
 }
@@ -2046,15 +2049,17 @@ function closeNmSurvey(){
 function renderNmStepDots(){
   var el=document.getElementById('nm-step-dots');
   el.innerHTML='';
-  for(var i=0;i<6;i++){
+  var totalDots=6; // steps 0-5 get dots, step 6 is choice screen
+  var showStep=Math.min(nmCurrentStep,5);
+  for(var i=0;i<totalDots;i++){
     var dot=document.createElement('span');
     dot.style.cssText='width:8px;height:8px;border-radius:50%;transition:all 0.3s;';
-    if(i<nmCurrentStep) dot.style.background='rgba(255,255,255,0.3)';
-    else if(i===nmCurrentStep) dot.style.background='var(--accent-cyan)';
+    if(i<showStep) dot.style.background='rgba(255,255,255,0.3)';
+    else if(i===showStep) dot.style.background=nmCurrentStep>=6?'rgba(255,255,255,0.3)':'var(--accent-cyan)';
     else dot.style.background='rgba(255,255,255,0.08)';
-    if(i===nmCurrentStep) dot.style.boxShadow='0 0 8px rgba(0,224,255,0.3)';
+    if(i===showStep && nmCurrentStep<6) dot.style.boxShadow='0 0 8px rgba(0,224,255,0.3)';
     el.appendChild(dot);
-    if(i<5){ var line=document.createElement('span'); line.style.cssText='flex:1;height:1px;background:rgba(255,255,255,0.06);'; el.appendChild(line); }
+    if(i<totalDots-1){ var line=document.createElement('span'); line.style.cssText='flex:1;height:1px;background:rgba(255,255,255,0.06);'; el.appendChild(line); }
   }
 }
 
@@ -2090,11 +2095,12 @@ function renderNmStep(){
   if(nmCurrentStep===0){
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 1 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что вы сегодня чаще всего чувствовали?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Выберите 1–2 эмоции. Вы сможете дозаполнить карту позже.</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Выберите одну эмоцию. После прохождения цепочки можно добавить ещё.</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
+    var currentChainEmo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     NM_ALL_EMOTIONS.forEach(function(em){
       var neg=isNegEmotion(em);
-      var sel=nmSurveyState.emotions.indexOf(em)!==-1;
+      var sel=(em===currentChainEmo);
       h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+nmEmoji(EMOJI_EMOTIONS,em)+em+'</span>';
     });
     h+='</div>';
@@ -2105,7 +2111,7 @@ function renderNmStep(){
     if(!emo){ nmNext(); return; }
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 2 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">С чем это было связано?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 2</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
     var chain=nmSurveyState.emotionChains[nmSurveyState._chainIdx||0]||{};
     var selAreas=chain.areas||[];
@@ -2132,7 +2138,7 @@ function renderNmStep(){
     var selCauses=chain.causes||[];
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 3 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что именно вызвало это состояние?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 2</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
     causes.forEach(function(c){
       var sel=selCauses.indexOf(c)!==-1;
@@ -2152,7 +2158,7 @@ function renderNmStep(){
     var selThoughts=chain.thoughts||[];
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 4 из 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Какая мысль чаще всего сопровождала это состояние?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 2</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;">';
     allThoughts.forEach(function(t){
       var neg=NM_THOUGHTS.indexOf(t)<10;
@@ -2176,6 +2182,21 @@ function renderNmStep(){
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Хотите добавить контекст?</h3>';
     h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="Свободное текстовое поле..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
     content.innerHTML=h;
+    next.textContent='Далее →';
+  }
+  else if(nmCurrentStep===6){
+    // Choice screen: add another emotion or save
+    var h='<div style="text-align:center;padding:1rem 0;">';
+    h+='<svg style="width:48px;height:48px;fill:none;stroke:var(--accent-cyan);stroke-width:1.5;margin:0 auto 1rem;display:block;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Цепочка записана</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;line-height:1.6;">Эмоция и связанная цепочка добавлены на вашу карту. Хотите добавить ещё одну эмоцию или сохранить результат?</p>';
+    h+='<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">';
+    h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">Добавить ещё эмоцию</button>';
+    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">Сохранить и выйти</button>';
+    h+='</div></div>';
+    content.innerHTML=h;
+    // Hide nav buttons on choice screen
+    document.getElementById('nm-nav-btns').style.display='none';
   }
   // Update live graph preview
   buildLiveGraph();
@@ -2183,6 +2204,7 @@ function renderNmStep(){
 
 // ── Live Graph Preview in Survey Modal ──
 var nmLiveAnimFrame=null;
+var nmLivePrevPos={}; // preserve positions across rebuilds in modal
 function buildLiveGraph(){
   var canvas=document.getElementById('nm-live-canvas');
   var emptyMsg=document.getElementById('nm-live-empty');
@@ -2193,10 +2215,11 @@ function buildLiveGraph(){
 
   // Build nodes/links from current survey state
   var nodeMap={},linkMap={};
-  function addN(id,type,label){ if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,x:0,y:0,vx:0,vy:0}; }
+  function addN(id,type,label){ if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,x:0,y:0,vx:0,vy:0,_fade:1}; }
   function addL(a,b){ var k=a+'||'+b; if(!linkMap[k]) linkMap[k]={source:a,target:b}; }
 
   nmSurveyState.emotions.forEach(function(emo,i){
+    if(!emo) return;
     addN('e:'+emo,'emotion',emo);
     var chain=nmSurveyState.emotionChains[i]||{};
     if(chain.areas) chain.areas.forEach(function(a){
@@ -2227,12 +2250,30 @@ function buildLiveGraph(){
   emptyMsg.style.display='none';
 
   var W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+  var hasOld=Object.keys(nmLivePrevPos).length>0;
   nodes.forEach(function(n,i){
-    var a=(i/nodes.length)*Math.PI*2;
-    var r=Math.min(cx,cy)*0.45;
-    n.x=cx+Math.cos(a)*r*(0.6+Math.random()*0.4);
-    n.y=cy+Math.sin(a)*r*(0.6+Math.random()*0.4);
-    n.vx=0;n.vy=0;
+    if(nmLivePrevPos[n.id]){
+      n.x=nmLivePrevPos[n.id].x; n.y=nmLivePrevPos[n.id].y;
+      n.vx=0; n.vy=0; n._fade=1;
+    } else {
+      var placed=false;
+      links.forEach(function(l){
+        if(placed) return;
+        var nid=(l.source===n.id)?l.target:(l.target===n.id)?l.source:null;
+        if(nid && nmLivePrevPos[nid]){
+          n.x=nmLivePrevPos[nid].x+(Math.random()-0.5)*60;
+          n.y=nmLivePrevPos[nid].y+(Math.random()-0.5)*60;
+          placed=true;
+        }
+      });
+      if(!placed){
+        var a=(i/nodes.length)*Math.PI*2;
+        var r=Math.min(cx,cy)*0.45;
+        n.x=cx+Math.cos(a)*r*(0.6+Math.random()*0.4);
+        n.y=cy+Math.sin(a)*r*(0.6+Math.random()*0.4);
+      }
+      n.vx=0; n.vy=0; n._fade=0;
+    }
   });
 
   if(nmLiveAnimFrame) cancelAnimationFrame(nmLiveAnimFrame);
@@ -2281,37 +2322,50 @@ function buildLiveGraph(){
       ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=2;ctx.stroke();
     });
     nodes.forEach(function(n){
+      if(typeof n._fade==='number' && n._fade<1) n._fade=Math.min(1,n._fade+0.04);
+      var fade=(typeof n._fade==='number')?n._fade:1;
       var r=14;
+      var drawR=r*fade;
       var col;
       if(n.type==='emotion') col=isNegEmotion(n.label)?'rgba(255,120,120,':'rgba(120,255,160,';
       else if(n.type==='area') col='rgba(140,180,255,';
       else if(n.type==='cause') col='rgba(255,180,100,';
       else col='rgba(200,160,255,';
       // Glow
-      ctx.beginPath();ctx.arc(n.x,n.y,r+8,0,Math.PI*2);
+      ctx.globalAlpha=fade;
+      ctx.beginPath();ctx.arc(n.x,n.y,drawR+8,0,Math.PI*2);
       ctx.fillStyle=col+'0.15)';ctx.fill();
       // Node
-      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+'0.7)';ctx.fill();
       // Label
       ctx.fillStyle='rgba(255,255,255,0.8)';
       ctx.font='500 18px Inter,sans-serif';
       ctx.textAlign='center';ctx.textBaseline='middle';
       var label=n.label.length>14?n.label.substring(0,12)+'…':n.label;
-      ctx.fillText(label,n.x,n.y+r+14);
+      ctx.fillText(label,n.x,n.y+drawR+14);
+      ctx.globalAlpha=1;
     });
+    // Snapshot live positions
+    nmLivePrevPos={};
+    nodes.forEach(function(n){ nmLivePrevPos[n.id]={x:n.x,y:n.y}; });
     if(iter<200) nmLiveAnimFrame=requestAnimationFrame(tick);
   }
   tick();
 }
 
 function nmToggleEmotion(el,emo){
-  var idx=nmSurveyState.emotions.indexOf(emo);
-  if(idx===-1){
-    if(nmSurveyState.emotions.length>=2) return;
-    nmSurveyState.emotions.push(emo); el.classList.add('selected');
+  var ci=nmSurveyState._chainIdx||0;
+  var current=nmSurveyState.emotions[ci];
+  if(current===emo){
+    // Deselect
+    nmSurveyState.emotions[ci]=undefined;
+    el.classList.remove('selected');
   } else {
-    nmSurveyState.emotions.splice(idx,1); el.classList.remove('selected');
+    // Single-select: clear all chips, set this one
+    nmSurveyState.emotions[ci]=emo;
+    el.parentElement.querySelectorAll('.nm-chip').forEach(function(c){c.classList.remove('selected');});
+    el.classList.add('selected');
   }
   buildLiveGraph();
 }
@@ -2323,7 +2377,7 @@ function nmToggleArea(el,area){
   if(!chain.areas) chain.areas=[];
   var ai=chain.areas.indexOf(area);
   if(ai===-1){
-    if(chain.areas.length>=2) return;
+    if(chain.areas.length>=3) return;
     chain.areas.push(area);
   } else {
     chain.areas.splice(ai,1);
@@ -2344,7 +2398,7 @@ function nmToggleCause(el,cause){
   if(!chain.causes) chain.causes=[];
   var ci=chain.causes.indexOf(cause);
   if(ci===-1){
-    if(chain.causes.length>=2) return;
+    if(chain.causes.length>=3) return;
     chain.causes.push(cause);
   } else {
     chain.causes.splice(ci,1);
@@ -2364,7 +2418,7 @@ function nmToggleThought(el,thought){
   if(!chain.thoughts) chain.thoughts=[];
   var ti=chain.thoughts.indexOf(thought);
   if(ti===-1){
-    if(chain.thoughts.length>=2) return;
+    if(chain.thoughts.length>=3) return;
     chain.thoughts.push(thought);
   } else {
     chain.thoughts.splice(ti,1);
@@ -2382,7 +2436,7 @@ function nmAddCustomThought(){
   if(!nmSurveyState.emotionChains[idx]) nmSurveyState.emotionChains[idx]={};
   var chain=nmSurveyState.emotionChains[idx];
   if(!chain.thoughts) chain.thoughts=[];
-  if(chain.thoughts.length<2 && chain.thoughts.indexOf(val)===-1) chain.thoughts.push(val);
+  if(chain.thoughts.length<3 && chain.thoughts.indexOf(val)===-1) chain.thoughts.push(val);
   renderNmStep();
 }
 
@@ -2394,42 +2448,50 @@ function nmSetIntensity(v){
 
 function nmNext(){
   // Validate current step
-  if(nmCurrentStep===0 && !nmSurveyState.emotions.length) return;
-  // For steps 1-3, iterate through emotion chains
-  if(nmCurrentStep>=1 && nmCurrentStep<=3){
+  if(nmCurrentStep===0){
+    // Must have selected an emotion on this cycle
     var ci=nmSurveyState._chainIdx||0;
-    // If more emotions to process for this step range
-    if(ci<nmSurveyState.emotions.length-1 && nmCurrentStep<3){
-      // Stay on step but next emotion? No — go through all steps per emotion
-    }
-    if(nmCurrentStep===3){
-      // Finished thought for this emotion chain, move to next emotion or next step
-      ci++;
-      if(ci<nmSurveyState.emotions.length){
-        nmSurveyState._chainIdx=ci;
-        nmCurrentStep=1; // Go back to area for next emotion
-        renderNmStep();
-        return;
-      }
-    }
+    if(!nmSurveyState.emotions[ci]) return;
+    // Init chain for this emotion
+    if(!nmSurveyState.emotionChains[ci]) nmSurveyState.emotionChains[ci]={};
+    // Clean up undefined entries in emotions array
+    nmSurveyState.emotions=nmSurveyState.emotions.filter(function(e){return e;});
+    nmSurveyState._chainIdx=nmSurveyState.emotions.length-1;
   }
   if(nmCurrentStep===5){
-    // Save context
+    // Save context then go to choice screen
     var ta=document.getElementById('nm-context');
     if(ta) nmSurveyState.context=ta.value.trim();
-    nmSaveSurvey();
+    nmCurrentStep=6;
+    renderNmStep();
     return;
   }
-  // Init chain idx for step 1
-  if(nmCurrentStep===0){ nmSurveyState._chainIdx=0; nmSurveyState.emotionChains=[]; }
+  if(nmCurrentStep>=6) return; // choice screen handles its own flow
   nmCurrentStep++;
   renderNmStep();
 }
 
+function nmAddAnotherEmotion(){
+  // Go back to step 0 for a new emotion, preserve existing graph
+  var nextIdx=nmSurveyState.emotions.length; // will be the index of the next emotion
+  nmSurveyState._chainIdx=nextIdx;
+  nmCurrentStep=0;
+  // Show nav buttons again
+  document.getElementById('nm-nav-btns').style.display='flex';
+  renderNmStep();
+}
+
+function nmFinishAndSave(){
+  document.getElementById('nm-nav-btns').style.display='flex';
+  nmSaveSurvey();
+}
+
 function nmPrev(){
-  if(nmCurrentStep===1){
-    var ci=nmSurveyState._chainIdx||0;
-    if(ci>0){ nmSurveyState._chainIdx=ci-1; nmCurrentStep=3; renderNmStep(); return; }
+  if(nmCurrentStep===6){
+    nmCurrentStep=5;
+    document.getElementById('nm-nav-btns').style.display='flex';
+    renderNmStep();
+    return;
   }
   if(nmCurrentStep>0) nmCurrentStep--;
   renderNmStep();
@@ -2442,6 +2504,7 @@ function nmSaveSurvey(){
   // Build chains array — expand arrays into individual chain records
   var chains=[];
   nmSurveyState.emotions.forEach(function(emo,i){
+    if(!emo) return;
     var c=nmSurveyState.emotionChains[i]||{};
     var areas=c.areas||[''];
     var causes=c.causes||[''];
@@ -2608,21 +2671,45 @@ function buildNmGraph(){
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
 
-  // Init positions
+  // Init positions — preserve existing node positions
   var canvas=document.getElementById('nm-canvas');
   var rect=canvas.parentElement.getBoundingClientRect();
   canvas.width=rect.width*2; canvas.height=rect.height*2;
   var cx=canvas.width/2, cy=canvas.height/2;
+  nmNewNodeIds={};
   nmNodes.forEach(function(n,i){
-    var a=(i/nmNodes.length)*Math.PI*2;
-    var r=Math.min(cx,cy)*0.55;
-    n.x=cx+Math.cos(a)*r*(0.5+Math.random()*0.5);
-    n.y=cy+Math.sin(a)*r*(0.5+Math.random()*0.5);
-    n.vx=0;n.vy=0;
+    if(nmPrevPositions[n.id]){
+      // Existing node — keep position, zero velocity
+      n.x=nmPrevPositions[n.id].x; n.y=nmPrevPositions[n.id].y;
+      n.vx=0; n.vy=0;
+      n._fade=1;
+    } else {
+      // New node — place near a connected neighbor or in a ring
+      var placed=false;
+      nmLinks.forEach(function(l){
+        if(placed) return;
+        var neighborId=(l.source===n.id)?l.target:(l.target===n.id)?l.source:null;
+        if(neighborId && nmPrevPositions[neighborId]){
+          n.x=nmPrevPositions[neighborId].x+(Math.random()-0.5)*80;
+          n.y=nmPrevPositions[neighborId].y+(Math.random()-0.5)*80;
+          placed=true;
+        }
+      });
+      if(!placed){
+        var a=(i/nmNodes.length)*Math.PI*2;
+        var r=Math.min(cx,cy)*0.55;
+        n.x=cx+Math.cos(a)*r*(0.5+Math.random()*0.5);
+        n.y=cy+Math.sin(a)*r*(0.5+Math.random()*0.5);
+      }
+      n.vx=0; n.vy=0;
+      n._fade=0; // start invisible for fade-in
+      nmNewNodeIds[n.id]=true;
+    }
   });
 
-  // Run simulation
-  nmSimulate(canvas);
+  // Run simulation with lower alpha if we have preserved positions
+  var hasOld=Object.keys(nmPrevPositions).length>0;
+  nmSimulate(canvas, hasOld ? 0.15 : 0.3);
 }
 
 function nmTriggerAnalysis(){
@@ -2636,15 +2723,16 @@ function nmTriggerAnalysis(){
   if(btn) btn.style.display='none';
 }
 
-function nmSimulate(canvas){
+function nmSimulate(canvas, initAlpha){
   if(nmAnimFrame) cancelAnimationFrame(nmAnimFrame);
   var ctx=canvas.getContext('2d');
   var W=canvas.width, H=canvas.height;
   var iter=0;
+  var startAlpha=initAlpha||0.3;
 
   function tick(){
     iter++;
-    var alpha=Math.max(0.001, 0.3*Math.pow(0.98,iter));
+    var alpha=Math.max(0.001, startAlpha*Math.pow(0.98,iter));
 
     // Repulsion
     for(var i=0;i<nmNodes.length;i++){
@@ -2670,8 +2758,13 @@ function nmSimulate(canvas){
       s.vx+=dx*f; s.vy+=dy*f;
       t.vx-=dx*f; t.vy-=dy*f;
     });
-    // Center gravity
+    // Center gravity + apply positions
     nmNodes.forEach(function(n){
+      // If node is fixed (dragged), lock position
+      if(n.fx!==undefined && n.fy!==undefined){
+        n.x=n.fx; n.y=n.fy; n.vx=0; n.vy=0;
+        return;
+      }
       n.vx+=(W/2-n.x)*alpha*0.01;
       n.vy+=(H/2-n.y)*alpha*0.01;
       n.vx*=0.85; n.vy*=0.85;
@@ -2695,8 +2788,13 @@ function nmSimulate(canvas){
     });
     // Nodes
     nmNodes.forEach(function(n){
+      // Fade-in for new nodes
+      if(typeof n._fade==='number' && n._fade<1) n._fade=Math.min(1,n._fade+0.03);
+      var fade=(typeof n._fade==='number')?n._fade:1;
       var r=8+n.count*3+n.intensity*0.5;
       r=Math.min(r,28);
+      // Scale-in effect
+      var drawR=r*fade;
       // Color by type
       var col;
       if(n.type==='emotion'){
@@ -2706,20 +2804,28 @@ function nmSimulate(canvas){
       else col='rgba(200,160,255,';
       // Glow
       var brightness=0.3+Math.min(n.intensity/10,0.7);
-      ctx.beginPath();ctx.arc(n.x,n.y,r+6,0,Math.PI*2);
+      ctx.globalAlpha=fade;
+      ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
       ctx.fillStyle=col+(brightness*0.2)+')';ctx.fill();
       // Node
-      ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
       // Label
       ctx.fillStyle='rgba(255,255,255,0.85)';
       ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
       ctx.textAlign='center';ctx.textBaseline='middle';
       var label=n.label.length>18?n.label.substring(0,16)+'…':n.label;
-      ctx.fillText(label,n.x,n.y+r+16);
+      ctx.fillText(label,n.x,n.y+drawR+16);
+      ctx.globalAlpha=1;
     });
 
-    if(iter<250) nmAnimFrame=requestAnimationFrame(tick);
+    // Snapshot positions for next rebuild
+    nmPrevPositions={};
+    nmNodes.forEach(function(n){ nmPrevPositions[n.id]={x:n.x,y:n.y}; });
+
+    // Keep running if there are any fixed (dragged) nodes, or still settling
+    var hasFixed=nmNodes.some(function(n){return n.fx!==undefined;});
+    if(iter<250 || hasFixed) nmAnimFrame=requestAnimationFrame(tick);
   }
   tick();
 }
@@ -2750,6 +2856,76 @@ function nmSimulate(canvas){
     }
   });
   canvas.addEventListener('mouseleave',function(){tip.style.display='none';});
+
+  // ── Drag-and-drop for graph nodes (mouse + touch) ──
+  var dragNode=null, dragOffX=0, dragOffY=0;
+  function getCanvasXY(ev){
+    var r=canvas.getBoundingClientRect();
+    var sx=canvas.width/r.width, sy=canvas.height/r.height;
+    var clientX,clientY;
+    if(ev.touches && ev.touches.length){
+      clientX=ev.touches[0].clientX; clientY=ev.touches[0].clientY;
+    } else {
+      clientX=ev.clientX; clientY=ev.clientY;
+    }
+    return {x:(clientX-r.left)*sx, y:(clientY-r.top)*sy};
+  }
+  function findNodeAt(mx,my){
+    var found=null;
+    nmNodes.forEach(function(n){
+      var r=8+n.count*3+n.intensity*0.5;
+      r=Math.min(r,28)+6;
+      var dx=n.x-mx,dy=n.y-my;
+      if(dx*dx+dy*dy<r*r) found=n;
+    });
+    return found;
+  }
+  function onDragStart(ev){
+    var p=getCanvasXY(ev);
+    var n=findNodeAt(p.x,p.y);
+    if(!n) return;
+    ev.preventDefault();
+    dragNode=n;
+    dragNode.fx=dragNode.x; dragNode.fy=dragNode.y;
+    canvas.style.cursor='grabbing';
+  }
+  function onDragMove(ev){
+    if(!dragNode) return;
+    ev.preventDefault();
+    var p=getCanvasXY(ev);
+    dragNode.fx=p.x; dragNode.fy=p.y;
+    dragNode.x=p.x; dragNode.y=p.y;
+    dragNode.vx=0; dragNode.vy=0;
+    // Keep snapshot updated
+    nmPrevPositions[dragNode.id]={x:p.x,y:p.y};
+  }
+  function onDragEnd(ev){
+    if(!dragNode) return;
+    // Node stays fixed at drop position
+    dragNode.x=dragNode.fx; dragNode.y=dragNode.fy;
+    dragNode.vx=0; dragNode.vy=0;
+    dragNode=null;
+    canvas.style.cursor='';
+  }
+  // Mouse events
+  canvas.addEventListener('mousedown',onDragStart);
+  canvas.addEventListener('mousemove',function(ev){ if(dragNode) onDragMove(ev); });
+  canvas.addEventListener('mouseup',onDragEnd);
+  canvas.addEventListener('mouseleave',onDragEnd);
+  // Touch events
+  canvas.addEventListener('touchstart',onDragStart,{passive:false});
+  canvas.addEventListener('touchmove',function(ev){ if(dragNode) onDragMove(ev); },{passive:false});
+  canvas.addEventListener('touchend',onDragEnd);
+  canvas.addEventListener('touchcancel',onDragEnd);
+
+  // Double-click to unfreeze a node
+  canvas.addEventListener('dblclick',function(ev){
+    var p=getCanvasXY(ev);
+    var n=findNodeAt(p.x,p.y);
+    if(n && n.fx!==undefined){
+      delete n.fx; delete n.fy;
+    }
+  });
 })();
 
 // Analysis
