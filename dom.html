@@ -3,13 +3,189 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DOM — пространство осознанного развития | NeuroAttention Lab</title>
-<meta name="description" content="DOM — экосистема и сообщество NeuroAttention Lab для людей, которые осознанно работают с вниманием как инструментом саморегуляции и развития." />
+<title>DOM — экосистема нового этапа развития человека | NeuroAttention Lab</title>
+<meta name="description" content="DOM — экосистема, в которой человек перестаёт жить как реакция на среду и начинает осознанно формировать своё состояние, решения и направление жизни." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
+<style>
+  /* DOM page specific styles */
+  .dom-hero {
+    padding: 8rem 0 4rem;
+    text-align: center;
+  }
+  .dom-hero h1 {
+    font-size: clamp(2rem, 4vw + 1rem, 3.2rem);
+    color: var(--text-primary);
+    margin: 0 0 1.25rem 0;
+    line-height: 1.2;
+  }
+  .dom-hero .hero-sub {
+    font-size: clamp(1rem, 1.5vw + 0.5rem, 1.25rem);
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .dom-hero .hero-sub span {
+    display: block;
+  }
+
+  .dom-section {
+    padding: 4rem 0;
+    position: relative;
+  }
+  .dom-section h2 {
+    font-family: 'Unbounded', 'Space Grotesk', sans-serif;
+    font-size: clamp(1.5rem, 2.5vw + 0.5rem, 2rem);
+    color: var(--text-primary);
+    margin: 0 0 1.25rem 0;
+    font-weight: 500;
+  }
+  .dom-section .section-text {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--text-muted);
+    margin: 0;
+    max-width: 720px;
+  }
+  .dom-section.centered {
+    text-align: center;
+  }
+  .dom-section.centered .section-text {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* DOM-это cards */
+  .dom-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+  .dom-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 1.75rem;
+    transition: border-color 0.3s ease, transform 0.2s ease;
+    text-decoration: none;
+    display: block;
+  }
+  .dom-card:hover {
+    border-color: rgba(78,205,196,0.3);
+    transform: translateY(-2px);
+  }
+  .dom-card .card-category {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent-cyan, #4ecdc4);
+    margin: 0 0 0.75rem 0;
+    opacity: 0.8;
+  }
+  .dom-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.625rem 0;
+  }
+  .dom-card p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* Unity accent block */
+  .dom-unity {
+    background: linear-gradient(135deg, rgba(78,205,196,0.08) 0%, rgba(78,205,196,0.02) 100%);
+    border: 1px solid rgba(78,205,196,0.15);
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .dom-unity::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 50% 50%, rgba(78,205,196,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .dom-unity h2 {
+    position: relative;
+    z-index: 1;
+    color: var(--accent-cyan, #4ecdc4);
+  }
+  .dom-unity .section-text {
+    position: relative;
+    z-index: 1;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Зачем это list */
+  .dom-why-list {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0 0;
+    display: grid;
+    gap: 0.875rem;
+  }
+  .dom-why-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+  .dom-why-list li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-cyan, #4ecdc4);
+    margin-top: 0.55rem;
+  }
+
+  /* CTA */
+  .dom-cta {
+    text-align: center;
+    padding: 4rem 0 2rem;
+  }
+  .dom-cta h2 {
+    font-family: 'Unbounded', 'Space Grotesk', sans-serif;
+    font-size: clamp(1.5rem, 2.5vw + 0.5rem, 2rem);
+    color: var(--text-primary);
+    margin: 0 0 1.5rem 0;
+    font-weight: 500;
+  }
+  .dom-cta .cta-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  @media (max-width: 640px) {
+    .dom-hero { padding: 6rem 0 3rem; }
+    .dom-section { padding: 3rem 0; }
+    .dom-cards-grid { grid-template-columns: 1fr; }
+    .dom-unity { padding: 2rem 1.25rem; }
+  }
+</style>
 </head>
 <body>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -55,165 +231,122 @@
   </div>
 </nav>
 
-<!-- Hero -->
-<section style="padding:8rem 0 4rem;">
-  <div class="container">
-    <div class="grid grid-2" style="align-items:center;gap:3rem;">
-      <div class="fade-left">
-        <p class="eyebrow">Сообщество</p>
-        <h1 class="heading-space" style="font-size:clamp(2rem,4vw+1rem,3rem);color:var(--text-primary);margin:0 0 1.5rem 0;">
-          DOM — пространство осознанного развития
-        </h1>
-        <p style="font-size:1.0625rem;line-height:1.75;color:var(--text-muted);margin:0 0 1.5rem 0;">
-          DOM — это экосистема для людей, которые осознанно работают с вниманием как инструментом саморегуляции, развития и эволюции.
-        </p>
-        <div style="padding-left:1.25rem;border-left:2px solid rgba(78,205,196,0.4);border-radius:0 0.5rem 0.5rem 0;">
-          <p style="font-size:1rem;font-style:italic;font-family:'Space Grotesk',sans-serif;color:var(--text-dim);margin:0;">
-            «Не просто сообщество — а среда, в которой внимание становится практикой жизни»
-          </p>
-        </div>
-      </div>
-      <div class="fade-right">
-        <div style="position:relative;">
-          <div class="glow-orb"></div>
-          <div class="media-box aspect-sq" style="max-width:600px;margin-left:auto;">
-            <video autoplay loop muted playsinline><source src="assets/media/dom-hero.mp4" type="video/mp4" /></video>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Philosophy -->
-<section class="section" style="position:relative;overflow:hidden;">
-  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;">
-    <img src="assets/images/dom-logo.svg" alt="" style="width:min(80%,600px);height:auto;opacity:0.04;" />
-  </div>
-  <div class="section-divider"></div>
-  <div class="container max-w-4xl" style="position:relative;z-index:1;">
-    <div class="text-center mb-12 fade-up">
-      <h2 class="heading-space h2-block large">Философия DOM</h2>
-      <p class="sub-muted max-w-2xl">
-        DOM строится на убеждении, что осознанное управление вниманием — это фундамент человеческого развития в современном мире.
-      </p>
-    </div>
-    <div class="grid grid-2 fade-up">
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Осознанность</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Внимание как основной инструмент осознанной жизни. Не медитация, а практическая тренировка нейрофункции.</p>
-      </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Человечность</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Технологии служат человеку, а не наоборот. Возвращение контроля над собственным вниманием и жизнью.</p>
-      </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Наука</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Каждая практика основана на научных данных. Нейропластичность, психофизиология, когнитивная наука.</p>
-      </div>
-      <div class="glass-card-elevated card-base card-hover">
-        <div class="icon-box lg glass-icon mb-4">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M17 14s1.5 0 3-3c0 0-1-4-3-5-1 0-2 1-3 2-1-1-2-2-3-2-2 1-3 5-3 5 1.5 3 3 3 3 3M12 22v-8M9 9c0-1 1-2 3-2s3 1 3 2"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Развитие</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Непрерывное развитие через практику. От базовых навыков к глубокой интеграции тела и сознания.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Ecosystem -->
-<section class="section">
-  <div class="section-divider"></div>
-  <div class="container max-w-4xl">
-    <div class="text-center mb-12 fade-up">
-      <h2 class="heading-space h2-block large">Экосистема DOM</h2>
-      <p class="sub-muted max-w-2xl">
-        Многоуровневая структура для практиков, исследователей и партнёров.
-      </p>
-      <div style="margin:2rem auto 0;max-width:360px;border-radius:16px;overflow:hidden;">
-        <img src="assets/images/geo-tunnel.jpg" alt="" loading="lazy" style="width:100%;height:auto;display:block;opacity:0.85;" />
-      </div>
-    </div>
-    <div class="grid grid-3 fade-up">
-      <div class="glass-card-bright card-base card-hover text-center">
-        <div class="icon-box lg glass-icon mb-4" style="margin-left:auto;margin-right:auto;">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">Практики</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Люди, которые регулярно тренируют внимание и применяют метод в повседневной жизни.</p>
-      </div>
-      <div class="glass-card-bright card-base card-hover text-center">
-        <div class="icon-box lg glass-icon mb-4" style="margin-left:auto;margin-right:auto;">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">Исследователи</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Учёные и специалисты, участвующие в научных проектах и публикациях.</p>
-      </div>
-      <div class="glass-card-bright card-base card-hover text-center">
-        <div class="icon-box lg glass-icon mb-4" style="margin-left:auto;margin-right:auto;">
-          <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </div>
-        <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);margin:0 0 0.75rem 0;">Партнёры</h3>
-        <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Организации, клиники и образовательные учреждения, интегрирующие метод.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Geography -->
-<section class="section">
-  <div class="section-divider"></div>
-  <div class="container max-w-4xl">
-    <div class="fade-up">
-      <h2 class="heading-space h2-block large text-center mb-12">География присутствия</h2>
-      <div class="grid grid-3">
-        <div class="glass-card-elevated geo-card card-hover">
-          <p class="tag" style="margin:0 0 0.5rem 0;">Северная Америка</p>
-          <h3 class="heading-space" style="font-size:1.25rem;color:var(--text-primary);margin:0 0 0.5rem 0;">США</h3>
-          <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Штаб-квартира. Основные программы и исследования.</p>
-        </div>
-        <div class="glass-card-elevated geo-card card-hover">
-          <p class="tag" style="margin:0 0 0.5rem 0;">Южная Америка</p>
-          <h3 class="heading-space" style="font-size:1.25rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Чили</h3>
-          <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Региональный центр. Расширение в Латинскую Америку.</p>
-        </div>
-        <div class="glass-card-elevated geo-card card-hover">
-          <p class="tag" style="margin:0 0 0.5rem 0;">Европа и Азия</p>
-          <h3 class="heading-space" style="font-size:1.25rem;color:var(--text-primary);margin:0 0 0.5rem 0;">Международные клиенты</h3>
-          <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin:0;">Онлайн-программы и партнёрства.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Vision -->
-<section class="section">
-  <div class="section-divider"></div>
-  <div class="container max-w-2xl text-center fade-up">
-    <h2 class="heading-space h2-block large mb-6">Долгосрочное видение</h2>
-    <p style="font-size:1.125rem;line-height:1.75;color:var(--text-muted);margin:0 0 1rem 0;">
-      Мы верим, что тренировка внимания станет такой же нормой, как физические упражнения.
+<!-- БЛОК 1 — HERO -->
+<section class="dom-hero">
+  <div class="container max-w-4xl fade-up">
+    <h1 class="heading-space">DOM — экосистема нового этапа развития человека</h1>
+    <p class="hero-sub">
+      <span>От адаптации к осознанному участию</span>
+      <span>От Homo sapiens к Homo conscious</span>
     </p>
-    <p class="sub-muted mb-8">
-      DOM — это пространство, где эта трансформация начинается. Присоединяйтесь к сообществу людей, которые выбирают осознанное управление своей жизнью.
-    </p>
-    <div class="flex flex-wrap justify-center gap-4">
-      <a href="test.html" class="btn btn-solid">
-        Начать путь
+  </div>
+</section>
+
+<!-- БЛОК 2 — КЛЮЧЕВАЯ ИДЕЯ -->
+<section class="dom-section centered">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Ключевая идея</h2>
+    <p class="section-text">Человек способен сознательно участвовать в собственной эволюции и, как следствие, в эволюции общества. Для этого ему необходимо взять контроль над вниманием, состоянием и выбором.</p>
+  </div>
+</section>
+
+<!-- БЛОК 3 — ЧТО ЭТО ЗНАЧИТ -->
+<section class="dom-section centered">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Что это значит</h2>
+    <p class="section-text">DOM — это экосистема, в которой это становится возможным на практике, в которой человек перестаёт жить как реакция на среду и начинает осознанно формировать своё состояние, решения и направление жизни.</p>
+  </div>
+</section>
+
+<!-- БЛОК 4 — DOM — это -->
+<section class="dom-section">
+  <div class="section-divider"></div>
+  <div class="container max-w-4xl fade-up">
+    <h2 class="text-center" style="margin-bottom:0.5rem;">DOM — это</h2>
+    <div class="dom-cards-grid">
+
+      <a href="method.html" class="dom-card">
+        <p class="card-category">Метод и фундамент</p>
+        <h3>NeuroAttention</h3>
+        <p>Система развития внимания и нервной системы как базовой функции управления состоянием и жизнью</p>
+      </a>
+
+      <a href="xr.html" class="dom-card">
+        <p class="card-category">Технологии</p>
+        <h3>XR NeuroAttention Platform</h3>
+        <p>Среда практики, обучения и взаимодействия, включая работу с состоянием через нейрофидбэк</p>
+      </a>
+
+      <a href="lab.html" class="dom-card">
+        <p class="card-category">Исследования и данные</p>
+        <h3>NeuroAttention Lab</h3>
+        <p>Диагностика, эксперименты и разработка решений. Физические лаборатории и исследовательские центры</p>
+      </a>
+
+      <a href="#dom-unity" class="dom-card">
+        <p class="card-category">Люди</p>
+        <h3>DOM Unity</h3>
+        <p>Сообщество, в котором человек развивается быстрее за счёт среды, взаимодействия и общего направления</p>
+      </a>
+
+      <a href="custom.html" class="dom-card">
+        <p class="card-category">Результаты и возможности</p>
+        <h3>DOM Custom Group</h3>
+        <p>Marketplace продуктов, решений и форм жизни, созданных внутри экосистемы DOM. Среда демонстрации, обмена и интеграции</p>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- БЛОК 5 — DOM UNITY (акцент) -->
+<section class="dom-section" id="dom-unity">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <div class="dom-unity">
+      <h2>DOM Unity</h2>
+      <p class="section-text">Сообщество людей, которые движутся в одном направлении — развитие, осознанность и улучшение качества жизни. Здесь среда становится фактором роста: через взаимодействие, обмен опытом и совместную практику.</p>
+    </div>
+  </div>
+</section>
+
+<!-- БЛОК 6 — ЗАЧЕМ ЭТО -->
+<section class="dom-section">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Зачем это</h2>
+    <ul class="dom-why-list">
+      <li>чтобы управлять своим состоянием, а не зависеть от среды</li>
+      <li>чтобы повысить устойчивость в быстро меняющемся мире</li>
+      <li>чтобы ускорить развитие через среду и взаимодействие</li>
+      <li>чтобы улучшить качество жизни системно</li>
+      <li>чтобы двигаться в понятном направлении</li>
+    </ul>
+  </div>
+</section>
+
+<!-- БЛОК 7 — ПРИНЦИП -->
+<section class="dom-section centered">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Принцип</h2>
+    <p class="section-text">Внутреннее состояние формирует внешнюю реальность. DOM создаёт среду, в которой этот процесс становится управляемым.</p>
+  </div>
+</section>
+
+<!-- БЛОК 8 — CTA -->
+<section class="dom-cta">
+  <div class="section-divider"></div>
+  <div class="container max-w-3xl fade-up">
+    <h2>Войти в систему</h2>
+    <div class="cta-buttons">
+      <a href="#dom-unity" class="btn btn-solid">
+        Присоединиться к DOM Unity
         <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
-      <a href="programs.html" class="btn btn-primary">Программы</a>
+      <a href="method.html" class="btn btn-primary">Изучить NeuroAttention</a>
     </div>
   </div>
 </section>
@@ -240,7 +373,8 @@
         <div class="footer-links">
           <a href="xr.html">XR Платформа</a>
           <a href="lab.html">Лаборатория</a>
-          <a href="dom.html">DOM Unity</a>
+          <a href="dom.html">DOM</a>
+          <a href="custom.html">Custom Group</a>
         </div>
       </div>
       <div>
@@ -255,6 +389,5 @@
 
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
