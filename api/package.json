@@ -1,0 +1,13 @@
+{
+  "name": "neuroattention-api",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node migrate.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "express": "^4.21.0",
+    "cors": "^2.8.5"
+  }
+}
