@@ -1661,7 +1661,7 @@ function renderCalendar(){
     var cls = 'cal-day';
     if(calYear===today.getFullYear() && calMonth===today.getMonth() && d===today.getDate()) cls += ' today';
     // Mark days with events
-    var dayEvents=calEventsData[key]||[];
+    var dayEvents=(calEventsData && calEventsData[key])||[];
     if(dayEvents.length) cls += ' has-practice';
     var allDone=dayEvents.length>0 && dayEvents.every(function(e){ return e.done; });
     if(allDone && dayEvents.length) cls += ' completed';
@@ -1687,7 +1687,7 @@ function selectCalDay(key, d){
 function renderDayEvents(){
   var evts=document.getElementById('day-events');
   evts.innerHTML='';
-  var dayEvents=calEventsData[selectedCalDay]||[];
+  var dayEvents=(calEventsData && calEventsData[selectedCalDay])||[];
   if(!dayEvents.length){
     evts.innerHTML='<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;">Нет событий</p>';
     return;
@@ -1824,7 +1824,7 @@ function renderDiaryCalendar(){
     if(diaryYear===today.getFullYear() && diaryMonth===today.getMonth() && d===today.getDate()) cls += ' today';
     if(selectedDiaryDay===key) cls += ' diary-active';
     // Color by day sentiment
-    var entries = diaryData[key];
+    var entries = diaryData ? diaryData[key] : null;
     if(entries && entries.length){
       var score = 0;
       entries.forEach(function(e){ score += (e.plusCount||0) - (e.minusCount||0); });
@@ -1876,7 +1876,7 @@ function renderDayColumns(key){
 function updateTodaySummary(){
   var today = new Date();
   var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  var entries = diaryData[key] || [];
+  var entries = (diaryData && diaryData[key]) || [];
   var el = document.getElementById('diary-today-summary');
   if(!entries.length){ el.innerHTML='<p style="font-size:13px;color:var(--text-muted);margin:0;">Нет записей</p>'; return; }
   var plus=0, minus=0, mixed=0;
@@ -2837,6 +2837,7 @@ async function progLoadFromAPI(){
 
 function renderCourseProgress(){
   // Apply progress data to module items
+  if(!courseProgressData || !courseProgressData.length) return;
   courseProgressData.forEach(function(p){
     if(p.item_type==='module'){
       var el=document.querySelector('[data-module-id="'+p.item_id+'"]');
@@ -2865,7 +2866,7 @@ function renderCourseProgress(){
 function updateNmToday(){
   var today=new Date();
   var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-  var entries=nmData[key]||[];
+  var entries=(nmData && nmData[key])||[];
   var emEl=document.getElementById('nm-today-emotions');
   var thEl=document.getElementById('nm-today-thought');
   var intEl=document.getElementById('nm-today-intensity');
