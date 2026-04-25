@@ -269,9 +269,10 @@
           </div>
         </div>
 
-        <!-- Right: NeuroMap SVG animation -->
+        <!-- Right: NeuroMap canvas animation -->
         <div style="display:flex;justify-content:center;align-items:center;">
-          <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:380px;" aria-label="NeuroMap: динамическая карта внимания">
+          <canvas id="nm-hero-canvas" width="800" height="800" style="width:100%;max-width:380px;" aria-label="NeuroMap: динамическая карта внимания"></canvas>
+          <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="display:none;" aria-label="LEGACY — hidden">
             <defs>
               <radialGradient id="nm-glow" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stop-color="rgba(0,224,255,0.06)"/>
@@ -432,6 +433,212 @@
               <animate attributeName="opacity" values="0.3;0" dur="4s" begin="10s" repeatCount="indefinite"/>
             </circle>
           </svg>
+          <script>
+(function(){
+  var c=document.getElementById('nm-hero-canvas');
+  if(!c) return;
+  var ctx=c.getContext('2d');
+  var W=c.width, H=c.height, cx=W/2, cy=H/2;
+
+  // Node definitions
+  var mainNodes=[
+    {label:'Я', color:'rgba(0,224,255,C)', x:cx, y:cy, r:28, isCenter:true},
+    {label:'Эмоция', color:'rgba(245,166,35,C)', x:cx-140, y:cy-160, r:22},
+    {label:'Мысль', color:'rgba(79,195,247,C)', x:cx+140, y:cy-190, r:22},
+    {label:'Событие', color:'rgba(179,136,255,C)', x:cx+180, y:cy+120, r:22},
+    {label:'Действие', color:'rgba(105,240,174,C)', x:cx-100, y:cy+200, r:22}
+  ];
+  // Sub-nodes (2 per main node, no labels)
+  var subNodes=[];
+  for(var i=1;i<mainNodes.length;i++){
+    var mn=mainNodes[i];
+    var ang=Math.atan2(mn.y-cy, mn.x-cx);
+    for(var j=0;j<2;j++){
+      var a2=ang+(j===0?0.6:-0.5);
+      var dist=80+j*30;
+      subNodes.push({
+        parent:i, x:mn.x+Math.cos(a2)*dist, y:mn.y+Math.sin(a2)*dist, r:8,
+        color:mn.color
+      });
+    }
+  }
+  // Links: center→main, main→main(ring), main→subs, some cross-links between subs
+  var mainLinks=[];
+  for(var i=1;i<mainNodes.length;i++) mainLinks.push([0,i]);
+  mainLinks.push([1,2],[2,3],[3,4],[4,1]);
+  // Cross-links
+  mainLinks.push([1,3],[2,4]);
+
+  var subLinks=[];
+  subNodes.forEach(function(sn,si){ subLinks.push({parentIdx:sn.parent, subIdx:si}); });
+  // Cross-links between adjacent sub-nodes
+  for(var i=0;i<subNodes.length-1;i++){
+    if(subNodes[i].parent!==subNodes[i+1].parent && Math.random()>0.3){
+      subLinks.push({cross:true, a:i, b:i+1});
+    }
+  }
+
+  var CYCLE=12; // seconds per full cycle
+  var phase=0; // 0=grow, 1=hold, 2=fadeout
+  var t=0;
+  var lastTime=0;
+
+  function ease(x){ return x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2; }
+
+  function draw(now){
+    if(!lastTime) lastTime=now;
+    var dt=(now-lastTime)/1000;
+    lastTime=now;
+    t+=dt;
+    var cycleT=t%CYCLE;
+
+    // Phases: 0-6s grow, 6-9s hold, 9-12s fade
+    var growEnd=6, holdEnd=9, fadeEnd=CYCLE;
+    var globalAlpha=1;
+    if(cycleT>fadeEnd-0.01){ t=0; cycleT=0; }
+    if(cycleT>=holdEnd){
+      globalAlpha=1-ease((cycleT-holdEnd)/(fadeEnd-holdEnd));
+    }
+
+    ctx.clearRect(0,0,W,H);
+    ctx.globalAlpha=globalAlpha;
+
+    // Timing for sequential appearance
+    var centerT=0.3; // center appears at 0-0.3s
+    var mainStart=0.5, mainDur=0.6; // each main node 0.6s apart
+    var subStart=3.5, subDur=0.4;
+    var linkStart=0.8;
+
+    // Draw links (main)
+    mainLinks.forEach(function(pair,li){
+      var delay=linkStart+li*0.25;
+      var prog=Math.max(0,Math.min(1,(cycleT-delay)/0.8));
+      if(prog<=0) return;
+      var a=mainNodes[pair[0]], b=mainNodes[pair[1]];
+      var ep=ease(prog);
+      var mx=a.x+(b.x-a.x)*ep, my=a.y+(b.y-a.y)*ep;
+      ctx.beginPath();
+      ctx.moveTo(a.x,a.y);
+      ctx.lineTo(mx,my);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.06+prog*0.06)+')';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+    });
+
+    // Draw sub-links
+    subLinks.forEach(function(sl,si){
+      if(sl.cross){
+        var delay=subStart+1+si*0.15;
+        var prog=Math.max(0,Math.min(1,(cycleT-delay)/0.6));
+        if(prog<=0) return;
+        var a=subNodes[sl.a], b=subNodes[sl.b];
+        var ep=ease(prog);
+        ctx.beginPath();
+        ctx.moveTo(a.x,a.y);
+        ctx.lineTo(a.x+(b.x-a.x)*ep, a.y+(b.y-a.y)*ep);
+        ctx.strokeStyle='rgba(255,255,255,'+(0.04*prog)+')';
+        ctx.lineWidth=1;
+        ctx.stroke();
+        return;
+      }
+      var delay=subStart+si*0.2;
+      var prog=Math.max(0,Math.min(1,(cycleT-delay)/0.5));
+      if(prog<=0) return;
+      var mn=mainNodes[sl.parentIdx], sn=subNodes[sl.subIdx];
+      var ep=ease(prog);
+      ctx.beginPath();
+      ctx.moveTo(mn.x,mn.y);
+      ctx.lineTo(mn.x+(sn.x-mn.x)*ep, mn.y+(sn.y-mn.y)*ep);
+      ctx.strokeStyle='rgba(255,255,255,'+(0.05*prog)+')';
+      ctx.lineWidth=1;
+      ctx.stroke();
+    });
+
+    // Draw sub-nodes
+    subNodes.forEach(function(sn,si){
+      var delay=subStart+si*0.2;
+      var prog=Math.max(0,Math.min(1,(cycleT-delay)/0.5));
+      if(prog<=0) return;
+      var ep=ease(prog);
+      var r=sn.r*ep;
+      ctx.beginPath();
+      ctx.arc(sn.x,sn.y,r,0,Math.PI*2);
+      ctx.fillStyle=sn.color.replace('C','0.08');
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(sn.x,sn.y,r,0,Math.PI*2);
+      ctx.strokeStyle=sn.color.replace('C','0.25');
+      ctx.lineWidth=1;
+      ctx.stroke();
+    });
+
+    // Draw main nodes
+    mainNodes.forEach(function(n,ni){
+      var delay=ni===0?0:(mainStart+(ni-1)*mainDur);
+      var prog=Math.max(0,Math.min(1,(cycleT-delay)/(ni===0?centerT:0.6)));
+      if(prog<=0) return;
+      var ep=ease(prog);
+      var r=n.r*ep;
+      // Glow
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,r+12*ep,0,Math.PI*2);
+      ctx.fillStyle=n.color.replace('C','0.06');
+      ctx.fill();
+      // Pulse for center
+      if(n.isCenter && cycleT>growEnd){
+        var pulseR=r+8+Math.sin(cycleT*2)*4;
+        ctx.beginPath();
+        ctx.arc(n.x,n.y,pulseR,0,Math.PI*2);
+        ctx.strokeStyle=n.color.replace('C','0.15');
+        ctx.lineWidth=0.5;
+        ctx.stroke();
+      }
+      // Fill
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,r,0,Math.PI*2);
+      ctx.fillStyle=n.color.replace('C','0.15');
+      ctx.fill();
+      ctx.strokeStyle=n.color.replace('C','0.5');
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      // Label
+      if(ep>0.5){
+        ctx.globalAlpha=globalAlpha*Math.min(1,(ep-0.5)*4);
+        ctx.fillStyle=n.color.replace('C','0.85');
+        ctx.font=(n.isCenter?'700 26':'500 16')+'px Inter, sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(n.label, n.x, n.y+(n.isCenter?0:0));
+        // Sub-label below for non-center
+        if(!n.isCenter){
+          ctx.fillStyle=n.color.replace('C','0.45');
+          ctx.font='500 12px JetBrains Mono, monospace';
+          ctx.fillText(n.label.toUpperCase(), n.x, n.y-n.r-10);
+        }
+        ctx.globalAlpha=globalAlpha;
+      }
+    });
+
+    // Pulse waves from center during hold
+    if(cycleT>growEnd && cycleT<holdEnd+1){
+      var wt=(cycleT-growEnd);
+      for(var w=0;w<2;w++){
+        var wr=(wt*60+w*80)%320;
+        var wo=Math.max(0,1-wr/320)*0.15;
+        ctx.beginPath();
+        ctx.arc(cx,cy,wr,0,Math.PI*2);
+        ctx.strokeStyle='rgba(0,224,255,'+wo+')';
+        ctx.lineWidth=0.5;
+        ctx.stroke();
+      }
+    }
+
+    ctx.globalAlpha=1;
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+          </script>
         </div>
       </div>
     </div>
