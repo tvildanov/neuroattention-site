@@ -835,8 +835,9 @@
             <button class="nm-filter-btn active" onclick="nmFilter('all')">Все</button>
             <button class="nm-filter-btn" onclick="nmFilter('emotions')">Эмоции</button>
             <button class="nm-filter-btn" onclick="nmFilter('areas')">Области</button>
+            <button class="nm-filter-btn" onclick="nmFilter('causes')">Причины</button>
             <button class="nm-filter-btn" onclick="nmFilter('thoughts')">Мысли</button>
-            <button class="nm-filter-btn" onclick="nmFilter('repeat')" style="margin-left:auto;">Только повторяющиеся</button>
+            <button class="nm-filter-btn" onclick="nmFilter('repeat')" style="margin-left:auto;">Повторяющиеся</button>
           </div>
         </div>
         <!-- Analyze button -->
@@ -2996,7 +2997,7 @@ function getEntriesForView(){
     if(nmCurrentView==='day' && diff>0) return;
     if(nmCurrentView==='week' && diff>6) return;
     if(nmCurrentView==='month' && diff>29) return;
-    nmData[k].forEach(function(e){ entries.push(e); });
+    nmData[k].forEach(function(e){ e.dateKey=k; entries.push(e); });
   });
   return entries;
 }
@@ -3023,13 +3024,15 @@ function buildNmGraph(){
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
 
-  // Build node/link data
+  // Build node/link data — deduplicated by (type, name, valence)
   var nodeMap={};
   var linkMap={};
-  function addNode(id,type,label,intensity){
-    if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,x:0,y:0,vx:0,vy:0};
+  function addNode(id,type,label,intensity,valence,dateKey){
+    if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,valence:valence||0,first_seen:dateKey||'',last_seen:dateKey||'',x:0,y:0,vx:0,vy:0};
     nodeMap[id].count++;
     nodeMap[id].intensity=Math.max(nodeMap[id].intensity,intensity||5);
+    if(dateKey && dateKey>nodeMap[id].last_seen) nodeMap[id].last_seen=dateKey;
+    if(dateKey && (!nodeMap[id].first_seen || dateKey<nodeMap[id].first_seen)) nodeMap[id].first_seen=dateKey;
   }
   function addLink(a,b){
     var key=a+'||'+b;
@@ -3038,11 +3041,18 @@ function buildNmGraph(){
   }
 
   entries.forEach(function(e){
+    var dateKey=e.dateKey||'';
     e.chains.forEach(function(c){
-      if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity);
-      if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity);
-      if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity);
-      if(c.thought) addNode('t:'+c.thought,'thought',c.thought,e.intensity);
+      // Valence: negative emotions = -1, positive = +1, areas/causes inherit from emotion
+      var emValence=c.emotion?(isNegEmotion(c.emotion)?-1:1):0;
+      if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity,emValence,dateKey);
+      if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity,0,dateKey);
+      if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity,emValence,dateKey);
+      if(c.thought){
+        var thIdx=NM_THOUGHTS.indexOf(c.thought);
+        var thValence=thIdx<15?-1:1; // first 15 negative, rest positive
+        addNode('t:'+c.thought,'thought',c.thought,e.intensity,thValence,dateKey);
+      }
       if(c.emotion&&c.area) addLink('e:'+c.emotion,'a:'+c.area);
       if(c.area&&c.cause) addLink('a:'+c.area,'c:'+c.cause);
       if(c.cause&&c.thought) addLink('c:'+c.cause,'t:'+c.thought);
@@ -3056,6 +3066,7 @@ function buildNmGraph(){
     var n=nodeMap[id];
     if(nmCurrentFilter==='emotions' && n.type!=='emotion') return;
     if(nmCurrentFilter==='areas' && n.type!=='area') return;
+    if(nmCurrentFilter==='causes' && n.type!=='cause') return;
     if(nmCurrentFilter==='thoughts' && n.type!=='thought') return;
     if(nmCurrentFilter==='repeat' && n.count<2) return;
     validIds[id]=true;
@@ -3191,13 +3202,16 @@ function nmSimulate(canvas, initAlpha){
       r=Math.min(r,28);
       // Scale-in effect
       var drawR=r*fade;
-      // Color by type
+      // Color by type + valence
       var col;
       if(n.type==='emotion'){
-        col=isNegEmotion(n.label)?'rgba(255,120,120,':'rgba(120,255,160,';
+        col=n.valence<0?'rgba(255,120,120,':'rgba(120,255,160,';
       } else if(n.type==='area') col='rgba(140,180,255,';
-      else if(n.type==='cause') col='rgba(255,180,100,';
-      else col='rgba(200,160,255,';
+      else if(n.type==='cause'){
+        col=n.valence<0?'rgba(255,180,100,':'rgba(160,220,140,';
+      } else if(n.type==='thought'){
+        col=n.valence<0?'rgba(200,160,255,':'rgba(180,230,200,';
+      } else col='rgba(200,160,255,';
       // Glow
       var brightness=0.3+Math.min(n.intensity/10,0.7);
       ctx.globalAlpha=fade;
@@ -3212,6 +3226,12 @@ function nmSimulate(canvas, initAlpha){
       ctx.textAlign='center';ctx.textBaseline='middle';
       var label=n.label.length>18?n.label.substring(0,16)+'…':n.label;
       ctx.fillText(label,n.x,n.y+drawR+16);
+      // Count badge for repeated nodes
+      if(n.count>1){
+        ctx.font='600 16px Inter,sans-serif';
+        ctx.fillStyle='rgba(0,224,255,0.9)';
+        ctx.fillText('×'+n.count,n.x+drawR+8,n.y-drawR+4);
+      }
       ctx.globalAlpha=1;
     });
 
