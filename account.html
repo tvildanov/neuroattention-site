@@ -1321,6 +1321,8 @@ function onLogin(user){
 
   // STEP 4: Fetch fresh data from API (async, will re-render when done)
   try { nmLoadFromAPI(); } catch(e){ console.warn('nmLoadFromAPI error:', e); }
+  try { nmLoadVocabulary(); } catch(e){ console.warn('nmLoadVocabulary error:', e); }
+  try { nmLoadV2Graph(); } catch(e){ console.warn('nmLoadV2Graph error:', e); }
   try { diaryLoadFromAPI(); } catch(e){ console.warn('diaryLoadFromAPI error:', e); }
   try { calLoadFromAPI(); } catch(e){ console.warn('calLoadFromAPI error:', e); }
   try { progLoadFromAPI(); } catch(e){ console.warn('progLoadFromAPI error:', e); }
@@ -2194,6 +2196,8 @@ var nmLinks = [];
 var nmAnimFrame = null;
 var nmPrevPositions = {}; // {id: {x,y}} — snapshot of positions before rebuild
 var nmNewNodeIds = {};    // ids of nodes that are new in this rebuild (for fade-in)
+var nmVocabulary = null;  // loaded from data/neuromap-vocabulary.json
+var nmV2Graph = null;     // { nodes:[], links:[] } from /api/neuromap/v2/graph
 
 // Emotion categories
 var NM_EMOTIONS_NEG = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
@@ -2752,10 +2756,23 @@ function nmSaveSurvey(){
     time:today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
   };
   nmData[key].push(entry);
-  // Persist to API
+  // Persist to old API (backward compat)
   nmSaveToAPI(key, entry);
   // Cache to localStorage
   nmCacheToLocal();
+  // Send to v2/append for graph dedup
+  var v2Chain=[];
+  chains.forEach(function(c){
+    var emValence=c.emotion?(isNegEmotion(c.emotion)?'negative':'positive'):'neutral';
+    if(c.emotion) v2Chain.push({type:'emotion',label:c.emotion,valence:emValence,metadata:{emoji:EMOJI_EMOTIONS[c.emotion]||''}});
+    if(c.area) v2Chain.push({type:'area',label:c.area,valence:'neutral',metadata:{emoji:EMOJI_AREAS[c.area]||''}});
+    if(c.cause) v2Chain.push({type:'cause',label:c.cause,valence:emValence,metadata:{}});
+    if(c.thought){
+      var thNeg=NM_THOUGHTS.indexOf(c.thought)<15;
+      v2Chain.push({type:'thought',label:c.thought,valence:thNeg?'negative':'positive',metadata:{emoji:EMOJI_THOUGHTS[c.thought]||''}});
+    }
+  });
+  if(v2Chain.length) nmAppendV2(v2Chain);
   closeNmSurvey();
   if(navigator.vibrate) navigator.vibrate([20,40,20]);
   updateNmToday();
@@ -2808,6 +2825,53 @@ async function nmLoadFromAPI(){
       try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after load:', e); }
     }
   } catch(err){ console.warn('[NM] nmLoadFromAPI FAILED:',err); }
+}
+
+// Load vocabulary JSON (for chip suggestions)
+async function nmLoadVocabulary(){
+  try {
+    var resp=await fetch('data/neuromap-vocabulary.json');
+    if(resp.ok){ nmVocabulary=await resp.json(); console.log('[NM] vocabulary loaded'); }
+  } catch(e){ console.warn('[NM] vocabulary load failed:',e); }
+}
+
+// Load graph from v2 API (server-deduplicated nodes + links)
+async function nmLoadV2Graph(){
+  var token=naGetToken();
+  if(!token) return;
+  var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  try {
+    var resp=await fetch(base+'/api/neuromap/v2/graph',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!resp.ok){ console.warn('[NM] v2/graph status='+resp.status); return; }
+    var json=await resp.json();
+    if(json.ok){
+      nmV2Graph={nodes:json.nodes||[], links:json.links||[]};
+      console.log('[NM] v2 graph loaded: '+nmV2Graph.nodes.length+' nodes, '+nmV2Graph.links.length+' links');
+      try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after v2 load:', e); }
+    }
+  } catch(err){ console.warn('[NM] v2/graph FAILED:',err); }
+}
+
+// Send chain to v2/append API (dedup + accumulate on server)
+function nmAppendV2(chainItems){
+  var token=naGetToken();
+  if(!token) return;
+  var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  fetch(base+'/api/neuromap/v2/append',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({chain:chainItems})
+  }).then(function(r){
+    if(!r.ok) console.warn('[NM] v2/append status='+r.status);
+    else return r.json();
+  }).then(function(json){
+    if(json&&json.ok){
+      // Reload v2 graph to get updated counts
+      nmLoadV2Graph();
+    }
+  }).catch(function(err){ console.warn('[NM] v2/append FAILED:',err); });
 }
 
 // ── Diary Persistence ──
@@ -3082,40 +3146,62 @@ function buildNmGraph(){
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
 
-  // Build node/link data — deduplicated by (type, name, valence)
+  // Build node/link data — prefer v2 graph (server-deduplicated) if available
   var nodeMap={};
   var linkMap={};
-  function addNode(id,type,label,intensity,valence,dateKey){
-    if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,valence:valence||0,first_seen:dateKey||'',last_seen:dateKey||'',x:0,y:0,vx:0,vy:0};
-    nodeMap[id].count++;
-    nodeMap[id].intensity=Math.max(nodeMap[id].intensity,intensity||5);
-    if(dateKey && dateKey>nodeMap[id].last_seen) nodeMap[id].last_seen=dateKey;
-    if(dateKey && (!nodeMap[id].first_seen || dateKey<nodeMap[id].first_seen)) nodeMap[id].first_seen=dateKey;
-  }
-  function addLink(a,b){
-    var key=a+'||'+b;
-    if(!linkMap[key]) linkMap[key]={source:a,target:b,count:0};
-    linkMap[key].count++;
-  }
 
-  entries.forEach(function(e){
-    var dateKey=e.dateKey||'';
-    e.chains.forEach(function(c){
-      // Valence: negative emotions = -1, positive = +1, areas/causes inherit from emotion
-      var emValence=c.emotion?(isNegEmotion(c.emotion)?-1:1):0;
-      if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity,emValence,dateKey);
-      if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity,0,dateKey);
-      if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity,emValence,dateKey);
-      if(c.thought){
-        var thIdx=NM_THOUGHTS.indexOf(c.thought);
-        var thValence=thIdx<15?-1:1; // first 15 negative, rest positive
-        addNode('t:'+c.thought,'thought',c.thought,e.intensity,thValence,dateKey);
-      }
-      if(c.emotion&&c.area) addLink('e:'+c.emotion,'a:'+c.area);
-      if(c.area&&c.cause) addLink('a:'+c.area,'c:'+c.cause);
-      if(c.cause&&c.thought) addLink('c:'+c.cause,'t:'+c.thought);
+  if(nmV2Graph && nmV2Graph.nodes.length>0){
+    // Use server-deduplicated v2 graph data with freshness
+    var now=Date.now();
+    nmV2Graph.nodes.forEach(function(n){
+      var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
+      var ageDays=Math.max(0,(now-lastSeen)/86400000);
+      var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
+      var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
+      var id=n.type[0]+':'+n.normalized_label;
+      nodeMap[id]={id:id,dbId:n.id,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
-  });
+    nmV2Graph.links.forEach(function(l){
+      // Map DB node ids to our local ids
+      var fromNode=null,toNode=null;
+      Object.keys(nodeMap).forEach(function(k){ if(nodeMap[k].dbId===l.source) fromNode=k; if(nodeMap[k].dbId===l.target) toNode=k; });
+      if(fromNode&&toNode){
+        var key=fromNode+'||'+toNode;
+        linkMap[key]={source:fromNode,target:toNode,count:l.count||1};
+      }
+    });
+  } else {
+    // Fallback: build from old nmData entries
+    function addNode(id,type,label,intensity,valence,dateKey){
+      if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,valence:valence||0,freshness:1,first_seen:dateKey||'',last_seen:dateKey||'',x:0,y:0,vx:0,vy:0};
+      nodeMap[id].count++;
+      nodeMap[id].intensity=Math.max(nodeMap[id].intensity,intensity||5);
+      if(dateKey && dateKey>nodeMap[id].last_seen) nodeMap[id].last_seen=dateKey;
+      if(dateKey && (!nodeMap[id].first_seen || dateKey<nodeMap[id].first_seen)) nodeMap[id].first_seen=dateKey;
+    }
+    function addLink(a,b){
+      var key=a+'||'+b;
+      if(!linkMap[key]) linkMap[key]={source:a,target:b,count:0};
+      linkMap[key].count++;
+    }
+    entries.forEach(function(e){
+      var dateKey=e.dateKey||'';
+      e.chains.forEach(function(c){
+        var emValence=c.emotion?(isNegEmotion(c.emotion)?-1:1):0;
+        if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity,emValence,dateKey);
+        if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity,0,dateKey);
+        if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity,emValence,dateKey);
+        if(c.thought){
+          var thIdx=NM_THOUGHTS.indexOf(c.thought);
+          var thValence=thIdx<15?-1:1;
+          addNode('t:'+c.thought,'thought',c.thought,e.intensity,thValence,dateKey);
+        }
+        if(c.emotion&&c.area) addLink('e:'+c.emotion,'a:'+c.area);
+        if(c.area&&c.cause) addLink('a:'+c.area,'c:'+c.cause);
+        if(c.cause&&c.thought) addLink('c:'+c.cause,'t:'+c.thought);
+      });
+    });
+  }
 
   // Apply filter
   nmNodes=[];nmLinks=[];
@@ -3256,11 +3342,12 @@ function nmSimulate(canvas, initAlpha){
       // Fade-in for new nodes
       if(typeof n._fade==='number' && n._fade<1) n._fade=Math.min(1,n._fade+0.03);
       var fade=(typeof n._fade==='number')?n._fade:1;
-      var r=8+n.count*3+n.intensity*0.5;
-      r=Math.min(r,28);
+      // Size scales with count (dedup accumulation)
+      var r=8+Math.min(n.count,15)*2.5;
+      r=Math.min(r,40);
       // Scale-in effect
       var drawR=r*fade;
-      // Color by type + valence
+      // Color by type + valence tint
       var col;
       if(n.type==='emotion'){
         col=n.valence<0?'rgba(255,120,120,':'rgba(120,255,160,';
@@ -3270,8 +3357,9 @@ function nmSimulate(canvas, initAlpha){
       } else if(n.type==='thought'){
         col=n.valence<0?'rgba(200,160,255,':'rgba(180,230,200,';
       } else col='rgba(200,160,255,';
-      // Glow
-      var brightness=0.3+Math.min(n.intensity/10,0.7);
+      // Brightness ~ freshness (recent=bright, old=dim)
+      var freshness=(typeof n.freshness==='number')?n.freshness:1;
+      var brightness=0.2+freshness*0.7;
       ctx.globalAlpha=fade;
       ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
       ctx.fillStyle=col+(brightness*0.2)+')';ctx.fill();
@@ -3319,13 +3407,15 @@ function nmSimulate(canvas, initAlpha){
     var mx=(ev.clientX-rect.left)*sx, my=(ev.clientY-rect.top)*sy;
     var found=null;
     nmNodes.forEach(function(n){
-      var r=8+n.count*3+n.intensity*0.5;
+      var r=8+Math.min(n.count,15)*2.5;
+      r=Math.min(r,40);
       var dx=n.x-mx,dy=n.y-my;
       if(dx*dx+dy*dy<(r+10)*(r+10)) found=n;
     });
     if(found){
       var types={emotion:'Эмоция',area:'Область',cause:'Причина',thought:'Мысль'};
-      tip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">'+types[found.type]+'</span><br>Частота: '+found.count+' · Интенсивность: '+found.intensity;
+      var valLabel=found.valence<0?'негатив':(found.valence>0?'позитив':'нейтрал');
+      tip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">'+types[found.type]+' · '+valLabel+'</span><br>Частота: ×'+found.count;
       tip.style.display='block';
       tip.style.left=(ev.clientX-rect.left+12)+'px';
       tip.style.top=(ev.clientY-rect.top-10)+'px';

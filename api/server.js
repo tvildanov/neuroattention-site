@@ -117,7 +117,39 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_progress_user ON course_progress(user_id)`;
 
-    res.json({ ok: true, message: 'Migrations 003+004+005+006 applied successfully' });
+    // Migration 007: NeuroMap graph tables — nm_nodes + nm_links
+    await sql`CREATE TABLE IF NOT EXISTS nm_nodes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      label TEXT NOT NULL,
+      normalized_label TEXT NOT NULL,
+      valence TEXT NOT NULL DEFAULT 'neutral',
+      count INT NOT NULL DEFAULT 1,
+      last_seen_at TIMESTAMPTZ DEFAULT now(),
+      metadata JSONB DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(user_id, type, normalized_label, valence)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_nodes_user ON nm_nodes(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_nodes_user_type ON nm_nodes(user_id, type)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_nodes_last_seen ON nm_nodes(user_id, last_seen_at DESC)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS nm_links (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      from_node_id UUID NOT NULL REFERENCES nm_nodes(id) ON DELETE CASCADE,
+      to_node_id UUID NOT NULL REFERENCES nm_nodes(id) ON DELETE CASCADE,
+      count INT NOT NULL DEFAULT 1,
+      last_seen_at TIMESTAMPTZ DEFAULT now(),
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(user_id, from_node_id, to_node_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_user ON nm_links(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_from ON nm_links(from_node_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_to ON nm_links(to_node_id)`;
+
+    res.json({ ok: true, message: 'Migrations 003-007 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -619,6 +651,111 @@ app.delete('/api/neuromap/:id', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/neuromap/:id:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── NEUROMAP V2: GRAPH NODES + LINKS ──
+
+// POST /api/neuromap/v2/append — accept a chain, upsert nodes + links
+app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
+  try {
+    const { chain } = req.body;
+    // chain = [ { type: 'emotion', label: 'тревога', valence: 'negative', metadata: {} }, ... ]
+    if (!chain || !Array.isArray(chain) || chain.length === 0) {
+      return res.status(400).json({ error: 'chain array required' });
+    }
+
+    const userId = req.user.id;
+    const nodeIds = [];
+
+    // 1. Upsert each node
+    for (const item of chain) {
+      const { type, label, valence, metadata } = item;
+      if (!type || !label) continue;
+      const normalizedLabel = (label || '').toLowerCase().trim();
+      const val = valence || 'neutral';
+      const meta = metadata ? JSON.stringify(metadata) : '{}';
+
+      const rows = await sql`
+        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+        VALUES (${userId}, ${type}, ${label}, ${normalizedLabel}, ${val}, 1, now(), ${meta}::jsonb)
+        ON CONFLICT (user_id, type, normalized_label, valence)
+        DO UPDATE SET
+          count = nm_nodes.count + 1,
+          last_seen_at = now(),
+          label = EXCLUDED.label
+        RETURNING id
+      `;
+      nodeIds.push(rows[0].id);
+    }
+
+    // 2. Create links between consecutive nodes in the chain
+    const linkResults = [];
+    for (let i = 0; i < nodeIds.length - 1; i++) {
+      const fromId = nodeIds[i];
+      const toId = nodeIds[i + 1];
+      const rows = await sql`
+        INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+        VALUES (${userId}, ${fromId}, ${toId}, 1, now())
+        ON CONFLICT (user_id, from_node_id, to_node_id)
+        DO UPDATE SET
+          count = nm_links.count + 1,
+          last_seen_at = now()
+        RETURNING id, count
+      `;
+      linkResults.push({ from: fromId, to: toId, count: rows[0].count });
+    }
+
+    res.json({ ok: true, node_ids: nodeIds, links: linkResults });
+  } catch (err) {
+    console.error('POST /api/neuromap/v2/append:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// GET /api/neuromap/v2/graph — return full graph (nodes + links) for current user
+app.get('/api/neuromap/v2/graph', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const nodes = await sql`
+      SELECT id, type, label, normalized_label, valence, count, last_seen_at, metadata, created_at
+      FROM nm_nodes
+      WHERE user_id = ${userId}
+      ORDER BY count DESC
+    `;
+
+    const links = await sql`
+      SELECT l.id, l.from_node_id, l.to_node_id, l.count, l.last_seen_at
+      FROM nm_links l
+      WHERE l.user_id = ${userId}
+      ORDER BY l.count DESC
+    `;
+
+    res.json({
+      ok: true,
+      nodes: nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        label: n.label,
+        normalized_label: n.normalized_label,
+        valence: n.valence,
+        count: n.count,
+        last_seen_at: n.last_seen_at,
+        metadata: n.metadata,
+        created_at: n.created_at
+      })),
+      links: links.map(l => ({
+        id: l.id,
+        source: l.from_node_id,
+        target: l.to_node_id,
+        count: l.count,
+        last_seen_at: l.last_seen_at
+      }))
+    });
+  } catch (err) {
+    console.error('GET /api/neuromap/v2/graph:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
