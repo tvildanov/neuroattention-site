@@ -449,21 +449,21 @@
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated span-8">
         <h3>Модули программы — Guided Program</h3>
-        <div class="module-item">
+        <div class="module-item" data-module-id="block-1">
           <div class="module-status done">✓</div>
           <div class="module-info">
             <p class="name">Блок 1 · Вход в практику</p>
             <p class="meta">нед 1–2 · 4 практики · завершён</p>
           </div>
         </div>
-        <div class="module-item">
+        <div class="module-item" data-module-id="block-2">
           <div class="module-status done">✓</div>
           <div class="module-info">
             <p class="name">Блок 2 · Фокус и удержание внимания</p>
             <p class="meta">нед 3–4 · 4 практики · завершён</p>
           </div>
         </div>
-        <div class="module-item">
+        <div class="module-item" data-module-id="block-3">
           <div class="module-status current">▶</div>
           <div class="module-info">
             <p class="name">Блок 3 · Гибкость и переключение</p>
@@ -473,21 +473,21 @@
             <button class="btn btn-solid" style="font-size:11px;padding:0.35rem 0.75rem;" onclick="switchTab('practices')">Продолжить</button>
           </div>
         </div>
-        <div class="module-item">
+        <div class="module-item" data-module-id="block-4">
           <div class="module-status locked">4</div>
           <div class="module-info">
             <p class="name">Блок 4 · Множественное внимание</p>
             <p class="meta">нед 7–8 · 4 практики</p>
           </div>
         </div>
-        <div class="module-item">
+        <div class="module-item" data-module-id="block-5">
           <div class="module-status locked">5</div>
           <div class="module-info">
             <p class="name">Блок 5 · Объёмное восприятие тела</p>
             <p class="meta">нед 9–10 · 3 практики</p>
           </div>
         </div>
-        <div class="module-item">
+        <div class="module-item" data-module-id="block-6">
           <div class="module-status locked">6</div>
           <div class="module-info">
             <p class="name">Блок 6 · Интероцепция и саморегуляция</p>
@@ -521,7 +521,7 @@
         <h3>Блок 3 · Гибкость и переключение</h3>
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Текущий блок — 3 из 4 практик выполнено</p>
 
-        <div class="practice-card" style="border-color:rgba(255,255,255,0.12);">
+        <div class="practice-card" data-practice-id="practice-9" style="border-color:rgba(255,255,255,0.12);">
           <div class="practice-header">
             <p class="practice-title">Практика 9 · Переключение фокуса</p>
             <span class="practice-dur">15:30</span>
@@ -536,7 +536,7 @@
           </div>
         </div>
 
-        <div class="practice-card">
+        <div class="practice-card" data-practice-id="practice-10">
           <div class="practice-header">
             <p class="practice-title">Практика 10 · Периферическое внимание</p>
             <span class="practice-dur">18:00</span>
@@ -551,7 +551,7 @@
           </div>
         </div>
 
-        <div class="practice-card" style="opacity:0.5;">
+        <div class="practice-card" data-practice-id="practice-11" style="opacity:0.5;">
           <div class="practice-header">
             <p class="practice-title">Практика 11 · Динамическая гибкость</p>
             <span class="practice-dur">20:00</span>
@@ -560,7 +560,7 @@
           <div style="text-align:center;padding:0.5rem;font-size:12px;color:var(--text-dim);">Откроется после выполнения практики 10</div>
         </div>
 
-        <div class="practice-card" style="opacity:0.35;">
+        <div class="practice-card" data-practice-id="practice-12" style="opacity:0.35;">
           <div class="practice-header">
             <p class="practice-title">Практика 12 · Интеграция блока</p>
             <span class="practice-dur">22:00</span>
@@ -617,9 +617,7 @@
         <div class="dash-card glass-card-elevated span-4">
           <h3>События дня</h3>
           <div id="day-events">
-            <div class="event-item"><span class="event-time">10:00</span><div class="event-info"><p class="event-name">Утренняя практика</p><p class="event-type">Фокус · 15 мин</p></div><button class="event-edit" onclick="editEvent(this)">✎</button></div>
-            <div class="event-item"><span class="event-time">14:00</span><div class="event-info"><p class="event-name">Встреча со специалистом</p><p class="event-type">Онлайн · 45 мин</p></div><button class="event-edit" onclick="editEvent(this)">✎</button></div>
-            <div class="event-item"><span class="event-time">20:00</span><div class="event-info"><p class="event-name">Вечерняя практика</p><p class="event-type">Саморегуляция · 20 мин</p></div><button class="event-edit" onclick="editEvent(this)">✎</button></div>
+            <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;">Нет событий</p>
           </div>
           <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;font-size:12px;" onclick="addEvent()">+ Добавить событие</button>
         </div>
@@ -1204,6 +1202,19 @@ function onLogin(user){
     nmLoadFromLocal();
     updateNmToday();
     nmLoadFromAPI(); // async, will refresh graph when done
+    // Load Diary: cache first, then API sync
+    diaryLoadFromLocal();
+    renderDiaryCalendar();
+    updateTodaySummary();
+    diaryLoadFromAPI();
+    // Load Calendar events: cache first, then API sync
+    calLoadFromLocal();
+    renderCalendar();
+    calLoadFromAPI();
+    // Load Course Progress: cache first, then API sync
+    progLoadFromLocal();
+    renderCourseProgress();
+    progLoadFromAPI();
     showSection('client');
   } else {
     setupAdminDashboard(user);
@@ -1616,13 +1627,12 @@ function togglePlay(btn){
 }
 
 // ── Calendar ──
-var calMonth = 3; // April (0-indexed)
-var calYear = 2026;
-var practiceDays = [1,2,3,5,6,7,9,10,12,13,14,16,17,19,20,21,23,24];
-var completedDays = [1,2,3,5,6,7,9,10,12,13,14,16,17,19,20,21,23];
+var calMonth = new Date().getMonth(); // Current month (0-indexed)
+var calYear = new Date().getFullYear();
 var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 var dayNames = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 
+var selectedCalDay=null;
 function renderCalendar(){
   var grid = document.getElementById('cal-grid');
   document.getElementById('cal-month-title').textContent = monthNames[calMonth]+' '+calYear;
@@ -1634,34 +1644,97 @@ function renderCalendar(){
   var today = new Date();
   for(var i=0;i<first;i++) grid.innerHTML += '<div class="cal-day empty"></div>';
   for(var d=1;d<=days;d++){
+    var key=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var cls = 'cal-day';
     if(calYear===today.getFullYear() && calMonth===today.getMonth() && d===today.getDate()) cls += ' today';
-    if(practiceDays.includes(d)) cls += ' has-practice';
-    if(completedDays.includes(d)) cls += ' completed';
-    grid.innerHTML += '<div class="'+cls+'" onclick="selectDay('+d+')">'+d+'</div>';
+    // Mark days with events
+    var dayEvents=calEventsData[key]||[];
+    if(dayEvents.length) cls += ' has-practice';
+    var allDone=dayEvents.length>0 && dayEvents.every(function(e){ return e.done; });
+    if(allDone && dayEvents.length) cls += ' completed';
+    if(selectedCalDay===key) cls += ' diary-active';
+    grid.innerHTML += '<div class="'+cls+'" onclick="selectCalDay(\''+key+'\','+d+')">'+d+'</div>';
   }
+  // Auto-select today if nothing selected
+  if(!selectedCalDay){
+    var tk=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+    selectedCalDay=tk;
+  }
+  renderDayEvents();
 }
 renderCalendar();
 
-function changeMonth(dir){ calMonth+=dir; if(calMonth<0){calMonth=11;calYear--;} if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
-function selectDay(d){ /* could show day details */ }
+function changeMonth(dir){ calMonth+=dir; if(calMonth<0){calMonth=11;calYear--;} if(calMonth>11){calMonth=0;calYear++;} selectedCalDay=null; renderCalendar(); }
+function selectCalDay(key, d){
+  selectedCalDay=key;
+  renderCalendar();
+}
 
 // ── Events ──
-function editEvent(btn){
-  var name = btn.parentElement.querySelector('.event-name');
-  var newName = prompt('Изменить событие:', name.textContent);
-  if(newName) name.textContent = newName;
+function renderDayEvents(){
+  var evts=document.getElementById('day-events');
+  evts.innerHTML='';
+  var dayEvents=calEventsData[selectedCalDay]||[];
+  if(!dayEvents.length){
+    evts.innerHTML='<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;">Нет событий</p>';
+    return;
+  }
+  dayEvents.forEach(function(ev){
+    var div=document.createElement('div');
+    div.className='event-item';
+    if(ev.done) div.style.opacity='0.5';
+    div.innerHTML='<span class="event-time">'+(ev.time||'—')+'</span><div class="event-info"><p class="event-name">'+(ev.done?'<s>':'')+ev.title+(ev.done?'</s>':'')+'</p><p class="event-type">'+(ev.event_type||'')+(ev.duration?' \u00B7 '+ev.duration:'')+'</p></div>'
+      +'<button class="event-edit" onclick="toggleCalEvent(\''+ev.id+'\')" title="'+(ev.done?'Отменить':'Выполнено')+'">'+(ev.done?'\u21A9':'\u2713')+'</button>'
+      +'<button class="event-edit" onclick="deleteCalEvent(\''+ev.id+'\')" title="Удалить" style="color:rgba(255,100,100,0.7);">\u2715</button>';
+    evts.appendChild(div);
+  });
+}
+function toggleCalEvent(eventId){
+  calToggleDone(eventId).then(function(json){
+    if(!json||!json.ok) return;
+    // Update local data
+    Object.keys(calEventsData).forEach(function(k){
+      calEventsData[k].forEach(function(ev){
+        if(ev.id===eventId) ev.done=json.done;
+      });
+    });
+    calCacheToLocal();
+    renderCalendar();
+  });
+}
+function deleteCalEvent(eventId){
+  calDeleteEvent(eventId).then(function(json){
+    if(!json||!json.ok) return;
+    Object.keys(calEventsData).forEach(function(k){
+      calEventsData[k]=calEventsData[k].filter(function(ev){ return ev.id!==eventId; });
+      if(!calEventsData[k].length) delete calEventsData[k];
+    });
+    calCacheToLocal();
+    renderCalendar();
+  });
 }
 function addEvent(){
-  var evts = document.getElementById('day-events');
   var time = prompt('Время (HH:MM):', '12:00');
   if(!time) return;
   var name = prompt('Название события:', '');
   if(!name) return;
-  var div = document.createElement('div');
-  div.className = 'event-item';
-  div.innerHTML = '<span class="event-time">'+time+'</span><div class="event-info"><p class="event-name">'+name+'</p><p class="event-type">Пользовательское</p></div><button class="event-edit" onclick="editEvent(this)">✎</button>';
-  evts.appendChild(div);
+  var evType = prompt('Тип (необязательно):', '');
+  var dur = prompt('Длительность (необязательно):', '');
+  var dateKey=selectedCalDay;
+  if(!dateKey){
+    var today=new Date();
+    dateKey=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  }
+  var entry={time:time, title:name, event_type:evType||'', duration:dur||''};
+  calSaveToAPI(dateKey, entry).then(function(json){
+    if(!json||!json.ok) return;
+    if(!calEventsData[dateKey]) calEventsData[dateKey]=[];
+    entry.id=json.id;
+    entry.done=false;
+    calEventsData[dateKey].push(entry);
+    calCacheToLocal();
+    renderCalendar();
+  });
 }
 
 // ── Purchase flow ──
@@ -1898,13 +1971,17 @@ function saveDiaryEvent(){
   var today = new Date();
   var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   if(!diaryData[key]) diaryData[key]=[];
-  diaryData[key].push({
+  var entry={
     text: text,
     comment: comment,
     plusCount: currentPlusCount,
     minusCount: currentMinusCount,
     time: today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
-  });
+  };
+  diaryData[key].push(entry);
+  // Persist to API + localStorage cache
+  diarySaveToAPI(key, entry);
+  diaryCacheToLocal();
   // Update views
   renderDiaryCalendar();
   if(selectedDiaryDay===key) renderDayColumns(key);
@@ -2583,6 +2660,182 @@ async function nmLoadFromAPI(){
       buildNmGraph();
     }
   } catch(err){ console.warn('NeuroMap load failed:',err); }
+}
+
+// ── Diary Persistence ──
+var DIARY_API_BASE='https://neuroattention-api-production.up.railway.app';
+var DIARY_LOCAL_KEY='na_diary_data';
+
+function diarySaveToAPI(dateKey, entry){
+  var token=naGetToken();
+  if(!token) return;
+  fetch(DIARY_API_BASE+'/api/diary/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({date_key:dateKey, text:entry.text, comment:entry.comment||'', plus_count:entry.plusCount||0, minus_count:entry.minusCount||0, time:entry.time||''})
+  }).catch(function(err){ console.warn('Diary save failed:',err); });
+}
+
+function diaryCacheToLocal(){
+  try { localStorage.setItem(DIARY_LOCAL_KEY, JSON.stringify(diaryData)); } catch(e){}
+}
+
+function diaryLoadFromLocal(){
+  try {
+    var raw=localStorage.getItem(DIARY_LOCAL_KEY);
+    if(raw){ diaryData=JSON.parse(raw); return true; }
+  } catch(e){}
+  return false;
+}
+
+async function diaryLoadFromAPI(){
+  var token=naGetToken();
+  if(!token) return;
+  try {
+    var resp=await fetch(DIARY_API_BASE+'/api/diary',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!resp.ok) return;
+    var json=await resp.json();
+    if(json.ok && json.data){
+      diaryData=json.data;
+      diaryCacheToLocal();
+      renderDiaryCalendar();
+      updateTodaySummary();
+    }
+  } catch(err){ console.warn('Diary load failed:',err); }
+}
+
+// ── Calendar Events Persistence ──
+var CAL_API_BASE='https://neuroattention-api-production.up.railway.app';
+var CAL_LOCAL_KEY='na_calendar_events';
+var calEventsData={}; // { 'YYYY-MM-DD': [ {id, time, title, event_type, duration, done} ] }
+
+function calSaveToAPI(dateKey, entry){
+  var token=naGetToken();
+  if(!token) return;
+  return fetch(CAL_API_BASE+'/api/calendar/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({date_key:dateKey, time:entry.time||'', title:entry.title, event_type:entry.event_type||'', duration:entry.duration||''})
+  }).then(function(r){ return r.json(); }).catch(function(err){ console.warn('Calendar save failed:',err); });
+}
+
+function calToggleDone(eventId){
+  var token=naGetToken();
+  if(!token) return;
+  return fetch(CAL_API_BASE+'/api/calendar/'+eventId+'/toggle',{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token}
+  }).then(function(r){ return r.json(); }).catch(function(err){ console.warn('Calendar toggle failed:',err); });
+}
+
+function calDeleteEvent(eventId){
+  var token=naGetToken();
+  if(!token) return;
+  return fetch(CAL_API_BASE+'/api/calendar/'+eventId,{
+    method:'DELETE',
+    headers:{'Authorization':'Bearer '+token}
+  }).then(function(r){ return r.json(); }).catch(function(err){ console.warn('Calendar delete failed:',err); });
+}
+
+function calCacheToLocal(){
+  try { localStorage.setItem(CAL_LOCAL_KEY, JSON.stringify(calEventsData)); } catch(e){}
+}
+
+function calLoadFromLocal(){
+  try {
+    var raw=localStorage.getItem(CAL_LOCAL_KEY);
+    if(raw){ calEventsData=JSON.parse(raw); return true; }
+  } catch(e){}
+  return false;
+}
+
+async function calLoadFromAPI(){
+  var token=naGetToken();
+  if(!token) return;
+  try {
+    var resp=await fetch(CAL_API_BASE+'/api/calendar',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!resp.ok) return;
+    var json=await resp.json();
+    if(json.ok && json.data){
+      calEventsData=json.data;
+      calCacheToLocal();
+      renderCalendar();
+    }
+  } catch(err){ console.warn('Calendar load failed:',err); }
+}
+
+// ── Course Progress Persistence ──
+var PROG_API_BASE='https://neuroattention-api-production.up.railway.app';
+var PROG_LOCAL_KEY='na_course_progress';
+var courseProgressData=[]; // [ {item_type, item_id, status, progress_pct} ]
+
+function progSaveToAPI(itemType, itemId, status, progressPct){
+  var token=naGetToken();
+  if(!token) return;
+  return fetch(PROG_API_BASE+'/api/progress/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({item_type:itemType, item_id:itemId, status:status||'locked', progress_pct:progressPct||0})
+  }).then(function(r){ return r.json(); }).catch(function(err){ console.warn('Progress save failed:',err); });
+}
+
+function progCacheToLocal(){
+  try { localStorage.setItem(PROG_LOCAL_KEY, JSON.stringify(courseProgressData)); } catch(e){}
+}
+
+function progLoadFromLocal(){
+  try {
+    var raw=localStorage.getItem(PROG_LOCAL_KEY);
+    if(raw){ courseProgressData=JSON.parse(raw); return true; }
+  } catch(e){}
+  return false;
+}
+
+async function progLoadFromAPI(){
+  var token=naGetToken();
+  if(!token) return;
+  try {
+    var resp=await fetch(PROG_API_BASE+'/api/progress',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!resp.ok) return;
+    var json=await resp.json();
+    if(json.ok && json.progress){
+      courseProgressData=json.progress;
+      progCacheToLocal();
+      renderCourseProgress();
+    }
+  } catch(err){ console.warn('Progress load failed:',err); }
+}
+
+function renderCourseProgress(){
+  // Apply progress data to module items
+  courseProgressData.forEach(function(p){
+    if(p.item_type==='module'){
+      var el=document.querySelector('[data-module-id="'+p.item_id+'"]');
+      if(!el) return;
+      var statusEl=el.querySelector('.module-status');
+      if(p.status==='completed' && statusEl){
+        statusEl.className='module-status done';
+        statusEl.textContent='\u2713';
+      } else if(p.status==='in_progress' && statusEl){
+        statusEl.className='module-status current';
+        statusEl.textContent='\u25B6';
+      }
+    }
+    if(p.item_type==='practice'){
+      var el=document.querySelector('[data-practice-id="'+p.item_id+'"]');
+      if(!el) return;
+      if(p.status==='completed'){
+        el.style.opacity='1';
+        el.style.borderColor='rgba(120,255,160,0.3)';
+      }
+    }
+  });
 }
 
 // Update today summary

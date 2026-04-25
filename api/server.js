@@ -74,7 +74,50 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_neuromap_user ON neuro_map_entries(user_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_neuromap_user_date ON neuro_map_entries(user_id, date_key)`;
 
-    res.json({ ok: true, message: 'Migrations 003+004+005 applied successfully' });
+    // Migration 006: Diary, Calendar Events, Course Progress tables
+    await sql`CREATE TABLE IF NOT EXISTS neuro_resource_diary (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date_key TEXT NOT NULL,
+      text TEXT NOT NULL,
+      comment TEXT DEFAULT '',
+      plus_count INT DEFAULT 0,
+      minus_count INT DEFAULT 0,
+      time TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_diary_user ON neuro_resource_diary(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_diary_user_date ON neuro_resource_diary(user_id, date_key)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS calendar_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      date_key TEXT NOT NULL,
+      time TEXT DEFAULT '',
+      title TEXT NOT NULL,
+      event_type TEXT DEFAULT '',
+      duration TEXT DEFAULT '',
+      done BOOLEAN DEFAULT false,
+      done_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_cal_events_user ON calendar_events(user_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_cal_events_user_date ON calendar_events(user_id, date_key)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS course_progress (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      item_type TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      status TEXT DEFAULT 'locked',
+      progress_pct INT DEFAULT 0,
+      completed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE(user_id, item_type, item_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_progress_user ON course_progress(user_id)`;
+
+    res.json({ ok: true, message: 'Migrations 003+004+005+006 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -576,6 +619,201 @@ app.delete('/api/neuromap/:id', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/neuromap/:id:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── DIARY PERSISTENCE ──
+// Save a diary entry
+app.post('/api/diary/save', requireAuth, async (req, res) => {
+  try {
+    const { date_key, text, comment, plus_count, minus_count, time } = req.body;
+    if (!date_key || !text) return res.status(400).json({ error: 'date_key and text required' });
+    const rows = await sql`
+      INSERT INTO neuro_resource_diary (user_id, date_key, text, comment, plus_count, minus_count, time)
+      VALUES (${req.user.id}, ${date_key}, ${text}, ${comment || ''}, ${plus_count || 0}, ${minus_count || 0}, ${time || ''})
+      RETURNING id, date_key, created_at
+    `;
+    res.json({ ok: true, id: rows[0].id, date_key: rows[0].date_key });
+  } catch (err) {
+    console.error('POST /api/diary/save:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Load all diary entries for current user
+app.get('/api/diary', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, date_key, text, comment, plus_count, minus_count, time, created_at
+      FROM neuro_resource_diary
+      WHERE user_id = ${req.user.id}
+      ORDER BY date_key ASC, created_at ASC
+    `;
+    // Reconstruct diaryData format: { 'YYYY-MM-DD': [ {id, text, comment, plusCount, minusCount, time} ] }
+    const data = {};
+    rows.forEach(r => {
+      if (!data[r.date_key]) data[r.date_key] = [];
+      data[r.date_key].push({
+        id: r.id,
+        text: r.text,
+        comment: r.comment,
+        plusCount: r.plus_count,
+        minusCount: r.minus_count,
+        time: r.time
+      });
+    });
+    res.json({ ok: true, data, count: rows.length });
+  } catch (err) {
+    console.error('GET /api/diary:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Delete a diary entry
+app.delete('/api/diary/:id', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      DELETE FROM neuro_resource_diary
+      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      RETURNING id
+    `;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/diary/:id:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── CALENDAR EVENTS PERSISTENCE ──
+// Save a calendar event
+app.post('/api/calendar/save', requireAuth, async (req, res) => {
+  try {
+    const { date_key, time, title, event_type, duration } = req.body;
+    if (!date_key || !title) return res.status(400).json({ error: 'date_key and title required' });
+    const rows = await sql`
+      INSERT INTO calendar_events (user_id, date_key, time, title, event_type, duration)
+      VALUES (${req.user.id}, ${date_key}, ${time || ''}, ${title}, ${event_type || ''}, ${duration || ''})
+      RETURNING id, date_key, created_at
+    `;
+    res.json({ ok: true, id: rows[0].id, date_key: rows[0].date_key });
+  } catch (err) {
+    console.error('POST /api/calendar/save:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Load calendar events (optional month/year filter)
+app.get('/api/calendar', requireAuth, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let rows;
+    if (month && year) {
+      // date_key format is 'YYYY-MM-DD', filter by prefix
+      const prefix = `${year}-${String(month).padStart(2, '0')}`;
+      rows = await sql`
+        SELECT id, date_key, time, title, event_type, duration, done, done_at, created_at
+        FROM calendar_events
+        WHERE user_id = ${req.user.id} AND date_key LIKE ${prefix + '%'}
+        ORDER BY date_key ASC, time ASC
+      `;
+    } else {
+      rows = await sql`
+        SELECT id, date_key, time, title, event_type, duration, done, done_at, created_at
+        FROM calendar_events
+        WHERE user_id = ${req.user.id}
+        ORDER BY date_key ASC, time ASC
+      `;
+    }
+    // Group by date_key
+    const data = {};
+    rows.forEach(r => {
+      if (!data[r.date_key]) data[r.date_key] = [];
+      data[r.date_key].push({
+        id: r.id,
+        time: r.time,
+        title: r.title,
+        event_type: r.event_type,
+        duration: r.duration,
+        done: r.done,
+        done_at: r.done_at
+      });
+    });
+    res.json({ ok: true, data, count: rows.length });
+  } catch (err) {
+    console.error('GET /api/calendar:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Toggle calendar event done
+app.patch('/api/calendar/:id/toggle', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      UPDATE calendar_events
+      SET done = NOT done, done_at = CASE WHEN done THEN NULL ELSE now() END
+      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      RETURNING id, done
+    `;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, id: rows[0].id, done: rows[0].done });
+  } catch (err) {
+    console.error('PATCH /api/calendar/:id/toggle:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Delete a calendar event
+app.delete('/api/calendar/:id', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      DELETE FROM calendar_events
+      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      RETURNING id
+    `;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/calendar/:id:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── COURSE PROGRESS PERSISTENCE ──
+// Save/upsert course progress
+app.post('/api/progress/save', requireAuth, async (req, res) => {
+  try {
+    const { item_type, item_id, status, progress_pct } = req.body;
+    if (!item_type || !item_id) return res.status(400).json({ error: 'item_type and item_id required' });
+    const completed_at = status === 'completed' ? new Date().toISOString() : null;
+    const rows = await sql`
+      INSERT INTO course_progress (user_id, item_type, item_id, status, progress_pct, completed_at, updated_at)
+      VALUES (${req.user.id}, ${item_type}, ${item_id}, ${status || 'locked'}, ${progress_pct || 0}, ${completed_at}, now())
+      ON CONFLICT (user_id, item_type, item_id)
+      DO UPDATE SET status = EXCLUDED.status, progress_pct = EXCLUDED.progress_pct,
+                    completed_at = EXCLUDED.completed_at, updated_at = now()
+      RETURNING id, item_type, item_id, status, progress_pct
+    `;
+    res.json({ ok: true, progress: rows[0] });
+  } catch (err) {
+    console.error('POST /api/progress/save:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Load all course progress for current user
+app.get('/api/progress', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, item_type, item_id, status, progress_pct, completed_at, updated_at
+      FROM course_progress
+      WHERE user_id = ${req.user.id}
+      ORDER BY item_type, item_id
+    `;
+    res.json({ ok: true, progress: rows });
+  } catch (err) {
+    console.error('GET /api/progress:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
