@@ -2030,11 +2030,26 @@ function addRating(type){
   // Increment
   if(type==='plus') currentPlusCount++;
   else currentMinusCount++;
-  // Render both areas
+  updateRatingUI();
+}
+function removeRating(type){
+  var cur = type==='plus' ? currentPlusCount : currentMinusCount;
+  if(cur<=0) return;
+  if(type==='plus') currentPlusCount--;
+  else currentMinusCount--;
+  updateRatingUI();
+}
+function updateRatingUI(){
   renderRatingArea('minus', currentMinusCount);
   renderRatingArea('plus', currentPlusCount);
-  // Hint text
+  var hint = document.getElementById('rating-hint');
   var p=currentPlusCount, m=currentMinusCount;
+  if(p===0 && m===0){
+    hint.textContent='Тапните + или − для оценки события';
+    hint.style.opacity='0.6';
+    document.getElementById('diary-actions').style.display='none';
+    return;
+  }
   if(p>0 && m>0){
     var diff=p-m;
     if(diff===0) hint.textContent='Смешанное влияние — баланс';
@@ -2060,8 +2075,15 @@ function renderRatingArea(type, count){
   area.innerHTML='';
   for(var i=0;i<count;i++){
     var btn=document.createElement('button');
+    var isLast = (i===count-1);
     btn.className='rating-btn '+type+' chosen'+(i>0?' extra':'');
-    btn.onclick=(function(t){return function(){addRating(t);};})(type);
+    // Last chosen button: tap to undo (remove)
+    if(isLast){
+      btn.onclick=(function(t){return function(){removeRating(t);};})(type);
+      btn.title='Тапните чтобы убрать';
+    } else {
+      btn.onclick=(function(t){return function(){addRating(t);};})(type);
+    }
     btn.innerHTML='<span>'+(type==='minus'?'−':'+')+'</span>';
     area.appendChild(btn);
   }
