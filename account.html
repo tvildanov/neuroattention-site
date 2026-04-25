@@ -852,6 +852,30 @@
           <h3 style="font-size:0.9rem;margin:0 0 0.75rem;">Что показывает ваша карта</h3>
           <div id="nm-analysis-content"></div>
         </div>
+        <!-- ── Node Drill-down Panel ── -->
+        <div id="nm-drilldown" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(0,224,255,0.15);border-radius:14px;position:relative;">
+          <button onclick="closeNmDrilldown()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;">&times;</button>
+          <div id="nm-dd-header" style="margin-bottom:1rem;">
+            <span id="nm-dd-type-badge" style="display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:2px 8px;border-radius:8px;margin-bottom:0.4rem;"></span>
+            <h3 id="nm-dd-title" style="font-size:1.1rem;margin:0 0 0.25rem;"></h3>
+            <p id="nm-dd-stats" style="font-size:12px;color:var(--text-muted);margin:0;"></p>
+          </div>
+          <!-- Connected nodes sub-graph -->
+          <div id="nm-dd-connections" style="margin-bottom:1rem;">
+            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Связанные узлы</p>
+            <div id="nm-dd-conn-list" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
+          </div>
+          <!-- Mini frequency timeline -->
+          <div id="nm-dd-timeline" style="margin-bottom:1rem;">
+            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Частота за 30 дней</p>
+            <canvas id="nm-dd-timeline-canvas" width="400" height="60" style="width:100%;height:60px;border-radius:8px;background:rgba(0,0,0,0.15);"></canvas>
+          </div>
+          <!-- Correlations -->
+          <div id="nm-dd-correlations">
+            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Появляется вместе с</p>
+            <div id="nm-dd-corr-list" style="font-size:13px;color:var(--text-secondary);"></div>
+          </div>
+        </div>
       </div>
       <!-- Right panel -->
       <div class="dash-card glass-card-elevated span-4">
@@ -3355,7 +3379,145 @@ function nmSimulate(canvas, initAlpha){
       delete n.fx; delete n.fy;
     }
   });
+
+  // Single click on node → drill-down panel
+  var clickStartPos=null;
+  var clickStartTime=0;
+  canvas.addEventListener('mousedown',function(ev){
+    clickStartPos=getCanvasXY(ev);
+    clickStartTime=Date.now();
+  });
+  canvas.addEventListener('mouseup',function(ev){
+    if(!clickStartPos) return;
+    var p=getCanvasXY(ev);
+    var dx=p.x-clickStartPos.x, dy=p.y-clickStartPos.y;
+    var dist=Math.sqrt(dx*dx+dy*dy);
+    var elapsed=Date.now()-clickStartTime;
+    clickStartPos=null;
+    // Only trigger drilldown on short, stationary clicks
+    if(dist<8 && elapsed<300){
+      var n=findNodeAt(p.x,p.y);
+      if(n) openNmDrilldown(n);
+    }
+  });
 })();
+
+// ── Node Drill-down ──
+function closeNmDrilldown(){
+  document.getElementById('nm-drilldown').style.display='none';
+}
+function openNmDrilldown(node){
+  var panel=document.getElementById('nm-drilldown');
+  panel.style.display='block';
+
+  // Type colors
+  var typeColors={emotion:'rgba(255,120,120,0.8)',area:'rgba(140,180,255,0.8)',cause:'rgba(255,180,100,0.8)',thought:'rgba(200,160,255,0.8)'};
+  var typeLabels={emotion:'Эмоция',area:'Сфера',cause:'Причина',thought:'Мысль'};
+
+  // Header
+  var badge=document.getElementById('nm-dd-type-badge');
+  badge.textContent=typeLabels[node.type]||node.type;
+  badge.style.background=typeColors[node.type]||'rgba(255,255,255,0.1)';
+  badge.style.color='#111';
+  document.getElementById('nm-dd-title').textContent=node.label;
+  var valTxt=node.valence<0?'утечка':'ресурс';
+  if(node.valence===0) valTxt='нейтрально';
+  document.getElementById('nm-dd-stats').textContent='Встречается '+node.count+' раз | '+valTxt+(node.last_seen?' | Последний: '+node.last_seen:'');
+
+  // Connected nodes
+  var connList=document.getElementById('nm-dd-conn-list');
+  connList.innerHTML='';
+  var connected=[];
+  nmLinks.forEach(function(l){
+    if(l.source===node.id || l.target===node.id){
+      var otherId=l.source===node.id?l.target:l.source;
+      var otherNode=nmNodes.find(function(n){return n.id===otherId;});
+      if(otherNode) connected.push({node:otherNode,count:l.count});
+    }
+  });
+  connected.sort(function(a,b){return b.count-a.count;});
+  connected.forEach(function(c){
+    var chip=document.createElement('span');
+    chip.style.cssText='display:inline-block;padding:4px 10px;border-radius:10px;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);';
+    chip.textContent=(c.count>1?c.count+'× ':'')+c.node.label;
+    chip.onclick=function(){openNmDrilldown(c.node);};
+    connList.appendChild(chip);
+  });
+  if(!connected.length) connList.innerHTML='<span style="font-size:12px;color:var(--text-muted);">Нет связей</span>';
+
+  // 30-day frequency timeline
+  drawDdTimeline(node);
+
+  // Correlations — nodes that appear in same entries
+  var corrList=document.getElementById('nm-dd-corr-list');
+  var corrMap={};
+  var entries=getEntriesForView();
+  entries.forEach(function(e){
+    var hasNode=false;
+    e.chains.forEach(function(c){
+      if(node.type==='emotion'&&c.emotion===node.label) hasNode=true;
+      if(node.type==='area'&&c.area===node.label) hasNode=true;
+      if(node.type==='cause'&&c.cause===node.label) hasNode=true;
+      if(node.type==='thought'&&c.thought===node.label) hasNode=true;
+    });
+    if(hasNode){
+      e.chains.forEach(function(c){
+        ['emotion','area','cause','thought'].forEach(function(t){
+          if(c[t]&&c[t]!==node.label){
+            if(!corrMap[c[t]]) corrMap[c[t]]=0;
+            corrMap[c[t]]++;
+          }
+        });
+      });
+    }
+  });
+  var sorted=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5);
+  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.75rem;">'+k+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:12px;color:var(--text-muted);">Нет данных</span>';
+
+  // Scroll into view
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function drawDdTimeline(node){
+  var c=document.getElementById('nm-dd-timeline-canvas');
+  if(!c) return;
+  var ctx=c.getContext('2d');
+  var W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Count occurrences per day for last 30 days
+  var today=new Date();
+  var counts=[];
+  var maxCount=0;
+  for(var i=29;i>=0;i--){
+    var d=new Date(today);
+    d.setDate(d.getDate()-i);
+    var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var dayEntries=(nmData&&nmData[key])||[];
+    var cnt=0;
+    dayEntries.forEach(function(e){
+      e.chains.forEach(function(ch){
+        if(node.type==='emotion'&&ch.emotion===node.label) cnt++;
+        if(node.type==='area'&&ch.area===node.label) cnt++;
+        if(node.type==='cause'&&ch.cause===node.label) cnt++;
+        if(node.type==='thought'&&ch.thought===node.label) cnt++;
+      });
+    });
+    counts.push(cnt);
+    if(cnt>maxCount) maxCount=cnt;
+  }
+  if(maxCount===0) maxCount=1;
+
+  var barW=W/30;
+  var padY=4;
+  counts.forEach(function(cnt,i){
+    var h=(cnt/maxCount)*(H-padY*2);
+    var x=i*barW+1;
+    var y=H-padY-h;
+    ctx.fillStyle=cnt>0?'rgba(0,224,255,0.5)':'rgba(255,255,255,0.04)';
+    ctx.fillRect(x,y,barW-2,h||2);
+  });
+}
 
 // Analysis
 function nmRunAnalysis(entries){
