@@ -1766,7 +1766,7 @@ function renderCalendar(){
   }
   renderDayEvents();
 }
-renderCalendar();
+try { renderCalendar(); } catch(e){ console.warn('Initial renderCalendar skipped:', e); }
 
 function changeMonth(dir){ calMonth+=dir; if(calMonth<0){calMonth=11;calYear--;} if(calMonth>11){calMonth=0;calYear++;} selectedCalDay=null; renderCalendar(); }
 function selectCalDay(key, d){
