@@ -123,6 +123,17 @@
   color: var(--text-secondary);
   margin: 0;
 }
+@media (max-width: 768px) {
+  .neuromap-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
+  .neuromap-grid > div:last-child { order: -1; }
+}
+.autodata-footnote {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 1.5rem 0 0 0;
+  font-style: italic;
+}
 </style>
 </head>
 <body>
@@ -218,6 +229,218 @@
   </div>
 </section>
 
+<!-- ═══ БЛОК 2.5 — ПЕРСОНАЛЬНАЯ ОС УПРАВЛЕНИЯ ВНИМАНИЕМ ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-5xl">
+      <div class="fade-up mb-10">
+        <div class="line-accent"></div>
+        <p class="eyebrow">Ядро системы</p>
+        <h2 class="heading-space h2-block">Персональная ОС управления вниманием</h2>
+        <p class="sub-muted" style="max-width:42rem;">
+          Каждый участник программы строит собственную карту внимания — NeuroMap. Это динамическая модель, которая связывает эмоции, мысли, события и действия в единую систему наблюдения и управления.
+        </p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center;" class="fade-up delay-1 neuromap-grid">
+        <!-- Left: text -->
+        <div>
+          <p style="font-size:15px;line-height:1.8;color:var(--text-secondary);margin:0 0 1.25rem 0;">
+            NeuroMap — это не статичная диаграмма. Это живая модель, которая строится по ходу прохождения программы и отражает реальную динамику вашего внимания: как эмоции запускают мысли, как мысли формируют действия, и как события внешней среды влияют на всю цепочку.
+          </p>
+          <ul style="list-style:none;padding:0;margin:0 0 1.5rem 0;display:flex;flex-direction:column;gap:0.6rem;">
+            <li style="display:flex;align-items:center;gap:0.6rem;font-size:13px;color:var(--text-muted);">
+              <span style="width:8px;height:8px;border-radius:50%;background:#f5a623;flex-shrink:0;"></span>
+              Эмоции — точки входа, триггеры внимания
+            </li>
+            <li style="display:flex;align-items:center;gap:0.6rem;font-size:13px;color:var(--text-muted);">
+              <span style="width:8px;height:8px;border-radius:50%;background:#4fc3f7;flex-shrink:0;"></span>
+              Мысли — паттерны интерпретации
+            </li>
+            <li style="display:flex;align-items:center;gap:0.6rem;font-size:13px;color:var(--text-muted);">
+              <span style="width:8px;height:8px;border-radius:50%;background:#b388ff;flex-shrink:0;"></span>
+              События — внешние стимулы и контекст
+            </li>
+            <li style="display:flex;align-items:center;gap:0.6rem;font-size:13px;color:var(--text-muted);">
+              <span style="width:8px;height:8px;border-radius:50%;background:#69f0ae;flex-shrink:0;"></span>
+              Действия — поведенческий выход системы
+            </li>
+          </ul>
+          <div class="method-pulse-line" style="font-size:13px;animation:none;">
+            Ваша NeuroMap растёт вместе с вами — от первой практики до полной персональной модели управления вниманием
+          </div>
+        </div>
+
+        <!-- Right: NeuroMap SVG animation -->
+        <div style="display:flex;justify-content:center;align-items:center;">
+          <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:380px;" aria-label="NeuroMap: динамическая карта внимания">
+            <defs>
+              <radialGradient id="nm-glow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="rgba(0,224,255,0.06)"/>
+                <stop offset="100%" stop-color="rgba(0,224,255,0)"/>
+              </radialGradient>
+              <filter id="nm-blur">
+                <feGaussianBlur stdDeviation="2"/>
+              </filter>
+            </defs>
+
+            <!-- Background glow -->
+            <circle cx="200" cy="200" r="180" fill="url(#nm-glow)"/>
+
+            <!-- Connection lines (animated stroke-dashoffset) -->
+            <g stroke-width="1" fill="none" opacity="0.5">
+              <!-- Emotion → Thought -->
+              <line x1="130" y1="120" x2="270" y2="105" stroke="#f5a623" stroke-dasharray="200" stroke-dashoffset="200">
+                <animate attributeName="stroke-dashoffset" values="200;0" dur="2s" begin="0s" fill="freeze"/>
+              </line>
+              <!-- Thought → Event -->
+              <line x1="270" y1="105" x2="290" y2="260" stroke="#4fc3f7" stroke-dasharray="200" stroke-dashoffset="200">
+                <animate attributeName="stroke-dashoffset" values="200;0" dur="2s" begin="1.5s" fill="freeze"/>
+              </line>
+              <!-- Event → Action -->
+              <line x1="290" y1="260" x2="150" y2="300" stroke="#b388ff" stroke-dasharray="200" stroke-dashoffset="200">
+                <animate attributeName="stroke-dashoffset" values="200;0" dur="2s" begin="3s" fill="freeze"/>
+              </line>
+              <!-- Action → Emotion (feedback loop) -->
+              <line x1="150" y1="300" x2="130" y2="120" stroke="#69f0ae" stroke-dasharray="250" stroke-dashoffset="250">
+                <animate attributeName="stroke-dashoffset" values="250;0" dur="2s" begin="4.5s" fill="freeze"/>
+              </line>
+              <!-- Cross-links -->
+              <line x1="130" y1="120" x2="200" y2="200" stroke="rgba(255,255,255,0.1)" stroke-dasharray="120" stroke-dashoffset="120">
+                <animate attributeName="stroke-dashoffset" values="120;0" dur="1.5s" begin="2s" fill="freeze"/>
+              </line>
+              <line x1="200" y1="200" x2="290" y2="260" stroke="rgba(255,255,255,0.1)" stroke-dasharray="120" stroke-dashoffset="120">
+                <animate attributeName="stroke-dashoffset" values="120;0" dur="1.5s" begin="3.5s" fill="freeze"/>
+              </line>
+            </g>
+
+            <!-- Central hub node -->
+            <circle cx="200" cy="200" r="18" fill="rgba(0,224,255,0.08)" stroke="rgba(0,224,255,0.3)" stroke-width="1">
+              <animate attributeName="r" values="18;21;18" dur="4s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.8;1;0.8" dur="4s" repeatCount="indefinite"/>
+            </circle>
+            <text x="200" y="204" text-anchor="middle" fill="rgba(0,224,255,0.7)" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" letter-spacing="0.1em">MAP</text>
+
+            <!-- Emotion node (warm yellow-orange) -->
+            <g>
+              <circle cx="130" cy="120" r="0" fill="rgba(245,166,35,0.12)" stroke="#f5a623" stroke-width="1.5">
+                <animate attributeName="r" values="0;14" dur="0.8s" begin="0s" fill="freeze"/>
+              </circle>
+              <circle cx="130" cy="120" r="14" fill="none" stroke="#f5a623" stroke-width="0.5" opacity="0" filter="url(#nm-blur)">
+                <animate attributeName="opacity" values="0;0.5;0" dur="3s" begin="6s" repeatCount="indefinite"/>
+                <animate attributeName="r" values="14;22;14" dur="3s" begin="6s" repeatCount="indefinite"/>
+              </circle>
+              <text x="130" y="124" text-anchor="middle" fill="#f5a623" font-family="Inter, sans-serif" font-size="8" font-weight="500" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.8s" fill="freeze"/>
+                Э
+              </text>
+              <text x="130" y="99" text-anchor="middle" fill="rgba(245,166,35,0.6)" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="0.05em" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="0.8s" fill="freeze"/>
+                ЭМОЦИЯ
+              </text>
+            </g>
+
+            <!-- Thought node (cold blue/cyan) -->
+            <g>
+              <circle cx="270" cy="105" r="0" fill="rgba(79,195,247,0.12)" stroke="#4fc3f7" stroke-width="1.5">
+                <animate attributeName="r" values="0;14" dur="0.8s" begin="1.5s" fill="freeze"/>
+              </circle>
+              <circle cx="270" cy="105" r="14" fill="none" stroke="#4fc3f7" stroke-width="0.5" opacity="0" filter="url(#nm-blur)">
+                <animate attributeName="opacity" values="0;0.5;0" dur="3.5s" begin="7s" repeatCount="indefinite"/>
+                <animate attributeName="r" values="14;22;14" dur="3.5s" begin="7s" repeatCount="indefinite"/>
+              </circle>
+              <text x="270" y="109" text-anchor="middle" fill="#4fc3f7" font-family="Inter, sans-serif" font-size="8" font-weight="500" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="2.3s" fill="freeze"/>
+                М
+              </text>
+              <text x="270" y="88" text-anchor="middle" fill="rgba(79,195,247,0.6)" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="0.05em" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="2.3s" fill="freeze"/>
+                МЫСЛЬ
+              </text>
+            </g>
+
+            <!-- Event node (violet/purple) -->
+            <g>
+              <circle cx="290" cy="260" r="0" fill="rgba(179,136,255,0.12)" stroke="#b388ff" stroke-width="1.5">
+                <animate attributeName="r" values="0;14" dur="0.8s" begin="3s" fill="freeze"/>
+              </circle>
+              <circle cx="290" cy="260" r="14" fill="none" stroke="#b388ff" stroke-width="0.5" opacity="0" filter="url(#nm-blur)">
+                <animate attributeName="opacity" values="0;0.5;0" dur="3.2s" begin="7.5s" repeatCount="indefinite"/>
+                <animate attributeName="r" values="14;22;14" dur="3.2s" begin="7.5s" repeatCount="indefinite"/>
+              </circle>
+              <text x="290" y="264" text-anchor="middle" fill="#b388ff" font-family="Inter, sans-serif" font-size="8" font-weight="500" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="3.8s" fill="freeze"/>
+                С
+              </text>
+              <text x="290" y="243" text-anchor="middle" fill="rgba(179,136,255,0.6)" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="0.05em" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="3.8s" fill="freeze"/>
+                СОБЫТИЕ
+              </text>
+            </g>
+
+            <!-- Action node (green/mint) -->
+            <g>
+              <circle cx="150" cy="300" r="0" fill="rgba(105,240,174,0.12)" stroke="#69f0ae" stroke-width="1.5">
+                <animate attributeName="r" values="0;14" dur="0.8s" begin="4.5s" fill="freeze"/>
+              </circle>
+              <circle cx="150" cy="300" r="14" fill="none" stroke="#69f0ae" stroke-width="0.5" opacity="0" filter="url(#nm-blur)">
+                <animate attributeName="opacity" values="0;0.5;0" dur="2.8s" begin="8s" repeatCount="indefinite"/>
+                <animate attributeName="r" values="14;22;14" dur="2.8s" begin="8s" repeatCount="indefinite"/>
+              </circle>
+              <text x="150" y="304" text-anchor="middle" fill="#69f0ae" font-family="Inter, sans-serif" font-size="8" font-weight="500" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="5.3s" fill="freeze"/>
+                Д
+              </text>
+              <text x="150" y="283" text-anchor="middle" fill="rgba(105,240,174,0.6)" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="0.05em" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.5s" begin="5.3s" fill="freeze"/>
+                ДЕЙСТВИЕ
+              </text>
+            </g>
+
+            <!-- Secondary nodes (appear later) -->
+            <g>
+              <!-- Sub-node: habit -->
+              <circle cx="85" cy="210" r="0" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.15)" stroke-width="1">
+                <animate attributeName="r" values="0;8" dur="0.6s" begin="6s" fill="freeze"/>
+              </circle>
+              <text x="85" y="213" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono, monospace" font-size="6" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.4s" begin="6.3s" fill="freeze"/>
+                паттерн
+              </text>
+              <line x1="130" y1="120" x2="85" y2="210" stroke="rgba(255,255,255,0.06)" stroke-dasharray="120" stroke-dashoffset="120">
+                <animate attributeName="stroke-dashoffset" values="120;0" dur="1s" begin="6s" fill="freeze"/>
+              </line>
+
+              <!-- Sub-node: context -->
+              <circle cx="320" cy="180" r="0" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.15)" stroke-width="1">
+                <animate attributeName="r" values="0;8" dur="0.6s" begin="6.5s" fill="freeze"/>
+              </circle>
+              <text x="320" y="183" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-family="JetBrains Mono, monospace" font-size="6" opacity="0">
+                <animate attributeName="opacity" values="0;1" dur="0.4s" begin="6.8s" fill="freeze"/>
+                контекст
+              </text>
+              <line x1="270" y1="105" x2="320" y2="180" stroke="rgba(255,255,255,0.06)" stroke-dasharray="100" stroke-dashoffset="100">
+                <animate attributeName="stroke-dashoffset" values="100;0" dur="1s" begin="6.5s" fill="freeze"/>
+              </line>
+            </g>
+
+            <!-- Pulse wave (repeating) -->
+            <circle cx="200" cy="200" r="30" fill="none" stroke="rgba(0,224,255,0.15)" stroke-width="0.5" opacity="0">
+              <animate attributeName="r" values="30;160" dur="4s" begin="8s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.4;0" dur="4s" begin="8s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="200" cy="200" r="30" fill="none" stroke="rgba(0,224,255,0.1)" stroke-width="0.5" opacity="0">
+              <animate attributeName="r" values="30;160" dur="4s" begin="10s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.3;0" dur="4s" begin="10s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ═══ БЛОК 3 — ОСНОВНЫЕ ПРОГРАММЫ ═══ -->
 <section id="programs-main" class="section">
   <div class="section-divider"></div>
@@ -237,6 +460,7 @@
           <h3>Self-Guided Program</h3>
           <p class="desc">Самостоятельная программа по протоколам NeuroAttention. Включает структурированную работу с вниманием, телом и состоянием через практики, теорию и задания.</p>
           <ul class="prog-format">
+            <li>Построение персональной NeuroMap — карты вашего внимания</li>
             <li>3 месяца</li>
             <li>21 практика (разбитая на блоки)</li>
             <li>Теоретические модули</li>
@@ -255,6 +479,7 @@
           <h3>Guided Program</h3>
           <p class="desc">Глубокая работа с NeuroAttention Method с личным специалистом. Программа адаптируется под состояние человека и усиливается за счёт сопровождения.</p>
           <ul class="prog-format">
+            <li>NeuroMap + живая обратная связь от специалиста</li>
             <li>3 месяца</li>
             <li>Всё из Self-Guided</li>
             <li>Регулярные встречи со специалистом</li>
@@ -273,6 +498,7 @@
           <h3>Group Program</h3>
           <p class="desc">Групповое прохождение NeuroAttention в управляемом формате. Совмещает личную работу с динамикой группы и регулярными практиками.</p>
           <ul class="prog-format">
+            <li>Коллективная NeuroMap: ваша карта внимания в контексте группы</li>
             <li>3 месяца</li>
             <li>Групповые онлайн-сессии</li>
             <li>Общая траектория развития</li>
@@ -286,6 +512,27 @@
           </a>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ БЛОК 3.5 — АВТОМАТИЗАЦИЯ СБОРА ДАННЫХ ═══ -->
+<section class="section">
+  <div class="section-divider"></div>
+  <div class="container">
+    <div class="max-w-3xl fade-up">
+      <div class="line-accent"></div>
+      <p class="eyebrow">Инфраструктура данных</p>
+      <h2 class="heading-space h2-block">Автоматизация сбора данных</h2>
+      <p style="font-size:15px;line-height:1.8;color:var(--text-secondary);margin:0 0 1.5rem 0;">
+        Каждая программа NeuroAttention — это не только тренировка внимания, но и источник структурированных данных. Результаты практик, динамика состояния, поведенческие паттерны — всё это автоматически собирается, анонимизируется и становится частью исследовательской базы NeuroAttention Lab.
+      </p>
+      <div class="method-pulse-line" style="font-size:14px;line-height:1.7;animation:none;">
+        Участие в программе — это одновременно работа с собой и вклад в науку о внимании. Данные помогают развивать метод, уточнять протоколы и строить будущую XR-платформу.
+      </div>
+      <p class="autodata-footnote">
+        * Все данные собираются в деперсонализированном виде и используются исключительно в исследовательских целях. Подробнее — в разделе Лаборатория.
+      </p>
     </div>
   </div>
 </section>
