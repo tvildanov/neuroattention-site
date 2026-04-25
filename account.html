@@ -2597,6 +2597,92 @@ function nmRunAnalysis(entries){
 // ══════════════════════════════════════════
 // ТОЧКА А → ТОЧКА B MODULE
 // ══════════════════════════════════════════
+var AB_API_BASE='https://neuroattention-api-production.up.railway.app';
+var abEntryId=null; // UUID from server
+
+function abGetUserId(){
+  return currentUser ? (currentUser.email || currentUser.phone || 'demo') : 'demo';
+}
+
+async function abSaveToServer(){
+  try {
+    var uid=abGetUserId();
+    if(uid==='demo') return; // don't save demo
+    var body={
+      user_id:uid,
+      point_a:abState.pointA,
+      change_a:abState.changeA,
+      point_b:abState.pointB,
+      reasons:abState.reasons,
+      corrections:abState.corrections,
+      share_with_specialist:abState.shareSpecialist,
+      reminder_frequency:abState.listenFreq
+    };
+    var resp=await fetch(AB_API_BASE+'/api/pointab/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var data=await resp.json();
+    if(data.ok && data.entry_id) abEntryId=data.entry_id;
+    console.log('AB saved:', data);
+
+    // Upload audio if exists
+    if(abState.audioBlob && abEntryId){
+      var reader=new FileReader();
+      reader.onload=async function(){
+        var base64=reader.result.split(',')[1];
+        await fetch(AB_API_BASE+'/api/pointab/audio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entry_id:abEntryId,audio_base64:base64,duration_sec:abState.audioDuration||null,mime_type:abState.audioBlob.type||'audio/webm'})});
+      };
+      reader.readAsDataURL(abState.audioBlob);
+    }
+
+    // Sync reminders
+    if(abEntryId){
+      await fetch(AB_API_BASE+'/api/pointab/reminders/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,entry_id:abEntryId,frequency:abState.listenFreq})});
+    }
+  } catch(e){ console.warn('AB save error:',e); }
+}
+
+async function abLoadFromServer(){
+  try {
+    var uid=abGetUserId();
+    if(uid==='demo') return false;
+    var resp=await fetch(AB_API_BASE+'/api/pointab/'+encodeURIComponent(uid));
+    var data=await resp.json();
+    if(data.entry && data.entry.id){
+      abEntryId=data.entry.id;
+      var e=data.entry;
+      abState.pointA=typeof e.point_a==='string'?JSON.parse(e.point_a):e.point_a||{};
+      abState.changeA=typeof e.change_a==='string'?JSON.parse(e.change_a):e.change_a||{};
+      abState.pointB=typeof e.point_b==='string'?JSON.parse(e.point_b):e.point_b||{};
+      abState.reasons=typeof e.reasons==='string'?JSON.parse(e.reasons):e.reasons||[];
+      abState.corrections=typeof e.corrections==='string'?JSON.parse(e.corrections):e.corrections||[];
+      abState.shareSpecialist=e.share_with_specialist||false;
+      abState.listenFreq=e.reminder_frequency||'3_week';
+      abState.savedDate=new Date(e.updated_at||e.created_at).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+      // Check for audio
+      if(e.has_audio){
+        abState.audioUrl=AB_API_BASE+'/api/pointab/audio/'+abEntryId;
+      }
+      return true;
+    }
+    return false;
+  } catch(e){ console.warn('AB load error:',e); return false; }
+}
+
+async function abLoadReminders(){
+  try {
+    var uid=abGetUserId();
+    if(uid==='demo') return;
+    var resp=await fetch(AB_API_BASE+'/api/pointab/reminders/'+encodeURIComponent(uid));
+    var data=await resp.json();
+    if(data.reminders && data.reminders.length){
+      if(!window.abCalendarMarks) window.abCalendarMarks={};
+      data.reminders.forEach(function(r){
+        var dk=r.reminder_date.substring(0,10);
+        window.abCalendarMarks[dk]={task:'Прослушать программу реализации потенциала',done:r.done,reminderId:r.id};
+      });
+    }
+  } catch(e){ console.warn('AB reminders load error:',e); }
+}
+
 var abStep=0;
 var abState={
   pointA:{image:'',skills:'',achievements:'',health:''},
@@ -2856,8 +2942,10 @@ function abFinish(){
   document.getElementById('ab-exercise').style.display='none';
   abBuildResult();
   document.getElementById('ab-result').style.display='block';
-  // Add calendar entries
+  // Add calendar entries (local)
   abAddCalendarEntries();
+  // Save to server
+  abSaveToServer();
   if(navigator.vibrate) navigator.vibrate([20,40,20]);
 }
 
@@ -3008,6 +3096,11 @@ function abDownloadText(){
 function abSetFrequency(val){
   abState.listenFreq=val;
   abAddCalendarEntries();
+  // Sync to server
+  if(abEntryId){
+    var uid=abGetUserId();
+    fetch(AB_API_BASE+'/api/pointab/reminders/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,entry_id:abEntryId,frequency:val})}).catch(function(){});
+  }
 }
 
 function abAddCalendarEntries(){
@@ -3034,12 +3127,21 @@ function abToggleSpecialist(checked){
   abState.shareSpecialist=checked;
 }
 
-// Show specialist toggle for guided users
-function abCheckGuided(){
+// Show specialist toggle for guided users + load from server
+async function abCheckGuided(){
   var u=currentUser;
   if(u&&u.program==='guided'){
     document.getElementById('ab-specialist-toggle').style.display='block';
   }
+  // Try to load saved data from server
+  var loaded=await abLoadFromServer();
+  if(loaded && abState.savedDate){
+    document.getElementById('ab-saved-result').style.display='block';
+    document.getElementById('ab-saved-date').textContent=abState.savedDate;
+    document.getElementById('ab-play-saved').style.display=abState.audioUrl?'':'none';
+  }
+  // Load reminders from server
+  await abLoadReminders();
 }
 
 // ── Service Worker registration ──
