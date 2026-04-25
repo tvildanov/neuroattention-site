@@ -42,6 +42,33 @@ app.use(express.json({ limit: '4mb' }));
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
+app.post('/api/run-migrations', async (req, res) => {
+  try {
+    // Migration 003: Add role column
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`;
+
+    // Migration 004: Password resets table
+    await sql`CREATE TABLE IF NOT EXISTS password_resets (
+      token TEXT PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT false,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id)`;
+
+    // Also add last_login_at if missing
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`;
+
+    res.json({ ok: true, message: 'Migrations 003+004 applied successfully' });
+  } catch (err) {
+    console.error('Migration error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── AUTH MIDDLEWARE ──
 
 function requireAuth(req, res, next) {

@@ -16,16 +16,18 @@
     padding: 8rem 0 4rem;
   }
   .dom-hero h1 {
-    font-size: clamp(2rem, 4vw + 1rem, 3.2rem);
+    font-size: clamp(2.25rem, 5vw + 1rem, 4.25rem);
     color: var(--text-primary);
     margin: 0 0 1.25rem 0;
     line-height: 1.2;
   }
   .dom-hero .hero-sub {
-    font-size: clamp(1rem, 1.5vw + 0.5rem, 1.25rem);
-    line-height: 1.6;
-    color: var(--text-muted);
-    margin: 0;
+    font-size: clamp(1.1rem, 1.5vw + 0.5rem, 1.65rem);
+    line-height: 1.35;
+    color: var(--text-secondary);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 400;
+    margin: 0 0 1.5rem 0;
   }
   .dom-hero .hero-sub span {
     display: block;
@@ -178,11 +180,39 @@
     gap: 1rem;
   }
 
+  /* DOM Unity big card hover */
+  .dom-unity-big:hover {
+    border-color: rgba(78,205,196,0.4);
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 1024px) {
+    .dom-cards-grid[style*="repeat(4"] {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
   @media (max-width: 640px) {
     .dom-hero { padding: 6rem 0 3rem; }
     .dom-section { padding: 3rem 0; }
-    .dom-cards-grid { grid-template-columns: 1fr; }
+    .dom-cards-grid { grid-template-columns: 1fr !important; }
     .dom-unity { padding: 2rem 1.25rem; }
+    .dom-unity-big {
+      grid-template-columns: 1fr !important;
+      text-align: center;
+      gap: 1.25rem !important;
+      padding: 1.5rem !important;
+    }
+    .dom-unity-big img:first-of-type {
+      margin: 0 auto;
+      width: 60px !important;
+      height: 60px !important;
+    }
+    .dom-unity-big img:last-of-type {
+      margin: 0 auto;
+      width: 100% !important;
+      max-width: 200px;
+      height: auto !important;
+    }
   }
 </style>
 </head>
@@ -235,7 +265,7 @@
   <div class="container" style="position:relative;z-index:2;">
     <div class="grid grid-2" style="gap:clamp(1.5rem,4vw,4rem);align-items:center;">
       <div class="fade-up" style="text-align:left;">
-        <h1 class="heading-space">DOM — экосистема раскрытия человеческого потенциала</h1>
+        <h1 class="heading-space"><img src="assets/logo-dom.png" alt="" class="hero-inline-logo" style="height:1.1em;vertical-align:middle;margin-right:0.3em;display:inline-block;" />DOM — экосистема раскрытия человеческого потенциала</h1>
         <p class="hero-sub">
           <span>От адаптации к осознанному участию</span>
           <span>От Homo sapiens к Homo conscious</span>
@@ -273,59 +303,55 @@
   </div>
 </section>
 
-<!-- БЛОК 4 — DOM — это -->
-<section class="dom-section">
+<!-- БЛОК 4 — DOM — это + DOM Unity (merged) -->
+<section class="dom-section" id="dom-unity">
   <div class="section-divider"></div>
-  <div class="container max-w-4xl fade-up">
+  <div class="container fade-up" style="max-width:1200px;">
     <h2 class="text-center" style="margin-bottom:0.5rem;">DOM — это</h2>
-    <div class="dom-cards-grid">
 
+    <!-- 4 cards row -->
+    <div class="dom-cards-grid" style="grid-template-columns:repeat(4,1fr);">
       <a href="method.html" class="dom-card">
         <p class="card-category">Метод и фундамент</p>
         <h3>NeuroAttention</h3>
         <p>Система развития внимания и нервной системы как базовой функции управления состоянием и жизнью</p>
       </a>
-
       <a href="xr.html" class="dom-card">
         <p class="card-category">Технологии</p>
         <h3>XR NeuroAttention Platform</h3>
         <p>Среда практики, обучения и взаимодействия, включая работу с состоянием через нейрофидбэк</p>
       </a>
-
       <a href="lab.html" class="dom-card">
         <p class="card-category">Исследования и данные</p>
         <h3>NeuroAttention Lab</h3>
-        <p>Диагностика, эксперименты и разработка решений. Физические лаборатории и исследовательские центры</p>
+        <p>Диагностика, эксп��рименты и разработка решений. Физические лаборатории и исследовательские центры</p>
       </a>
-
-      <a href="#dom-unity" class="dom-card">
-        <p class="card-category">Люди</p>
-        <h3>DOM Unity</h3>
-        <p>Сообщество, в котором человек развивается быстрее за счёт среды, взаимодействия и общего направления</p>
-      </a>
-
       <a href="custom.html" class="dom-card">
         <p class="card-category">Результаты и возможности</p>
         <h3>DOM Custom Group</h3>
-        <p>Marketplace продуктов, решений и форм жизни, созданных внутри экосистемы DOM. Среда демонстрации, обмена и интеграции</p>
+        <p>Marketplace продуктов, решений и форм жизни, созданных внутри экосистемы DOM</p>
       </a>
-
     </div>
+
+    <!-- Big DOM Unity card -->
+    <a href="https://t.me/domunity/68" target="_blank" rel="noopener" class="dom-unity-big" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2rem;margin-top:1.25rem;padding:2rem 2.5rem;background:linear-gradient(135deg,rgba(78,205,196,0.08) 0%,rgba(78,205,196,0.02) 100%);border:1px solid rgba(78,205,196,0.15);border-radius:20px;text-decoration:none;transition:border-color 0.3s ease,transform 0.2s ease;position:relative;overflow:hidden;">
+      <div style="flex-shrink:0;">
+        <img src="assets/logo-dom.png" alt="DOM" style="width:80px;height:80px;object-fit:contain;border-radius:12px;" />
+      </div>
+      <div style="text-align:center;">
+        <p class="card-category" style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--accent-cyan,#4ecdc4);margin:0 0 0.5rem 0;opacity:0.8;">Люди</p>
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:600;color:var(--accent-cyan,#4ecdc4);margin:0 0 0.625rem 0;">DOM Unity</h3>
+        <p style="font-size:0.95rem;line-height:1.7;color:var(--text-muted);margin:0;max-width:480px;margin-left:auto;margin-right:auto;">Сообщество людей, которые движутся в одном направлении — развитие, осознанность и улучшение качества жизни. Здесь среда становится фактором роста.</p>
+      </div>
+      <div style="flex-shrink:0;">
+        <img src="assets/dom-unity.gif" alt="DOM Unity" style="width:120px;height:120px;object-fit:cover;border-radius:12px;" />
+      </div>
+    </a>
+
   </div>
 </section>
 
-<!-- БЛОК 5 — DOM UNITY (акцент) -->
-<section class="dom-section" id="dom-unity">
-  <div class="section-divider"></div>
-  <div class="container max-w-3xl fade-up">
-    <div class="dom-unity">
-      <h2>DOM Unity</h2>
-      <p class="section-text">Сообщество людей, которые движутся в одном направлении — развитие, осознанность и улучшение качества жизни. Здесь среда становится фактором роста: через взаимодействие, обмен опытом и совместную практику.</p>
-    </div>
-  </div>
-</section>
-
-<!-- БЛОК 6 — ДЛЯ КОГО DOM -->
+<!-- БЛОК 5 — ДЛЯ КОГО DOM -->
 <section class="dom-section centered">
   <div class="section-divider"></div>
   <div class="container fade-up">
@@ -351,26 +377,22 @@
         <p class="card-category">Для компаний</p>
         <p>Которые хотят повышать устойчивость, эффективность и адаптивность команд</p>
       </div>
+      <div class="dom-card">
+        <p class="card-category">Для системных игроков и крупных структур</p>
+        <p>Государственные и корпоративные структуры, которые ищут системные подходы к развитию человеческого капитала и адаптивности на масштабе</p>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- БЛОК 7 — ПРИНЦИП -->
-<section class="dom-section centered">
-  <div class="section-divider"></div>
-  <div class="container max-w-3xl fade-up">
-    <h2>Принцип</h2>
-    <p class="section-text">Внутреннее состояние формирует внешнюю реальность. DOM создаёт среду, в которой этот процесс становится управляемым.</p>
-  </div>
-</section>
-
-<!-- БЛОК 8 — CTA -->
+<!-- БЛОК 6 — CTA (Принцип + Войти в систему, merged) -->
 <section class="dom-cta">
   <div class="section-divider"></div>
   <div class="container max-w-3xl fade-up">
+    <p class="section-text" style="text-align:center;margin:0 auto 1.5rem;max-width:640px;font-size:1.0625rem;line-height:1.75;color:var(--text-muted);">Внутреннее состояние формирует внешнюю реальность. DOM создаёт среду, в которой этот процесс становится управляемым.</p>
     <h2>Войти в систему</h2>
     <div class="cta-buttons">
-      <a href="#dom-unity" class="btn btn-solid">
+      <a href="https://t.me/domunity/68" target="_blank" rel="noopener" class="btn btn-solid">
         Присоединиться к DOM Unity
         <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
