@@ -2737,7 +2737,7 @@ function nmSaveSurvey(){
 }
 
 // ── NeuroMap Persistence ──
-var NM_API_BASE='https://neuroattention-api-production.up.railway.app';
+// NM_API_BASE defined at top (line ~1202) to avoid var-hoisting bug
 var NM_LOCAL_KEY='na_neuromap_data';
 
 function nmSaveToAPI(dateKey, entry){
@@ -2750,7 +2750,6 @@ function nmSaveToAPI(dateKey, entry){
     body:JSON.stringify({date_key:dateKey, entry:entry})
   }).then(function(r){
     if(!r.ok) console.warn('[NM] nmSaveToAPI: status='+r.status);
-    else console.log('[NM] nmSaveToAPI OK for '+dateKey);
   }).catch(function(err){ console.warn('[NM] nmSaveToAPI FAILED:',err); });
 }
 
@@ -2770,15 +2769,12 @@ async function nmLoadFromAPI(){
   var token=naGetToken();
   if(!token){ console.warn('[NM] nmLoadFromAPI: no token, skipping'); return; }
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
-  console.log('[NM] nmLoadFromAPI called, base='+base+', NM_API_BASE='+(typeof NM_API_BASE)+':'+NM_API_BASE);
   try {
     var resp=await fetch(base+'/api/neuromap',{
       headers:{'Authorization':'Bearer '+token}
     });
-    console.log('[NM] nmLoadFromAPI response status='+resp.status);
-    if(!resp.ok){ console.warn('[NM] nmLoadFromAPI: resp not ok, status='+resp.status); return; }
+    if(!resp.ok){ console.warn('[NM] nmLoadFromAPI: status='+resp.status); return; }
     var json=await resp.json();
-    console.log('[NM] nmLoadFromAPI json.ok='+json.ok+', count='+(json.count||0)+', keys='+Object.keys(json.data||{}).join(','));
     if(json.ok && json.data){
       nmData=json.data;
       nmCacheToLocal();
@@ -2789,7 +2785,7 @@ async function nmLoadFromAPI(){
 }
 
 // ── Diary Persistence ──
-var DIARY_API_BASE='https://neuroattention-api-production.up.railway.app';
+// DIARY_API_BASE defined at top (line ~1203)
 var DIARY_LOCAL_KEY='na_diary_data';
 
 function diarySaveToAPI(dateKey, entry){
@@ -2833,7 +2829,7 @@ async function diaryLoadFromAPI(){
 }
 
 // ── Calendar Events Persistence ──
-var CAL_API_BASE='https://neuroattention-api-production.up.railway.app';
+// CAL_API_BASE defined at top (line ~1204)
 var CAL_LOCAL_KEY='na_calendar_events';
 var calEventsData={}; // { 'YYYY-MM-DD': [ {id, time, title, event_type, duration, done} ] }
 
@@ -2895,7 +2891,7 @@ async function calLoadFromAPI(){
 }
 
 // ── Course Progress Persistence ──
-var PROG_API_BASE='https://neuroattention-api-production.up.railway.app';
+// PROG_API_BASE defined at top (line ~1205)
 var PROG_LOCAL_KEY='na_course_progress';
 var courseProgressData=[]; // [ {item_type, item_id, status, progress_pct} ]
 
