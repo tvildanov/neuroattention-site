@@ -761,9 +761,17 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
 });
 
 // GET /api/neuromap/v2/graph — return full graph (nodes + links) for current user
+// Superadmin/founder can pass ?email=... to view another user's graph
 app.get('/api/neuromap/v2/graph', requireAuth, async (req, res) => {
   try {
-    const userId = req.user.id;
+    let userId = req.user.id;
+    if (req.query.email) {
+      const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+      if (caller.length && ['superadmin', 'founder'].includes(caller[0].role)) {
+        const target = await sql`SELECT id FROM users WHERE email = ${req.query.email}`;
+        if (target.length) userId = target[0].id;
+      }
+    }
 
     const nodes = await sql`
       SELECT id, type, label, normalized_label, valence, count, last_seen_at, metadata, created_at
