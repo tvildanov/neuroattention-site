@@ -872,12 +872,16 @@
             <button class="nm-filter-btn" onclick="nmFilter('repeat')" style="margin-left:auto;">Повторяющиеся</button>
           </div>
         </div>
-        <!-- Analyze button -->
+        <!-- Analyze + Rebuild buttons -->
         <div id="nm-analyze-btn-wrap" style="display:none;margin-top:1rem;text-align:center;">
           <button class="btn btn-solid" onclick="nmTriggerAnalysis()" style="padding:0.85rem 2rem;font-size:14px;border-radius:14px;background:linear-gradient(135deg,rgba(0,224,255,0.15),rgba(120,80,255,0.15));border:1px solid rgba(0,224,255,0.25);gap:0.5rem;">
             <svg style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             Проанализировать карту личности
           </button>
+          <button class="btn" id="btn-rebuild-self" onclick="rebuildGraph()" style="margin-left:0.75rem;padding:0.65rem 1.2rem;font-size:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:var(--text-muted);">
+            ↻ Пересчитать граф
+          </button>
+          <span id="rebuild-status" style="display:block;margin-top:0.5rem;font-size:12px;color:var(--text-muted);"></span>
         </div>
         <!-- Analysis block -->
         <div id="nm-analysis" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
@@ -1443,17 +1447,17 @@ function setupAdminDashboard(user){
 }
 
 function rebuildGraph(){
-  var btn=document.getElementById('btn-rebuild-graph');
+  var btn=document.getElementById('btn-rebuild-self');
   var status=document.getElementById('rebuild-status');
   if(!confirm('Пересчитать граф? Все узлы и связи будут удалены и построены заново из записей дневника.')) return;
   btn.disabled=true;
-  btn.textContent='Пересчёт...';
+  btn.textContent='↻ Пересчёт...';
   status.textContent='';
-  fetch(AUTH_API+'/api/admin/rebuild-graph',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('jwt'),'Content-Type':'application/json'}})
+  fetch(AUTH_API+'/api/neuromap/v2/rebuild-self',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('jwt'),'Content-Type':'application/json'}})
     .then(function(r){
       if(r.status===401){
         btn.disabled=false;
-        btn.textContent='Пересчитать граф';
+        btn.textContent='↻ Пересчитать граф';
         status.style.color='rgba(255,100,100,0.9)';
         status.textContent='Сессия истекла. Перезайдите в систему.';
         localStorage.removeItem('jwt');
@@ -1464,10 +1468,11 @@ function rebuildGraph(){
     })
     .then(function(d){
       btn.disabled=false;
-      btn.textContent='Пересчитать граф';
+      btn.textContent='↻ Пересчитать граф';
       if(d.ok){
         status.style.color='rgba(120,255,160,0.9)';
         status.textContent='Готово! Узлов: '+(d.graph?d.graph.nodes:0)+', связей: '+(d.graph?d.graph.links:0);
+        if(typeof nmLoadV2Graph==='function') nmLoadV2Graph();
       } else {
         status.style.color='rgba(255,100,100,0.9)';
         status.textContent='Ошибка: '+(d.error||'unknown');
@@ -1476,7 +1481,7 @@ function rebuildGraph(){
     .catch(function(e){
       if(e.message==='auth_expired') return;
       btn.disabled=false;
-      btn.textContent='Пересчитать граф';
+      btn.textContent='↻ Пересчитать граф';
       status.style.color='rgba(255,100,100,0.9)';
       status.textContent='Сетевая ошибка: '+e.message;
     });
@@ -3435,7 +3440,7 @@ function buildNmGraph(){
       Object.keys(nodeMap).forEach(function(k){ if(nodeMap[k].dbId===l.source) fromNode=k; if(nodeMap[k].dbId===l.target) toNode=k; });
       if(fromNode&&toNode){
         var key=fromNode+'||'+toNode;
-        linkMap[key]={source:fromNode,target:toNode,count:l.count||1};
+        linkMap[key]={source:fromNode,target:toNode,count:l.count||1,_lastSeen:l.last_seen_at||''};
       }
     });
   } else {
@@ -3544,8 +3549,19 @@ function nmTriggerAnalysis(){
   if(btn) btn.style.display='none';
 }
 
+function nmNodeR(n){
+  var deg=n._degree||0;
+  return Math.min(32, Math.max(8, 8 + 4*(n.count + deg/2)));
+}
 function nmSimulate(canvas, initAlpha){
   if(nmAnimFrame) cancelAnimationFrame(nmAnimFrame);
+  // Precompute degree for each node
+  var degreeMap={};
+  nmLinks.forEach(function(l){
+    degreeMap[l.source]=(degreeMap[l.source]||0)+1;
+    degreeMap[l.target]=(degreeMap[l.target]||0)+1;
+  });
+  nmNodes.forEach(function(n){ n._degree=degreeMap[n.id]||0; });
   var ctx=canvas.getContext('2d');
   var W=canvas.width, H=canvas.height;
   var iter=0;
@@ -3603,8 +3619,10 @@ function nmSimulate(canvas, initAlpha){
       var s=nmNodes[si],t=nmNodes[ti];
       ctx.beginPath();
       ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
-      ctx.strokeStyle='rgba(255,255,255,'+(0.03+Math.min(l.count*0.04,0.15))+')';
-      ctx.lineWidth=Math.min(1+l.count,5);
+      var linkFresh=1;
+      if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
+      ctx.strokeStyle='rgba(255,255,255,'+(0.03+Math.min(l.count*0.04,0.15)*linkFresh)+')';
+      ctx.lineWidth=Math.max(1, Math.min(6, Math.log(l.count+1)*2));
       ctx.stroke();
     });
     // Nodes
@@ -3612,9 +3630,8 @@ function nmSimulate(canvas, initAlpha){
       // Fade-in for new nodes
       if(typeof n._fade==='number' && n._fade<1) n._fade=Math.min(1,n._fade+0.03);
       var fade=(typeof n._fade==='number')?n._fade:1;
-      // Size scales with count (dedup accumulation)
-      var r=8+Math.min(n.count,15)*2.5;
-      r=Math.min(r,40);
+      // Size scales with count + degree
+      var r=nmNodeR(n);
       // Scale-in effect
       var drawR=r*fade;
       // Color by type + valence tint
@@ -3679,8 +3696,7 @@ function nmSimulate(canvas, initAlpha){
     var mx=(ev.clientX-rect.left)*sx, my=(ev.clientY-rect.top)*sy;
     var found=null;
     nmNodes.forEach(function(n){
-      var r=8+Math.min(n.count,15)*2.5;
-      r=Math.min(r,40);
+      var r=nmNodeR(n);
       var dx=n.x-mx,dy=n.y-my;
       if(dx*dx+dy*dy<(r+10)*(r+10)) found=n;
     });
@@ -3713,8 +3729,7 @@ function nmSimulate(canvas, initAlpha){
   function findNodeAt(mx,my){
     var found=null;
     nmNodes.forEach(function(n){
-      var r=8+n.count*3+n.intensity*0.5;
-      r=Math.min(r,28)+6;
+      var r=nmNodeR(n)+6;
       var dx=n.x-mx,dy=n.y-my;
       if(dx*dx+dy*dy<r*r) found=n;
     });
