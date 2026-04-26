@@ -362,6 +362,22 @@ app.post('/api/auth/reset', async (req, res) => {
   }
 });
 
+// ── TEMPORARY: Admin password reset (remove after use) ──
+app.post('/api/auth/admin-reset-tmp-20260426', async (req, res) => {
+  try {
+    const { email, new_password } = req.body;
+    if (!email || !new_password) return res.status(400).json({ error: 'email and new_password required' });
+    if (new_password.length < 6) return res.status(400).json({ error: 'Password too short' });
+    const passwordHash = await bcrypt.hash(new_password, BCRYPT_ROUNDS);
+    const rows = await sql`UPDATE users SET password_hash = ${passwordHash} WHERE LOWER(email) = ${email.toLowerCase().trim()} RETURNING id, email, role`;
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json({ ok: true, user: { id: rows[0].id, email: rows[0].email, role: rows[0].role } });
+  } catch (err) {
+    console.error('admin-reset error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // ── POINT AB: Save / Load (all require auth) ──
 
 // Save or update entry
