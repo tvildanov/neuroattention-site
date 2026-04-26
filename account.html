@@ -480,6 +480,18 @@
   <!-- TAB: Overview -->
   <div class="tab-panel active" id="tab-overview">
     <div class="dash-grid">
+      <!-- Test Profile Card (hidden by default, shown when user has test result) -->
+      <div class="dash-card glass-card-elevated span-12" id="test-profile-card" style="display:none;border:1px solid rgba(0,210,190,0.15);background:linear-gradient(135deg,rgba(0,210,190,0.04),rgba(167,139,250,0.04));">
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+          <span id="tp-emoji" style="font-size:1.5rem;"></span>
+          <div>
+            <h3 style="margin:0;font-size:1rem;color:var(--text-primary);">Ваш профиль адаптации</h3>
+            <p id="tp-name" style="margin:0;font-size:0.8rem;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;"></p>
+          </div>
+        </div>
+        <p id="tp-subtitle" style="margin:0 0 0.75rem;color:var(--text-secondary);font-size:0.85rem;line-height:1.5;"></p>
+        <button onclick="window.open('test.html','_self')" style="background:rgba(0,210,190,0.1);border:1px solid rgba(0,210,190,0.2);border-radius:8px;color:var(--accent-cyan);font-size:0.8rem;padding:0.4rem 0.8rem;cursor:pointer;">Пройти тест снова</button>
+      </div>
       <div class="dash-card glass-card-elevated span-4">
         <h3>Программа</h3>
         <p class="dash-metric" style="font-size:1.6rem;">Guided<br>Program</p>
@@ -1398,6 +1410,56 @@ function onLogin(user){
   try { diaryLoadFromAPI(); } catch(e){ console.warn('diaryLoadFromAPI error:', e); }
   try { calLoadFromAPI(); } catch(e){ console.warn('calLoadFromAPI error:', e); }
   try { progLoadFromAPI(); } catch(e){ console.warn('progLoadFromAPI error:', e); }
+  try { loadTestProfile(); } catch(e){ console.warn('loadTestProfile error:', e); }
+}
+
+// ── Test Profile Card ──
+var TEST_PROFILES_MAP = {
+  STABLE_EXPLORER: { name:'Устойчивый исследователь', emoji:'🧭', subtitle:'Высокий уровень адаптации. Ваша нервная система устойчива, внимание собрано.' },
+  HIGH_LOAD_ADAPTER: { name:'Адаптер высокой нагрузки', emoji:'⚡', subtitle:'Вы справляетесь, но ресурс тратится быстрее, чем восстанавливается.' },
+  NERVOUS_SYSTEM_SENSITIVE: { name:'Чувствительная нервная система', emoji:'🌊', subtitle:'Ваше тело реагирует остро — это особенность, требующая настройки.' },
+  DISTRACTED_EXPLORER: { name:'Рассредоточенный исследователь', emoji:'🔍', subtitle:'Ваш интерес широк, но фокус рассеян — это управляемо.' },
+  FUTURE_SPECIALIST: { name:'Будущий специалист', emoji:'🔑', subtitle:'Вы хотите помогать другим — и ваш уровень адаптации позволяет.' }
+};
+
+function loadTestProfile(){
+  var token = localStorage.getItem('na_token');
+  if(!token) return;
+  fetch(AUTH_API+'/api/test-result/latest',{
+    headers:{'Authorization':'Bearer '+token}
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.ok && d.result){
+      showTestProfileCard(d.result.profile);
+    } else {
+      // Check localStorage for pending result
+      var pending = localStorage.getItem('na_test_result');
+      if(pending){
+        try {
+          var tr = JSON.parse(pending);
+          showTestProfileCard(tr.profile);
+          // Also try to save it
+          fetch(AUTH_API+'/api/test-result/save',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+            body:JSON.stringify({profile:tr.profile,answers:tr.answers,scores:tr.scores})
+          }).then(function(r){return r.json();}).then(function(d2){
+            if(d2.ok) localStorage.removeItem('na_test_result');
+          }).catch(function(){});
+        } catch(e){}
+      }
+    }
+  }).catch(function(e){ console.warn('loadTestProfile error:', e); });
+}
+
+function showTestProfileCard(profileKey){
+  var info = TEST_PROFILES_MAP[profileKey];
+  if(!info) return;
+  var card = document.getElementById('test-profile-card');
+  if(!card) return;
+  document.getElementById('tp-emoji').textContent = info.emoji;
+  document.getElementById('tp-name').textContent = info.name;
+  document.getElementById('tp-subtitle').textContent = info.subtitle;
+  card.style.display = '';
 }
 
 // Client feature access
@@ -1688,6 +1750,20 @@ document.getElementById('register-form').addEventListener('submit',async functio
     var data=await resp.json();
     if(!resp.ok){errEl.textContent=data.error||'Ошибка регистрации';return;}
     naSetAuth(data.token,data.user);
+    // After registration, send pending test result if exists
+    var pendingTest = localStorage.getItem('na_test_result');
+    if(pendingTest){
+      try {
+        var tr = JSON.parse(pendingTest);
+        fetch(AUTH_API+'/api/test-result/save',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.token},
+          body:JSON.stringify({profile:tr.profile,answers:tr.answers,scores:tr.scores})
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d.ok) localStorage.removeItem('na_test_result');
+        }).catch(function(){});
+      } catch(e){}
+    }
     onLogin(naAdaptUser(data.user));
   } catch(err){
     errEl.textContent='Ошибка сети. Попробуйте позже.';
