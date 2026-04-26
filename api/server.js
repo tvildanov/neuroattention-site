@@ -27,6 +27,25 @@ if (!JWT_SECRET) {
 }
 const sql = neon(process.env.DATABASE_URL);
 
+// Load vocabulary aliases for node normalization
+const fs = require('fs');
+const path = require('path');
+let vocabAliases = {};
+try {
+  const vocabPath = path.join(__dirname, '..', 'data', 'neuromap-vocabulary.json');
+  const vocab = JSON.parse(fs.readFileSync(vocabPath, 'utf8'));
+  vocabAliases = vocab.aliases || {};
+  console.log(`Loaded ${Object.keys(vocabAliases).length} vocabulary aliases`);
+} catch (e) {
+  console.warn('Could not load vocabulary aliases:', e.message);
+}
+
+// Normalize label: lowercase, trim, resolve aliases
+function normalizeLabel(label) {
+  const norm = (label || '').toLowerCase().trim();
+  return vocabAliases[norm] || norm;
+}
+
 app.use(cors({
   origin: [
     'https://neuroattention.org',
@@ -325,7 +344,11 @@ app.post('/api/auth/forgot', async (req, res) => {
       VALUES (${token}, ${userId}, ${expiresAt.toISOString()})
     `;
 
-    await sendResetEmail(email, token);
+    const emailResult = await sendResetEmail(email, token);
+    // In dev mode (no RESEND_API_KEY), return token in response so forgot-password works without email
+    if (emailResult && emailResult.dev) {
+      return res.json({ ok: true, dev: true, resetToken: token });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('POST /api/auth/forgot:', err);
@@ -673,7 +696,7 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
     for (const item of chain) {
       const { type, label, valence, metadata } = item;
       if (!type || !label) continue;
-      const normalizedLabel = (label || '').toLowerCase().trim();
+      const normalizedLabel = normalizeLabel(label);
       const val = valence || 'neutral';
       const meta = metadata ? JSON.stringify(metadata) : '{}';
 
@@ -1075,6 +1098,102 @@ app.get('/api/progress', requireAuth, async (req, res) => {
     res.json({ ok: true, progress: rows });
   } catch (err) {
     console.error('GET /api/progress:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── ADMIN: Delete user by email (superadmin only) ──
+app.delete('/api/admin/user', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const rows = await sql`SELECT id FROM users WHERE LOWER(email) = ${email.toLowerCase().trim()}`;
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+
+    const userId = rows[0].id;
+    // Cascade delete user data
+    await sql`DELETE FROM nm_links WHERE user_id = ${userId}`;
+    await sql`DELETE FROM nm_nodes WHERE user_id = ${userId}`;
+    await sql`DELETE FROM neuro_map_entries WHERE user_id = ${userId}`;
+    await sql`DELETE FROM neuro_resource_diary WHERE user_id = ${userId}`;
+    await sql`DELETE FROM calendar_events WHERE user_id = ${userId}`;
+    await sql`DELETE FROM course_progress WHERE user_id = ${userId}`;
+    await sql`DELETE FROM password_resets WHERE user_id = ${userId}`;
+    await sql`DELETE FROM users WHERE id = ${userId}`;
+
+    res.json({ ok: true, deleted: email });
+  } catch (err) {
+    console.error('DELETE /api/admin/user:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── ADMIN: Merge duplicate nodes using vocabulary aliases ──
+app.post('/api/neuromap/v2/merge-aliases', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Find all nodes for this user
+    const nodes = await sql`
+      SELECT id, type, label, normalized_label, valence, count
+      FROM nm_nodes WHERE user_id = ${userId}
+    `;
+
+    let merged = 0;
+    // Group by (type, normalizeLabel(label), valence) — find duplicates
+    const groups = {};
+    for (const n of nodes) {
+      const canonical = normalizeLabel(n.label);
+      const key = `${n.type}|${canonical}|${n.valence}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push({ ...n, canonical });
+    }
+
+    for (const key of Object.keys(groups)) {
+      const group = groups[key];
+      if (group.length <= 1) continue;
+
+      // Keep the node with the highest count as the canonical one
+      group.sort((a, b) => b.count - a.count);
+      const keeper = group[0];
+
+      for (let i = 1; i < group.length; i++) {
+        const dup = group[i];
+        // Re-point links from duplicate to keeper
+        await sql`UPDATE nm_links SET from_node_id = ${keeper.id} WHERE from_node_id = ${dup.id} AND user_id = ${userId}`;
+        await sql`UPDATE nm_links SET to_node_id = ${keeper.id} WHERE to_node_id = ${dup.id} AND user_id = ${userId}`;
+        // Add duplicate's count to keeper
+        await sql`UPDATE nm_nodes SET count = count + ${dup.count}, normalized_label = ${keeper.canonical} WHERE id = ${keeper.id}`;
+        // Update keeper's label to canonical form
+        await sql`UPDATE nm_nodes SET label = ${keeper.canonical} WHERE id = ${keeper.id}`;
+        // Delete duplicate node
+        await sql`DELETE FROM nm_nodes WHERE id = ${dup.id}`;
+        merged++;
+      }
+
+      // Clean up any self-referencing links created by merges
+      await sql`DELETE FROM nm_links WHERE from_node_id = to_node_id AND user_id = ${userId}`;
+      // Merge duplicate links (same from→to)
+      const dupeLinks = await sql`
+        SELECT from_node_id, to_node_id, array_agg(id) as ids, sum(count) as total
+        FROM nm_links WHERE user_id = ${userId}
+        GROUP BY from_node_id, to_node_id
+        HAVING count(*) > 1
+      `;
+      for (const dl of dupeLinks) {
+        const keepId = dl.ids[0];
+        await sql`UPDATE nm_links SET count = ${dl.total} WHERE id = ${keepId}`;
+        const removeIds = dl.ids.slice(1);
+        if (removeIds.length > 0) {
+          await sql`DELETE FROM nm_links WHERE id = ANY(${removeIds})`;
+        }
+      }
+    }
+
+    res.json({ ok: true, merged_nodes: merged });
+  } catch (err) {
+    console.error('POST /api/neuromap/v2/merge-aliases:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
