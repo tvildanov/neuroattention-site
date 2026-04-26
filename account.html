@@ -191,7 +191,7 @@
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--accent-cyan); }
-.nm-fullscreen-overlay { display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column; }
+.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column; }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
 .nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
