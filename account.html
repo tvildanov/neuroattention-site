@@ -1634,8 +1634,12 @@ document.getElementById('forgot-form').addEventListener('submit',async function(
   if(!email){errEl.textContent='Введите email';return;}
   try {
     var resp=await fetch(AUTH_API+'/api/auth/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})});
-    await resp.json();
-    okEl.textContent='Если аккаунт с таким email существует, мы отправили ссылку для сброса пароля.';
+    var data=await resp.json();
+    if(data.dev && data.resetToken){
+      okEl.innerHTML='DEV: <a href="account.html?reset='+data.resetToken+'" style="color:var(--accent);">Нажмите для сброса пароля</a>';
+    } else {
+      okEl.textContent='Если аккаунт с таким email существует, мы отправили ссылку для сброса пароля.';
+    }
     okEl.style.display='';
   } catch(err){
     errEl.textContent='Ошибка сети. Попробуйте позже.';
@@ -3771,7 +3775,7 @@ function openNmDrilldown(node){
     if(l.source===node.id || l.target===node.id){
       var otherId=l.source===node.id?l.target:l.source;
       var otherNode=nmNodes.find(function(n){return n.id===otherId;});
-      if(otherNode) connected.push({node:otherNode,count:l.count});
+      if(otherNode) connected.push({node:otherNode,count:otherNode.count,edgeCount:l.count});
     }
   });
   connected.sort(function(a,b){return b.count-a.count;});
