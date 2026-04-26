@@ -191,6 +191,18 @@
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--accent-cyan); }
+.nm-fullscreen-overlay { display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column; }
+.nm-fullscreen-overlay.active { display:flex; }
+.nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
+.nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
+.nm-fs-close { background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:13px;padding:0.4rem 0.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s; }
+.nm-fs-close:hover { border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
+.nm-fs-body { flex:1;display:flex;overflow:hidden; }
+.nm-fs-canvas-wrap { flex:1;position:relative; }
+.nm-fs-sidebar { width:280px;overflow-y:auto;border-left:1px solid rgba(255,255,255,0.06);padding:0.8rem; }
+.nm-fs-btn { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-muted);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s; }
+.nm-fs-btn:hover { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15);color:var(--accent-cyan); }
+@media(max-width:768px){ .nm-fs-sidebar { display:none; } }
 .nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
 .nm-chip:hover { border-color:rgba(255,255,255,0.18); }
 .nm-chip.selected { background:rgba(0,224,255,0.08);border-color:rgba(0,224,255,0.25);color:var(--accent-cyan); }
@@ -824,6 +836,13 @@
             <button class="nm-view-btn" onclick="setNmView('month')">Месяц</button>
             <button class="nm-view-btn" onclick="setNmView('all')">Всё</button>
           </div>
+        </div>
+        <!-- Fullscreen button -->
+        <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;">
+          <button class="nm-fs-btn" onclick="nmToggleFullscreen()" id="nm-fs-toggle" style="display:none;">
+            <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            На весь экран
+          </button>
         </div>
         <!-- Graph canvas -->
         <div id="nm-graph-wrap" style="position:relative;width:100%;height:420px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04);">
@@ -3466,6 +3485,209 @@ function nmLayerToggle(){
   buildNmGraph();
 }
 
+// P1.D — Fullscreen mode
+var nmFullscreen = false;
+var nmFsAnimFrame = null;
+
+function nmToggleFullscreen(){
+  nmFullscreen = !nmFullscreen;
+  var overlay = document.getElementById('nm-fs-overlay');
+  if(nmFullscreen){
+    overlay.classList.add('active');
+    document.body.style.overflow='hidden';
+    // Clone filters into sidebar
+    nmFsBuildFilters();
+    // Start rendering on fs canvas
+    nmFsStartRender();
+  } else {
+    overlay.classList.remove('active');
+    document.body.style.overflow='';
+    if(nmFsAnimFrame){ cancelAnimationFrame(nmFsAnimFrame); nmFsAnimFrame=null; }
+    // Rebuild normal graph to refresh positions
+    buildNmGraph();
+  }
+}
+
+function nmFsBuildFilters(){
+  var cont = document.getElementById('nm-fs-filters');
+  if(!cont) return;
+  var html = '';
+  [
+    {layer:1,name:'Ощущения',disabled:true},
+    {layer:2,name:'Переживания'},
+    {layer:3,name:'Образы'},
+    {layer:4,name:'Понятия'},
+    {layer:5,name:'Смыслы'},
+    {layer:6,name:'Действия'}
+  ].forEach(function(l){
+    var checked = nmActiveLayers[l.layer] ? 'checked' : '';
+    var dis = l.disabled ? 'disabled style="opacity:0.45;"' : '';
+    html += '<label class="nm-layer-chk" '+dis+'><input type="checkbox" data-layer="'+l.layer+'" '+checked+' '+(l.disabled?'disabled':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">'+l.layer+' '+l.name+'</span></label>';
+  });
+  html += '<label class="nm-layer-chk" style="margin-top:0.5rem;"><input type="checkbox" data-layer="repeat" '+(nmRepeatFilter?'checked':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">Повторяющиеся</span></label>';
+  cont.innerHTML = html;
+}
+
+function nmFsFilterToggle(cb){
+  var layer = cb.getAttribute('data-layer');
+  if(layer==='repeat') nmRepeatFilter = cb.checked;
+  else nmActiveLayers[parseInt(layer)] = cb.checked;
+  // Sync main filters
+  document.querySelectorAll('#nm-filters input[data-layer]').forEach(function(mcb){
+    var ml = mcb.getAttribute('data-layer');
+    if(ml===layer) mcb.checked = cb.checked;
+  });
+  buildNmGraph();
+}
+
+function nmFsStartRender(){
+  var canvas = document.getElementById('nm-fs-canvas');
+  if(!canvas) return;
+  var wrap = canvas.parentElement;
+  var dpr = window.devicePixelRatio || 1;
+  
+  function fsTick(){
+    if(!nmFullscreen) return;
+    var W = wrap.clientWidth * dpr;
+    var H = wrap.clientHeight * dpr;
+    if(canvas.width !== W || canvas.height !== H){
+      canvas.width = W;
+      canvas.height = H;
+    }
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    
+    // Scale node positions from normal canvas to fullscreen
+    var normCanvas = document.getElementById('nm-canvas');
+    var scaleX = W / (normCanvas.width || 1);
+    var scaleY = H / (normCanvas.height || 1);
+    
+    // Build node index
+    var nodeIdx = {};
+    nmNodes.forEach(function(n,i){ nodeIdx[n.id]=i; });
+    
+    // Draw links with colors and arrows
+    nmLinks.forEach(function(l){
+      var si=nodeIdx[l.source],ti=nodeIdx[l.target];
+      if(si===undefined||ti===undefined) return;
+      var s=nmNodes[si],t=nmNodes[ti];
+      var sx=s.x*scaleX, sy=s.y*scaleY, tx=t.x*scaleX, ty=t.y*scaleY;
+      var linkFresh=1;
+      if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
+      var ec=nmGetEdgeColor(s,t);
+      var edgeAlpha=(0.08+Math.min(l.count*0.06,0.25))*linkFresh;
+      ctx.beginPath();
+      ctx.moveTo(sx,sy);ctx.lineTo(tx,ty);
+      ctx.strokeStyle='rgba('+ec.r+','+ec.g+','+ec.b+','+edgeAlpha+')';
+      ctx.lineWidth=Math.max(1.5, Math.min(8, Math.log(l.count+1)*2.5));
+      ctx.stroke();
+      // Arrow
+      var dx=tx-sx,dy=ty-sy,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<1) return;
+      var tr=nmNodeR(t)*scaleX*0.5+4;
+      var ax=tx-dx/dist*tr,ay=ty-dy/dist*tr;
+      var angle=Math.atan2(dy,dx);
+      var arrSize=Math.min(12,4+l.count);
+      ctx.beginPath();
+      ctx.moveTo(ax,ay);
+      ctx.lineTo(ax-arrSize*Math.cos(angle-0.4),ay-arrSize*Math.sin(angle-0.4));
+      ctx.lineTo(ax-arrSize*Math.cos(angle+0.4),ay-arrSize*Math.sin(angle+0.4));
+      ctx.closePath();
+      ctx.fillStyle='rgba('+ec.r+','+ec.g+','+ec.b+','+(edgeAlpha*1.5)+')';
+      ctx.fill();
+    });
+    
+    // Draw nodes
+    var animT=Date.now()/1000;
+    nmNodes.forEach(function(n){
+      var fade=(typeof n._fade==='number')?n._fade:1;
+      var r=nmNodeR(n)*Math.max(scaleX,scaleY)*0.6;
+      r=Math.max(r,8);
+      var drawR=r*fade;
+      var nx=n.x*scaleX, ny=n.y*scaleY;
+      var col=nmGetNodeColor(n);
+      var freshness=(typeof n.freshness==='number')?n.freshness:1;
+      var brightness=0.2+freshness*0.7;
+      ctx.globalAlpha=fade;
+      if(n.type==='practice'){
+        var pulse=0.3+0.25*Math.sin(animT*2.5);
+        ctx.beginPath();ctx.arc(nx,ny,drawR+14+5*Math.sin(animT*2),0,Math.PI*2);
+        ctx.fillStyle='rgba(220,240,255,'+pulse*fade+')';ctx.fill();
+      } else {
+        ctx.beginPath();ctx.arc(nx,ny,drawR+8,0,Math.PI*2);
+        ctx.fillStyle=col+(brightness*0.15)+')';ctx.fill();
+      }
+      ctx.beginPath();ctx.arc(nx,ny,drawR,0,Math.PI*2);
+      ctx.fillStyle=col+brightness+')';ctx.fill();
+      // Label
+      ctx.fillStyle='rgba(255,255,255,0.9)';
+      ctx.font='600 '+Math.round(Math.max(16,r*0.8))+'px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      var label=n.label.length>22?n.label.substring(0,20)+'\u2026':n.label;
+      ctx.fillText(label,nx,ny+drawR+20);
+      ctx.globalAlpha=1;
+    });
+    
+    nmFsAnimFrame = requestAnimationFrame(fsTick);
+  }
+  fsTick();
+}
+
+// Fullscreen tooltip + click handler
+(function(){
+  var fsCanvas = document.getElementById('nm-fs-canvas');
+  var fsTip = document.getElementById('nm-fs-tooltip');
+  if(!fsCanvas) return;
+  
+  function getFsXY(ev){
+    var rect=fsCanvas.getBoundingClientRect();
+    var dpr=window.devicePixelRatio||1;
+    var normCanvas=document.getElementById('nm-canvas');
+    var scaleX=(rect.width*dpr)/(normCanvas.width||1);
+    var scaleY=(rect.height*dpr)/(normCanvas.height||1);
+    // Convert click to normal canvas coords
+    return {x:(ev.clientX-rect.left)*dpr/scaleX, y:(ev.clientY-rect.top)*dpr/scaleY};
+  }
+  
+  fsCanvas.addEventListener('mousemove',function(ev){
+    var pt=getFsXY(ev);
+    var found=null;
+    nmNodes.forEach(function(n){
+      var r=nmNodeR(n);
+      var dx=n.x-pt.x,dy=n.y-pt.y;
+      if(dx*dx+dy*dy<(r+12)*(r+12)) found=n;
+    });
+    if(found){
+      var layerName=nmTypeToLayerName(found.type);
+      var layerNum=nmTypeToLayer(found.type);
+      var valLabel=found.valence<0?'\u043d\u0435\u0433\u0430\u0442\u0438\u0432':(found.valence>0?'\u043f\u043e\u0437\u0438\u0442\u0438\u0432':'\u043d\u0435\u0439\u0442\u0440\u0430\u043b');
+      fsTip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">\u0421\u043b\u043e\u0439 '+layerNum+': '+layerName+' \u00b7 '+valLabel+'</span><br>\u0427\u0430\u0441\u0442\u043e\u0442\u0430: \u00d7'+found.count;
+      fsTip.style.display='block';
+      fsTip.style.left=Math.min(ev.clientX+12,window.innerWidth-240)+'px';
+      fsTip.style.top=(ev.clientY-50)+'px';
+    } else {
+      fsTip.style.display='none';
+    }
+  });
+  
+  fsCanvas.addEventListener('click',function(ev){
+    var pt=getFsXY(ev);
+    var found=null;
+    nmNodes.forEach(function(n){
+      var r=nmNodeR(n);
+      var dx=n.x-pt.x,dy=n.y-pt.y;
+      if(dx*dx+dy*dy<(r+12)*(r+12)) found=n;
+    });
+    if(found) openNmDrilldown(found);
+  });
+})();
+
+// Esc key handler
+document.addEventListener('keydown',function(ev){
+  if(ev.key==='Escape' && nmFullscreen) nmToggleFullscreen();
+});
+
+
 // ── Network Graph ──
 function getEntriesForView(){
   var entries=[];
@@ -3486,6 +3708,7 @@ function buildNmGraph(){
   var entries=getEntriesForView();
   var empty=document.getElementById('nm-empty');
   var filters=document.getElementById('nm-filters');
+  var fsToggle=document.getElementById('nm-fs-toggle');
   var analysis=document.getElementById('nm-analysis');
   var hasV2=nmV2Graph && nmV2Graph.nodes && nmV2Graph.nodes.length>0;
   if(!entries.length && !hasV2){
@@ -3501,6 +3724,7 @@ function buildNmGraph(){
   }
   empty.style.display='none';
   filters.style.display='block';
+  if(fsToggle) fsToggle.style.display='';
   var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
@@ -4758,5 +4982,28 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 </script>
+<!-- Fullscreen NeuroMap overlay -->
+<div class="nm-fullscreen-overlay" id="nm-fs-overlay">
+  <div class="nm-fs-header">
+    <h3>НейроКарта — полный экран</h3>
+    <button class="nm-fs-close" onclick="nmToggleFullscreen()">
+      <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      Закрыть <span style="opacity:0.5;font-size:10px;margin-left:4px;">Esc</span>
+    </button>
+  </div>
+  <div class="nm-fs-body">
+    <div class="nm-fs-canvas-wrap">
+      <canvas id="nm-fs-canvas" style="width:100%;height:100%;"></canvas>
+      <div id="nm-fs-tooltip" style="display:none;position:absolute;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(10,12,18,0.92);border:1px solid rgba(255,255,255,0.12);font-size:12px;color:var(--text-primary);pointer-events:none;z-index:5;max-width:220px;line-height:1.4;"></div>
+    </div>
+    <div class="nm-fs-sidebar" id="nm-fs-sidebar">
+      <div style="margin-bottom:0.8rem;">
+        <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;">Слои</span>
+      </div>
+      <div id="nm-fs-filters" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
+      <div id="nm-fs-insights" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
