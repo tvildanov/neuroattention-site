@@ -185,6 +185,12 @@
 .nm-filter-btn { padding:0.3rem 0.6rem;border-radius:6px;font-size:10px;font-weight:500;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
 .nm-filter-btn:hover { color:var(--text-muted);border-color:rgba(255,255,255,0.12); }
 .nm-filter-btn.active { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15);color:var(--accent-cyan); }
+.nm-layer-chk { display:inline-flex;align-items:center;gap:3px;cursor:pointer;padding:0.2rem 0.5rem;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);transition:all 0.2s; }
+.nm-layer-chk:hover { border-color:rgba(255,255,255,0.15); }
+.nm-layer-chk input[type=checkbox] { width:12px;height:12px;accent-color:var(--accent-cyan);margin:0; }
+.nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
+.nm-layer-chk:has(input:checked) { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15); }
+.nm-layer-chk:has(input:checked) .nm-lbl { color:var(--accent-cyan); }
 .nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
 .nm-chip:hover { border-color:rgba(255,255,255,0.18); }
 .nm-chip.selected { background:rgba(0,224,255,0.08);border-color:rgba(0,224,255,0.25);color:var(--accent-cyan); }
@@ -860,16 +866,15 @@
         </div>
         <!-- Filter row -->
         <div id="nm-filters" style="display:none;margin-top:0.75rem;">
-          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-            <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;">Фильтр:</span>
-            <button class="nm-filter-btn active" onclick="nmFilter('all')">Все</button>
-            <button class="nm-filter-btn" onclick="nmFilter('emotions')">Эмоции</button>
-            <button class="nm-filter-btn" onclick="nmFilter('areas')">Области</button>
-            <button class="nm-filter-btn" onclick="nmFilter('causes')">Причины</button>
-            <button class="nm-filter-btn" onclick="nmFilter('thoughts')">Мысли</button>
-            <button class="nm-filter-btn" onclick="nmFilter('events')">События</button>
-            <button class="nm-filter-btn" onclick="nmFilter('practices')">Практики</button>
-            <button class="nm-filter-btn" onclick="nmFilter('repeat')" style="margin-left:auto;">Повторяющиеся</button>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;">Слои:</span>
+            <label class="nm-layer-chk" style="opacity:0.45;cursor:default;" title="Ощущения (скоро)"><input type="checkbox" data-layer="1" checked disabled><span class="nm-lbl">1 Ощущения</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl">2 Переживания</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl">3 Образы</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-lbl">4 Понятия</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="5" checked onchange="nmLayerToggle()"><span class="nm-lbl">5 Смыслы</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="6" checked onchange="nmLayerToggle()"><span class="nm-lbl">6 Действия</span></label>
+            <label class="nm-layer-chk" style="margin-left:auto;"><input type="checkbox" data-layer="repeat" onchange="nmLayerToggle()"><span class="nm-lbl">Повторяющиеся</span></label>
           </div>
         </div>
         <!-- Analyze + Rebuild buttons -->
@@ -2391,6 +2396,8 @@ var nmCurrentStep = 0;
 var nmSurveyState = {}; // temp state while filling survey
 var nmCurrentView = 'day';
 var nmCurrentFilter = 'all';
+var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
+var nmRepeatFilter = false;
 var nmNodes = [];
 var nmLinks = [];
 var nmAnimFrame = null;
@@ -2398,6 +2405,21 @@ var nmPrevPositions = {}; // {id: {x,y}} — snapshot of positions before rebuil
 var nmNewNodeIds = {};    // ids of nodes that are new in this rebuild (for fade-in)
 var nmVocabulary = null;  // loaded from data/neuromap-vocabulary.json
 var nmV2Graph = null;     // { nodes:[], links:[] } from /api/neuromap/v2/graph
+
+// 6-layer system: type → layer mapping
+var NM_LAYERS = {
+  sensation: {num:1, name:'Ощущения', nameShort:'Ощущ.'},
+  emotion:   {num:2, name:'Переживания', nameShort:'Переж.'},
+  area:      {num:3, name:'Образы', nameShort:'Образ'},
+  thought:   {num:4, name:'Понятия', nameShort:'Понят.'},
+  cause:     {num:5, name:'Смыслы', nameShort:'Смысл'},
+  context:   {num:5, name:'Смыслы', nameShort:'Смысл'},
+  event:     {num:6, name:'Действия', nameShort:'Действ.'},
+  action:    {num:6, name:'Действия', nameShort:'Действ.'},
+  practice:  {num:6, name:'Действия', nameShort:'Действ.'}
+};
+function nmTypeToLayer(type){ return NM_LAYERS[type] ? NM_LAYERS[type].num : 0; }
+function nmTypeToLayerName(type){ return NM_LAYERS[type] ? NM_LAYERS[type].name : type; }
 
 // Emotion categories
 var NM_EMOTIONS_NEG = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
@@ -3362,9 +3384,19 @@ function setNmView(view){
 }
 
 function nmFilter(f){
+  // Legacy compat — still used by admin panel
   nmCurrentFilter=f;
   document.querySelectorAll('.nm-filter-btn').forEach(function(b){
     b.classList.toggle('active',b.textContent==='Все'&&f==='all' || b.textContent==='Эмоции'&&f==='emotions' || b.textContent==='Области'&&f==='areas' || b.textContent==='Мысли'&&f==='thoughts' || b.textContent==='События'&&f==='events' || b.textContent==='Практики'&&f==='practices' || b.textContent==='Повторяющиеся'&&f==='repeat');
+  });
+  buildNmGraph();
+}
+function nmLayerToggle(){
+  // Read checkbox states from DOM
+  document.querySelectorAll('#nm-filters input[data-layer]').forEach(function(cb){
+    var layer=cb.getAttribute('data-layer');
+    if(layer==='repeat') nmRepeatFilter=cb.checked;
+    else nmActiveLayers[parseInt(layer)]=cb.checked;
   });
   buildNmGraph();
 }
@@ -3465,24 +3497,23 @@ function buildNmGraph(){
     });
   }
 
-  // Apply filter
+  // Apply layer filter (6-layer system)
   nmNodes=[];nmLinks=[];
   var validIds={};
   Object.keys(nodeMap).forEach(function(id){
     var n=nodeMap[id];
-    if(nmCurrentFilter==='emotions' && n.type!=='emotion') return;
-    if(nmCurrentFilter==='areas' && n.type!=='area') return;
-    if(nmCurrentFilter==='causes' && n.type!=='cause') return;
-    if(nmCurrentFilter==='thoughts' && n.type!=='thought') return;
-    if(nmCurrentFilter==='events' && n.type!=='event') return;
-    if(nmCurrentFilter==='practices' && n.type!=='practice') return;
-    if(nmCurrentFilter==='repeat' && n.count<2) return;
+    n._layer=nmTypeToLayer(n.type);
+    n._layerName=nmTypeToLayerName(n.type);
+    // Check if this node's layer is active
+    if(!nmActiveLayers[n._layer]) return;
+    // Repeat filter (AND with layer filter)
+    if(nmRepeatFilter && n.count<2) return;
     validIds[id]=true;
     nmNodes.push(n);
   });
   Object.keys(linkMap).forEach(function(k){
     var l=linkMap[k];
-    if(nmCurrentFilter==='repeat' && l.count<2) return;
+    if(nmRepeatFilter && l.count<2) return;
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
 
@@ -3701,9 +3732,10 @@ function nmSimulate(canvas, initAlpha){
       if(dx*dx+dy*dy<(r+10)*(r+10)) found=n;
     });
     if(found){
-      var types={emotion:'Эмоция',area:'Область',cause:'Причина',thought:'Мысль'};
+      var layerName=nmTypeToLayerName(found.type);
+      var layerNum=nmTypeToLayer(found.type);
       var valLabel=found.valence<0?'негатив':(found.valence>0?'позитив':'нейтрал');
-      tip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">'+types[found.type]+' · '+valLabel+'</span><br>Частота: ×'+found.count;
+      tip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">Слой '+layerNum+': '+layerName+' · '+valLabel+'</span><br>Частота: ×'+found.count;
       tip.style.display='block';
       tip.style.left=(ev.clientX-rect.left+12)+'px';
       tip.style.top=(ev.clientY-rect.top-10)+'px';
@@ -3822,13 +3854,14 @@ function openNmDrilldown(node){
   panel.style.display='block';
 
   // Type colors
-  var typeColors={emotion:'rgba(255,120,120,0.8)',area:'rgba(140,180,255,0.8)',cause:'rgba(255,180,100,0.8)',thought:'rgba(200,160,255,0.8)',event:'rgba(100,220,180,0.8)',practice:'rgba(0,224,255,0.8)'};
-  var typeLabels={emotion:'Эмоция',area:'Сфера',cause:'Причина',thought:'Мысль',event:'Событие',practice:'Практика'};
+  var layerColors={1:'rgba(180,200,220,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
+  var layerNum=nmTypeToLayer(node.type);
+  var layerName=nmTypeToLayerName(node.type);
 
   // Header
   var badge=document.getElementById('nm-dd-type-badge');
-  badge.textContent=typeLabels[node.type]||node.type;
-  badge.style.background=typeColors[node.type]||'rgba(255,255,255,0.1)';
+  badge.textContent='Слой '+layerNum+': '+layerName;
+  badge.style.background=layerColors[layerNum]||'rgba(255,255,255,0.1)';
   badge.style.color='#111';
   document.getElementById('nm-dd-title').textContent=node.label;
   var valTxt=node.valence<0?'утечка':'ресурс';
