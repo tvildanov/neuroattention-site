@@ -1105,7 +1105,9 @@ app.get('/api/progress', requireAuth, async (req, res) => {
 // ── ADMIN: Delete user by email (superadmin only) ──
 app.delete('/api/admin/user', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
+    // Role is not in JWT, fetch from DB
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || caller[0].role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
 
