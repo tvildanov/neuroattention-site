@@ -3129,7 +3129,8 @@ function buildNmGraph(){
   var empty=document.getElementById('nm-empty');
   var filters=document.getElementById('nm-filters');
   var analysis=document.getElementById('nm-analysis');
-  if(!entries.length){
+  var hasV2=nmV2Graph && nmV2Graph.nodes && nmV2Graph.nodes.length>0;
+  if(!entries.length && !hasV2){
     empty.style.display='flex';
     filters.style.display='none';
     analysis.style.display='none';
