@@ -3178,7 +3178,7 @@ async function nmMigrateLegacy(){
 // Load vocabulary JSON (for chip suggestions)
 async function nmLoadVocabulary(){
   try {
-    var resp=await fetch('data/neuromap-vocabulary.json');
+    var resp=await fetch('data/neuromap-vocabulary.json?v='+Date.now());
     if(resp.ok){ nmVocabulary=await resp.json(); nmBuildPolarityMap(); console.log('[NM] vocabulary loaded, polarity map built'); }
   } catch(e){ console.warn('[NM] vocabulary load failed:',e); }
 }
