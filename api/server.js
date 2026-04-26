@@ -32,7 +32,7 @@ const fs = require('fs');
 const path = require('path');
 let vocabAliases = {};
 try {
-  const vocabPath = path.join(__dirname, '..', 'data', 'neuromap-vocabulary.json');
+  const vocabPath = path.join(__dirname, 'neuromap-vocabulary.json');
   const vocab = JSON.parse(fs.readFileSync(vocabPath, 'utf8'));
   vocabAliases = vocab.aliases || {};
   console.log(`Loaded ${Object.keys(vocabAliases).length} vocabulary aliases`);
