@@ -1414,6 +1414,169 @@ app.post('/api/admin/rebuild-graph', requireAuth, async (req, res) => {
   }
 });
 
+// ── SELF-REBUILD: Any authenticated user can rebuild their own graph ──
+app.post('/api/neuromap/v2/rebuild-self', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const NEG_EMOTIONS = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение',
+      'отчаяние','обида','ревность','зависть','растерянность','разочарование','одиночество','беспомощность','скука',
+      'тоска','подавленность','паника','агрессия','отвращение','гнев','ярость','печаль','уныние','меланхолия',
+      'волнение','беспокойство','нервозность','испуг','боязнь','ужас','бешенство','лень','безразличие','равнодушие',
+      'утомление','изнурение','истощение','напряжение','ощущение пустоты'];
+    function isNeg(e) { return NEG_EMOTIONS.includes((e || '').toLowerCase().trim()); }
+
+    async function upsertNode(type, label, valence, metadata, entryDate) {
+      const nl = normalizeLabel(label);
+      const val = valence || 'neutral';
+      const meta = metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : '{}';
+      const dt = entryDate || new Date().toISOString();
+      const rows = await sql`
+        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+        VALUES (${userId}, ${type}, ${label}, ${nl}, ${val}, 1, ${dt}::timestamptz, ${meta}::jsonb)
+        ON CONFLICT (user_id, type, normalized_label, valence)
+        DO UPDATE SET
+          count = nm_nodes.count + 1,
+          last_seen_at = GREATEST(nm_nodes.last_seen_at, ${dt}::timestamptz),
+          label = EXCLUDED.label
+        RETURNING id
+      `;
+      return rows[0].id;
+    }
+
+    async function upsertLink(fromId, toId, entryDate) {
+      const dt = entryDate || new Date().toISOString();
+      await sql`
+        INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+        VALUES (${userId}, ${fromId}, ${toId}, 1, ${dt}::timestamptz)
+        ON CONFLICT (user_id, from_node_id, to_node_id)
+        DO UPDATE SET
+          count = nm_links.count + 1,
+          last_seen_at = GREATEST(nm_links.last_seen_at, ${dt}::timestamptz)
+      `;
+    }
+
+    // 1. Drop existing graph
+    await sql`DELETE FROM nm_links WHERE user_id = ${userId}`;
+    await sql`DELETE FROM nm_nodes WHERE user_id = ${userId}`;
+
+    let stats = { legacy_entries: 0, diary_entries: 0, nodes_upserted: 0, links_upserted: 0 };
+
+    // 2. Re-process legacy neuro_map_entries
+    const legacyRows = await sql`
+      SELECT id, date_key, payload, created_at
+      FROM neuro_map_entries WHERE user_id = ${userId}
+      ORDER BY date_key ASC, created_at ASC
+    `;
+    for (const row of legacyRows) {
+      const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+      const chains = payload.chains || [];
+      const entryDate = row.created_at || new Date().toISOString();
+      const seenInEntry = new Set();
+
+      for (const chain of chains) {
+        const nodeIds = [];
+        if (chain.emotion) {
+          const neg = isNeg(chain.emotion);
+          const nl = normalizeLabel(chain.emotion);
+          const dedupeKey = `emotion|${nl}|${neg ? 'negative' : 'positive'}`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('emotion', chain.emotion, neg ? 'negative' : 'positive', { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'emotion' AND normalized_label = ${nl} AND valence = ${neg ? 'negative' : 'positive'}`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
+          stats.nodes_upserted++;
+        }
+        if (chain.area) {
+          const nl = normalizeLabel(chain.area);
+          const dedupeKey = `area|${nl}|neutral`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'area' AND normalized_label = ${nl} AND valence = 'neutral'`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
+          stats.nodes_upserted++;
+        }
+        if (chain.cause) {
+          const emVal = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
+          const nl = normalizeLabel(chain.cause);
+          const dedupeKey = `cause|${nl}|${emVal}`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('cause', chain.cause, emVal, { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'cause' AND normalized_label = ${nl} AND valence = ${emVal}`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
+          stats.nodes_upserted++;
+        }
+        if (chain.thought) {
+          const emVal = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
+          const nl = normalizeLabel(chain.thought);
+          const dedupeKey = `thought|${nl}|${emVal}`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('thought', chain.thought, emVal, { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'thought' AND normalized_label = ${nl} AND valence = ${emVal}`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
+          stats.nodes_upserted++;
+        }
+        for (let i = 0; i < nodeIds.length - 1; i++) {
+          await upsertLink(nodeIds[i], nodeIds[i + 1], entryDate);
+          stats.links_upserted++;
+        }
+      }
+      stats.legacy_entries++;
+    }
+
+    // 3. Re-process diary entries
+    const diaryRows = await sql`
+      SELECT id, text, comment, plus_count, minus_count, created_at
+      FROM neuro_resource_diary WHERE user_id = ${userId}
+      ORDER BY created_at ASC
+    `;
+    for (const row of diaryRows) {
+      const net = (row.plus_count || 0) - (row.minus_count || 0);
+      const valence = net > 0 ? 'positive' : (net < 0 ? 'negative' : 'neutral');
+      const entryDate = row.created_at || new Date().toISOString();
+      const nodeIds = [];
+      if (row.text) {
+        const label = row.text.substring(0, 80);
+        nodeIds.push(await upsertNode('event', label, valence, { source: 'diary', plus: row.plus_count || 0, minus: row.minus_count || 0 }, entryDate));
+        stats.nodes_upserted++;
+      }
+      if (row.comment) {
+        const label = row.comment.substring(0, 80);
+        nodeIds.push(await upsertNode('thought', label, valence, { source: 'diary' }, entryDate));
+        stats.nodes_upserted++;
+      }
+      for (let i = 0; i < nodeIds.length - 1; i++) {
+        await upsertLink(nodeIds[i], nodeIds[i + 1], entryDate);
+        stats.links_upserted++;
+      }
+      stats.diary_entries++;
+    }
+
+    // 4. Count final graph
+    const finalNodes = await sql`SELECT count(*) as cnt FROM nm_nodes WHERE user_id = ${userId}`;
+    const finalLinks = await sql`SELECT count(*) as cnt FROM nm_links WHERE user_id = ${userId}`;
+
+    res.json({
+      ok: true,
+      stats,
+      graph: { nodes: parseInt(finalNodes[0].cnt), links: parseInt(finalLinks[0].cnt) }
+    });
+  } catch (err) {
+    console.error('POST /api/neuromap/v2/rebuild-self:', err);
+    res.status(500).json({ error: 'Rebuild failed: ' + err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
 });
