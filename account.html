@@ -212,7 +212,13 @@
 .nm-slider-wrap input[type=range] { flex:1;accent-color:var(--accent-cyan);height:6px; }
 .nm-slider-val { font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--text-primary);min-width:2rem;text-align:center; }
 .nm-emotion-badge { display:inline-flex;padding:0.2rem 0.5rem;border-radius:6px;font-size:10px;font-weight:500; }
+.nm-3d-toggle { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-muted);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;margin-right:0.4rem; }
+.nm-3d-toggle:hover { border-color:rgba(255,255,255,0.15);color:var(--text-primary); }
+.nm-3d-toggle.active { background:rgba(0,210,190,0.12);border-color:rgba(0,210,190,0.3);color:var(--accent-cyan); }
+#nm-3d-container { position:absolute;inset:0;z-index:2;display:none;border-radius:14px;overflow:hidden; }
+#nm-3d-container.active { display:block; }
 </style>
+<script src="https://unpkg.com/3d-force-graph@1"></script>
 </head>
 <body>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -837,8 +843,12 @@
             <button class="nm-view-btn" onclick="setNmView('all')">Всё</button>
           </div>
         </div>
-        <!-- Fullscreen button -->
-        <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;">
+        <!-- 3D toggle + Fullscreen button -->
+        <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;gap:0.3rem;">
+          <button class="nm-3d-toggle" onclick="nmToggle3D()" id="nm-3d-toggle" style="display:none;">
+            <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            3D
+          </button>
           <button class="nm-fs-btn" onclick="nmToggleFullscreen()" id="nm-fs-toggle" style="display:none;">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
             На весь экран
@@ -847,6 +857,7 @@
         <!-- Graph canvas -->
         <div id="nm-graph-wrap" style="position:relative;width:100%;height:420px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04);">
           <canvas id="nm-canvas" style="width:100%;height:100%;"></canvas>
+          <div id="nm-3d-container"></div>
           <div id="nm-tooltip" style="display:none;position:absolute;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(10,12,18,0.92);border:1px solid rgba(255,255,255,0.12);font-size:12px;color:var(--text-primary);pointer-events:none;z-index:5;max-width:220px;line-height:1.4;"></div>
           <div id="nm-empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:1.2rem;">
             <!-- Onboarding card -->
@@ -3687,6 +3698,108 @@ document.addEventListener('keydown',function(ev){
   if(ev.key==='Escape' && nmFullscreen) nmToggleFullscreen();
 });
 
+// ── 3D Graph Mode ──
+var nm3DMode = false;
+var nm3DGraph = null;
+
+function nmToggle3D(){
+  nm3DMode = !nm3DMode;
+  var btn = document.getElementById('nm-3d-toggle');
+  var container3d = document.getElementById('nm-3d-container');
+  var canvas2d = document.getElementById('nm-canvas');
+  if(nm3DMode){
+    btn.classList.add('active');
+    btn.textContent = '2D';
+    container3d.classList.add('active');
+    canvas2d.style.display = 'none';
+    nmBuild3DGraph();
+  } else {
+    btn.classList.remove('active');
+    btn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D';
+    container3d.classList.remove('active');
+    canvas2d.style.display = '';
+    if(nm3DGraph){ nm3DGraph._destructor && nm3DGraph._destructor(); nm3DGraph = null; }
+    container3d.innerHTML = '';
+    buildNmGraph();
+  }
+}
+
+function nmBuild3DGraph(){
+  var container = document.getElementById('nm-3d-container');
+  if(!container || typeof ForceGraph3D === 'undefined') return;
+  container.innerHTML = '';
+
+  // Build graph data from nmNodes/nmLinks
+  var gNodes = [];
+  var gLinks = [];
+  var nodeIdx = {};
+
+  nmNodes.forEach(function(n, i){
+    nodeIdx[n.id] = i;
+    var col = nmGetNodeColor(n);
+    // Parse rgba string to hex
+    var match = col.match(/rgba?\((\d+),(\d+),(\d+)/);
+    var hex = '#8899aa';
+    if(match) hex = '#' + ((1<<24)+(parseInt(match[1])<<16)+(parseInt(match[2])<<8)+parseInt(match[3])).toString(16).slice(1);
+    var r = nmNodeR(n);
+    gNodes.push({
+      id: n.id,
+      label: n.label,
+      color: hex,
+      val: Math.max(r * 0.8, 4),
+      type: n.type,
+      valence: n.valence,
+      _layer: n._layer,
+      _origNode: n
+    });
+  });
+
+  nmLinks.forEach(function(l){
+    if(nodeIdx[l.source] !== undefined && nodeIdx[l.target] !== undefined){
+      var sn = nmNodes[nodeIdx[l.source]];
+      var tn = nmNodes[nodeIdx[l.target]];
+      var ec = nmGetEdgeColor(sn, tn);
+      var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
+      gLinks.push({
+        source: l.source,
+        target: l.target,
+        color: hex,
+        width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2))
+      });
+    }
+  });
+
+  var wrap = document.getElementById('nm-graph-wrap');
+  var W = wrap.clientWidth;
+  var H = wrap.clientHeight;
+
+  nm3DGraph = ForceGraph3D()(container)
+    .width(W)
+    .height(H)
+    .backgroundColor('rgba(0,0,0,0)')
+    .graphData({nodes: gNodes, links: gLinks})
+    .nodeLabel(function(n){ return n.label + (n._layer ? ' ('+NM_LAYERS[n._layer]+')' : ''); })
+    .nodeColor(function(n){ return n.color; })
+    .nodeVal(function(n){ return n.val; })
+    .nodeOpacity(0.9)
+    .linkColor(function(l){ return l.color; })
+    .linkWidth(function(l){ return l.width; })
+    .linkOpacity(0.5)
+    .linkDirectionalArrowLength(5)
+    .linkDirectionalArrowRelPos(1)
+    .linkDirectionalArrowColor(function(l){ return l.color; })
+    .onNodeClick(function(node){
+      if(node && node._origNode){
+        nmShowDrillDown(node._origNode);
+      }
+    })
+    .showNavInfo(false);
+
+  // Spread nodes in 3D space based on layer
+  nm3DGraph.d3Force('charge').strength(-120);
+  nm3DGraph.d3Force('link').distance(60);
+}
+
 
 // ── Network Graph ──
 function getEntriesForView(){
@@ -3725,6 +3838,8 @@ function buildNmGraph(){
   empty.style.display='none';
   filters.style.display='block';
   if(fsToggle) fsToggle.style.display='';
+  var toggle3d=document.getElementById('nm-3d-toggle');
+  if(toggle3d) toggle3d.style.display='';
   var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
