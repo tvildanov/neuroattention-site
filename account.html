@@ -2421,6 +2421,71 @@ var NM_LAYERS = {
 function nmTypeToLayer(type){ return NM_LAYERS[type] ? NM_LAYERS[type].num : 0; }
 function nmTypeToLayerName(type){ return NM_LAYERS[type] ? NM_LAYERS[type].name : type; }
 
+// P1.B — Polarity-based color system
+var NM_POLARITY_MAP = {}; // emotion_name -> polarity_strength, built from vocabulary
+function nmBuildPolarityMap(){
+  if(!nmVocabulary || !nmVocabulary.emotions) return;
+  ['negative','positive'].forEach(function(pol){
+    (nmVocabulary.emotions[pol]||[]).forEach(function(em){
+      if(typeof em.polarity_strength==='number') NM_POLARITY_MAP[em.name]=em.polarity_strength;
+    });
+  });
+}
+function nmPolarityColor(ps){
+  // ps: -1.0 (dark red) to +1.0 (white-green)
+  // Returns [r,g,b]
+  var t=(ps+1)/2; // 0..1
+  t=Math.max(0,Math.min(1,t));
+  // Negative: dark red #3A0000 at t=0 → medium red #FF7878 at t=0.35
+  // Neutral: grey-blue #8CA0B8 at t=0.5
+  // Positive: light green #A0FFB0 at t=0.7 → white-green #E8FFEB at t=1.0
+  var r,g,b;
+  if(t<0.35){
+    var s=t/0.35;
+    r=58+Math.round(s*(255-58)); g=Math.round(s*120); b=Math.round(s*120);
+  } else if(t<0.5){
+    var s=(t-0.35)/0.15;
+    r=255-Math.round(s*(255-140)); g=120+Math.round(s*(160-120)); b=120+Math.round(s*(184-120));
+  } else if(t<0.7){
+    var s=(t-0.5)/0.2;
+    r=140-Math.round(s*(140-160)); g=160+Math.round(s*(255-160)); b=184-Math.round(s*(184-176));
+  } else {
+    var s=(t-0.7)/0.3;
+    r=160+Math.round(s*(232-160)); g=255; b=176+Math.round(s*(235-176));
+  }
+  return [r,g,b];
+}
+function nmGetNodeColor(n){
+  // Emotion nodes: gradient by polarity_strength
+  if(n.type==='emotion'){
+    var ps=NM_POLARITY_MAP[n.label];
+    if(typeof ps!=='number') ps=(n.valence<0?-0.5:0.5);
+    var rgb=nmPolarityColor(ps);
+    return 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',';
+  }
+  // Practice nodes: bright white-cyan
+  if(n.type==='practice') return 'rgba(220,240,255,';
+  // Other layers: subtle neutral tones by layer
+  var layerTones={
+    3:'rgba(140,180,255,', // Образы - blue
+    4:'rgba(200,180,240,', // Понятия - lavender
+    5:'rgba(200,180,140,', // Смыслы - warm
+    6:'rgba(100,220,180,'  // Действия - teal
+  };
+  var layer=n._layer||0;
+  return layerTones[layer]||'rgba(180,190,210,';
+}
+function nmGetEdgeColor(s,t){
+  // Both positive valence → green
+  if(s.valence>0 && t.valence>0) return {r:80,g:220,b:120,a:0.6};
+  // Both negative → red
+  if(s.valence<0 && t.valence<0) return {r:220,g:80,b:80,a:0.6};
+  // Practice involved → white glow
+  if(s.type==='practice'||t.type==='practice') return {r:220,g:240,b:255,a:0.7};
+  // Mixed → yellow-orange
+  return {r:240,g:180,b:60,a:0.5};
+}
+
 // Emotion categories
 var NM_EMOTIONS_NEG = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
 var NM_EMOTIONS_POS = ['интерес','спокойствие','радость','благодарность','вдохновение','уверенность','любовь','ясность'];
@@ -3114,7 +3179,7 @@ async function nmMigrateLegacy(){
 async function nmLoadVocabulary(){
   try {
     var resp=await fetch('data/neuromap-vocabulary.json');
-    if(resp.ok){ nmVocabulary=await resp.json(); console.log('[NM] vocabulary loaded'); }
+    if(resp.ok){ nmVocabulary=await resp.json(); nmBuildPolarityMap(); console.log('[NM] vocabulary loaded, polarity map built'); }
   } catch(e){ console.warn('[NM] vocabulary load failed:',e); }
 }
 
@@ -3649,20 +3714,38 @@ function nmSimulate(canvas, initAlpha){
 
     // Draw
     ctx.clearRect(0,0,W,H);
-    // Links
+    // Links (colored edges with directional arrows)
     nmLinks.forEach(function(l){
       var si=nodeIdx[l.source],ti=nodeIdx[l.target];
       if(si===undefined||ti===undefined) return;
       var s=nmNodes[si],t=nmNodes[ti];
-      ctx.beginPath();
-      ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
       var linkFresh=1;
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
-      ctx.strokeStyle='rgba(255,255,255,'+(0.03+Math.min(l.count*0.04,0.15)*linkFresh)+')';
-      ctx.lineWidth=Math.max(1, Math.min(6, Math.log(l.count+1)*2));
+      var ec=nmGetEdgeColor(s,t);
+      var edgeAlpha=(0.08+Math.min(l.count*0.06,0.25))*linkFresh;
+      ctx.beginPath();
+      ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle='rgba('+ec.r+','+ec.g+','+ec.b+','+edgeAlpha+')';
+      ctx.lineWidth=Math.max(1.5, Math.min(6, Math.log(l.count+1)*2));
       ctx.stroke();
+      // Arrowhead at target end
+      var dx=t.x-s.x,dy=t.y-s.y;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<1) return;
+      var tr=nmNodeR(t);
+      var ax=t.x-dx/dist*(tr+4),ay=t.y-dy/dist*(tr+4);
+      var angle=Math.atan2(dy,dx);
+      var arrSize=Math.min(8,3+l.count);
+      ctx.beginPath();
+      ctx.moveTo(ax,ay);
+      ctx.lineTo(ax-arrSize*Math.cos(angle-0.4),ay-arrSize*Math.sin(angle-0.4));
+      ctx.lineTo(ax-arrSize*Math.cos(angle+0.4),ay-arrSize*Math.sin(angle+0.4));
+      ctx.closePath();
+      ctx.fillStyle='rgba('+ec.r+','+ec.g+','+ec.b+','+(edgeAlpha*1.5)+')';
+      ctx.fill();
     });
-    // Nodes
+    // Nodes (polarity gradient colors + practice glow)
+    var animT=Date.now()/1000;
     nmNodes.forEach(function(n){
       // Fade-in for new nodes
       if(typeof n._fade==='number' && n._fade<1) n._fade=Math.min(1,n._fade+0.03);
@@ -3671,32 +3754,32 @@ function nmSimulate(canvas, initAlpha){
       var r=nmNodeR(n);
       // Scale-in effect
       var drawR=r*fade;
-      // Color by type + valence tint
-      var col;
-      if(n.type==='emotion'){
-        col=n.valence<0?'rgba(255,120,120,':'rgba(120,255,160,';
-      } else if(n.type==='area') col='rgba(140,180,255,';
-      else if(n.type==='cause'){
-        col=n.valence<0?'rgba(255,180,100,':'rgba(160,220,140,';
-      } else if(n.type==='thought'){
-        col=n.valence<0?'rgba(200,160,255,':'rgba(180,230,200,';
-      } else if(n.type==='event') col='rgba(100,220,180,';
-      else if(n.type==='practice') col='rgba(0,224,255,';
-      else col='rgba(200,160,255,';
+      // Color by polarity gradient
+      var col=nmGetNodeColor(n);
       // Brightness ~ freshness (recent=bright, old=dim)
       var freshness=(typeof n.freshness==='number')?n.freshness:1;
       var brightness=0.2+freshness*0.7;
       ctx.globalAlpha=fade;
-      ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
-      ctx.fillStyle=col+(brightness*0.2)+')';ctx.fill();
-      // Node
+      // Practice nodes: pulsing white glow
+      if(n.type==='practice'){
+        var pulse=0.3+0.25*Math.sin(animT*2.5);
+        ctx.beginPath();ctx.arc(n.x,n.y,drawR+12+4*Math.sin(animT*2),0,Math.PI*2);
+        ctx.fillStyle='rgba(220,240,255,'+pulse*fade+')';ctx.fill();
+        ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
+        ctx.fillStyle='rgba(220,240,255,'+(pulse*0.6*fade)+')';ctx.fill();
+      } else {
+        // Normal glow halo
+        ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
+        ctx.fillStyle=col+(brightness*0.2)+')';ctx.fill();
+      }
+      // Node body
       ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
       // Label
       ctx.fillStyle='rgba(255,255,255,0.85)';
       ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      var label=n.label.length>18?n.label.substring(0,16)+'…':n.label;
+      var label=n.label.length>18?n.label.substring(0,16)+'\u2026':n.label;
       ctx.fillText(label,n.x,n.y+drawR+16);
       ctx.globalAlpha=1;
     });
@@ -3705,9 +3788,10 @@ function nmSimulate(canvas, initAlpha){
     nmPrevPositions={};
     nmNodes.forEach(function(n){ nmPrevPositions[n.id]={x:n.x,y:n.y}; });
 
-    // Keep running if there are any fixed (dragged) nodes, or still settling
+    // Keep running if there are any fixed (dragged) nodes, still settling, or practice glow needs animation
     var hasFixed=nmNodes.some(function(n){return n.fx!==undefined;});
-    if(iter<250 || hasFixed){
+    var hasPractice=nmNodes.some(function(n){return n.type==='practice';});
+    if(iter<250 || hasFixed || hasPractice){
       nmAnimFrame=requestAnimationFrame(tick);
     } else {
       nmAnimFrame=null; // Signal that simulation has stopped (enables drag restart)
