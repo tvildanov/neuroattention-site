@@ -3602,6 +3602,8 @@ function nmToggleFullscreen(){
     if(nmFs3DGraph){ nmFs3DGraph._destructor && nmFs3DGraph._destructor(); nmFs3DGraph=null; }
     var fs3d = document.getElementById('nm-fs-3d-container');
     if(fs3d){ fs3d.style.display='none'; fs3d.innerHTML=''; }
+    // Close fullscreen drill-down
+    closeFsDrilldown();
     // Rebuild normal graph to refresh positions
     buildNmGraph();
   }
@@ -3637,6 +3639,11 @@ function nmFsFilterToggle(cb){
     if(ml===layer) mcb.checked = cb.checked;
   });
   buildNmGraph();
+  // Also rebuild 3D graph if in 3D mode
+  if(nm3DMode){
+    var fs3d = document.getElementById('nm-fs-3d-container');
+    if(fs3d) nmBuildFs3DGraph(fs3d);
+  }
 }
 
 function nmFsStartRender(){
@@ -3777,7 +3784,10 @@ function nmFsStartRender(){
       var dx=n.x-pt.x,dy=n.y-pt.y;
       if(dx*dx+dy*dy<(r+12)*(r+12)) found=n;
     });
-    if(found) openNmDrilldown(found);
+    if(found){
+      if(nmFullscreen) openFsDrilldown(found);
+      else openNmDrilldown(found);
+    }
   });
 })();
 
@@ -3785,6 +3795,109 @@ function nmFsStartRender(){
 document.addEventListener('keydown',function(ev){
   if(ev.key==='Escape' && nmFullscreen) nmToggleFullscreen();
 });
+
+// ── Fullscreen Drill-down Panel ──
+function closeFsDrilldown(){
+  var p=document.getElementById('nm-fs-drilldown');
+  if(p) p.style.display='none';
+}
+function openFsDrilldown(node){
+  var panel=document.getElementById('nm-fs-drilldown');
+  if(!panel) return;
+  panel.style.display='block';
+  var layerColors={1:'rgba(180,200,220,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
+  var layerNum=nmTypeToLayer(node.type);
+  var layerName=nmTypeToLayerName(node.type);
+  var badge=document.getElementById('nm-fs-dd-type-badge');
+  badge.textContent='Слой '+layerNum+': '+layerName;
+  badge.style.background=layerColors[layerNum]||'rgba(255,255,255,0.1)';
+  badge.style.color='#111';
+  document.getElementById('nm-fs-dd-title').textContent=node.label;
+  var valTxt=node.valence<0?'утечка':'ресурс';
+  if(node.valence===0) valTxt='нейтрально';
+  document.getElementById('nm-fs-dd-stats').textContent='Встречается '+node.count+' раз | '+valTxt+(node.last_seen?' | '+node.last_seen:'');
+  // Connected nodes
+  var connList=document.getElementById('nm-fs-dd-conn-list');
+  connList.innerHTML='';
+  var connected=[];
+  nmLinks.forEach(function(l){
+    if(l.source===node.id||l.target===node.id){
+      var otherId=l.source===node.id?l.target:l.source;
+      var otherNode=nmNodes.find(function(n){return n.id===otherId;});
+      if(otherNode) connected.push({node:otherNode,count:otherNode.count});
+    }
+  });
+  connected.sort(function(a,b){return b.count-a.count;});
+  connected.forEach(function(c){
+    var chip=document.createElement('span');
+    chip.style.cssText='display:inline-block;padding:3px 8px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);';
+    chip.textContent=(c.count>1?c.count+'× ':'')+c.node.label;
+    chip.onclick=function(){openFsDrilldown(c.node);};
+    connList.appendChild(chip);
+  });
+  if(!connected.length) connList.innerHTML='<span style="font-size:11px;color:var(--text-muted);">Нет связей</span>';
+  // Timeline
+  drawFsDdTimeline(node);
+  // Correlations
+  var corrList=document.getElementById('nm-fs-dd-corr-list');
+  var corrMap={};
+  var entries=getEntriesForView();
+  entries.forEach(function(e){
+    var hasNode=false;
+    e.chains.forEach(function(c){
+      if(node.type==='emotion'&&c.emotion===node.label) hasNode=true;
+      if(node.type==='area'&&c.area===node.label) hasNode=true;
+      if(node.type==='cause'&&c.cause===node.label) hasNode=true;
+      if(node.type==='thought'&&c.thought===node.label) hasNode=true;
+    });
+    if(hasNode){
+      e.chains.forEach(function(c){
+        ['emotion','area','cause','thought'].forEach(function(t){
+          if(c[t]&&c[t]!==node.label){
+            if(!corrMap[c[t]]) corrMap[c[t]]=0;
+            corrMap[c[t]]++;
+          }
+        });
+      });
+    }
+  });
+  var sorted=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5);
+  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.5rem;">'+k+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:11px;color:var(--text-muted);">Нет данных</span>';
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function drawFsDdTimeline(node){
+  var c=document.getElementById('nm-fs-dd-timeline');
+  if(!c) return;
+  var ctx=c.getContext('2d');
+  var W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  var today=new Date();
+  var counts=[];
+  var maxCount=0;
+  for(var i=29;i>=0;i--){
+    var d=new Date(today);d.setDate(d.getDate()-i);
+    var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var dayEntries=(nmData&&nmData[key])||[];
+    var cnt=0;
+    dayEntries.forEach(function(e){
+      e.chains.forEach(function(ch){
+        if(node.type==='emotion'&&ch.emotion===node.label) cnt++;
+        if(node.type==='area'&&ch.area===node.label) cnt++;
+        if(node.type==='cause'&&ch.cause===node.label) cnt++;
+        if(node.type==='thought'&&ch.thought===node.label) cnt++;
+      });
+    });
+    counts.push(cnt);
+    if(cnt>maxCount) maxCount=cnt;
+  }
+  if(maxCount===0) maxCount=1;
+  var barW=W/30;
+  counts.forEach(function(cnt,i){
+    var h=(cnt/maxCount)*(H-8);
+    ctx.fillStyle=cnt>0?'rgba(0,224,255,0.5)':'rgba(255,255,255,0.04)';
+    ctx.fillRect(i*barW+1,H-4-h,barW-2,h||2);
+  });
+}
 
 // ── 3D Graph Mode ──
 var nm3DMode = false;
@@ -3857,7 +3970,12 @@ function nmBuildFs3DGraph(container){
     .linkOpacity(0.25)
     .backgroundColor('rgba(0,0,0,0)')
     .width(container.clientWidth)
-    .height(container.clientHeight);
+    .height(container.clientHeight)
+    .onNodeClick(function(gNode){
+      // Find original nmNodes entry
+      var origNode = nmNodes.find(function(n){ return n.id === gNode.id; });
+      if(origNode) openFsDrilldown(origNode);
+    });
 }
 
 function nmToggle3D(){
@@ -5280,6 +5398,27 @@ if('serviceWorker' in navigator){
       </div>
       <div id="nm-fs-filters" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
       <div id="nm-fs-insights" style="margin-top:1rem;"></div>
+      <!-- Fullscreen Drill-down Panel -->
+      <div id="nm-fs-drilldown" style="display:none;margin-top:1rem;padding:1rem;background:rgba(255,255,255,0.03);border:1px solid rgba(0,224,255,0.15);border-radius:12px;position:relative;">
+        <button onclick="closeFsDrilldown()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 6px;">&times;</button>
+        <div id="nm-fs-dd-header" style="margin-bottom:0.75rem;">
+          <span id="nm-fs-dd-type-badge" style="display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;padding:2px 6px;border-radius:6px;margin-bottom:0.3rem;"></span>
+          <h4 id="nm-fs-dd-title" style="font-size:0.95rem;margin:0 0 0.2rem;"></h4>
+          <p id="nm-fs-dd-stats" style="font-size:11px;color:var(--text-muted);margin:0;"></p>
+        </div>
+        <div style="margin-bottom:0.75rem;">
+          <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Связанные узлы</p>
+          <div id="nm-fs-dd-conn-list" style="display:flex;flex-wrap:wrap;gap:0.3rem;"></div>
+        </div>
+        <div style="margin-bottom:0.75rem;">
+          <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Частота за 30 дней</p>
+          <canvas id="nm-fs-dd-timeline" width="240" height="50" style="width:100%;height:50px;border-radius:6px;background:rgba(0,0,0,0.15);"></canvas>
+        </div>
+        <div>
+          <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Корреляции</p>
+          <div id="nm-fs-dd-corr-list" style="font-size:11px;"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
