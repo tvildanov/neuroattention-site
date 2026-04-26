@@ -1450,7 +1450,18 @@ function rebuildGraph(){
   btn.textContent='Пересчёт...';
   status.textContent='';
   fetch(AUTH_API+'/api/admin/rebuild-graph',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('jwt'),'Content-Type':'application/json'}})
-    .then(function(r){return r.json();})
+    .then(function(r){
+      if(r.status===401){
+        btn.disabled=false;
+        btn.textContent='Пересчитать граф';
+        status.style.color='rgba(255,100,100,0.9)';
+        status.textContent='Сессия истекла. Перезайдите в систему.';
+        localStorage.removeItem('jwt');
+        setTimeout(function(){location.reload();},2000);
+        throw new Error('auth_expired');
+      }
+      return r.json();
+    })
     .then(function(d){
       btn.disabled=false;
       btn.textContent='Пересчитать граф';
@@ -1463,6 +1474,7 @@ function rebuildGraph(){
       }
     })
     .catch(function(e){
+      if(e.message==='auth_expired') return;
       btn.disabled=false;
       btn.textContent='Пересчитать граф';
       status.style.color='rgba(255,100,100,0.9)';
