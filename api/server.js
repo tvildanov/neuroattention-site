@@ -1209,8 +1209,15 @@ app.post('/api/admin/rebuild-graph', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // Allow superadmin/founder to rebuild another user's graph via body.userId
-    const userId = req.body.userId || req.user.id;
+    // Allow superadmin/founder to rebuild another user's graph via body.userId or body.email
+    let userId = req.user.id;
+    if (req.body.userId) {
+      userId = req.body.userId;
+    } else if (req.body.email) {
+      const target = await sql`SELECT id FROM users WHERE email = ${req.body.email}`;
+      if (!target.length) return res.status(404).json({ error: 'User not found by email' });
+      userId = target[0].id;
+    }
     const NEG_EMOTIONS = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение',
       'отчаяние','обида','ревность','зависть','растерянность','разочарование','одиночество','беспомощность','скука',
       'тоска','подавленность','паника','агрессия','отвращение','гнев','ярость','печаль','уныние','меланхолия',
