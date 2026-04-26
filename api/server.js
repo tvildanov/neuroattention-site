@@ -168,7 +168,18 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_from ON nm_links(from_node_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_to ON nm_links(to_node_id)`;
 
-    res.json({ ok: true, message: 'Migrations 003-007 applied successfully' });
+    // Migration 010: test_results
+    await sql`CREATE TABLE IF NOT EXISTS test_results (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      profile TEXT NOT NULL,
+      answers JSONB NOT NULL,
+      scores JSONB NOT NULL,
+      completed_at TIMESTAMPTZ DEFAULT NOW()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_test_user ON test_results(user_id, completed_at DESC)`;
+
+    res.json({ ok: true, message: 'Migrations 003-010 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -1594,6 +1605,48 @@ app.post('/api/neuromap/v2/rebuild-self', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('POST /api/neuromap/v2/rebuild-self:', err);
     res.status(500).json({ error: 'Rebuild failed: ' + err.message });
+  }
+});
+
+// ── TEST RESULT ENDPOINTS ──
+
+// Save test result (auth required)
+app.post('/api/test-result/save', requireAuth, async (req, res) => {
+  try {
+    const { profile, answers, scores } = req.body;
+    if (!profile || !answers || !scores) {
+      return res.status(400).json({ error: 'profile, answers, and scores required' });
+    }
+    const userId = req.user.id;
+    await sql`
+      INSERT INTO test_results (user_id, profile, answers, scores)
+      VALUES (${userId}, ${profile}, ${JSON.stringify(answers)}, ${JSON.stringify(scores)})
+    `;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/test-result/save:', err);
+    res.status(500).json({ error: 'Save failed: ' + err.message });
+  }
+});
+
+// Get latest test result (auth required)
+app.get('/api/test-result/latest', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const rows = await sql`
+      SELECT profile, answers, scores, completed_at
+      FROM test_results
+      WHERE user_id = ${userId}
+      ORDER BY completed_at DESC
+      LIMIT 1
+    `;
+    if (rows.length === 0) {
+      return res.json({ ok: true, result: null });
+    }
+    res.json({ ok: true, result: rows[0] });
+  } catch (err) {
+    console.error('GET /api/test-result/latest:', err);
+    res.status(500).json({ error: 'Fetch failed: ' + err.message });
   }
 });
 
