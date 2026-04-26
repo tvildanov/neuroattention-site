@@ -823,9 +823,39 @@
         <div id="nm-graph-wrap" style="position:relative;width:100%;height:420px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04);">
           <canvas id="nm-canvas" style="width:100%;height:100%;"></canvas>
           <div id="nm-tooltip" style="display:none;position:absolute;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(10,12,18,0.92);border:1px solid rgba(255,255,255,0.12);font-size:12px;color:var(--text-primary);pointer-events:none;z-index:5;max-width:220px;line-height:1.4;"></div>
-          <div id="nm-empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;">
-            <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-            <p style="font-size:13px;color:var(--text-dim);margin:0;text-align:center;">Заполните карту дня, чтобы увидеть<br>вашу сеть мыслей и эмоций</p>
+          <div id="nm-empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:1.2rem;">
+            <!-- Onboarding card -->
+            <div id="nm-onboard" style="max-width:340px;text-align:center;">
+              <div style="margin-bottom:0.8rem;">
+                <svg style="width:56px;height:56px;fill:none;stroke:var(--accent-cyan);stroke-width:1.2;opacity:0.7;" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/>
+                  <line x1="7" y1="7" x2="10" y2="10" opacity="0.5"/><line x1="14" y1="10" x2="17" y2="7" opacity="0.5"/><line x1="7" y1="17" x2="10" y2="14" opacity="0.5"/><line x1="14" y1="14" x2="17" y2="17" opacity="0.5"/>
+                </svg>
+              </div>
+              <h3 style="font-size:16px;font-weight:600;color:var(--text-primary);margin:0 0 0.4rem;">Ваша НейроКарта</h3>
+              <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 1rem;line-height:1.5;">
+                Отслеживайте связи между эмоциями, сферами жизни и мыслями. Каждое заполнение строит вашу уникальную карту.
+              </p>
+              <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:1rem;">
+                <div style="flex:1;padding:0.5rem;border-radius:10px;background:rgba(0,224,255,0.05);border:1px solid rgba(0,224,255,0.1);">
+                  <div style="font-size:16px;margin-bottom:2px;">🎯</div>
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Паттерны<br>поведения</div>
+                </div>
+                <div style="flex:1;padding:0.5rem;border-radius:10px;background:rgba(140,120,255,0.05);border:1px solid rgba(140,120,255,0.1);">
+                  <div style="font-size:16px;margin-bottom:2px;">🔗</div>
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Связи<br>эмоций</div>
+                </div>
+                <div style="flex:1;padding:0.5rem;border-radius:10px;background:rgba(120,255,160,0.05);border:1px solid rgba(120,255,160,0.1);">
+                  <div style="font-size:16px;margin-bottom:2px;">📈</div>
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Динамика<br>ресурса</div>
+                </div>
+              </div>
+              <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;padding:0.7rem 1.2rem;" onclick="openNmSurvey()">
+                <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;margin-right:6px;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Начать первую запись
+              </button>
+              <p style="font-size:10.5px;color:var(--text-dim);margin:0.6rem 0 0;opacity:0.6;">Занимает ~2 минуты</p>
+            </div>
           </div>
         </div>
         <!-- Filter row -->
@@ -2442,8 +2472,8 @@ function renderNmStep(){
 
   if(nmCurrentStep===0){
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 1 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что вы сегодня чаще всего чувствовали?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Выберите одну эмоцию. После прохождения цепочки можно добавить ещё.</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">Что вы сейчас чувствуете?</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">Выберите одну эмоцию — потом можно будет добавить ещё</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
     var currentChainEmo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     NM_ALL_EMOTIONS.forEach(function(em){
@@ -2458,8 +2488,8 @@ function renderNmStep(){
     var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     if(!emo){ nmNext(); return; }
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 2 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">С чем это было связано?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">В какой сфере проявилась <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+emo+'</span>?</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3 сфер</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
     var chain=nmSurveyState.emotionChains[nmSurveyState._chainIdx||0]||{};
     var selAreas=chain.areas||[];
@@ -2534,13 +2564,17 @@ function renderNmStep(){
   }
   else if(nmCurrentStep===6){
     // Choice screen: add another emotion or save
+    var chainCount=nmSurveyState.emotions.filter(function(e){return !!e;}).length;
     var h='<div style="text-align:center;padding:1rem 0;">';
-    h+='<svg style="width:48px;height:48px;fill:none;stroke:var(--accent-cyan);stroke-width:1.5;margin:0 auto 1rem;display:block;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Цепочка записана</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;line-height:1.6;">Эмоция и связанная цепочка добавлены на вашу карту. Хотите добавить ещё одну эмоцию или сохранить результат?</p>';
+    h+='<div style="width:56px;height:56px;margin:0 auto 1rem;border-radius:50%;background:rgba(0,224,255,0.08);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,224,255,0.15);">';
+    h+='<svg style="width:28px;height:28px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>';
+    h+='</div>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Цепочка '+(chainCount)+' записана</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 0.5rem;line-height:1.6;">Эмоция и связанная цепочка добавлены на вашу карту.</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">Чем больше цепочек, тем точнее будет анализ</p>';
     h+='<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">';
-    h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">Добавить ещё эмоцию</button>';
-    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">Сохранить и выйти</button>';
+    h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">+ Ещё эмоцию</button>';
+    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">Сохранить</button>';
     h+='</div></div>';
     content.innerHTML=h;
     // Hide nav buttons on choice screen
@@ -2898,6 +2932,32 @@ function nmSaveSurvey(){
   if(navigator.vibrate) navigator.vibrate([20,40,20]);
   updateNmToday();
   buildNmGraph();
+  // Show success toast
+  nmShowToast(Object.keys(nmData).length<=1 && nmData[key] && nmData[key].length===1);
+}
+
+// ── NeuroMap Success Toast ──
+function nmShowToast(isFirst){
+  var existing=document.getElementById('nm-toast');
+  if(existing) existing.remove();
+  var toast=document.createElement('div');
+  toast.id='nm-toast';
+  toast.style.cssText='position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;z-index:10000;background:rgba(10,14,20,0.95);border:1px solid rgba(0,224,255,0.2);border-radius:14px;padding:0.85rem 1.4rem;display:flex;align-items:center;gap:0.6rem;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:340px;';
+  if(isFirst){
+    toast.innerHTML='<span style="font-size:20px;">🎉</span><div><div style="font-size:13px;font-weight:600;color:var(--text-primary);">Первая запись создана!</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Ваша НейроКарта начинает строиться</div></div>';
+  } else {
+    toast.innerHTML='<span style="font-size:18px;">✓</span><div style="font-size:13px;color:var(--text-primary);">Карта дня обновлена</div>';
+  }
+  document.body.appendChild(toast);
+  requestAnimationFrame(function(){
+    toast.style.opacity='1';
+    toast.style.transform='translateX(-50%) translateY(0)';
+  });
+  setTimeout(function(){
+    toast.style.opacity='0';
+    toast.style.transform='translateX(-50%) translateY(20px)';
+    setTimeout(function(){ toast.remove(); },400);
+  }, isFirst?4000:2500);
 }
 
 // ── NeuroMap Persistence ──
