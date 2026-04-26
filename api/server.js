@@ -760,6 +760,130 @@ app.get('/api/neuromap/v2/graph', requireAuth, async (req, res) => {
   }
 });
 
+// ── NEUROMAP V2: MIGRATE LEGACY DATA ──
+// POST /api/neuromap/v2/migrate-legacy
+// Reads all neuro_map_entries for the current user, converts chains into nm_nodes + nm_links.
+// Idempotent: uses ON CONFLICT upsert so running twice is safe.
+app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Known negative emotions (must match frontend NM_EMOTIONS_NEG)
+    const NEG_EMOTIONS = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
+    function isNeg(e) { return NEG_EMOTIONS.includes((e || '').toLowerCase().trim()); }
+
+    // 1. Read all legacy entries
+    const legacyRows = await sql`
+      SELECT id, date_key, payload, created_at
+      FROM neuro_map_entries
+      WHERE user_id = ${userId}
+      ORDER BY date_key ASC, created_at ASC
+    `;
+
+    if (!legacyRows.length) {
+      return res.json({ ok: true, migrated: 0, message: 'No legacy entries to migrate' });
+    }
+
+    let totalNodes = 0;
+    let totalLinks = 0;
+
+    // 2. Process each legacy entry
+    for (const row of legacyRows) {
+      const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+      const chains = payload.chains || [];
+      if (!chains.length) continue;
+
+      // Use created_at from the legacy row for last_seen_at (preserve temporal ordering)
+      const entryDate = row.created_at || new Date().toISOString();
+
+      for (const chain of chains) {
+        // Build a v2 chain from: emotion → area → cause → thought
+        const v2Items = [];
+
+        if (chain.emotion) {
+          const neg = isNeg(chain.emotion);
+          v2Items.push({
+            type: 'emotion',
+            label: chain.emotion,
+            valence: neg ? 'negative' : 'positive',
+            metadata: JSON.stringify({ source: 'legacy_migration' })
+          });
+        }
+        if (chain.area) {
+          v2Items.push({
+            type: 'area',
+            label: chain.area,
+            valence: 'neutral',
+            metadata: JSON.stringify({ source: 'legacy_migration' })
+          });
+        }
+        if (chain.cause) {
+          const emValence = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
+          v2Items.push({
+            type: 'cause',
+            label: chain.cause,
+            valence: emValence,
+            metadata: JSON.stringify({ source: 'legacy_migration' })
+          });
+        }
+        if (chain.thought) {
+          // For thoughts: first 15 in the canonical list are negative
+          v2Items.push({
+            type: 'thought',
+            label: chain.thought,
+            valence: chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral',
+            metadata: JSON.stringify({ source: 'legacy_migration' })
+          });
+        }
+
+        if (!v2Items.length) continue;
+
+        // Upsert nodes
+        const nodeIds = [];
+        for (const item of v2Items) {
+          const normalizedLabel = (item.label || '').toLowerCase().trim();
+          const rows2 = await sql`
+            INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+            VALUES (${userId}, ${item.type}, ${item.label}, ${normalizedLabel}, ${item.valence}, 1, ${entryDate}::timestamptz, ${item.metadata}::jsonb)
+            ON CONFLICT (user_id, type, normalized_label, valence)
+            DO UPDATE SET
+              count = nm_nodes.count + 1,
+              last_seen_at = GREATEST(nm_nodes.last_seen_at, ${entryDate}::timestamptz)
+            RETURNING id
+          `;
+          nodeIds.push(rows2[0].id);
+          totalNodes++;
+        }
+
+        // Create links between consecutive nodes
+        for (let i = 0; i < nodeIds.length - 1; i++) {
+          await sql`
+            INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+            VALUES (${userId}, ${nodeIds[i]}, ${nodeIds[i + 1]}, 1, ${entryDate}::timestamptz)
+            ON CONFLICT (user_id, from_node_id, to_node_id)
+            DO UPDATE SET
+              count = nm_links.count + 1,
+              last_seen_at = GREATEST(nm_links.last_seen_at, ${entryDate}::timestamptz)
+            RETURNING id
+          `;
+          totalLinks++;
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      migrated: legacyRows.length,
+      totalNodes,
+      totalLinks,
+      message: `Migrated ${legacyRows.length} legacy entries → ${totalNodes} node upserts, ${totalLinks} link upserts`
+    });
+  } catch (err) {
+    console.error('POST /api/neuromap/v2/migrate-legacy:', err);
+    res.status(500).json({ error: 'Migration failed: ' + err.message });
+  }
+});
+
 // ── DIARY PERSISTENCE ──
 // Save a diary entry
 app.post('/api/diary/save', requireAuth, async (req, res) => {

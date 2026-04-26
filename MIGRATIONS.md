@@ -19,6 +19,7 @@
 | `na_diary_data` | Neuro-resource diary entries cache (JSON, mirrors DB) |
 | `na_calendar_events` | Calendar events cache (JSON, mirrors DB) |
 | `na_course_progress` | Course progress array cache (JSON, mirrors DB) |
+| `na_nm_legacy_migrated` | Flag ("1") — legacy neuro_map_entries migrated to nm_nodes/nm_links |
 
 ### 2. Database Schema Changes (Neon)
 - Always use `ALTER TABLE ... ADD COLUMN ... DEFAULT ...` (nullable or with default) for backward compatibility.
@@ -37,6 +38,7 @@
 | 005 | Create `neuro_map_entries` table | 2026-04-25 |
 | 006 | Create `neuro_resource_diary`, `calendar_events`, `course_progress` tables | 2026-04-25 |
 | 007 | Create `nm_nodes` + `nm_links` tables for NeuroMap graph | 2026-04-25 |
+| 008 | Backward-compat migration: `neuro_map_entries` → `nm_nodes+nm_links` (per-user via API) | 2026-04-25 |
 
 ### 3. Pre-Deploy Checklist
 Before every deploy that touches data storage:
