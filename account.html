@@ -191,14 +191,16 @@
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--accent-cyan); }
-.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column; }
+.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:default !important; }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
 .nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
 .nm-fs-close { background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:13px;padding:0.4rem 0.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s; }
 .nm-fs-close:hover { border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-fs-body { flex:1;display:flex;overflow:hidden; }
-.nm-fs-canvas-wrap { flex:1;position:relative; }
+.nm-fs-canvas-wrap { flex:1;position:relative;cursor:default; }
+.nm-fs-canvas-wrap canvas { cursor:grab; }
+.nm-fs-canvas-wrap canvas:active { cursor:grabbing; }
 .nm-fs-sidebar { width:280px;overflow-y:auto;border-left:1px solid rgba(255,255,255,0.06);padding:0.8rem; }
 .nm-fs-btn { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-muted);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s; }
 .nm-fs-btn:hover { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15);color:var(--accent-cyan); }
@@ -3584,12 +3586,22 @@ function nmToggleFullscreen(){
     document.body.style.overflow='hidden';
     // Clone filters into sidebar
     nmFsBuildFilters();
+    // Sync FS 3D toggle state
+    var fsBtn3d = document.getElementById('nm-fs-3d-toggle');
+    if(fsBtn3d){
+      if(nm3DMode){ fsBtn3d.classList.add('active'); fsBtn3d.textContent='2D'; }
+      else { fsBtn3d.classList.remove('active'); fsBtn3d.innerHTML='<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D'; }
+    }
     // Start rendering on fs canvas
     nmFsStartRender();
   } else {
     overlay.classList.remove('active');
     document.body.style.overflow='';
     if(nmFsAnimFrame){ cancelAnimationFrame(nmFsAnimFrame); nmFsAnimFrame=null; }
+    // Clean up FS 3D if active
+    if(nmFs3DGraph){ nmFs3DGraph._destructor && nmFs3DGraph._destructor(); nmFs3DGraph=null; }
+    var fs3d = document.getElementById('nm-fs-3d-container');
+    if(fs3d){ fs3d.style.display='none'; fs3d.innerHTML=''; }
     // Rebuild normal graph to refresh positions
     buildNmGraph();
   }
@@ -3777,6 +3789,76 @@ document.addEventListener('keydown',function(ev){
 // ── 3D Graph Mode ──
 var nm3DMode = false;
 var nm3DGraph = null;
+
+// Fullscreen 3D toggle — mirrors main toggle but operates on FS canvas area
+function nmFsToggle3D(){
+  nm3DMode = !nm3DMode;
+  var fsBtn = document.getElementById('nm-fs-3d-toggle');
+  var mainBtn = document.getElementById('nm-3d-toggle');
+  var fsCanvasWrap = document.querySelector('.nm-fs-canvas-wrap');
+  if(!fsCanvasWrap) return;
+  // Ensure 3d container inside fullscreen
+  var fs3d = document.getElementById('nm-fs-3d-container');
+  if(!fs3d){
+    fs3d = document.createElement('div');
+    fs3d.id = 'nm-fs-3d-container';
+    fs3d.style.cssText = 'position:absolute;inset:0;z-index:2;display:none;overflow:hidden;';
+    fsCanvasWrap.appendChild(fs3d);
+  }
+  var fsCanvas = document.getElementById('nm-fs-canvas');
+  if(nm3DMode){
+    fsBtn.classList.add('active');
+    fsBtn.textContent = '2D';
+    if(mainBtn) mainBtn.classList.add('active');
+    if(mainBtn) mainBtn.textContent = '2D';
+    fs3d.style.display = 'block';
+    fsCanvas.style.display = 'none';
+    // Build 3D in fullscreen container
+    nmBuildFs3DGraph(fs3d);
+  } else {
+    fsBtn.classList.remove('active');
+    fsBtn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D';
+    if(mainBtn){ mainBtn.classList.remove('active'); mainBtn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D'; }
+    fs3d.style.display = 'none';
+    fsCanvas.style.display = '';
+    if(nmFs3DGraph){ nmFs3DGraph._destructor && nmFs3DGraph._destructor(); nmFs3DGraph = null; }
+    fs3d.innerHTML = '';
+    nmFsStartRender();
+  }
+}
+
+var nmFs3DGraph = null;
+function nmBuildFs3DGraph(container){
+  if(!container || typeof ForceGraph3D === 'undefined') return;
+  container.innerHTML = '';
+  var gNodes = [];
+  var gLinks = [];
+  var nodeIdx = {};
+  nmNodes.forEach(function(n, i){
+    nodeIdx[n.id] = i;
+    var col = nmGetNodeColor(n);
+    var match = col.match(/rgba?\((\d+),(\d+),(\d+)/);
+    var hex = '#8899aa';
+    if(match) hex = '#' + ((1<<24)+(parseInt(match[1])<<16)+(parseInt(match[2])<<8)+parseInt(match[3])).toString(16).slice(1);
+    var r = nmNodeR(n);
+    gNodes.push({ id: n.id, label: n.label, color: hex, val: Math.max(r * 0.8, 4), layer: n.layer });
+  });
+  nmLinks.forEach(function(l){
+    if(nodeIdx[l.source]!==undefined && nodeIdx[l.target]!==undefined){
+      gLinks.push({ source: l.source, target: l.target, count: l.count||1 });
+    }
+  });
+  nmFs3DGraph = ForceGraph3D()(container)
+    .graphData({ nodes: gNodes, links: gLinks })
+    .nodeLabel('label')
+    .nodeColor('color')
+    .nodeVal('val')
+    .linkWidth(function(l){ return Math.max(0.5, Math.log((l.count||1)+1)); })
+    .linkOpacity(0.25)
+    .backgroundColor('rgba(0,0,0,0)')
+    .width(container.clientWidth)
+    .height(container.clientHeight);
+}
 
 function nmToggle3D(){
   nm3DMode = !nm3DMode;
@@ -5177,10 +5259,15 @@ if('serviceWorker' in navigator){
 <div class="nm-fullscreen-overlay" id="nm-fs-overlay">
   <div class="nm-fs-header">
     <h3>НейроКарта — полный экран</h3>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <button class="nm-3d-toggle" id="nm-fs-3d-toggle" onclick="nmFsToggle3D()">
+        <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D
+      </button>
     <button class="nm-fs-close" onclick="nmToggleFullscreen()">
       <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
       Закрыть <span style="opacity:0.5;font-size:10px;margin-left:4px;">Esc</span>
     </button>
+    </div>
   </div>
   <div class="nm-fs-body">
     <div class="nm-fs-canvas-wrap">
