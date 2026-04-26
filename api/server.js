@@ -691,25 +691,48 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
 
     const userId = req.user.id;
     const nodeIds = [];
+    const seenNodes = new Set(); // deduplicate: only increment count once per unique node per call
 
-    // 1. Upsert each node
+    // 1. Upsert each node (deduplicate within single call)
     for (const item of chain) {
       const { type, label, valence, metadata } = item;
       if (!type || !label) continue;
       const normalizedLabel = normalizeLabel(label);
       const val = valence || 'neutral';
       const meta = metadata ? JSON.stringify(metadata) : '{}';
+      const dedupeKey = `${type}|${normalizedLabel}|${val}`;
+      const alreadySeen = seenNodes.has(dedupeKey);
+      seenNodes.add(dedupeKey);
 
-      const rows = await sql`
-        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
-        VALUES (${userId}, ${type}, ${label}, ${normalizedLabel}, ${val}, 1, now(), ${meta}::jsonb)
-        ON CONFLICT (user_id, type, normalized_label, valence)
-        DO UPDATE SET
-          count = nm_nodes.count + 1,
-          last_seen_at = now(),
-          label = EXCLUDED.label
-        RETURNING id
-      `;
+      let rows;
+      if (alreadySeen) {
+        // Already counted this node in this call — just get its id without incrementing
+        rows = await sql`
+          SELECT id FROM nm_nodes
+          WHERE user_id = ${userId} AND type = ${type} AND normalized_label = ${normalizedLabel} AND valence = ${val}
+        `;
+        if (!rows.length) {
+          // Shouldn't happen, but fall back to upsert
+          rows = await sql`
+            INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+            VALUES (${userId}, ${type}, ${label}, ${normalizedLabel}, ${val}, 1, now(), ${meta}::jsonb)
+            ON CONFLICT (user_id, type, normalized_label, valence)
+            DO UPDATE SET last_seen_at = now(), label = EXCLUDED.label
+            RETURNING id
+          `;
+        }
+      } else {
+        rows = await sql`
+          INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+          VALUES (${userId}, ${type}, ${label}, ${normalizedLabel}, ${val}, 1, now(), ${meta}::jsonb)
+          ON CONFLICT (user_id, type, normalized_label, valence)
+          DO UPDATE SET
+            count = nm_nodes.count + 1,
+            last_seen_at = now(),
+            label = EXCLUDED.label
+          RETURNING id
+        `;
+      }
       nodeIds.push(rows[0].id);
     }
 
@@ -1273,26 +1296,60 @@ app.post('/api/admin/rebuild-graph', requireAuth, async (req, res) => {
       const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
       const chains = payload.chains || [];
       const entryDate = row.created_at || new Date().toISOString();
+      const seenInEntry = new Set(); // deduplicate nodes within a single entry
 
       for (const chain of chains) {
         const nodeIds = [];
         if (chain.emotion) {
           const neg = isNeg(chain.emotion);
-          nodeIds.push(await upsertNode('emotion', chain.emotion, neg ? 'negative' : 'positive', { source: 'legacy' }, entryDate));
+          const nl = normalizeLabel(chain.emotion);
+          const dedupeKey = `emotion|${nl}|${neg ? 'negative' : 'positive'}`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('emotion', chain.emotion, neg ? 'negative' : 'positive', { source: 'legacy' }, entryDate));
+          } else {
+            // Already counted this node in this entry — just get id
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'emotion' AND normalized_label = ${nl} AND valence = ${neg ? 'negative' : 'positive'}`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
           stats.nodes_upserted++;
         }
         if (chain.area) {
-          nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy' }, entryDate));
+          const nl = normalizeLabel(chain.area);
+          const dedupeKey = `area|${nl}|neutral`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'area' AND normalized_label = ${nl} AND valence = 'neutral'`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
           stats.nodes_upserted++;
         }
         if (chain.cause) {
           const emVal = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
-          nodeIds.push(await upsertNode('cause', chain.cause, emVal, { source: 'legacy' }, entryDate));
+          const nl = normalizeLabel(chain.cause);
+          const dedupeKey = `cause|${nl}|${emVal}`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('cause', chain.cause, emVal, { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'cause' AND normalized_label = ${nl} AND valence = ${emVal}`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
           stats.nodes_upserted++;
         }
         if (chain.thought) {
           const emVal = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
-          nodeIds.push(await upsertNode('thought', chain.thought, emVal, { source: 'legacy' }, entryDate));
+          const nl = normalizeLabel(chain.thought);
+          const dedupeKey = `thought|${nl}|${emVal}`;
+          if (!seenInEntry.has(dedupeKey)) {
+            seenInEntry.add(dedupeKey);
+            nodeIds.push(await upsertNode('thought', chain.thought, emVal, { source: 'legacy' }, entryDate));
+          } else {
+            const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'thought' AND normalized_label = ${nl} AND valence = ${emVal}`;
+            if (existing.length) nodeIds.push(existing[0].id);
+          }
           stats.nodes_upserted++;
         }
         for (let i = 0; i < nodeIds.length - 1; i++) {
