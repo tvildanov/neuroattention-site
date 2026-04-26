@@ -864,7 +864,7 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
         // Upsert nodes
         const nodeIds = [];
         for (const item of v2Items) {
-          const normalizedLabel = (item.label || '').toLowerCase().trim();
+          const normalizedLabel = normalizeLabel(item.label);
           const rows2 = await sql`
             INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
             VALUES (${userId}, ${item.type}, ${item.label}, ${normalizedLabel}, ${item.valence}, 1, ${entryDate}::timestamptz, ${item.metadata}::jsonb)
@@ -1197,6 +1197,148 @@ app.post('/api/neuromap/v2/merge-aliases', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('POST /api/neuromap/v2/merge-aliases:', err);
     res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ── ADMIN: Rebuild graph from source data (superadmin/founder only) ──
+// Drops nm_nodes + nm_links for the caller, re-creates from neuro_map_entries + neuro_resource_diary
+app.post('/api/admin/rebuild-graph', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Allow superadmin/founder to rebuild another user's graph via body.userId
+    const userId = req.body.userId || req.user.id;
+    const NEG_EMOTIONS = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение',
+      'отчаяние','обида','ревность','зависть','растерянность','разочарование','одиночество','беспомощность','скука',
+      'тоска','подавленность','паника','агрессия','отвращение','гнев','ярость','печаль','уныние','меланхолия',
+      'волнение','беспокойство','нервозность','испуг','боязнь','ужас','бешенство','лень','безразличие','равнодушие',
+      'утомление','изнурение','истощение','напряжение','ощущение пустоты'];
+    function isNeg(e) { return NEG_EMOTIONS.includes((e || '').toLowerCase().trim()); }
+
+    // Helper: upsert a single node with normalizeLabel
+    async function upsertNode(type, label, valence, metadata, entryDate) {
+      const nl = normalizeLabel(label);
+      const val = valence || 'neutral';
+      const meta = metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : '{}';
+      const dt = entryDate || new Date().toISOString();
+      const rows = await sql`
+        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+        VALUES (${userId}, ${type}, ${label}, ${nl}, ${val}, 1, ${dt}::timestamptz, ${meta}::jsonb)
+        ON CONFLICT (user_id, type, normalized_label, valence)
+        DO UPDATE SET
+          count = nm_nodes.count + 1,
+          last_seen_at = GREATEST(nm_nodes.last_seen_at, ${dt}::timestamptz),
+          label = EXCLUDED.label
+        RETURNING id
+      `;
+      return rows[0].id;
+    }
+
+    // Helper: upsert a link
+    async function upsertLink(fromId, toId, entryDate) {
+      const dt = entryDate || new Date().toISOString();
+      await sql`
+        INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+        VALUES (${userId}, ${fromId}, ${toId}, 1, ${dt}::timestamptz)
+        ON CONFLICT (user_id, from_node_id, to_node_id)
+        DO UPDATE SET
+          count = nm_links.count + 1,
+          last_seen_at = GREATEST(nm_links.last_seen_at, ${dt}::timestamptz)
+      `;
+    }
+
+    // 1. Drop existing graph for this user
+    await sql`DELETE FROM nm_links WHERE user_id = ${userId}`;
+    await sql`DELETE FROM nm_nodes WHERE user_id = ${userId}`;
+
+    let stats = { legacy_entries: 0, diary_entries: 0, nodes_upserted: 0, links_upserted: 0 };
+
+    // 2. Re-process legacy neuro_map_entries
+    const legacyRows = await sql`
+      SELECT id, date_key, payload, created_at
+      FROM neuro_map_entries WHERE user_id = ${userId}
+      ORDER BY date_key ASC, created_at ASC
+    `;
+    for (const row of legacyRows) {
+      const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+      const chains = payload.chains || [];
+      const entryDate = row.created_at || new Date().toISOString();
+
+      for (const chain of chains) {
+        const nodeIds = [];
+        if (chain.emotion) {
+          const neg = isNeg(chain.emotion);
+          nodeIds.push(await upsertNode('emotion', chain.emotion, neg ? 'negative' : 'positive', { source: 'legacy' }, entryDate));
+          stats.nodes_upserted++;
+        }
+        if (chain.area) {
+          nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy' }, entryDate));
+          stats.nodes_upserted++;
+        }
+        if (chain.cause) {
+          const emVal = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
+          nodeIds.push(await upsertNode('cause', chain.cause, emVal, { source: 'legacy' }, entryDate));
+          stats.nodes_upserted++;
+        }
+        if (chain.thought) {
+          const emVal = chain.emotion ? (isNeg(chain.emotion) ? 'negative' : 'positive') : 'neutral';
+          nodeIds.push(await upsertNode('thought', chain.thought, emVal, { source: 'legacy' }, entryDate));
+          stats.nodes_upserted++;
+        }
+        for (let i = 0; i < nodeIds.length - 1; i++) {
+          await upsertLink(nodeIds[i], nodeIds[i + 1], entryDate);
+          stats.links_upserted++;
+        }
+      }
+      stats.legacy_entries++;
+    }
+
+    // 3. Re-process diary entries (neuro_resource_diary)
+    const diaryRows = await sql`
+      SELECT id, text, comment, plus_count, minus_count, created_at
+      FROM neuro_resource_diary WHERE user_id = ${userId}
+      ORDER BY created_at ASC
+    `;
+    for (const row of diaryRows) {
+      const net = (row.plus_count || 0) - (row.minus_count || 0);
+      const valence = net > 0 ? 'positive' : (net < 0 ? 'negative' : 'neutral');
+      const entryDate = row.created_at || new Date().toISOString();
+      const nodeIds = [];
+
+      // Event node from diary text
+      if (row.text) {
+        const label = row.text.substring(0, 80);
+        nodeIds.push(await upsertNode('event', label, valence, { source: 'diary', plus: row.plus_count || 0, minus: row.minus_count || 0 }, entryDate));
+        stats.nodes_upserted++;
+      }
+      // Thought node from comment
+      if (row.comment) {
+        const label = row.comment.substring(0, 80);
+        nodeIds.push(await upsertNode('thought', label, valence, { source: 'diary' }, entryDate));
+        stats.nodes_upserted++;
+      }
+      for (let i = 0; i < nodeIds.length - 1; i++) {
+        await upsertLink(nodeIds[i], nodeIds[i + 1], entryDate);
+        stats.links_upserted++;
+      }
+      stats.diary_entries++;
+    }
+
+    // 4. Count final graph
+    const finalNodes = await sql`SELECT count(*) as cnt FROM nm_nodes WHERE user_id = ${userId}`;
+    const finalLinks = await sql`SELECT count(*) as cnt FROM nm_links WHERE user_id = ${userId}`;
+
+    res.json({
+      ok: true,
+      stats,
+      graph: { nodes: parseInt(finalNodes[0].cnt), links: parseInt(finalLinks[0].cnt) }
+    });
+  } catch (err) {
+    console.error('POST /api/admin/rebuild-graph:', err);
+    res.status(500).json({ error: 'Rebuild failed: ' + err.message });
   }
 });
 
