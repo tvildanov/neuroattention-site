@@ -1322,7 +1322,7 @@ function onLogin(user){
   try { renderCourseProgress(); } catch(e){ console.warn('renderCourseProgress error:', e); }
 
   // STEP 4: Fetch fresh data from API (async, will re-render when done)
-  try { nmLoadFromAPI(); } catch(e){ console.warn('nmLoadFromAPI error:', e); }
+  try { nmLoadFromAPI().then(function(){ nmMigrateLegacy(); }).catch(function(e){ console.warn('nmMigrateLegacy error:', e); }); } catch(e){ console.warn('nmLoadFromAPI error:', e); }
   try { nmLoadVocabulary(); } catch(e){ console.warn('nmLoadVocabulary error:', e); }
   try { nmLoadV2Graph(); } catch(e){ console.warn('nmLoadV2Graph error:', e); }
   try { diaryLoadFromAPI(); } catch(e){ console.warn('diaryLoadFromAPI error:', e); }
@@ -2946,6 +2946,35 @@ async function nmLoadFromAPI(){
       try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after load:', e); }
     }
   } catch(err){ console.warn('[NM] nmLoadFromAPI FAILED:',err); }
+}
+
+// Auto-migrate legacy neuro_map_entries → nm_nodes + nm_links (runs once per user)
+async function nmMigrateLegacy(){
+  var migKey='na_nm_legacy_migrated';
+  if(localStorage.getItem(migKey)==='1') return; // already done
+  var token=naGetToken();
+  if(!token) return;
+  // Only migrate if user has old-format entries
+  var hasOld=nmData && Object.keys(nmData).length>0;
+  if(!hasOld) return;
+  var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  try {
+    console.log('[NM] Running legacy → v2 migration...');
+    var resp=await fetch(base+'/api/neuromap/v2/migrate-legacy',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:'{}'
+    });
+    if(resp.ok){
+      var json=await resp.json();
+      console.log('[NM] Legacy migration result:',json);
+      localStorage.setItem(migKey,'1');
+      // Reload v2 graph to pick up migrated data
+      try { await nmLoadV2Graph(); buildNmGraph(); } catch(e){}
+    } else {
+      console.warn('[NM] Legacy migration failed: status='+resp.status);
+    }
+  } catch(err){ console.warn('[NM] Legacy migration error:',err); }
 }
 
 // Load vocabulary JSON (for chip suggestions)
