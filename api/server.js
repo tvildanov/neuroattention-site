@@ -822,6 +822,16 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // ── IDEMPOTENCY GUARD ──
+    // If nm_nodes already has data for this user, migration was already done.
+    // Skip entirely to prevent count inflation from repeated calls.
+    const existing = await sql`
+      SELECT COUNT(*)::int AS cnt FROM nm_nodes WHERE user_id = ${userId}
+    `;
+    if (existing[0].cnt > 0) {
+      return res.json({ ok: true, migrated: 0, message: 'Already migrated — nm_nodes has data, skipping' });
+    }
+
     // Known negative emotions (must match frontend NM_EMOTIONS_NEG)
     const NEG_EMOTIONS = ['тревога','страх','раздражение','злость','вина','стыд','грусть','усталость','апатия','напряжение'];
     function isNeg(e) { return NEG_EMOTIONS.includes((e || '').toLowerCase().trim()); }
@@ -841,17 +851,20 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
     let totalNodes = 0;
     let totalLinks = 0;
 
+    // Per-entry deduplication to prevent double-counting within one migration run
+    const seenNodes = new Set(); // "type|normalizedLabel|valence"
+    const seenLinks = new Set(); // "fromId|toId"
+
     // 2. Process each legacy entry
     for (const row of legacyRows) {
       const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
       const chains = payload.chains || [];
       if (!chains.length) continue;
 
-      // Use created_at from the legacy row for last_seen_at (preserve temporal ordering)
       const entryDate = row.created_at || new Date().toISOString();
+      const seenInEntry = new Set(); // per-entry dedup for count accuracy
 
       for (const chain of chains) {
-        // Build a v2 chain from: emotion → area → cause → thought
         const v2Items = [];
 
         if (chain.emotion) {
@@ -881,7 +894,6 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
           });
         }
         if (chain.thought) {
-          // For thoughts: first 15 in the canonical list are negative
           v2Items.push({
             type: 'thought',
             label: chain.thought,
@@ -892,16 +904,20 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
 
         if (!v2Items.length) continue;
 
-        // Upsert nodes
+        // Upsert nodes — only increment count once per entry per unique node
         const nodeIds = [];
         for (const item of v2Items) {
           const normalizedLabel = normalizeLabel(item.label);
+          const nodeKey = `${item.type}|${normalizedLabel}|${item.valence}`;
+          const shouldIncrement = !seenInEntry.has(nodeKey);
+          if (shouldIncrement) seenInEntry.add(nodeKey);
+
           const rows2 = await sql`
             INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
             VALUES (${userId}, ${item.type}, ${item.label}, ${normalizedLabel}, ${item.valence}, 1, ${entryDate}::timestamptz, ${item.metadata}::jsonb)
             ON CONFLICT (user_id, type, normalized_label, valence)
             DO UPDATE SET
-              count = nm_nodes.count + 1,
+              count = CASE WHEN ${shouldIncrement} THEN nm_nodes.count + 1 ELSE nm_nodes.count END,
               last_seen_at = GREATEST(nm_nodes.last_seen_at, ${entryDate}::timestamptz)
             RETURNING id
           `;
@@ -911,12 +927,16 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
 
         // Create links between consecutive nodes
         for (let i = 0; i < nodeIds.length - 1; i++) {
+          const linkKey = `${nodeIds[i]}|${nodeIds[i+1]}`;
+          const shouldIncrementLink = !seenInEntry.has('L:'+linkKey);
+          if (shouldIncrementLink) seenInEntry.add('L:'+linkKey);
+
           await sql`
             INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
             VALUES (${userId}, ${nodeIds[i]}, ${nodeIds[i + 1]}, 1, ${entryDate}::timestamptz)
             ON CONFLICT (user_id, from_node_id, to_node_id)
             DO UPDATE SET
-              count = nm_links.count + 1,
+              count = CASE WHEN ${shouldIncrementLink} THEN nm_links.count + 1 ELSE nm_links.count END,
               last_seen_at = GREATEST(nm_links.last_seen_at, ${entryDate}::timestamptz)
             RETURNING id
           `;

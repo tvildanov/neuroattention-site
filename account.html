@@ -1216,15 +1216,7 @@
               <p>Дневник нейроресурса</p>
             </div>
           </div>
-          <!-- Founder-only: rebuild graph -->
-          <div id="admin-rebuild-section" style="display:none;margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.06);">
-            <h3 style="font-size:15px;margin:0 0 0.5rem;">Служебные операции</h3>
-            <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;">Доступно только основателям. Перестроение графа пересчитывает все узлы и связи из исходных записей дневника.</p>
-            <button class="btn btn-solid" id="btn-rebuild-graph" style="font-size:13px;" onclick="rebuildGraph()">
-              Пересчитать граф
-            </button>
-            <span id="rebuild-status" style="margin-left:1rem;font-size:12px;color:var(--text-muted);"></span>
-          </div>
+          <!-- Old admin rebuild section removed — rebuild is now in NeuroMap section for all users -->
         </div>
         <div id="admin-tools-locked" style="display:none;text-align:center;padding:3rem 1rem;">
           <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -1435,10 +1427,6 @@ function setupAdminDashboard(user){
     switchAdminTab('admin-stats');
     document.getElementById('admin-restricted-msg').style.display='none';
   }
-
-  // Show rebuild-graph section for founders only
-  var rebuildSec=document.getElementById('admin-rebuild-section');
-  if(rebuildSec) rebuildSec.style.display=isFounder?'':'none';
 
   // Populate stats
   if(isFounder||isSpec) populateAdminStats(user);
@@ -3661,12 +3649,6 @@ function nmSimulate(canvas, initAlpha){
       ctx.textAlign='center';ctx.textBaseline='middle';
       var label=n.label.length>18?n.label.substring(0,16)+'…':n.label;
       ctx.fillText(label,n.x,n.y+drawR+16);
-      // Count badge for repeated nodes
-      if(n.count>1){
-        ctx.font='600 16px Inter,sans-serif';
-        ctx.fillStyle='rgba(0,224,255,0.9)';
-        ctx.fillText('×'+n.count,n.x+drawR+8,n.y-drawR+4);
-      }
       ctx.globalAlpha=1;
     });
 
