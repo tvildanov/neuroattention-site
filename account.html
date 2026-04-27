@@ -54,8 +54,8 @@
 
 /* ── Program selection cards ── */
 .program-select-card { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:1.5rem;cursor:pointer;transition:all 0.3s; }
-.program-select-card:hover,.program-select-card.selected { border-color:rgba(0,224,255,0.25);background:rgba(0,224,255,0.03); }
-.program-select-card.selected { box-shadow:0 0 20px rgba(0,224,255,0.08); }
+.program-select-card:hover,.program-select-card.selected { border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.03); }
+.program-select-card.selected { box-shadow:0 0 20px rgba(255,255,255,0.04); }
 .program-select-card h4 { font-size:1rem;font-weight:600;color:var(--text-primary);margin:0 0 0.4rem; }
 .program-select-card p { font-size:13px;color:var(--text-muted);margin:0 0 0.75rem;line-height:1.5; }
 .program-select-card .price { font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent-cyan);font-weight:600; }
@@ -179,44 +179,44 @@
 @keyframes modalIn { from { opacity:0;transform:scale(0.95) translateY(10px); } to { opacity:1;transform:scale(1) translateY(0); } }
 
 /* ── NeuroMap ── */
-.nm-view-btn { padding:0.35rem 0.7rem;border-radius:8px;font-size:11px;font-weight:500;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);color:var(--text-muted);cursor:pointer;transition:all 0.2s; }
-.nm-view-btn:hover { border-color:rgba(255,255,255,0.15);color:var(--text-secondary); }
-.nm-view-btn.active { background:rgba(0,224,255,0.08);border-color:rgba(0,224,255,0.2);color:var(--accent-cyan); }
-.nm-filter-btn { padding:0.3rem 0.6rem;border-radius:6px;font-size:10px;font-weight:500;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
+.nm-view-btn { padding:0.35rem 0.7rem;border-radius:8px;font-size:11px;font-weight:500;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
+.nm-view-btn:hover { border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
+.nm-view-btn.active { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.18);color:var(--text-primary); }
+.nm-filter-btn { padding:0.3rem 0.6rem;border-radius:6px;font-size:10px;font-weight:500;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
 .nm-filter-btn:hover { color:var(--text-muted);border-color:rgba(255,255,255,0.12); }
-.nm-filter-btn.active { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15);color:var(--accent-cyan); }
-.nm-layer-chk { display:inline-flex;align-items:center;gap:3px;cursor:pointer;padding:0.2rem 0.5rem;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);transition:all 0.2s; }
-.nm-layer-chk:hover { border-color:rgba(255,255,255,0.15); }
-.nm-layer-chk input[type=checkbox] { width:12px;height:12px;accent-color:var(--accent-cyan);margin:0; }
+.nm-filter-btn.active { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16);color:var(--text-primary); }
+.nm-layer-chk { display:inline-flex;align-items:center;gap:3px;cursor:pointer;padding:0.2rem 0.5rem;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);transition:all 0.2s; }
+.nm-layer-chk:hover { border-color:rgba(255,255,255,0.14); }
+.nm-layer-chk input[type=checkbox] { width:12px;height:12px;accent-color:rgba(255,255,255,0.7);margin:0; }
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
-.nm-layer-chk:has(input:checked) { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15); }
-.nm-layer-chk:has(input:checked) .nm-lbl { color:var(--accent-cyan); }
-.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:default !important; }
+.nm-layer-chk:has(input:checked) { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16); }
+.nm-layer-chk:has(input:checked) .nm-lbl { color:var(--text-muted); }
+.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:none; }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
 .nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
 .nm-fs-close { background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:13px;padding:0.4rem 0.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s; }
 .nm-fs-close:hover { border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-fs-body { flex:1;display:flex;overflow:hidden; }
-.nm-fs-canvas-wrap { flex:1;position:relative;cursor:default; }
-.nm-fs-canvas-wrap canvas { cursor:grab; }
-.nm-fs-canvas-wrap canvas:active { cursor:grabbing; }
+.nm-fs-canvas-wrap { flex:1;position:relative;cursor:none; }
+.nm-fs-canvas-wrap canvas { cursor:none; }
+.nm-fs-canvas-wrap canvas:active { cursor:none; }
 .nm-fs-sidebar { width:280px;overflow-y:auto;border-left:1px solid rgba(255,255,255,0.06);padding:0.8rem; }
-.nm-fs-btn { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-muted);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s; }
-.nm-fs-btn:hover { background:rgba(0,224,255,0.06);border-color:rgba(0,224,255,0.15);color:var(--accent-cyan); }
+.nm-fs-btn { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s; }
+.nm-fs-btn:hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
 @media(max-width:768px){ .nm-fs-sidebar { display:none; } }
 .nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
 .nm-chip:hover { border-color:rgba(255,255,255,0.18); }
-.nm-chip.selected { background:rgba(0,224,255,0.08);border-color:rgba(0,224,255,0.25);color:var(--accent-cyan); }
+.nm-chip.selected { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-chip.neg.selected { background:rgba(255,120,120,0.08);border-color:rgba(255,120,120,0.25);color:rgba(255,140,140,1); }
 .nm-chip.pos.selected { background:rgba(120,255,160,0.08);border-color:rgba(120,255,160,0.25);color:rgba(140,255,170,1); }
 .nm-slider-wrap { display:flex;align-items:center;gap:1rem;margin-top:0.75rem; }
 .nm-slider-wrap input[type=range] { flex:1;accent-color:var(--accent-cyan);height:6px; }
 .nm-slider-val { font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--text-primary);min-width:2rem;text-align:center; }
 .nm-emotion-badge { display:inline-flex;padding:0.2rem 0.5rem;border-radius:6px;font-size:10px;font-weight:500; }
-.nm-3d-toggle { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-muted);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;margin-right:0.4rem; }
-.nm-3d-toggle:hover { border-color:rgba(255,255,255,0.15);color:var(--text-primary); }
-.nm-3d-toggle.active { background:rgba(0,210,190,0.12);border-color:rgba(0,210,190,0.3);color:var(--accent-cyan); }
+.nm-3d-toggle { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;margin-right:0.4rem; }
+.nm-3d-toggle:hover { border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
+.nm-3d-toggle.active { background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 #nm-3d-container { position:absolute;inset:0;z-index:2;display:none;border-radius:14px;overflow:hidden; }
 #nm-3d-container.active { display:block; }
 </style>
@@ -488,7 +488,7 @@
           <span id="tp-emoji" style="font-size:1.5rem;"></span>
           <div>
             <h3 style="margin:0;font-size:1rem;color:var(--text-primary);">Ваш профиль адаптации</h3>
-            <p id="tp-name" style="margin:0;font-size:0.8rem;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;"></p>
+            <p id="tp-name" style="margin:0;font-size:0.95rem;color:var(--text-primary);font-family:'Unbounded',sans-serif;font-weight:500;letter-spacing:0.05em;"></p>
           </div>
         </div>
         <p id="tp-subtitle" style="margin:0 0 0.75rem;color:var(--text-secondary);font-size:0.85rem;line-height:1.5;"></p>
@@ -923,7 +923,7 @@
         </div>
         <!-- Analyze + Rebuild buttons -->
         <div id="nm-analyze-btn-wrap" style="display:none;margin-top:1rem;text-align:center;">
-          <button class="btn btn-solid" onclick="nmTriggerAnalysis()" style="padding:0.85rem 2rem;font-size:14px;border-radius:14px;background:linear-gradient(135deg,rgba(0,224,255,0.15),rgba(120,80,255,0.15));border:1px solid rgba(0,224,255,0.25);gap:0.5rem;">
+          <button class="btn btn-solid" onclick="nmTriggerAnalysis()" style="padding:0.85rem 2rem;font-size:14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);gap:0.5rem;">
             <svg style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             Проанализировать карту личности
           </button>
@@ -938,7 +938,7 @@
           <div id="nm-analysis-content"></div>
         </div>
         <!-- ── Node Drill-down Panel ── -->
-        <div id="nm-drilldown" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(0,224,255,0.15);border-radius:14px;position:relative;">
+        <div id="nm-drilldown" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;position:relative;">
           <button onclick="closeNmDrilldown()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;">&times;</button>
           <div id="nm-dd-header" style="margin-bottom:1rem;">
             <span id="nm-dd-type-badge" style="display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:2px 8px;border-radius:8px;margin-bottom:0.4rem;"></span>
@@ -1417,11 +1417,11 @@ function onLogin(user){
 
 // ── Test Profile Card ──
 var TEST_PROFILES_MAP = {
-  STABLE_EXPLORER: { name:'Устойчивый исследователь', emoji:'🧭', subtitle:'Высокий уровень адаптации. Ваша нервная система устойчива, внимание собрано.' },
-  HIGH_LOAD_ADAPTER: { name:'Адаптер высокой нагрузки', emoji:'⚡', subtitle:'Вы справляетесь, но ресурс тратится быстрее, чем восстанавливается.' },
-  NERVOUS_SYSTEM_SENSITIVE: { name:'Чувствительная нервная система', emoji:'🌊', subtitle:'Ваше тело реагирует остро — это особенность, требующая настройки.' },
-  DISTRACTED_EXPLORER: { name:'Рассредоточенный исследователь', emoji:'🔍', subtitle:'Ваш интерес широк, но фокус рассеян — это управляемо.' },
-  FUTURE_SPECIALIST: { name:'Будущий специалист', emoji:'🔑', subtitle:'Вы хотите помогать другим — и ваш уровень адаптации позволяет.' }
+  STABLE_EXPLORER: { name:'STABLE EXPLORER', emoji:'🧭', subtitle:'Устойчивый. Адаптированный. С потенциалом усиления.' },
+  HIGH_LOAD_ADAPTER: { name:'HIGH-LOAD ADAPTER', emoji:'⚡', subtitle:'Функционирует. Держит нагрузку. Теряет ресурс.' },
+  NERVOUS_SYSTEM_SENSITIVE: { name:'NERVOUS SYSTEM SENSITIVE', emoji:'🌊', subtitle:'Перегрузка. Нестабильность. Потеря опоры.' },
+  DISTRACTED_EXPLORER: { name:'FRAGMENTED FOCUS', emoji:'🔍', subtitle:'Рассеянное внимание. Потеря контроля.' },
+  FUTURE_SPECIALIST: { name:'FUTURE SPECIALIST', emoji:'🔑', subtitle:'Развитие. Интерес. Потенциал влияния.' }
 };
 
 function loadTestProfile(){
@@ -3584,6 +3584,9 @@ function nmToggleFullscreen(){
   if(nmFullscreen){
     overlay.classList.add('active');
     document.body.style.overflow='hidden';
+    // Show custom cursor
+    var fsCur=document.getElementById('nm-fs-cursor');
+    if(fsCur && !window.matchMedia('(pointer:coarse)').matches) fsCur.style.display='block';
     // Clone filters into sidebar
     nmFsBuildFilters();
     // Sync FS 3D toggle state
@@ -3597,6 +3600,8 @@ function nmToggleFullscreen(){
   } else {
     overlay.classList.remove('active');
     document.body.style.overflow='';
+    var fsCur=document.getElementById('nm-fs-cursor');
+    if(fsCur) fsCur.style.display='none';
     if(nmFsAnimFrame){ cancelAnimationFrame(nmFsAnimFrame); nmFsAnimFrame=null; }
     // Clean up FS 3D if active
     if(nmFs3DGraph){ nmFs3DGraph._destructor && nmFs3DGraph._destructor(); nmFs3DGraph=null; }
@@ -3776,18 +3781,109 @@ function nmFsStartRender(){
     }
   });
   
-  fsCanvas.addEventListener('click',function(ev){
-    var pt=getFsXY(ev);
+  // ── Fullscreen 2D drag-and-drop ──
+  var fsDragNode=null, fsClickStart=null, fsClickTime=0;
+  function fsFindNode(mx,my){
     var found=null;
     nmNodes.forEach(function(n){
-      var r=nmNodeR(n);
-      var dx=n.x-pt.x,dy=n.y-pt.y;
-      if(dx*dx+dy*dy<(r+12)*(r+12)) found=n;
+      var r=nmNodeR(n)+6;
+      var dx=n.x-mx,dy=n.y-my;
+      if(dx*dx+dy*dy<r*r) found=n;
     });
-    if(found){
-      if(nmFullscreen) openFsDrilldown(found);
-      else openNmDrilldown(found);
+    return found;
+  }
+  fsCanvas.addEventListener('mousedown',function(ev){
+    var pt=getFsXY(ev);
+    fsClickStart=pt; fsClickTime=Date.now();
+    var n=fsFindNode(pt.x,pt.y);
+    if(!n) return;
+    ev.preventDefault();
+    fsDragNode=n;
+    fsDragNode.fx=fsDragNode.x; fsDragNode.fy=fsDragNode.y;
+    fsCanvas.style.cursor='grabbing';
+    // Restart simulation if stopped
+    if(!nmAnimFrame){
+      var normCanvas=document.getElementById('nm-canvas');
+      nmSimulate(normCanvas, 0.05);
     }
+  });
+  fsCanvas.addEventListener('mousemove',function(ev){
+    if(!fsDragNode) return;
+    ev.preventDefault();
+    var pt=getFsXY(ev);
+    fsDragNode.fx=pt.x; fsDragNode.fy=pt.y;
+    fsDragNode.x=pt.x; fsDragNode.y=pt.y;
+    fsDragNode.vx=0; fsDragNode.vy=0;
+    nmPrevPositions[fsDragNode.id]={x:pt.x,y:pt.y};
+    if(!nmAnimFrame){
+      var normCanvas=document.getElementById('nm-canvas');
+      nmSimulate(normCanvas, 0.05);
+    }
+  });
+  function fsEndDrag(){
+    if(!fsDragNode) return;
+    fsDragNode.x=fsDragNode.fx; fsDragNode.y=fsDragNode.fy;
+    fsDragNode.vx=0; fsDragNode.vy=0;
+    nmPrevPositions[fsDragNode.id]={x:fsDragNode.fx,y:fsDragNode.fy};
+    fsDragNode=null;
+    fsCanvas.style.cursor='';
+  }
+  fsCanvas.addEventListener('mouseup',function(ev){
+    var wasDrag=!!fsDragNode;
+    fsEndDrag();
+    // Click detection (short, small movement)
+    if(!wasDrag && fsClickStart){
+      var pt=getFsXY(ev);
+      var dx=pt.x-fsClickStart.x, dy=pt.y-fsClickStart.y;
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<8 && Date.now()-fsClickTime<300){
+        var n=fsFindNode(pt.x,pt.y);
+        if(n){
+          if(nmFullscreen) openFsDrilldown(n);
+          else openNmDrilldown(n);
+        }
+      }
+    }
+    fsClickStart=null;
+  });
+  fsCanvas.addEventListener('mouseleave',function(){ fsEndDrag(); fsClickStart=null; });
+  // Touch support
+  fsCanvas.addEventListener('touchstart',function(ev){
+    var touch=ev.touches[0]; if(!touch) return;
+    var rect=fsCanvas.getBoundingClientRect();
+    var dpr=window.devicePixelRatio||1;
+    var normCanvas=document.getElementById('nm-canvas');
+    var scaleX=(rect.width*dpr)/(normCanvas.width||1);
+    var scaleY=(rect.height*dpr)/(normCanvas.height||1);
+    var pt={x:(touch.clientX-rect.left)*dpr/scaleX, y:(touch.clientY-rect.top)*dpr/scaleY};
+    var n=fsFindNode(pt.x,pt.y);
+    if(!n) return;
+    ev.preventDefault();
+    fsDragNode=n;
+    fsDragNode.fx=fsDragNode.x; fsDragNode.fy=fsDragNode.y;
+  },{passive:false});
+  fsCanvas.addEventListener('touchmove',function(ev){
+    if(!fsDragNode) return;
+    ev.preventDefault();
+    var touch=ev.touches[0]; if(!touch) return;
+    var rect=fsCanvas.getBoundingClientRect();
+    var dpr=window.devicePixelRatio||1;
+    var normCanvas=document.getElementById('nm-canvas');
+    var scaleX=(rect.width*dpr)/(normCanvas.width||1);
+    var scaleY=(rect.height*dpr)/(normCanvas.height||1);
+    var pt={x:(touch.clientX-rect.left)*dpr/scaleX, y:(touch.clientY-rect.top)*dpr/scaleY};
+    fsDragNode.fx=pt.x; fsDragNode.fy=pt.y;
+    fsDragNode.x=pt.x; fsDragNode.y=pt.y;
+    fsDragNode.vx=0; fsDragNode.vy=0;
+    nmPrevPositions[fsDragNode.id]={x:pt.x,y:pt.y};
+  },{passive:false});
+  fsCanvas.addEventListener('touchend',function(){ fsEndDrag(); });
+  fsCanvas.addEventListener('touchcancel',function(){ fsEndDrag(); });
+  // Double-click to unfreeze
+  fsCanvas.addEventListener('dblclick',function(ev){
+    var pt=getFsXY(ev);
+    var n=fsFindNode(pt.x,pt.y);
+    if(n && n.fx!==undefined){ delete n.fx; delete n.fy; }
   });
 })();
 
@@ -3795,6 +3891,22 @@ function nmFsStartRender(){
 document.addEventListener('keydown',function(ev){
   if(ev.key==='Escape' && nmFullscreen) nmToggleFullscreen();
 });
+
+// Fullscreen custom cursor follow
+(function(){
+  var fsOverlay=document.getElementById('nm-fs-overlay');
+  var fsCur=document.getElementById('nm-fs-cursor');
+  if(!fsOverlay||!fsCur) return;
+  fsOverlay.addEventListener('mousemove',function(ev){
+    fsCur.style.transform='translate('+ev.clientX+'px,'+ev.clientY+'px) translate(-50%,-50%)';
+  });
+  fsOverlay.addEventListener('mousedown',function(){
+    fsCur.style.width='9px'; fsCur.style.height='9px';
+  });
+  fsOverlay.addEventListener('mouseup',function(){
+    fsCur.style.width='14px'; fsCur.style.height='14px';
+  });
+})();
 
 // ── Fullscreen Drill-down Panel ──
 function closeFsDrilldown(){
@@ -3899,6 +4011,25 @@ function drawFsDdTimeline(node){
   });
 }
 
+// ── 3D Graph helpers ──
+// Grab THREE from ForceGraph3D's internal bundle
+var THREE = window.THREE || null;
+// ForceGraph3D uses three-spritetext internally; if THREE is not global, we'll create labels via canvas
+function nmMake3DLabel(text){
+  var c=document.createElement('canvas');
+  c.width=256; c.height=64;
+  var ctx=c.getContext('2d');
+  ctx.font='600 24px Inter,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  var label=text.length>20?text.substring(0,18)+'\u2026':text;
+  ctx.fillText(label,128,32);
+  if(!THREE){ return null; }
+  var tex=new THREE.CanvasTexture(c);
+  tex.needsUpdate=true;
+  return tex;
+}
+
 // ── 3D Graph Mode ──
 var nm3DMode = false;
 var nm3DGraph = null;
@@ -3954,28 +4085,52 @@ function nmBuildFs3DGraph(container){
     var hex = '#8899aa';
     if(match) hex = '#' + ((1<<24)+(parseInt(match[1])<<16)+(parseInt(match[2])<<8)+parseInt(match[3])).toString(16).slice(1);
     var r = nmNodeR(n);
-    gNodes.push({ id: n.id, label: n.label, color: hex, val: Math.max(r * 0.8, 4), layer: n.layer });
+    gNodes.push({ id: n.id, label: n.label, color: hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, _origNode: n });
   });
   nmLinks.forEach(function(l){
     if(nodeIdx[l.source]!==undefined && nodeIdx[l.target]!==undefined){
-      gLinks.push({ source: l.source, target: l.target, count: l.count||1 });
+      var sn = nmNodes[nodeIdx[l.source]];
+      var tn = nmNodes[nodeIdx[l.target]];
+      var ec = nmGetEdgeColor(sn, tn);
+      var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
+      gLinks.push({ source: l.source, target: l.target, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
     }
   });
   nmFs3DGraph = ForceGraph3D()(container)
     .graphData({ nodes: gNodes, links: gLinks })
-    .nodeLabel('label')
-    .nodeColor('color')
-    .nodeVal('val')
-    .linkWidth(function(l){ return Math.max(0.5, Math.log((l.count||1)+1)); })
-    .linkOpacity(0.25)
+    .nodeLabel(function(n){ return n.label + (n._layer ? ' ('+NM_LAYERS[n._layer]+')' : ''); })
+    .nodeColor(function(n){ return n.color; })
+    .nodeVal(function(n){ return n.val; })
+    .nodeOpacity(0.9)
+    .nodeThreeObjectExtend(true)
+    .nodeThreeObject(function(node){
+      // Add text sprite label below each node
+      var sprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: nmMake3DLabel(node.label),
+          transparent: true, depthWrite: false
+        })
+      );
+      sprite.scale.set(40, 10, 1);
+      sprite.position.set(0, -8, 0);
+      return sprite;
+    })
+    .linkColor(function(l){ return l.color; })
+    .linkWidth(function(l){ return l.width; })
+    .linkOpacity(0.5)
+    .linkDirectionalArrowLength(5)
+    .linkDirectionalArrowRelPos(1)
+    .linkDirectionalArrowColor(function(l){ return l.color; })
     .backgroundColor('rgba(0,0,0,0)')
     .width(container.clientWidth)
     .height(container.clientHeight)
     .onNodeClick(function(gNode){
-      // Find original nmNodes entry
       var origNode = nmNodes.find(function(n){ return n.id === gNode.id; });
       if(origNode) openFsDrilldown(origNode);
-    });
+    })
+    .showNavInfo(false);
+  nmFs3DGraph.d3Force('charge').strength(-120);
+  nmFs3DGraph.d3Force('link').distance(60);
 }
 
 function nmToggle3D(){
@@ -4058,6 +4213,19 @@ function nmBuild3DGraph(){
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
+    .nodeThreeObjectExtend(true)
+    .nodeThreeObject(function(node){
+      if(!THREE) return false;
+      var sprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: nmMake3DLabel(node.label),
+          transparent: true, depthWrite: false
+        })
+      );
+      sprite.scale.set(40, 10, 1);
+      sprite.position.set(0, -8, 0);
+      return sprite;
+    })
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
@@ -5375,6 +5543,7 @@ if('serviceWorker' in navigator){
 </script>
 <!-- Fullscreen NeuroMap overlay -->
 <div class="nm-fullscreen-overlay" id="nm-fs-overlay">
+  <div id="nm-fs-cursor" style="position:fixed;top:0;left:0;pointer-events:none;z-index:10001;width:14px;height:14px;border-radius:999px;background:radial-gradient(circle,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.45) 40%,rgba(255,255,255,0) 70%);transform:translate(-50%,-50%);mix-blend-mode:screen;will-change:transform;display:none;"></div>
   <div class="nm-fs-header">
     <h3>НейроКарта — полный экран</h3>
     <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -5399,7 +5568,7 @@ if('serviceWorker' in navigator){
       <div id="nm-fs-filters" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
       <div id="nm-fs-insights" style="margin-top:1rem;"></div>
       <!-- Fullscreen Drill-down Panel -->
-      <div id="nm-fs-drilldown" style="display:none;margin-top:1rem;padding:1rem;background:rgba(255,255,255,0.03);border:1px solid rgba(0,224,255,0.15);border-radius:12px;position:relative;">
+      <div id="nm-fs-drilldown" style="display:none;margin-top:1rem;padding:1rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;position:relative;">
         <button onclick="closeFsDrilldown()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px 6px;">&times;</button>
         <div id="nm-fs-dd-header" style="margin-bottom:0.75rem;">
           <span id="nm-fs-dd-type-badge" style="display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;padding:2px 6px;border-radius:6px;margin-bottom:0.3rem;"></span>
