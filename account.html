@@ -236,7 +236,7 @@
   #nm-fs-cursor { display:none!important; }
 }
 @media(max-width:600px){
-  #tab-enroll .dash-grid > div[style*="grid-template-columns:repeat(2"] { grid-template-columns:1fr!important; }
+  #tab-enroll .dash-grid > div[style*="display:flex"] { flex-wrap:nowrap; }
 }
 #rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 .rpg-modal-overlay { position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px); }
@@ -1163,9 +1163,9 @@
       </div>
 
       <!-- Program cards -->
-      <div style="grid-column:span 12;display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;">
+      <div style="grid-column:span 12;display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:0.5rem;">
         <!-- Self-Guided -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Self-Guided</span>
@@ -1176,12 +1176,12 @@
             <span style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);">$1,400</span>
           </div>
           <button class="btn btn-solid" onclick="enrollProgram('self')" style="width:100%;justify-content:center;">
-            Купить <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
 
         <!-- Guided Program -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;border-color:rgba(0,224,255,0.15);">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;border-color:rgba(0,224,255,0.15);">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Guided</span>
@@ -1193,12 +1193,12 @@
             <span style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);">$4,000</span>
           </div>
           <button class="btn btn-solid" onclick="enrollProgram('guided')" style="width:100%;justify-content:center;">
-            Записаться <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
 
         <!-- Group Program -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Group</span>
@@ -1209,12 +1209,12 @@
             <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Цена уточняется</span>
           </div>
           <button class="btn btn-ghost" onclick="enrollProgram('group')" style="width:100%;justify-content:center;">
-            Записаться <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
 
         <!-- Specialist Training -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c6 3 10 0 12-1v-4"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Specialist</span>
@@ -1225,7 +1225,7 @@
             <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Цена уточняется</span>
           </div>
           <button class="btn btn-ghost" onclick="enrollProgram('specialist')" style="width:100%;justify-content:center;">
-            Записаться <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
       </div>
@@ -1673,7 +1673,7 @@ function rpgRenderStats(stats, wmc){
     RPG_STAT_META.wmcLevels.forEach(function(lvl){
       var active = lvl.level <= wmc;
       var current = lvl.level === wmc;
-      wmcHtml += '<div style="flex:1;min-width:120px;padding:0.6rem 0.8rem;border-radius:10px;border:1px solid '+(current?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.06)')+';background:'+(current?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.01)')+';transition:all 0.3s;">';
+      wmcHtml += '<div onclick="rpgShowWmcLevel('+lvl.level+')" style="flex:1;min-width:120px;padding:0.6rem 0.8rem;border-radius:10px;border:1px solid '+(current?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.06)')+';background:'+(current?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.01)')+';transition:all 0.3s;cursor:pointer;">';
       wmcHtml += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">';
       wmcHtml += '<span style="font-size:11px;font-family:\'JetBrains Mono\',monospace;color:'+(active?'var(--text-primary)':'var(--text-dim)')+';">L'+lvl.level+'</span>';
       if(current) wmcHtml += '<span style="width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.6);display:inline-block;"></span>';
@@ -1707,6 +1707,34 @@ function rpgShowLockedModal(){
     '<p style="font-size:14px;color:var(--text-primary);margin:0 0 0.5rem;">Расширенный доступ</p>' +
     '<p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Глубокий разбор каждого слоя доступен после выбора программы. Перейдите в раздел программ для начала.</p>' +
     '<button onclick="this.closest(\'div[style*=fixed]\').remove();switchTab(\'enroll\')" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-size:12px;cursor:pointer;">Выбрать программу</button>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+// WMC Level modal
+var WMC_DESCRIPTIONS = {
+  1: {title:'L1 — Фрагментированное понимание',desc:'Базовый уровень связности модели мира. Вы начинаете осознавать отдельные компоненты своего состояния — тело, внимание, эмоции — но пока воспринимаете их изолированно. Практики на этом уровне направлены на формирование первичных связей между телесными ощущениями и эмоциональным состоянием.'},
+  2: {title:'L2 — Частичная связность',desc:'Появляются устойчивые связи между областями. Вы начинаете видеть, как физическое состояние влияет на внимание, а эмоции — на принятие решений. Практики усиливают обратную связь и расширяют зоны осознанности.'},
+  3: {title:'L3 — Системное понимание',desc:'Модель мира становится целостной. Вы отслеживаете цепочки влияний: среда → тело → состояние → поведение → результат. Практики включают управление через модель и прогнозирование реакций.'},
+  4: {title:'L4 — Управление через модель',desc:'Высший уровень: вы не только понимаете систему, но управляете ей. Осознанное переключение стратегий, адаптация к новым условиям, устойчивость при высокой нагрузке. Практики направлены на мастерство и передачу навыков.'}
+};
+function rpgShowWmcLevel(level){
+  var user = null;
+  try{ var t=localStorage.getItem('na_token'); if(t){var p=JSON.parse(atob(t.split('.')[1]));user={role:p.role};} }catch(e){}
+  var isFounderPlus = user && (user.role==='founder'||user.role==='admin_basic'||user.role==='superadmin');
+  if(!isFounderPlus){
+    rpgShowLockedModal();
+    return;
+  }
+  var info = WMC_DESCRIPTIONS[level] || {title:'Level '+level,desc:'Описание будет добавлено.'};
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);';
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+  modal.innerHTML = '<div style="max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px);">' +
+    '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.5rem;font-family:\'Space Grotesk\',sans-serif;">World Model Coherence</p>' +
+    '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">'+info.title+'</h3>' +
+    '<p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:0 0 1.5rem;">'+info.desc+'</p>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">Закрыть</button>' +
     '</div>';
   document.body.appendChild(modal);
 }
@@ -3894,6 +3922,9 @@ function nmToggleFullscreen(){
   if(nmFullscreen){
     overlay.classList.add('active');
     document.body.style.overflow='hidden';
+    // Lazy-init fullscreen event handlers (DOM elements are after script tag)
+    nmFsInitEvents();
+    nmFsInitCursor();
     // Show custom cursor
     var fsCur=document.getElementById('nm-fs-cursor');
     if(fsCur && !window.matchMedia('(pointer:coarse)').matches) fsCur.style.display='block';
@@ -4123,11 +4154,14 @@ function nmFsStartRender(){
   fsTick();
 }
 
-// Fullscreen tooltip + click handler
-(function(){
+// Fullscreen tooltip + click handler (lazy-init — DOM may not exist at parse time)
+var nmFsEventsInitialized = false;
+function nmFsInitEvents(){
+  if(nmFsEventsInitialized) return;
   var fsCanvas = document.getElementById('nm-fs-canvas');
   var fsTip = document.getElementById('nm-fs-tooltip');
   if(!fsCanvas) return;
+  nmFsEventsInitialized = true;
   
   function getFsXY(ev){
     var rect=fsCanvas.getBoundingClientRect();
@@ -4315,18 +4349,21 @@ function nmFsStartRender(){
     }
     fsTapStart=null;
   },{passive:true});
-})();
+}
 
 // Esc key handler
 document.addEventListener('keydown',function(ev){
   if(ev.key==='Escape' && nmFullscreen) nmToggleFullscreen();
 });
 
-// Fullscreen custom cursor follow
-(function(){
+// Fullscreen custom cursor follow (lazy-init — DOM may not exist at parse time)
+var nmFsCursorInitialized = false;
+function nmFsInitCursor(){
+  if(nmFsCursorInitialized) return;
   var fsOverlay=document.getElementById('nm-fs-overlay');
   var fsCur=document.getElementById('nm-fs-cursor');
   if(!fsOverlay||!fsCur) return;
+  nmFsCursorInitialized = true;
   fsOverlay.addEventListener('mousemove',function(ev){
     fsCur.style.transform='translate('+ev.clientX+'px,'+ev.clientY+'px) translate(-50%,-50%)';
   });
@@ -4336,7 +4373,7 @@ document.addEventListener('keydown',function(ev){
   fsOverlay.addEventListener('mouseup',function(){
     fsCur.style.width='14px'; fsCur.style.height='14px';
   });
-})();
+}
 
 // ── Fullscreen Drill-down Panel ──
 function closeFsDrilldown(){
@@ -4577,7 +4614,20 @@ function nmToggleLabels(){
   btns.forEach(function(b){ b.classList.toggle('active', nmLabelsAlways); b.textContent = nmLabelsAlways ? 'Подписи: всегда' : 'Подписи: наведение'; });
   // Rebuild 3D graphs if active (labels are sprites that need regeneration)
   if(nm3DMode && nm3DGraph){ nmBuild3DGraph(); }
-  if(nmFullscreen && nmFs3DGraph){ nmFsBuild3DGraph(); }
+  if(nmFullscreen && nm3DMode && nmFs3DGraph){
+    var fsCont = document.getElementById('nm-fs-3d-container');
+    if(fsCont) nmBuildFs3DGraph(fsCont);
+  }
+  // Force 2D re-render if simulation has stopped (labels are drawn in the tick loop)
+  if(!nm3DMode){
+    if(nmFullscreen && !nmFsAnimFrame){
+      nmFsStartRender();
+    }
+    if(!nmFullscreen && !nmAnimFrame){
+      var c = document.getElementById('nm-canvas');
+      if(c) nmSimulate(c, 0.01);
+    }
+  }
 }
 
 function nmToggle3D(){
