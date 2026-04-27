@@ -506,7 +506,7 @@
             <p id="rpg-profile-name" style="margin:0;font-size:1.4rem;font-family:'Unbounded',sans-serif;font-weight:600;color:var(--text-primary);letter-spacing:0.04em;line-height:1.3;"></p>
             <p id="rpg-profile-subtitle" style="margin:0.4rem 0 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;"></p>
           </div>
-          <button id="rpg-deepen-btn" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-muted);font-size:12px;padding:0.5rem 1rem;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(10px);transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'">
+          <button id="rpg-deepen-btn" onclick="switchTab('enroll')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-muted);font-size:12px;padding:0.5rem 1rem;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(10px);transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
             Углубить профиль
           </button>
@@ -523,9 +523,9 @@
       </div>
 
       <!-- Locked Blocks -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;">
+      <div id="rpg-locked-blocks" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;">
         <div style="position:relative;padding:1.2rem;border-radius:14px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);overflow:hidden;">
-          <div style="position:absolute;inset:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);background:rgba(5,7,10,0.6);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
+          <div class="rpg-locked-overlay" style="position:absolute;inset:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);background:rgba(5,7,10,0.6);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
             <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.3);stroke-width:2;margin-bottom:6px;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             <span style="font-size:11px;color:rgba(255,255,255,0.4);">Доступно после выбора программы</span>
           </div>
@@ -533,7 +533,7 @@
           <p style="font-size:13px;color:var(--text-muted);margin:0;">Дополнительный тест уточнения профиля с расширенным набором параметров</p>
         </div>
         <div style="position:relative;padding:1.2rem;border-radius:14px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);overflow:hidden;">
-          <div style="position:absolute;inset:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);background:rgba(5,7,10,0.6);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
+          <div class="rpg-locked-overlay" style="position:absolute;inset:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);background:rgba(5,7,10,0.6);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
             <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.3);stroke-width:2;margin-bottom:6px;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             <span style="font-size:11px;color:rgba(255,255,255,0.4);">Доступно после выбора программы</span>
           </div>
@@ -1603,6 +1603,17 @@ function rpgRenderStats(stats, wmc){
       html += '<span style="font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--text-primary);min-width:28px;text-align:right;">'+val+'</span>';
       html += '</div></div></div>';
     });
+    // "Расширить понимание" button for each layer
+    var isAdminRole = currentUser && (currentUser.role==='founder'||currentUser.role==='specialist'||currentUser.role==='admin_basic'||currentUser.serverRole==='superadmin');
+    if(isAdminRole){
+      html += '<button class="rpg-layer-insight-btn" onclick="rpgShowLayerInsight(\''+layer.name+'\')" style="margin-top:0.6rem;padding:0.4rem 0.9rem;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.25)\';this.style.color=\'var(--text-primary)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.color=\'var(--text-muted)\'">';
+      html += '<svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>';
+      html += 'Расширить понимание</button>';
+    } else {
+      html += '<button class="rpg-layer-insight-btn" onclick="rpgShowLockedModal()" style="margin-top:0.6rem;padding:0.4rem 0.9rem;background:transparent;border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:var(--text-dim);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;opacity:0.6;" title="Доступно после выбора программы">';
+      html += '<svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
+      html += 'Расширить понимание</button>';
+    }
     html += '</div>';
   });
   container.innerHTML = html;
@@ -1626,9 +1637,38 @@ function rpgRenderStats(stats, wmc){
   }
 }
 
+// Layer insight modals
+function rpgShowLayerInsight(layerName){
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);';
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+  modal.innerHTML = '<div style="max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px);">' +
+    '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.5rem;font-family:\'Space Grotesk\',sans-serif;">'+layerName+'</p>' +
+    '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">Глубокий разбор слоя</h3>' +
+    '<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">Контент будет добавлен. Здесь появится расширенный анализ параметров слоя с рекомендациями по развитию и детализированной диагностикой.</p>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">Закрыть</button>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+function rpgShowLockedModal(){
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);';
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+  modal.innerHTML = '<div style="max-width:400px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);text-align:center;">' +
+    '<svg style="width:32px;height:32px;fill:none;stroke:rgba(255,255,255,0.3);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
+    '<p style="font-size:14px;color:var(--text-primary);margin:0 0 0.5rem;">Расширенный доступ</p>' +
+    '<p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Глубокий разбор каждого слоя доступен после выбора программы. Перейдите в раздел программ для начала.</p>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove();switchTab(\'enroll\')" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-size:12px;cursor:pointer;">Выбрать программу</button>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
 // Client feature access
 function updateClientAccess(user){
   var hasProg = !!user.program;
+  var isAdmin = (user.role==='founder'||user.role==='specialist'||user.role==='admin_basic'||user.serverRole==='superadmin');
+  // Admin roles get full access regardless of program
+  if(isAdmin) hasProg = true;
   // Tabs that require program
   var restrictedTabs = ['program','practices','neuromap'];
   document.querySelectorAll('#client-dashboard .dash-tab[data-tab]').forEach(function(t){
@@ -1642,6 +1682,12 @@ function updateClientAccess(user){
       t.title='';
     }
   });
+  // Unlock locked blocks for admin roles
+  if(isAdmin){
+    document.querySelectorAll('.rpg-locked-overlay').forEach(function(el){
+      el.style.display='none';
+    });
+  }
 }
 
 // ── Admin Dashboard Setup ──
