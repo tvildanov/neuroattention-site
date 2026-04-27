@@ -189,7 +189,10 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_user_stats_user ON user_stats(user_id)`;
 
-    res.json({ ok: true, message: 'Migrations 003-011 applied successfully' });
+    // Migration 012: avatar_url column on users
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`;
+
+    res.json({ ok: true, message: 'Migrations 003-012 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -301,13 +304,32 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
-      SELECT id, email, display_name, phone, role, created_at, last_login_at
+      SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url
       FROM users WHERE id = ${req.user.id}
     `;
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     res.json({ user: rows[0] });
   } catch (err) {
     console.error('GET /api/auth/me:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Upload avatar (base64 stored in DB)
+app.post('/api/users/me/avatar', requireAuth, async (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar || typeof avatar !== 'string') {
+      return res.status(400).json({ error: 'avatar (base64 data-URI) required' });
+    }
+    // Limit: ~2MB base64
+    if (avatar.length > 3 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Avatar too large (max 2MB)' });
+    }
+    await sql`UPDATE users SET avatar_url = ${avatar} WHERE id = ${req.user.id}`;
+    res.json({ ok: true, avatar_url: avatar });
+  } catch (err) {
+    console.error('POST /api/users/me/avatar:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
