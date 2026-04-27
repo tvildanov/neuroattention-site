@@ -191,16 +191,19 @@
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--text-muted); }
-.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right); }
+.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:default;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right); }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
 .nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
 .nm-fs-close { background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:13px;padding:0.4rem 0.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;min-width:44px;min-height:44px;justify-content:center; }
 .nm-fs-close:hover { border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-fs-body { flex:1;display:flex;overflow:hidden; }
-.nm-fs-canvas-wrap { flex:1;position:relative;cursor:none; }
-.nm-fs-canvas-wrap canvas { cursor:none; }
-.nm-fs-canvas-wrap canvas:active { cursor:none; }
+.nm-fs-canvas-wrap { flex:1;position:relative;cursor:default; }
+.nm-fs-canvas-wrap canvas { cursor:default; }
+.nm-fs-canvas-wrap canvas:active { cursor:default; }
+.nm-fullscreen-overlay button { cursor:pointer; }
+.nm-fullscreen-overlay label { cursor:pointer; }
+.nm-fullscreen-overlay input[type=checkbox] { cursor:pointer; }
 .nm-fs-sidebar { width:280px;overflow-y:auto;border-left:1px solid rgba(255,255,255,0.06);padding:0.8rem; }
 .nm-fs-btn { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;min-width:44px;min-height:44px;justify-content:center; }
 .nm-fs-btn:hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
@@ -896,6 +899,7 @@
         </div>
         <!-- 3D toggle + Fullscreen button -->
         <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;gap:0.3rem;">
+          <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" id="nm-labels-toggle" style="display:none;font-size:10px;">Подписи: всегда</button>
           <button class="nm-3d-toggle" onclick="nmToggle3D()" id="nm-3d-toggle" style="display:none;">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             3D
@@ -2811,6 +2815,7 @@ var nmCurrentView = 'day';
 var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
+var nmLabelsAlways = (function(){ try{ return localStorage.getItem('nm_labels_always')==='true'; }catch(e){ return true; } })();
 var nmNodes = [];
 var nmLinks = [];
 var nmAnimFrame = null;
@@ -3895,6 +3900,9 @@ function nmToggleFullscreen(){
     // Clone filters into sidebar + mobile filter bar
     nmFsBuildFilters();
     nmFsBuildMobileFilters();
+    // Sync FS labels toggle state
+    var fsLabels = document.querySelectorAll('.nm-labels-toggle');
+    fsLabels.forEach(function(b){ b.textContent = nmLabelsAlways ? 'Подписи: всегда' : 'Подписи: наведение'; if(nmLabelsAlways) b.classList.add('active'); else b.classList.remove('active'); });
     // Sync FS 3D toggle state
     var fsBtn3d = document.getElementById('nm-fs-3d-toggle');
     if(fsBtn3d){
@@ -4099,15 +4107,17 @@ function nmFsStartRender(){
       }
       ctx.beginPath();ctx.arc(nx,ny,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
-      // Label
-      ctx.fillStyle='rgba(255,255,255,0.9)';
-      ctx.font='600 '+Math.round(Math.max(16,r*0.8))+'px Inter,sans-serif';
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      var label=n.label.length>22?n.label.substring(0,20)+'\u2026':n.label;
-      ctx.fillText(label,nx,ny+drawR+20);
+      // Label (only when toggle is "always")
+      if(nmLabelsAlways){
+        ctx.fillStyle='rgba(255,255,255,0.9)';
+        ctx.font='600 '+Math.round(Math.max(16,r*0.8))+'px Inter,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        var label=n.label.length>22?n.label.substring(0,20)+'\u2026':n.label;
+        ctx.fillText(label,nx,ny+drawR+20);
+      }
       ctx.globalAlpha=1;
     });
-    
+
     nmFsAnimFrame = requestAnimationFrame(fsTick);
   }
   fsTick();
@@ -4530,7 +4540,7 @@ function nmBuildFs3DGraph(container){
     .nodeOpacity(0.9)
     .nodeThreeObjectExtend(true)
     .nodeThreeObject(function(node){
-      if(!THREE) return false;
+      if(!THREE || !nmLabelsAlways) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(node.label),
@@ -4557,6 +4567,17 @@ function nmBuildFs3DGraph(container){
     .showNavInfo(false);
   nmFs3DGraph.d3Force('charge').strength(-120);
   nmFs3DGraph.d3Force('link').distance(60);
+}
+
+function nmToggleLabels(){
+  nmLabelsAlways = !nmLabelsAlways;
+  try{ localStorage.setItem('nm_labels_always', nmLabelsAlways?'true':'false'); }catch(e){}
+  // Update all toggle buttons
+  var btns = document.querySelectorAll('.nm-labels-toggle');
+  btns.forEach(function(b){ b.classList.toggle('active', nmLabelsAlways); b.textContent = nmLabelsAlways ? 'Подписи: всегда' : 'Подписи: наведение'; });
+  // Rebuild 3D graphs if active (labels are sprites that need regeneration)
+  if(nm3DMode && nm3DGraph){ nmBuild3DGraph(); }
+  if(nmFullscreen && nmFs3DGraph){ nmFsBuild3DGraph(); }
 }
 
 function nmToggle3D(){
@@ -4641,7 +4662,7 @@ function nmBuild3DGraph(){
     .nodeOpacity(0.9)
     .nodeThreeObjectExtend(true)
     .nodeThreeObject(function(node){
-      if(!THREE) return false;
+      if(!THREE || !nmLabelsAlways) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(node.label),
@@ -4710,6 +4731,8 @@ function buildNmGraph(){
   if(fsToggle) fsToggle.style.display='';
   var toggle3d=document.getElementById('nm-3d-toggle');
   if(toggle3d) toggle3d.style.display='';
+  var toggleLabels=document.getElementById('nm-labels-toggle');
+  if(toggleLabels){ toggleLabels.style.display=''; toggleLabels.textContent=nmLabelsAlways?'Подписи: всегда':'Подписи: наведение'; if(nmLabelsAlways) toggleLabels.classList.add('active'); else toggleLabels.classList.remove('active'); }
   var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
@@ -4984,12 +5007,14 @@ function nmSimulate(canvas, initAlpha){
       // Node body
       ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
-      // Label
-      ctx.fillStyle='rgba(255,255,255,0.85)';
-      ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      var label=n.label.length>18?n.label.substring(0,16)+'\u2026':n.label;
-      ctx.fillText(label,n.x,n.y+drawR+16);
+      // Label (only when toggle is "always")
+      if(nmLabelsAlways){
+        ctx.fillStyle='rgba(255,255,255,0.85)';
+        ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        var label=n.label.length>18?n.label.substring(0,16)+'\u2026':n.label;
+        ctx.fillText(label,n.x,n.y+drawR+16);
+      }
       ctx.globalAlpha=1;
     });
 
@@ -5973,6 +5998,7 @@ if('serviceWorker' in navigator){
   <div class="nm-fs-header">
     <h3>НейроКарта — полный экран</h3>
     <div style="display:flex;align-items:center;gap:0.5rem;">
+      <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" style="font-size:10px;">Подписи: всегда</button>
       <button class="nm-3d-toggle" id="nm-fs-3d-toggle" onclick="nmFsToggle3D()">
         <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D
       </button>
