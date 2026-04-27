@@ -563,13 +563,13 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
       { letter:'D', text:'Изменения вызывают тревогу, сопротивление или ощущение потери контроля' }
     ]},
     { id:'Q4', group:'attention', text:'Насколько вы чувствуете связь с телом?', options:[
-      { letter:'A', text:'Хорошо чувствую тело, напряжение, усталость, внутренние сигналы' },
-      { letter:'B', text:'Иногда чувствую, но часто замечаю тело только когда уже устал' },
+      { letter:'A', text:'Хорошо чувствую тело, чётко распознаю все внутренние сигналы и не игнорирую их' },
+      { letter:'B', text:'Чувствую тело, но часто игнорирую эти ощущения, закрываю на них глаза' },
       { letter:'C', text:'Слабо чувствую тело, часто живу «в голове»' },
       { letter:'D', text:'Почти не понимаю, что происходит с телом и состоянием' }
     ]},
     { id:'Q5', group:'state', text:'Что чаще всего мешает вам жить качественнее?', options:[
-      { letter:'A', text:'Мне нужен следующий уровень развития и глубины' },
+      { letter:'A', text:'Ничего не мешает, двигаюсь к следующему уровню развития и глубины качества жизни' },
       { letter:'B', text:'Недостаток энергии, фокуса и стабильной продуктивности' },
       { letter:'C', text:'Тревожность, эмоциональные качели, перегрузка' },
       { letter:'D', text:'Зависимости, выгорание, потеря интереса или ощущение застоя' }
@@ -609,57 +609,57 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   // ── 5 Profiles ──
   var PROFILES = {
     STABLE_EXPLORER: {
-      name:'STABLE EXPLORER', subtitle:'Устойчивый. Адаптированный. С потенциалом усиления.', emoji:'🧭', color:'var(--accent-green)',
+      name:'STABLE EXPLORER', subtitle:'Устойчивый. Адаптированный. С потенциалом усиления.', color:'var(--accent-green)',
       sections:[
-        { icon:'🎯', title:'Роль', content:'<p>Вы — человек, который уже держит базовую устойчивость в быстро меняющемся мире.\nВы не теряетесь в потоке, но и не всегда используете весь свой потенциал управления.</p>' },
-        { icon:'⚖️', title:'Сильные стороны', content:'<ul><li>стабильное состояние</li><li>базовый контроль внимания</li><li>способность адаптироваться</li></ul>' },
-        { icon:'⚠️', title:'Ограничение', content:'<p>Ваш главный риск — остаться на текущем уровне.\nМир ускоряется.\nИ разница между «держусь нормально» и «управляю процессом» становится критичной.</p>' },
-        { icon:'🚀', title:'Потенциал', content:'<p>При развитии вы можете перейти на следующий уровень, где:</p><ul><li>вы управляете вниманием, а не просто удерживаете его</li><li>формируете состояние, а не реагируете на него</li></ul>' },
-        { icon:'🧭', title:'Вектор', content:'<p>Ваш следующий шаг —\nпереход от адаптации к управлению.</p>' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы — человек, который уже держит базовую устойчивость в быстро меняющемся мире.\nВы не теряетесь в потоке, но и не всегда используете весь свой потенциал управления.</p>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>стабильное состояние</li><li>базовый контроль внимания</li><li>способность адаптироваться</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Ваш главный риск — остаться на текущем уровне.\nМир ускоряется.\nИ разница между «держусь нормально» и «управляю процессом» становится критичной.</p>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>При развитии вы можете перейти на следующий уровень, где:</p><ul><li>вы управляете вниманием, а не просто удерживаете его</li><li>формируете состояние, а не реагируете на него</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nпереход от адаптации к управлению.</p>' }
       ],
       unlock:'<p>После регистрации вы получите:</p><ul><li>расширенную расшифровку вашего типа</li><li>скрытые паттерны внимания</li><li>персональный вектор усиления</li></ul>'
     },
     HIGH_LOAD_ADAPTER: {
-      name:'HIGH-LOAD ADAPTER', subtitle:'Функционирует. Держит нагрузку. Теряет ресурс.', emoji:'⚡', color:'var(--accent-amber)',
+      name:'HIGH-LOAD ADAPTER', subtitle:'Функционирует. Держит нагрузку. Теряет ресурс.', color:'var(--accent-amber)',
       sections:[
-        { icon:'🎯', title:'Роль', content:'<p>Вы умеете справляться.\nДаже под давлением вы продолжаете двигаться.\nНо это происходит за счёт внутреннего ресурса.</p>' },
-        { icon:'⚖️', title:'Сильные стороны', content:'<ul><li>высокая работоспособность</li><li>способность выдерживать нагрузку</li><li>адаптация в сложных условиях</li></ul>' },
-        { icon:'⚠️', title:'Ограничение', content:'<p>Вы живёте в режиме постоянного расхода ресурса.\nЭто приводит к:</p><ul><li>накоплению усталости</li><li>снижению ясности</li><li>потере глубины</li></ul>' },
-        { icon:'🚀', title:'Потенциал', content:'<p>Вы можете перейти в состояние, где:</p><ul><li>энергия не только тратится, но и восстанавливается</li><li>нагрузка не разрушает систему</li></ul>' },
-        { icon:'🧭', title:'Вектор', content:'<p>Ваш следующий шаг —\nперестать выживать за счёт ресурса и начать управлять им.</p>' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы умеете справляться.\nДаже под давлением вы продолжаете двигаться.\nНо это происходит за счёт внутреннего ресурса.</p>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>высокая работоспособность</li><li>способность выдерживать нагрузку</li><li>адаптация в сложных условиях</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Вы живёте в режиме постоянного расхода ресурса.\nЭто приводит к:</p><ul><li>накоплению усталости</li><li>снижению ясности</li><li>потере глубины</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>Вы можете перейти в состояние, где:</p><ul><li>энергия не только тратится, но и восстанавливается</li><li>нагрузка не разрушает систему</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nперестать выживать за счёт ресурса и начать управлять им.</p>' }
       ],
       unlock:'<p>После регистрации вы получите:</p><ul><li>анализ перегрузки</li><li>точки утечки энергии</li><li>систему восстановления</li></ul>'
     },
     NERVOUS_SYSTEM_SENSITIVE: {
-      name:'NERVOUS SYSTEM SENSITIVE', subtitle:'Перегрузка. Нестабильность. Потеря опоры.', emoji:'🌊', color:'var(--accent-rose)',
+      name:'NERVOUS SYSTEM SENSITIVE', subtitle:'Перегрузка. Нестабильность. Потеря опоры.', color:'var(--accent-rose)',
       sections:[
-        { icon:'🎯', title:'Роль', content:'<p>Сейчас ваша система работает на пределе.\nИзменения среды перегружают её быстрее, чем она успевает адаптироваться.</p>' },
-        { icon:'⚖️', title:'Сильные стороны', content:'<ul><li>высокая чувствительность</li><li>способность глубоко переживать</li><li>потенциал к быстрой трансформации</li></ul>' },
-        { icon:'⚠️', title:'Ограничение', content:'<p>Система перегружена.\nЭто проявляется как:</p><ul><li>нестабильность</li><li>тревожность</li><li>потеря контроля</li></ul>' },
-        { icon:'🚀', title:'Потенциал', content:'<p>При правильной работе вы можете:</p><ul><li>быстро восстановить устойчивость</li><li>выйти на новый уровень чувствительности и контроля</li></ul>' },
-        { icon:'🧭', title:'Вектор', content:'<p>Ваш следующий шаг —\nвосстановление базовой устойчивости и опоры.</p>' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Сейчас ваша система работает на пределе.\nИзменения среды перегружают её быстрее, чем она успевает адаптироваться.</p>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>высокая чувствительность</li><li>способность глубоко переживать</li><li>потенциал к быстрой трансформации</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Система перегружена.\nЭто проявляется как:</p><ul><li>нестабильность</li><li>тревожность</li><li>потеря контроля</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>При правильной работе вы можете:</p><ul><li>быстро восстановить устойчивость</li><li>выйти на новый уровень чувствительности и контроля</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nвосстановление базовой устойчивости и опоры.</p>' }
       ],
       unlock:'<p>После регистрации вы получите:</p><ul><li>карту перегрузки</li><li>ключевые точки восстановления</li><li>персональные рекомендации</li></ul>'
     },
     DISTRACTED_EXPLORER: {
-      name:'FRAGMENTED FOCUS', subtitle:'Рассеянное внимание. Потеря контроля.', emoji:'🔍', color:'var(--accent-violet)',
+      name:'FRAGMENTED FOCUS', subtitle:'Рассеянное внимание. Потеря контроля.', color:'var(--accent-violet)',
       sections:[
-        { icon:'🎯', title:'Роль', content:'<p>Вы находитесь в среде, которая захватывает ваше внимание быстрее, чем вы успеваете его удерживать.</p>' },
-        { icon:'⚖️', title:'Сильные стороны', content:'<ul><li>гибкость мышления</li><li>высокая восприимчивость</li><li>способность быстро переключаться</li></ul>' },
-        { icon:'⚠️', title:'Ограничение', content:'<p>Ваше внимание не принадлежит вам полностью.\nЭто приводит к:</p><ul><li>расфокусу</li><li>незавершённым действиям</li><li>ментальной усталости</li></ul>' },
-        { icon:'🚀', title:'Потенциал', content:'<p>Вы можете развить:</p><ul><li>устойчивый фокус</li><li>способность удерживать внимание</li><li>контроль над потоком информации</li></ul>' },
-        { icon:'🧭', title:'Вектор', content:'<p>Ваш следующий шаг —\nвернуть контроль над вниманием как базовой функцией.</p>' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы находитесь в среде, которая захватывает ваше внимание быстрее, чем вы успеваете его удерживать.</p>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>гибкость мышления</li><li>высокая восприимчивость</li><li>способность быстро переключаться</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Ваше внимание не принадлежит вам полностью.\nЭто приводит к:</p><ul><li>расфокусу</li><li>незавершённым действиям</li><li>ментальной усталости</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>Вы можете развить:</p><ul><li>устойчивый фокус</li><li>способность удерживать внимание</li><li>контроль над потоком информации</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nвернуть контроль над вниманием как базовой функцией.</p>' }
       ],
       unlock:'<p>После регистрации вы получите:</p><ul><li>анализ паттернов внимания</li><li>точки потери фокуса</li><li>рекомендации по восстановлению контроля</li></ul>'
     },
     FUTURE_SPECIALIST: {
-      name:'FUTURE SPECIALIST', subtitle:'Развитие. Интерес. Потенциал влияния.', emoji:'🔑', color:'var(--accent-cyan)',
+      name:'FUTURE SPECIALIST', subtitle:'Развитие. Интерес. Потенциал влияния.', color:'var(--accent-cyan)',
       sections:[
-        { icon:'🎯', title:'Роль', content:'<p>Вы уже выходите за рамки работы только с собой.\nУ вас есть интерес к пониманию людей и процессов глубже.</p>' },
-        { icon:'⚖️', title:'Сильные стороны', content:'<ul><li>осознанность</li><li>интерес к развитию</li><li>способность видеть системы</li></ul>' },
-        { icon:'⚠️', title:'Ограничение', content:'<p>Пока нет:</p><ul><li>целостной системы</li><li>точных инструментов</li><li>структурированного подхода</li></ul>' },
-        { icon:'🚀', title:'Потенциал', content:'<p>Вы можете перейти в уровень:</p><ul><li>понимания процессов человека</li><li>работы с другими</li><li>системного мышления</li></ul>' },
-        { icon:'🧭', title:'Вектор', content:'<p>Ваш следующий шаг —\nперейти от интереса к системному пониманию.</p>' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы уже выходите за рамки работы только с собой.\nУ вас есть интерес к пониманию людей и процессов глубже.</p>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>осознанность</li><li>интерес к развитию</li><li>способность видеть системы</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Пока нет:</p><ul><li>целостной системы</li><li>точных инструментов</li><li>структурированного подхода</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>Вы можете перейти в уровень:</p><ul><li>понимания процессов человека</li><li>работы с другими</li><li>системного мышления</li></ul>' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nперейти от интереса к системному пониманию.</p>' }
       ],
       unlock:'<p>После регистрации вы получите:</p><ul><li>разбор вашего потенциала</li><li>карту развития в специалиста</li><li>направления углубления</li></ul>'
     }
@@ -851,12 +851,12 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var wrap = document.getElementById('test-result');
     var html = '';
     html += '<div class="result-header">';
-    html += '<div class="result-profile-badge" style="border-color:' + profile.color + ';color:' + profile.color + ';">' + profile.emoji + ' Ваш тип адаптации</div>';
+    html += '<div class="result-profile-badge" style="border-color:' + profile.color + ';color:' + profile.color + ';">Ваш тип адаптации</div>';
     html += '<h2 class="result-title" style="letter-spacing:0.05em;">' + profile.name + '</h2>';
     html += '<p class="result-subtitle">' + profile.subtitle + '</p>';
     html += '</div>';
     html += '<div class="result-section">';
-    html += '<div class="result-section-title"><span class="result-section-icon">📊</span> Разбор по категориям</div>';
+    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span> Разбор по категориям</div>';
     html += '<div class="scores-grid">';
     html += '<div class="score-item"><div class="score-item-label">Внимание</div><div class="score-item-value">' + result.scores.attention + '</div><div class="score-item-max">из 8</div></div>';
     html += '<div class="score-item"><div class="score-item-label">Состояние</div><div class="score-item-value">' + result.scores.state + '</div><div class="score-item-max">из 12</div></div>';
@@ -872,9 +872,9 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
       html += '</div>';
     });
     html += '<div class="result-unlock">';
-    html += '<div class="result-section-title"><span class="result-section-icon">🔓</span> Разблокировать полный профиль</div>';
+    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> Разблокировать полный профиль</div>';
     html += (profile.unlock || '');
-    html += '<a href="account.html?from_test=1" class="result-cta">👉 Открыть полный профиль</a>';
+    html += '<a href="account.html?from_test=1" class="result-cta">Открыть полный профиль <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
     html += '</div>';
     html += '<div style="text-align:center;"><span class="result-retake" onclick="location.reload()">Пройти тест заново</span></div>';
     wrap.innerHTML = html;
