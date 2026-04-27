@@ -390,6 +390,15 @@ section {
   height: 1.4em;
   width: auto;
   display: block;
+  transition: filter 0.4s ease, transform 0.4s ease;
+}
+.nav-logo:hover .nav-logo-icon {
+  animation: logoPulse 1.2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 6px rgba(0,224,255,0.35));
+}
+@keyframes logoPulse {
+  0%   { transform: scale(1);    filter: drop-shadow(0 0 4px rgba(0,224,255,0.2)); }
+  100% { transform: scale(1.08); filter: drop-shadow(0 0 10px rgba(0,224,255,0.45)); }
 }
 
 .nav-logo .lab {

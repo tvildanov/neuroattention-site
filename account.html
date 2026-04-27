@@ -2470,7 +2470,7 @@ function showEnrollModal(title, bodyHtml){
 function uploadAvatar(input){
   var file = input.files && input.files[0];
   if(!file) return;
-  if(file.size > 2*1024*1024){ alert('Максимальный размер файла — 2 МБ'); return; }
+  if(file.size > 20*1024*1024){ alert('Максимальный размер файла — 20 МБ'); return; }
   var reader = new FileReader();
   reader.onload = function(e){
     var base64 = e.target.result;
