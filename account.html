@@ -490,6 +490,7 @@
     <button class="dash-tab" data-tab="neuromap">NeuroMap</button>
     <button class="dash-tab" data-tab="pointab">Точка А → B</button>
     <button class="dash-tab" data-tab="enroll">Выбрать программу</button>
+    <button class="dash-tab" data-tab="administration" id="tab-btn-admin" style="display:none;">Администрирование</button>
   </div>
 
   <!-- TAB: Overview -->
@@ -1183,6 +1184,13 @@
       </div>
     </div>
   </div>
+
+  <!-- TAB: Administration (for admin roles) -->
+  <div class="tab-panel" id="tab-administration">
+    <div id="admin-embed-container">
+      <!-- Admin panels are injected here by setupAdminDashboard -->
+    </div>
+  </div>
 </section>
 
 <!-- ═══ ADMIN DASHBOARD ═══ -->
@@ -1393,32 +1401,30 @@ function onLogin(user){
   try { calLoadFromLocal(); } catch(e){ console.warn('calLoadFromLocal error:', e); }
   try { progLoadFromLocal(); } catch(e){ console.warn('progLoadFromLocal error:', e); }
 
-  // STEP 2: Show the correct dashboard FIRST so DOM is visible for renders
-  if(user.role==='client'){
-    var greetText = 'Здравствуйте, '+user.name;
-    document.getElementById('client-greeting').textContent = greetText;
-    var roleEl = document.querySelector('#client-dashboard .dash-role');
-    if(user.serverRole==='superadmin' && roleEl){
-      roleEl.innerHTML = '<span class="pulse"></span>Superadmin';
-      roleEl.style.borderColor = 'rgba(0,224,255,0.3)';
-    } else if(roleEl){
-      roleEl.innerHTML = '<span class="pulse"></span>Клиент';
-      roleEl.style.borderColor = '';
-    }
-    updateClientAccess(user);
-    abCheckGuided();
-    showSection('client');
-  } else {
-    var greetText = 'Здравствуйте, '+user.name;
-    document.getElementById('client-greeting').textContent = greetText;
-    var roleEl = document.querySelector('#client-dashboard .dash-role');
-    if(roleEl){
-      roleEl.innerHTML = '<span class="pulse"></span>'+(user.serverRole==='superadmin'?'Superadmin':user.role==='specialist'?'Специалист':'Админ');
-      roleEl.style.borderColor = 'rgba(0,224,255,0.3)';
-    }
-    setupAdminDashboard(user);
-    showSection('admin');
+  // STEP 2: Show RPG dashboard for ALL roles
+  var greetText = 'Здравствуйте, '+user.name;
+  document.getElementById('client-greeting').textContent = greetText;
+  var roleEl = document.querySelector('#client-dashboard .dash-role');
+  var ROLE_DISPLAY = {superadmin:'Superadmin',founder:'Основатель',specialist:'Специалист',admin_basic:'Админ',client:'Клиент'};
+  var roleLabel = ROLE_DISPLAY[user.serverRole] || ROLE_DISPLAY[user.role] || 'Клиент';
+  if(roleEl){
+    roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
+    roleEl.style.borderColor = (user.role!=='client') ? 'rgba(0,224,255,0.3)' : '';
   }
+  updateClientAccess(user);
+  abCheckGuided();
+
+  // Show "Администрирование" tab for admin roles
+  var isAdminRole = (user.role==='founder'||user.role==='specialist'||user.role==='admin_basic'||user.serverRole==='superadmin');
+  var adminTabBtn = document.getElementById('tab-btn-admin');
+  if(adminTabBtn) adminTabBtn.style.display = isAdminRole ? '' : 'none';
+
+  // Pre-load admin dashboard data for admin roles (won't show until tab clicked)
+  if(isAdminRole){
+    setupAdminDashboard(user);
+  }
+
+  showSection('client');
 
   // STEP 3: Now DOM is visible — safe to render UI components
   try { updateNmToday(); } catch(e){ console.warn('updateNmToday error:', e); }
@@ -2036,17 +2042,28 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
 
 // ── Tabs ──
 function switchTab(id){
-  // If admin uses client tools, show client dashboard temporarily
-  var clientTabs=['overview','program','practices','calendar','neuromap','enroll'];
-  if(currentUser && currentUser.role!=='client' && clientTabs.indexOf(id)!==-1){
-    document.getElementById('client-dashboard').style.display='block';
-    document.getElementById('admin-dashboard').style.display='none';
-    document.getElementById('client-greeting').textContent=currentUser.name+' (режим инструментов)';
-    document.getElementById('back-to-admin-btn').style.display='';
-    // Enable all tabs for founder/specialist
-    document.querySelectorAll('#client-dashboard .dash-tab[data-tab]').forEach(function(t){
-      t.style.opacity='';t.style.pointerEvents='';t.title='';
-    });
+  // When switching to administration tab, move admin panels into embed container
+  if(id==='administration'){
+    var container = document.getElementById('admin-embed-container');
+    var adminSrc = document.getElementById('admin-dashboard');
+    if(container && adminSrc && !container.hasChildNodes()){
+      // Move admin tabs and panels into the embed container
+      var adminTabs = document.getElementById('admin-tabs');
+      var adminPanels = adminSrc.querySelectorAll('.tab-panel');
+      if(adminTabs) container.appendChild(adminTabs);
+      adminPanels.forEach(function(p){ container.appendChild(p); });
+      // Show first admin tab as active
+      container.querySelectorAll('.dash-tab').forEach(function(t,i){ t.classList.toggle('active',i===0); });
+      container.querySelectorAll('.tab-panel').forEach(function(p,i){ p.classList.toggle('active',i===0); });
+      // Wire admin sub-tab switching
+      container.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
+        t.onclick = function(){
+          var subId = this.dataset.tab;
+          container.querySelectorAll('.dash-tab').forEach(function(bt){ bt.classList.toggle('active',bt.dataset.tab===subId); });
+          container.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active',p.id==='tab-'+subId); });
+        };
+      });
+    }
   }
   document.querySelectorAll('#client-dashboard .dash-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
   document.querySelectorAll('#client-dashboard .tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-'+id); });
@@ -2056,11 +2073,9 @@ function switchTab(id){
   }
 }
 function backToAdmin(){
-  if(currentUser && currentUser.role!=='client'){
-    document.getElementById('client-dashboard').style.display='none';
-    document.getElementById('admin-dashboard').style.display='block';
-    document.getElementById('back-to-admin-btn').style.display='none';
-  }
+  // Legacy — now just switch to overview tab
+  switchTab('overview');
+  document.getElementById('back-to-admin-btn').style.display='none';
 }
 document.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
   t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
