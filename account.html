@@ -1547,8 +1547,11 @@ function rpgLoadStats(profileKey){
     }
     return r.json();
   }).then(function(d){
-    if(d && (d.stats || d.ok)){
+    if(d && d.stats){
       rpgRenderStats(d.stats, d.world_model_coherence || 1);
+    } else {
+      // API returned but no stats — use fallback
+      rpgRenderFallbackStats(profileKey);
     }
   }).catch(function(e){
     console.warn('rpgLoadStats error:', e);

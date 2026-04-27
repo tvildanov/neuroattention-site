@@ -1693,15 +1693,14 @@ app.post('/api/stats/init', requireAuth, async (req, res) => {
 
     // Get user's test result to determine profile
     const testRows = await sql`
-      SELECT result_data FROM test_results
+      SELECT profile FROM test_results
       WHERE user_id = ${req.user.id}
       ORDER BY completed_at DESC LIMIT 1
     `;
 
     let profileKey = 'STABLE_EXPLORER'; // default
-    if (testRows.length > 0 && testRows[0].result_data) {
-      const rd = typeof testRows[0].result_data === 'string' ? JSON.parse(testRows[0].result_data) : testRows[0].result_data;
-      if (rd.profileKey) profileKey = rd.profileKey;
+    if (testRows.length > 0 && testRows[0].profile) {
+      profileKey = testRows[0].profile;
     }
 
     // Also check localStorage-based profile from request body
