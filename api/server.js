@@ -56,7 +56,7 @@ app.use(cors({
   ],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '4mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -315,19 +315,65 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   }
 });
 
-// Upload avatar (base64 stored in DB)
+// Upload avatar (base64 stored in DB, auto-compressed via sharp)
 app.post('/api/users/me/avatar', requireAuth, async (req, res) => {
   try {
     const { avatar } = req.body;
     if (!avatar || typeof avatar !== 'string') {
       return res.status(400).json({ error: 'avatar (base64 data-URI) required' });
     }
-    // Limit: ~2MB base64
-    if (avatar.length > 3 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Avatar too large (max 2MB)' });
+    // Limit: ~20MB base64 (base64 is ~33% larger than raw)
+    if (avatar.length > 28 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Avatar too large (max 20MB)' });
     }
-    await sql`UPDATE users SET avatar_url = ${avatar} WHERE id = ${req.user.id}`;
-    res.json({ ok: true, avatar_url: avatar });
+
+    // Parse data-URI: data:image/png;base64,AAAA...
+    const match = avatar.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) {
+      return res.status(400).json({ error: 'Invalid data-URI format' });
+    }
+    const mimeType = match[1];
+    const rawBuf = Buffer.from(match[2], 'base64');
+
+    // GIF: pass through up to 10MB uncompressed (sharp can't handle animated GIF well)
+    if (mimeType === 'image/gif') {
+      if (rawBuf.length > 10 * 1024 * 1024) {
+        return res.status(413).json({ error: 'GIF too large (max 10MB)' });
+      }
+      // Store as-is
+      await sql`UPDATE users SET avatar_url = ${avatar} WHERE id = ${req.user.id}`;
+      return res.json({ ok: true, avatar_url: avatar, compressed: false, size: rawBuf.length });
+    }
+
+    // PNG/JPG/WebP: compress via sharp → max 1024x1024, JPEG q85
+    let sharp;
+    try {
+      sharp = require('sharp');
+    } catch (e) {
+      // sharp not available — fall back to storing as-is with size check
+      console.warn('sharp not available, storing avatar as-is');
+      if (rawBuf.length > 5 * 1024 * 1024) {
+        return res.status(413).json({ error: 'Avatar too large (max 5MB without compression)' });
+      }
+      await sql`UPDATE users SET avatar_url = ${avatar} WHERE id = ${req.user.id}`;
+      return res.json({ ok: true, avatar_url: avatar, compressed: false, size: rawBuf.length });
+    }
+
+    const compressed = await sharp(rawBuf)
+      .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toBuffer();
+
+    const compressedDataUri = 'data:image/jpeg;base64,' + compressed.toString('base64');
+
+    await sql`UPDATE users SET avatar_url = ${compressedDataUri} WHERE id = ${req.user.id}`;
+    res.json({
+      ok: true,
+      avatar_url: compressedDataUri,
+      compressed: true,
+      original_size: rawBuf.length,
+      compressed_size: compressed.length
+    });
   } catch (err) {
     console.error('POST /api/users/me/avatar:', err);
     res.status(500).json({ error: 'Internal error' });
