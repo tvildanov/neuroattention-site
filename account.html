@@ -191,34 +191,47 @@
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--text-muted); }
-.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:none; }
+.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right); }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
 .nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
-.nm-fs-close { background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:13px;padding:0.4rem 0.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s; }
+.nm-fs-close { background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:13px;padding:0.4rem 0.8rem;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.2s;min-width:44px;min-height:44px;justify-content:center; }
 .nm-fs-close:hover { border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-fs-body { flex:1;display:flex;overflow:hidden; }
 .nm-fs-canvas-wrap { flex:1;position:relative;cursor:none; }
 .nm-fs-canvas-wrap canvas { cursor:none; }
 .nm-fs-canvas-wrap canvas:active { cursor:none; }
 .nm-fs-sidebar { width:280px;overflow-y:auto;border-left:1px solid rgba(255,255,255,0.06);padding:0.8rem; }
-.nm-fs-btn { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s; }
+.nm-fs-btn { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;min-width:44px;min-height:44px;justify-content:center; }
 .nm-fs-btn:hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
-@media(max-width:768px){ .nm-fs-sidebar { display:none; } }
+@media(max-width:768px){ .nm-fs-sidebar { display:none; } .nm-fs-header h3 { font-size:13px; } .nm-fs-header { padding:0.5rem 0.8rem; } }
 .nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
 .nm-chip:hover { border-color:rgba(255,255,255,0.18); }
 .nm-chip.selected { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-chip.neg.selected { background:rgba(255,120,120,0.08);border-color:rgba(255,120,120,0.25);color:rgba(255,140,140,1); }
 .nm-chip.pos.selected { background:rgba(120,255,160,0.08);border-color:rgba(120,255,160,0.25);color:rgba(140,255,170,1); }
 .nm-slider-wrap { display:flex;align-items:center;gap:1rem;margin-top:0.75rem; }
-.nm-slider-wrap input[type=range] { flex:1;accent-color:var(--accent-cyan);height:6px; }
+.nm-slider-wrap input[type=range] { flex:1;accent-color:rgba(255,255,255,0.5);height:6px; }
 .nm-slider-val { font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--text-primary);min-width:2rem;text-align:center; }
 .nm-emotion-badge { display:inline-flex;padding:0.2rem 0.5rem;border-radius:6px;font-size:10px;font-weight:500; }
-.nm-3d-toggle { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;margin-right:0.4rem; }
+.nm-3d-toggle { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;margin-right:0.4rem;min-width:44px;min-height:44px;justify-content:center; }
 .nm-3d-toggle:hover { border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
 .nm-3d-toggle.active { background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 #nm-3d-container { position:absolute;inset:0;z-index:2;display:none;border-radius:14px;overflow:hidden; }
 #nm-3d-container.active { display:block; }
+/* ── Mobile bottom-sheet for drill-down ── */
+.nm-fs-bottomsheet { display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:rgba(10,12,18,0.96);border-top:1px solid rgba(255,255,255,0.1);border-radius:16px 16px 0 0;padding:1rem;max-height:55vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s ease;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px); }
+.nm-fs-bottomsheet.open { display:block;transform:translateY(0); }
+.nm-fs-bottomsheet .nm-bs-handle { width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.2);margin:0 auto 0.75rem; }
+/* Mobile layer filter bar (replaces sidebar on mobile) */
+.nm-fs-mobile-filters { display:none;padding:0.4rem 0.8rem;overflow-x:auto;gap:0.4rem;border-bottom:1px solid rgba(255,255,255,0.06);-webkit-overflow-scrolling:touch; }
+.nm-fs-mobile-filters::-webkit-scrollbar { display:none; }
+@media(max-width:768px){
+  .nm-fs-mobile-filters { display:flex; }
+  .nm-fs-canvas-wrap { cursor:default; }
+  .nm-fs-canvas-wrap canvas { cursor:default;touch-action:none; }
+  #nm-fs-cursor { display:none!important; }
+}
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
 </head>
@@ -3587,8 +3600,9 @@ function nmToggleFullscreen(){
     // Show custom cursor
     var fsCur=document.getElementById('nm-fs-cursor');
     if(fsCur && !window.matchMedia('(pointer:coarse)').matches) fsCur.style.display='block';
-    // Clone filters into sidebar
+    // Clone filters into sidebar + mobile filter bar
     nmFsBuildFilters();
+    nmFsBuildMobileFilters();
     // Sync FS 3D toggle state
     var fsBtn3d = document.getElementById('nm-fs-3d-toggle');
     if(fsBtn3d){
@@ -3634,14 +3648,77 @@ function nmFsBuildFilters(){
   cont.innerHTML = html;
 }
 
+function nmFsBuildMobileFilters(){
+  var cont=document.getElementById('nm-fs-mobile-filters');
+  if(!cont) return;
+  var layers=[
+    {layer:2,name:'Пережив.'},
+    {layer:3,name:'Образы'},
+    {layer:4,name:'Понятия'},
+    {layer:5,name:'Смыслы'},
+    {layer:6,name:'Действия'}
+  ];
+  var html='';
+  layers.forEach(function(l){
+    var sel=nmActiveLayers[l.layer]?'selected':'';
+    html+='<span class="nm-chip '+sel+'" data-layer="'+l.layer+'" onclick="nmFsMobileFilterTap(this)" style="white-space:nowrap;min-height:36px;padding:0.4rem 0.7rem;font-size:12px;">'+l.name+'</span>';
+  });
+  cont.innerHTML=html;
+}
+function nmFsMobileFilterTap(el){
+  var layer=parseInt(el.getAttribute('data-layer'));
+  nmActiveLayers[layer]=!nmActiveLayers[layer];
+  el.classList.toggle('selected',nmActiveLayers[layer]);
+  // Sync sidebar + main
+  document.querySelectorAll('#nm-fs-filters input[data-layer="'+layer+'"],#nm-filters input[data-layer="'+layer+'"]').forEach(function(cb){ cb.checked=nmActiveLayers[layer]; });
+  buildNmGraph();
+  if(nm3DMode){ var fs3d=document.getElementById('nm-fs-3d-container'); if(fs3d) nmBuildFs3DGraph(fs3d); }
+}
+// Mobile bottom-sheet drill-down
+function openFsMobileBottomSheet(node){
+  var bs=document.getElementById('nm-fs-bottomsheet');
+  var content=document.getElementById('nm-fs-bs-content');
+  if(!bs||!content) return;
+  var layerColors={1:'rgba(180,200,220,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
+  var layerNum=nmTypeToLayer(node.type);
+  var layerName=nmTypeToLayerName(node.type);
+  var valTxt=node.valence<0?'утечка':'ресурс'; if(node.valence===0)valTxt='нейтрально';
+  var connected=[];
+  nmLinks.forEach(function(l){
+    if(l.source===node.id||l.target===node.id){
+      var otherId=l.source===node.id?l.target:l.source;
+      var otherNode=nmNodes.find(function(n){return n.id===otherId;});
+      if(otherNode) connected.push(otherNode);
+    }
+  });
+  var connHtml=connected.length?connected.map(function(c){
+    return '<span style="display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);margin:2px;" onclick="openFsMobileBottomSheet(nmNodes.find(function(n){return n.id===\''+c.id+'\';}))">'+c.label+'</span>';
+  }).join(''):'<span style="color:var(--text-muted);font-size:12px;">Нет связей</span>';
+  content.innerHTML='<span style="display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:6px;background:'+
+    (layerColors[layerNum]||'rgba(255,255,255,0.1)')+';color:#111;margin-bottom:0.4rem;">Слой '+layerNum+': '+layerName+'</span>'+
+    '<h4 style="font-size:1rem;margin:0.3rem 0 0.2rem;">'+node.label+'</h4>'+
+    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 0.6rem;">×'+node.count+' | '+valTxt+'</p>'+
+    '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.3rem;">Связанные узлы</p>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:0.5rem;">'+connHtml+'</div>';
+  bs.classList.add('open');
+}
+function closeFsMobileBottomSheet(){
+  var bs=document.getElementById('nm-fs-bottomsheet');
+  if(bs) bs.classList.remove('open');
+}
+
 function nmFsFilterToggle(cb){
   var layer = cb.getAttribute('data-layer');
   if(layer==='repeat') nmRepeatFilter = cb.checked;
   else nmActiveLayers[parseInt(layer)] = cb.checked;
-  // Sync main filters
+  // Sync main filters + mobile filter chips
   document.querySelectorAll('#nm-filters input[data-layer]').forEach(function(mcb){
     var ml = mcb.getAttribute('data-layer');
     if(ml===layer) mcb.checked = cb.checked;
+  });
+  // Sync mobile filter chips
+  document.querySelectorAll('#nm-fs-mobile-filters .nm-chip[data-layer="'+layer+'"]').forEach(function(chip){
+    chip.classList.toggle('selected', layer==='repeat'?nmRepeatFilter:nmActiveLayers[parseInt(layer)]);
   });
   buildNmGraph();
   // Also rebuild 3D graph if in 3D mode
@@ -3885,6 +3962,57 @@ function nmFsStartRender(){
     var n=fsFindNode(pt.x,pt.y);
     if(n && n.fx!==undefined){ delete n.fx; delete n.fy; }
   });
+  // Pinch-zoom support for mobile 2D canvas
+  var fsPinchDist=0, fsPinchScale=1;
+  fsCanvas.addEventListener('touchstart',function(ev){
+    if(ev.touches.length===2){
+      var dx=ev.touches[0].clientX-ev.touches[1].clientX;
+      var dy=ev.touches[0].clientY-ev.touches[1].clientY;
+      fsPinchDist=Math.sqrt(dx*dx+dy*dy);
+    }
+  },{passive:true});
+  fsCanvas.addEventListener('touchmove',function(ev){
+    if(ev.touches.length===2 && fsPinchDist>0){
+      ev.preventDefault();
+      var dx=ev.touches[0].clientX-ev.touches[1].clientX;
+      var dy=ev.touches[0].clientY-ev.touches[1].clientY;
+      var newDist=Math.sqrt(dx*dx+dy*dy);
+      var delta=newDist/fsPinchDist;
+      fsPinchScale=Math.max(0.5,Math.min(3,fsPinchScale*delta));
+      fsPinchDist=newDist;
+      fsCanvas.style.transform='scale('+fsPinchScale+')';
+      fsCanvas.style.transformOrigin='center center';
+    }
+  },{passive:false});
+  fsCanvas.addEventListener('touchend',function(ev){
+    if(ev.touches.length<2) fsPinchDist=0;
+  },{passive:true});
+  // Tap on node for mobile (no drag) → open drill-down
+  var fsTapStart=null, fsTapTime=0;
+  fsCanvas.addEventListener('touchstart',function(ev){
+    if(ev.touches.length===1){
+      fsTapTime=Date.now();
+      var touch=ev.touches[0];
+      fsTapStart={x:touch.clientX,y:touch.clientY};
+    }
+  },{passive:true});
+  fsCanvas.addEventListener('touchend',function(ev){
+    if(fsTapStart && Date.now()-fsTapTime<300 && ev.changedTouches.length===1){
+      var touch=ev.changedTouches[0];
+      var dx=touch.clientX-fsTapStart.x, dy=touch.clientY-fsTapStart.y;
+      if(Math.sqrt(dx*dx+dy*dy)<15){
+        var rect=fsCanvas.getBoundingClientRect();
+        var dpr=window.devicePixelRatio||1;
+        var normCanvas=document.getElementById('nm-canvas');
+        var scaleX=(rect.width*dpr)/(normCanvas.width||1);
+        var scaleY=(rect.height*dpr)/(normCanvas.height||1);
+        var pt={x:(touch.clientX-rect.left)*dpr/scaleX, y:(touch.clientY-rect.top)*dpr/scaleY};
+        var n=fsFindNode(pt.x,pt.y);
+        if(n) openFsDrilldown(n);
+      }
+    }
+    fsTapStart=null;
+  },{passive:true});
 })();
 
 // Esc key handler
@@ -3912,8 +4040,14 @@ document.addEventListener('keydown',function(ev){
 function closeFsDrilldown(){
   var p=document.getElementById('nm-fs-drilldown');
   if(p) p.style.display='none';
+  closeFsMobileBottomSheet();
 }
 function openFsDrilldown(node){
+  // On mobile, use bottom-sheet instead of sidebar drill-down
+  if(window.innerWidth<=768){
+    openFsMobileBottomSheet(node);
+    return;
+  }
   var panel=document.getElementById('nm-fs-drilldown');
   if(!panel) return;
   panel.style.display='block';
@@ -4104,7 +4238,7 @@ function nmBuildFs3DGraph(container){
     .nodeOpacity(0.9)
     .nodeThreeObjectExtend(true)
     .nodeThreeObject(function(node){
-      // Add text sprite label below each node
+      if(!THREE) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(node.label),
@@ -5556,10 +5690,17 @@ if('serviceWorker' in navigator){
     </button>
     </div>
   </div>
+  <!-- Mobile layer filter bar (horizontal scroll, visible only on mobile) -->
+  <div class="nm-fs-mobile-filters" id="nm-fs-mobile-filters"></div>
   <div class="nm-fs-body">
     <div class="nm-fs-canvas-wrap">
       <canvas id="nm-fs-canvas" style="width:100%;height:100%;"></canvas>
       <div id="nm-fs-tooltip" style="display:none;position:absolute;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(10,12,18,0.92);border:1px solid rgba(255,255,255,0.12);font-size:12px;color:var(--text-primary);pointer-events:none;z-index:5;max-width:220px;line-height:1.4;"></div>
+      <!-- Mobile bottom-sheet drill-down -->
+      <div class="nm-fs-bottomsheet" id="nm-fs-bottomsheet">
+        <div class="nm-bs-handle"></div>
+        <div id="nm-fs-bs-content"></div>
+      </div>
     </div>
     <div class="nm-fs-sidebar" id="nm-fs-sidebar">
       <div style="margin-bottom:0.8rem;">
