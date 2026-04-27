@@ -232,6 +232,10 @@
   .nm-fs-canvas-wrap canvas { cursor:default;touch-action:none; }
   #nm-fs-cursor { display:none!important; }
 }
+@media(max-width:600px){
+  #tab-enroll .dash-grid > div[style*="grid-template-columns:repeat(2"] { grid-template-columns:1fr!important; }
+}
+#rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
 </head>
@@ -502,6 +506,14 @@
       <!-- Hero Profile Card -->
       <div id="rpg-hero" style="padding:1.5rem;border-radius:16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);margin-bottom:1.5rem;">
         <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+          <!-- Avatar -->
+          <div id="rpg-avatar-wrap" style="position:relative;width:88px;height:88px;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('avatar-file-input').click()">
+            <img id="rpg-avatar-img" src="assets/avatars/stars-default.gif" alt="" style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.08);">
+            <div id="rpg-avatar-hover" style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;">
+              <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.8);stroke-width:2;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
+          </div>
           <div style="flex:1;min-width:200px;">
             <p id="rpg-profile-name" style="margin:0;font-size:1.4rem;font-family:'Unbounded',sans-serif;font-weight:600;color:var(--text-primary);letter-spacing:0.04em;line-height:1.3;"></p>
             <p id="rpg-profile-subtitle" style="margin:0.4rem 0 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;"></p>
@@ -1117,69 +1129,98 @@
   <!-- TAB: Enroll (purchase flow) -->
   <div class="tab-panel" id="tab-enroll">
     <div class="dash-grid">
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <!-- Step indicator -->
-        <div class="step-indicator">
-          <span class="step-dot active" id="sd1"></span>
-          <span class="step-line"></span>
-          <span class="step-dot" id="sd2"></span>
-          <span class="step-line"></span>
-          <span class="step-dot" id="sd3"></span>
-        </div>
-
-        <!-- Step 1: Choose program -->
-        <div class="purchase-step active" id="pstep1">
-          <h3>Шаг 1 · Выберите программу</h3>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0;">
-            <div class="program-select-card" data-prog="self" onclick="selectProgram(this)">
-              <h4>Self-Guided</h4>
-              <p>Самостоятельная работа с протоколами и материалами</p>
-              <span class="price">$297</span>
-            </div>
-            <div class="program-select-card" data-prog="guided" onclick="selectProgram(this)">
-              <h4>Guided Program</h4>
-              <p>С личным специалистом и адаптацией под ваше состояние</p>
-              <span class="price">$897</span>
-            </div>
-            <div class="program-select-card" data-prog="group" onclick="selectProgram(this)">
-              <h4>Group Program</h4>
-              <p>Групповое прохождение с ведущим и общей динамикой</p>
-              <span class="price">$497</span>
-            </div>
+      <!-- Collapsible method strip -->
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;padding:0;overflow:hidden;">
+        <button onclick="toggleMethodStrip()" id="method-strip-toggle" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;background:none;border:none;cursor:pointer;font-family:inherit;">
+          <span style="display:flex;align-items:center;gap:0.75rem;">
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span style="font-family:'Unbounded',sans-serif;font-size:0.9rem;font-weight:500;color:var(--text-primary);">Что такое метод NeuroAttention</span>
+          </span>
+          <svg id="method-strip-chevron" style="width:18px;height:18px;fill:none;stroke:var(--text-muted);stroke-width:2;transition:transform 0.3s;" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div id="method-strip-body" style="max-height:0;overflow:hidden;transition:max-height 0.4s ease;">
+          <div style="padding:0 1.5rem 1.5rem;border-top:1px solid rgba(255,255,255,0.06);">
+            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:1.25rem 0 1rem;">
+              <strong style="color:var(--text-primary);">NeuroAttention</strong> — практический метод тренировки внимания как центральной нейрофункции. В основе лежит принцип нейропластичности: мозг способен перестраивать свои связи через направленную практику.
+            </p>
+            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">
+              Метод работает с тремя уровнями: <span style="color:var(--text-primary);">тело</span> (интероцепция, нервная система), <span style="color:var(--text-primary);">управление</span> (концентрация, переключение, устойчивость) и <span style="color:var(--text-primary);">мир</span> (восприятие среды, адаптация, коммуникация). Каждый уровень содержит конкретные навыки, которые тренируются через протоколы.
+            </p>
+            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">
+              Программа строится вокруг вашей персональной <span style="color:var(--accent-cyan);">NeuroMap</span> — карты внимания, которая отражает текущее состояние и динамику изменений. Вы проходите адаптационный тест, получаете профиль и начинаете работу с практиками, адаптированными под ваше состояние.
+            </p>
+            <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0;">
+              Подробнее о методе — <a href="method.html" style="color:var(--accent-cyan);text-decoration:none;border-bottom:1px solid rgba(0,224,255,0.3);" target="_blank">на странице Метод</a>
+            </p>
           </div>
-          <button class="btn btn-solid" id="toStep2" style="opacity:0.4;pointer-events:none;" onclick="goStep(2)">
-            Далее <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </div>
+
+      <!-- Program cards -->
+      <div style="grid-column:span 12;display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;">
+        <!-- Self-Guided -->
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Self-Guided</span>
+          </div>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Самостоятельная программа</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Структурированная работа с вниманием, телом и состоянием через протоколы, теорию и задания. NeuroMap, 3 месяца, 21 практика.</p>
+          <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);">$1,400</span>
+          </div>
+          <button class="btn btn-solid" onclick="enrollProgram('self')" style="width:100%;justify-content:center;">
+            Купить <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
 
-        <!-- Step 2: Confirm & Pay -->
-        <div class="purchase-step" id="pstep2">
-          <h3>Шаг 2 · Подтверждение и оплата</h3>
-          <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;margin:1.5rem 0;">
-            <p style="font-size:14px;color:var(--text-primary);margin:0 0 0.5rem;font-weight:600;" id="confirm-prog-name">—</p>
-            <p style="font-size:13px;color:var(--text-muted);margin:0 0 0.75rem;">3 месяца · 21 практика · теория + задания</p>
-            <p style="font-family:'JetBrains Mono',monospace;font-size:1.25rem;color:var(--accent-cyan);font-weight:600;margin:0;" id="confirm-price">—</p>
+        <!-- Guided Program -->
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;border-color:rgba(0,224,255,0.15);">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Guided</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(0,224,255,0.08);border:1px solid rgba(0,224,255,0.2);color:var(--accent-cyan);font-weight:600;letter-spacing:0.05em;">Recommended</span>
           </div>
-          <div style="display:flex;gap:0.75rem;">
-            <button class="btn btn-ghost" onclick="goStep(1)">← Назад</button>
-            <button class="btn btn-solid" onclick="goStep(3)">
-              Оплатить <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </button>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">С личным специалистом</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Глубокая работа с адаптацией под ваше состояние. Регулярные встречи, разбор обратной связи, корректировка прохождения. Всё из Self-Guided + сопровождение.</p>
+          <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);">$4,000</span>
           </div>
+          <button class="btn btn-solid" onclick="enrollProgram('guided')" style="width:100%;justify-content:center;">
+            Записаться <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
         </div>
 
-        <!-- Step 3: Success -->
-        <div class="purchase-step" id="pstep3">
-          <div style="text-align:center;padding:2rem 0;">
-            <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,224,255,0.1);border:2px solid rgba(0,224,255,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;">
-              <svg style="width:28px;height:28px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
-            </div>
-            <h3 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 0.5rem;">Программа активирована</h3>
-            <p style="font-size:14px;color:var(--text-muted);margin:0 0 1.5rem;">Теперь вы можете начать прохождение. Первый блок практик уже доступен.</p>
-            <button class="btn btn-solid" onclick="switchTab('program')">
-              Перейти к программе <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </button>
+        <!-- Group Program -->
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Group</span>
           </div>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Групповая программа</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Групповое прохождение с ведущим и общей динамикой. Коллективная NeuroMap, онлайн-сессии, поддержка среды.</p>
+          <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Цена уточняется</span>
+          </div>
+          <button class="btn btn-ghost" onclick="enrollProgram('group')" style="width:100%;justify-content:center;">
+            Записаться <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+
+        <!-- Specialist Training -->
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c6 3 10 0 12-1v-4"/></svg>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Specialist</span>
+          </div>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Подготовка специалистов</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Обучение работе с NeuroAttention Method для интеграции в профессиональную практику. Три уровня: база, сертификация, мастерство.</p>
+          <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Цена уточняется</span>
+          </div>
+          <button class="btn btn-ghost" onclick="enrollProgram('specialist')" style="width:100%;justify-content:center;">
+            Записаться <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -1412,6 +1453,7 @@ function onLogin(user){
     roleEl.style.borderColor = (user.role!=='client') ? 'rgba(0,224,255,0.3)' : '';
   }
   updateClientAccess(user);
+  loadAvatar(user);
   abCheckGuided();
 
   // Show "Администрирование" tab for admin roles
@@ -2358,26 +2400,70 @@ function addEvent(){
 }
 
 // ── Purchase flow ──
-var selectedProg = null;
-function selectProgram(card){
-  document.querySelectorAll('.program-select-card').forEach(function(c){ c.classList.remove('selected'); });
-  card.classList.add('selected');
-  selectedProg = card.dataset.prog;
-  var btn = document.getElementById('toStep2');
-  btn.style.opacity = '1';
-  btn.style.pointerEvents = 'auto';
+// selectedProg removed — enroll tab redesigned
+function toggleMethodStrip(){
+  var body = document.getElementById('method-strip-body');
+  var chevron = document.getElementById('method-strip-chevron');
+  if(body.style.maxHeight && body.style.maxHeight !== '0px'){
+    body.style.maxHeight = '0px';
+    chevron.style.transform = 'rotate(0deg)';
+  } else {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    chevron.style.transform = 'rotate(180deg)';
+  }
 }
-function goStep(n){
-  document.querySelectorAll('.purchase-step').forEach(function(s){ s.classList.remove('active'); });
-  document.getElementById('pstep'+n).classList.add('active');
-  document.getElementById('sd1').className = n>=1 ? (n>1?'step-dot done':'step-dot active') : 'step-dot';
-  document.getElementById('sd2').className = n>=2 ? (n>2?'step-dot done':'step-dot active') : 'step-dot';
-  document.getElementById('sd3').className = n>=3 ? 'step-dot active' : 'step-dot';
-  if(n===2){
-    var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program'};
-    var prices = {self:'$297',guided:'$897',group:'$497'};
-    document.getElementById('confirm-prog-name').textContent = names[selectedProg]||'—';
-    document.getElementById('confirm-price').textContent = prices[selectedProg]||'—';
+function enrollProgram(type){
+  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Подготовка специалистов'};
+  var prices = {self:'$1,400',guided:'$4,000',group:'TBD',specialist:'TBD'};
+  var hasTBD = (type==='group'||type==='specialist');
+  if(hasTBD){
+    showEnrollModal('Запись на программу','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">Программа <strong style="color:var(--text-primary);">'+names[type]+'</strong> находится в процессе формирования.</p><p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Оставьте заявку, и мы свяжемся с вами, когда откроется набор.</p>');
+  } else {
+    showEnrollModal('Подтверждение','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">Вы выбрали программу <strong style="color:var(--text-primary);">'+names[type]+'</strong></p><p style="font-family:\'JetBrains Mono\',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);margin:0 0 1rem;">'+prices[type]+'</p><p style="font-size:13px;color:var(--text-muted);margin:0;">Оплата будет подключена в ближайшее время. Свяжитесь с нами для оформления.</p>');
+  }
+}
+function showEnrollModal(title, bodyHtml){
+  var overlay = document.createElement('div');
+  overlay.className = 'rpg-modal-overlay';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = '<div class="rpg-modal" style="max-width:440px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;"><h3 style="font-family:\'Unbounded\',sans-serif;font-size:1rem;font-weight:500;color:var(--text-primary);margin:0;">'+title+'</h3><button onclick="this.closest(\'.rpg-modal-overlay\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;"><svg style="width:18px;height:18px;fill:none;stroke:var(--text-muted);stroke-width:2;" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>'+bodyHtml+'<button class="btn btn-solid" onclick="this.closest(\'.rpg-modal-overlay\').remove()" style="width:100%;justify-content:center;margin-top:1.25rem;">Понятно</button></div>';
+  document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════
+// AVATAR UPLOAD
+// ══════════════════════════════════════════
+function uploadAvatar(input){
+  var file = input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024){ alert('Максимальный размер файла — 2 МБ'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var base64 = e.target.result;
+    // Optimistic UI update
+    document.getElementById('rpg-avatar-img').src = base64;
+    // Upload to API
+    var token = localStorage.getItem('na_token');
+    if(!token) return;
+    fetch(API_BASE+'/api/users/me/avatar', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({avatar: base64})
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(data.avatar_url){
+        document.getElementById('rpg-avatar-img').src = data.avatar_url;
+      }
+    }).catch(function(err){
+      console.error('Avatar upload failed:', err);
+      document.getElementById('rpg-avatar-img').src = 'assets/avatars/stars-default.gif';
+    });
+  };
+  reader.readAsDataURL(file);
+}
+function loadAvatar(user){
+  var img = document.getElementById('rpg-avatar-img');
+  if(img && user && user.avatar_url){
+    img.src = user.avatar_url;
   }
 }
 
