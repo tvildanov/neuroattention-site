@@ -1650,6 +1650,93 @@ app.get('/api/test-result/latest', requireAuth, async (req, res) => {
   }
 });
 
+// ── USER STATS (RPG Dashboard) ──
+
+// Load profile stats config
+let profileStatsConfig = {};
+try {
+  const psPath = path.join(__dirname, '..', 'data', 'profile-stats.json');
+  profileStatsConfig = JSON.parse(fs.readFileSync(psPath, 'utf8'));
+  console.log(`Loaded profile-stats.json with ${Object.keys(profileStatsConfig.profiles || {}).length} profiles`);
+} catch (e) {
+  console.warn('Could not load profile-stats.json:', e.message);
+}
+
+// GET /api/stats/me — current user stats
+app.get('/api/stats/me', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`SELECT stats, world_model_coherence, updated_at FROM user_stats WHERE user_id = ${req.user.id}`;
+    if (rows.length === 0) return res.status(404).json({ error: 'No stats found. Call POST /api/stats/init first.' });
+    res.json({ ok: true, stats: rows[0].stats, world_model_coherence: rows[0].world_model_coherence, updated_at: rows[0].updated_at });
+  } catch (err) {
+    console.error('GET /api/stats/me:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/stats/init — create initial stats from test profile
+app.post('/api/stats/init', requireAuth, async (req, res) => {
+  try {
+    // Check if already exists
+    const existing = await sql`SELECT id FROM user_stats WHERE user_id = ${req.user.id}`;
+    if (existing.length > 0) return res.json({ ok: true, message: 'Stats already initialized' });
+
+    // Get user's test result to determine profile
+    const testRows = await sql`
+      SELECT result_data FROM test_results
+      WHERE user_id = ${req.user.id}
+      ORDER BY completed_at DESC LIMIT 1
+    `;
+
+    let profileKey = 'STABLE_EXPLORER'; // default
+    if (testRows.length > 0 && testRows[0].result_data) {
+      const rd = typeof testRows[0].result_data === 'string' ? JSON.parse(testRows[0].result_data) : testRows[0].result_data;
+      if (rd.profileKey) profileKey = rd.profileKey;
+    }
+
+    // Also check localStorage-based profile from request body
+    if (req.body && req.body.profileKey) profileKey = req.body.profileKey;
+
+    const profile = (profileStatsConfig.profiles || {})[profileKey];
+    if (!profile) {
+      return res.status(400).json({ error: 'Unknown profile: ' + profileKey });
+    }
+
+    await sql`
+      INSERT INTO user_stats (user_id, stats, world_model_coherence)
+      VALUES (${req.user.id}, ${JSON.stringify(profile.stats)}, ${profile.world_model_coherence})
+    `;
+
+    res.json({ ok: true, stats: profile.stats, world_model_coherence: profile.world_model_coherence });
+  } catch (err) {
+    console.error('POST /api/stats/init:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/stats/:stat — update a single stat (for future leveling)
+app.patch('/api/stats/:stat', requireAuth, async (req, res) => {
+  try {
+    const { stat } = req.params;
+    const { value } = req.body;
+    if (typeof value !== 'number' || value < 0 || value > 100) {
+      return res.status(400).json({ error: 'Value must be 0-100' });
+    }
+    const rows = await sql`
+      UPDATE user_stats
+      SET stats = jsonb_set(stats, ${'{' + stat + '}'}, ${JSON.stringify(value)}::jsonb),
+          updated_at = NOW()
+      WHERE user_id = ${req.user.id}
+      RETURNING stats, world_model_coherence
+    `;
+    if (rows.length === 0) return res.status(404).json({ error: 'No stats found' });
+    res.json({ ok: true, stats: rows[0].stats, world_model_coherence: rows[0].world_model_coherence });
+  } catch (err) {
+    console.error('PATCH /api/stats:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
 });

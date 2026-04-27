@@ -1,0 +1,148 @@
+{
+  "profiles": {
+    "STABLE_EXPLORER": {
+      "name": "STABLE EXPLORER",
+      "subtitle": "Устойчивый. Адаптированный. С потенциалом усиления.",
+      "stats": {
+        "stability": 70,
+        "energy_regulation": 65,
+        "interoception": 60,
+        "proprioception": 60,
+        "vital_engagement": 65,
+        "attention_control": 70,
+        "awareness": 70,
+        "adaptation_flexibility": 60,
+        "execution": 75,
+        "technoperception": 65,
+        "socioperception": 60,
+        "relational_awareness": 65,
+        "space_awareness": 60
+      },
+      "world_model_coherence": 2
+    },
+    "HIGH_LOAD_ADAPTER": {
+      "name": "HIGH-LOAD ADAPTER",
+      "subtitle": "Функционирует. Держит нагрузку. Теряет ресурс.",
+      "stats": {
+        "stability": 55,
+        "energy_regulation": 35,
+        "interoception": 50,
+        "proprioception": 55,
+        "vital_engagement": 50,
+        "attention_control": 60,
+        "awareness": 60,
+        "adaptation_flexibility": 65,
+        "execution": 75,
+        "technoperception": 65,
+        "socioperception": 70,
+        "relational_awareness": 55,
+        "space_awareness": 50
+      },
+      "world_model_coherence": 2
+    },
+    "NERVOUS_SYSTEM_SENSITIVE": {
+      "name": "NERVOUS SYSTEM SENSITIVE",
+      "subtitle": "Перегрузка. Нестабильность. Потеря опоры.",
+      "stats": {
+        "stability": 30,
+        "energy_regulation": 30,
+        "interoception": 70,
+        "proprioception": 45,
+        "vital_engagement": 40,
+        "attention_control": 40,
+        "awareness": 65,
+        "adaptation_flexibility": 50,
+        "execution": 35,
+        "technoperception": 40,
+        "socioperception": 35,
+        "relational_awareness": 55,
+        "space_awareness": 35
+      },
+      "world_model_coherence": 1
+    },
+    "DISTRACTED_EXPLORER": {
+      "name": "FRAGMENTED FOCUS",
+      "subtitle": "Рассеянное внимание. Потеря контроля.",
+      "stats": {
+        "stability": 45,
+        "energy_regulation": 50,
+        "interoception": 40,
+        "proprioception": 50,
+        "vital_engagement": 50,
+        "attention_control": 25,
+        "awareness": 45,
+        "adaptation_flexibility": 60,
+        "execution": 35,
+        "technoperception": 60,
+        "socioperception": 50,
+        "relational_awareness": 50,
+        "space_awareness": 40
+      },
+      "world_model_coherence": 1
+    },
+    "FUTURE_SPECIALIST": {
+      "name": "FUTURE SPECIALIST",
+      "subtitle": "Развитие. Интерес. Потенциал влияния.",
+      "stats": {
+        "stability": 60,
+        "energy_regulation": 55,
+        "interoception": 65,
+        "proprioception": 55,
+        "vital_engagement": 70,
+        "attention_control": 65,
+        "awareness": 75,
+        "adaptation_flexibility": 70,
+        "execution": 60,
+        "technoperception": 60,
+        "socioperception": 60,
+        "relational_awareness": 70,
+        "space_awareness": 55
+      },
+      "world_model_coherence": 2
+    }
+  },
+  "stat_meta": {
+    "layers": [
+      {
+        "key": "body_core",
+        "name": "BODY CORE",
+        "label": "Физиология и регуляция",
+        "stats": [
+          {"key": "stability", "name": "Stability", "label": "Устойчивость системы"},
+          {"key": "energy_regulation", "name": "Energy Regulation", "label": "Энергорегуляция"},
+          {"key": "interoception", "name": "Interoception", "label": "Интероцепция"},
+          {"key": "proprioception", "name": "Proprioception", "label": "Проприоцепция"},
+          {"key": "vital_engagement", "name": "Vital Engagement", "label": "Вовлечённость в жизнь"}
+        ]
+      },
+      {
+        "key": "mind_control",
+        "name": "MIND CONTROL",
+        "label": "Управление сознанием",
+        "stats": [
+          {"key": "attention_control", "name": "Attention Control", "label": "Контроль внимания"},
+          {"key": "awareness", "name": "Awareness", "label": "Осознанность"},
+          {"key": "adaptation_flexibility", "name": "Adaptation Flexibility", "label": "Пластичность"},
+          {"key": "execution", "name": "Execution", "label": "Реализация"}
+        ]
+      },
+      {
+        "key": "world",
+        "name": "WORLD",
+        "label": "Внешние тела",
+        "stats": [
+          {"key": "technoperception", "name": "Technoperception", "label": "Техноперцепция"},
+          {"key": "socioperception", "name": "Socioperception", "label": "Социоцепция"},
+          {"key": "relational_awareness", "name": "Relational Awareness", "label": "Межличностный контакт"},
+          {"key": "space_awareness", "name": "Space Awareness", "label": "Пространственная осознанность"}
+        ]
+      }
+    ],
+    "world_model_levels": [
+      {"level": 1, "name": "Фрагментированное понимание"},
+      {"level": 2, "name": "Частичная связность"},
+      {"level": 3, "name": "Системное понимание"},
+      {"level": 4, "name": "Управление через модель"}
+    ]
+  }
+}
