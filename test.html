@@ -895,8 +895,8 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
         choiceRow.className = 'chat-msg bot-msg';
         choiceRow.innerHTML = avatarHTML() +
           '<div class="chat-msg-stack"><div class="chat-msg-options" id="opts-restart">' +
-          '<button class="chat-opt-btn" id="btn-view-result"><span>📊 Посмотреть результат</span></button>' +
-          '<button class="chat-opt-btn" id="btn-retake"><span>🔄 Пройти заново</span></button>' +
+          '<button class="chat-opt-btn" id="btn-view-result"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Посмотреть результат</span></button>' +
+          '<button class="chat-opt-btn" id="btn-retake"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Пройти заново</span></button>' +
           '</div></div>';
         container.appendChild(choiceRow);
         document.getElementById('btn-view-result').addEventListener('click', function() { window._showExisting(); });
