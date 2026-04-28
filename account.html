@@ -512,12 +512,15 @@
       <div id="rpg-hero" style="padding:1.5rem;border-radius:16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);margin-bottom:1.5rem;">
         <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
           <!-- Avatar -->
-          <div id="rpg-avatar-wrap" style="position:relative;width:88px;height:88px;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('avatar-file-input').click()">
-            <img id="rpg-avatar-img" src="assets/avatars/stars-default.gif" alt="" style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.08);">
-            <div id="rpg-avatar-hover" style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;">
-              <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.8);stroke-width:2;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+            <div id="rpg-avatar-wrap" style="position:relative;width:88px;height:88px;cursor:pointer;" onclick="document.getElementById('avatar-file-input').click()">
+              <img id="rpg-avatar-img" src="assets/avatars/stars-default.gif" alt="" style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.08);">
+              <div id="rpg-avatar-hover" style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;">
+                <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.8);stroke-width:2;" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
             </div>
-            <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
+            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'">Галерея</button>
           </div>
           <div style="flex:1;min-width:200px;">
             <p id="rpg-profile-name" style="margin:0;font-size:1.4rem;font-family:'Unbounded',sans-serif;font-weight:600;color:var(--text-primary);letter-spacing:0.04em;line-height:1.3;"></p>
@@ -2499,6 +2502,68 @@ function loadAvatar(user){
   if(img && user && user.avatar_url){
     img.src = user.avatar_url;
   }
+}
+
+// ══════════════════════════════════════════
+// PRESET AVATAR GALLERY
+// ══════════════════════════════════════════
+var PRESET_AVATARS = [
+  {file:'preset-01.png', label:'NA Logo'},
+  {file:'preset-02.png', label:'Neural'},
+  {file:'preset-03.jpg', label:'Hologram'},
+  {file:'preset-04.jpg', label:'Sphere'},
+  {file:'preset-05.jpg', label:'Focus'},
+  {file:'preset-06.jpg', label:'Wormhole'},
+  {file:'preset-07.jpg', label:'Iris'},
+  {file:'preset-08.gif', label:'Wave'},
+  {file:'preset-09.jpg', label:'Sunburst'},
+  {file:'preset-10.jpg', label:'Spiral'},
+  {file:'preset-11.gif', label:'Vortex'},
+  {file:'preset-12.jpg', label:'Horizon'},
+  {file:'preset-13.gif', label:'Cosmos'}
+];
+
+function openPresetGallery(){
+  var overlay = document.getElementById('presetGalleryOverlay');
+  var grid = document.getElementById('presetGrid');
+  grid.innerHTML = '';
+  PRESET_AVATARS.forEach(function(p){
+    var cell = document.createElement('div');
+    cell.style.cssText = 'cursor:pointer;border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;aspect-ratio:1;';
+    cell.onmouseover = function(){ cell.style.borderColor='rgba(0,224,255,0.4)';cell.style.transform='scale(1.05)'; };
+    cell.onmouseout = function(){ cell.style.borderColor='rgba(255,255,255,0.06)';cell.style.transform='scale(1)'; };
+    cell.onclick = function(){ selectPresetAvatar(p.file); };
+    var img = document.createElement('img');
+    img.src = 'assets/avatars/preset/' + p.file;
+    img.alt = p.label;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    cell.appendChild(img);
+    grid.appendChild(cell);
+  });
+  overlay.classList.add('open');
+}
+
+function closePresetGallery(){
+  document.getElementById('presetGalleryOverlay').classList.remove('open');
+}
+
+function selectPresetAvatar(presetFile){
+  var avatarUrl = 'assets/avatars/preset/' + presetFile;
+  document.getElementById('rpg-avatar-img').src = avatarUrl;
+  closePresetGallery();
+  var token = localStorage.getItem('na_token');
+  if(!token) return;
+  fetch(API_BASE+'/api/users/me/avatar/preset', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify({preset: presetFile})
+  }).then(function(r){ return r.json(); }).then(function(data){
+    if(data.avatar_url){
+      document.getElementById('rpg-avatar-img').src = data.avatar_url;
+    }
+  }).catch(function(err){
+    console.error('Preset avatar failed:', err);
+  });
 }
 
 // ══════════════════════════════════════════
@@ -6098,6 +6163,16 @@ if('serviceWorker' in navigator){
         </div>
       </div>
     </div>
+  </div>
+</div>
+<!-- Preset Avatar Gallery Modal -->
+<div id="presetGalleryOverlay" class="modal-overlay" onclick="if(event.target===this)closePresetGallery()">
+  <div style="background:var(--surface-secondary,#141420);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:1.5rem;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <span style="font-family:'Unbounded',sans-serif;font-size:1rem;color:var(--text-primary);">Выберите аватар</span>
+      <button onclick="closePresetGallery()" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+    <div id="presetGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;"></div>
   </div>
 </div>
 </body>
