@@ -191,7 +191,7 @@
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--text-muted); }
-.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:default;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right); }
+.nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:default;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);overflow:hidden; }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
 .nm-fs-header h3 { margin:0;font-size:16px;color:var(--text-primary);font-weight:600; }
@@ -207,7 +207,7 @@
 .nm-fs-sidebar { width:280px;overflow-y:auto;border-left:1px solid rgba(255,255,255,0.06);padding:0.8rem; }
 .nm-fs-btn { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;min-width:44px;min-height:44px;justify-content:center; }
 .nm-fs-btn:hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
-@media(max-width:768px){ .nm-fs-sidebar { display:none; } .nm-fs-header h3 { font-size:13px; } .nm-fs-header { padding:0.5rem 0.8rem; } }
+@media(max-width:768px){ .nm-fs-sidebar { display:none; } .nm-fs-header h3 { font-size:13px; } .nm-fs-header { padding:0.5rem 0.8rem;flex-wrap:wrap;gap:0.4rem; } .nm-fs-header > div { flex-wrap:wrap;gap:0.3rem; } }
 .nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
 .nm-chip:hover { border-color:rgba(255,255,255,0.18); }
 .nm-chip.selected { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
@@ -238,6 +238,13 @@
 @media(max-width:600px){
   #tab-enroll .dash-grid > div[style*="display:flex"] { flex-wrap:nowrap; }
 }
+@media(max-width:768px){
+  .program-cards-scroll { scroll-padding-left:1rem; }
+  .program-cards-scroll > .dash-card { min-width:85vw!important;flex:none!important; }
+  .program-scroll-dots { display:flex!important; }
+}
+.prog-dot { width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.15);transition:all 0.25s; }
+.prog-dot.active { background:rgba(0,224,255,0.6);transform:scale(1.3); }
 #rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 .rpg-modal-overlay { position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px); }
 .rpg-modal { max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px); }
@@ -1166,7 +1173,7 @@
       </div>
 
       <!-- Program cards -->
-      <div style="grid-column:span 12;display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:0.5rem;">
+      <div class="program-cards-scroll" style="grid-column:span 12;display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:0.5rem;">
         <!-- Self-Guided -->
         <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
@@ -1231,6 +1238,13 @@
             Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
+      </div>
+      <!-- Mobile scroll indicator dots -->
+      <div class="program-scroll-dots" style="grid-column:span 12;display:none;justify-content:center;gap:6px;padding:0.25rem 0;">
+        <span class="prog-dot active" data-idx="0"></span>
+        <span class="prog-dot" data-idx="1"></span>
+        <span class="prog-dot" data-idx="2"></span>
+        <span class="prog-dot" data-idx="3"></span>
       </div>
     </div>
   </div>
@@ -2503,6 +2517,24 @@ function loadAvatar(user){
     img.src = user.avatar_url;
   }
 }
+
+// ══════════════════════════════════════════
+// PROGRAM CARDS SCROLL DOTS (mobile)
+// ══════════════════════════════════════════
+(function(){
+  var scroller = document.querySelector('.program-cards-scroll');
+  if(!scroller) return;
+  scroller.addEventListener('scroll', function(){
+    var dots = document.querySelectorAll('.prog-dot');
+    if(!dots.length) return;
+    var cards = scroller.querySelectorAll('.dash-card');
+    var scrollLeft = scroller.scrollLeft;
+    var cardW = cards[0] ? cards[0].offsetWidth + 16 : 1; // 16 = gap
+    var idx = Math.round(scrollLeft / cardW);
+    idx = Math.max(0, Math.min(idx, dots.length - 1));
+    dots.forEach(function(d,i){ d.classList.toggle('active', i===idx); });
+  });
+})();
 
 // ══════════════════════════════════════════
 // PRESET AVATAR GALLERY
@@ -3987,10 +4019,12 @@ function nmToggleFullscreen(){
   if(nmFullscreen){
     overlay.classList.add('active');
     document.body.style.overflow='hidden';
+    // iOS Safari 100vh fix: set height via JS
+    overlay.style.height = window.innerHeight + 'px';
     // Lazy-init fullscreen event handlers (DOM elements are after script tag)
     nmFsInitEvents();
     nmFsInitCursor();
-    // Show custom cursor
+    // Show custom cursor (only on non-touch devices)
     var fsCur=document.getElementById('nm-fs-cursor');
     if(fsCur && !window.matchMedia('(pointer:coarse)').matches) fsCur.style.display='block';
     // Clone filters into sidebar + mobile filter bar
@@ -4005,8 +4039,17 @@ function nmToggleFullscreen(){
       if(nm3DMode){ fsBtn3d.classList.add('active'); fsBtn3d.textContent='2D'; }
       else { fsBtn3d.classList.remove('active'); fsBtn3d.innerHTML='<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D'; }
     }
-    // Start rendering on fs canvas
-    nmFsStartRender();
+    // Defer rendering to next frame so layout is complete (fixes mobile race condition)
+    requestAnimationFrame(function(){
+      // Re-measure height for iOS Safari after layout
+      overlay.style.height = window.innerHeight + 'px';
+      nmFsStartRender();
+      // If 3D mode was active, rebuild 3D graph after layout too
+      if(nm3DMode){
+        var fs3d = document.getElementById('nm-fs-3d-container');
+        if(fs3d) nmBuildFs3DGraph(fs3d);
+      }
+    });
   } else {
     overlay.classList.remove('active');
     document.body.style.overflow='';
@@ -4129,11 +4172,13 @@ function nmFsStartRender(){
   if(!canvas) return;
   var wrap = canvas.parentElement;
   var dpr = window.devicePixelRatio || 1;
-  
+
   function fsTick(){
     if(!nmFullscreen) return;
     var W = wrap.clientWidth * dpr;
     var H = wrap.clientHeight * dpr;
+    // Guard: if layout not ready yet, retry next frame
+    if(W < 10 || H < 10){ nmFsAnimFrame=requestAnimationFrame(fsTick); return; }
     if(canvas.width !== W || canvas.height !== H){
       canvas.width = W;
       canvas.height = H;
@@ -4420,6 +4465,12 @@ function nmFsInitEvents(){
 document.addEventListener('keydown',function(ev){
   if(ev.key==='Escape' && nmFullscreen) nmToggleFullscreen();
 });
+// iOS Safari resize handler (address bar show/hide changes innerHeight)
+window.addEventListener('resize',function(){
+  if(!nmFullscreen) return;
+  var overlay=document.getElementById('nm-fs-overlay');
+  if(overlay) overlay.style.height=window.innerHeight+'px';
+});
 
 // Fullscreen custom cursor follow (lazy-init — DOM may not exist at parse time)
 var nmFsCursorInitialized = false;
@@ -4595,8 +4646,8 @@ function nmFsToggle3D(){
     if(mainBtn) mainBtn.textContent = '2D';
     fs3d.style.display = 'block';
     fsCanvas.style.display = 'none';
-    // Build 3D in fullscreen container
-    nmBuildFs3DGraph(fs3d);
+    // Defer 3D build to next frame so container has layout dimensions
+    requestAnimationFrame(function(){ nmBuildFs3DGraph(fs3d); });
   } else {
     fsBtn.classList.remove('active');
     fsBtn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D';
@@ -4612,6 +4663,11 @@ function nmFsToggle3D(){
 var nmFs3DGraph = null;
 function nmBuildFs3DGraph(container){
   if(!container || typeof ForceGraph3D === 'undefined') return;
+  // Guard against 0-dimension container (layout not ready)
+  if(container.clientWidth < 10 || container.clientHeight < 10){
+    requestAnimationFrame(function(){ nmBuildFs3DGraph(container); });
+    return;
+  }
   container.innerHTML = '';
   var gNodes = [];
   var gLinks = [];
