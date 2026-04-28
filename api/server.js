@@ -380,6 +380,28 @@ app.post('/api/users/me/avatar', requireAuth, async (req, res) => {
   }
 });
 
+// Select preset avatar (stores relative URL path in DB)
+const VALID_PRESETS = [
+  'preset-01.png','preset-02.png','preset-03.jpg','preset-04.jpg',
+  'preset-05.jpg','preset-06.jpg','preset-07.jpg','preset-08.gif',
+  'preset-09.jpg','preset-10.jpg','preset-11.gif','preset-12.jpg',
+  'preset-13.gif'
+];
+app.post('/api/users/me/avatar/preset', requireAuth, async (req, res) => {
+  try {
+    const { preset } = req.body;
+    if (!preset || !VALID_PRESETS.includes(preset)) {
+      return res.status(400).json({ error: 'Invalid preset. Valid: ' + VALID_PRESETS.join(', ') });
+    }
+    const avatarUrl = 'assets/avatars/preset/' + preset;
+    await sql`UPDATE users SET avatar_url = ${avatarUrl} WHERE id = ${req.user.id}`;
+    res.json({ ok: true, avatar_url: avatarUrl });
+  } catch (err) {
+    console.error('POST /api/users/me/avatar/preset:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // Logout (placeholder for future token blacklist)
 app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
