@@ -1264,6 +1264,24 @@
           </button>
         </div>
 
+        <!-- DRAFT: pending medical review -->
+        <!-- Rehabilitation Program -->
+        <div class="dash-card glass-card-elevated" id="rehab-program-card" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;border-color:rgba(167,139,250,0.15);">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-violet);text-transform:uppercase;">Rehabilitation</span>
+          </div>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Rehabilitation Program</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Восстановление когнитивных функций при нарушениях работы нервной системы. Только персональная работа, диагностика, адаптивные протоколы.</p>
+          <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Персональный формат</span>
+          </div>
+          <button class="btn btn-ghost" onclick="enrollProgram('rehab')" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);">
+            Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <!-- /DRAFT -->
+
         <!-- Specialist Training -->
         <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
@@ -1286,7 +1304,51 @@
         <span class="prog-dot" data-idx="1"></span>
         <span class="prog-dot" data-idx="2"></span>
         <span class="prog-dot" data-idx="3"></span>
+        <span class="prog-dot" data-idx="4"></span>
       </div>
+
+      <!-- DRAFT: pending medical review -->
+      <!-- ═══ REHABILITATION PROGRAM DETAIL (shown via JS when rehab user) ═══ -->
+      <div id="rehab-detail-section" style="display:none;grid-column:span 12;">
+        <!-- (А) Contextual block — condition-specific text -->
+        <div class="dash-card glass-card-elevated" style="border-left:2px solid var(--accent-violet);margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:18px;height:18px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span style="font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:500;color:var(--text-primary);">Ваш контекст восстановления</span>
+          </div>
+          <div id="rehab-context-content" style="font-size:13px;line-height:1.8;color:var(--text-secondary);"></div>
+        </div>
+
+        <!-- (Б) Locked recovery plan -->
+        <div class="dash-card glass-card-elevated" style="position:relative;overflow:hidden;margin-bottom:1rem;">
+          <div style="position:absolute;inset:0;background:rgba(5,7,10,0.7);backdrop-filter:blur(6px);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;">
+            <svg style="width:32px;height:32px;fill:none;stroke:var(--text-muted);stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <p style="font-size:14px;color:var(--text-secondary);text-align:center;margin:0;">Персональный план восстановления</p>
+            <button class="btn btn-solid" onclick="enrollProgram('rehab')" style="font-size:13px;">
+              Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+          <div style="opacity:0.15;pointer-events:none;padding:1.5rem;">
+            <h4 style="font-family:'Unbounded',sans-serif;font-size:0.95rem;color:var(--text-primary);margin:0 0 1rem;">План восстановления</h4>
+            <div style="height:120px;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.03) 0px,rgba(255,255,255,0.03) 20px,transparent 20px,transparent 40px);border-radius:8px;"></div>
+          </div>
+        </div>
+
+        <!-- (В) Research participation -->
+        <div class="dash-card glass-card-elevated" style="border-color:rgba(167,139,250,0.1);">
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
+            <svg style="width:18px;height:18px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span style="font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:500;color:var(--text-primary);">Исследовательская программа</span>
+          </div>
+          <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">Мы проводим исследование эффективности адаптивных протоколов внимания при различных нарушениях нервной системы. Участники получают доступ к персональным протоколам и сопровождению в рамках исследования.</p>
+          <div id="rehab-research-form" style="display:flex;gap:0.5rem;align-items:center;">
+            <input type="email" id="rehab-research-email" placeholder="Ваш email" style="flex:1;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-family:inherit;font-size:13px;">
+            <button class="btn btn-ghost" onclick="submitRehabResearch()" style="font-size:12px;white-space:nowrap;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);">Принять участие</button>
+          </div>
+          <p id="rehab-research-msg" style="display:none;font-size:12px;color:var(--accent-cyan);margin:0.5rem 0 0;"></p>
+        </div>
+      </div>
+      <!-- /DRAFT -->
     </div>
   </div>
 
@@ -2532,9 +2594,9 @@ function toggleMethodStrip(){
   }
 }
 function enrollProgram(type){
-  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Подготовка специалистов'};
-  var prices = {self:'$1,400',guided:'$4,000',group:'TBD',specialist:'TBD'};
-  var hasTBD = (type==='group'||type==='specialist');
+  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Подготовка специалистов',rehab:'Rehabilitation Program'};
+  var prices = {self:'$1,400',guided:'$4,000',group:'TBD',specialist:'TBD',rehab:'Персональный формат'};
+  var hasTBD = (type==='group'||type==='specialist'||type==='rehab');
   if(hasTBD){
     showEnrollModal('Запись на программу','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">Программа <strong style="color:var(--text-primary);">'+names[type]+'</strong> находится в процессе формирования.</p><p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Оставьте заявку, и мы свяжемся с вами, когда откроется набор.</p>');
   } else {
@@ -2548,6 +2610,56 @@ function showEnrollModal(title, bodyHtml){
   overlay.innerHTML = '<div class="rpg-modal" style="max-width:440px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;"><h3 style="font-family:\'Unbounded\',sans-serif;font-size:1rem;font-weight:500;color:var(--text-primary);margin:0;">'+title+'</h3><button onclick="this.closest(\'.rpg-modal-overlay\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;"><svg style="width:18px;height:18px;fill:none;stroke:var(--text-muted);stroke-width:2;" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>'+bodyHtml+'<button class="btn btn-solid" onclick="this.closest(\'.rpg-modal-overlay\').remove()" style="width:100%;justify-content:center;margin-top:1.25rem;">Понятно</button></div>';
   document.body.appendChild(overlay);
 }
+
+// ══════════════════════════════════════════
+// REHABILITATION PROGRAM CONTEXT
+// ══════════════════════════════════════════
+/* <!-- DRAFT: pending medical review --> */
+var REHAB_CONTEXT_TEXTS = {
+  neurodegenerative: 'Нейродегенеративные процессы постепенно нарушают внимание, рабочую память и исполнительный контроль — функции, на которые опирается повседневная самостоятельность. Тренировка внимания и адаптивные когнитивные протоколы помогают замедлить функциональное снижение, поддержать сохранные сети мозга и расширить когнитивный резерв.',
+  stroke: 'После инсульта мозг проходит через окно нейропластичности — период, когда направленная тренировка может восстановить функции, утраченные из-за повреждения. Адаптивные протоколы внимания помогают восстановить контроль над фокусом, скоростью обработки информации и переключением между задачами.',
+  tbi: 'ЧМТ часто оставляет невидимые следствия: рассеянность, утомляемость от умственной нагрузки, проблемы с концентрацией. Тренировка внимания на адаптивных протоколах поддерживает восстановление сетей внимания и исполнительной функции. Постепенное возвращение когнитивной выносливости — реалистичная цель при систематической работе.',
+  neuropathy: 'Хроническая боль и нарушения чувствительности забирают значительную часть когнитивного ресурса — мозг постоянно отвлекается на сигналы тела. Протоколы тренировки внимания помогают научиться удерживать фокус несмотря на телесный шум и снижать субъективное воздействие хронических симптомов на повседневную жизнь.',
+  asd: 'При РАС внимание и сенсорная регуляция часто работают по-другому — это не дефицит, а особенность. Адаптивные протоколы помогают развивать произвольный контроль внимания и регуляцию состояний нервной системы, не подменяя индивидуальные особенности, а опираясь на них.',
+  other: 'Каждое нарушение работы нервной системы влияет на внимание и когнитивный контроль по-своему. Опираясь на ваше описание, мы подберём индивидуальный протокол с учётом вашего состояния и целей восстановления.'
+};
+function initRehabSection(){
+  try {
+    var testData = JSON.parse(localStorage.getItem('na_test_result') || '{}');
+    var isRehab = testData.rehab_flag || (new URLSearchParams(window.location.search).get('rehab') === '1');
+    if(!isRehab) return;
+    var section = document.getElementById('rehab-detail-section');
+    if(!section) return;
+    section.style.display = '';
+    var conditions = testData.rehab_conditions || [];
+    var contextEl = document.getElementById('rehab-context-content');
+    if(contextEl && conditions.length > 0){
+      var html = '';
+      conditions.forEach(function(c){
+        var text = REHAB_CONTEXT_TEXTS[c] || REHAB_CONTEXT_TEXTS.other;
+        html += '<p style="margin:0 0 0.75rem;">' + text + '</p>';
+      });
+      if(testData.rehab_other_description){
+        html += '<p style="margin:0;color:var(--text-muted);font-style:italic;">Ваше описание: ' + testData.rehab_other_description + '</p>';
+      }
+      contextEl.innerHTML = html;
+    }
+  } catch(e){ console.warn('initRehabSection:', e); }
+}
+function submitRehabResearch(){
+  var emailInput = document.getElementById('rehab-research-email');
+  var msg = document.getElementById('rehab-research-msg');
+  var email = emailInput ? emailInput.value.trim() : '';
+  if(!email || email.indexOf('@') < 1){
+    if(msg){ msg.textContent = 'Введите корректный email'; msg.style.display = ''; msg.style.color = 'var(--accent-rose)'; }
+    return;
+  }
+  if(msg){ msg.textContent = 'Заявка отправлена. Мы свяжемся с вами.'; msg.style.display = ''; msg.style.color = 'var(--accent-cyan)'; }
+  if(emailInput) emailInput.disabled = true;
+  // TODO: wire to API endpoint for research signup
+}
+// Call after dashboard loads
+setTimeout(initRehabSection, 500);
 
 // ══════════════════════════════════════════
 // AVATAR UPLOAD

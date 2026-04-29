@@ -1713,14 +1713,15 @@ app.post('/api/neuromap/v2/rebuild-self', requireAuth, async (req, res) => {
 // Save test result (auth required)
 app.post('/api/test-result/save', requireAuth, async (req, res) => {
   try {
-    const { profile, answers, scores, neuro_deg_flag, neuro_deg_detail } = req.body;
+    const { profile, answers, scores, rehab_flag, rehab_conditions, rehab_other_description } = req.body;
     if (!profile || !answers || !scores) {
       return res.status(400).json({ error: 'profile, answers, and scores required' });
     }
     const userId = req.user.id;
+    const conditionsArr = Array.isArray(rehab_conditions) ? rehab_conditions : [];
     await sql`
-      INSERT INTO test_results (user_id, profile, answers, scores, neuro_deg_flag, neuro_deg_detail)
-      VALUES (${userId}, ${profile}, ${JSON.stringify(answers)}, ${JSON.stringify(scores)}, ${neuro_deg_flag || false}, ${neuro_deg_detail || ''})
+      INSERT INTO test_results (user_id, profile, answers, scores, rehab_flag, rehab_conditions, rehab_other_description)
+      VALUES (${userId}, ${profile}, ${JSON.stringify(answers)}, ${JSON.stringify(scores)}, ${rehab_flag || false}, ${conditionsArr}, ${rehab_other_description || ''})
     `;
     res.json({ ok: true });
   } catch (err) {
