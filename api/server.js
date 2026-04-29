@@ -66,10 +66,21 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 // Stripe webhook needs raw body — must be BEFORE express.json()
+// TODO: Stripe integration — keys pending
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  // TODO: enable when STRIPE_WEBHOOK_SECRET is set
+  // Real webhook processing is commented out until Stripe keys are configured.
+  // When enabled, this will:
+  // 1. Verify signature with stripe.webhooks.constructEvent()
+  // 2. On checkout.session.completed: update consent_log payment_status
+  // 3. Call sendConfirmationEmail() for paid orders
+
   if (!stripe || !STRIPE_WEBHOOK_SECRET) {
-    return res.status(503).json({ error: 'Stripe not configured' });
+    console.log('Stripe webhook called but keys not configured — ignoring');
+    return res.json({ received: true, stub: true });
   }
+
+  /*
   let event;
   try {
     const sig = req.headers['stripe-signature'];
@@ -79,39 +90,34 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     return res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 
-  // Handle checkout.session.completed
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     try {
-      // Log consent + payment to consent_log table
       const meta = session.metadata || {};
-      await sql`INSERT INTO consent_log (
-        stripe_session_id, stripe_customer_id, product, email,
-        consent_tos, consent_privacy, consent_digital, consent_rehab,
-        amount_total, currency, payment_status, consent_timestamp
-      ) VALUES (
-        ${session.id},
-        ${session.customer || null},
-        ${meta.product || 'unknown'},
-        ${session.customer_details?.email || meta.email || null},
-        ${meta.consent_tos === 'true'},
-        ${meta.consent_privacy === 'true'},
-        ${meta.consent_digital === 'true'},
-        ${meta.consent_rehab === 'true' ? true : null},
-        ${session.amount_total || 0},
-        ${session.currency || 'usd'},
-        ${session.payment_status || 'unknown'},
-        ${meta.consent_timestamp || new Date().toISOString()}
-      )`;
-      console.log('Stripe webhook: consent_log saved for session', session.id);
+      // Update existing consent_log row payment_status
+      await sql`UPDATE consent_log SET
+        stripe_session_id = ${session.id},
+        stripe_customer_id = ${session.customer || null},
+        payment_status = ${session.payment_status || 'paid'}
+        WHERE product = ${meta.product} AND email = ${session.customer_details?.email || meta.email}
+        AND payment_status = 'pending'
+        ORDER BY created_at DESC LIMIT 1
+      `;
+      console.log('Stripe webhook: consent_log updated for session', session.id);
 
-      // TODO: Send confirmation email (Pack 7.7)
-      console.log('TODO: send confirmation email to', session.customer_details?.email);
+      // Send confirmation email
+      if (session.payment_status === 'paid') {
+        sendConfirmationEmail(
+          session.customer_details?.email || meta.email,
+          meta.product,
+          session.id
+        );
+      }
     } catch (err) {
       console.error('Stripe webhook DB error:', err.message);
-      // Still return 200 so Stripe doesn't retry
     }
   }
+  */
 
   res.json({ received: true });
 });
@@ -274,7 +280,29 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_rehab_app_status ON rehab_applications(status)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_rehab_app_created ON rehab_applications(created_at DESC)`;
 
-    res.json({ ok: true, message: 'Migrations 003-014 applied successfully' });
+    // Migration 015: consent_log table
+    await sql`CREATE TABLE IF NOT EXISTS consent_log (
+      id SERIAL PRIMARY KEY,
+      stripe_session_id TEXT,
+      stripe_customer_id TEXT,
+      product TEXT NOT NULL,
+      email TEXT,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      consent_tos BOOLEAN DEFAULT false,
+      consent_privacy BOOLEAN DEFAULT false,
+      consent_digital BOOLEAN DEFAULT false,
+      consent_rehab BOOLEAN,
+      amount_total INTEGER DEFAULT 0,
+      currency TEXT DEFAULT 'usd',
+      payment_status TEXT DEFAULT 'pending',
+      consent_timestamp TIMESTAMP,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_product ON consent_log(product)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_email ON consent_log(email)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_created ON consent_log(created_at DESC)`;
+
+    res.json({ ok: true, message: 'Migrations 003-015 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2060,9 +2088,6 @@ const STRIPE_PRODUCTS = {
 
 app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
   try {
-    if (!stripe) {
-      return res.status(503).json({ error: 'Stripe is not configured. Contact admin.' });
-    }
     const { product, tos, privacy, digital, rehab, timestamp } = req.body;
     if (!product || !STRIPE_PRODUCTS[product]) {
       return res.status(400).json({ error: 'Invalid product. Use: lab, rehab' });
@@ -2076,45 +2101,65 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
 
     const prod = STRIPE_PRODUCTS[product];
     const userEmail = req.user ? req.user.email : null;
+    const userId = req.user ? req.user.id : null;
 
-    const sessionParams = {
-      payment_method_types: ['card'],
-      mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: prod.currency,
-          product_data: { name: prod.name },
-          unit_amount: prod.price
+    // Always log consent to DB
+    await sql`INSERT INTO consent_log (
+      product, email, user_id,
+      consent_tos, consent_privacy, consent_digital, consent_rehab,
+      amount_total, currency, payment_status, consent_timestamp
+    ) VALUES (
+      ${product},
+      ${userEmail},
+      ${userId},
+      ${!!tos},
+      ${!!privacy},
+      ${!!digital},
+      ${product === 'rehab' ? !!rehab : null},
+      ${prod.price},
+      ${prod.currency},
+      ${'pending'},
+      ${timestamp || new Date().toISOString()}
+    )`;
+
+    // TODO: Stripe integration — keys pending
+    // When STRIPE_SECRET_KEY is set, create real Stripe Checkout session:
+    if (stripe) {
+      const sessionParams = {
+        payment_method_types: ['card'],
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: prod.currency,
+            product_data: { name: prod.name },
+            unit_amount: prod.price
+          },
+          quantity: 1
+        }],
+        success_url: FRONTEND_URL + '/checkout-success.html?session_id={CHECKOUT_SESSION_ID}&product=' + product,
+        cancel_url: FRONTEND_URL + '/checkout-confirm.html?product=' + product,
+        metadata: {
+          product: product,
+          consent_tos: String(!!tos),
+          consent_privacy: String(!!privacy),
+          consent_digital: String(!!digital),
+          consent_rehab: product === 'rehab' ? String(!!rehab) : '',
+          consent_timestamp: timestamp || new Date().toISOString(),
+          email: userEmail || ''
         },
-        quantity: 1
-      }],
-      success_url: FRONTEND_URL + '/checkout-success.html?session_id={CHECKOUT_SESSION_ID}&product=' + product,
-      cancel_url: FRONTEND_URL + '/checkout-confirm.html?product=' + product,
-      metadata: {
-        product: product,
-        consent_tos: String(!!tos),
-        consent_privacy: String(!!privacy),
-        consent_digital: String(!!digital),
-        consent_rehab: product === 'rehab' ? String(!!rehab) : '',
-        consent_timestamp: timestamp || new Date().toISOString(),
-        email: userEmail || ''
-      },
-      consent_collection: {
-        terms_of_service: 'required'
-      },
-      custom_text: {
-        submit: {
-          message: 'By completing this purchase you confirm that you have read and agreed to our Terms of Service and Privacy Policy.'
+        consent_collection: { terms_of_service: 'required' },
+        custom_text: {
+          submit: { message: 'By completing this purchase you confirm that you have read and agreed to our Terms of Service and Privacy Policy.' }
         }
-      }
-    };
-
-    if (userEmail) {
-      sessionParams.customer_email = userEmail;
+      };
+      if (userEmail) sessionParams.customer_email = userEmail;
+      const session = await stripe.checkout.sessions.create(sessionParams);
+      return res.json({ url: session.url, sessionId: session.id });
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
-    res.json({ url: session.url, sessionId: session.id });
+    // STUB: Stripe keys not configured — redirect to coming-soon page
+    console.log('STUB: Stripe not configured, consent logged for product:', product, 'email:', userEmail);
+    res.json({ stub: true, redirect_url: FRONTEND_URL + '/payment-coming-soon.html?product=' + product });
   } catch (err) {
     console.error('POST /api/checkout/create-session:', err);
     res.status(500).json({ error: err.message });
