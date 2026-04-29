@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Заявка на Rehabilitation Program — NeuroAttention Lab</title>
+<meta name="description" content="Оставьте заявку на участие в Rehabilitation Program — восстановление когнитивных функций при нарушениях нервной системы." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+:root {
+  --test-bg: rgba(5,7,10,0.97);
+  --card-bg: rgba(255,255,255,0.12);
+  --card-border: rgba(255,255,255,0.22);
+  --accent-cyan: #00d2be;
+  --accent-rose: #ff6b8a;
+  --accent-amber: #f5a623;
+  --accent-violet: #a78bfa;
+  --accent-green: #34d399;
+  --text-primary: #e8eaed;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+}
+
+/* Override cursor:none from redesign.css */
+body { cursor: default !important; }
+body * { cursor: inherit; }
+button, a, input, textarea, select { cursor: pointer !important; }
+input, textarea { cursor: text !important; }
+
+.rehab-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--test-bg);
+}
+
+.rehab-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(167,139,250,0.08);
+  padding: 0.75rem 0;
+}
+.rehab-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.rehab-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(0,210,190,0.08));
+  border: 1px solid rgba(167,139,250,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rehab-header-icon svg {
+  width: 20px; height: 20px;
+}
+.rehab-header-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.rehab-header-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.rehab-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.rehab-card {
+  width: 100%;
+  max-width: 540px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(167,139,250,0.12);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.rehab-card h2 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.rehab-card .subtitle {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 1.5rem;
+}
+
+/* <!-- DRAFT: pending medical review --> */
+.rehab-context-box {
+  background: rgba(167,139,250,0.04);
+  border: 1px solid rgba(167,139,250,0.1);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: none;
+}
+.rehab-context-box p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: 0;
+}
+.rehab-context-box .context-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--accent-violet);
+  text-transform: uppercase;
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+/* <!-- /DRAFT --> */
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+.form-group label {
+  display: block;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: rgba(167,139,250,0.4);
+}
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.form-group .hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(0,210,190,0.08));
+  border: 1px solid rgba(167,139,250,0.25);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.submit-btn:hover {
+  border-color: rgba(167,139,250,0.4);
+  background: linear-gradient(135deg, rgba(167,139,250,0.2), rgba(0,210,190,0.12));
+}
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.submit-btn svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: currentColor; stroke-width: 2;
+}
+
+.form-msg {
+  text-align: center;
+  font-size: 13px;
+  margin-top: 1rem;
+  display: none;
+}
+.form-msg.success { color: var(--accent-green); }
+.form-msg.error { color: var(--accent-rose); }
+
+.rehab-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+  transition: color 0.2s;
+}
+.rehab-back:hover { color: var(--text-secondary); }
+.rehab-back svg {
+  width: 14px; height: 14px;
+  fill: none; stroke: currentColor; stroke-width: 2;
+}
+
+/* Success state */
+.success-card {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+.success-card .check-circle {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(52,211,153,0.08);
+  border: 2px solid rgba(52,211,153,0.3);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+.success-card .check-circle svg {
+  width: 32px; height: 32px;
+  fill: none; stroke: var(--accent-green); stroke-width: 2;
+}
+.success-card h2 {
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+.success-card p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 1.5rem;
+}
+.success-card a {
+  color: var(--accent-violet);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(167,139,250,0.3);
+}
+
+@media (max-width: 480px) {
+  .rehab-card { padding: 1.5rem 1.25rem; }
+  .form-row { grid-template-columns: 1fr; gap: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="rehab-page">
+  <!-- Header -->
+  <div class="rehab-header">
+    <div class="rehab-header-inner">
+      <div class="rehab-header-icon">
+        <svg fill="none" stroke="var(--accent-violet)" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div>
+        <div class="rehab-header-title">Rehabilitation Program</div>
+        <div class="rehab-header-sub">NeuroAttention Lab</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="rehab-main">
+    <a href="programs.html" class="rehab-back">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Программы
+    </a>
+
+    <!-- Form card -->
+    <div class="rehab-card" id="form-card">
+      <h2>Заявка на участие</h2>
+      <!-- DRAFT: pending medical review -->
+      <p class="subtitle">Rehabilitation Program — восстановление когнитивных функций при нарушениях работы нервной системы. Заполните форму, и мы свяжемся с вами для обсуждения персонального формата участия.</p>
+      <!-- /DRAFT -->
+
+      <!-- DRAFT: pending medical review -->
+      <div class="rehab-context-box" id="rehab-context-box">
+        <div class="context-label">
+          <svg style="width:12px;height:12px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Ваш контекст
+        </div>
+        <p id="rehab-context-text"></p>
+      </div>
+      <!-- /DRAFT -->
+
+      <form id="rehab-form" onsubmit="submitApplication(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="f-city">Город</label>
+            <input type="text" id="f-city" name="city" required placeholder="Москва" autocomplete="address-level2" />
+          </div>
+          <div class="form-group">
+            <label for="f-age">Возраст</label>
+            <input type="number" id="f-age" name="age" required min="1" max="119" placeholder="35" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="f-phone">Телефон</label>
+          <input type="tel" id="f-phone" name="phone" required placeholder="+7 (___) ___-__-__" autocomplete="tel" />
+        </div>
+
+        <div class="form-group">
+          <label for="f-description">Опишите вашу ситуацию</label>
+          <!-- DRAFT: pending medical review -->
+          <textarea id="f-description" name="description" required placeholder="Диагноз, текущее состояние, цели восстановления — любая информация, которая поможет нам подготовиться к разговору."></textarea>
+          <!-- /DRAFT -->
+          <div class="hint">Эта информация конфиденциальна и используется только для подготовки к консультации.</div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">
+          Отправить заявку
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <div class="form-msg success" id="msg-success">Заявка отправлена. Мы свяжемся с вами.</div>
+      <div class="form-msg error" id="msg-error"></div>
+    </div>
+
+    <!-- Success card (hidden by default, shown after submit) -->
+    <div class="rehab-card success-card" id="success-card" style="display:none;">
+      <div class="check-circle">
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <h2>Заявка отправлена</h2>
+      <p>Мы получили вашу заявку на участие в Rehabilitation Program. Наша команда свяжется с вами в ближайшее время для обсуждения персонального формата.</p>
+      <p><a href="account.html">Вернуться в личный кабинет</a></p>
+    </div>
+  </div>
+</div>
+
+<script>
+var API_BASE = 'https://neuroattention-api-production.up.railway.app';
+
+// DRAFT: pending medical review
+var REHAB_CONDITION_LABELS = {
+  neurodegenerative: 'нейродегенеративное заболевание',
+  stroke: 'восстановление после инсульта',
+  tbi: 'черепно-мозговая травма',
+  neuropathy: 'невропатия / хроническая боль',
+  asd: 'расстройство аутистического спектра',
+  other: 'другое состояние'
+};
+// /DRAFT
+
+function prefillFromTest() {
+  try {
+    var testData = JSON.parse(localStorage.getItem('na_test_result') || '{}');
+    if (!testData.rehab_flag) return;
+
+    var conditions = testData.rehab_conditions || [];
+    if (conditions.length > 0) {
+      var box = document.getElementById('rehab-context-box');
+      var textEl = document.getElementById('rehab-context-text');
+      if (box && textEl) {
+        var labels = conditions.map(function(c) { return REHAB_CONDITION_LABELS[c] || c; });
+        var text = 'По результатам теста: ' + labels.join(', ') + '.';
+        if (testData.rehab_other_description) {
+          text += ' ' + testData.rehab_other_description;
+        }
+        textEl.textContent = text;
+        box.style.display = '';
+      }
+    }
+
+    // Prefill description with conditions info
+    var descEl = document.getElementById('f-description');
+    if (descEl && !descEl.value && conditions.length > 0) {
+      var labels2 = conditions.map(function(c) { return REHAB_CONDITION_LABELS[c] || c; });
+      var prefill = labels2.join(', ');
+      if (testData.rehab_other_description) {
+        prefill += '. ' + testData.rehab_other_description;
+      }
+      descEl.value = prefill;
+    }
+  } catch(e) { console.warn('prefillFromTest:', e); }
+}
+
+function submitApplication(e) {
+  e.preventDefault();
+  var btn = document.getElementById('submit-btn');
+  var msgSuccess = document.getElementById('msg-success');
+  var msgError = document.getElementById('msg-error');
+  msgSuccess.style.display = 'none';
+  msgError.style.display = 'none';
+
+  var city = document.getElementById('f-city').value.trim();
+  var phone = document.getElementById('f-phone').value.trim();
+  var age = parseInt(document.getElementById('f-age').value, 10);
+  var description = document.getElementById('f-description').value.trim();
+
+  if (!city || !phone || !age || !description) {
+    msgError.textContent = 'Заполните все поля.';
+    msgError.style.display = '';
+    return;
+  }
+  if (age < 1 || age > 119) {
+    msgError.textContent = 'Укажите корректный возраст.';
+    msgError.style.display = '';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="opacity:0.7;">Отправка...</span>';
+
+  // Get rehab conditions from test data if available
+  var rehabConditions = [];
+  var rehabOther = '';
+  try {
+    var testData = JSON.parse(localStorage.getItem('na_test_result') || '{}');
+    if (testData.rehab_conditions) rehabConditions = testData.rehab_conditions;
+    if (testData.rehab_other_description) rehabOther = testData.rehab_other_description;
+  } catch(ex) {}
+
+  var payload = {
+    city: city,
+    phone: phone,
+    age: age,
+    description: description,
+    rehab_conditions: rehabConditions,
+    rehab_other_description: rehabOther
+  };
+
+  // Add auth token if logged in
+  var headers = { 'Content-Type': 'application/json' };
+  var token = localStorage.getItem('na_token');
+  if (token) {
+    headers['Authorization'] = 'Bearer ' + token;
+  }
+
+  fetch(API_BASE + '/api/rehab/apply', {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = 'Отправить заявку <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+
+    if (res.status === 200 || res.status === 201) {
+      document.getElementById('form-card').style.display = 'none';
+      document.getElementById('success-card').style.display = '';
+    } else if (res.status === 429) {
+      msgError.textContent = 'Слишком много заявок. Попробуйте позже.';
+      msgError.style.display = '';
+    } else {
+      msgError.textContent = res.data.error || 'Ошибка при отправке. Попробуйте позже.';
+      msgError.style.display = '';
+    }
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    btn.innerHTML = 'Отправить заявку <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+    msgError.textContent = 'Сетевая ошибка. Проверьте подключение.';
+    msgError.style.display = '';
+  });
+}
+
+// Init
+prefillFromTest();
+</script>
+</body>
+</html>

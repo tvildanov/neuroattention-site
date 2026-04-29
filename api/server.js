@@ -1837,6 +1837,131 @@ app.patch('/api/stats/:stat', requireAuth, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════
+// REHABILITATION APPLICATIONS
+// ══════════════════════════════════════════
+
+// Simple in-memory rate limiter for rehab applications (3 per day per IP)
+const rehabRateMap = new Map();
+function rehabRateLimit(req, res, next) {
+  const ip = req.headers['x-forwarded-for'] || req.ip || 'unknown';
+  const key = ip + ':' + new Date().toISOString().slice(0, 10); // ip:YYYY-MM-DD
+  const count = rehabRateMap.get(key) || 0;
+  if (count >= 3) {
+    return res.status(429).json({ error: 'Too many applications today. Try again tomorrow.' });
+  }
+  rehabRateMap.set(key, count + 1);
+  // Cleanup old keys every 100 requests
+  if (rehabRateMap.size > 500) {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const k of rehabRateMap.keys()) {
+      if (!k.endsWith(today)) rehabRateMap.delete(k);
+    }
+  }
+  next();
+}
+
+// Optional auth — extracts user_id if token present, but doesn't require it
+function optionalAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      req.user = decoded;
+    } catch (e) {
+      // Token invalid — proceed without user
+    }
+  }
+  next();
+}
+
+// POST /api/rehab/apply — public (rate-limited), optional auth
+app.post('/api/rehab/apply', rehabRateLimit, optionalAuth, async (req, res) => {
+  try {
+    const { city, phone, age, description, rehab_conditions, rehab_other_description } = req.body;
+    if (!city || !phone || !age || !description) {
+      return res.status(400).json({ error: 'All fields required: city, phone, age, description' });
+    }
+    const ageNum = parseInt(age, 10);
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 119) {
+      return res.status(400).json({ error: 'Invalid age' });
+    }
+    const conditionsArr = Array.isArray(rehab_conditions) ? rehab_conditions : [];
+    const userId = req.user ? req.user.id : null;
+
+    const rows = await sql`
+      INSERT INTO rehab_applications (user_id, city, phone, age, description, rehab_conditions, rehab_other_description)
+      VALUES (${userId}, ${city.trim()}, ${phone.trim()}, ${ageNum}, ${description.trim()}, ${conditionsArr}, ${(rehab_other_description || '').trim()})
+      RETURNING id, created_at
+    `;
+    res.json({ ok: true, id: rows[0].id, created_at: rows[0].created_at });
+  } catch (err) {
+    console.error('POST /api/rehab/apply:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/rehab/applications — superadmin/founder only
+app.get('/api/admin/rehab/applications', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { status: filterStatus } = req.query;
+    let rows;
+    if (filterStatus && filterStatus !== 'all') {
+      rows = await sql`
+        SELECT ra.*, u.name as user_name, u.email as user_email
+        FROM rehab_applications ra
+        LEFT JOIN users u ON ra.user_id = u.id
+        WHERE ra.status = ${filterStatus}
+        ORDER BY ra.created_at DESC
+        LIMIT 200
+      `;
+    } else {
+      rows = await sql`
+        SELECT ra.*, u.name as user_name, u.email as user_email
+        FROM rehab_applications ra
+        LEFT JOIN users u ON ra.user_id = u.id
+        ORDER BY ra.created_at DESC
+        LIMIT 200
+      `;
+    }
+    res.json({ ok: true, applications: rows });
+  } catch (err) {
+    console.error('GET /api/admin/rehab/applications:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/rehab/applications/:id/status — superadmin/founder only
+app.patch('/api/admin/rehab/applications/:id/status', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { id } = req.params;
+    const { status: newStatus } = req.body;
+    const validStatuses = ['new', 'contacted', 'in_progress', 'accepted', 'declined'];
+    if (!validStatuses.includes(newStatus)) {
+      return res.status(400).json({ error: 'Invalid status. Valid: ' + validStatuses.join(', ') });
+    }
+    const rows = await sql`
+      UPDATE rehab_applications
+      SET status = ${newStatus}, updated_at = now()
+      WHERE id = ${parseInt(id, 10)}
+      RETURNING *
+    `;
+    if (!rows.length) return res.status(404).json({ error: 'Application not found' });
+    res.json({ ok: true, application: rows[0] });
+  } catch (err) {
+    console.error('PATCH /api/admin/rehab/applications/:id/status:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
 });
