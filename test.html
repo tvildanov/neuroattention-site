@@ -523,6 +523,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
   // ── SVG icons per question (inline, themed) ──
   var Q_ICONS = [
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#00d2be" stroke-width="1.5"><path d="M12 2a7 7 0 0 1 7 7c0 3.87-3.13 7-7 7s-7-3.13-7-7a7 7 0 0 1 7-7z"/><path d="M12 16v2"/><circle cx="12" cy="21" r="1"/></svg>',
     '<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.5-6.5-1.4 1.4M6.9 17.1l-1.4 1.4m0-13 1.4 1.4m10.2 10.2 1.4 1.4"/></svg>',
     '<svg viewBox="0 0 24 24" fill="none" stroke="#00d2be" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>',
     '<svg viewBox="0 0 24 24" fill="none" stroke="#ff6b8a" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>',
@@ -536,14 +537,25 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   ];
 
   var Q_COLORS = [
+    'rgba(0,210,190,0.15)',
     'rgba(52,211,153,0.15)', 'rgba(0,210,190,0.15)', 'rgba(255,107,138,0.15)',
     'rgba(167,139,250,0.15)', 'rgba(245,166,35,0.15)', 'rgba(0,210,190,0.15)',
     'rgba(52,211,153,0.15)', 'rgba(167,139,250,0.15)', 'rgba(255,107,138,0.15)',
     'rgba(245,166,35,0.15)'
   ];
 
-  // ── 10 Questions ──
+  // ── Neurodegeneration filter flag ──
+  var neuroDegFlag = false;
+  var neuroDegDetail = '';
+
+  // ── Q0 + 10 Questions ──
   var QUESTIONS = [
+    { id:'Q0', group:'neuro_filter', text:'Прежде чем начать, один важный вопрос. Есть ли у вас или у вашего близкого диагностированное нейродегенеративное заболевание?', options:[
+      { letter:'A', text:'Да, болезнь Альцгеймера или деменция' },
+      { letter:'B', text:'Да, болезнь Паркинсона' },
+      { letter:'C', text:'Да, другое нейродегенеративное заболевание' },
+      { letter:'D', text:'Нет' }
+    ]},
     { id:'Q1', group:'state', text:'Как вы чаще всего чувствуете себя в течение обычного дня?', options:[
       { letter:'A', text:'Собранно, устойчиво, с ясным ощущением направления' },
       { letter:'B', text:'В целом нормально, но часто устаю и теряю фокус' },
@@ -691,7 +703,8 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
   function updateProgress() {
     var pct = Math.round(currentQ / QUESTIONS.length * 100);
-    document.getElementById('chat-step-label').textContent = 'Вопрос ' + (currentQ + 1) + ' / ' + QUESTIONS.length;
+    var label = (currentQ === 0) ? 'Предварительный вопрос' : 'Вопрос ' + currentQ + ' / 10';
+    document.getElementById('chat-step-label').textContent = label;
     document.getElementById('chat-progress-fill').style.width = pct + '%';
   }
 
@@ -735,9 +748,11 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var iconBg = Q_COLORS[qIdx] || 'rgba(0,210,190,0.15)';
     var iconSvg = Q_ICONS[qIdx] || Q_ICONS[0];
 
+    var qLabel = (qIdx === 0) ? 'Предварительный вопрос' : 'Вопрос ' + qIdx;
+
     var html = '<div class="q-icon-wrap">' +
       '<div class="q-icon" style="background:' + iconBg + '">' + iconSvg + '</div>' +
-      '<span class="q-number-label">Вопрос ' + (qIdx + 1) + '</span>' +
+      '<span class="q-number-label">' + qLabel + '</span>' +
       '</div>' +
       '<div>' + esc(q.text) + '</div>';
 
@@ -767,6 +782,19 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
   function handleAnswer(qId, letter, text) {
     answers[qId] = letter;
+
+    // Q0 neurodegeneration filter — set flag but don't affect scoring
+    if (qId === 'Q0') {
+      if (letter !== 'D') {
+        neuroDegFlag = true;
+        var detailMap = { A:'alzheimer_dementia', B:'parkinson', C:'other' };
+        neuroDegDetail = detailMap[letter] || 'other';
+      } else {
+        neuroDegFlag = false;
+        neuroDegDetail = '';
+      }
+    }
+
     var optsWrap = document.getElementById('opts-' + qId);
     if (optsWrap) {
       optsWrap.querySelectorAll('.chat-opt-btn').forEach(function(b) {
@@ -820,6 +848,8 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var testResult = {
       profile: result.profile, answers: answers,
       scores: result.scores, total: result.total,
+      neuro_deg_flag: neuroDegFlag,
+      neuro_deg_detail: neuroDegDetail,
       completed_at: new Date().toISOString()
     };
     localStorage.setItem('na_test_result', JSON.stringify(testResult));
@@ -841,7 +871,13 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     fetch(API_BASE + '/api/test-result/save', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + token },
-      body: JSON.stringify({ profile:data.profile, answers:data.answers, scores:data.scores })
+      body: JSON.stringify({
+        profile: data.profile,
+        answers: data.answers,
+        scores: data.scores,
+        neuro_deg_flag: data.neuro_deg_flag || false,
+        neuro_deg_detail: data.neuro_deg_detail || ''
+      })
     }).then(function(r){ return r.json(); })
     .then(function(d){ if (d.ok) localStorage.removeItem('na_test_result'); })
     .catch(function(e){ console.warn('Test result save failed:', e); });
@@ -906,7 +942,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
           showTyping();
           setTimeout(function() {
             removeTyping();
-            addBotMessage('Отлично! Давайте начнём. Ответьте на 10 вопросов — это займёт несколько минут.');
+            addBotMessage('Отлично! Давайте начнём. Предварительный вопрос и 10 основных — это займёт несколько минут.');
             showTyping();
             setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
           }, 500);
@@ -931,7 +967,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     showTyping();
     setTimeout(function() {
       removeTyping();
-      addBotMessage('Тест состоит из 10 вопросов о вашем внимании, состоянии и привычках. Выбирайте вариант, который ближе всего к вашему опыту.');
+      addBotMessage('Сначала один предварительный вопрос, а затем 10 вопросов о вашем внимании, состоянии и привычках. Выбирайте вариант, который ближе всего к вашему опыту.');
       showTyping();
       setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 700);
     }, 900);
