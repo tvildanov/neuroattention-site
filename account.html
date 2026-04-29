@@ -1276,9 +1276,9 @@
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Персональный формат</span>
           </div>
-          <button class="btn btn-ghost" onclick="enrollProgram('rehab')" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);">
-            Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
+          <a href="rehabilitation-application.html" class="btn btn-ghost" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;">
+            Оставить заявку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
         </div>
         <!-- /DRAFT -->
 
@@ -1324,9 +1324,9 @@
           <div style="position:absolute;inset:0;background:rgba(5,7,10,0.7);backdrop-filter:blur(6px);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;">
             <svg style="width:32px;height:32px;fill:none;stroke:var(--text-muted);stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             <p style="font-size:14px;color:var(--text-secondary);text-align:center;margin:0;">Персональный план восстановления</p>
-            <button class="btn btn-solid" onclick="enrollProgram('rehab')" style="font-size:13px;">
-              Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </button>
+            <a href="rehabilitation-application.html" class="btn btn-solid" style="font-size:13px;text-decoration:none;">
+              Оставить заявку на программу <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
           </div>
           <div style="opacity:0.15;pointer-events:none;padding:1.5rem;">
             <h4 style="font-family:'Unbounded',sans-serif;font-size:0.95rem;color:var(--text-primary);margin:0 0 1rem;">План восстановления</h4>
@@ -1334,18 +1334,12 @@
           </div>
         </div>
 
-        <!-- (В) Research participation -->
-        <div class="dash-card glass-card-elevated" style="border-color:rgba(167,139,250,0.1);">
-          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
-            <svg style="width:18px;height:18px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <span style="font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:500;color:var(--text-primary);">Исследовательская программа</span>
-          </div>
-          <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">Мы проводим исследование эффективности адаптивных протоколов внимания при различных нарушениях нервной системы. Участники получают доступ к персональным протоколам и сопровождению в рамках исследования.</p>
-          <div id="rehab-research-form" style="display:flex;gap:0.5rem;align-items:center;">
-            <input type="email" id="rehab-research-email" placeholder="Ваш email" style="flex:1;padding:0.5rem 0.75rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-family:inherit;font-size:13px;">
-            <button class="btn btn-ghost" onclick="submitRehabResearch()" style="font-size:12px;white-space:nowrap;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);">Принять участие</button>
-          </div>
-          <p id="rehab-research-msg" style="display:none;font-size:12px;color:var(--accent-cyan);margin:0.5rem 0 0;"></p>
+        <!-- (В) CTA to application page -->
+        <div class="dash-card glass-card-elevated" style="border-color:rgba(167,139,250,0.1);text-align:center;padding:1.5rem;">
+          <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">Оставьте заявку на участие в Rehabilitation Program — мы свяжемся с вами для обсуждения персонального формата.</p>
+          <a href="rehabilitation-application.html" class="btn btn-ghost" style="border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;">
+            Оставить заявку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
         </div>
       </div>
       <!-- /DRAFT -->
@@ -1380,6 +1374,7 @@
     <button class="dash-tab active" data-tab="admin-stats">Статистика</button>
     <button class="dash-tab" data-tab="admin-users">Пользователи</button>
     <button class="dash-tab" data-tab="admin-tools">Инструменты</button>
+    <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;">Заявки Rehab</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1470,6 +1465,43 @@
           <p style="font-size:12px;color:var(--text-dim);margin:0 0 1rem;">Для использования практик и инструментов необходима оплата одной из программ.</p>
           <button class="btn btn-solid" style="font-size:13px;" onclick="switchTab('enroll')">Выбрать программу</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Rehab Applications (founder/superadmin only) -->
+  <div class="tab-panel" id="tab-admin-rehab">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+          <h3 style="margin:0;">Заявки на Rehabilitation Program</h3>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="nm-filter-btn active" onclick="filterRehabApps('all',this)">Все</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('new',this)">Новые</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('contacted',this)">Связались</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('in_progress',this)">В работе</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('accepted',this)">Приняты</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('declined',this)">Отклонены</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table" id="rehab-apps-table">
+            <thead>
+              <tr>
+                <th>Имя / Email</th>
+                <th>Город</th>
+                <th>Тел.</th>
+                <th>Возр.</th>
+                <th>Описание</th>
+                <th>Условия</th>
+                <th>Статус</th>
+                <th>Дата</th>
+              </tr>
+            </thead>
+            <tbody id="rehab-apps-tbody"></tbody>
+          </table>
+        </div>
+        <p id="rehab-apps-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Заявок пока нет.</p>
       </div>
     </div>
   </div>
@@ -1935,6 +1967,86 @@ function setupAdminDashboard(user){
   if(isFounder||isSpec) populateAdminStats(user);
   // Populate users list
   if(isFounder||isSpec) populateUsersList(user);
+  // Rehab applications tab — founder only
+  var rehabTab = document.getElementById('admin-rehab-tab');
+  if(rehabTab && isFounder){
+    rehabTab.style.display = '';
+    loadRehabApplications('all');
+  }
+}
+
+// ══════════════════════════════════════════
+// REHAB APPLICATIONS ADMIN
+// ═══════���══════════════════════════════════
+var rehabAppsCache = [];
+function loadRehabApplications(filterStatus){
+  var token = localStorage.getItem('na_token');
+  if(!token) return;
+  var url = AUTH_API + '/api/admin/rehab/applications';
+  if(filterStatus && filterStatus !== 'all') url += '?status=' + filterStatus;
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data.ok) return;
+      rehabAppsCache = data.applications || [];
+      renderRehabApps(rehabAppsCache);
+    })
+    .catch(function(e){ console.warn('loadRehabApplications:', e); });
+}
+function renderRehabApps(apps){
+  var tbody = document.getElementById('rehab-apps-tbody');
+  var empty = document.getElementById('rehab-apps-empty');
+  if(!tbody) return;
+  if(apps.length === 0){
+    tbody.innerHTML = '';
+    if(empty) empty.style.display = '';
+    return;
+  }
+  if(empty) empty.style.display = 'none';
+  var statusLabels = { new:'Новая', contacted:'Связались', in_progress:'В работе', accepted:'Принята', declined:'Отклонена' };
+  var statusColors = { new:'var(--accent-amber)', contacted:'var(--accent-cyan)', in_progress:'var(--accent-violet)', accepted:'var(--accent-green)', declined:'var(--accent-rose)' };
+  tbody.innerHTML = apps.map(function(a){
+    var name = a.user_name || '—';
+    var email = a.user_email || '';
+    var conditions = (a.rehab_conditions || []).join(', ') || '—';
+    var desc = (a.description || '').length > 80 ? a.description.substring(0,80) + '...' : (a.description || '—');
+    var date = a.created_at ? new Date(a.created_at).toLocaleDateString('ru-RU') : '—';
+    var statusOpts = ['new','contacted','in_progress','accepted','declined'].map(function(s){
+      return '<option value="'+s+'"'+(s===a.status?' selected':'')+'>'+statusLabels[s]+'</option>';
+    }).join('');
+    return '<tr>' +
+      '<td><div style="font-size:13px;color:var(--text-primary);">'+name+'</div><div style="font-size:11px;color:var(--text-muted);">'+email+'</div></td>' +
+      '<td style="font-size:13px;">'+a.city+'</td>' +
+      '<td style="font-size:13px;">'+a.phone+'</td>' +
+      '<td style="font-size:13px;">'+a.age+'</td>' +
+      '<td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(a.description||'').replace(/"/g,'&quot;')+'">'+desc+'</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">'+conditions+'</td>' +
+      '<td><select onchange="updateRehabAppStatus('+a.id+',this.value)" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:'+statusColors[a.status]+';font-size:12px;padding:0.3rem 0.5rem;cursor:pointer;">'+statusOpts+'</select></td>' +
+      '<td style="font-size:12px;color:var(--text-muted);">'+date+'</td>' +
+    '</tr>';
+  }).join('');
+}
+function filterRehabApps(status, btn){
+  if(btn){
+    var siblings = btn.parentElement.querySelectorAll('.nm-filter-btn');
+    for(var i=0;i<siblings.length;i++) siblings[i].classList.remove('active');
+    btn.classList.add('active');
+  }
+  loadRehabApplications(status);
+}
+function updateRehabAppStatus(id, newStatus){
+  var token = localStorage.getItem('na_token');
+  if(!token) return;
+  fetch(AUTH_API + '/api/admin/rehab/applications/' + id + '/status', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ status: newStatus })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(!data.ok) alert('Ошибка: ' + (data.error || 'unknown'));
+  })
+  .catch(function(e){ alert('Сетевая ошибка: ' + e.message); });
 }
 
 function rebuildGraph(){
@@ -2646,18 +2758,7 @@ function initRehabSection(){
     }
   } catch(e){ console.warn('initRehabSection:', e); }
 }
-function submitRehabResearch(){
-  var emailInput = document.getElementById('rehab-research-email');
-  var msg = document.getElementById('rehab-research-msg');
-  var email = emailInput ? emailInput.value.trim() : '';
-  if(!email || email.indexOf('@') < 1){
-    if(msg){ msg.textContent = 'Введите корректный email'; msg.style.display = ''; msg.style.color = 'var(--accent-rose)'; }
-    return;
-  }
-  if(msg){ msg.textContent = 'Заявка отправлена. Мы свяжемся с вами.'; msg.style.display = ''; msg.style.color = 'var(--accent-cyan)'; }
-  if(emailInput) emailInput.disabled = true;
-  // TODO: wire to API endpoint for research signup
-}
+// submitRehabResearch removed — replaced by /rehabilitation-application.html
 // Call after dashboard loads
 setTimeout(initRehabSection, 500);
 
