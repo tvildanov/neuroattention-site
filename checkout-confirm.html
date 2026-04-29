@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Confirm &amp; Pay — NeuroAttention Lab</title>
+<meta name="description" content="Review and confirm your purchase before proceeding to payment." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+:root {
+  --test-bg: rgba(5,7,10,0.97);
+  --card-bg: rgba(255,255,255,0.12);
+  --card-border: rgba(255,255,255,0.22);
+  --accent-cyan: #00d2be;
+  --accent-rose: #ff6b8a;
+  --accent-amber: #f5a623;
+  --accent-violet: #a78bfa;
+  --accent-green: #34d399;
+  --text-primary: #e8eaed;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+}
+
+body { cursor: default !important; }
+body * { cursor: inherit; }
+button, a, input { cursor: pointer !important; }
+
+.checkout-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--test-bg);
+}
+
+.checkout-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(167,139,250,0.08);
+  padding: 0.75rem 0;
+}
+.checkout-header-inner {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.checkout-header a {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: color 0.2s;
+}
+.checkout-header a:hover { color: var(--text-secondary); }
+.checkout-header svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+.checkout-body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1.5rem 4rem;
+}
+.checkout-card {
+  width: 100%;
+  max-width: 540px;
+}
+
+.checkout-card h1 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem;
+}
+.checkout-card .product-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--accent-violet);
+  margin: 0 0 1.5rem;
+  display: inline-block;
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+}
+
+.order-summary {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+.order-summary h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem;
+}
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.order-row:last-child { border-bottom: none; }
+.order-row .label {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.order-row .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.order-row.total .label,
+.order-row.total .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+/* Consent checkboxes */
+.consent-section {
+  margin-bottom: 1.75rem;
+}
+.consent-section h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+}
+
+.consent-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+.consent-item:hover {
+  border-color: rgba(255,255,255,0.12);
+}
+.consent-item.checked {
+  border-color: rgba(0,210,190,0.25);
+  background: rgba(0,210,190,0.04);
+}
+
+.consent-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 5px;
+  background: transparent;
+  margin-top: 2px;
+  position: relative;
+  transition: all 0.2s;
+}
+.consent-item input[type="checkbox"]:checked {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+.consent-item input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid rgba(5,7,10,0.97);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.consent-item label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.consent-item label a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0,210,190,0.2);
+}
+.consent-item label a:hover {
+  border-bottom-color: var(--accent-cyan);
+}
+
+.consent-item.rehab-consent {
+  border-color: rgba(245,166,35,0.2);
+  background: rgba(245,166,35,0.04);
+}
+.consent-item.rehab-consent.checked {
+  border-color: rgba(245,166,35,0.35);
+  background: rgba(245,166,35,0.06);
+}
+
+/* Pay button */
+.pay-btn {
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(5,7,10,0.97);
+  background: var(--accent-cyan);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.pay-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed !important;
+  filter: grayscale(0.5);
+}
+.pay-btn:not(:disabled):hover {
+  box-shadow: 0 0 30px rgba(0,210,190,0.3);
+  transform: translateY(-1px);
+}
+.pay-btn.loading {
+  pointer-events: none;
+  color: transparent;
+}
+.pay-btn.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: inherit;
+  border-radius: inherit;
+}
+.pay-btn .spinner {
+  display: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(5,7,10,0.2);
+  border-top-color: rgba(5,7,10,0.8);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -11px 0 0 -11px;
+}
+.pay-btn.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pay-note {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.75rem;
+  line-height: 1.5;
+}
+
+.error-msg {
+  background: rgba(255,107,138,0.08);
+  border: 1px solid rgba(255,107,138,0.2);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--accent-rose);
+  display: none;
+}
+
+/* No-product state */
+.no-product {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+.no-product h2 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+.no-product p {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 1.5rem;
+}
+.no-product a {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  background: rgba(167,139,250,0.12);
+  border: 1px solid rgba(167,139,250,0.25);
+  border-radius: 10px;
+  color: var(--accent-violet);
+  text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.no-product a:hover {
+  background: rgba(167,139,250,0.18);
+}
+
+@media (max-width: 480px) {
+  .checkout-card h1 { font-size: 1.15rem; }
+  .order-summary { padding: 1rem; }
+  .consent-item { padding: 0.6rem 0.75rem; }
+}
+</style>
+</head>
+<body>
+<div class="checkout-page">
+
+  <header class="checkout-header">
+    <div class="checkout-header-inner">
+      <a href="programs.html">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Programs
+      </a>
+    </div>
+  </header>
+
+  <main class="checkout-body">
+
+    <!-- No product fallback -->
+    <div class="checkout-card" id="no-product-state" style="display:none;">
+      <div class="no-product">
+        <h2>No program selected</h2>
+        <p>Please choose a program from our catalog to proceed with checkout.</p>
+        <a href="programs.html">View Programs</a>
+      </div>
+    </div>
+
+    <!-- Main checkout card -->
+    <div class="checkout-card" id="checkout-form" style="display:none;">
+      <h1>Confirm Your Purchase</h1>
+      <div class="product-label" id="product-label">—</div>
+
+      <!-- Order summary -->
+      <div class="order-summary">
+        <h2>Order Summary</h2>
+        <div class="order-row">
+          <span class="label" id="summary-name">—</span>
+          <span class="value" id="summary-price">—</span>
+        </div>
+        <div class="order-row total">
+          <span class="label">Total</span>
+          <span class="value" id="summary-total">—</span>
+        </div>
+      </div>
+
+      <!-- Error message area -->
+      <div class="error-msg" id="error-msg"></div>
+
+      <!-- Consent checkboxes -->
+      <div class="consent-section">
+        <h2>Please confirm before proceeding</h2>
+
+        <div class="consent-item" id="consent-tos-wrap">
+          <input type="checkbox" id="consent-tos" />
+          <label for="consent-tos">
+            I have read and agree to the <a href="terms-of-service.html" target="_blank">Terms of Service</a>,
+            including the non-medical disclaimer, no-refund policy, and assumption of risk.
+          </label>
+        </div>
+
+        <div class="consent-item" id="consent-privacy-wrap">
+          <input type="checkbox" id="consent-privacy" />
+          <label for="consent-privacy">
+            I have read and agree to the <a href="privacy-policy.html" target="_blank">Privacy Policy</a>,
+            including data collection, processing, and retention practices.
+          </label>
+        </div>
+
+        <div class="consent-item" id="consent-digital-wrap">
+          <input type="checkbox" id="consent-digital" />
+          <label for="consent-digital">
+            I understand that this is a digital, non-tangible service. Access to the program constitutes full delivery.
+            No refunds are provided based on dissatisfaction or lack of results.
+          </label>
+        </div>
+
+        <!-- Conditional: only for rehab product -->
+        <div class="consent-item rehab-consent" id="consent-rehab-wrap" style="display:none;">
+          <input type="checkbox" id="consent-rehab" />
+          <label for="consent-rehab">
+            I understand that NeuroAttention Lab does not provide medical rehabilitation.
+            This program is research-based and educational; it does not replace clinical treatment.
+            I take full responsibility for my participation.
+          </label>
+        </div>
+      </div>
+
+      <!-- Pay button -->
+      <button class="pay-btn" id="pay-btn" disabled>
+        <span class="btn-text">Proceed to Payment</span>
+        <span class="spinner"></span>
+      </button>
+      <p class="pay-note">
+        You will be redirected to Stripe for secure payment processing.
+        We do not store your card details.
+      </p>
+    </div>
+  </main>
+
+</div>
+
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // Product catalog
+  var PRODUCTS = {
+    lab: {
+      label: 'NeuroAttention Lab',
+      name: 'NeuroAttention Lab Program',
+      price: '$149',
+      priceId: null, // Will be set from Stripe config
+      requireRehab: false
+    },
+    rehab: {
+      label: 'Rehabilitation Program',
+      name: 'Rehabilitation Program',
+      price: '$199',
+      priceId: null,
+      requireRehab: true
+    }
+  };
+
+  var API_BASE = 'https://neuroattention-api-production.up.railway.app';
+
+  // Parse URL params
+  var params = new URLSearchParams(window.location.search);
+  var productKey = params.get('product');
+  var product = PRODUCTS[productKey];
+
+  var formEl = document.getElementById('checkout-form');
+  var noProductEl = document.getElementById('no-product-state');
+
+  if (!product) {
+    noProductEl.style.display = '';
+    return;
+  }
+
+  formEl.style.display = '';
+
+  // Fill order summary
+  document.getElementById('product-label').textContent = product.label;
+  document.getElementById('summary-name').textContent = product.name;
+  document.getElementById('summary-price').textContent = product.price;
+  document.getElementById('summary-total').textContent = product.price;
+
+  // Show rehab consent if needed
+  if (product.requireRehab) {
+    document.getElementById('consent-rehab-wrap').style.display = '';
+  }
+
+  // Checkbox logic
+  var checkboxes = ['consent-tos', 'consent-privacy', 'consent-digital'];
+  if (product.requireRehab) checkboxes.push('consent-rehab');
+
+  var payBtn = document.getElementById('pay-btn');
+
+  function updatePayBtn() {
+    var allChecked = checkboxes.every(function(id) {
+      return document.getElementById(id).checked;
+    });
+    payBtn.disabled = !allChecked;
+  }
+
+  function updateWrapClass(checkbox) {
+    var wrap = checkbox.closest('.consent-item');
+    if (checkbox.checked) {
+      wrap.classList.add('checked');
+    } else {
+      wrap.classList.remove('checked');
+    }
+  }
+
+  checkboxes.forEach(function(id) {
+    var cb = document.getElementById(id);
+    cb.addEventListener('change', function() {
+      updateWrapClass(cb);
+      updatePayBtn();
+    });
+  });
+
+  // Error display
+  var errorEl = document.getElementById('error-msg');
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+  function hideError() {
+    errorEl.style.display = 'none';
+  }
+
+  // Pay button click
+  payBtn.addEventListener('click', function() {
+    if (payBtn.disabled) return;
+    hideError();
+
+    payBtn.classList.add('loading');
+    payBtn.disabled = true;
+
+    // Collect consent data
+    var consentData = {
+      product: productKey,
+      tos: document.getElementById('consent-tos').checked,
+      privacy: document.getElementById('consent-privacy').checked,
+      digital: document.getElementById('consent-digital').checked,
+      rehab: product.requireRehab ? document.getElementById('consent-rehab').checked : null,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    };
+
+    // Get auth token if available
+    var token = localStorage.getItem('na_token');
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    fetch(API_BASE + '/api/checkout/create-session', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(consentData)
+    })
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Payment service error'); });
+      return res.json();
+    })
+    .then(function(data) {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    })
+    .catch(function(err) {
+      payBtn.classList.remove('loading');
+      payBtn.disabled = false;
+      showError(err.message || 'Something went wrong. Please try again.');
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
