@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payment Confirmed — NeuroAttention Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+body { cursor: default !important; }
+body * { cursor: inherit; }
+a { cursor: pointer !important; }
+
+.success-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,7,10,0.97);
+  padding: 2rem 1.5rem;
+}
+.success-card {
+  max-width: 480px;
+  text-align: center;
+}
+.success-card .checkmark {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(52,211,153,0.12);
+  border: 2px solid rgba(52,211,153,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  animation: popIn 0.5s ease-out;
+}
+.success-card .checkmark svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: #34d399;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.success-card h1 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #e8eaed;
+  margin: 0 0 0.5rem;
+}
+.success-card .product-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: #a78bfa;
+  background: rgba(167,139,250,0.1);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  margin-bottom: 1.5rem;
+}
+.success-card p {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #9ca3af;
+  margin: 0 0 0.75rem;
+}
+.success-card .highlight {
+  color: #34d399;
+  font-weight: 500;
+}
+.success-card .session-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #6b7280;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  margin: 1.25rem 0;
+  word-break: break-all;
+}
+.success-card .actions {
+  margin-top: 2rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.success-card .actions a {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  border-radius: 10px;
+  text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.success-card .actions .primary {
+  background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.25);
+  color: #34d399;
+}
+.success-card .actions .primary:hover {
+  background: rgba(52,211,153,0.2);
+}
+.success-card .actions .secondary {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #9ca3af;
+}
+.success-card .actions .secondary:hover {
+  background: rgba(255,255,255,0.08);
+  color: #e8eaed;
+}
+</style>
+</head>
+<body>
+<div class="success-page">
+  <div class="success-card">
+    <div class="checkmark">
+      <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <h1>Payment Confirmed</h1>
+    <div class="product-tag" id="product-tag">—</div>
+    <p>Thank you for your purchase! Your <span class="highlight">access has been activated</span>.</p>
+    <p>A confirmation email will be sent to you shortly.</p>
+    <div class="session-id" id="session-id" style="display:none;"></div>
+    <div class="actions">
+      <a href="account.html" class="primary">Go to Dashboard</a>
+      <a href="programs.html" class="secondary">View Programs</a>
+    </div>
+  </div>
+</div>
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var product = params.get('product');
+  var sessionId = params.get('session_id');
+
+  var NAMES = { lab: 'NeuroAttention Lab', rehab: 'Rehabilitation Program' };
+  var tag = document.getElementById('product-tag');
+  tag.textContent = NAMES[product] || product || 'Program';
+
+  if (sessionId) {
+    var el = document.getElementById('session-id');
+    el.textContent = 'Session: ' + sessionId;
+    el.style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
