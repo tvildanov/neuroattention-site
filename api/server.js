@@ -192,7 +192,29 @@ app.post('/api/run-migrations', async (req, res) => {
     // Migration 012: avatar_url column on users
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`;
 
-    res.json({ ok: true, message: 'Migrations 003-012 applied successfully' });
+    // Migration 013: rehab columns on test_results
+    await sql`ALTER TABLE test_results ADD COLUMN IF NOT EXISTS rehab_flag BOOLEAN DEFAULT false`;
+    await sql`ALTER TABLE test_results ADD COLUMN IF NOT EXISTS rehab_conditions TEXT[] DEFAULT '{}'`;
+    await sql`ALTER TABLE test_results ADD COLUMN IF NOT EXISTS rehab_other_description TEXT DEFAULT ''`;
+
+    // Migration 014: rehab_applications table
+    await sql`CREATE TABLE IF NOT EXISTS rehab_applications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      city TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      age INTEGER NOT NULL CHECK (age > 0 AND age < 120),
+      description TEXT NOT NULL,
+      rehab_conditions TEXT[] DEFAULT '{}',
+      rehab_other_description TEXT DEFAULT '',
+      status TEXT DEFAULT 'new',
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_rehab_app_status ON rehab_applications(status)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_rehab_app_created ON rehab_applications(created_at DESC)`;
+
+    res.json({ ok: true, message: 'Migrations 003-014 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
