@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payment Coming Soon — NeuroAttention Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+body { cursor: default !important; }
+body * { cursor: inherit; }
+a { cursor: pointer !important; }
+
+.coming-soon-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,7,10,0.97);
+  padding: 2rem 1.5rem;
+}
+.coming-soon-card {
+  max-width: 480px;
+  text-align: center;
+}
+.coming-soon-card .icon {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.7;
+}
+.coming-soon-card h1 {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #e8eaed;
+  margin: 0 0 0.75rem;
+}
+.coming-soon-card .status-badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: #f5a623;
+  background: rgba(245,166,35,0.1);
+  border: 1px solid rgba(245,166,35,0.2);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  margin-bottom: 1.5rem;
+}
+.coming-soon-card p {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #9ca3af;
+  margin: 0 0 0.75rem;
+}
+.coming-soon-card .highlight {
+  color: #00d2be;
+  font-weight: 500;
+}
+.coming-soon-card .actions {
+  margin-top: 2rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.coming-soon-card .actions a {
+  display: inline-block;
+  padding: 0.6rem 1.5rem;
+  border-radius: 10px;
+  text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.coming-soon-card .actions .primary {
+  background: rgba(0,210,190,0.12);
+  border: 1px solid rgba(0,210,190,0.25);
+  color: #00d2be;
+}
+.coming-soon-card .actions .primary:hover {
+  background: rgba(0,210,190,0.2);
+}
+.coming-soon-card .actions .secondary {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #9ca3af;
+}
+.coming-soon-card .actions .secondary:hover {
+  background: rgba(255,255,255,0.08);
+  color: #e8eaed;
+}
+</style>
+</head>
+<body>
+<div class="coming-soon-page">
+  <div class="coming-soon-card">
+    <div class="icon">&#128274;</div>
+    <h1>Payment Integration Pending</h1>
+    <div class="status-badge">Coming Soon</div>
+    <p>Your <span class="highlight">consent has been recorded</span> successfully.</p>
+    <p>We are finalizing our payment system. We'll notify you by email as soon as checkout is live.</p>
+    <p>Thank you for your interest in NeuroAttention Lab programs.</p>
+    <div class="actions">
+      <a href="programs.html" class="primary">Back to Programs</a>
+      <a href="index.html" class="secondary">Home</a>
+    </div>
+  </div>
+</div>
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+</body>
+</html>
