@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Личный кабинет — NeuroAttention Lab</title>
 <meta name="description" content="Личный кабинет NeuroAttention Lab: программы, практики, прогресс, календарь." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -245,6 +245,36 @@
 }
 .prog-dot { width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.15);transition:all 0.25s; }
 .prog-dot.active { background:rgba(0,224,255,0.6);transform:scale(1.3); }
+/* ── Mobile bottom-nav ── */
+@media(max-width:768px){
+  .dash-tabs {
+    position:fixed;bottom:0;left:0;right:0;z-index:900;
+    background:rgba(10,12,18,0.95);backdrop-filter:blur(12px);
+    border-top:1px solid rgba(255,255,255,0.06);border-bottom:none;
+    margin-bottom:0;padding:0 0.25rem;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    gap:0;display:flex;flex-wrap:nowrap;
+    scrollbar-width:none;
+  }
+  .dash-tabs::-webkit-scrollbar { display:none; }
+  .dash-tab {
+    padding:0.5rem 0.7rem;font-size:11px;white-space:nowrap;flex-shrink:0;
+    border-bottom:none;border-top:2px solid transparent;
+  }
+  .dash-tab.active { border-top-color:var(--accent-cyan);border-bottom-color:transparent; }
+  /* Add padding at bottom of page so content isn't hidden behind bottom-nav */
+  .dashboard { padding-bottom:56px!important; }
+  /* Fullscreen header: fixed at top on mobile */
+  .nm-fullscreen-overlay .nm-fs-header {
+    position:fixed;top:0;left:0;right:0;z-index:10002;
+    background:rgba(10,12,18,0.92);backdrop-filter:blur(10px);
+  }
+  .nm-fullscreen-overlay .nm-fs-body { padding-top:48px; }
+  /* Bottom-sheet scrollable */
+  .nm-fs-bottomsheet { max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+  /* Hide bottom-nav when fullscreen overlay is open (body class set via JS) */
+  body.nm-fs-active .dash-tabs { display:none!important; }
+}
 #rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 .rpg-modal-overlay { position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px); }
 .rpg-modal { max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px); }
@@ -2210,6 +2240,9 @@ function switchTab(id){
   if(id==='neuromap'){
     setTimeout(function(){ try { buildNmGraph(); } catch(e){} }, 50);
   }
+  // Scroll active tab into view in mobile bottom-nav
+  var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
+  if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
 function backToAdmin(){
   // Legacy — now just switch to overview tab
@@ -2941,6 +2974,15 @@ var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
 var nmLabelsAlways = (function(){ try{ return localStorage.getItem('nm_labels_always')==='true'; }catch(e){ return true; } })();
+var nmLabelsMode = (function(){ try{ var v=localStorage.getItem('nm_labels_mode'); return (v==='all'||v==='top'||v==='off') ? v : 'top'; }catch(e){ return 'top'; } })();
+// top-N persistent labels: always show sprites for top nodes by count
+function nmGetTopNIds(N){
+  if(!N) N = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? 10 : 15;
+  var sorted = nmNodes.slice().sort(function(a,b){ var ca=(b.count||0)-(a.count||0); return ca!==0?ca:((b._degree||0)-(a._degree||0)); });
+  var ids = {};
+  for(var i=0;i<Math.min(N,sorted.length);i++) ids[sorted[i].id]=true;
+  return ids;
+}
 var nmNodes = [];
 var nmLinks = [];
 var nmAnimFrame = null;
@@ -4019,6 +4061,7 @@ function nmToggleFullscreen(){
   if(nmFullscreen){
     overlay.classList.add('active');
     document.body.style.overflow='hidden';
+    document.body.classList.add('nm-fs-active');
     // iOS Safari 100vh fix: set height via JS
     overlay.style.height = window.innerHeight + 'px';
     // Lazy-init fullscreen event handlers (DOM elements are after script tag)
@@ -4032,7 +4075,8 @@ function nmToggleFullscreen(){
     nmFsBuildMobileFilters();
     // Sync FS labels toggle state
     var fsLabels = document.querySelectorAll('.nm-labels-toggle');
-    fsLabels.forEach(function(b){ b.textContent = nmLabelsAlways ? 'Подписи: всегда' : 'Подписи: наведение'; if(nmLabelsAlways) b.classList.add('active'); else b.classList.remove('active'); });
+    var _modeText = nmLabelsMode==='all' ? 'Подписи: все' : nmLabelsMode==='top' ? 'Подписи: топ' : 'Подписи: нет';
+    fsLabels.forEach(function(b){ b.textContent = _modeText; if(nmLabelsMode!=='off') b.classList.add('active'); else b.classList.remove('active'); });
     // Sync FS 3D toggle state
     var fsBtn3d = document.getElementById('nm-fs-3d-toggle');
     if(fsBtn3d){
@@ -4053,6 +4097,7 @@ function nmToggleFullscreen(){
   } else {
     overlay.classList.remove('active');
     document.body.style.overflow='';
+    document.body.classList.remove('nm-fs-active');
     var fsCur=document.getElementById('nm-fs-cursor');
     if(fsCur) fsCur.style.display='none';
     if(nmFsAnimFrame){ cancelAnimationFrame(nmFsAnimFrame); nmFsAnimFrame=null; }
@@ -4167,11 +4212,13 @@ function nmFsFilterToggle(cb){
   }
 }
 
+var nmFsTopNIds = {};
 function nmFsStartRender(){
   var canvas = document.getElementById('nm-fs-canvas');
   if(!canvas) return;
   var wrap = canvas.parentElement;
   var dpr = window.devicePixelRatio || 1;
+  nmFsTopNIds = nmGetTopNIds();
 
   function fsTick(){
     if(!nmFullscreen) return;
@@ -4248,8 +4295,9 @@ function nmFsStartRender(){
       }
       ctx.beginPath();ctx.arc(nx,ny,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
-      // Label (only when toggle is "always")
-      if(nmLabelsAlways){
+      // Label: show for top-N or all depending on mode
+      var _fsShowLabel = (nmLabelsMode==='all') || (nmLabelsMode==='top' && nmFsTopNIds && nmFsTopNIds[n.id]);
+      if(_fsShowLabel){
         ctx.fillStyle='rgba(255,255,255,0.9)';
         ctx.font='600 '+Math.round(Math.max(16,r*0.8))+'px Inter,sans-serif';
         ctx.textAlign='center';ctx.textBaseline='middle';
@@ -4690,6 +4738,7 @@ function nmBuildFs3DGraph(container){
       gLinks.push({ source: l.source, target: l.target, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
     }
   });
+  var _fsTopNIds = nmGetTopNIds();
   nmFs3DGraph = ForceGraph3D()(container)
     .graphData({ nodes: gNodes, links: gLinks })
     .nodeLabel(function(n){ return n.label + (n._layer ? ' ('+NM_LAYERS[n._layer]+')' : ''); })
@@ -4698,7 +4747,10 @@ function nmBuildFs3DGraph(container){
     .nodeOpacity(0.9)
     .nodeThreeObjectExtend(true)
     .nodeThreeObject(function(node){
-      if(!THREE || !nmLabelsAlways) return false;
+      if(!THREE) return false;
+      // Persistent labels: show for top-N always, all when mode='all', none when mode='off'
+      var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _fsTopNIds[node.id]);
+      if(!show) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(node.label),
@@ -4728,11 +4780,17 @@ function nmBuildFs3DGraph(container){
 }
 
 function nmToggleLabels(){
-  nmLabelsAlways = !nmLabelsAlways;
-  try{ localStorage.setItem('nm_labels_always', nmLabelsAlways?'true':'false'); }catch(e){}
+  // Cycle: top → all → off → top
+  if(nmLabelsMode==='top') nmLabelsMode='all';
+  else if(nmLabelsMode==='all') nmLabelsMode='off';
+  else nmLabelsMode='top';
+  // Keep backward-compat flag in sync
+  nmLabelsAlways = (nmLabelsMode==='all');
+  try{ localStorage.setItem('nm_labels_mode', nmLabelsMode); localStorage.setItem('nm_labels_always', nmLabelsAlways?'true':'false'); }catch(e){}
   // Update all toggle buttons
+  var modeText = nmLabelsMode==='all' ? 'Подписи: все' : nmLabelsMode==='top' ? 'Подписи: топ' : 'Подписи: нет';
   var btns = document.querySelectorAll('.nm-labels-toggle');
-  btns.forEach(function(b){ b.classList.toggle('active', nmLabelsAlways); b.textContent = nmLabelsAlways ? 'Подписи: всегда' : 'Подписи: наведение'; });
+  btns.forEach(function(b){ b.classList.toggle('active', nmLabelsMode!=='off'); b.textContent = modeText; });
   // Rebuild 3D graphs if active (labels are sprites that need regeneration)
   if(nm3DMode && nm3DGraph){ nmBuild3DGraph(); }
   if(nmFullscreen && nm3DMode && nmFs3DGraph){
@@ -4822,6 +4880,7 @@ function nmBuild3DGraph(){
   var W = wrap.clientWidth;
   var H = wrap.clientHeight;
 
+  var _miniTopNIds = nmGetTopNIds();
   nm3DGraph = ForceGraph3D()(container)
     .width(W)
     .height(H)
@@ -4833,7 +4892,9 @@ function nmBuild3DGraph(){
     .nodeOpacity(0.9)
     .nodeThreeObjectExtend(true)
     .nodeThreeObject(function(node){
-      if(!THREE || !nmLabelsAlways) return false;
+      if(!THREE) return false;
+      var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _miniTopNIds[node.id]);
+      if(!show) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(node.label),
@@ -4903,7 +4964,7 @@ function buildNmGraph(){
   var toggle3d=document.getElementById('nm-3d-toggle');
   if(toggle3d) toggle3d.style.display='';
   var toggleLabels=document.getElementById('nm-labels-toggle');
-  if(toggleLabels){ toggleLabels.style.display=''; toggleLabels.textContent=nmLabelsAlways?'Подписи: всегда':'Подписи: наведение'; if(nmLabelsAlways) toggleLabels.classList.add('active'); else toggleLabels.classList.remove('active'); }
+  if(toggleLabels){ toggleLabels.style.display=''; var _mt=nmLabelsMode==='all'?'Подписи: все':nmLabelsMode==='top'?'Подписи: топ':'Подписи: нет'; toggleLabels.textContent=_mt; if(nmLabelsMode!=='off') toggleLabels.classList.add('active'); else toggleLabels.classList.remove('active'); }
   var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
@@ -5058,8 +5119,10 @@ function nmNodeR(n){
   var deg=n._degree||0;
   return Math.min(32, Math.max(8, 8 + 4*(n.count + deg/2)));
 }
+var nmMiniTopNIds = {};
 function nmSimulate(canvas, initAlpha){
   if(nmAnimFrame) cancelAnimationFrame(nmAnimFrame);
+  nmMiniTopNIds = nmGetTopNIds();
   // Precompute degree for each node
   var degreeMap={};
   nmLinks.forEach(function(l){
@@ -5178,8 +5241,9 @@ function nmSimulate(canvas, initAlpha){
       // Node body
       ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
-      // Label (only when toggle is "always")
-      if(nmLabelsAlways){
+      // Label: show for top-N or all depending on mode
+      var _miniShowLabel = (nmLabelsMode==='all') || (nmLabelsMode==='top' && nmMiniTopNIds && nmMiniTopNIds[n.id]);
+      if(_miniShowLabel){
         ctx.fillStyle='rgba(255,255,255,0.85)';
         ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
         ctx.textAlign='center';ctx.textBaseline='middle';
@@ -6169,7 +6233,7 @@ if('serviceWorker' in navigator){
   <div class="nm-fs-header">
     <h3>НейроКарта — полный экран</h3>
     <div style="display:flex;align-items:center;gap:0.5rem;">
-      <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" style="font-size:10px;">Подписи: всегда</button>
+      <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" style="font-size:10px;">Подписи: топ</button>
       <button class="nm-3d-toggle" id="nm-fs-3d-toggle" onclick="nmFsToggle3D()">
         <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D
       </button>
