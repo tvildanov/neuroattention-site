@@ -25,6 +25,19 @@ if (STRIPE_SECRET_KEY) {
   try { stripe = require('stripe')(STRIPE_SECRET_KEY); } catch(e) { console.warn('stripe package not installed:', e.message); }
 }
 
+// ─── Email confirmation stub ───
+// TODO: SMTP integration — credentials pending
+// Takhir will specify provider (Resend / Nodemailer / other)
+// Do NOT connect any email library until credentials are provided.
+function sendConfirmationEmail(email, product, sessionId) {
+  // TODO: SMTP integration — credentials pending
+  console.log('TODO: send confirmation email to ' + email + ' for product=' + product + ' session=' + sessionId);
+  // When SMTP is configured, this function will:
+  // 1. Build HTML email with order details
+  // 2. Send via configured provider
+  // 3. Log success/failure to console
+}
+
 // DB connection
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL not set');
