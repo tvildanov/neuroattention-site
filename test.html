@@ -248,6 +248,15 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   cursor: default;
   pointer-events: none;
 }
+.chat-opt-btn.selected {
+  border-color: rgba(167,139,250,0.5);
+  background: rgba(167,139,250,0.08);
+  color: var(--text-primary);
+}
+.chat-opt-btn.selected .chat-opt-letter {
+  background: rgba(167,139,250,0.25);
+  color: var(--accent-violet);
+}
 .chat-opt-letter {
   display: inline-flex;
   align-items: center;
@@ -544,17 +553,17 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     'rgba(245,166,35,0.15)'
   ];
 
-  // ── Neurodegeneration filter flag ──
-  var neuroDegFlag = false;
-  var neuroDegDetail = '';
+  // ── Rehabilitation flow state ──
+  var rehabFlag = false;
+  var rehabConditions = [];
+  var rehabOtherDescription = '';
 
   // ── Q0 + 10 Questions ──
   var QUESTIONS = [
-    { id:'Q0', group:'neuro_filter', text:'Прежде чем начать, один важный вопрос. Есть ли у вас или у вашего близкого диагностированное нейродегенеративное заболевание?', options:[
-      { letter:'A', text:'Да, болезнь Альцгеймера или деменция' },
-      { letter:'B', text:'Да, болезнь Паркинсона' },
-      { letter:'C', text:'Да, другое нейродегенеративное заболевание' },
-      { letter:'D', text:'Нет' }
+    { id:'Q0', group:'neuro_filter', text:'Есть ли у вас диагностированные или выраженные нарушения работы нервной системы?', options:[
+      { letter:'A', text:'Нет' },
+      { letter:'B', text:'Есть симптомы или подозрения' },
+      { letter:'C', text:'Да, есть диагноз / восстановление после травмы или инсульта' }
     ]},
     { id:'Q1', group:'state', text:'Как вы чаще всего чувствуете себя в течение обычного дня?', options:[
       { letter:'A', text:'Собранно, устойчиво, с ясным ощущением направления' },
@@ -780,18 +789,120 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     }, 120);
   }
 
+  // ── Rehabilitation multi-select step (inserted after Q0 if rehab flow) ──
+  function renderRehabClarification() {
+    var conditionsList = [
+      { key:'neurodegenerative', label:'Нейродегенеративные заболевания (Альцгеймер, Паркинсон, деменции)' },
+      { key:'stroke', label:'Восстановление после инсульта' },
+      { key:'tbi', label:'Черепно-мозговые травмы' },
+      { key:'neuropathy', label:'Нейропатии / нарушения чувствительности' },
+      { key:'asd', label:'Расстройства аутистического спектра' },
+      { key:'other', label:'Другое' }
+    ];
+    var html = '<div class="q-icon-wrap">' +
+      '<div class="q-icon" style="background:rgba(167,139,250,0.15);">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
+      '</div>' +
+      '<span class="q-number-label">Уточнение</span>' +
+      '</div>' +
+      '<div style="margin-bottom:0.75rem;">Уточните, что наиболее близко к вашему состоянию:</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:0.5rem;">Можно выбрать несколько</div>';
+
+    var row = document.createElement('div');
+    row.className = 'chat-msg bot-msg';
+    row.innerHTML = avatarHTML() +
+      '<div class="chat-msg-stack">' +
+        '<div class="chat-msg-bubble">' + html + '</div>' +
+        '<div class="chat-msg-options" id="opts-rehab-clarify"></div>' +
+      '</div>';
+    container.appendChild(row);
+
+    var optsWrap = row.querySelector('#opts-rehab-clarify');
+    var selected = {};
+
+    conditionsList.forEach(function(c) {
+      var btn = document.createElement('button');
+      btn.className = 'chat-opt-btn';
+      btn.innerHTML = '<span class="chat-opt-letter" style="font-size:10px;">☐</span><span>' + esc(c.label) + '</span>';
+      btn.addEventListener('click', function() {
+        if (selected[c.key]) {
+          delete selected[c.key];
+          btn.classList.remove('selected');
+          btn.querySelector('.chat-opt-letter').textContent = '☐';
+        } else {
+          selected[c.key] = true;
+          btn.classList.add('selected');
+          btn.querySelector('.chat-opt-letter').textContent = '☑';
+        }
+        // Show/hide textarea for "other"
+        var ta = document.getElementById('rehab-other-ta');
+        if (selected['other']) {
+          if (!ta) {
+            ta = document.createElement('textarea');
+            ta.id = 'rehab-other-ta';
+            ta.placeholder = 'Опишите ваше состояние';
+            ta.style.cssText = 'width:100%;min-height:60px;margin-top:0.5rem;padding:0.6rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-family:inherit;font-size:13px;resize:vertical;';
+            optsWrap.appendChild(ta);
+          }
+        } else if (ta) {
+          ta.parentNode.removeChild(ta);
+        }
+        // Show/hide continue button
+        var keys = Object.keys(selected);
+        var contBtn = document.getElementById('rehab-continue-btn');
+        if (keys.length > 0 && !contBtn) {
+          contBtn = document.createElement('button');
+          contBtn.id = 'rehab-continue-btn';
+          contBtn.className = 'chat-opt-btn';
+          contBtn.style.cssText = 'margin-top:0.75rem;background:rgba(0,210,190,0.12);border-color:rgba(0,210,190,0.3);';
+          contBtn.innerHTML = '<span style="color:var(--accent-cyan);font-weight:500;">Продолжить →</span>';
+          contBtn.addEventListener('click', function() {
+            rehabConditions = Object.keys(selected);
+            var ta2 = document.getElementById('rehab-other-ta');
+            if (ta2) rehabOtherDescription = ta2.value.trim();
+            // Disable all buttons
+            optsWrap.querySelectorAll('.chat-opt-btn').forEach(function(b) { b.disabled = true; b.classList.add('disabled'); });
+            if (ta2) ta2.disabled = true;
+            var summary = rehabConditions.map(function(k) {
+              var found = conditionsList.filter(function(c2){ return c2.key===k; })[0];
+              return found ? found.label : k;
+            }).join(', ');
+            addUserMessage(summary);
+            showTyping();
+            setTimeout(function() {
+              removeTyping();
+              addBotMessage('Спасибо. Теперь пройдите основные 10 вопросов — они одинаковы для всех.');
+              showTyping();
+              setTimeout(function() {
+                removeTyping();
+                currentQ++;
+                renderQuestionChat(currentQ);
+              }, 600);
+            }, 800);
+          });
+          optsWrap.appendChild(contBtn);
+        } else if (keys.length === 0 && contBtn) {
+          contBtn.parentNode.removeChild(contBtn);
+        }
+      });
+      optsWrap.appendChild(btn);
+    });
+
+    scrollBottom();
+    setTimeout(function() { row.scrollIntoView({ behavior:'smooth', block:'end' }); }, 120);
+  }
+
   function handleAnswer(qId, letter, text) {
     answers[qId] = letter;
 
-    // Q0 neurodegeneration filter — set flag but don't affect scoring
+    // Q0 rehabilitation filter
     if (qId === 'Q0') {
-      if (letter !== 'D') {
-        neuroDegFlag = true;
-        var detailMap = { A:'alzheimer_dementia', B:'parkinson', C:'other' };
-        neuroDegDetail = detailMap[letter] || 'other';
+      if (letter !== 'A') {
+        rehabFlag = true;
       } else {
-        neuroDegFlag = false;
-        neuroDegDetail = '';
+        rehabFlag = false;
+        rehabConditions = [];
+        rehabOtherDescription = '';
       }
     }
 
@@ -803,6 +914,17 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
       });
     }
     addUserMessage(text);
+
+    // After Q0, if rehab flow activated → show multi-select clarification
+    if (qId === 'Q0' && rehabFlag) {
+      showTyping();
+      setTimeout(function() {
+        removeTyping();
+        renderRehabClarification();
+      }, 800);
+      return; // Don't advance currentQ yet — renderRehabClarification handles it
+    }
+
     showTyping();
     setTimeout(function() {
       removeTyping();
@@ -848,8 +970,9 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var testResult = {
       profile: result.profile, answers: answers,
       scores: result.scores, total: result.total,
-      neuro_deg_flag: neuroDegFlag,
-      neuro_deg_detail: neuroDegDetail,
+      rehab_flag: rehabFlag,
+      rehab_conditions: rehabConditions,
+      rehab_other_description: rehabOtherDescription,
       completed_at: new Date().toISOString()
     };
     localStorage.setItem('na_test_result', JSON.stringify(testResult));
@@ -875,8 +998,9 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
         profile: data.profile,
         answers: data.answers,
         scores: data.scores,
-        neuro_deg_flag: data.neuro_deg_flag || false,
-        neuro_deg_detail: data.neuro_deg_detail || ''
+        rehab_flag: data.rehab_flag || false,
+        rehab_conditions: data.rehab_conditions || [],
+        rehab_other_description: data.rehab_other_description || ''
       })
     }).then(function(r){ return r.json(); })
     .then(function(d){ if (d.ok) localStorage.removeItem('na_test_result'); })
@@ -907,10 +1031,35 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
       html += s.content;
       html += '</div>';
     });
+    // ── Rehabilitation context block (if rehab flow) ──
+    if (rehabFlag && rehabConditions.length > 0) {
+      /* <!-- DRAFT: pending medical review --> */
+      var condLabels = {
+        neurodegenerative: 'нейродегенеративные заболевания',
+        stroke: 'восстановление после инсульта',
+        tbi: 'черепно-мозговые травмы',
+        neuropathy: 'нейропатии / нарушения чувствительности',
+        asd: 'расстройства аутистического спектра',
+        other: 'другое'
+      };
+      var condText = rehabConditions.map(function(k){ return condLabels[k] || k; }).join(', ');
+      html += '<div class="result-section" style="border-left:2px solid var(--accent-violet);padding-left:1rem;">';
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Дополнительный контекст</div>';
+      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;">' + esc(condText) + '</p>';
+      html += '</div>';
+    }
+
     html += '<div class="result-unlock">';
-    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> Разблокировать полный профиль</div>';
-    html += (profile.unlock || '');
-    html += '<a href="account.html?from_test=1" class="result-cta">Открыть полный профиль <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+    if (rehabFlag) {
+      /* <!-- DRAFT: pending medical review --> */
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span> Рекомендация</div>';
+      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:1rem;">Рекомендуется персональная программа восстановления с сопровождением специалиста.</p>';
+      html += '<a href="account.html?from_test=1&rehab=1" class="result-cta" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(0,210,190,0.1));border-color:rgba(167,139,250,0.3);">Rehabilitation Program <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+    } else {
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> Разблокировать полный профиль</div>';
+      html += (profile.unlock || '');
+      html += '<a href="account.html?from_test=1" class="result-cta">Открыть полный профиль <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+    }
     html += '</div>';
     html += '<div style="text-align:center;"><span class="result-retake" onclick="location.reload()">Пройти тест заново</span></div>';
     wrap.innerHTML = html;

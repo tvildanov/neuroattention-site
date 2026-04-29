@@ -39,7 +39,7 @@
 | 006 | Create `neuro_resource_diary`, `calendar_events`, `course_progress` tables | 2026-04-25 |
 | 007 | Create `nm_nodes` + `nm_links` tables for NeuroMap graph | 2026-04-25 |
 | 008 | Backward-compat migration: `neuro_map_entries` → `nm_nodes+nm_links` (per-user via API) | 2026-04-25 |
-| 013 | Add `neuro_deg_flag` (boolean) + `neuro_deg_detail` (varchar) to `test_results` | 2026-04-29 |
+| 013 | Add `rehab_flag` (boolean) + `rehab_conditions` (text[]) + `rehab_other_description` (text) to `test_results` | 2026-04-29 |
 
 ### 3. Pre-Deploy Checklist
 Before every deploy that touches data storage:
