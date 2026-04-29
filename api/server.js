@@ -200,7 +200,7 @@ app.post('/api/run-migrations', async (req, res) => {
     // Migration 014: rehab_applications table
     await sql`CREATE TABLE IF NOT EXISTS rehab_applications (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
       city TEXT NOT NULL,
       phone TEXT NOT NULL,
       age INTEGER NOT NULL CHECK (age > 0 AND age < 120),
