@@ -16,6 +16,15 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'DOM Unity <noreply@neuroattention.org>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://neuroattention.org';
 
+// Stripe config (optional — endpoints gracefully degrade if keys missing)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
+let stripe = null;
+if (STRIPE_SECRET_KEY) {
+  try { stripe = require('stripe')(STRIPE_SECRET_KEY); } catch(e) { console.warn('stripe package not installed:', e.message); }
+}
+
 // DB connection
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL not set');
@@ -56,6 +65,57 @@ app.use(cors({
   ],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// Stripe webhook needs raw body — must be BEFORE express.json()
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: 'Stripe not configured' });
+  }
+  let event;
+  try {
+    const sig = req.headers['stripe-signature'];
+    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Stripe webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
+  }
+
+  // Handle checkout.session.completed
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    try {
+      // Log consent + payment to consent_log table
+      const meta = session.metadata || {};
+      await sql`INSERT INTO consent_log (
+        stripe_session_id, stripe_customer_id, product, email,
+        consent_tos, consent_privacy, consent_digital, consent_rehab,
+        amount_total, currency, payment_status, consent_timestamp
+      ) VALUES (
+        ${session.id},
+        ${session.customer || null},
+        ${meta.product || 'unknown'},
+        ${session.customer_details?.email || meta.email || null},
+        ${meta.consent_tos === 'true'},
+        ${meta.consent_privacy === 'true'},
+        ${meta.consent_digital === 'true'},
+        ${meta.consent_rehab === 'true' ? true : null},
+        ${session.amount_total || 0},
+        ${session.currency || 'usd'},
+        ${session.payment_status || 'unknown'},
+        ${meta.consent_timestamp || new Date().toISOString()}
+      )`;
+      console.log('Stripe webhook: consent_log saved for session', session.id);
+
+      // TODO: Send confirmation email (Pack 7.7)
+      console.log('TODO: send confirmation email to', session.customer_details?.email);
+    } catch (err) {
+      console.error('Stripe webhook DB error:', err.message);
+      // Still return 200 so Stripe doesn't retry
+    }
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '25mb' }));
 
 // Health check
@@ -1982,6 +2042,93 @@ app.patch('/api/admin/rehab/applications/:id/status', requireAuth, async (req, r
     console.error('PATCH /api/admin/rehab/applications/:id/status:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Stripe Checkout: create session ───
+const STRIPE_PRODUCTS = {
+  lab: {
+    name: 'NeuroAttention Lab Program',
+    price: 14900, // cents
+    currency: 'usd'
+  },
+  rehab: {
+    name: 'Rehabilitation Program',
+    price: 19900,
+    currency: 'usd'
+  }
+};
+
+app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Stripe is not configured. Contact admin.' });
+    }
+    const { product, tos, privacy, digital, rehab, timestamp } = req.body;
+    if (!product || !STRIPE_PRODUCTS[product]) {
+      return res.status(400).json({ error: 'Invalid product. Use: lab, rehab' });
+    }
+    if (!tos || !privacy || !digital) {
+      return res.status(400).json({ error: 'All consent checkboxes must be accepted' });
+    }
+    if (product === 'rehab' && !rehab) {
+      return res.status(400).json({ error: 'Rehabilitation consent must be accepted' });
+    }
+
+    const prod = STRIPE_PRODUCTS[product];
+    const userEmail = req.user ? req.user.email : null;
+
+    const sessionParams = {
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: prod.currency,
+          product_data: { name: prod.name },
+          unit_amount: prod.price
+        },
+        quantity: 1
+      }],
+      success_url: FRONTEND_URL + '/checkout-success.html?session_id={CHECKOUT_SESSION_ID}&product=' + product,
+      cancel_url: FRONTEND_URL + '/checkout-confirm.html?product=' + product,
+      metadata: {
+        product: product,
+        consent_tos: String(!!tos),
+        consent_privacy: String(!!privacy),
+        consent_digital: String(!!digital),
+        consent_rehab: product === 'rehab' ? String(!!rehab) : '',
+        consent_timestamp: timestamp || new Date().toISOString(),
+        email: userEmail || ''
+      },
+      consent_collection: {
+        terms_of_service: 'required'
+      },
+      custom_text: {
+        submit: {
+          message: 'By completing this purchase you confirm that you have read and agreed to our Terms of Service and Privacy Policy.'
+        }
+      }
+    };
+
+    if (userEmail) {
+      sessionParams.customer_email = userEmail;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (err) {
+    console.error('POST /api/checkout/create-session:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Health / Stripe status check
+app.get('/api/stripe/status', (req, res) => {
+  res.json({
+    configured: !!stripe,
+    hasSecret: !!STRIPE_SECRET_KEY,
+    hasWebhookSecret: !!STRIPE_WEBHOOK_SECRET,
+    hasPublishable: !!STRIPE_PUBLISHABLE_KEY
+  });
 });
 
 app.listen(PORT, () => {
