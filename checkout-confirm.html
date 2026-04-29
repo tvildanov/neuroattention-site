@@ -421,7 +421,7 @@ button, a, input { cursor: pointer !important; }
 
       <!-- Pay button -->
       <button class="pay-btn" id="pay-btn" disabled>
-        <span class="btn-text">Proceed to Payment</span>
+        <span class="btn-text">Continue to Payment</span>
         <span class="spinner"></span>
       </button>
       <p class="pay-note">
@@ -559,8 +559,10 @@ button, a, input { cursor: pointer !important; }
       return res.json();
     })
     .then(function(data) {
-      if (data.url) {
-        window.location.href = data.url;
+      // Handle both real Stripe redirect and stub mode
+      var redirectTo = data.url || data.redirect_url;
+      if (redirectTo) {
+        window.location.href = redirectTo;
       } else {
         throw new Error('No checkout URL returned');
       }
