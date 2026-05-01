@@ -12,7 +12,7 @@ const BCRYPT_ROUNDS = 10;
 const TOKEN_EXPIRY = '30d';
 const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 const SUPERADMIN_LIMIT = 2;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'NeuroAttention <info@neuroattention.org>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'NeuroAttention Lab <info@neuroattention.org>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://neuroattention.org';
 
 // ─── Nodemailer SMTP (Namecheap Private Email) ───
