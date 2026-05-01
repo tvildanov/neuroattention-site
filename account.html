@@ -516,7 +516,7 @@
   <div class="dash-header">
     <div>
       <h1 class="dash-title" id="client-greeting" data-i18n="a.dashboard.greeting">Здравствуйте</h1>
-      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Ваш путь с NeuroAttention</p>
+      <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;" data-i18n="a.dashboard.subtitle">Ваш путь с NeuroAttention</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
       <span class="dash-role"><span class="pulse"></span><span data-i18n="a.dashboard.role_client">Клиент</span></span>
@@ -630,14 +630,14 @@
   <div class="tab-panel" id="tab-protocol">
     <!-- Sub-tabs: Программа / Практики -->
     <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
-      <button class="dash-tab active" id="proto-mode-prog" onclick="setProtoMode('prog')" style="border:none;border-bottom:2px solid var(--accent-cyan);">Программа</button>
-      <button class="dash-tab" id="proto-mode-pract" onclick="setProtoMode('pract')" style="border:none;border-bottom:2px solid transparent;">Практики</button>
+      <button class="dash-tab active" id="proto-mode-prog" onclick="setProtoMode('prog')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.protocol.program">Программа</button>
+      <button class="dash-tab" id="proto-mode-pract" onclick="setProtoMode('pract')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.protocol.practices">Практики</button>
     </div>
     <div id="proto-prog-content">
     <!-- Program progress content (was tab-program) -->
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated span-8">
-        <h3>Модули программы — Guided Program</h3>
+        <h3 data-i18n="a.protocol.modules_title">Модули программы — Guided Program</h3>
         <div class="module-item" data-module-id="block-1">
           <div class="module-status done">✓</div>
           <div class="module-info">
@@ -685,17 +685,17 @@
         </div>
       </div>
       <div class="dash-card glass-card-elevated span-4">
-        <h3>Прогресс</h3>
+        <h3 data-i18n="a.protocol.progress_title">Прогресс</h3>
         <p class="dash-metric" style="font-size:2rem;">11<span style="font-size:1rem;color:var(--text-muted);">/21</span></p>
-        <p class="dash-label">Практик выполнено</p>
+        <p class="dash-label" data-i18n="a.protocol.practices_completed">Практик выполнено</p>
         <div class="progress-track" style="margin-top:0.75rem;"><div class="progress-fill" style="width:52%"></div></div>
         <div style="margin-top:1.5rem;">
-          <p class="dash-label" style="margin-bottom:0.4rem;">Теоретические модули</p>
+          <p class="dash-label" style="margin-bottom:0.4rem;" data-i18n="a.protocol.theory_modules">Теоретические модули</p>
           <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">5 / 8</p>
           <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:62%"></div></div>
         </div>
         <div style="margin-top:1.5rem;">
-          <p class="dash-label" style="margin-bottom:0.4rem;">Домашние задания</p>
+          <p class="dash-label" style="margin-bottom:0.4rem;" data-i18n="a.protocol.homework">Домашние задания</p>
           <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">8 / 12</p>
           <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:66%"></div></div>
         </div>
@@ -713,8 +713,8 @@
         <div id="practices-list"></div>
         <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
           <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
-          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;">Практики пока не загружены</p>
-          <p style="font-size:12px;color:var(--text-dim);margin:0;">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
+          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.protocol.practices_not_loaded">Практики пока не загружены</p>
+          <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.protocol.practices_admin_msg">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
         </div>
       </div>
     </div>
@@ -725,9 +725,9 @@
   <div class="tab-panel" id="tab-tools">
     <!-- Sub-tabs: NeuroMap / Календарь / Дневник -->
     <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
-      <button class="dash-tab dash-subtab active" id="tools-mode-nm" onclick="setToolsMode('nm')" style="border:none;border-bottom:2px solid var(--accent-cyan);">NeuroMap</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-cal" onclick="setToolsMode('cal')" style="border:none;border-bottom:2px solid transparent;">Календарь</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;">Дневник</button>
+      <button class="dash-tab dash-subtab active" id="tools-mode-nm" onclick="setToolsMode('nm')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.tools.neuromap">NeuroMap</button>
+      <button class="dash-tab dash-subtab" id="tools-mode-cal" onclick="setToolsMode('cal')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.calendar">Календарь</button>
+      <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
     </div>
     <!-- NeuroMap content will be moved here by JS from tab-neuromap -->
     <!-- Calendar + Diary content -->
@@ -747,11 +747,11 @@
           <div class="cal-grid" id="cal-grid"></div>
         </div>
         <div class="dash-card glass-card-elevated span-4">
-          <h3>События дня</h3>
+          <h3 data-i18n="a.tools.day_events">События дня</h3>
           <div id="day-events">
-            <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;">Нет событий</p>
+            <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;" data-i18n="a.tools.no_events">Нет событий</p>
           </div>
-          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;font-size:12px;" onclick="addEvent()">+ Добавить событие</button>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:1rem;font-size:12px;" onclick="addEvent()" data-i18n="a.tools.add_event">+ Добавить событие</button>
         </div>
       </div>
     </div>
@@ -763,13 +763,13 @@
         <div class="dash-card glass-card-elevated span-8">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
             <div class="cal-header" style="margin-bottom:0;">
-              <h3 id="diary-month-title">Апрель 2026</h3>
+              <h3 id="diary-month-title" data-i18n="a.tools.diary_month">Апрель 2026</h3>
               <div class="cal-nav" style="margin-left:1rem;">
                 <button onclick="changeDiaryMonth(-1)">‹</button>
                 <button onclick="changeDiaryMonth(1)">›</button>
               </div>
             </div>
-            <button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.85rem;" onclick="analyzeDiary()">
+            <button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.85rem;" onclick="analyzeDiary()" data-i18n="a.tools.analyze_diary">
               <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
               Проанализировать
             </button>
@@ -781,15 +781,15 @@
             <h3 id="diary-day-title" style="font-size:0.9rem;margin-bottom:1rem;">—</h3>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
               <div>
-                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,100,100,0.7);margin:0 0 0.75rem;text-align:center;">− Отняло ресурс</p>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,100,100,0.7);margin:0 0 0.75rem;text-align:center;" data-i18n="a.tools.resource_drain">− Отняло ресурс</p>
                 <div id="diary-col-minus" class="diary-col"></div>
               </div>
               <div>
-                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(140,180,255,0.7);margin:0 0 0.75rem;text-align:center;">± Смешанное</p>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(140,180,255,0.7);margin:0 0 0.75rem;text-align:center;" data-i18n="a.tools.resource_mixed">± Смешанное</p>
                 <div id="diary-col-mixed" class="diary-col"></div>
               </div>
               <div>
-                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(100,255,150,0.7);margin:0 0 0.75rem;text-align:center;">+ Дало ресурс</p>
+                <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(100,255,150,0.7);margin:0 0 0.75rem;text-align:center;" data-i18n="a.tools.resource_gain">+ Дало ресурс</p>
                 <div id="diary-col-plus" class="diary-col"></div>
               </div>
             </div>
@@ -797,23 +797,23 @@
 
           <!-- Analysis panel -->
           <div id="diary-analysis" style="display:none;margin-top:1.5rem;padding:1.5rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
-            <h3 style="font-size:0.95rem;margin:0 0 1rem;">Анализ движения нейроресурса</h3>
+            <h3 style="font-size:0.95rem;margin:0 0 1rem;" data-i18n="a.tools.analysis_title">Анализ движения нейроресурса</h3>
             <div id="analysis-content"></div>
           </div>
         </div>
 
         <!-- Right panel: add event button + today summary -->
         <div class="dash-card glass-card-elevated span-4">
-          <h3>Дневник нейроресурса</h3>
-          <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.6;">Записывайте события дня и оценивайте их влияние на ваш внутренний ресурс</p>
-          <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openDiaryInput()">
+          <h3 data-i18n="a.tools.resource_diary_title">Дневник нейроресурса</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.6;" data-i18n="a.tools.resource_diary_desc">Записывайте события дня и оценивайте их влияние на ваш внутренний ресурс</p>
+          <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openDiaryInput()" data-i18n="a.tools.add_diary_entry">
             Внести события
             <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
           </button>
           <div style="margin-top:1.5rem;">
-            <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;">Сегодня</p>
+            <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;" data-i18n="a.tools.today">Сегодня</p>
             <div id="diary-today-summary">
-              <p style="font-size:13px;color:var(--text-muted);margin:0;">Нет записей</p>
+              <p style="font-size:13px;color:var(--text-muted);margin:0;" data-i18n="a.tools.no_records">Нет записей</p>
             </div>
           </div>
         </div>
@@ -876,24 +876,24 @@
         <!-- View mode toggle -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
           <div>
-            <h3 style="margin:0;">NeuroMap</h3>
-            <p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0 0;">Нейронный контур твоей личности. Карта мыслей, эмоций и состояний</p>
+            <h3 style="margin:0;" data-i18n="a.tools.neuromap_title">NeuroMap</h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0 0;" data-i18n="a.tools.neuromap_desc">Нейронный контур твоей личности. Карта мыслей, эмоций и состояний</p>
           </div>
           <div style="display:flex;gap:4px;">
-            <button class="nm-view-btn active" onclick="setNmView('day')">День</button>
-            <button class="nm-view-btn" onclick="setNmView('week')">Неделя</button>
-            <button class="nm-view-btn" onclick="setNmView('month')">Месяц</button>
-            <button class="nm-view-btn" onclick="setNmView('all')">Всё</button>
+            <button class="nm-view-btn active" onclick="setNmView('day')" data-i18n="a.tools.view_day">День</button>
+            <button class="nm-view-btn" onclick="setNmView('week')" data-i18n="a.tools.view_week">Неделя</button>
+            <button class="nm-view-btn" onclick="setNmView('month')" data-i18n="a.tools.view_month">Месяц</button>
+            <button class="nm-view-btn" onclick="setNmView('all')" data-i18n="a.tools.view_all">Всё</button>
           </div>
         </div>
         <!-- 3D toggle + Fullscreen button -->
         <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;gap:0.3rem;">
-          <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" id="nm-labels-toggle" style="display:none;font-size:10px;">Подписи: всегда</button>
+          <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" id="nm-labels-toggle" style="display:none;font-size:10px;" data-i18n="a.tools.labels_always">Подписи: всегда</button>
           <button class="nm-3d-toggle" onclick="nmToggle3D()" id="nm-3d-toggle" style="display:none;">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             3D
           </button>
-          <button class="nm-fs-btn" onclick="nmToggleFullscreen()" id="nm-fs-toggle" style="display:none;">
+          <button class="nm-fs-btn" onclick="nmToggleFullscreen()" id="nm-fs-toggle" style="display:none;" data-i18n="a.tools.fullscreen">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
             На весь экран
           </button>
@@ -912,8 +912,8 @@
                   <line x1="7" y1="7" x2="10" y2="10" opacity="0.5"/><line x1="14" y1="10" x2="17" y2="7" opacity="0.5"/><line x1="7" y1="17" x2="10" y2="14" opacity="0.5"/><line x1="14" y1="14" x2="17" y2="17" opacity="0.5"/>
                 </svg>
               </div>
-              <h3 style="font-size:16px;font-weight:600;color:var(--text-primary);margin:0 0 0.4rem;">Ваша НейроКарта</h3>
-              <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 1rem;line-height:1.5;">
+              <h3 style="font-size:16px;font-weight:600;color:var(--text-primary);margin:0 0 0.4rem;" data-i18n="a.tools.your_neuromap">Ваша НейроКарта</h3>
+              <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 1rem;line-height:1.5;" data-i18n="a.tools.track_connections">
                 Отслеживайте связи между эмоциями, сферами жизни и мыслями. Каждое заполнение строит вашу уникальную карту.
               </p>
               <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:1rem;">
@@ -930,18 +930,18 @@
                   <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Динамика<br>ресурса</div>
                 </div>
               </div>
-              <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;padding:0.7rem 1.2rem;" onclick="openNmSurvey()">
+              <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;padding:0.7rem 1.2rem;" onclick="openNmSurvey()" data-i18n="a.tools.start_first_record">
                 <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;margin-right:6px;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                 Начать первую запись
               </button>
-              <p style="font-size:10.5px;color:var(--text-dim);margin:0.6rem 0 0;opacity:0.6;">Занимает ~2 минуты</p>
+              <p style="font-size:10.5px;color:var(--text-dim);margin:0.6rem 0 0;opacity:0.6;" data-i18n="a.tools.takes_2_min">Занимает ~2 минуты</p>
             </div>
           </div>
         </div>
         <!-- Filter row -->
         <div id="nm-filters" style="display:none;margin-top:0.75rem;">
           <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
-            <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;">Слои:</span>
+            <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;" data-i18n="a.tools.layers">Слои:</span>
             <label class="nm-layer-chk" style="opacity:0.45;cursor:default;" title="Ощущения (скоро)"><input type="checkbox" data-layer="1" checked disabled><span class="nm-lbl">1 Ощущения</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl">2 Переживания</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl">3 Образы</span></label>
@@ -1060,26 +1060,26 @@
         <div id="ab-main">
           <p class="eyebrow" style="margin-bottom:0.5rem;" data-i18n="a.pointab.subtitle">Карта реализации потенциала</p>
           <h2 style="font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.6rem;color:var(--text-primary);margin:0 0 0.75rem;" data-i18n="a.pointab.title">Точка А → Точка B</h2>
-          <p style="color:var(--text-secondary);font-size:14px;line-height:1.65;margin:0 0 1.5rem;max-width:640px;">Определите, где вы находитесь сейчас, куда хотите прийти и какие внутренние ограничения мешают движению.</p>
-          <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 2rem;max-width:640px;">Это упражнение помогает увидеть разницу между текущим образом жизни и желаемым направлением развития. На основе ответов вы сформируете личную программу корректировки и запишете её своим голосом.</p>
-          <button class="btn btn-solid" style="font-size:14px;padding:0.85rem 2rem;" onclick="abStartExercise()">
+          <p style="color:var(--text-secondary);font-size:14px;line-height:1.65;margin:0 0 1.5rem;max-width:640px;" data-i18n="a.pointab.intro">Определите, где вы находитесь сейчас, куда хотите прийти и какие внутренние ограничения мешают движению.</p>
+          <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 2rem;max-width:640px;" data-i18n="a.pointab.description">Это упражнение помогает увидеть разницу между текущим образом жизни и желаемым направлением развития. На основе ответов вы сформируете личную программу корректировки и запишете её своим голосом.</p>
+          <button class="btn btn-solid" style="font-size:14px;padding:0.85rem 2rem;" onclick="abStartExercise()" data-i18n="a.pointab.start_exercise">
             Начать упражнение <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
           <!-- Previously saved result -->
           <div id="ab-saved-result" style="display:none;margin-top:2rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
-            <h3 style="font-size:0.95rem;margin:0 0 0.5rem;color:var(--text-primary);">Последняя карта</h3>
+            <h3 style="font-size:0.95rem;margin:0 0 0.5rem;color:var(--text-primary);" data-i18n="a.pointab.last_map">Последняя карта</h3>
             <p id="ab-saved-date" style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;"></p>
             <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-              <button class="btn btn-ghost" style="font-size:12px;" onclick="abShowResult()">Просмотреть</button>
-              <button class="btn btn-ghost" style="font-size:12px;" id="ab-play-saved" onclick="abPlaySaved()">Прослушать программу</button>
+              <button class="btn btn-ghost" style="font-size:12px;" onclick="abShowResult()" data-i18n="a.pointab.view">Просмотреть</button>
+              <button class="btn btn-ghost" style="font-size:12px;" id="ab-play-saved" onclick="abPlaySaved()" data-i18n="a.pointab.listen_program">Прослушать программу</button>
             </div>
           </div>
           <!-- Calendar integration -->
           <div style="margin-top:2rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
               <div>
-                <h3 style="font-size:0.9rem;margin:0 0 0.25rem;color:var(--text-primary);">Прослушивание программы</h3>
-                <p style="font-size:12px;color:var(--text-muted);margin:0;">Напоминание в вашем календаре</p>
+                <h3 style="font-size:0.9rem;margin:0 0 0.25rem;color:var(--text-primary);" data-i18n="a.pointab.listening_schedule">Прослушивание программы</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin:0;" data-i18n="a.pointab.calendar_reminder">Напоминание в вашем календаре</p>
               </div>
               <select id="ab-listen-freq" onchange="abSetFrequency(this.value)" style="padding:0.5rem 0.75rem;border-radius:10px;font-size:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-primary);">
                 <option value="daily">Каждый день</option>
@@ -1093,7 +1093,7 @@
           <div id="ab-specialist-toggle" style="display:none;margin-top:1rem;padding:1rem 1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
             <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
               <input type="checkbox" id="ab-share-specialist" onchange="abToggleSpecialist(this.checked)" style="width:18px;height:18px;accent-color:var(--accent-cyan);" />
-              <span style="font-size:13px;color:var(--text-secondary);">Разрешить специалисту видеть мою карту А → B</span>
+              <span style="font-size:13px;color:var(--text-secondary);" data-i18n="a.pointab.specialist_permission">Разрешить специалисту видеть мою карту А → B</span>
             </label>
           </div>
         </div>
@@ -1129,7 +1129,7 @@
         <button onclick="toggleMethodStrip()" id="method-strip-toggle" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;background:none;border:none;cursor:pointer;font-family:inherit;">
           <span style="display:flex;align-items:center;gap:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            <span style="font-family:'Unbounded',sans-serif;font-size:0.9rem;font-weight:500;color:var(--text-primary);">Что такое метод NeuroAttention</span>
+            <span style="font-family:'Unbounded',sans-serif;font-size:0.9rem;font-weight:500;color:var(--text-primary);" data-i18n="a.enroll.what_is_method">Что такое метод NeuroAttention</span>
           </span>
           <svg id="method-strip-chevron" style="width:18px;height:18px;fill:none;stroke:var(--text-muted);stroke-width:2;transition:transform 0.3s;" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
         </button>
@@ -1159,12 +1159,12 @@
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Self-Guided</span>
           </div>
-          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Самостоятельная программа</h4>
-          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Структурированная работа с вниманием, телом и состоянием через протоколы, теорию и задания. NeuroMap, 3 месяца, 21 практика.</p>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.self_guided_title">Самостоятельная программа</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.self_guided_desc">Структурированная работа с вниманием, телом и состоянием через протоколы, теорию и задания. NeuroMap, 3 месяца, 21 практика.</p>
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);">$1,400</span>
           </div>
-          <button class="btn btn-solid" onclick="enrollProgram('self')" style="width:100%;justify-content:center;">
+          <button class="btn btn-solid" onclick="enrollProgram('self')" style="width:100%;justify-content:center;" data-i18n="a.enroll.get_access">
             Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
@@ -1176,12 +1176,12 @@
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Guided</span>
             <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(0,224,255,0.08);border:1px solid rgba(0,224,255,0.2);color:var(--accent-cyan);font-weight:600;letter-spacing:0.05em;">Recommended</span>
           </div>
-          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">С личным специалистом</h4>
-          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Глубокая работа с адаптацией под ваше состояние. Регулярные встречи, разбор обратной связи, корректировка прохождения. Всё из Self-Guided + сопровождение.</p>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.guided_title">С личным специалистом</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.guided_desc">Глубокая работа с адаптацией под ваше состояние. Регулярные встречи, разбор обратной связи, корректировка прохождения. Всё из Self-Guided + сопровождение.</p>
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);">$4,000</span>
           </div>
-          <button class="btn btn-solid" onclick="enrollProgram('guided')" style="width:100%;justify-content:center;">
+          <button class="btn btn-solid" onclick="enrollProgram('guided')" style="width:100%;justify-content:center;" data-i18n="a.enroll.get_access">
             Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
@@ -1192,12 +1192,12 @@
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Group</span>
           </div>
-          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Групповая программа</h4>
-          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Групповое прохождение с ведущим и общей динамикой. Коллективная NeuroMap, онлайн-сессии, поддержка среды.</p>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.group_title">Групповая программа</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.group_desc">Групповое прохождение с ведущим и общей динамикой. Коллективная NeuroMap, онлайн-сессии, поддержка среды.</p>
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Цена уточняется</span>
           </div>
-          <button class="btn btn-ghost" onclick="enrollProgram('group')" style="width:100%;justify-content:center;">
+          <button class="btn btn-ghost" onclick="enrollProgram('group')" style="width:100%;justify-content:center;" data-i18n="a.enroll.get_access">
             Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
@@ -1209,12 +1209,12 @@
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-violet);text-transform:uppercase;">Rehabilitation</span>
           </div>
-          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Rehabilitation Program</h4>
-          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Восстановление когнитивных функций при нарушениях работы нервной системы. Только персональная работа, диагностика, адаптивные протоколы.</p>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.rehab_title">Rehabilitation Program</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.rehab_desc">Восстановление когнитивных функций при нарушениях работы нервной системы. Только персональная работа, диагностика, адаптивные протоколы.</p>
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Персональный формат</span>
           </div>
-          <a href="rehabilitation-application.html" class="btn btn-ghost" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;">
+          <a href="rehabilitation-application.html" class="btn btn-ghost" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;" data-i18n="a.enroll.submit_application">
             Оставить заявку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
         </div>
@@ -1226,12 +1226,12 @@
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c6 3 10 0 12-1v-4"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Specialist</span>
           </div>
-          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;">Подготовка специалистов</h4>
-          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;">Обучение работе с NeuroAttention Method для интеграции в профессиональную практику. Три уровня: база, сертификация, мастерство.</p>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.specialist_title">Подготовка специалистов</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.specialist_desc">Обучение работе с NeuroAttention Method для интеграции в профессиональную практику. Три уровня: база, сертификация, мастерство.</p>
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Цена уточняется</span>
           </div>
-          <button class="btn btn-ghost" onclick="enrollProgram('specialist')" style="width:100%;justify-content:center;">
+          <button class="btn btn-ghost" onclick="enrollProgram('specialist')" style="width:100%;justify-content:center;" data-i18n="a.enroll.get_access">
             Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
@@ -1309,8 +1309,8 @@
 
   <!-- Admin tabs -->
   <div class="dash-tabs" id="admin-tabs">
-    <button class="dash-tab active" data-tab="admin-stats">Статистика</button>
-    <button class="dash-tab" data-tab="admin-users">Пользователи</button>
+    <button class="dash-tab active" data-tab="admin-stats" data-i18n="a.admin.stats">Статистика</button>
+    <button class="dash-tab" data-tab="admin-users" data-i18n="a.admin.users">Пользователи</button>
     <button class="dash-tab" data-tab="admin-tools" data-i18n="a.admin.tools">Инструменты</button>
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;">Практики</button>
@@ -1319,19 +1319,19 @@
   <!-- TAB: Stats -->
   <div class="tab-panel active" id="tab-admin-stats">
     <div class="dash-grid">
-      <div class="dash-card glass-card-elevated span-3"><h3>Активных</h3><p class="dash-metric" id="stat-active">0</p><p class="dash-label">пользователей</p></div>
-      <div class="dash-card glass-card-elevated span-3"><h3>Клиентов</h3><p class="dash-metric" id="stat-clients">0</p><p class="dash-label">зарегистрировано</p></div>
-      <div class="dash-card glass-card-elevated span-3"><h3>Специалистов</h3><p class="dash-metric" id="stat-specs">0</p><p class="dash-label">средний уровень</p></div>
-      <div class="dash-card glass-card-elevated span-3"><h3>С программой</h3><p class="dash-metric" id="stat-paid">0</p><p class="dash-label">оплачена</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3 data-i18n="a.admin.active">Активных</h3><p class="dash-metric" id="stat-active">0</p><p class="dash-label" data-i18n="a.admin.active_label">пользователей</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3 data-i18n="a.admin.clients">Клиентов</h3><p class="dash-metric" id="stat-clients">0</p><p class="dash-label" data-i18n="a.admin.registered">зарегистрировано</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3 data-i18n="a.admin.specialists">Специалистов</h3><p class="dash-metric" id="stat-specs">0</p><p class="dash-label" data-i18n="a.admin.avg_level">средний уровень</p></div>
+      <div class="dash-card glass-card-elevated span-3"><h3 data-i18n="a.admin.with_program">С программой</h3><p class="dash-metric" id="stat-paid">0</p><p class="dash-label" data-i18n="a.admin.paid">оплачена</p></div>
       <div class="dash-card glass-card-elevated span-8">
-        <h3>Последние регистрации</h3>
+        <h3 data-i18n="a.admin.recent_signups">Последние регистрации</h3>
         <table class="admin-table">
           <thead><tr><th data-i18n="a.admin.users_table_name">Имя</th><th data-i18n="a.admin.users_table_email">Email / Телефон</th><th data-i18n="a.admin.users_table_role">Роль</th><th data-i18n="a.admin.users_table_program">Программа</th><th></th></tr></thead>
           <tbody id="admin-users-table"></tbody>
         </table>
       </div>
       <div class="dash-card glass-card-elevated span-4">
-        <h3>Продажи по программам</h3>
+        <h3 data-i18n="a.admin.sales_by_program">Продажи по программам</h3>
         <div id="admin-sales-list"></div>
       </div>
     </div>
@@ -1342,13 +1342,13 @@
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-          <h3 style="margin:0;">Все пользователи</h3>
+          <h3 style="margin:0;" data-i18n="a.admin.all_users">Все пользователи</h3>
           <div style="display:flex;gap:0.5rem;">
-            <button class="nm-filter-btn active" onclick="filterAdminUsers('all',this)">Все</button>
-            <button class="nm-filter-btn" onclick="filterAdminUsers('founder',this)">Основатели</button>
-            <button class="nm-filter-btn" onclick="filterAdminUsers('specialist',this)">Специалисты</button>
-            <button class="nm-filter-btn" onclick="filterAdminUsers('admin_basic',this)">Админы</button>
-            <button class="nm-filter-btn" onclick="filterAdminUsers('client',this)">Клиенты</button>
+            <button class="nm-filter-btn active" onclick="filterAdminUsers('all',this)" data-i18n="a.admin.filter_all">Все</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('founder',this)" data-i18n="a.admin.filter_founders">Основатели</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('specialist',this)" data-i18n="a.admin.filter_specialists">Специалисты</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('admin_basic',this)" data-i18n="a.admin.filter_admins">Админы</button>
+            <button class="nm-filter-btn" onclick="filterAdminUsers('client',this)" data-i18n="a.admin.filter_clients">Клиенты</button>
           </div>
         </div>
         <table class="admin-table" id="admin-full-users-table">
