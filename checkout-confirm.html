@@ -377,6 +377,15 @@ button, a, input { cursor: pointer !important; }
         </div>
       </div>
 
+      <!-- Guest email (shown when not logged in) -->
+      <div id="guest-email-section" style="display:none;margin-bottom:1.5rem;">
+        <label for="guest-email" style="display:block;font-family:'Space Grotesk',sans-serif;font-size:0.95rem;font-weight:600;color:var(--text-primary);margin-bottom:0.5rem;" data-i18n="checkout.guest_email_label">Your Email</label>
+        <p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.75rem;line-height:1.5;" data-i18n="checkout.guest_email_hint">We'll send your access credentials to this email after purchase. No registration needed.</p>
+        <input type="email" id="guest-email" required placeholder="you@example.com"
+          style="width:100%;padding:0.75rem 1rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:var(--text-primary);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;box-sizing:border-box;"
+          onfocus="this.style.borderColor='rgba(0,210,190,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'" />
+      </div>
+
       <!-- Error message area -->
       <div class="error-msg" id="error-msg"></div>
 
@@ -482,6 +491,15 @@ button, a, input { cursor: pointer !important; }
 
   formEl.style.display = '';
 
+  // Show guest email field if not logged in
+  var token = localStorage.getItem('na_token');
+  var isGuest = !token;
+  var guestEmailSection = document.getElementById('guest-email-section');
+  var guestEmailInput = document.getElementById('guest-email');
+  if (isGuest) {
+    guestEmailSection.style.display = '';
+  }
+
   // Fill order summary
   document.getElementById('product-label').textContent = product.label;
   document.getElementById('summary-name').textContent = product.name;
@@ -503,6 +521,12 @@ button, a, input { cursor: pointer !important; }
     var allChecked = checkboxes.every(function(id) {
       return document.getElementById(id).checked;
     });
+    // For guests, also require valid email
+    if (isGuest) {
+      var emailVal = guestEmailInput.value.trim();
+      var emailValid = emailVal && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal);
+      allChecked = allChecked && emailValid;
+    }
     payBtn.disabled = !allChecked;
   }
 
@@ -522,6 +546,11 @@ button, a, input { cursor: pointer !important; }
       updatePayBtn();
     });
   });
+
+  // Listen for email changes (guest mode)
+  if (isGuest) {
+    guestEmailInput.addEventListener('input', updatePayBtn);
+  }
 
   // Error display
   var errorEl = document.getElementById('error-msg');
@@ -552,8 +581,12 @@ button, a, input { cursor: pointer !important; }
       userAgent: navigator.userAgent
     };
 
+    // For guests, include email
+    if (isGuest && guestEmailInput.value.trim()) {
+      consentData.email = guestEmailInput.value.trim();
+    }
+
     // Get auth token if available
-    var token = localStorage.getItem('na_token');
     var headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
 

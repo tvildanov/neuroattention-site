@@ -1556,6 +1556,28 @@ var users = [];
 var ROLE_LABELS = {founder:function(){ return t('a.dashboard.role_founder'); },specialist:function(){ return t('a.dashboard.role_specialist'); },admin_basic:'Админ',client:function(){ return t('a.dashboard.role_client'); }};
 var PROG_LABELS = {self:'Self-Guided',guided:'Guided Program',group:'Group Program'};
 
+// Handle magic-link login from email
+(function handleMagicLink(){
+  var params = new URLSearchParams(window.location.search);
+  var magic = params.get('magic');
+  if (magic) {
+    // Validate magic token by calling /api/auth/me
+    fetch(AUTH_API + '/api/auth/me', { headers: { 'Authorization': 'Bearer ' + magic } })
+      .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+      .then(function(data){
+        localStorage.setItem('na_token', magic);
+        localStorage.setItem('na_user', JSON.stringify(data));
+        // Remove magic param from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        window.location.reload();
+      })
+      .catch(function(){
+        console.warn('Magic link expired or invalid');
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+  }
+})();
+
 function naGetToken(){ return localStorage.getItem('na_token'); }
 function naSetAuth(token, user){
   localStorage.setItem('na_token', token);
