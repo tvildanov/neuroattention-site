@@ -12,9 +12,27 @@ const BCRYPT_ROUNDS = 10;
 const TOKEN_EXPIRY = '30d';
 const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 const SUPERADMIN_LIMIT = 2;
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const EMAIL_FROM = process.env.EMAIL_FROM || 'DOM Unity <noreply@neuroattention.org>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'NeuroAttention <info@neuroattention.org>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://neuroattention.org';
+
+// ─── Nodemailer SMTP (Namecheap Private Email) ───
+const nodemailer = require('nodemailer');
+const SMTP_HOST = process.env.SMTP_HOST || 'mail.privateemail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465');
+const SMTP_USER = process.env.SMTP_USER || '';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+let mailTransport = null;
+if (SMTP_USER && SMTP_PASS) {
+  mailTransport = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  });
+  mailTransport.verify().then(() => console.log('SMTP connected:', SMTP_HOST)).catch(e => console.error('SMTP verify error:', e.message));
+} else {
+  console.warn('SMTP not configured — emails will be logged to console (dev mode)');
+}
 
 // Stripe config (optional — endpoints gracefully degrade if keys missing)
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
@@ -25,72 +43,55 @@ if (STRIPE_SECRET_KEY) {
   try { stripe = require('stripe')(STRIPE_SECRET_KEY); } catch(e) { console.warn('stripe package not installed:', e.message); }
 }
 
-// ─── Email confirmation via Resend ───
-async function sendConfirmationEmail(email, product, sessionId) {
-  if (!email) return;
-
-  const productNames = {
-    lab: 'NeuroAttention Lab Program',
-    rehab: 'Rehabilitation Program'
-  };
-  const productName = productNames[product] || product;
-
-  if (!RESEND_API_KEY) {
-    console.log('══ DEV MODE: Order confirmation email ══');
-    console.log(`To: ${email}`);
-    console.log(`Product: ${productName}`);
-    console.log(`Session: ${sessionId}`);
-    console.log('══════════════════════════════════════════');
+// ─── Send email helper (nodemailer SMTP) ───
+async function sendEmail(to, subject, html) {
+  if (!mailTransport) {
+    console.log('══ DEV MODE: Email ══');
+    console.log(`To: ${to} | Subject: ${subject}`);
+    console.log('═════════════════════');
     return { dev: true };
   }
-
   try {
-    const resp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
-      body: JSON.stringify({
-        from: EMAIL_FROM,
-        to: [email],
-        subject: `Подтверждение оплаты — ${productName}`,
-        html: `
-          <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
-            <div style="background:#0a0a0a;padding:24px;text-align:center;">
-              <h1 style="color:#00e5ff;font-size:22px;margin:0;">NeuroAttention</h1>
-            </div>
-            <div style="padding:32px 24px;">
-              <h2 style="font-size:20px;margin-bottom:8px;color:#333;">Спасибо за покупку!</h2>
-              <p style="color:#555;font-size:15px;line-height:1.6;">
-                Ваш заказ на <strong>${productName}</strong> успешно оплачен.
-              </p>
-              <div style="background:#f0fffe;border:1px solid #00e5ff33;border-radius:12px;padding:16px;margin:20px 0;">
-                <p style="margin:0;font-size:14px;color:#333;"><strong>Программа:</strong> ${productName}</p>
-                <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>ID сессии:</strong> ${sessionId}</p>
-              </div>
-              <p style="color:#555;font-size:14px;line-height:1.6;">
-                Доступ к программе появится в вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a>
-                в течение нескольких минут.
-              </p>
-              <p style="color:#999;font-size:13px;margin-top:24px;">
-                Если у вас есть вопросы — ответьте на это письмо.
-              </p>
-            </div>
-            <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">
-              NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a>
-            </div>
-          </div>
-        `
-      })
-    });
-    const data = await resp.json();
-    if (!resp.ok) {
-      console.error('Resend confirmation email error:', data);
-    } else {
-      console.log(`Confirmation email sent to ${email} for ${product} (id: ${data.id})`);
-    }
-    return data;
+    const info = await mailTransport.sendMail({ from: EMAIL_FROM, to, subject, html });
+    console.log(`Email sent to ${to} (messageId: ${info.messageId})`);
+    return { ok: true, messageId: info.messageId };
   } catch (err) {
-    console.error('sendConfirmationEmail error:', err.message);
+    console.error('sendEmail error:', err.message);
+    return { error: err.message };
   }
+}
+
+async function sendConfirmationEmail(email, product, sessionId) {
+  if (!email) return;
+  const productNames = { lab: 'NeuroAttention Lab Program', guided: 'NeuroAttention Lab — Guided Program', rehab: 'Rehabilitation Program' };
+  const productName = productNames[product] || product;
+  return sendEmail(email, `Подтверждение оплаты — ${productName}`, `
+    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#0a0a0a;padding:24px;text-align:center;">
+        <h1 style="color:#00e5ff;font-size:22px;margin:0;">NeuroAttention</h1>
+      </div>
+      <div style="padding:32px 24px;">
+        <h2 style="font-size:20px;margin-bottom:8px;color:#333;">Спасибо за покупку!</h2>
+        <p style="color:#555;font-size:15px;line-height:1.6;">
+          Ваш заказ на <strong>${productName}</strong> успешно оплачен.
+        </p>
+        <div style="background:#f0fffe;border:1px solid #00e5ff33;border-radius:12px;padding:16px;margin:20px 0;">
+          <p style="margin:0;font-size:14px;color:#333;"><strong>Программа:</strong> ${productName}</p>
+          <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>ID сессии:</strong> ${sessionId}</p>
+        </div>
+        <p style="color:#555;font-size:14px;line-height:1.6;">
+          Доступ к программе появится в вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a>
+          в течение нескольких минут.
+        </p>
+        <p style="color:#999;font-size:13px;margin-top:24px;">
+          Если у вас есть вопросы — ответьте на это письмо.
+        </p>
+      </div>
+      <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">
+        NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a>
+      </div>
+    </div>
+  `);
 }
 
 // DB connection
@@ -594,27 +595,24 @@ app.post('/api/auth/logout', (req, res) => {
 // Helper: send email via Resend (or log in dev mode)
 async function sendResetEmail(to, resetToken) {
   const resetUrl = `${FRONTEND_URL}/account.html?reset=${resetToken}`;
-
-  if (!RESEND_API_KEY) {
-    console.log('══ DEV MODE: Password reset ══');
-    console.log(`To: ${to}`);
-    console.log(`Reset URL: ${resetUrl}`);
-    console.log(`Token: ${resetToken}`);
-    console.log('══════════════════════════════');
-    return { dev: true };
-  }
-
-  const resp = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
-    body: JSON.stringify({
-      from: EMAIL_FROM,
-      to: [to],
-      subject: 'Сброс пароля — NeuroAttention',
-      html: `<p>Вы запросили сброс пароля.</p><p><a href="${resetUrl}">Нажмите здесь, чтобы установить новый пароль</a></p><p>Ссылка действительна 1 час.</p><p>Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>`
-    })
-  });
-  return resp.json();
+  return sendEmail(to, 'Сброс пароля — NeuroAttention', `
+    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#0a0a0a;padding:24px;text-align:center;">
+        <h1 style="color:#00e5ff;font-size:22px;margin:0;">NeuroAttention</h1>
+      </div>
+      <div style="padding:32px 24px;">
+        <h2 style="font-size:20px;margin-bottom:8px;color:#333;">Сброс пароля</h2>
+        <p style="color:#555;font-size:15px;line-height:1.6;">Вы запросили сброс пароля.</p>
+        <p style="text-align:center;margin:24px 0;">
+          <a href="${resetUrl}" style="background:#00e5ff;color:#000;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">Установить новый пароль</a>
+        </p>
+        <p style="color:#999;font-size:13px;">Ссылка действительна 1 час. Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>
+      </div>
+      <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">
+        NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a>
+      </div>
+    </div>
+  `);
 }
 
 // Forgot password
