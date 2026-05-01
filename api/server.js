@@ -65,6 +65,26 @@ async function sendConfirmationEmail(email, product, sessionId) {
   if (!email) return;
   const productNames = { lab: 'NeuroAttention Lab Program', guided: 'NeuroAttention Lab — Guided Program', rehab: 'Rehabilitation Program' };
   const productName = productNames[product] || product;
+
+  // Generate magic-link token for guest users (valid 7 days)
+  let magicLinkHtml = '';
+  try {
+    const sql2 = neon(process.env.DATABASE_URL);
+    const users = await sql2`SELECT id FROM users WHERE email = ${email.toLowerCase()} LIMIT 1`;
+    if (users.length > 0) {
+      const magicToken = jwt.sign({ id: users[0].id, email: email.toLowerCase() }, JWT_SECRET, { expiresIn: '7d' });
+      const magicUrl = `${FRONTEND_URL}/account.html?magic=${magicToken}`;
+      magicLinkHtml = `
+        <div style="background:#0a1a18;border:1px solid #00e5ff44;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
+          <p style="margin:0 0 12px;font-size:15px;color:#e8eaed;font-weight:600;">Войти в личный кабинет</p>
+          <a href="${magicUrl}" style="display:inline-block;padding:12px 32px;background:#00e5ff;color:#0a0a0a;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Открыть кабинет</a>
+          <p style="margin:12px 0 0;font-size:12px;color:#999;">Ссылка действительна 7 дней. Для постоянного доступа установите пароль в кабинете.</p>
+        </div>`;
+    }
+  } catch (e) {
+    console.error('Magic link generation error:', e.message);
+  }
+
   return sendEmail(email, `Подтверждение оплаты — ${productName}`, `
     <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
       <div style="background:#0a0a0a;padding:24px;text-align:center;">
@@ -79,6 +99,7 @@ async function sendConfirmationEmail(email, product, sessionId) {
           <p style="margin:0;font-size:14px;color:#333;"><strong>Программа:</strong> ${productName}</p>
           <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>ID сессии:</strong> ${sessionId}</p>
         </div>
+        ${magicLinkHtml}
         <p style="color:#555;font-size:14px;line-height:1.6;">
           Доступ к программе появится в вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a>
           в течение нескольких минут.
@@ -2163,7 +2184,7 @@ const STRIPE_PRODUCTS = {
 
 app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
   try {
-    const { product, tos, privacy, digital, rehab, timestamp } = req.body;
+    const { product, tos, privacy, digital, rehab, timestamp, email: guestEmail } = req.body;
     if (!product || !STRIPE_PRODUCTS[product]) {
       return res.status(400).json({ error: 'Invalid product. Use: lab, rehab' });
     }
@@ -2175,8 +2196,27 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
     }
 
     const prod = STRIPE_PRODUCTS[product];
-    const userEmail = req.user ? req.user.email : null;
-    const userId = req.user ? req.user.id : null;
+    let userEmail = req.user ? req.user.email : null;
+    let userId = req.user ? req.user.id : null;
+
+    // Guest checkout: if no auth, require email and create/find guest user
+    if (!req.user && guestEmail) {
+      userEmail = guestEmail.trim().toLowerCase();
+      // Check if user already exists
+      const existing = await sql`SELECT id FROM users WHERE email = ${userEmail} LIMIT 1`;
+      if (existing.length > 0) {
+        userId = existing[0].id;
+      } else {
+        // Create guest user with random password
+        const bcrypt = require('bcryptjs');
+        const randomPass = require('crypto').randomBytes(16).toString('hex');
+        const hash = await bcrypt.hash(randomPass, 10);
+        const inserted = await sql`INSERT INTO users (email, password_hash, name, role) VALUES (${userEmail}, ${hash}, ${'Guest'}, ${'client'}) RETURNING id`;
+        userId = inserted[0].id;
+      }
+    } else if (!req.user && !guestEmail) {
+      return res.status(400).json({ error: 'Email is required for guest checkout' });
+    }
 
     // Always log consent to DB
     await sql`INSERT INTO consent_log (

@@ -836,6 +836,8 @@
   "checkout.consent_rehab": "Entiendo que NeuroAttention Lab no proporciona rehabilitación médica. Este programa se basa en investigación y educación; no reemplaza el tratamiento clínico. Asumo responsabilidad total por mi participación.",
   "checkout.pay_btn": "Continuar al pago",
   "checkout.pay_note": "Será redirigido a Stripe para el procesamiento seguro del pago. No almacenamos datos de su tarjeta.",
+  "checkout.guest_email_label": "Tu Email",
+  "checkout.guest_email_hint": "Enviaremos las credenciales de acceso a este correo después de la compra. No necesitas registrarte.",
   "payment.success_title": "Pago confirmado",
   "payment.success_p1": "¡Gracias por su compra! Su acceso ha sido activado.",
   "payment.success_p2": "Un correo de confirmación le será enviado en breve.",
