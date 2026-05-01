@@ -142,10 +142,23 @@
     return currentLang;
   };
 
+  /* ── auto-detect browser language on first visit ── */
+  function detectInitialLang() {
+    try {
+      var stored = localStorage.getItem(STORAGE_KEY);
+      if (stored && SUPPORTED.indexOf(stored) !== -1) return stored;
+    } catch (e) {}
+    var browserLangs = navigator.languages || [navigator.language || 'en'];
+    for (var i = 0; i < browserLangs.length; i++) {
+      var code = browserLangs[i].toLowerCase().slice(0, 2);
+      if (SUPPORTED.indexOf(code) !== -1) return code;
+    }
+    return 'en'; // international fallback instead of RU
+  }
+
   /* ── init ── */
   function init() {
-    try { currentLang = localStorage.getItem(STORAGE_KEY) || DEFAULT_LANG; } catch (e) {}
-    if (SUPPORTED.indexOf(currentLang) === -1) currentLang = DEFAULT_LANG;
+    currentLang = detectInitialLang();
 
     // bind lang-switch buttons
     var btns = document.querySelectorAll('.lang-btn');
