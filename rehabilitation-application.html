@@ -301,14 +301,14 @@ input, textarea { cursor: text !important; }
   <div class="rehab-main">
     <a href="programs.html" class="rehab-back">
       <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      Программы
+      <span data-i18n="rehab_app.back">Программы</span>
     </a>
 
     <!-- Form card -->
     <div class="rehab-card" id="form-card">
-      <h2>Заявка на участие</h2>
+      <h2 data-i18n="rehab_app.form_title">Заявка на участие</h2>
       <!-- DRAFT: pending medical review -->
-      <p class="subtitle">Rehabilitation Program — восстановление когнитивных функций при нарушениях работы нервной системы. Заполните форму, и мы свяжемся с вами для обсуждения персонального формата участия.</p>
+      <p class="subtitle" data-i18n="rehab_app.form_subtitle">Rehabilitation Program — восстановление когнитивных функций при нарушениях работы нервной системы. Заполните форму, и мы свяжемся с вами для обсуждения персонального формата участия.</p>
       <!-- /DRAFT -->
 
       <!-- DRAFT: pending medical review -->
@@ -324,35 +324,35 @@ input, textarea { cursor: text !important; }
       <form id="rehab-form" onsubmit="submitApplication(event)">
         <div class="form-row">
           <div class="form-group">
-            <label for="f-city">Город</label>
-            <input type="text" id="f-city" name="city" required placeholder="Москва" autocomplete="address-level2" />
+            <label for="f-city" data-i18n="rehab_app.label_city">Город</label>
+            <input type="text" id="f-city" name="city" required data-i18n-placeholder="rehab_app.placeholder_city" placeholder="Москва" autocomplete="address-level2" />
           </div>
           <div class="form-group">
-            <label for="f-age">Возраст</label>
-            <input type="number" id="f-age" name="age" required min="1" max="119" placeholder="35" />
+            <label for="f-age" data-i18n="rehab_app.label_age">Возраст</label>
+            <input type="number" id="f-age" name="age" required min="1" max="119" data-i18n-placeholder="rehab_app.placeholder_age" placeholder="35" />
           </div>
         </div>
 
         <div class="form-group">
-          <label for="f-phone">Телефон</label>
-          <input type="tel" id="f-phone" name="phone" required placeholder="+7 (___) ___-__-__" autocomplete="tel" />
+          <label for="f-phone" data-i18n="rehab_app.label_phone">Телефон</label>
+          <input type="tel" id="f-phone" name="phone" required data-i18n-placeholder="rehab_app.placeholder_phone" placeholder="+7 (___) ___-__-__" autocomplete="tel" />
         </div>
 
         <div class="form-group">
-          <label for="f-description">Опишите вашу ситуацию</label>
+          <label for="f-description" data-i18n="rehab_app.label_description">Опишите вашу ситуацию</label>
           <!-- DRAFT: pending medical review -->
-          <textarea id="f-description" name="description" required placeholder="Диагноз, текущее состояние, цели восстановления — любая информация, которая поможет нам подготовиться к разговору."></textarea>
+          <textarea id="f-description" name="description" required data-i18n-placeholder="rehab_app.placeholder_description" placeholder="Диагноз, текущее состояние, цели восстановления — любая информация, которая поможет нам подготовиться к разговору."></textarea>
           <!-- /DRAFT -->
-          <div class="hint">Эта информация конфиденциальна и используется только для подготовки к консультации.</div>
+          <div class="hint" data-i18n="rehab_app.field_hint">Эта информация конфиденциальна и используется только для подготовки к консультации.</div>
         </div>
 
         <button type="submit" class="submit-btn" id="submit-btn">
-          Отправить заявку
+          <span data-i18n="rehab_app.submit_btn">Отправить заявку</span>
           <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </form>
 
-      <div class="form-msg success" id="msg-success">Заявка отправлена. Мы свяжемся с вами.</div>
+      <div class="form-msg success" id="msg-success" data-i18n="rehab_app.success_msg">Заявка отправлена. Мы свяжемся с вами.</div>
       <div class="form-msg error" id="msg-error"></div>
     </div>
 
@@ -361,13 +361,14 @@ input, textarea { cursor: text !important; }
       <div class="check-circle">
         <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
-      <h2>Заявка отправлена</h2>
-      <p>Мы получили вашу заявку на участие в Rehabilitation Program. Наша команда свяжется с вами в ближайшее время для обсуждения персонального формата.</p>
-      <p><a href="account.html">Вернуться в личный кабинет</a></p>
+      <h2 data-i18n="rehab_app.success_title">Заявка отправлена</h2>
+      <p data-i18n="rehab_app.success_text">Мы получили вашу заявку на участие в Rehabilitation Program. Наша команда свяжется с вами в ближайшее время для обсуждения персонального формата.</p>
+      <p><a href="account.html" data-i18n="rehab_app.success_back_link">Вернуться в личный кабинет</a></p>
     </div>
   </div>
 </div>
 
+<script src="assets/js/i18n.js"></script>
 <script>
 var API_BASE = 'https://neuroattention-api-production.up.railway.app';
 
