@@ -315,7 +315,25 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_email ON consent_log(email)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_created ON consent_log(created_at DESC)`;
 
-    res.json({ ok: true, message: 'Migrations 003-015 applied successfully' });
+    // Migration 016: practices table
+    await sql`CREATE TABLE IF NOT EXISTS practices (
+      id SERIAL PRIMARY KEY,
+      slug TEXT NOT NULL,
+      block_id TEXT NOT NULL,
+      lang TEXT NOT NULL DEFAULT 'ru',
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      audio_url TEXT NOT NULL,
+      duration_seconds INTEGER DEFAULT 0,
+      order_idx INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_practices_block_lang ON practices(block_id, lang)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_practices_slug ON practices(slug)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_practices_order ON practices(block_id, lang, order_idx)`;
+
+    res.json({ ok: true, message: 'Migrations 003-016 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2187,6 +2205,266 @@ app.get('/api/stripe/status', (req, res) => {
     hasWebhookSecret: !!STRIPE_WEBHOOK_SECRET,
     hasPublishable: !!STRIPE_PUBLISHABLE_KEY
   });
+});
+
+// ─── GitHub PAT for practices audio upload ───
+const GITHUB_PAT = process.env.GITHUB_PAT || '';
+const GITHUB_REPO_OWNER = 'tvildanov';
+const GITHUB_REPO_NAME = 'NeuroAttention';
+const GITHUB_AUDIO_PATH = 'assets/audio/practices';
+
+// Helper: upload file to GitHub via Contents API
+async function githubUploadFile(filePath, contentBase64, commitMessage) {
+  if (!GITHUB_PAT) throw new Error('GITHUB_PAT not configured');
+  const https = require('https');
+  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}`;
+
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      message: commitMessage,
+      content: contentBase64,
+      branch: 'main'
+    });
+    const options = {
+      hostname: 'api.github.com',
+      path: url,
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_PAT}`,
+        'User-Agent': 'NeuroAttention-API',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(parsed);
+          } else {
+            reject(new Error(`GitHub API ${res.statusCode}: ${parsed.message || data}`));
+          }
+        } catch(e) { reject(new Error('GitHub API parse error: ' + data.slice(0, 200))); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// Helper: delete file from GitHub via Contents API
+async function githubDeleteFile(filePath, sha, commitMessage) {
+  if (!GITHUB_PAT) throw new Error('GITHUB_PAT not configured');
+  const https = require('https');
+  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}`;
+
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      message: commitMessage,
+      sha: sha,
+      branch: 'main'
+    });
+    const options = {
+      hostname: 'api.github.com',
+      path: url,
+      method: 'DELETE',
+      headers: {
+        'Authorization': `token ${GITHUB_PAT}`,
+        'User-Agent': 'NeuroAttention-API',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(parsed);
+          } else {
+            reject(new Error(`GitHub API ${res.statusCode}: ${parsed.message || data}`));
+          }
+        } catch(e) { reject(new Error('GitHub API parse error: ' + data.slice(0, 200))); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// Helper: get file SHA from GitHub (needed for delete)
+async function githubGetFileSha(filePath) {
+  if (!GITHUB_PAT) throw new Error('GITHUB_PAT not configured');
+  const https = require('https');
+  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}`;
+
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: url,
+      method: 'GET',
+      headers: {
+        'Authorization': `token ${GITHUB_PAT}`,
+        'User-Agent': 'NeuroAttention-API',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (res.statusCode === 200) {
+            resolve(parsed.sha);
+          } else if (res.statusCode === 404) {
+            resolve(null);
+          } else {
+            reject(new Error(`GitHub API ${res.statusCode}: ${parsed.message || data}`));
+          }
+        } catch(e) { reject(new Error('GitHub API parse error')); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// ─── PRACTICES ENDPOINTS ───
+
+// POST /api/admin/practices — upload practice (founder/superadmin only)
+// Accepts: { slug, block_id, lang, name, description, duration_seconds, order_idx, audio_base64 }
+// audio_base64 is the raw base64 of the mp3 file (no data: prefix)
+app.post('/api/admin/practices', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden — founder/superadmin only' });
+    }
+
+    const { slug, block_id, lang, name, description, duration_seconds, order_idx, audio_base64 } = req.body;
+    if (!slug || !block_id || !lang || !name || !audio_base64) {
+      return res.status(400).json({ error: 'Required: slug, block_id, lang, name, audio_base64' });
+    }
+
+    // Upload audio to GitHub
+    const fileName = `${slug}-${lang}.mp3`;
+    const gitPath = `${GITHUB_AUDIO_PATH}/${fileName}`;
+    const commitMsg = `[practices] Add audio: ${fileName}`;
+
+    await githubUploadFile(gitPath, audio_base64, commitMsg);
+
+    // Raw URL for the file on GitHub Pages
+    const audioUrl = `https://neuroattention.org/${gitPath}`;
+
+    // Insert into DB
+    const rows = await sql`
+      INSERT INTO practices (slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx)
+      VALUES (${slug}, ${block_id}, ${lang}, ${name}, ${description || ''}, ${audioUrl}, ${duration_seconds || 0}, ${order_idx || 0})
+      RETURNING *
+    `;
+
+    res.status(201).json({ ok: true, practice: rows[0] });
+  } catch (err) {
+    console.error('POST /api/admin/practices:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/practices — list practices (public, filtered by lang and optionally block)
+app.get('/api/practices', async (req, res) => {
+  try {
+    const lang = req.query.lang || 'ru';
+    const block = req.query.block;
+
+    let rows;
+    if (block) {
+      rows = await sql`
+        SELECT id, slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx, created_at
+        FROM practices
+        WHERE lang = ${lang} AND block_id = ${block}
+        ORDER BY order_idx ASC, id ASC
+      `;
+    } else {
+      rows = await sql`
+        SELECT id, slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx, created_at
+        FROM practices
+        WHERE lang = ${lang}
+        ORDER BY block_id ASC, order_idx ASC, id ASC
+      `;
+    }
+
+    res.json({ practices: rows });
+  } catch (err) {
+    console.error('GET /api/practices:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/practices — list all practices across all languages (founder/superadmin)
+app.get('/api/admin/practices', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const rows = await sql`
+      SELECT id, slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx, created_at
+      FROM practices
+      ORDER BY block_id ASC, order_idx ASC, lang ASC
+    `;
+
+    res.json({ practices: rows });
+  } catch (err) {
+    console.error('GET /api/admin/practices:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/practices/:id — delete practice (founder/superadmin only)
+app.delete('/api/admin/practices/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const practiceId = parseInt(req.params.id);
+    const rows = await sql`SELECT * FROM practices WHERE id = ${practiceId}`;
+    if (!rows.length) return res.status(404).json({ error: 'Practice not found' });
+
+    const practice = rows[0];
+
+    // Try to delete audio file from GitHub
+    try {
+      const audioPath = practice.audio_url.replace('https://neuroattention.org/', '');
+      const sha = await githubGetFileSha(audioPath);
+      if (sha) {
+        await githubDeleteFile(audioPath, sha, `[practices] Remove audio: ${path.basename(audioPath)}`);
+      }
+    } catch (gitErr) {
+      console.warn('Could not delete audio from GitHub:', gitErr.message);
+      // Continue with DB deletion even if GitHub delete fails
+    }
+
+    // Delete from DB
+    await sql`DELETE FROM practices WHERE id = ${practiceId}`;
+
+    res.json({ ok: true, deleted: practiceId });
+  } catch (err) {
+    console.error('DELETE /api/admin/practices/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {

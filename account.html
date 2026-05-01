@@ -704,79 +704,17 @@
     </div><!-- /proto-prog-content -->
 
     <div id="proto-pract-content" style="display:none;">
-    <!-- Practices content (was tab-practices) -->
+    <!-- Practices content — loaded dynamically from API -->
     <div class="dash-grid">
-      <div class="dash-card glass-card-elevated span-8">
-        <h3>Блок 3 · Гибкость и переключение</h3>
-        <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Текущий блок — 3 из 4 практик выполнено</p>
-
-        <div class="practice-card" data-practice-id="practice-9" style="border-color:rgba(255,255,255,0.12);">
-          <div class="practice-header">
-            <p class="practice-title">Практика 9 · Переключение фокуса</p>
-            <span class="practice-dur">15:30</span>
-          </div>
-          <p class="practice-desc">Тренировка управляемого перехода внимания между объектами. Работа с ритмом и точностью переключения.</p>
-          <div class="practice-player">
-            <button class="play-btn" onclick="togglePlay(this)">
-              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
-            </button>
-            <div class="player-bar"><div class="player-bar-fill"></div></div>
-            <span class="player-time">0:00</span>
-          </div>
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <div id="practices-loading" style="text-align:center;padding:2rem 0;">
+          <p style="font-size:13px;color:var(--text-muted);">Загрузка практик...</p>
         </div>
-
-        <div class="practice-card" data-practice-id="practice-10">
-          <div class="practice-header">
-            <p class="practice-title">Практика 10 · Периферическое внимание</p>
-            <span class="practice-dur">18:00</span>
-          </div>
-          <p class="practice-desc">Расширение поля внимания без потери центрального фокуса. Интеграция зрительного и телесного восприятия.</p>
-          <div class="practice-player">
-            <button class="play-btn" onclick="togglePlay(this)">
-              <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>
-            </button>
-            <div class="player-bar"><div class="player-bar-fill"></div></div>
-            <span class="player-time">0:00</span>
-          </div>
-        </div>
-
-        <div class="practice-card" data-practice-id="practice-11" style="opacity:0.5;">
-          <div class="practice-header">
-            <p class="practice-title">Практика 11 · Динамическая гибкость</p>
-            <span class="practice-dur">20:00</span>
-          </div>
-          <p class="practice-desc">Интеграция переключения и удержания в условиях меняющейся нагрузки.</p>
-          <div style="text-align:center;padding:0.5rem;font-size:12px;color:var(--text-dim);">Откроется после выполнения практики 10</div>
-        </div>
-
-        <div class="practice-card" data-practice-id="practice-12" style="opacity:0.35;">
-          <div class="practice-header">
-            <p class="practice-title">Практика 12 · Интеграция блока</p>
-            <span class="practice-dur">22:00</span>
-          </div>
-          <p class="practice-desc">Завершающая практика блока. Объединение всех навыков переключения.</p>
-          <div style="text-align:center;padding:0.5rem;font-size:12px;color:var(--text-dim);">Заблокировано</div>
-        </div>
-      </div>
-
-      <div class="dash-card glass-card-elevated span-4">
-        <h3>Теория к блоку</h3>
-        <div style="display:flex;flex-direction:column;gap:0.75rem;">
-          <div style="padding:1rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
-            <p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;font-weight:500;">Модуль 5 · Гибкость внимания</p>
-            <p style="font-size:11px;color:var(--text-muted);margin:0;">Видео · 12 мин · Прочитано</p>
-          </div>
-          <div style="padding:1rem;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">
-            <p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;font-weight:500;">Модуль 6 · Нейропластичность</p>
-            <p style="font-size:11px;color:var(--text-muted);margin:0;">Текст + видео · 18 мин</p>
-          </div>
-        </div>
-        <div style="margin-top:1.5rem;">
-          <h3>Задание</h3>
-          <div style="padding:1rem;background:rgba(0,224,255,0.04);border-left:2px solid rgba(0,224,255,0.2);border-radius:0 10px 10px 0;">
-            <p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;font-weight:500;">Дневник переключений</p>
-            <p style="font-size:12px;color:var(--text-muted);margin:0;">Записывайте моменты осознанного переключения внимания в течение дня</p>
-          </div>
+        <div id="practices-list"></div>
+        <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
+          <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
+          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;">Практики пока не загружены</p>
+          <p style="font-size:12px;color:var(--text-dim);margin:0;">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
         </div>
       </div>
     </div>
@@ -1375,6 +1313,7 @@
     <button class="dash-tab" data-tab="admin-users">Пользователи</button>
     <button class="dash-tab" data-tab="admin-tools" data-i18n="a.admin.tools">Инструменты</button>
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;">Заявки Rehab</button>
+    <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;">Практики</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1502,6 +1441,96 @@
           </table>
         </div>
         <p id="rehab-apps-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Заявок пока нет.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Practices Management (founder/superadmin only) -->
+  <div class="tab-panel" id="tab-admin-practices">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <h3 style="margin:0 0 0.5rem;">Управление аудиопрактиками</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.5rem;">Загрузка MP3-файлов в репозиторий GitHub. Одна практика = один язык.</p>
+
+        <!-- Upload form -->
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.25rem;margin-bottom:1.5rem;">
+          <h4 style="font-size:14px;color:var(--text-primary);margin:0 0 1rem;">Добавить практику</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Slug (латиница)</label>
+              <input id="pract-slug" type="text" placeholder="focus-switching" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Блок (block_id)</label>
+              <input id="pract-block" type="text" placeholder="block-3" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Язык</label>
+              <select id="pract-lang" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+                <option value="ru">Русский (ru)</option>
+                <option value="en">English (en)</option>
+                <option value="es">Español (es)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Название</label>
+              <input id="pract-name" type="text" placeholder="Переключение фокуса" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Длительность (сек)</label>
+              <input id="pract-duration" type="number" placeholder="930" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Порядок (order_idx)</label>
+              <input id="pract-order" type="number" placeholder="0" value="0" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+            </div>
+          </div>
+          <div style="margin-bottom:0.75rem;">
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Описание</label>
+            <textarea id="pract-desc" rows="2" placeholder="Краткое описание практики..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;resize:vertical;"></textarea>
+          </div>
+
+          <!-- Drag & drop audio zone -->
+          <div id="pract-drop-zone" style="border:2px dashed rgba(255,255,255,0.1);border-radius:12px;padding:2rem;text-align:center;cursor:pointer;transition:border-color 0.3s,background 0.3s;margin-bottom:1rem;" ondragover="event.preventDefault();this.style.borderColor='rgba(0,224,255,0.4)';this.style.background='rgba(0,224,255,0.03)'" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background=''" ondrop="handlePractAudioDrop(event)">
+            <svg style="width:32px;height:32px;fill:none;stroke:rgba(255,255,255,0.2);stroke-width:1.5;margin-bottom:0.5rem;" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;" id="pract-drop-text">Перетащите MP3 файл сюда или нажмите для выбора</p>
+            <input type="file" id="pract-file-input" accept=".mp3,audio/mpeg" style="display:none;" onchange="handlePractFileSelect(this)">
+          </div>
+
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <button class="btn btn-solid" id="pract-upload-btn" onclick="uploadPractice()" disabled style="font-size:13px;padding:0.5rem 1.5rem;">Загрузить практику</button>
+            <span id="pract-upload-status" style="font-size:12px;color:var(--text-muted);"></span>
+          </div>
+        </div>
+
+        <!-- Practices list -->
+        <h4 style="font-size:14px;color:var(--text-primary);margin:0 0 0.75rem;">Загруженные практики</h4>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+          <button class="nm-filter-btn active" onclick="filterAdminPractices('all',this)">Все</button>
+          <button class="nm-filter-btn" onclick="filterAdminPractices('ru',this)">RU</button>
+          <button class="nm-filter-btn" onclick="filterAdminPractices('en',this)">EN</button>
+          <button class="nm-filter-btn" onclick="filterAdminPractices('es',this)">ES</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table" id="admin-practices-table">
+            <thead>
+              <tr>
+                <th>Slug</th>
+                <th>Блок</th>
+                <th>Язык</th>
+                <th>Название</th>
+                <th>Длит.</th>
+                <th>Порядок</th>
+                <th>Дата</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="admin-practices-tbody"></tbody>
+          </table>
+        </div>
+        <p id="admin-practices-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Практик пока нет.</p>
       </div>
     </div>
   </div>
@@ -1972,6 +2001,12 @@ function setupAdminDashboard(user){
   if(rehabTab && isFounder){
     rehabTab.style.display = '';
     loadRehabApplications('all');
+  }
+  // Practices tab — founder/superadmin only
+  var practTab = document.getElementById('admin-practices-tab');
+  if(practTab && isFounder){
+    practTab.style.display = '';
+    loadAdminPractices('all');
   }
 }
 
@@ -2904,6 +2939,8 @@ function setProtoMode(mode){
     if(pract) pract.style.display='';
     if(btnProg){ btnProg.classList.remove('active'); btnProg.style.borderBottomColor='transparent'; }
     if(btnPract){ btnPract.classList.add('active'); btnPract.style.borderBottomColor='var(--accent-cyan)'; }
+    // Load practices from API on first switch
+    if(!window._practicesLoaded) loadFrontendPractices();
   }
 }
 function setToolsMode(mode){
@@ -6498,6 +6535,337 @@ async function abCheckGuided(){
   }
   // Load reminders from server
   await abLoadReminders();
+}
+
+// ══════════════════════════════════════════
+// FRONTEND PRACTICES PLAYER (API-driven)
+// ══════════════════════════════════════════
+var _practicesLoaded = false;
+var _practAudioPlaying = null; // currently playing Audio element
+
+function loadFrontendPractices() {
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var loading = document.getElementById('practices-loading');
+  var listEl = document.getElementById('practices-list');
+  var emptyEl = document.getElementById('practices-empty');
+  if (!listEl) return;
+
+  fetch(AUTH_API + '/api/practices?lang=' + lang)
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (loading) loading.style.display = 'none';
+    var practices = data.practices || [];
+    if (!practices.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      _practicesLoaded = true;
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    // Group by block_id
+    var blocks = {};
+    practices.forEach(function(p) {
+      if (!blocks[p.block_id]) blocks[p.block_id] = [];
+      blocks[p.block_id].push(p);
+    });
+
+    var html = '';
+    Object.keys(blocks).sort().forEach(function(blockId) {
+      var items = blocks[blockId];
+      html += '<div style="margin-bottom:2rem;">';
+      html += '<h3 style="font-size:15px;margin:0 0 0.75rem;color:var(--text-primary);">' + blockId.replace(/-/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); }) + '</h3>';
+      html += '<p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;">' + items.length + ' практик</p>';
+
+      items.forEach(function(p) {
+        var dur = p.duration_seconds ? (Math.floor(p.duration_seconds / 60) + ':' + String(p.duration_seconds % 60).padStart(2, '0')) : '';
+        html += '<div class="practice-card" data-practice-id="pract-' + p.id + '">';
+        html += '<div class="practice-header">';
+        html += '<p class="practice-title">' + p.name + '</p>';
+        if (dur) html += '<span class="practice-dur">' + dur + '</span>';
+        html += '</div>';
+        if (p.description) html += '<p class="practice-desc">' + p.description + '</p>';
+        html += '<div class="practice-player">';
+        html += '<button class="play-btn" onclick="togglePracticePlay(this,\'' + p.audio_url + '\',' + p.id + ')">';
+        html += '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>';
+        html += '</button>';
+        html += '<div class="player-bar" onclick="seekPractice(event,' + p.id + ')"><div class="player-bar-fill" id="pbar-' + p.id + '"></div></div>';
+        html += '<span class="player-time" id="ptime-' + p.id + '">0:00</span>';
+        html += '</div></div>';
+      });
+
+      html += '</div>';
+    });
+
+    listEl.innerHTML = html;
+    _practicesLoaded = true;
+  })
+  .catch(function(err) {
+    if (loading) loading.style.display = 'none';
+    if (listEl) listEl.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Ошибка загрузки: ' + err.message + '</p>';
+  });
+}
+
+function togglePracticePlay(btn, audioUrl, practId) {
+  // If already playing this practice — pause
+  if (_practAudioPlaying && _practAudioPlaying._practId === practId) {
+    if (_practAudioPlaying.paused) {
+      _practAudioPlaying.play();
+      btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    } else {
+      _practAudioPlaying.pause();
+      btn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>';
+    }
+    return;
+  }
+
+  // Stop previous
+  if (_practAudioPlaying) {
+    _practAudioPlaying.pause();
+    _practAudioPlaying._btn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>';
+    _practAudioPlaying = null;
+  }
+
+  // Create and play
+  var audio = new Audio(audioUrl);
+  audio._practId = practId;
+  audio._btn = btn;
+  audio.play().catch(function() {});
+
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
+  // Progress update
+  audio.addEventListener('timeupdate', function() {
+    var bar = document.getElementById('pbar-' + practId);
+    var timeEl = document.getElementById('ptime-' + practId);
+    if (bar && audio.duration) {
+      bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
+    }
+    if (timeEl) {
+      var m = Math.floor(audio.currentTime / 60);
+      var s = Math.floor(audio.currentTime % 60);
+      timeEl.textContent = m + ':' + String(s).padStart(2, '0');
+    }
+  });
+
+  audio.addEventListener('ended', function() {
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" /></svg>';
+    var bar = document.getElementById('pbar-' + practId);
+    if (bar) bar.style.width = '0%';
+    _practAudioPlaying = null;
+  });
+
+  _practAudioPlaying = audio;
+}
+
+function seekPractice(e, practId) {
+  if (!_practAudioPlaying || _practAudioPlaying._practId !== practId) return;
+  var bar = e.currentTarget;
+  var rect = bar.getBoundingClientRect();
+  var pct = (e.clientX - rect.left) / rect.width;
+  if (_practAudioPlaying.duration) {
+    _practAudioPlaying.currentTime = pct * _practAudioPlaying.duration;
+  }
+}
+
+// Reload practices when language changes
+document.addEventListener('langchange', function() {
+  _practicesLoaded = false;
+  var pract = document.getElementById('proto-pract-content');
+  if (pract && pract.style.display !== 'none') loadFrontendPractices();
+});
+
+// ══════════════════════════════════════════
+// PRACTICES ADMIN
+// ══════════════════════════════════════════
+var adminPracticesCache = [];
+var practAudioBase64 = null;
+var practAudioFileName = '';
+
+function handlePractAudioDrop(e) {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+  e.currentTarget.style.background = '';
+  var file = e.dataTransfer.files[0];
+  if (file) processPractAudioFile(file);
+}
+
+function handlePractFileSelect(input) {
+  var file = input.files[0];
+  if (file) processPractAudioFile(file);
+}
+
+function processPractAudioFile(file) {
+  if (!file.name.endsWith('.mp3') && file.type !== 'audio/mpeg') {
+    document.getElementById('pract-upload-status').textContent = 'Только MP3 файлы';
+    return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    document.getElementById('pract-upload-status').textContent = 'Файл слишком большой (макс 50MB)';
+    return;
+  }
+  practAudioFileName = file.name;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    // Extract pure base64 (remove data:audio/mpeg;base64, prefix)
+    var b64 = ev.target.result.split(',')[1];
+    practAudioBase64 = b64;
+    document.getElementById('pract-drop-text').textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+    document.getElementById('pract-upload-btn').disabled = false;
+
+    // Auto-detect duration from Audio element
+    var audioUrl = URL.createObjectURL(file);
+    var audio = new Audio();
+    audio.addEventListener('loadedmetadata', function() {
+      var durInput = document.getElementById('pract-duration');
+      if (!durInput.value || durInput.value === '0') {
+        durInput.value = Math.round(audio.duration);
+      }
+      URL.revokeObjectURL(audioUrl);
+    });
+    audio.src = audioUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Make drop zone clickable
+document.getElementById('pract-drop-zone').addEventListener('click', function() {
+  document.getElementById('pract-file-input').click();
+});
+
+function uploadPractice() {
+  if (!practAudioBase64) return;
+  var slug = document.getElementById('pract-slug').value.trim();
+  var block_id = document.getElementById('pract-block').value.trim();
+  var lang = document.getElementById('pract-lang').value;
+  var name = document.getElementById('pract-name').value.trim();
+  var desc = document.getElementById('pract-desc').value.trim();
+  var duration = parseInt(document.getElementById('pract-duration').value) || 0;
+  var order = parseInt(document.getElementById('pract-order').value) || 0;
+
+  if (!slug || !block_id || !name) {
+    document.getElementById('pract-upload-status').textContent = 'Заполните slug, блок и название';
+    return;
+  }
+
+  var btn = document.getElementById('pract-upload-btn');
+  btn.disabled = true;
+  btn.textContent = 'Загрузка...';
+  document.getElementById('pract-upload-status').textContent = 'Загружаем на GitHub...';
+
+  fetch(AUTH_API + '/api/admin/practices', {
+    method: 'POST',
+    headers: naAuthHeaders(),
+    body: JSON.stringify({
+      slug: slug,
+      block_id: block_id,
+      lang: lang,
+      name: name,
+      description: desc,
+      duration_seconds: duration,
+      order_idx: order,
+      audio_base64: practAudioBase64
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      document.getElementById('pract-upload-status').textContent = 'Практика загружена!';
+      // Reset form
+      document.getElementById('pract-slug').value = '';
+      document.getElementById('pract-name').value = '';
+      document.getElementById('pract-desc').value = '';
+      document.getElementById('pract-duration').value = '';
+      document.getElementById('pract-order').value = '0';
+      document.getElementById('pract-drop-text').textContent = 'Перетащите MP3 файл сюда или нажмите для выбора';
+      practAudioBase64 = null;
+      practAudioFileName = '';
+      btn.textContent = 'Загрузить практику';
+      // Reload list
+      loadAdminPractices('all');
+    } else {
+      document.getElementById('pract-upload-status').textContent = 'Ошибка: ' + (data.error || 'unknown');
+      btn.disabled = false;
+      btn.textContent = 'Загрузить практику';
+    }
+  })
+  .catch(function(err) {
+    document.getElementById('pract-upload-status').textContent = 'Ошибка сети: ' + err.message;
+    btn.disabled = false;
+    btn.textContent = 'Загрузить практику';
+  });
+}
+
+function loadAdminPractices(filterLang) {
+  var token = localStorage.getItem('na_token');
+  if (!token) return;
+  fetch(AUTH_API + '/api/admin/practices', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    adminPracticesCache = data.practices || [];
+    renderAdminPractices(filterLang);
+  })
+  .catch(function() {});
+}
+
+function renderAdminPractices(filterLang) {
+  var tbody = document.getElementById('admin-practices-tbody');
+  var emptyMsg = document.getElementById('admin-practices-empty');
+  if (!tbody) return;
+
+  var items = adminPracticesCache;
+  if (filterLang && filterLang !== 'all') {
+    items = items.filter(function(p) { return p.lang === filterLang; });
+  }
+
+  if (!items.length) {
+    tbody.innerHTML = '';
+    if (emptyMsg) emptyMsg.style.display = '';
+    return;
+  }
+  if (emptyMsg) emptyMsg.style.display = 'none';
+
+  tbody.innerHTML = items.map(function(p) {
+    var dur = p.duration_seconds ? (Math.floor(p.duration_seconds / 60) + ':' + String(p.duration_seconds % 60).padStart(2, '0')) : '—';
+    var date = new Date(p.created_at).toLocaleDateString('ru-RU');
+    return '<tr data-pract-lang="' + p.lang + '">' +
+      '<td style="font-family:JetBrains Mono,monospace;font-size:12px;">' + p.slug + '</td>' +
+      '<td>' + p.block_id + '</td>' +
+      '<td><span style="background:rgba(0,224,255,0.08);padding:0.15rem 0.5rem;border-radius:4px;font-size:11px;">' + p.lang.toUpperCase() + '</span></td>' +
+      '<td>' + p.name + '</td>' +
+      '<td style="font-family:JetBrains Mono,monospace;font-size:12px;">' + dur + '</td>' +
+      '<td style="text-align:center;">' + p.order_idx + '</td>' +
+      '<td style="font-size:11px;color:var(--text-muted);">' + date + '</td>' +
+      '<td><button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deletePractice(' + p.id + ')">Удалить</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function filterAdminPractices(lang, btn) {
+  // Toggle active state on filter buttons
+  var parent = btn.parentNode;
+  parent.querySelectorAll('.nm-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderAdminPractices(lang);
+}
+
+function deletePractice(id) {
+  if (!confirm('Удалить практику #' + id + '? Файл также будет удалён из GitHub.')) return;
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      loadAdminPractices('all');
+    } else {
+      alert('Ошибка: ' + (data.error || 'unknown'));
+    }
+  })
+  .catch(function(err) { alert('Ошибка сети: ' + err.message); });
 }
 
 // ── Service Worker registration ──
