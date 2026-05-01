@@ -304,7 +304,7 @@
         <button class="lang-btn">EN</button>
         <button class="lang-btn">ES</button>
       </div>
-      <a href="account.html" class="nav-login"><span class="login-dot"></span><span>Кабинет</span></a>
+      <a href="account.html" class="nav-login"><span class="login-dot"></span><span data-i18n="nav.account">Кабинет</span></a>
       <button class="mobile-menu-btn" aria-label="Меню"><svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     </div>
   </div>
@@ -318,7 +318,7 @@
       <a href="lab.html" class="mobile-link">Лаборатория</a>
       <a href="dom.html" class="mobile-link">DOM</a>
       <a href="custom.html" class="mobile-link">Custom Group</a>
-      <a href="account.html" class="mobile-link">Личный кабинет</a>
+      <a href="account.html" class="mobile-link" data-i18n="nav.account_full">Личный кабинет</a>
     </div>
   </div>
 </nav>
@@ -327,7 +327,7 @@
 <div id="auth-loading" style="display:flex;justify-content:center;align-items:center;min-height:60vh;">
   <div style="text-align:center;position:relative;">
     <canvas id="na-loader-canvas" width="180" height="180" style="display:block;margin:0 auto 1.2rem;"></canvas>
-    <p id="na-loader-text" style="font-size:13px;color:rgba(78,205,196,0.8);letter-spacing:0.5px;margin:0;font-family:inherit;">загружаем вашу карту...</p>
+    <p id="na-loader-text" style="font-size:13px;color:rgba(78,205,196,0.8);letter-spacing:0.5px;margin:0;font-family:inherit;" data-i18n="a.loader.text">загружаем вашу карту...</p>
   </div>
 </div>
 <script>
@@ -402,18 +402,18 @@
 <section id="auth-screen" class="auth-wrap glass-card-elevated" style="display:none;">
   <!-- Login form -->
   <div id="auth-login">
-    <p class="eyebrow">Вход</p>
-    <h1>Личный кабинет</h1>
-    <p class="sub">Войдите, чтобы увидеть свой прогресс и программы.</p>
+    <p class="eyebrow" data-i18n="a.auth.label_password">Вход</p>
+    <h1 data-i18n="a.auth.title_login">Личный кабинет</h1>
+    <p class="sub" data-i18n="a.auth.subtitle_login">Войдите, чтобы увидеть свой прогресс и программы.</p>
     <form id="auth-form">
       <div class="auth-field">
-        <label for="login-id">Email</label>
-        <input id="login-id" name="login-id" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required />
+        <label for="login-id" data-i18n="a.auth.label_email">Email</label>
+        <input id="login-id" name="login-id" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required data-i18n-placeholder="a.auth.placeholder_email" />
       </div>
       <div class="auth-field">
-        <label for="login-pass">Пароль</label>
+        <label for="login-pass" data-i18n="a.auth.label_password">Пароль</label>
         <div style="position:relative;">
-          <input id="login-pass" name="login-pass" type="password" class="glass-input" placeholder="••••••••" autocomplete="current-password" required style="padding-right:2.5rem;" />
+          <input id="login-pass" name="login-pass" type="password" class="glass-input" placeholder="••••••••" autocomplete="current-password" required style="padding-right:2.5rem;" data-i18n-placeholder="a.auth.placeholder_password" />
           <button type="button" class="pass-eye" onclick="togglePassVis(this)" aria-label="Показать пароль" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);opacity:0.6;">
             <svg class="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             <svg class="eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -421,41 +421,41 @@
         </div>
       </div>
       <p id="auth-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
-      <button type="submit" class="btn btn-solid auth-submit">
+      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_login">
         Войти <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </form>
-    <p class="auth-hint" style="margin-top:1.25rem;">Нет аккаунта? <a href="#" onclick="toggleAuthMode('register');return false;" style="color:var(--accent-cyan);text-decoration:none;">Зарегистрироваться</a></p>
-    <p class="auth-hint" style="margin-top:0.5rem;"><a href="#" onclick="toggleAuthMode('forgot');return false;" style="color:var(--text-dim);text-decoration:none;font-size:12px;">Забыли пароль?</a></p>
+    <p class="auth-hint" style="margin-top:1.25rem;"><span data-i18n="a.auth.hint_no_account">Нет аккаунта?</span> <a href="#" onclick="toggleAuthMode('register');return false;" style="color:var(--accent-cyan);text-decoration:none;" data-i18n="a.auth.link_register">Зарегистрироваться</a></p>
+    <p class="auth-hint" style="margin-top:0.5rem;"><a href="#" onclick="toggleAuthMode('forgot');return false;" style="color:var(--text-dim);text-decoration:none;font-size:12px;" data-i18n="a.auth.link_forgot_password">Забыли пароль?</a></p>
   </div>
   <!-- Forgot password form -->
   <div id="auth-forgot" style="display:none;">
-    <p class="eyebrow">Восстановление</p>
-    <h1>Забыли пароль?</h1>
-    <p class="sub">Введите email, и мы отправим ссылку для сброса пароля.</p>
+    <p class="eyebrow" data-i18n="a.auth.label_password">Восстановление</p>
+    <h1 data-i18n="a.auth.title_forgot">Забыли пароль?</h1>
+    <p class="sub" data-i18n="a.auth.subtitle_forgot">Введите email, и мы отправим ссылку для сброса пароля.</p>
     <form id="forgot-form">
       <div class="auth-field">
-        <label for="forgot-email">Email</label>
-        <input id="forgot-email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required />
+        <label for="forgot-email" data-i18n="a.auth.label_forgot_email">Email</label>
+        <input id="forgot-email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required data-i18n-placeholder="a.auth.placeholder_email" />
       </div>
       <p id="forgot-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
       <p id="forgot-success" style="font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.75rem;min-height:1rem;display:none;"></p>
-      <button type="submit" class="btn btn-solid auth-submit">
+      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_forgot">
         Отправить ссылку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </form>
-    <p class="auth-hint" style="margin-top:1.25rem;"><a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;">Вернуться ко входу</a></p>
+    <p class="auth-hint" style="margin-top:1.25rem;"><a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;" data-i18n="a.auth.link_back_login">Вернуться ко входу</a></p>
   </div>
   <!-- Reset password form (shown via ?reset=TOKEN) -->
   <div id="auth-reset" style="display:none;">
-    <p class="eyebrow">Новый пароль</p>
-    <h1>Установите новый пароль</h1>
-    <p class="sub">Придумайте новый пароль для вашего аккаунта.</p>
+    <p class="eyebrow" data-i18n="a.auth.label_password">Новый пароль</p>
+    <h1 data-i18n="a.auth.title_reset">Установите новый пароль</h1>
+    <p class="sub" data-i18n="a.auth.subtitle_reset">Придумайте новый пароль для вашего аккаунта.</p>
     <form id="reset-form">
       <div class="auth-field">
-        <label for="reset-pass">Новый пароль</label>
+        <label for="reset-pass" data-i18n="a.auth.label_reset_pass">Новый пароль</label>
         <div style="position:relative;">
-          <input id="reset-pass" type="password" class="glass-input" placeholder="Минимум 6 символов" autocomplete="new-password" required style="padding-right:2.5rem;" />
+          <input id="reset-pass" type="password" class="glass-input" placeholder="Минимум 6 символов" autocomplete="new-password" required style="padding-right:2.5rem;" data-i18n-placeholder="a.auth.placeholder_password_min" />
           <button type="button" class="pass-eye" onclick="togglePassVis(this)" aria-label="Показать пароль" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);opacity:0.6;">
             <svg class="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             <svg class="eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -463,9 +463,9 @@
         </div>
       </div>
       <div class="auth-field">
-        <label for="reset-pass2">Подтвердите пароль</label>
+        <label for="reset-pass2" data-i18n="a.auth.label_reset_confirm">Подтвердите пароль</label>
         <div style="position:relative;">
-          <input id="reset-pass2" type="password" class="glass-input" placeholder="Повторите пароль" autocomplete="new-password" required style="padding-right:2.5rem;" />
+          <input id="reset-pass2" type="password" class="glass-input" placeholder="Повторите пароль" autocomplete="new-password" required style="padding-right:2.5rem;" data-i18n-placeholder="a.auth.placeholder_reset_confirm" />
           <button type="button" class="pass-eye" onclick="togglePassVis(this)" aria-label="Показать пароль" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);opacity:0.6;">
             <svg class="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             <svg class="eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -473,29 +473,29 @@
         </div>
       </div>
       <p id="reset-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
-      <button type="submit" class="btn btn-solid auth-submit">
+      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_reset">
         Сохранить пароль <svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
       </button>
     </form>
   </div>
   <!-- Register form -->
   <div id="auth-register" style="display:none;">
-    <p class="eyebrow">Регистрация</p>
-    <h1>Создать аккаунт</h1>
-    <p class="sub">Зарегистрируйтесь, чтобы начать работу с NeuroAttention.</p>
+    <p class="eyebrow" data-i18n="a.auth.label_password">Регистрация</p>
+    <h1 data-i18n="a.auth.title_register">Создать аккаунт</h1>
+    <p class="sub" data-i18n="a.auth.subtitle_register">Зарегистрируйтесь, чтобы начать работу с NeuroAttention.</p>
     <form id="register-form">
       <div class="auth-field">
-        <label for="reg-name">Имя</label>
-        <input id="reg-name" type="text" class="glass-input" placeholder="Ваше имя" />
+        <label for="reg-name" data-i18n="a.auth.label_name">Имя</label>
+        <input id="reg-name" type="text" class="glass-input" placeholder="Ваше имя" data-i18n-placeholder="a.auth.placeholder_name" />
       </div>
       <div class="auth-field">
-        <label for="reg-email">Email</label>
-        <input id="reg-email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required />
+        <label for="reg-email" data-i18n="a.auth.label_email">Email</label>
+        <input id="reg-email" type="email" class="glass-input" placeholder="you@example.com" autocomplete="email" required data-i18n-placeholder="a.auth.placeholder_email" />
       </div>
       <div class="auth-field">
-        <label for="reg-pass">Пароль</label>
+        <label for="reg-pass" data-i18n="a.auth.label_password">Пароль</label>
         <div style="position:relative;">
-          <input id="reg-pass" type="password" class="glass-input" placeholder="Минимум 6 символов" autocomplete="new-password" required style="padding-right:2.5rem;" />
+          <input id="reg-pass" type="password" class="glass-input" placeholder="Минимум 6 символов" autocomplete="new-password" required style="padding-right:2.5rem;" data-i18n-placeholder="a.auth.placeholder_password_min" />
           <button type="button" class="pass-eye" onclick="togglePassVis(this)" aria-label="Показать пароль" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);opacity:0.6;">
             <svg class="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             <svg class="eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -503,11 +503,11 @@
         </div>
       </div>
       <p id="reg-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
-      <button type="submit" class="btn btn-solid auth-submit">
+      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_register">
         Создать аккаунт <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </form>
-    <p class="auth-hint" style="margin-top:1.25rem;">Уже есть аккаунт? <a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;">Войти</a></p>
+    <p class="auth-hint" style="margin-top:1.25rem;">Уже есть аккаунт? <a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;" data-i18n="a.auth.link_register">Войти</a></p>
   </div>
 </section>
 
@@ -515,12 +515,12 @@
 <section id="client-dashboard" class="dashboard">
   <div class="dash-header">
     <div>
-      <h1 class="dash-title" id="client-greeting">Здравствуйте</h1>
+      <h1 class="dash-title" id="client-greeting" data-i18n="a.dashboard.greeting">Здравствуйте</h1>
       <p style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Ваш путь с NeuroAttention</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
-      <span class="dash-role"><span class="pulse"></span>Клиент</span>
-      <button class="logout-btn" data-logout>Выйти</button>
+      <span class="dash-role"><span class="pulse"></span><span data-i18n="a.dashboard.role_client">Клиент</span></span>
+      <button class="logout-btn" data-logout data-i18n="a.dashboard.btn_logout">Выйти</button>
     </div>
   </div>
 
@@ -529,19 +529,19 @@
 
   <!-- Tabs -->
   <div class="dash-tabs">
-    <button class="dash-tab active" data-tab="overview">Профиль</button>
-    <button class="dash-tab" data-tab="protocol">Протокол</button>
-    <button class="dash-tab" data-tab="tools">Инструменты</button>
-    <button class="dash-tab" data-tab="pointab">Точка А → B</button>
-    <button class="dash-tab" data-tab="enroll">Выбрать программу</button>
-    <button class="dash-tab" data-tab="administration" id="tab-btn-admin" style="display:none;">Администрирование</button>
+    <button class="dash-tab active" data-tab="overview" data-i18n="a.tabs.profile">Профиль</button>
+    <button class="dash-tab" data-tab="protocol" data-i18n="a.tabs.protocol">Протокол</button>
+    <button class="dash-tab" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</button>
+    <button class="dash-tab" data-tab="pointab" data-i18n="a.tabs.pointab">Точка А → B</button>
+    <button class="dash-tab" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</button>
+    <button class="dash-tab" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</button>
   </div>
 
   <!-- TAB: Overview -->
   <div class="tab-panel active" id="tab-overview">
     <!-- RPG Dashboard: Персональная операционная система -->
     <div id="rpg-dashboard" style="display:none;">
-      <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.18em;margin:0 0 0.5rem;font-family:'Space Grotesk',sans-serif;">Персональная операционная система вашей личности</p>
+      <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.18em;margin:0 0 0.5rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.personal_os">Персональная операционная система вашей личности</p>
 
       <!-- Hero Profile Card -->
       <div id="rpg-hero" style="padding:1.5rem;border-radius:16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);margin-bottom:1.5rem;">
@@ -555,13 +555,13 @@
               </div>
               <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
             </div>
-            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'">Галерея</button>
+            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.gallery">Галерея</button>
           </div>
           <div style="flex:1;min-width:200px;">
             <p id="rpg-profile-name" style="margin:0;font-size:1.4rem;font-family:'Unbounded',sans-serif;font-weight:600;color:var(--text-primary);letter-spacing:0.04em;line-height:1.3;"></p>
             <p id="rpg-profile-subtitle" style="margin:0.4rem 0 0;font-size:0.85rem;color:var(--text-muted);line-height:1.5;"></p>
           </div>
-          <button id="rpg-deepen-btn" onclick="switchTab('enroll')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-muted);font-size:12px;padding:0.5rem 1rem;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(10px);transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'">
+          <button id="rpg-deepen-btn" onclick="switchTab('enroll')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-muted);font-size:12px;padding:0.5rem 1rem;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(10px);transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.deepen">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
             Углубить профиль
           </button>
@@ -573,7 +573,7 @@
 
       <!-- World Model Coherence -->
       <div style="padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.015);margin-bottom:1.5rem;">
-        <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.75rem;font-family:'Space Grotesk',sans-serif;">World Model Coherence</p>
+        <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.75rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.wmc_title">World Model Coherence</p>
         <div id="rpg-wmc-levels" style="display:flex;gap:0.5rem;flex-wrap:wrap;"></div>
       </div>
 
@@ -582,18 +582,18 @@
         <div style="position:relative;padding:1.2rem;border-radius:14px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);overflow:hidden;">
           <div class="rpg-locked-overlay" style="position:absolute;inset:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);background:rgba(5,7,10,0.6);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
             <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.3);stroke-width:2;margin-bottom:6px;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            <span style="font-size:11px;color:rgba(255,255,255,0.4);">Доступно после выбора программы</span>
+            <span style="font-size:11px;color:rgba(255,255,255,0.4);" data-i18n="a.profile.locked_after_enroll">Доступно после выбора программы</span>
           </div>
-          <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.5rem;">Расширенная диагностика</p>
-          <p style="font-size:13px;color:var(--text-muted);margin:0;">Дополнительный тест уточнения профиля с расширенным набором параметров</p>
+          <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.5rem;" data-i18n="a.profile.locked_advanced_diagnostics">Расширенная диагностика</p>
+          <p style="font-size:13px;color:var(--text-muted);margin:0;" data-i18n="a.profile.locked_advanced_diagnostics_desc">Дополнительный тест уточнения профиля с расширенным набором параметров</p>
         </div>
         <div style="position:relative;padding:1.2rem;border-radius:14px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);overflow:hidden;">
           <div class="rpg-locked-overlay" style="position:absolute;inset:0;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);background:rgba(5,7,10,0.6);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;">
             <svg style="width:20px;height:20px;fill:none;stroke:rgba(255,255,255,0.3);stroke-width:2;margin-bottom:6px;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            <span style="font-size:11px;color:rgba(255,255,255,0.4);">Доступно после выбора программы</span>
+            <span style="font-size:11px;color:rgba(255,255,255,0.4);" data-i18n="a.profile.locked_after_enroll">Доступно после выбора программы</span>
           </div>
-          <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.5rem;">Детали персонажа</p>
-          <p style="font-size:13px;color:var(--text-muted);margin:0;">Глубокий разбор подструктур личности и рекомендации по развитию</p>
+          <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.12em;margin:0 0 0.5rem;" data-i18n="a.profile.locked_character_details">Детали персонажа</p>
+          <p style="font-size:13px;color:var(--text-muted);margin:0;" data-i18n="a.profile.locked_character_details_desc">Глубокий разбор подструктур личности и рекомендации по развитию</p>
         </div>
       </div>
 
@@ -887,18 +887,18 @@
     <div class="modal-overlay" id="diaryModal">
       <div class="modal-box" style="max-width:440px;">
         <button class="modal-close" onclick="closeDiaryInput()">&times;</button>
-        <p class="eyebrow" style="margin-bottom:0.5rem;">Дневник нейроресурса</p>
+        <p class="eyebrow" style="margin-bottom:0.5rem;" data-i18n="a.tools.diary_title">Дневник нейроресурса</p>
         <h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1.25rem;">Что произошло сегодня?</h3>
 
         <!-- Event input -->
         <div id="diary-input-form">
           <div style="margin-bottom:1rem;">
             <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;">Событие</label>
-            <input type="text" id="diary-event-text" class="glass-input" placeholder="Опишите событие..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:14px;" />
+            <input type="text" id="diary-event-text" class="glass-input" placeholder="Опишите событие..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:14px;" data-i18n-placeholder="a.diary.event_placeholder" />
           </div>
           <div style="margin-bottom:1.25rem;">
             <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;">Комментарий (по желанию)</label>
-            <input type="text" id="diary-event-comment" class="glass-input" placeholder="Дополнительные мысли..." style="width:100%;padding:0.75rem 1rem;border-radius:12px;font-size:13px;" />
+            <input type="text" id="diary-event-comment" class="glass-input" placeholder="Дополнительные мысли..." style="width:100%;padding:0.75rem 1rem;border-radius:12px;font-size:13px;" data-i18n-placeholder="a.diary.comment_placeholder" />
           </div>
 
           <!-- Rating step -->
@@ -1120,8 +1120,8 @@
 
         <!-- Main screen (before exercise) -->
         <div id="ab-main">
-          <p class="eyebrow" style="margin-bottom:0.5rem;">Карта реализации потенциала</p>
-          <h2 style="font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.6rem;color:var(--text-primary);margin:0 0 0.75rem;">Точка А → Точка B</h2>
+          <p class="eyebrow" style="margin-bottom:0.5rem;" data-i18n="a.pointab.subtitle">Карта реализации потенциала</p>
+          <h2 style="font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.6rem;color:var(--text-primary);margin:0 0 0.75rem;" data-i18n="a.pointab.title">Точка А → Точка B</h2>
           <p style="color:var(--text-secondary);font-size:14px;line-height:1.65;margin:0 0 1.5rem;max-width:640px;">Определите, где вы находитесь сейчас, куда хотите прийти и какие внутренние ограничения мешают движению.</p>
           <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 2rem;max-width:640px;">Это упражнение помогает увидеть разницу между текущим образом жизни и желаемым направлением развития. На основе ответов вы сформируете личную программу корректировки и запишете её своим голосом.</p>
           <button class="btn btn-solid" style="font-size:14px;padding:0.85rem 2rem;" onclick="abStartExercise()">
@@ -1359,7 +1359,7 @@
   <div class="dash-header">
     <div>
       <h1 class="dash-title" id="admin-greeting">Панель управления</h1>
-      <p id="admin-role-text" style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;">Администрирование</p>
+      <p id="admin-role-text" style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;" data-i18n="a.admin.role_text">Администрирование</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
       <span class="dash-role" id="admin-role-badge"><span class="pulse"></span><span id="admin-role-label">Админ</span></span>
@@ -1373,7 +1373,7 @@
   <div class="dash-tabs" id="admin-tabs">
     <button class="dash-tab active" data-tab="admin-stats">Статистика</button>
     <button class="dash-tab" data-tab="admin-users">Пользователи</button>
-    <button class="dash-tab" data-tab="admin-tools">Инструменты</button>
+    <button class="dash-tab" data-tab="admin-tools" data-i18n="a.admin.tools">Инструменты</button>
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;">Заявки Rehab</button>
   </div>
 
@@ -1387,7 +1387,7 @@
       <div class="dash-card glass-card-elevated span-8">
         <h3>Последние регистрации</h3>
         <table class="admin-table">
-          <thead><tr><th>Имя</th><th>Email / Телефон</th><th>Роль</th><th>Программа</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="a.admin.users_table_name">Имя</th><th data-i18n="a.admin.users_table_email">Email / Телефон</th><th data-i18n="a.admin.users_table_role">Роль</th><th data-i18n="a.admin.users_table_program">Программа</th><th></th></tr></thead>
           <tbody id="admin-users-table"></tbody>
         </table>
       </div>
@@ -1441,7 +1441,7 @@
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
         <div id="admin-tools-unlocked" style="display:none;">
-          <h3>Инструменты и практики</h3>
+          <h3 data-i18n="a.admin.tools_title">Инструменты и практики</h3>
           <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
             <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('protocol');setProtoMode('pract')">
@@ -1463,7 +1463,7 @@
           <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;">Доступ к инструментам ограничен</p>
           <p style="font-size:12px;color:var(--text-dim);margin:0 0 1rem;">Для использования практик и инструментов необходима оплата одной из программ.</p>
-          <button class="btn btn-solid" style="font-size:13px;" onclick="switchTab('enroll')">Выбрать программу</button>
+          <button class="btn btn-solid" style="font-size:13px;" onclick="switchTab('enroll')" data-i18n="a.enroll.btn_select_program">Выбрать программу</button>
         </div>
       </div>
     </div>
@@ -1524,7 +1524,7 @@ var viewAsUser = null;
 // Placeholder: admin features will use server-side user list later
 var users = [];
 
-var ROLE_LABELS = {founder:'Основатель',specialist:'Специалист',admin_basic:'Админ',client:'Клиент'};
+var ROLE_LABELS = {founder:function(){ return t('a.dashboard.role_founder'); },specialist:function(){ return t('a.dashboard.role_specialist'); },admin_basic:'Админ',client:function(){ return t('a.dashboard.role_client'); }};
 var PROG_LABELS = {self:'Self-Guided',guided:'Guided Program',group:'Group Program'};
 
 function naGetToken(){ return localStorage.getItem('na_token'); }
@@ -1601,11 +1601,11 @@ function onLogin(user){
   try { progLoadFromLocal(); } catch(e){ console.warn('progLoadFromLocal error:', e); }
 
   // STEP 2: Show RPG dashboard for ALL roles
-  var greetText = 'Здравствуйте, '+user.name;
+  var greetText = t('a.dashboard.greeting')+', '+user.name;
   document.getElementById('client-greeting').textContent = greetText;
   var roleEl = document.querySelector('#client-dashboard .dash-role');
-  var ROLE_DISPLAY = {superadmin:'Superadmin',founder:'Основатель',specialist:'Специалист',admin_basic:'Админ',client:'Клиент'};
-  var roleLabel = ROLE_DISPLAY[user.serverRole] || ROLE_DISPLAY[user.role] || 'Клиент';
+  var ROLE_DISPLAY = {superadmin:'Superadmin',founder:t('a.dashboard.role_founder'),specialist:t('a.dashboard.role_specialist'),admin_basic:'Админ',client:t('a.dashboard.role_client')};
+  var roleLabel = ROLE_DISPLAY[user.serverRole] || ROLE_DISPLAY[user.role] || t('a.dashboard.role_client');
   if(roleEl){
     roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
     roleEl.style.borderColor = (user.role!=='client') ? 'rgba(0,224,255,0.3)' : '';
@@ -6573,5 +6573,12 @@ if('serviceWorker' in navigator){
     <div id="presetGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;"></div>
   </div>
 </div>
+<script src="assets/js/i18n.js"></script>
+<script>
+  // Initialize i18n on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    setLang(getLang());
+  });
+</script>
 </body>
 </html>
