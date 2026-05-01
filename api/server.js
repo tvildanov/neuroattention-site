@@ -2218,6 +2218,7 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
           consent_timestamp: timestamp || new Date().toISOString(),
           email: userEmail || ''
         },
+        allow_promotion_codes: true,
         consent_collection: { terms_of_service: 'required' },
         custom_text: {
           submit: { message: 'By completing this purchase you confirm that you have read and agreed to our Terms of Service and Privacy Policy.' }
