@@ -2147,13 +2147,18 @@ app.patch('/api/admin/rehab/applications/:id/status', requireAuth, async (req, r
 // ─── Stripe Checkout: create session ───
 const STRIPE_PRODUCTS = {
   lab: {
-    name: 'NeuroAttention Lab Program',
-    price: 14900, // cents
+    name: 'NeuroAttention Lab — Self-Guided Program',
+    price: 140000, // $1,400
+    currency: 'usd'
+  },
+  guided: {
+    name: 'NeuroAttention Lab — Guided Program',
+    price: 400000, // $4,000
     currency: 'usd'
   },
   rehab: {
     name: 'Rehabilitation Program',
-    price: 19900,
+    price: 19900, // $199
     currency: 'usd'
   }
 };

@@ -2741,13 +2741,15 @@ function toggleMethodStrip(){
   }
 }
 function enrollProgram(type){
-  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Подготовка специалистов',rehab:'Rehabilitation Program'};
-  var prices = {self:'$1,400',guided:'$4,000',group:'TBD',specialist:'TBD',rehab:'Персональный формат'};
-  var hasTBD = (type==='group'||type==='specialist'||type==='rehab');
+  // Map UI program types to Stripe product IDs
+  var productMap = {self:'lab', guided:'guided', rehab:'rehab'};
+  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Specialist Training',rehab:'Rehabilitation Program'};
+  var hasTBD = (type==='group'||type==='specialist');
   if(hasTBD){
-    showEnrollModal('Запись на программу','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">Программа <strong style="color:var(--text-primary);">'+names[type]+'</strong> находится в процессе формирования.</p><p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Оставьте заявку, и мы свяжемся с вами, когда откроется набор.</p>');
+    showEnrollModal('Coming soon','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">The <strong style="color:var(--text-primary);">'+names[type]+'</strong> program is currently being developed.</p><p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Leave a request and we will contact you when enrollment opens.</p>');
   } else {
-    showEnrollModal('Подтверждение','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">Вы выбрали программу <strong style="color:var(--text-primary);">'+names[type]+'</strong></p><p style="font-family:\'JetBrains Mono\',monospace;font-size:1.5rem;font-weight:600;color:var(--text-primary);margin:0 0 1rem;">'+prices[type]+'</p><p style="font-size:13px;color:var(--text-muted);margin:0;">Оплата будет подключена в ближайшее время. Свяжитесь с нами для оформления.</p>');
+    var stripeProduct = productMap[type] || type;
+    window.location.href = '/checkout-confirm.html?product=' + stripeProduct;
   }
 }
 function showEnrollModal(title, bodyHtml){
