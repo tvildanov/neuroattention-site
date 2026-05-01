@@ -115,11 +115,14 @@
   }
 
   /* ── public API ── */
-  window.setLang = function (lang) {
+  window.setLang = function (lang, isExplicit) {
     lang = (lang || '').toLowerCase();
     if (SUPPORTED.indexOf(lang) === -1) lang = DEFAULT_LANG;
     currentLang = lang;
-    try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+    try {
+      localStorage.setItem(STORAGE_KEY, lang);
+      if (isExplicit) localStorage.setItem(EXPLICIT_KEY, lang);
+    } catch (e) {}
 
     loadDict(DEFAULT_LANG, function () {
       if (lang === DEFAULT_LANG) {
@@ -142,18 +145,22 @@
     return currentLang;
   };
 
-  /* ── auto-detect browser language on first visit ── */
+  /* ── auto-detect browser language from OS settings ── */
+  var EXPLICIT_KEY = 'na_lang_explicit'; // only set when user clicks a lang button
+
   function detectInitialLang() {
+    // 1. Honour explicit user choice (clicking a lang button)
     try {
-      var stored = localStorage.getItem(STORAGE_KEY);
-      if (stored && SUPPORTED.indexOf(stored) !== -1) return stored;
+      var explicit = localStorage.getItem(EXPLICIT_KEY);
+      if (explicit && SUPPORTED.indexOf(explicit) !== -1) return explicit;
     } catch (e) {}
+    // 2. Auto-detect from OS / browser language settings
     var browserLangs = navigator.languages || [navigator.language || 'en'];
     for (var i = 0; i < browserLangs.length; i++) {
       var code = browserLangs[i].toLowerCase().slice(0, 2);
       if (SUPPORTED.indexOf(code) !== -1) return code;
     }
-    return 'en'; // international fallback instead of RU
+    return 'en'; // international fallback
   }
 
   /* ── init ── */
@@ -164,7 +171,7 @@
     var btns = document.querySelectorAll('.lang-btn');
     for (var i = 0; i < btns.length; i++) {
       btns[i].addEventListener('click', function () {
-        window.setLang(this.textContent.trim().toLowerCase());
+        window.setLang(this.textContent.trim().toLowerCase(), true);
       });
     }
 

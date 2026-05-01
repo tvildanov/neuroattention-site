@@ -444,9 +444,16 @@ button, a, input { cursor: pointer !important; }
   var PRODUCTS = {
     lab: {
       label: 'NeuroAttention Lab',
-      name: 'NeuroAttention Lab Program',
-      price: '$149',
-      priceId: null, // Will be set from Stripe config
+      name: 'NeuroAttention Lab — Self-Guided Program',
+      price: '$1,400',
+      priceId: null,
+      requireRehab: false
+    },
+    guided: {
+      label: 'NeuroAttention Lab',
+      name: 'NeuroAttention Lab — Guided Program',
+      price: '$4,000',
+      priceId: null,
       requireRehab: false
     },
     rehab: {
