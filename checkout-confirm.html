@@ -343,7 +343,7 @@ button, a, input { cursor: pointer !important; }
     <div class="checkout-header-inner">
       <a href="programs.html">
         <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Programs
+        <span data-i18n="checkout.back">Programs</span>
       </a>
     </div>
   </header>
@@ -353,26 +353,26 @@ button, a, input { cursor: pointer !important; }
     <!-- No product fallback -->
     <div class="checkout-card" id="no-product-state" style="display:none;">
       <div class="no-product">
-        <h2>No program selected</h2>
-        <p>Please choose a program from our catalog to proceed with checkout.</p>
-        <a href="programs.html">View Programs</a>
+        <h2 data-i18n="checkout.no_product_title">No program selected</h2>
+        <p data-i18n="checkout.no_product_desc">Please choose a program from our catalog to proceed with checkout.</p>
+        <a href="programs.html" data-i18n="checkout.no_product_cta">View Programs</a>
       </div>
     </div>
 
     <!-- Main checkout card -->
     <div class="checkout-card" id="checkout-form" style="display:none;">
-      <h1>Confirm Your Purchase</h1>
+      <h1 data-i18n="checkout.title">Confirm Your Purchase</h1>
       <div class="product-label" id="product-label">—</div>
 
       <!-- Order summary -->
       <div class="order-summary">
-        <h2>Order Summary</h2>
+        <h2 data-i18n="checkout.order_summary_title">Order Summary</h2>
         <div class="order-row">
           <span class="label" id="summary-name">—</span>
           <span class="value" id="summary-price">—</span>
         </div>
         <div class="order-row total">
-          <span class="label">Total</span>
+          <span class="label" data-i18n="checkout.order_total">Total</span>
           <span class="value" id="summary-total">—</span>
         </div>
       </div>
@@ -382,11 +382,11 @@ button, a, input { cursor: pointer !important; }
 
       <!-- Consent checkboxes -->
       <div class="consent-section">
-        <h2>Please confirm before proceeding</h2>
+        <h2 data-i18n="checkout.consent_title">Please confirm before proceeding</h2>
 
         <div class="consent-item" id="consent-tos-wrap">
           <input type="checkbox" id="consent-tos" />
-          <label for="consent-tos">
+          <label for="consent-tos" data-i18n="checkout.consent_tos">
             I have read and agree to the <a href="terms-of-service.html" target="_blank">Terms of Service</a>,
             including the non-medical disclaimer, no-refund policy, and assumption of risk.
           </label>
@@ -394,7 +394,7 @@ button, a, input { cursor: pointer !important; }
 
         <div class="consent-item" id="consent-privacy-wrap">
           <input type="checkbox" id="consent-privacy" />
-          <label for="consent-privacy">
+          <label for="consent-privacy" data-i18n="checkout.consent_privacy">
             I have read and agree to the <a href="privacy-policy.html" target="_blank">Privacy Policy</a>,
             including data collection, processing, and retention practices.
           </label>
@@ -402,7 +402,7 @@ button, a, input { cursor: pointer !important; }
 
         <div class="consent-item" id="consent-digital-wrap">
           <input type="checkbox" id="consent-digital" />
-          <label for="consent-digital">
+          <label for="consent-digital" data-i18n="checkout.consent_digital">
             I understand that this is a digital, non-tangible service. Access to the program constitutes full delivery.
             No refunds are provided based on dissatisfaction or lack of results.
           </label>
@@ -411,7 +411,7 @@ button, a, input { cursor: pointer !important; }
         <!-- Conditional: only for rehab product -->
         <div class="consent-item rehab-consent" id="consent-rehab-wrap" style="display:none;">
           <input type="checkbox" id="consent-rehab" />
-          <label for="consent-rehab">
+          <label for="consent-rehab" data-i18n="checkout.consent_rehab">
             I understand that NeuroAttention Lab does not provide medical rehabilitation.
             This program is research-based and educational; it does not replace clinical treatment.
             I take full responsibility for my participation.
@@ -421,10 +421,10 @@ button, a, input { cursor: pointer !important; }
 
       <!-- Pay button -->
       <button class="pay-btn" id="pay-btn" disabled>
-        <span class="btn-text">Continue to Payment</span>
+        <span class="btn-text" data-i18n="checkout.pay_btn">Continue to Payment</span>
         <span class="spinner"></span>
       </button>
-      <p class="pay-note">
+      <p class="pay-note" data-i18n="checkout.pay_note">
         You will be redirected to Stripe for secure payment processing.
         We do not store your card details.
       </p>
@@ -435,6 +435,7 @@ button, a, input { cursor: pointer !important; }
 
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
+<script src="assets/js/i18n.js"></script>
 <script>
 (function() {
   'use strict';
