@@ -454,14 +454,14 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   <div class="container navbar-inner">
     <a href="index.html" class="nav-logo"><img src="assets/logo-na.png" alt="" class="nav-logo-icon">Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span></a>
     <div class="nav-links">
-      <a href="index.html" class="nav-link">Главная</a>
-      <a href="test.html" class="nav-link">Тест</a>
-      <a href="method.html" class="nav-link">Метод</a>
-      <a href="programs.html" class="nav-link">Программы</a>
-      <a href="xr.html" class="nav-link">XR Платформа</a>
-      <a href="lab.html" class="nav-link">Лаборатория</a>
-      <a href="dom.html" class="nav-link">DOM</a>
-      <a href="custom.html" class="nav-link">Custom Group</a>
+      <a href="index.html" class="nav-link" data-i18n="nav.home">Главная</a>
+      <a href="test.html" class="nav-link" data-i18n="nav.test">Тест</a>
+      <a href="method.html" class="nav-link" data-i18n="nav.method">Метод</a>
+      <a href="programs.html" class="nav-link" data-i18n="nav.programs">Программы</a>
+      <a href="xr.html" class="nav-link" data-i18n="nav.xr">XR Платформа</a>
+      <a href="lab.html" class="nav-link" data-i18n="nav.lab">Лаборатория</a>
+      <a href="dom.html" class="nav-link" data-i18n="nav.dom">DOM</a>
+      <a href="custom.html" class="nav-link" data-i18n="nav.custom">Custom Group</a>
     </div>
     <div class="nav-right">
       <div class="lang-switch">
@@ -469,7 +469,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
         <button class="lang-btn">EN</button>
         <button class="lang-btn">ES</button>
       </div>
-      <a href="account.html" class="nav-login"><span class="login-dot"></span><span>Кабинет</span></a>
+      <a href="account.html" class="nav-login"><span class="login-dot"></span><span data-i18n="nav.cabinet">Кабинет</span></a>
       <button class="mobile-menu-btn" aria-label="Меню">
         <svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -477,15 +477,15 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   </div>
   <div class="mobile-menu">
     <div class="container mobile-menu-inner">
-      <a href="index.html" class="mobile-link">Главная</a>
-      <a href="test.html" class="mobile-link">Тест</a>
-      <a href="method.html" class="mobile-link">Метод</a>
-      <a href="programs.html" class="mobile-link">Программы</a>
-      <a href="xr.html" class="mobile-link">XR Платформа</a>
-      <a href="lab.html" class="mobile-link">Лаборатория</a>
-      <a href="dom.html" class="mobile-link">DOM</a>
-      <a href="custom.html" class="mobile-link">Custom Group</a>
-      <a href="account.html" class="mobile-link">Личный кабинет</a>
+      <a href="index.html" class="mobile-link" data-i18n="nav.home">Главная</a>
+      <a href="test.html" class="mobile-link" data-i18n="nav.test">Тест</a>
+      <a href="method.html" class="mobile-link" data-i18n="nav.method">Метод</a>
+      <a href="programs.html" class="mobile-link" data-i18n="nav.programs">Программы</a>
+      <a href="xr.html" class="mobile-link" data-i18n="nav.xr">XR Платформа</a>
+      <a href="lab.html" class="mobile-link" data-i18n="nav.lab">Лаборатория</a>
+      <a href="dom.html" class="mobile-link" data-i18n="nav.dom">DOM</a>
+      <a href="custom.html" class="mobile-link" data-i18n="nav.custom">Custom Group</a>
+      <a href="account.html" class="mobile-link" data-i18n="nav.account">Личный кабинет</a>
     </div>
   </div>
 </nav>
@@ -526,6 +526,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
+<script src="assets/js/i18n.js"></script>
 <script>
 (function(){
   var API_BASE = 'https://neuroattention-api-production.up.railway.app';
@@ -559,130 +560,77 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   var rehabOtherDescription = '';
 
   // ── Q0 + 10 Questions ──
+  // Lazy-load translations at render time
   var QUESTIONS = [
-    { id:'Q0', group:'neuro_filter', text:'Есть ли у вас диагностированные или выраженные нарушения работы нервной системы?', options:[
-      { letter:'A', text:'Нет' },
-      { letter:'B', text:'Есть симптомы или подозрения' },
-      { letter:'C', text:'Да, есть диагноз / восстановление после травмы или инсульта' }
-    ]},
-    { id:'Q1', group:'state', text:'Как вы чаще всего чувствуете себя в течение обычного дня?', options:[
-      { letter:'A', text:'Собранно, устойчиво, с ясным ощущением направления' },
-      { letter:'B', text:'В целом нормально, но часто устаю и теряю фокус' },
-      { letter:'C', text:'Часто перегружен, тревожен или эмоционально нестабилен' },
-      { letter:'D', text:'Чувствую, что живу в постоянном напряжении или выгорании' }
-    ]},
-    { id:'Q2', group:'attention', text:'Что обычно происходит с вашим вниманием?', options:[
-      { letter:'A', text:'Я могу достаточно легко направлять и удерживать его' },
-      { letter:'B', text:'Я удерживаю внимание, но меня часто отвлекают телефон, мысли, задачи' },
-      { letter:'C', text:'Моё внимание скачет, сложно завершать начатое' },
-      { letter:'D', text:'Я почти не управляю вниманием — оно постоянно захвачено внешними стимулами' }
-    ]},
-    { id:'Q3', group:'state', text:'Как вы реагируете на изменения, неопределённость и новые обстоятельства?', options:[
-      { letter:'A', text:'Люблю изменения и быстро перестраиваюсь' },
-      { letter:'B', text:'Адаптируюсь, но это забирает много энергии' },
-      { letter:'C', text:'Меня часто выбивает из состояния' },
-      { letter:'D', text:'Изменения вызывают тревогу, сопротивление или ощущение потери контроля' }
-    ]},
-    { id:'Q4', group:'attention', text:'Насколько вы чувствуете связь с телом?', options:[
-      { letter:'A', text:'Хорошо чувствую тело, чётко распознаю все внутренние сигналы и не игнорирую их' },
-      { letter:'B', text:'Чувствую тело, но часто игнорирую эти ощущения, закрываю на них глаза' },
-      { letter:'C', text:'Слабо чувствую тело, часто живу «в голове»' },
-      { letter:'D', text:'Почти не понимаю, что происходит с телом и состоянием' }
-    ]},
-    { id:'Q5', group:'state', text:'Что чаще всего мешает вам жить качественнее?', options:[
-      { letter:'A', text:'Ничего не мешает, двигаюсь к следующему уровню развития и глубины качества жизни' },
-      { letter:'B', text:'Недостаток энергии, фокуса и стабильной продуктивности' },
-      { letter:'C', text:'Тревожность, эмоциональные качели, перегрузка' },
-      { letter:'D', text:'Зависимости, выгорание, потеря интереса или ощущение застоя' }
-    ]},
-    { id:'Q6', group:'discipline', text:'Как вы сейчас работаете со своим состоянием?', options:[
-      { letter:'A', text:'У меня уже есть практики, система или дисциплина' },
-      { letter:'B', text:'Иногда практикую, но нерегулярно' },
-      { letter:'C', text:'Понимаю, что надо что-то делать, но не могу встроить это в жизнь' },
-      { letter:'D', text:'Почти не умею регулировать состояние без внешних стимулов' }
-    ]},
-    { id:'Q7', group:'environment', text:'Как вы взаимодействуете с потоком новых технологий?', options:[
-      { letter:'A', text:'Активно использую их осознанно и в свою пользу' },
-      { letter:'B', text:'Применяю, учусь внедрять, иногда перегружаюсь, но в целом справляюсь' },
-      { letter:'C', text:'Хочу использовать, но часто теряюсь в потоке информации' },
-      { letter:'D', text:'Трудно, чувствую что во многом отстаю' }
-    ]},
-    { id:'Q8', group:'discipline', text:'Когда вы сталкиваетесь с трудностями, что происходит чаще?', options:[
-      { letter:'A', text:'Я разбираюсь и нахожу решение' },
-      { letter:'B', text:'Понимаю проблему, но не всегда меняю ситуацию' },
-      { letter:'C', text:'Часто застреваю в одних и тех же состояниях' },
-      { letter:'D', text:'Чувствую, что не понимаю, как это изменить' }
-    ]},
-    { id:'Q9', group:'specialist', text:'Интересно ли вам помогать другим людям справляться с их состоянием или жизненными трудностями?', options:[
-      { letter:'A', text:'Не интересно' },
-      { letter:'B', text:'Иногда задумывался, но не пробовал' },
-      { letter:'C', text:'Интересно, я уже помогаю людям или хочу начать' },
-      { letter:'D', text:'Очень интересно, хочу стать специалистом или работаю в этой сфере' }
-    ]},
-    { id:'Q10', group:'environment', text:'Есть ли у вас опора в жизни (люди, среда, дело)?', options:[
-      { letter:'A', text:'Да, есть качественная стабильная среда или поддержка' },
-      { letter:'B', text:'Есть, но можно лучше, работаю над улучшением её качества' },
-      { letter:'C', text:'Не стабильно' },
-      { letter:'D', text:'Скорее нет, я в точке ноль.' }
-    ]}
+    { id:'Q0', group:'neuro_filter', key_text:'t.q0.text', key_opts:{A:'t.q0.a1', B:'t.q0.a2', C:'t.q0.a3'} },
+    { id:'Q1', group:'state', key_text:'t.q1.text', key_opts:{A:'t.q1.a1', B:'t.q1.a2', C:'t.q1.a3', D:'t.q1.a4'} },
+    { id:'Q2', group:'attention', key_text:'t.q2.text', key_opts:{A:'t.q2.a1', B:'t.q2.a2', C:'t.q2.a3', D:'t.q2.a4'} },
+    { id:'Q3', group:'state', key_text:'t.q3.text', key_opts:{A:'t.q3.a1', B:'t.q3.a2', C:'t.q3.a3', D:'t.q3.a4'} },
+    { id:'Q4', group:'attention', key_text:'t.q4.text', key_opts:{A:'t.q4.a1', B:'t.q4.a2', C:'t.q4.a3', D:'t.q4.a4'} },
+    { id:'Q5', group:'state', key_text:'t.q5.text', key_opts:{A:'t.q5.a1', B:'t.q5.a2', C:'t.q5.a3', D:'t.q5.a4'} },
+    { id:'Q6', group:'discipline', key_text:'t.q6.text', key_opts:{A:'t.q6.a1', B:'t.q6.a2', C:'t.q6.a3', D:'t.q6.a4'} },
+    { id:'Q7', group:'environment', key_text:'t.q7.text', key_opts:{A:'t.q7.a1', B:'t.q7.a2', C:'t.q7.a3', D:'t.q7.a4'} },
+    { id:'Q8', group:'discipline', key_text:'t.q8.text', key_opts:{A:'t.q8.a1', B:'t.q8.a2', C:'t.q8.a3', D:'t.q8.a4'} },
+    { id:'Q9', group:'specialist', key_text:'t.q9.text', key_opts:{A:'t.q9.a1', B:'t.q9.a2', C:'t.q9.a3', D:'t.q9.a4'} },
+    { id:'Q10', group:'environment', key_text:'t.q10.text', key_opts:{A:'t.q10.a1', B:'t.q10.a2', C:'t.q10.a3', D:'t.q10.a4'} }
   ];
 
   // ── 5 Profiles ──
   var PROFILES = {
     STABLE_EXPLORER: {
-      name:'STABLE EXPLORER', subtitle:'Устойчивый. Адаптированный. С потенциалом усиления.', color:'var(--accent-green)',
-      sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы — человек, который уже держит базовую устойчивость в быстро меняющемся мире.\nВы не теряетесь в потоке, но и не всегда используете весь свой потенциал управления.</p>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>стабильное состояние</li><li>базовый контроль внимания</li><li>способность адаптироваться</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Ваш главный риск — остаться на текущем уровне.\nМир ускоряется.\nИ разница между «держусь нормально» и «управляю процессом» становится критичной.</p>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>При развитии вы можете перейти на следующий уровень, где:</p><ul><li>вы управляете вниманием, а не просто удерживаете его</li><li>формируете состояние, а не реагируете на него</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nпереход от адаптации к управлению.</p>' }
+      key_name:'t.profile.stable_explorer.name', key_subtitle:'t.profile.stable_explorer.subtitle', color:'var(--accent-green)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.stable_explorer.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.stable_explorer.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.stable_explorer.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.stable_explorer.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.stable_explorer.v1' }
       ],
-      unlock:'<p>После регистрации вы получите:</p><ul><li>расширенную расшифровку вашего типа</li><li>скрытые паттерны внимания</li><li>персональный вектор усиления</li></ul>'
+      key_unlock:'t.profile.stable_explorer.unlock'
     },
     HIGH_LOAD_ADAPTER: {
-      name:'HIGH-LOAD ADAPTER', subtitle:'Функционирует. Держит нагрузку. Теряет ресурс.', color:'var(--accent-amber)',
-      sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы умеете справляться.\nДаже под давлением вы продолжаете двигаться.\nНо это происходит за счёт внутреннего ресурса.</p>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>высокая работоспособность</li><li>способность выдерживать нагрузку</li><li>адаптация в сложных условиях</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Вы живёте в режиме постоянного расхода ресурса.\nЭто приводит к:</p><ul><li>накоплению усталости</li><li>снижению ясности</li><li>потере глубины</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>Вы можете перейти в состояние, где:</p><ul><li>энергия не только тратится, но и восстанавливается</li><li>нагрузка не разрушает систему</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nперестать выживать за счёт ресурса и начать управлять им.</p>' }
+      key_name:'t.profile.high_load_adapter.name', key_subtitle:'t.profile.high_load_adapter.subtitle', color:'var(--accent-amber)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.high_load_adapter.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.high_load_adapter.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.high_load_adapter.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.high_load_adapter.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.high_load_adapter.v1' }
       ],
-      unlock:'<p>После регистрации вы получите:</p><ul><li>анализ перегрузки</li><li>точки утечки энергии</li><li>систему восстановления</li></ul>'
+      key_unlock:'t.profile.high_load_adapter.unlock'
     },
     NERVOUS_SYSTEM_SENSITIVE: {
-      name:'NERVOUS SYSTEM SENSITIVE', subtitle:'Перегрузка. Нестабильность. Потеря опоры.', color:'var(--accent-rose)',
-      sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Сейчас ваша система работает на пределе.\nИзменения среды перегружают её быстрее, чем она успевает адаптироваться.</p>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>высокая чувствительность</li><li>способность глубоко переживать</li><li>потенциал к быстрой трансформации</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Система перегружена.\nЭто проявляется как:</p><ul><li>нестабильность</li><li>тревожность</li><li>потеря контроля</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>При правильной работе вы можете:</p><ul><li>быстро восстановить устойчивость</li><li>выйти на новый уровень чувствительности и контроля</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nвосстановление базовой устойчивости и опоры.</p>' }
+      key_name:'t.profile.nervous_system_sensitive.name', key_subtitle:'t.profile.nervous_system_sensitive.subtitle', color:'var(--accent-rose)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.nervous_system_sensitive.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.nervous_system_sensitive.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.nervous_system_sensitive.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.nervous_system_sensitive.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.nervous_system_sensitive.v1' }
       ],
-      unlock:'<p>После регистрации вы получите:</p><ul><li>карту перегрузки</li><li>ключевые точки восстановления</li><li>персональные рекомендации</li></ul>'
+      key_unlock:'t.profile.nervous_system_sensitive.unlock'
     },
     DISTRACTED_EXPLORER: {
-      name:'FRAGMENTED FOCUS', subtitle:'Рассеянное внимание. Потеря контроля.', color:'var(--accent-violet)',
-      sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы находитесь в среде, которая захватывает ваше внимание быстрее, чем вы успеваете его удерживать.</p>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>гибкость мышления</li><li>высокая восприимчивость</li><li>способность быстро переключаться</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Ваше внимание не принадлежит вам полностью.\nЭто приводит к:</p><ul><li>расфокусу</li><li>незавершённым действиям</li><li>ментальной усталости</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>Вы можете развить:</p><ul><li>устойчивый фокус</li><li>способность удерживать внимание</li><li>контроль над потоком информации</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nвернуть контроль над вниманием как базовой функцией.</p>' }
+      key_name:'t.profile.fragmented_focus.name', key_subtitle:'t.profile.fragmented_focus.subtitle', color:'var(--accent-violet)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.fragmented_focus.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.fragmented_focus.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.fragmented_focus.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.fragmented_focus.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.fragmented_focus.v1' }
       ],
-      unlock:'<p>После регистрации вы получите:</p><ul><li>анализ паттернов внимания</li><li>точки потери фокуса</li><li>рекомендации по восстановлению контроля</li></ul>'
+      key_unlock:'t.profile.fragmented_focus.unlock'
     },
     FUTURE_SPECIALIST: {
-      name:'FUTURE SPECIALIST', subtitle:'Развитие. Интерес. Потенциал влияния.', color:'var(--accent-cyan)',
-      sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', title:'Роль', content:'<p>Вы уже выходите за рамки работы только с собой.\nУ вас есть интерес к пониманию людей и процессов глубже.</p>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', title:'Сильные стороны', content:'<ul><li>осознанность</li><li>интерес к развитию</li><li>способность видеть системы</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', title:'Ограничение', content:'<p>Пока нет:</p><ul><li>целостной системы</li><li>точных инструментов</li><li>структурированного подхода</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', title:'Потенциал', content:'<p>Вы можете перейти в уровень:</p><ul><li>понимания процессов человека</li><li>работы с другими</li><li>системного мышления</li></ul>' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', title:'Вектор', content:'<p>Ваш следующий шаг —\nперейти от интереса к системному пониманию.</p>' }
+      key_name:'t.profile.future_specialist.name', key_subtitle:'t.profile.future_specialist.subtitle', color:'var(--accent-cyan)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.future_specialist.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.future_specialist.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.future_specialist.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.future_specialist.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.future_specialist.v1' }
       ],
-      unlock:'<p>После регистрации вы получите:</p><ul><li>разбор вашего потенциала</li><li>карту развития в специалиста</li><li>направления углубления</li></ul>'
+      key_unlock:'t.profile.future_specialist.unlock'
     }
   };
 
@@ -712,7 +660,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
   function updateProgress() {
     var pct = Math.round(currentQ / QUESTIONS.length * 100);
-    var label = (currentQ === 0) ? 'Предварительный вопрос' : 'Вопрос ' + currentQ + ' / 10';
+    var label = (currentQ === 0) ? t('t.header.preliminary') : t('t.header.question') + ' ' + currentQ + ' / 10';
     document.getElementById('chat-step-label').textContent = label;
     document.getElementById('chat-progress-fill').style.width = pct + '%';
   }
@@ -757,13 +705,14 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var iconBg = Q_COLORS[qIdx] || 'rgba(0,210,190,0.15)';
     var iconSvg = Q_ICONS[qIdx] || Q_ICONS[0];
 
-    var qLabel = (qIdx === 0) ? 'Предварительный вопрос' : 'Вопрос ' + qIdx;
+    var qLabel = (qIdx === 0) ? t('t.header.preliminary') : t('t.header.question') + ' ' + qIdx;
+    var qText = t(q.key_text);
 
     var html = '<div class="q-icon-wrap">' +
       '<div class="q-icon" style="background:' + iconBg + '">' + iconSvg + '</div>' +
       '<span class="q-number-label">' + qLabel + '</span>' +
       '</div>' +
-      '<div>' + esc(q.text) + '</div>';
+      '<div>' + esc(qText) + '</div>';
 
     var row = document.createElement('div');
     row.className = 'chat-msg bot-msg';
@@ -775,11 +724,13 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     container.appendChild(row);
 
     var optsWrap = row.querySelector('#opts-' + q.id);
-    q.options.forEach(function(opt) {
+    Object.keys(q.key_opts).forEach(function(letter) {
+      var optKey = q.key_opts[letter];
+      var optText = t(optKey);
       var btn = document.createElement('button');
       btn.className = 'chat-opt-btn';
-      btn.innerHTML = '<span class="chat-opt-letter">' + opt.letter + '</span><span>' + esc(opt.text) + '</span>';
-      btn.addEventListener('click', function() { handleAnswer(q.id, opt.letter, opt.text); });
+      btn.innerHTML = '<span class="chat-opt-letter">' + letter + '</span><span>' + esc(optText) + '</span>';
+      btn.addEventListener('click', function() { handleAnswer(q.id, letter, optText); });
       optsWrap.appendChild(btn);
     });
 
@@ -792,21 +743,21 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   // ── Rehabilitation multi-select step (inserted after Q0 if rehab flow) ──
   function renderRehabClarification() {
     var conditionsList = [
-      { key:'neurodegenerative', label:'Нейродегенеративные заболевания (Альцгеймер, Паркинсон, деменции)' },
-      { key:'stroke', label:'Восстановление после инсульта' },
-      { key:'tbi', label:'Черепно-мозговые травмы' },
-      { key:'neuropathy', label:'Нейропатии / нарушения чувствительности' },
-      { key:'asd', label:'Расстройства аутистического спектра' },
-      { key:'other', label:'Другое' }
+      { key:'neurodegenerative', key_label:'t.rehab.neurodegen' },
+      { key:'stroke', key_label:'t.rehab.stroke' },
+      { key:'tbi', key_label:'t.rehab.tbi' },
+      { key:'neuropathy', key_label:'t.rehab.neuropathy' },
+      { key:'asd', key_label:'t.rehab.asd' },
+      { key:'other', key_label:'t.rehab.other' }
     ];
     var html = '<div class="q-icon-wrap">' +
       '<div class="q-icon" style="background:rgba(167,139,250,0.15);">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
       '</div>' +
-      '<span class="q-number-label">Уточнение</span>' +
+      '<span class="q-number-label">' + t('t.rehab.title') + '</span>' +
       '</div>' +
-      '<div style="margin-bottom:0.75rem;">Уточните, что наиболее близко к вашему состоянию:</div>' +
-      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:0.5rem;">Можно выбрать несколько</div>';
+      '<div style="margin-bottom:0.75rem;">' + t('t.rehab.instruction') + '</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:0.5rem;">' + t('t.rehab.multi') + '</div>';
 
     var row = document.createElement('div');
     row.className = 'chat-msg bot-msg';
@@ -823,7 +774,8 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     conditionsList.forEach(function(c) {
       var btn = document.createElement('button');
       btn.className = 'chat-opt-btn';
-      btn.innerHTML = '<span class="chat-opt-letter" style="font-size:10px;">☐</span><span>' + esc(c.label) + '</span>';
+      var cLabel = t(c.key_label);
+      btn.innerHTML = '<span class="chat-opt-letter" style="font-size:10px;">☐</span><span>' + esc(cLabel) + '</span>';
       btn.addEventListener('click', function() {
         if (selected[c.key]) {
           delete selected[c.key];
@@ -840,7 +792,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
           if (!ta) {
             ta = document.createElement('textarea');
             ta.id = 'rehab-other-ta';
-            ta.placeholder = 'Опишите ваше состояние';
+            ta.placeholder = t('t.rehab.other.placeholder');
             ta.style.cssText = 'width:100%;min-height:60px;margin-top:0.5rem;padding:0.6rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-family:inherit;font-size:13px;resize:vertical;';
             optsWrap.appendChild(ta);
           }
@@ -855,7 +807,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
           contBtn.id = 'rehab-continue-btn';
           contBtn.className = 'chat-opt-btn';
           contBtn.style.cssText = 'margin-top:0.75rem;background:rgba(0,210,190,0.12);border-color:rgba(0,210,190,0.3);';
-          contBtn.innerHTML = '<span style="color:var(--accent-cyan);font-weight:500;">Продолжить →</span>';
+          contBtn.innerHTML = '<span style="color:var(--accent-cyan);font-weight:500;">' + t('t.rehab.continue') + '</span>';
           contBtn.addEventListener('click', function() {
             rehabConditions = Object.keys(selected);
             var ta2 = document.getElementById('rehab-other-ta');
@@ -865,13 +817,13 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
             if (ta2) ta2.disabled = true;
             var summary = rehabConditions.map(function(k) {
               var found = conditionsList.filter(function(c2){ return c2.key===k; })[0];
-              return found ? found.label : k;
+              return found ? t(found.key_label) : k;
             }).join(', ');
             addUserMessage(summary);
             showTyping();
             setTimeout(function() {
               removeTyping();
-              addBotMessage('Спасибо. Теперь пройдите основные 10 вопросов — они одинаковы для всех.');
+              addBotMessage(t('t.rehab.thanks'));
               showTyping();
               setTimeout(function() {
                 removeTyping();
@@ -979,8 +931,8 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var token = localStorage.getItem('na_token');
     if (token) saveResultToAPI(token, testResult);
 
-    addBotMessage('Отлично! Тест завершён. Ваш профиль адаптации определён. Смотрите результат ниже.');
-    document.getElementById('chat-step-label').textContent = 'Завершено';
+    addBotMessage(t('t.result.message'));
+    document.getElementById('chat-step-label').textContent = t('t.header.completed');
     document.getElementById('chat-progress-fill').style.width = '100%';
 
     setTimeout(function() {
@@ -1010,41 +962,45 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   function renderResult(result, profile) {
     var wrap = document.getElementById('test-result');
     var html = '';
+    var profileName = t(profile.key_name);
+    var profileSubtitle = t(profile.key_subtitle);
     html += '<div class="result-header">';
-    html += '<div class="result-profile-badge" style="border-color:' + profile.color + ';color:' + profile.color + ';">Ваш тип адаптации</div>';
-    html += '<h2 class="result-title" style="letter-spacing:0.05em;">' + profile.name + '</h2>';
-    html += '<p class="result-subtitle">' + profile.subtitle + '</p>';
+    html += '<div class="result-profile-badge" style="border-color:' + profile.color + ';color:' + profile.color + ';">' + t('t.result.badge') + '</div>';
+    html += '<h2 class="result-title" style="letter-spacing:0.05em;">' + profileName + '</h2>';
+    html += '<p class="result-subtitle">' + profileSubtitle + '</p>';
     html += '</div>';
     html += '<div class="result-section">';
-    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span> Разбор по категориям</div>';
+    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span> ' + t('t.result.scores.title') + '</div>';
     html += '<div class="scores-grid">';
-    html += '<div class="score-item"><div class="score-item-label">Внимание</div><div class="score-item-value">' + result.scores.attention + '</div><div class="score-item-max">из 8</div></div>';
-    html += '<div class="score-item"><div class="score-item-label">Состояние</div><div class="score-item-value">' + result.scores.state + '</div><div class="score-item-max">из 12</div></div>';
-    html += '<div class="score-item"><div class="score-item-label">Дисциплина</div><div class="score-item-value">' + result.scores.discipline + '</div><div class="score-item-max">из 8</div></div>';
-    html += '<div class="score-item"><div class="score-item-label">Среда</div><div class="score-item-value">' + result.scores.environment + '</div><div class="score-item-max">из 8</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.attention') + '</div><div class="score-item-value">' + result.scores.attention + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 8</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.state') + '</div><div class="score-item-value">' + result.scores.state + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 12</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.discipline') + '</div><div class="score-item-value">' + result.scores.discipline + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 8</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.environment') + '</div><div class="score-item-value">' + result.scores.environment + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 8</div></div>';
     html += '</div>';
-    html += '<p style="text-align:center;margin-top:0.5rem;">Общий балл: <strong style="color:var(--accent-cyan);">' + result.total + '</strong> из 36</p>';
+    html += '<p style="text-align:center;margin-top:0.5rem;">' + t('t.result.scores.total') + ' <strong style="color:var(--accent-cyan);">' + result.total + '</strong> ' + t('t.result.scores.max') + ' 36</p>';
     html += '</div>';
-    profile.sections.forEach(function(s) {
+    profile.key_sections.forEach(function(s) {
+      var sectionTitle = t(s.key_title);
+      var sectionContent = t(s.key_content);
       html += '<div class="result-section">';
-      html += '<div class="result-section-title"><span class="result-section-icon">' + s.icon + '</span> ' + s.title + '</div>';
-      html += s.content;
+      html += '<div class="result-section-title"><span class="result-section-icon">' + s.icon + '</span> ' + sectionTitle + '</div>';
+      html += sectionContent;
       html += '</div>';
     });
     // ── Rehabilitation context block (if rehab flow) ──
     if (rehabFlag && rehabConditions.length > 0) {
       /* <!-- DRAFT: pending medical review --> */
-      var condLabels = {
-        neurodegenerative: 'нейродегенеративные заболевания',
-        stroke: 'восстановление после инсульта',
-        tbi: 'черепно-мозговые травмы',
-        neuropathy: 'нейропатии / нарушения чувствительности',
-        asd: 'расстройства аутистического спектра',
-        other: 'другое'
+      var conditionKeys = {
+        neurodegenerative: 't.rehab.neurodegen',
+        stroke: 't.rehab.stroke',
+        tbi: 't.rehab.tbi',
+        neuropathy: 't.rehab.neuropathy',
+        asd: 't.rehab.asd',
+        other: 't.rehab.other'
       };
-      var condText = rehabConditions.map(function(k){ return condLabels[k] || k; }).join(', ');
+      var condText = rehabConditions.map(function(k){ return t(conditionKeys[k] || k); }).join(', ');
       html += '<div class="result-section" style="border-left:2px solid var(--accent-violet);padding-left:1rem;">';
-      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> Дополнительный контекст</div>';
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> ' + t('t.result.context') + '</div>';
       html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;">' + esc(condText) + '</p>';
       html += '</div>';
     }
@@ -1052,16 +1008,17 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     html += '<div class="result-unlock">';
     if (rehabFlag) {
       /* <!-- DRAFT: pending medical review --> */
-      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span> Рекомендация</div>';
-      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:1rem;">Рекомендуется персональная программа восстановления с сопровождением специалиста.</p>';
-      html += '<a href="rehabilitation-application.html" class="result-cta" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(0,210,190,0.1));border-color:rgba(167,139,250,0.3);">Rehabilitation Program <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span></div>';
+      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:1rem;">' + t('t.result.rehab.text') + '</p>';
+      html += '<a href="rehabilitation-application.html" class="result-cta" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(0,210,190,0.1));border-color:rgba(167,139,250,0.3);">' + t('t.result.rehab.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
     } else {
-      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> Разблокировать полный профиль</div>';
-      html += (profile.unlock || '');
-      html += '<a href="account.html?from_test=1" class="result-cta">Открыть полный профиль <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+      var unlockContent = t(profile.key_unlock);
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> ' + t('t.result.unlock.title') + '</div>';
+      html += unlockContent;
+      html += '<a href="account.html?from_test=1" class="result-cta">' + t('t.result.unlock.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
     }
     html += '</div>';
-    html += '<div style="text-align:center;"><span class="result-retake" onclick="location.reload()">Пройти тест заново</span></div>';
+    html += '<div style="text-align:center;"><span class="result-retake" onclick="location.reload()">' + t('t.result.retake.link') + '</span></div>';
     wrap.innerHTML = html;
     wrap.classList.add('visible');
     setTimeout(function() {
@@ -1075,23 +1032,23 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     try {
       var parsed = JSON.parse(existing);
       if (parsed.profile && PROFILES[parsed.profile]) {
-        addBotMessage('Вы уже проходили тест ранее. Хотите <a href="#" onclick="window._showExisting();return false;" style="color:var(--accent-cyan);text-decoration:underline;">посмотреть результат</a> или пройти заново?');
+        addBotMessage(t('t.result.existing'));
         var choiceRow = document.createElement('div');
         choiceRow.className = 'chat-msg bot-msg';
         choiceRow.innerHTML = avatarHTML() +
           '<div class="chat-msg-stack"><div class="chat-msg-options" id="opts-restart">' +
-          '<button class="chat-opt-btn" id="btn-view-result"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Посмотреть результат</span></button>' +
-          '<button class="chat-opt-btn" id="btn-retake"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Пройти заново</span></button>' +
+          '<button class="chat-opt-btn" id="btn-view-result"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' + t('t.result.view') + '</span></button>' +
+          '<button class="chat-opt-btn" id="btn-retake"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' + t('t.result.retake') + '</span></button>' +
           '</div></div>';
         container.appendChild(choiceRow);
         document.getElementById('btn-view-result').addEventListener('click', function() { window._showExisting(); });
         document.getElementById('btn-retake').addEventListener('click', function() {
           document.getElementById('opts-restart').querySelectorAll('.chat-opt-btn').forEach(function(b) { b.disabled = true; b.classList.add('disabled'); });
-          addUserMessage('Пройти заново');
+          addUserMessage(t('t.result.retake'));
           showTyping();
           setTimeout(function() {
             removeTyping();
-            addBotMessage('Отлично! Давайте начнём. Предварительный вопрос и 10 основных — это займёт несколько минут.');
+            addBotMessage(t('t.result.retake.message'));
             showTyping();
             setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
           }, 500);
@@ -1112,11 +1069,11 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
   // ── Auto-start ──
   (function autoStart() {
-    addBotMessage('Добро пожаловать в тест адаптации NeuroAttention. Я помогу определить ваш профиль адаптации к изменениям.');
+    addBotMessage(t('t.intro.welcome'));
     showTyping();
     setTimeout(function() {
       removeTyping();
-      addBotMessage('Сначала один предварительный вопрос, а затем 10 вопросов о вашем внимании, состоянии и привычках. Выбирайте вариант, который ближе всего к вашему опыту.');
+      addBotMessage(t('t.intro.instruction'));
       showTyping();
       setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 700);
     }, 900);
