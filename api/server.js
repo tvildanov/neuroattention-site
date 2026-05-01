@@ -25,17 +25,72 @@ if (STRIPE_SECRET_KEY) {
   try { stripe = require('stripe')(STRIPE_SECRET_KEY); } catch(e) { console.warn('stripe package not installed:', e.message); }
 }
 
-// ─── Email confirmation stub ───
-// TODO: SMTP integration — credentials pending
-// Takhir will specify provider (Resend / Nodemailer / other)
-// Do NOT connect any email library until credentials are provided.
-function sendConfirmationEmail(email, product, sessionId) {
-  // TODO: SMTP integration — credentials pending
-  console.log('TODO: send confirmation email to ' + email + ' for product=' + product + ' session=' + sessionId);
-  // When SMTP is configured, this function will:
-  // 1. Build HTML email with order details
-  // 2. Send via configured provider
-  // 3. Log success/failure to console
+// ─── Email confirmation via Resend ───
+async function sendConfirmationEmail(email, product, sessionId) {
+  if (!email) return;
+
+  const productNames = {
+    lab: 'NeuroAttention Lab Program',
+    rehab: 'Rehabilitation Program'
+  };
+  const productName = productNames[product] || product;
+
+  if (!RESEND_API_KEY) {
+    console.log('══ DEV MODE: Order confirmation email ══');
+    console.log(`To: ${email}`);
+    console.log(`Product: ${productName}`);
+    console.log(`Session: ${sessionId}`);
+    console.log('══════════════════════════════════════════');
+    return { dev: true };
+  }
+
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: [email],
+        subject: `Подтверждение оплаты — ${productName}`,
+        html: `
+          <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+            <div style="background:#0a0a0a;padding:24px;text-align:center;">
+              <h1 style="color:#00e5ff;font-size:22px;margin:0;">NeuroAttention</h1>
+            </div>
+            <div style="padding:32px 24px;">
+              <h2 style="font-size:20px;margin-bottom:8px;color:#333;">Спасибо за покупку!</h2>
+              <p style="color:#555;font-size:15px;line-height:1.6;">
+                Ваш заказ на <strong>${productName}</strong> успешно оплачен.
+              </p>
+              <div style="background:#f0fffe;border:1px solid #00e5ff33;border-radius:12px;padding:16px;margin:20px 0;">
+                <p style="margin:0;font-size:14px;color:#333;"><strong>Программа:</strong> ${productName}</p>
+                <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>ID сессии:</strong> ${sessionId}</p>
+              </div>
+              <p style="color:#555;font-size:14px;line-height:1.6;">
+                Доступ к программе появится в вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a>
+                в течение нескольких минут.
+              </p>
+              <p style="color:#999;font-size:13px;margin-top:24px;">
+                Если у вас есть вопросы — ответьте на это письмо.
+              </p>
+            </div>
+            <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">
+              NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a>
+            </div>
+          </div>
+        `
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      console.error('Resend confirmation email error:', data);
+    } else {
+      console.log(`Confirmation email sent to ${email} for ${product} (id: ${data.id})`);
+    }
+    return data;
+  } catch (err) {
+    console.error('sendConfirmationEmail error:', err.message);
+  }
 }
 
 // DB connection
@@ -79,21 +134,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 // Stripe webhook needs raw body — must be BEFORE express.json()
-// TODO: Stripe integration — keys pending
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  // TODO: enable when STRIPE_WEBHOOK_SECRET is set
-  // Real webhook processing is commented out until Stripe keys are configured.
-  // When enabled, this will:
-  // 1. Verify signature with stripe.webhooks.constructEvent()
-  // 2. On checkout.session.completed: update consent_log payment_status
-  // 3. Call sendConfirmationEmail() for paid orders
-
   if (!stripe || !STRIPE_WEBHOOK_SECRET) {
     console.log('Stripe webhook called but keys not configured — ignoring');
     return res.json({ received: true, stub: true });
   }
 
-  /*
   let event;
   try {
     const sig = req.headers['stripe-signature'];
@@ -107,30 +153,25 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     const session = event.data.object;
     try {
       const meta = session.metadata || {};
+      const customerEmail = session.customer_details?.email || meta.email;
       // Update existing consent_log row payment_status
       await sql`UPDATE consent_log SET
         stripe_session_id = ${session.id},
         stripe_customer_id = ${session.customer || null},
         payment_status = ${session.payment_status || 'paid'}
-        WHERE product = ${meta.product} AND email = ${session.customer_details?.email || meta.email}
+        WHERE product = ${meta.product} AND email = ${customerEmail}
         AND payment_status = 'pending'
-        ORDER BY created_at DESC LIMIT 1
       `;
       console.log('Stripe webhook: consent_log updated for session', session.id);
 
       // Send confirmation email
       if (session.payment_status === 'paid') {
-        sendConfirmationEmail(
-          session.customer_details?.email || meta.email,
-          meta.product,
-          session.id
-        );
+        sendConfirmationEmail(customerEmail, meta.product, session.id);
       }
     } catch (err) {
       console.error('Stripe webhook DB error:', err.message);
     }
   }
-  */
 
   res.json({ received: true });
 });
@@ -2153,8 +2194,7 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
       ${timestamp || new Date().toISOString()}
     )`;
 
-    // TODO: Stripe integration — keys pending
-    // When STRIPE_SECRET_KEY is set, create real Stripe Checkout session:
+    // Create real Stripe Checkout session when keys are configured
     if (stripe) {
       const sessionParams = {
         payment_method_types: ['card'],
@@ -2188,8 +2228,8 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
       return res.json({ url: session.url, sessionId: session.id });
     }
 
-    // STUB: Stripe keys not configured — redirect to coming-soon page
-    console.log('STUB: Stripe not configured, consent logged for product:', product, 'email:', userEmail);
+    // Stripe keys not configured — consent logged, redirect to info page
+    console.log('Stripe not configured, consent logged for product:', product, 'email:', userEmail);
     res.json({ stub: true, redirect_url: FRONTEND_URL + '/payment-coming-soon.html?product=' + product });
   } catch (err) {
     console.error('POST /api/checkout/create-session:', err);
