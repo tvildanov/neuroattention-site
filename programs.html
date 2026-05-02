@@ -478,8 +478,14 @@
     ];
   }
   var mainNodes=nmCanvasLabels();
+  var _nmLabelsLang='';
   // Re-label on language change
   document.addEventListener('langchange', function(){ mainNodes=nmCanvasLabels(); });
+  // Also poll inside draw loop: if t() just became available, refresh labels once
+  function _nmRefreshLabels(){
+    var cl=(typeof t==='function'&&document.documentElement.lang)||'';
+    if(cl&&cl!==_nmLabelsLang){ _nmLabelsLang=cl; mainNodes=nmCanvasLabels(); }
+  }
   // Sub-nodes (2 per main node, no labels)
   var subNodes=[];
   for(var i=1;i<mainNodes.length;i++){
@@ -518,6 +524,7 @@
   function ease(x){ return x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2; }
 
   function draw(now){
+    _nmRefreshLabels();
     if(!lastTime) lastTime=now;
     var dt=(now-lastTime)/1000;
     lastTime=now;
