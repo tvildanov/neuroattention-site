@@ -1486,23 +1486,23 @@
   <div class="tab-panel" id="tab-admin-practices">
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <h3 style="margin:0 0 0.5rem;">Управление аудиопрактиками</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.5rem;">Загрузка MP3-файлов в репозиторий GitHub. Одна практика = один язык.</p>
+        <h3 style="margin:0 0 0.5rem;" data-i18n="a.admin.practices.title">Управление аудиопрактиками</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.admin.practices.subtitle">Загрузка MP3-файлов в репозиторий GitHub. Одна практика = один язык.</p>
 
         <!-- Upload form -->
         <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.25rem;margin-bottom:1.5rem;">
-          <h4 style="font-size:14px;color:var(--text-primary);margin:0 0 1rem;">Добавить практику</h4>
+          <h4 style="font-size:14px;color:var(--text-primary);margin:0 0 1rem;" data-i18n="a.admin.practices.add">Добавить практику</h4>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
             <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Slug (латиница)</label>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.slug">Slug (латиница)</label>
               <input id="pract-slug" type="text" placeholder="focus-switching" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Блок (block_id)</label>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.block">Блок (block_id)</label>
               <input id="pract-block" type="text" placeholder="block-3" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Язык</label>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.lang">Язык</label>
               <select id="pract-lang" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
                 <option value="ru">Русский (ru)</option>
                 <option value="en">English (en)</option>
@@ -1512,40 +1512,40 @@
           </div>
           <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
             <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Название</label>
-              <input id="pract-name" type="text" placeholder="Переключение фокуса" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.name">Название</label>
+              <input id="pract-name" type="text" data-i18n-placeholder="a.admin.practices.name_ph" placeholder="Переключение фокуса" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Длительность (сек)</label>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.duration">Длительность (сек)</label>
               <input id="pract-duration" type="number" placeholder="930" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
             </div>
             <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Порядок (order_idx)</label>
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.order">Порядок (order_idx)</label>
               <input id="pract-order" type="number" placeholder="0" value="0" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">
             </div>
           </div>
           <div style="margin-bottom:0.75rem;">
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Описание</label>
-            <textarea id="pract-desc" rows="2" placeholder="Краткое описание практики..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;resize:vertical;"></textarea>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.25rem;" data-i18n="a.admin.practices.desc">Описание</label>
+            <textarea id="pract-desc" rows="2" data-i18n-placeholder="a.admin.practices.desc_ph" placeholder="Краткое описание практики..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;resize:vertical;"></textarea>
           </div>
 
           <!-- Drag & drop audio zone -->
           <div id="pract-drop-zone" style="border:2px dashed rgba(255,255,255,0.1);border-radius:12px;padding:2rem;text-align:center;cursor:pointer;transition:border-color 0.3s,background 0.3s;margin-bottom:1rem;" ondragover="event.preventDefault();this.style.borderColor='rgba(0,224,255,0.4)';this.style.background='rgba(0,224,255,0.03)'" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background=''" ondrop="handlePractAudioDrop(event)">
             <svg style="width:32px;height:32px;fill:none;stroke:rgba(255,255,255,0.2);stroke-width:1.5;margin-bottom:0.5rem;" viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4l4 4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
-            <p style="font-size:13px;color:var(--text-muted);margin:0;" id="pract-drop-text">Перетащите MP3 файл сюда или нажмите для выбора</p>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;" id="pract-drop-text" data-i18n="a.admin.practices.drop">Перетащите MP3 файл сюда или нажмите для выбора</p>
             <input type="file" id="pract-file-input" accept=".mp3,audio/mpeg" style="display:none;" onchange="handlePractFileSelect(this)">
           </div>
 
           <div style="display:flex;align-items:center;gap:1rem;">
-            <button class="btn btn-solid" id="pract-upload-btn" onclick="uploadPractice()" disabled style="font-size:13px;padding:0.5rem 1.5rem;">Загрузить практику</button>
+            <button class="btn btn-solid" id="pract-upload-btn" onclick="uploadPractice()" disabled style="font-size:13px;padding:0.5rem 1.5rem;" data-i18n="a.admin.practices.upload">Загрузить практику</button>
             <span id="pract-upload-status" style="font-size:12px;color:var(--text-muted);"></span>
           </div>
         </div>
 
         <!-- Practices list -->
-        <h4 style="font-size:14px;color:var(--text-primary);margin:0 0 0.75rem;">Загруженные практики</h4>
+        <h4 style="font-size:14px;color:var(--text-primary);margin:0 0 0.75rem;" data-i18n="a.admin.practices.list_title">Загруженные практики</h4>
         <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
-          <button class="nm-filter-btn active" onclick="filterAdminPractices('all',this)">Все</button>
+          <button class="nm-filter-btn active" onclick="filterAdminPractices('all',this)" data-i18n="a.admin.practices.filter_all">Все</button>
           <button class="nm-filter-btn" onclick="filterAdminPractices('ru',this)">RU</button>
           <button class="nm-filter-btn" onclick="filterAdminPractices('en',this)">EN</button>
           <button class="nm-filter-btn" onclick="filterAdminPractices('es',this)">ES</button>
@@ -1555,19 +1555,19 @@
             <thead>
               <tr>
                 <th>Slug</th>
-                <th>Блок</th>
-                <th>Язык</th>
-                <th>Название</th>
-                <th>Длит.</th>
-                <th>Порядок</th>
-                <th>Дата</th>
+                <th data-i18n="a.admin.practices.th_block">Блок</th>
+                <th data-i18n="a.admin.practices.th_lang">Язык</th>
+                <th data-i18n="a.admin.practices.th_name">Название</th>
+                <th data-i18n="a.admin.practices.th_dur">Длит.</th>
+                <th data-i18n="a.admin.practices.th_order">Порядок</th>
+                <th data-i18n="a.admin.practices.th_date">Дата</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="admin-practices-tbody"></tbody>
           </table>
         </div>
-        <p id="admin-practices-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Практик пока нет.</p>
+        <p id="admin-practices-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.admin.practices.empty">Практик пока нет.</p>
       </div>
     </div>
   </div>
