@@ -520,7 +520,7 @@
 <script src="assets/redesign.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script>
-document.getElementById('year').textContent = new Date().getFullYear();
+var yearEl=document.getElementById('year'); if(yearEl) yearEl.textContent=new Date().getFullYear();
 
 // Flashlight cursor effect (method page only, desktop only)
 (function(){
