@@ -462,7 +462,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role }
+      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: null }
     });
   } catch (err) {
     console.error('POST /api/auth/register:', err);
@@ -481,7 +481,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     email = email.toLowerCase().trim();
     const rows = await sql`
-      SELECT id, email, password_hash, display_name, phone, role
+      SELECT id, email, password_hash, display_name, phone, role, avatar_url
       FROM users WHERE LOWER(email) = ${email}
     `;
     if (!rows.length) return res.status(401).json({ error: 'Invalid email or password' });
@@ -496,7 +496,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role }
+      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: user.avatar_url || null }
     });
   } catch (err) {
     console.error('POST /api/auth/login:', err);

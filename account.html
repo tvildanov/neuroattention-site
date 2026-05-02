@@ -555,7 +555,7 @@
               </div>
               <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
             </div>
-            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.deepen">Углубить профиль</button>
+            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.change_photo">Сменить фото</button>
           </div>
           <div style="flex:1;min-width:200px;">
             <p id="rpg-profile-name" style="margin:0;font-size:1.4rem;font-family:'Unbounded',sans-serif;font-weight:600;color:var(--text-primary);letter-spacing:0.04em;line-height:1.3;"></p>
@@ -1102,7 +1102,7 @@
         <div id="ab-exercise" style="display:none;">
           <!-- Progress bar -->
           <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">
-            <span id="ab-step-label" style="font-size:12px;color:var(--text-muted);letter-spacing:0.12em;text-transform:uppercase;">Шаг 1 из 5</span>
+            <span id="ab-step-label" style="font-size:12px;color:var(--text-muted);letter-spacing:0.12em;text-transform:uppercase;" data-i18n="a.pointab.step_1">Шаг 1 из 5</span>
             <div style="flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,0.06);overflow:hidden;">
               <div id="ab-progress-bar" style="height:100%;width:20%;border-radius:4px;background:linear-gradient(90deg,var(--accent-cyan),rgba(120,80,255,0.8));transition:width 0.4s;"></div>
             </div>
@@ -1605,6 +1605,7 @@ function naAdaptUser(apiUser){
     phone: apiUser.phone || '',
     role: dashRole,
     serverRole: serverRole,
+    avatar_url: apiUser.avatar_url || null,
     program: null,        // will come from subscription system later
     specialistId: null,
     allowSpecialist: false,
@@ -1877,7 +1878,104 @@ var RPG_I18N = {
     mind_control_name: 'MIND CONTROL',
     world_name: 'WORLD',
     // Locked button
-    expand_locked_title: 'Available after choosing a program'
+    expand_locked_title: 'Available after choosing a program',
+    // WMC modal close button
+    close_btn: 'Close',
+    // Point A→B Exercise
+    ab_step_label: 'Step',
+    ab_of: 'of',
+    ab_title_pointA: 'Point A — Who am I now?',
+    ab_desc_pointA: 'Describe yourself in your current reality. You don\'t need to dig deep — it\'s important to capture the image, skills, achievements, and state that you already have in your life right now.',
+    ab_label_image: 'Image in society',
+    ab_desc_image: 'How do you look and present yourself in society right now? What image do others already perceive? For example: calm, bright, closed, confident, inconspicuous, eccentric, professional, creative.',
+    ab_placeholder_image: 'Describe your current image',
+    ab_label_skills: 'Existing skills',
+    ab_desc_skills: 'What skills do you already have? Languages, profession, sports, creativity, communication, learning, management, technical skills.',
+    ab_placeholder_skills: 'Describe your current skills',
+    ab_label_achievements: 'Measurable achievements',
+    ab_desc_achievements: 'What have you already done or achieved? Education, work, income, family, projects, clients, sports results, relocations, purchases, created products.',
+    ab_placeholder_achievements: 'Describe your achievements',
+    ab_label_health: 'Body, health, and mental state',
+    ab_desc_health: 'How do you assess your current body state, energy, health, nervous system, and mental condition?',
+    ab_placeholder_health: 'Describe your current state',
+    ab_changes_heading: 'What in this Point A do you want to change?',
+    ab_label_changeimage: 'What do you want to change in your image?',
+    ab_placeholder_changeimage: 'Describe desired changes in image',
+    ab_label_changeskills: 'Which skills do you want to strengthen or add?',
+    ab_placeholder_changeskills: 'Describe skills for development',
+    ab_label_changeachievements: 'What achievements are you lacking?',
+    ab_placeholder_changeachievements: 'Describe missing achievements',
+    ab_label_changehealth: 'What do you want to change in your body, health, or mental state?',
+    ab_placeholder_changehealth: 'Describe desired changes',
+    ab_title_pointB: 'Point B — Where am I going?',
+    ab_desc_pointB: 'Describe your desired direction. Here it\'s important not to limit yourself by current circumstances. Describe the image, skills, achievements, and state you want to reach.',
+    ab_label_desiredimage: 'Desired image in society',
+    ab_desc_desiredimage: 'What kind of person do you want to be perceived as? What image do you want to project in the world?',
+    ab_placeholder_desiredimage: 'Describe your desired image',
+    ab_label_desiredskills: 'Desired skills',
+    ab_desc_desiredskills: 'What skills do you want to master? What do you want to do better?',
+    ab_placeholder_desiredskills: 'Describe your desired skills',
+    ab_label_desiredachievements: 'Desired achievements',
+    ab_desc_desiredachievements: 'What measurable results do you want to achieve? In money, profession, family, body, projects, status, freedom, education, or fulfillment.',
+    ab_placeholder_desiredachievements: 'Describe your desired achievements',
+    ab_label_desiredhealth: 'Desired body, health, and mental state',
+    ab_desc_desiredhealth: 'How do you want to feel in your body, energy, health, nervous system, and mental state?',
+    ab_placeholder_desiredhealth: 'Describe your desired state',
+    ab_title_reasons: 'What prevents the transition from Point A to Point B?',
+    ab_desc_reasons: 'Look at your Point B and list everything that, in your feeling, prevents you from being in this Point right now. Write everything that comes up first: fears, habits, beliefs, lack of skills, internal conflicts, body state, environment, actions or inaction.',
+    ab_placeholder_custom_reason: 'Reason for mismatch',
+    ab_btn_add_reason: 'Add',
+    ab_title_corrections: 'Create a correction program',
+    ab_desc_corrections: 'Now, for each reason, create a reverse formulation in the present tense. Don\'t write "I want" or "I will". Formulate it as if this quality is already becoming your current reality.',
+    ab_label_examples: 'Examples:',
+    ab_example_1: '"I don\'t follow through" → "I complete my actions and bring important processes to results."',
+    ab_example_2: '"I struggle to hold attention" → "I gradually strengthen my attention and return it to my chosen direction."',
+    ab_example_3: '"I\'m afraid to make mistakes" → "I allow myself to act, learn, and correct my path through experience."',
+    ab_no_reasons: 'You haven\'t added any reasons in the previous step. Go back to add them.',
+    ab_placeholder_correction: 'Write the inversion of this reason in the present tense',
+    ab_title_audio: 'Record your program with your voice',
+    ab_desc_audio: 'Read aloud all the new formulations from the previous step and record them in audio. Your voice helps consolidate the program as your personal inner direction.',
+    ab_label_formulations: 'Your formulations for reading:',
+    ab_rec_status_start: 'Click to start recording',
+    ab_rec_status_recording: 'Recording...',
+    ab_rec_status_complete: 'Recording complete',
+    ab_rec_status_permission: 'No access to microphone. Please allow access in browser settings.',
+    ab_btn_rerecord: 'Re-record',
+    ab_title_result: 'Your potential realization map has been created',
+    ab_label_pointA_result: 'Point A',
+    ab_label_reasons_result: 'Reasons',
+    ab_label_corrections_result: 'Program',
+    ab_label_pointB_result: 'Point B',
+    ab_heading_mismatch_reasons: 'Reasons for mismatch',
+    ab_heading_correction_program: 'Correction program',
+    ab_heading_audio_activation: 'Audio activation',
+    // NeuroMap emotion flow
+    nm_step_x_of_y: 'Step',
+    nm_of_total: 'of',
+    nm_what_feeling: 'What are you feeling right now?',
+    nm_choose_one_emotion: 'Choose one emotion — you can add more later',
+    nm_which_area: 'In which area did',
+    nm_which_area_suffix: 'manifest?',
+    nm_up_to_3: 'You can select up to 3',
+    nm_describe_area: 'Describe the area...',
+    nm_what_caused: 'What exactly caused this state?',
+    nm_describe_cause: 'Describe the cause...',
+    nm_which_thought: 'What thought most often accompanied this state?',
+    nm_add_custom_thought: 'Add your own thought...',
+    nm_how_strong: 'How strong was this state?',
+    nm_add_context: 'Want to add context?',
+    nm_free_text: 'Free text field...',
+    nm_chain_recorded: 'Chain',
+    nm_chain_recorded_suffix: 'recorded',
+    nm_chain_added_to_map: 'Emotion and associated chain added to your map.',
+    nm_more_chains_better: 'The more chains, the more accurate the analysis',
+    nm_add_another_emotion: '+ Another emotion',
+    nm_chain_label: 'chain',
+    // Post-practice reflection
+    nm_practice_done: 'Practice complete! Record your reflection',
+    nm_practice_how_feel: 'How do you feel after the practice? Record an audio note or text.',
+    nm_record_audio: 'Record audio',
+    nm_describe_area_2: 'areas'
   },
   es: {
     STABLE_EXPLORER_sub: 'Estable. Adaptado. Con potencial de crecimiento.',
@@ -1957,7 +2055,104 @@ var RPG_I18N = {
     mind_control_name: 'CONTROL MENTAL',
     world_name: 'MUNDO',
     // Locked button
-    expand_locked_title: 'Disponible después de elegir un programa'
+    expand_locked_title: 'Disponible después de elegir un programa',
+    // WMC modal close button
+    close_btn: 'Cerrar',
+    // Point A→B Exercise
+    ab_step_label: 'Paso',
+    ab_of: 'de',
+    ab_title_pointA: 'Punto A — ¿Quién soy ahora?',
+    ab_desc_pointA: 'Describe cómo eres en tu realidad actual. No necesitas profundizar — es importante captar la imagen, habilidades, logros y estado que ya tienes en tu vida ahora.',
+    ab_label_image: 'Imagen en la sociedad',
+    ab_desc_image: '¿Cómo te ves y te manifiestas en la sociedad ahora? ¿Qué imagen perciben otros de ti? Por ejemplo: tranquilo, brillante, cerrado, seguro, desapercibido, estrafalario, profesional, creativo.',
+    ab_placeholder_image: 'Describe tu imagen actual',
+    ab_label_skills: 'Habilidades existentes',
+    ab_desc_skills: '¿Qué habilidades ya tienes? Idiomas, profesión, deporte, creatividad, comunicación, aprendizaje, gestión, habilidades técnicas.',
+    ab_placeholder_skills: 'Describe tus habilidades actuales',
+    ab_label_achievements: 'Logros medibles',
+    ab_desc_achievements: '¿Qué ya has logrado? Educación, trabajo, ingresos, familia, proyectos, clientes, resultados deportivos, mudanzas, compras, productos creados.',
+    ab_placeholder_achievements: 'Describe tus logros',
+    ab_label_health: 'Estado corporal, salud y mental',
+    ab_desc_health: '¿Cómo evalúas tu estado corporal actual, energía, salud, sistema nervioso y condición mental?',
+    ab_placeholder_health: 'Describe tu estado actual',
+    ab_changes_heading: '¿Qué en este Punto A quieres cambiar?',
+    ab_label_changeimage: '¿Qué quieres cambiar en tu imagen?',
+    ab_placeholder_changeimage: 'Describe cambios deseados en imagen',
+    ab_label_changeskills: '¿Qué habilidades quieres fortalecer o añadir?',
+    ab_placeholder_changeskills: 'Describe habilidades para desarrollar',
+    ab_label_changeachievements: '¿Qué logros te faltan?',
+    ab_placeholder_changeachievements: 'Describe logros faltantes',
+    ab_label_changehealth: '¿Qué quieres cambiar en tu cuerpo, salud o estado mental?',
+    ab_placeholder_changehealth: 'Describe cambios deseados',
+    ab_title_pointB: 'Punto B — ¿Hacia dónde voy?',
+    ab_desc_pointB: 'Describe tu dirección deseada. Aquí es importante no limitarte por las circunstancias actuales. Describe la imagen, habilidades, logros y estado que quieres alcanzar.',
+    ab_label_desiredimage: 'Imagen deseada en la sociedad',
+    ab_desc_desiredimage: '¿Cómo persona te quieres que seas percibido? ¿Qué imagen quieres proyectar al mundo?',
+    ab_placeholder_desiredimage: 'Describe tu imagen deseada',
+    ab_label_desiredskills: 'Habilidades deseadas',
+    ab_desc_desiredskills: '¿Qué habilidades quieres dominar? ¿Qué quieres hacer mejor?',
+    ab_placeholder_desiredskills: 'Describe tus habilidades deseadas',
+    ab_label_desiredachievements: 'Logros deseados',
+    ab_desc_desiredachievements: '¿Qué resultados medibles quieres conseguir? En dinero, profesión, familia, cuerpo, proyectos, estado, libertad, educación o realización.',
+    ab_placeholder_desiredachievements: 'Describe tus logros deseados',
+    ab_label_desiredhealth: 'Estado corporal, salud y mental deseado',
+    ab_desc_desiredhealth: '¿Cómo quieres sentirte en tu cuerpo, energía, salud, sistema nervioso y estado mental?',
+    ab_placeholder_desiredhealth: 'Describe tu estado deseado',
+    ab_title_reasons: '¿Qué impide la transición del Punto A al Punto B?',
+    ab_desc_reasons: 'Mira tu Punto B y enumera todo lo que, en tu sentir, te impide estar en este Punto ahora. Escribe todo lo que surge primero: miedos, hábitos, creencias, falta de habilidades, conflictos internos, estado corporal, entorno, acciones o inacción.',
+    ab_placeholder_custom_reason: 'Razón de discrepancia',
+    ab_btn_add_reason: 'Añadir',
+    ab_title_corrections: 'Crea un programa de corrección',
+    ab_desc_corrections: 'Ahora, para cada razón, crea una formulación inversa en tiempo presente. No escribas "quiero" o "seré". Formúlalo como si esta cualidad ya estuviera convirtiéndose en tu realidad actual.',
+    ab_label_examples: 'Ejemplos:',
+    ab_example_1: '"No termino lo que empiezo" → "Completo mis acciones y llevo los procesos importantes a resultados."',
+    ab_example_2: '"Me cuesta mantener la atención" → "Fortalezco gradualmente mi atención y la devuelvo a mi dirección elegida."',
+    ab_example_3: '"Tengo miedo de cometer errores" → "Me permito actuar, aprender y corregir mi camino a través de la experiencia."',
+    ab_no_reasons: 'No has añadido razones en el paso anterior. Vuelve atrás para añadirlas.',
+    ab_placeholder_correction: 'Escribe la inversión de esta razón en tiempo presente',
+    ab_title_audio: 'Registra tu programa con tu voz',
+    ab_desc_audio: 'Lee en voz alta todas las nuevas formulaciones del paso anterior y grábatelas en audio. Tu voz ayuda a consolidar el programa como tu dirección interior personal.',
+    ab_label_formulations: 'Tus formulaciones para leer:',
+    ab_rec_status_start: 'Haz clic para comenzar a grabar',
+    ab_rec_status_recording: 'Grabando...',
+    ab_rec_status_complete: 'Grabación completada',
+    ab_rec_status_permission: 'Sin acceso al micrófono. Permite el acceso en la configuración del navegador.',
+    ab_btn_rerecord: 'Grabar de nuevo',
+    ab_title_result: 'Tu mapa de realización del potencial ha sido creado',
+    ab_label_pointA_result: 'Punto A',
+    ab_label_reasons_result: 'Razones',
+    ab_label_corrections_result: 'Programa',
+    ab_label_pointB_result: 'Punto B',
+    ab_heading_mismatch_reasons: 'Razones de discrepancia',
+    ab_heading_correction_program: 'Programa de corrección',
+    ab_heading_audio_activation: 'Activación de audio',
+    // NeuroMap emotion flow
+    nm_step_x_of_y: 'Paso',
+    nm_of_total: 'de',
+    nm_what_feeling: '¿Qué estás sintiendo ahora?',
+    nm_choose_one_emotion: 'Elige una emoción — luego podrás agregar más',
+    nm_which_area: '¿En qué área se manifestó',
+    nm_which_area_suffix: '?',
+    nm_up_to_3: 'Puedes seleccionar hasta 3',
+    nm_describe_area: 'Describe el área...',
+    nm_what_caused: '¿Qué causó exactamente este estado?',
+    nm_describe_cause: 'Describe la causa...',
+    nm_which_thought: '¿Qué pensamiento acompañó más a menudo este estado?',
+    nm_add_custom_thought: 'Agregar tu propio pensamiento...',
+    nm_how_strong: '¿Qué tan fuerte fue este estado?',
+    nm_add_context: '¿Quieres agregar contexto?',
+    nm_free_text: 'Campo de texto libre...',
+    nm_chain_recorded: 'Cadena',
+    nm_chain_recorded_suffix: 'registrada',
+    nm_chain_added_to_map: 'Emoción y cadena asociada añadidas a tu mapa.',
+    nm_more_chains_better: 'Cuantas más cadenas, más preciso será el análisis',
+    nm_add_another_emotion: '+ Otra emoción',
+    nm_chain_label: 'cadena',
+    // Post-practice reflection
+    nm_practice_done: '¡Práctica completada! Registra tu reflexión',
+    nm_practice_how_feel: '¿Cómo te sientes después de la práctica? Graba una nota de audio o texto.',
+    nm_record_audio: 'Grabar audio',
+    nm_describe_area_2: 'áreas'
   }
 };
 
@@ -2119,7 +2314,7 @@ function rpgShowWmcLevel(level){
     '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.5rem;font-family:\'Space Grotesk\',sans-serif;">World Model Coherence</p>' +
     '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">'+title+'</h3>' +
     '<p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:0 0 1.5rem;">'+desc+'</p>' +
-    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">Закрыть</button>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">'+(rpgT('close_btn')||'Закрыть')+'</button>' +
     '</div>';
   document.body.appendChild(modal);
 }
@@ -2619,7 +2814,14 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
   // Validate token in background
   try {
     var resp=await fetch(AUTH_API+'/api/auth/me',{headers:{'Authorization':'Bearer '+token}});
-    if(!resp.ok){ naClearAuth(); showSection('auth'); return; }
+    if(!resp.ok){
+      console.warn('Auto-login: token rejected, status='+resp.status);
+      naClearAuth(); showSection('auth');
+      // Show session expired notice
+      var errEl=document.getElementById('auth-error');
+      if(errEl) errEl.textContent=t('a.auth.session_expired')||'Сессия истекла. Войдите снова.';
+      return;
+    }
     var data=await resp.json();
     naSetAuth(token, data.user); // refresh cached user
     // Re-render if user data changed
@@ -2627,8 +2829,8 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
       onLogin(naAdaptUser(data.user));
     }
   } catch(err){
-    console.warn('Auto-login failed:',err);
-    // If we had cached user, keep showing dashboard
+    console.warn('Auto-login network error:',err);
+    // If we had cached user, keep showing dashboard (offline-friendly)
     if(!cachedStr){ naClearAuth(); showSection('auth'); }
   }
 })();
@@ -2747,10 +2949,10 @@ function showPracticeReflection(card){
   var panel = document.createElement('div');
   panel.className = 'practice-reflection';
   panel.style.cssText = 'margin-top:1rem;padding:1rem;background:rgba(0,224,255,0.04);border:1px solid rgba(0,224,255,0.15);border-radius:12px;animation:fadeIn 0.4s ease;';
-  panel.innerHTML = '<p style="font-size:13px;color:var(--accent-cyan);margin:0 0 0.75rem;font-weight:600;">Практика завершена! Запишите рефлексию</p>'
-    + '<p style="font-size:12px;color:var(--text-secondary);margin:0 0 0.75rem;">Как вы себя чувствуете после практики? Запишите аудио-заметку или текст.</p>'
+  panel.innerHTML = '<p style="font-size:13px;color:var(--accent-cyan);margin:0 0 0.75rem;font-weight:600;">'+(rpgT('nm_practice_done')||'Практика завершена! Запишите рефлексию')+'</p>'
+    + '<p style="font-size:12px;color:var(--text-secondary);margin:0 0 0.75rem;">'+(rpgT('nm_practice_how_feel')||'Как вы себя чувствуете после практики? Запишите аудио-заметку или текст.')+'</p>'
     + '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">'
-    + '<button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.8rem;" onclick="startPracticeAudio(this)">🎙 Записать аудио</button>'
+    + '<button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.8rem;" onclick="startPracticeAudio(this)">🎙 '+(rpgT('nm_record_audio')||'Записать аудио')+'</button>'
     + '<span class="pr-audio-status" style="font-size:11px;color:var(--text-muted);"></span>'
     + '</div>'
     + '<div class="pr-audio-playback" style="display:none;margin-top:0.5rem;"></div>'
@@ -3701,7 +3903,7 @@ function renderNmBreadcrumb(){
   if(chain.thoughts&&chain.thoughts.length&&nmCurrentStep>=4) parts.push('<span style="color:rgba(200,160,255,1);">'+chain.thoughts.map(function(t){return (EMOJI_THOUGHTS[t]||'')+' '+t;}).join(', ')+'</span>');
   // Chain index indicator if multiple emotions
   var chainLabel='';
-  if(nmSurveyState.emotions.length>1) chainLabel='<span style="font-size:10px;color:var(--text-dim);margin-right:6px;">цепочка '+(idx+1)+'/'+nmSurveyState.emotions.length+'</span>';
+  if(nmSurveyState.emotions.length>1) chainLabel='<span style="font-size:10px;color:var(--text-dim);margin-right:6px;">'+(rpgT('nm_chain_label')||'цепочка')+' '+(idx+1)+'/'+nmSurveyState.emotions.length+'</span>';
   bc.innerHTML=chainLabel+'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:13px;font-weight:500;line-height:1.6;">'+parts.join('<span style="color:rgba(255,255,255,0.2);margin:0 2px;">→</span>')+'</div>';
 }
 
@@ -3715,9 +3917,9 @@ function renderNmStep(){
   next.textContent=nmCurrentStep===5?(rpgT('save_btn')||'Сохранить'):(rpgT('next_btn')||'Далее →');
 
   if(nmCurrentStep===0){
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 1 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">Что вы сейчас чувствуете?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">Выберите одну эмоцию — потом можно будет добавить ещё</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 1 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_what_feeling')||'Что вы сейчас чувствуете?')+'</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">'+(rpgT('nm_choose_one_emotion')||'Выберите одну эмоцию — потом можно будет добавить ещё')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
     var currentChainEmo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     NM_ALL_EMOTIONS.forEach(function(em){
@@ -3731,9 +3933,9 @@ function renderNmStep(){
   else if(nmCurrentStep===1){
     var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     if(!emo){ nmNext(); return; }
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 2 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">В какой сфере проявилась <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+emo+'</span>?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3 сфер</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 2 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_which_area')||'В какой сфере проявилась')+' <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+emo+'</span>'+(rpgT('nm_which_area_suffix')||'?')+'</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+' '+(rpgT('nm_describe_area_2')||'сфер')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
     var chain=nmSurveyState.emotionChains[nmSurveyState._chainIdx||0]||{};
     var selAreas=chain.areas||[];
@@ -3743,7 +3945,7 @@ function renderNmStep(){
     });
     h+='</div>';
     if(selAreas.indexOf('другое')!==-1){
-      h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-area" class="glass-input" placeholder="Опишите область..." style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customArea||'')+'" oninput="nmSetCustomArea(this.value)" /></div>';
+      h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-area" class="glass-input" placeholder="'+(rpgT('nm_describe_area')||'Опишите область...')+'" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customArea||'')+'" oninput="nmSetCustomArea(this.value)" /></div>';
     }
     content.innerHTML=h;
   }
@@ -3758,9 +3960,9 @@ function renderNmStep(){
     if(!Object.keys(causesSet).length){ getCausesForChain('_default',emoIsNeg).forEach(function(c){causesSet[c]=true;}); }
     var causes=Object.keys(causesSet);
     var selCauses=chain.causes||[];
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 3 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Что именно вызвало это состояние?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 3 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_what_caused')||'Что именно вызвало это состояние?')+'</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
     causes.forEach(function(c){
       var sel=selCauses.indexOf(c)!==-1;
@@ -3768,7 +3970,7 @@ function renderNmStep(){
     });
     h+='</div>';
     if(selCauses.indexOf('другое')!==-1){
-      h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-cause" class="glass-input" placeholder="Опишите причину..." style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customCause||'')+'" oninput="nmSetCustomCause(this.value)" /></div>';
+      h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-cause" class="glass-input" placeholder="'+(rpgT('nm_describe_cause')||'Опишите причину...')+'" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customCause||'')+'" oninput="nmSetCustomCause(this.value)" /></div>';
     }
     content.innerHTML=h;
   }
@@ -3778,9 +3980,9 @@ function renderNmStep(){
     var emo=nmSurveyState.emotions[idx];
     var allThoughts=NM_THOUGHTS.concat(nmCustomThoughts);
     var selThoughts=chain.thoughts||[];
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 4 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Какая мысль чаще всего сопровождала это состояние?</h3>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">Можно выбрать до 3</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 4 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_which_thought')||'Какая мысль чаще всего сопровождала это состояние?')+'</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;">';
     allThoughts.forEach(function(t){
       var neg=NM_THOUGHTS.indexOf(t)<15;
@@ -3788,21 +3990,21 @@ function renderNmStep(){
       h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+nmEmoji(EMOJI_THOUGHTS,t)+t+'</span>';
     });
     h+='</div>';
-    h+='<div style="display:flex;gap:0.5rem;"><input type="text" id="nm-custom-thought" class="glass-input" placeholder="Добавить свою мысль..." style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
+    h+='<div style="display:flex;gap:0.5rem;"><input type="text" id="nm-custom-thought" class="glass-input" placeholder="'+(rpgT('nm_add_custom_thought')||'Добавить свою мысль...')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
     h+='<button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomThought()">+</button></div>';
     content.innerHTML=h;
   }
   else if(nmCurrentStep===4){
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 5 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Насколько сильным было это состояние?</h3>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 5 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_how_strong')||'Насколько сильным было это состояние?')+'</h3>';
     h+='<div class="nm-slider-wrap"><span style="font-size:11px;color:var(--text-dim);">1</span><input type="range" min="1" max="10" value="'+(nmSurveyState.intensity||5)+'" oninput="nmSetIntensity(this.value)" /><span style="font-size:11px;color:var(--text-dim);">10</span></div>';
     h+='<div style="text-align:center;margin-top:0.5rem;"><span class="nm-slider-val" id="nm-int-val">'+(nmSurveyState.intensity||5)+'</span><span style="font-size:11px;color:var(--text-dim);margin-left:4px;">/10</span></div>';
     content.innerHTML=h;
   }
   else if(nmCurrentStep===5){
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 6 из 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">Хотите добавить контекст?</h3>';
-    h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="Свободное текстовое поле..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 6 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_add_context')||'Хотите добавить контекст?')+'</h3>';
+    h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="'+(rpgT('nm_free_text')||'Свободное текстовое поле...')+'" style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
     content.innerHTML=h;
     next.textContent='Далее →';
   }
@@ -3813,11 +4015,11 @@ function renderNmStep(){
     h+='<div style="width:56px;height:56px;margin:0 auto 1rem;border-radius:50%;background:rgba(0,224,255,0.08);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,224,255,0.15);">';
     h+='<svg style="width:28px;height:28px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>';
     h+='</div>';
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Цепочка '+(chainCount)+' записана</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 0.5rem;line-height:1.6;">Эмоция и связанная цепочка добавлены на вашу карту.</p>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">Чем больше цепочек, тем точнее будет анализ</p>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_chain_recorded')||'Цепочка')+' '+(chainCount)+' '+(rpgT('nm_chain_recorded_suffix')||'записана')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 0.5rem;line-height:1.6;">'+(rpgT('nm_chain_added_to_map')||'Эмоция и связанная цепочка добавлены на вашу карту.')+'</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">'+(rpgT('nm_more_chains_better')||'Чем больше цепочек, тем точнее будет анализ')+'</p>';
     h+='<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">';
-    h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">+ Ещё эмоцию</button>';
+    h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">'+(rpgT('nm_add_another_emotion')||'+ Ещё эмоцию')+'</button>';
     h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">'+(rpgT('save_btn')||'Сохранить')+'</button>';
     h+='</div></div>';
     content.innerHTML=h;
@@ -6366,33 +6568,33 @@ function abRenderStep(){
 
   if(abStep===0){
     // Step 1: Point A
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Точка А — кто я сейчас?</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">Опишите себя в текущей реальности. Не нужно копать глубоко — важно зафиксировать тот образ, навыки, достижения и состояние, которые уже есть в вашей жизни сейчас.</p>';
-    h+=abField('Образ в социуме','Как вы выглядите и проявляетесь в обществе сейчас? Какой образ уже считывают другие люди? Например: спокойный, яркий, закрытый, уверенный, незаметный, эпатажный, профессиональный, творческий.','Опишите свой текущий образ','pointA','image');
-    h+=abField('Уже имеющиеся навыки','Какие навыки у вас уже есть? Языки, профессия, спорт, творчество, коммуникация, обучение, управление, технические навыки.','Опишите свои текущие навыки','pointA','skills');
-    h+=abField('Измеримые достижения','Что вы уже реально сделали или получили? Образование, работа, доход, семья, проекты, клиенты, спортивные результаты, переезды, покупки, созданные продукты.','Опишите свои достижения','pointA','achievements');
-    h+=abField('Состояние тела, здоровья и психики','Как вы оцениваете своё текущее состояние тела, энергии, здоровья, нервной системы и психики?','Опишите своё текущее состояние','pointA','health');
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('ab_title_pointA')||'Точка А — кто я сейчас?')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">'+(rpgT('ab_desc_pointA')||'Опишите себя в текущей реальности. Не нужно копать глубоко — важно зафиксировать тот образ, навыки, достижения и состояние, которые уже есть в вашей жизни сейчас.')+'</p>';
+    h+=abField(rpgT('ab_label_image')||'Образ в социуме',rpgT('ab_desc_image')||'Как вы выглядите и проявляетесь в обществе сейчас? Какой образ уже считывают другие люди? Например: спокойный, яркий, закрытый, уверенный, незаметный, эпатажный, профессиональный, творческий.',rpgT('ab_placeholder_image')||'Опишите свой текущий образ','pointA','image');
+    h+=abField(rpgT('ab_label_skills')||'Уже имеющиеся навыки',rpgT('ab_desc_skills')||'Какие навыки у вас уже есть? Языки, профессия, спорт, творчество, коммуникация, обучение, управление, технические навыки.',rpgT('ab_placeholder_skills')||'Опишите свои текущие навыки','pointA','skills');
+    h+=abField(rpgT('ab_label_achievements')||'Измеримые достижения',rpgT('ab_desc_achievements')||'Что вы уже реально сделали или получили? Образование, работа, доход, семья, проекты, клиенты, спортивные результаты, переезды, покупки, созданные продукты.',rpgT('ab_placeholder_achievements')||'Опишите свои достижения','pointA','achievements');
+    h+=abField(rpgT('ab_label_health')||'Состояние тела, здоровья и психики',rpgT('ab_desc_health')||'Как вы оцениваете своё текущее состояние тела, энергии, здоровья, нервной системы и психики?',rpgT('ab_placeholder_health')||'Опишите своё текущее состояние','pointA','health');
     h+='<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.06);">';
-    h+='<h3 style="font-size:1rem;color:var(--text-primary);margin:0 0 1rem;">Что в этой точке А вы хотите изменить?</h3>';
-    h+=abField('Что вы хотите изменить в своём образе?','','Опишите желаемые изменения в образе','changeA','image');
-    h+=abField('Какие навыки хотите усилить или добавить?','','Опишите навыки для развития','changeA','skills');
-    h+=abField('Каких достижений вам не хватает?','','Опишите недостающие достижения','changeA','achievements');
-    h+=abField('Что хотите изменить в состоянии тела, здоровья или психики?','','Опишите желаемые изменения','changeA','health');
+    h+='<h3 style="font-size:1rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('ab_changes_heading')||'Что в этой точке А вы хотите изменить?')+'</h3>';
+    h+=abField(rpgT('ab_label_changeimage')||'Что вы хотите изменить в своём образе?','',rpgT('ab_placeholder_changeimage')||'Опишите желаемые изменения в образе','changeA','image');
+    h+=abField(rpgT('ab_label_changeskills')||'Какие навыки хотите усилить или добавить?','',rpgT('ab_placeholder_changeskills')||'Опишите навыки для развития','changeA','skills');
+    h+=abField(rpgT('ab_label_changeachievements')||'Каких достижений вам не хватает?','',rpgT('ab_placeholder_changeachievements')||'Опишите недостающие достижения','changeA','achievements');
+    h+=abField(rpgT('ab_label_changehealth')||'Что хотите изменить в состоянии тела, здоровья или психики?','',rpgT('ab_placeholder_changehealth')||'Опишите желаемые изменения','changeA','health');
     h+='</div>';
   }
   else if(abStep===1){
     // Step 2: Point B
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Точка B — куда я иду?</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">Опишите желаемое направление. Здесь важно не ограничивать себя текущими обстоятельствами. Опишите тот образ, навыки, достижения и состояние, к которым вы хотите прийти.</p>';
-    h+=abField('Желаемый образ в социуме','Каким человеком вы хотите восприниматься? Какой образ хотите проявлять в мире?','Опишите желаемый образ','pointB','image');
-    h+=abField('Желаемые навыки','Какими навыками вы хотите овладеть? Что хотите уметь делать лучше?','Опишите желаемые навыки','pointB','skills');
-    h+=abField('Желаемые достижения','Какие измеримые результаты вы хотите получить? В деньгах, профессии, семье, теле, проектах, статусе, свободе, образовании или реализации.','Опишите желаемые достижения','pointB','achievements');
-    h+=abField('Желаемое состояние тела, здоровья и психики','Как вы хотите чувствовать себя в теле, энергии, здоровье, нервной системе и психике?','Опишите желаемое состояние','pointB','health');
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('ab_title_pointB')||'Точка B — куда я иду?')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">'+(rpgT('ab_desc_pointB')||'Опишите желаемое направление. Здесь важно не ограничивать себя текущими обстоятельствами. Опишите тот образ, навыки, достижения и состояние, к которым вы хотите прийти.')+'</p>';
+    h+=abField(rpgT('ab_label_desiredimage')||'Желаемый образ в социуме',rpgT('ab_desc_desiredimage')||'Каким человеком вы хотите восприниматься? Какой образ хотите проявлять в мире?',rpgT('ab_placeholder_desiredimage')||'Опишите желаемый образ','pointB','image');
+    h+=abField(rpgT('ab_label_desiredskills')||'Желаемые навыки',rpgT('ab_desc_desiredskills')||'Какими навыками вы хотите овладеть? Что хотите уметь делать лучше?',rpgT('ab_placeholder_desiredskills')||'Опишите желаемые навыки','pointB','skills');
+    h+=abField(rpgT('ab_label_desiredachievements')||'Желаемые достижения',rpgT('ab_desc_desiredachievements')||'Какие измеримые результаты вы хотите получить? В деньгах, профессии, семье, теле, проектах, статусе, свободе, образовании или реализации.',rpgT('ab_placeholder_desiredachievements')||'Опишите желаемые достижения','pointB','achievements');
+    h+=abField(rpgT('ab_label_desiredhealth')||'Желаемое состояние тела, здоровья и психики',rpgT('ab_desc_desiredhealth')||'Как вы хотите чувствовать себя в теле, энергии, здоровье, нервной системе и психике?',rpgT('ab_placeholder_desiredhealth')||'Опишите желаемое состояние','pointB','health');
   }
   else if(abStep===2){
     // Step 3: Reasons
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Что мешает перейти из точки А в точку B?</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.25rem;">Посмотрите на свою точку B и выпишите всё, что, по вашему ощущению, мешает вам уже сейчас быть в этой точке. Пишите всё, что всплывает первым: страхи, привычки, убеждения, отсутствие навыков, внутренние конфликты, состояние тела, окружение, действия или бездействие.</p>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('ab_title_reasons')||'Что мешает перейти из точки А в точку B?')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.25rem;">'+(rpgT('ab_desc_reasons')||'Посмотрите на свою точку B и выпишите всё, что, по вашему ощущению, мешает вам уже сейчас быть в этой точке. Пишите всё, что всплывает первым: страхи, привычки, убеждения, отсутствие навыков, внутренние конфликты, состояние тела, окружение, действия или бездействие.')+'</p>';
     // Quick chips
     var chips_ru=['Я не довожу начатое до конца','Я боюсь ошибиться','Мне не хватает дисциплины','Я не отвечаю за свои слова действиями','Я откладываю важные решения','Я не умею просить поддержку','Я быстро теряю энергию','Я боюсь быть заметным','Я не верю, что могу заработать больше','Мне сложно удерживать внимание','У меня нет ясного плана','Я не умею стабильно действовать'];
     var chips = chips_ru.map(function(ch, i) { return rpgT('ab_chip_'+(i+1)) || ch; });
@@ -6403,8 +6605,8 @@ function abRenderStep(){
     });
     h+='</div>';
     // Custom input
-    h+='<div style="display:flex;gap:0.5rem;margin-bottom:1rem;"><input type="text" id="ab-custom-reason" class="glass-input" placeholder="Причина несоответствия" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
-    h+='<button class="btn btn-primary" style="font-size:12px;padding:0.5rem 0.85rem;white-space:nowrap;" onclick="abAddCustomReason()">Добавить</button></div>';
+    h+='<div style="display:flex;gap:0.5rem;margin-bottom:1rem;"><input type="text" id="ab-custom-reason" class="glass-input" placeholder="'+(rpgT('ab_placeholder_custom_reason')||'Причина несоответствия')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
+    h+='<button class="btn btn-primary" style="font-size:12px;padding:0.5rem 0.85rem;white-space:nowrap;" onclick="abAddCustomReason()">'+(rpgT('ab_btn_add_reason')||'Добавить')+'</button></div>';
     // List of added reasons
     if(abState.reasons.length){
       h+='<div style="margin-top:0.5rem;">';
@@ -6422,33 +6624,33 @@ function abRenderStep(){
     if(!abState.corrections.length || abState.corrections.length!==abState.reasons.length){
       abState.corrections=abState.reasons.map(function(){ return ''; });
     }
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Сформируйте программу корректировки</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 0.75rem;">Теперь для каждой причины создайте обратную формулировку в настоящем времени. Не пишите «я хочу» или «я буду». Формулируйте так, как будто это качество уже становится вашей текущей реальностью.</p>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('ab_title_corrections')||'Сформируйте программу корректировки')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 0.75rem;">'+(rpgT('ab_desc_corrections')||'Теперь для каждой причины создайте обратную формулировку в настоящем времени. Не пишите «я хочу» или «я буду». Формулируйте так, как будто это качество уже становится вашей текущей реальностью.')+'</p>';
     h+='<div style="font-size:11px;color:var(--text-dim);margin-bottom:1.5rem;line-height:1.6;padding:0.85rem;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);">';
-    h+='<strong style="color:var(--text-muted);">Примеры:</strong><br>';
-    h+='«Я не довожу начатое до конца» → «Я завершаю начатые действия и довожу важные процессы до результата.»<br>';
-    h+='«Мне сложно удерживать внимание» → «Я постепенно укрепляю внимание и возвращаю его к выбранному направлению.»<br>';
-    h+='«Я боюсь ошибиться» → «Я позволяю себе действовать, учиться и корректировать путь через опыт.»</div>';
+    h+='<strong style="color:var(--text-muted);">'+(rpgT('ab_label_examples')||'Примеры:')+'</strong><br>';
+    h+=(rpgT('ab_example_1')||'«Я не довожу начатое до конца» → «Я завершаю начатые действия и довожу важные процессы до результата.»')+'<br>';
+    h+=(rpgT('ab_example_2')||'«Мне сложно удерживать внимание» → «Я постепенно укрепляю внимание и возвращаю его к выбранному направлению.»')+'<br>';
+    h+=(rpgT('ab_example_3')||'«Я боюсь ошибиться» → «Я позволяю себе действовать, учиться и корректировать путь через опыт.»')+'</div>';
     if(!abState.reasons.length){
-      h+='<p style="font-size:13px;color:var(--text-dim);">Вы не добавили причин на предыдущем шаге. Вернитесь назад, чтобы добавить.</p>';
+      h+='<p style="font-size:13px;color:var(--text-dim);">'+(rpgT('ab_no_reasons')||'Вы не добавили причин на предыдущем шаге. Вернитесь назад, чтобы добавить.')+'</p>';
     } else {
       abState.reasons.forEach(function(r,i){
         h+='<div style="margin-bottom:1.25rem;padding:1rem;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">';
         h+='<p style="font-size:12px;color:rgba(255,140,140,0.8);margin:0 0 0.5rem;">'+r+'</p>';
         h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:0.5rem;"><span style="color:var(--text-dim);font-size:14px;">→</span><span style="font-size:11px;color:var(--text-dim);">Новая формулировка:</span></div>';
-        h+='<textarea class="glass-input ab-correction" data-idx="'+i+'" rows="2" placeholder="Напишите инверсию этой причины в настоящем времени" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;resize:vertical;" oninput="abSetCorrection('+i+',this.value)">'+abState.corrections[i]+'</textarea>';
+        h+='<textarea class="glass-input ab-correction" data-idx="'+i+'" rows="2" placeholder="'+(rpgT('ab_placeholder_correction')||'Напишите инверсию этой причины в настоящем времени')+'" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;resize:vertical;" oninput="abSetCorrection('+i+',this.value)">'+abState.corrections[i]+'</textarea>';
         h+='</div>';
       });
     }
   }
   else if(abStep===4){
     // Step 5: Audio
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Запишите программу своим голосом</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1rem;">Прочитайте вслух все новые формулировки из предыдущего шага и запишите их в аудио. Ваш голос помогает закрепить программу как личное внутреннее направление.</p>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('ab_title_audio')||'Запишите программу своим голосом')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1rem;">'+(rpgT('ab_desc_audio')||'Прочитайте вслух все новые формулировки из предыдущего шага и запишите их в аудио. Ваш голос помогает закрепить программу как личное внутреннее направление.')+'</p>';
     // Show corrections as reference
     if(abState.corrections.filter(function(c){return c;}).length){
       h+='<div style="margin-bottom:1.5rem;padding:1rem;border-radius:12px;background:rgba(0,224,255,0.03);border:1px solid rgba(0,224,255,0.08);">';
-      h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.5rem;letter-spacing:0.12em;text-transform:uppercase;">Ваши формулировки для чтения:</p>';
+      h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.5rem;letter-spacing:0.12em;text-transform:uppercase;">'+(rpgT('ab_label_formulations')||'Ваши формулировки для чтения:')+'</p>';
       abState.corrections.forEach(function(c,i){
         if(c) h+='<p style="font-size:13px;color:var(--text-secondary);margin:0.35rem 0;line-height:1.5;">'+(i+1)+'. '+c+'</p>';
       });
@@ -6456,7 +6658,7 @@ function abRenderStep(){
     }
     // Recorder UI
     h+='<div style="text-align:center;padding:2rem 0;">';
-    h+='<div id="ab-rec-status" style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Нажмите для начала записи</div>';
+    h+='<div id="ab-rec-status" style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">'+(rpgT('ab_rec_status_start')||'Нажмите для начала записи')+'</div>';
     h+='<button id="ab-rec-btn" class="btn btn-solid" onclick="abToggleRecord()" style="width:80px;height:80px;border-radius:50%;font-size:0;padding:0;display:inline-flex;align-items:center;justify-content:center;">';
     h+='<svg id="ab-rec-icon" style="width:32px;height:32px;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
     h+='</button>';
@@ -6466,7 +6668,7 @@ function abRenderStep(){
     h+='<div id="ab-playback" style="display:none;margin-top:1rem;text-align:center;">';
     h+='<audio id="ab-audio-player" controls style="width:100%;max-width:400px;margin:0 auto;"></audio>';
     h+='<div style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem;">';
-    h+='<button class="btn btn-ghost" style="font-size:12px;" onclick="abReRecord()">Перезаписать</button>';
+    h+='<button class="btn btn-ghost" style="font-size:12px;" onclick="abReRecord()">'+(rpgT('ab_btn_rerecord')||'Перезаписать')+'</button>';
     h+='</div></div>';
   }
   c.innerHTML=h;
@@ -6542,14 +6744,14 @@ function abStartRec(){
       abState.audioUrl=URL.createObjectURL(abState.audioBlob);
       document.getElementById('ab-audio-player').src=abState.audioUrl;
       document.getElementById('ab-playback').style.display='block';
-      document.getElementById('ab-rec-status').textContent='Запись завершена';
+      document.getElementById('ab-rec-status').textContent=rpgT('ab_rec_status_complete')||'Запись завершена';
     };
     abMediaRec.start();
     abRecording=true;
     abRecSeconds=0;
     document.getElementById('ab-rec-btn').style.background='rgba(255,80,80,0.6)';
     document.getElementById('ab-rec-icon').innerHTML='<rect x="6" y="6" width="12" height="12" rx="2"/>';
-    document.getElementById('ab-rec-status').textContent='Запись...';
+    document.getElementById('ab-rec-status').textContent=rpgT('ab_rec_status_recording')||'Запись...';
     document.getElementById('ab-rec-timer').style.display='block';
     document.getElementById('ab-playback').style.display='none';
     abRecTimer=setInterval(function(){
@@ -6559,7 +6761,7 @@ function abStartRec(){
       document.getElementById('ab-rec-timer').textContent=m+':'+(s<10?'0':'')+s;
     },1000);
   }).catch(function(err){
-    document.getElementById('ab-rec-status').textContent='Нет доступа к микрофону. Разрешите доступ в настройках браузера.';
+    document.getElementById('ab-rec-status').textContent=rpgT('ab_rec_status_permission')||'Нет доступа к микрофону. Разрешите доступ в настройках браузера.';
   });
 }
 
@@ -6573,7 +6775,7 @@ function abStopRec(){
 
 function abReRecord(){
   document.getElementById('ab-playback').style.display='none';
-  document.getElementById('ab-rec-status').textContent='Нажмите для начала записи';
+  document.getElementById('ab-rec-status').textContent=rpgT('ab_rec_status_start')||'Нажмите для начала записи';
   document.getElementById('ab-rec-timer').style.display='none';
   abState.audioBlob=null;abState.audioUrl=null;
 }
@@ -6594,21 +6796,21 @@ function abFinish(){
 
 function abBuildResult(){
   var r=document.getElementById('ab-result');
-  var h='<h2 style="font-family:Unbounded,sans-serif;font-weight:500;font-size:1.4rem;color:var(--text-primary);margin:0 0 0.5rem;">Ваша карта реализации потенциала создана</h2>';
+  var h='<h2 style="font-family:Unbounded,sans-serif;font-weight:500;font-size:1.4rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('ab_title_result')||'Ваша карта реализации потенциала создана')+'</h2>';
   h+='<p style="font-size:12px;color:var(--text-muted);margin:0 0 2rem;">'+abState.savedDate+'</p>';
 
   // Visualization: A → Reasons → Corrections → B
   h+='<div style="display:flex;align-items:stretch;gap:0;margin-bottom:2rem;overflow-x:auto;padding-bottom:0.5rem;">';
   // Point A
   h+='<div style="flex:0 0 180px;padding:1rem;border-radius:14px 0 0 14px;background:rgba(255,140,140,0.06);border:1px solid rgba(255,140,140,0.12);">';
-  h+='<h4 style="font-size:12px;color:rgba(255,140,140,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Точка А</h4>';
+  h+='<h4 style="font-size:12px;color:rgba(255,140,140,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">'+(rpgT('ab_label_pointA_result')||'Точка А')+'</h4>';
   h+='<p style="font-size:11px;color:var(--text-muted);margin:0;line-height:1.5;">'+abShort(abState.pointA.image)+'</p>';
   h+='</div>';
   // Arrow
   h+='<div style="flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:18px;">→</div>';
   // Reasons
   h+='<div style="flex:1;min-width:200px;padding:1rem;background:rgba(255,180,100,0.04);border:1px solid rgba(255,180,100,0.1);">';
-  h+='<h4 style="font-size:12px;color:rgba(255,180,100,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Причины</h4>';
+  h+='<h4 style="font-size:12px;color:rgba(255,180,100,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">'+(rpgT('ab_label_reasons_result')||'Причины')+'</h4>';
   abState.reasons.forEach(function(re){
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0.2rem 0;">• '+re+'</p>';
   });
@@ -6617,7 +6819,7 @@ function abBuildResult(){
   h+='<div style="flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:18px;">→</div>';
   // Corrections
   h+='<div style="flex:1;min-width:200px;padding:1rem;background:rgba(0,224,255,0.04);border:1px solid rgba(0,224,255,0.1);">';
-  h+='<h4 style="font-size:12px;color:rgba(0,224,255,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Программа</h4>';
+  h+='<h4 style="font-size:12px;color:rgba(0,224,255,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">'+(rpgT('ab_label_corrections_result')||'Программа')+'</h4>';
   abState.corrections.forEach(function(co){
     if(co) h+='<p style="font-size:11px;color:var(--text-dim);margin:0.2rem 0;">• '+co+'</p>';
   });
@@ -6626,7 +6828,7 @@ function abBuildResult(){
   h+='<div style="flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:18px;">→</div>';
   // Point B
   h+='<div style="flex:0 0 180px;padding:1rem;border-radius:0 14px 14px 0;background:rgba(120,255,160,0.06);border:1px solid rgba(120,255,160,0.12);">';
-  h+='<h4 style="font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">Точка B</h4>';
+  h+='<h4 style="font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.5rem;letter-spacing:0.1em;text-transform:uppercase;">'+(rpgT('ab_label_pointB_result')||'Точка B')+'</h4>';
   h+='<p style="font-size:11px;color:var(--text-muted);margin:0;line-height:1.5;">'+abShort(abState.pointB.image)+'</p>';
   h+='</div>';
   h+='</div>';
@@ -6635,22 +6837,22 @@ function abBuildResult(){
   h+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.5rem;">';
   // A
   h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
-  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(255,140,140,0.9);">Точка А</h3>';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(255,140,140,0.9);">'+(rpgT('ab_label_pointA_result')||'Точка А')+'</h3>';
   h+=abSummaryBlock(abState.pointA);
   h+='</div>';
   // B
   h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
-  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(120,255,160,0.9);">Точка B</h3>';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(120,255,160,0.9);">'+(rpgT('ab_label_pointB_result')||'Точка B')+'</h3>';
   h+=abSummaryBlock(abState.pointB);
   h+='</div>';
   // Reasons
   h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
-  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(255,180,100,0.9);">Причины несоответствия</h3>';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(255,180,100,0.9);">'+(rpgT('ab_heading_mismatch_reasons')||'Причины несоответствия')+'</h3>';
   abState.reasons.forEach(function(re){ h+='<p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0;line-height:1.5;">• '+re+'</p>'; });
   h+='</div>';
   // Corrections
   h+='<div style="padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">';
-  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(0,224,255,0.9);">Программа корректировки</h3>';
+  h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;color:rgba(0,224,255,0.9);">'+(rpgT('ab_heading_correction_program')||'Программа корректировки')+'</h3>';
   abState.corrections.forEach(function(co,i){ if(co) h+='<p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0;line-height:1.5;">'+(i+1)+'. '+co+'</p>'; });
   h+='</div>';
   h+='</div>';
@@ -6658,7 +6860,7 @@ function abBuildResult(){
   // Audio player
   if(abState.audioUrl){
     h+='<div style="margin-bottom:1.5rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);text-align:center;">';
-    h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;">Аудиоактивация</h3>';
+    h+='<h3 style="font-size:0.9rem;margin:0 0 0.75rem;">'+(rpgT('ab_heading_audio_activation')||'Аудиоактивация')+'</h3>';
     h+='<audio id="ab-result-player" controls src="'+abState.audioUrl+'" style="width:100%;max-width:440px;"></audio>';
     h+='</div>';
   }
