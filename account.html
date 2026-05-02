@@ -1752,7 +1752,7 @@ function showTestProfileCard(profileKey){
   var nameEl = document.getElementById('rpg-profile-name');
   var subEl = document.getElementById('rpg-profile-subtitle');
   if(nameEl) nameEl.textContent = info.name;
-  if(subEl) subEl.textContent = info.subtitle;
+  if(subEl) subEl.textContent = rpgT(profileKey + '_sub') || info.subtitle;
   // Init + load stats from API
   rpgLoadStats(profileKey);
 }
@@ -1787,6 +1787,186 @@ var RPG_STAT_META = {
     {level:4,name:'Управление через модель'}
   ]
 };
+
+// RPG i18n translations
+var RPG_I18N = {
+  en: {
+    // Profile subtitles
+    STABLE_EXPLORER_sub: 'Stable. Adapted. With growth potential.',
+    HIGH_LOAD_ADAPTER_sub: 'Functioning. Handling load. Losing resource.',
+    NERVOUS_SYSTEM_SENSITIVE_sub: 'Overload. Instability. Loss of grounding.',
+    DISTRACTED_EXPLORER_sub: 'Scattered attention. Loss of control.',
+    FUTURE_SPECIALIST_sub: 'Development. Interest. Influence potential.',
+    // Layer labels
+    body_core_label: 'Physiology & regulation',
+    mind_control_label: 'Consciousness control',
+    world_label: 'External bodies',
+    // Stat labels
+    stability_label: 'System stability',
+    energy_regulation_label: 'Energy regulation',
+    interoception_label: 'Interoception',
+    proprioception_label: 'Proprioception',
+    vital_engagement_label: 'Life engagement',
+    attention_control_label: 'Attention control',
+    awareness_label: 'Awareness',
+    adaptation_flexibility_label: 'Flexibility',
+    execution_label: 'Execution',
+    technoperception_label: 'Technoperception',
+    socioperception_label: 'Socioperception',
+    relational_awareness_label: 'Interpersonal contact',
+    space_awareness_label: 'Spatial awareness',
+    // WMC levels
+    wmc_1: 'Fragmented understanding',
+    wmc_2: 'Partial connectivity',
+    wmc_3: 'Systemic understanding',
+    wmc_4: 'Control through model',
+    // WMC descriptions
+    wmc_1_title: 'L1 — Fragmented understanding',
+    wmc_1_desc: 'Basic level of world model connectivity. You begin to notice individual components of your state — body, attention, emotions — but perceive them in isolation. Practices at this level build primary connections between bodily sensations and emotional state.',
+    wmc_2_title: 'L2 — Partial connectivity',
+    wmc_2_desc: 'Stable connections appear between areas. You begin to see how physical state affects attention, and emotions affect decision-making. Practices strengthen feedback loops and expand awareness zones.',
+    wmc_3_title: 'L3 — Systemic understanding',
+    wmc_3_desc: 'The world model becomes holistic. You track chains of influence: environment → body → state → behavior → outcome. Practices include model-based control and reaction prediction.',
+    wmc_4_title: 'L4 — Control through model',
+    wmc_4_desc: 'Highest level: you not only understand the system but control it. Conscious strategy switching, adaptation to new conditions, resilience under high load. Practices focus on mastery and skill transfer.',
+    // Buttons
+    expand_understanding: 'Expand understanding',
+    // NeuroMap flow
+    save_btn: 'Save',
+    next_btn: 'Next →',
+    prev_btn: '← Back',
+    finish_btn: 'Finish',
+    // Point A→B chips
+    ab_chip_1: "I don't follow through",
+    ab_chip_2: "I'm afraid to make mistakes",
+    ab_chip_3: "I lack discipline",
+    ab_chip_4: "I don't back my words with actions",
+    ab_chip_5: "I postpone important decisions",
+    ab_chip_6: "I can't ask for support",
+    ab_chip_7: "I lose energy quickly",
+    ab_chip_8: "I'm afraid to be noticed",
+    ab_chip_9: "I don't believe I can earn more",
+    ab_chip_10: "It's hard to hold attention",
+    ab_chip_11: "I have no clear plan",
+    ab_chip_12: "I can't act consistently",
+    // Hover tooltip
+    hover_layer: 'Layer',
+    hover_negative: 'negative',
+    hover_positive: 'positive',
+    hover_neutral: 'neutral',
+    hover_frequency: 'Frequency',
+    // Drill-down panel
+    connected_nodes: 'Connected nodes',
+    no_connections: 'No connections',
+    frequency_30d: 'Frequency over 30 days',
+    correlations: 'Correlations',
+    co_occurs: 'Co-occurs with',
+    layer_prefix: 'Layer',
+    valence_leak: 'leak',
+    valence_resource: 'resource',
+    valence_neutral: 'neutral',
+    appears_x_times: 'Appears',
+    times_word: 'times',
+    last_seen_prefix: 'Last:',
+    // Labels toggle
+    labels_all: 'Labels: all',
+    labels_top: 'Labels: top',
+    labels_off: 'Labels: off',
+    // Block names (EN same as RU — brand names)
+    body_core_name: 'BODY CORE',
+    mind_control_name: 'MIND CONTROL',
+    world_name: 'WORLD',
+    // Locked button
+    expand_locked_title: 'Available after choosing a program'
+  },
+  es: {
+    STABLE_EXPLORER_sub: 'Estable. Adaptado. Con potencial de crecimiento.',
+    HIGH_LOAD_ADAPTER_sub: 'Funcionando. Soportando carga. Perdiendo recursos.',
+    NERVOUS_SYSTEM_SENSITIVE_sub: 'Sobrecarga. Inestabilidad. Pérdida de base.',
+    DISTRACTED_EXPLORER_sub: 'Atención dispersa. Pérdida de control.',
+    FUTURE_SPECIALIST_sub: 'Desarrollo. Interés. Potencial de influencia.',
+    body_core_label: 'Fisiología y regulación',
+    mind_control_label: 'Control de la conciencia',
+    world_label: 'Cuerpos externos',
+    stability_label: 'Estabilidad del sistema',
+    energy_regulation_label: 'Regulación energética',
+    interoception_label: 'Interocepción',
+    proprioception_label: 'Propiocepción',
+    vital_engagement_label: 'Compromiso vital',
+    attention_control_label: 'Control de atención',
+    awareness_label: 'Conciencia',
+    adaptation_flexibility_label: 'Flexibilidad',
+    execution_label: 'Ejecución',
+    technoperception_label: 'Tecnopercepción',
+    socioperception_label: 'Sociopercepción',
+    relational_awareness_label: 'Contacto interpersonal',
+    space_awareness_label: 'Conciencia espacial',
+    wmc_1: 'Comprensión fragmentada',
+    wmc_2: 'Conectividad parcial',
+    wmc_3: 'Comprensión sistémica',
+    wmc_4: 'Control a través del modelo',
+    wmc_1_title: 'L1 — Comprensión fragmentada',
+    wmc_1_desc: 'Nivel básico de conectividad del modelo del mundo. Comienzas a notar componentes individuales de tu estado — cuerpo, atención, emociones — pero los percibes de forma aislada.',
+    wmc_2_title: 'L2 — Conectividad parcial',
+    wmc_2_desc: 'Aparecen conexiones estables entre áreas. Comienzas a ver cómo el estado físico afecta la atención y las emociones afectan la toma de decisiones.',
+    wmc_3_title: 'L3 — Comprensión sistémica',
+    wmc_3_desc: 'El modelo del mundo se vuelve holístico. Rastrear cadenas de influencia: entorno → cuerpo → estado → comportamiento → resultado.',
+    wmc_4_title: 'L4 — Control a través del modelo',
+    wmc_4_desc: 'Nivel más alto: no solo entiendes el sistema sino que lo controlas. Cambio consciente de estrategias, adaptación a nuevas condiciones.',
+    expand_understanding: 'Ampliar comprensión',
+    save_btn: 'Guardar',
+    next_btn: 'Siguiente →',
+    prev_btn: '← Atrás',
+    finish_btn: 'Finalizar',
+    ab_chip_1: "No termino lo que empiezo",
+    ab_chip_2: "Tengo miedo de equivocarme",
+    ab_chip_3: "Me falta disciplina",
+    ab_chip_4: "No respaldo mis palabras con acciones",
+    ab_chip_5: "Pospongo decisiones importantes",
+    ab_chip_6: "No sé pedir apoyo",
+    ab_chip_7: "Pierdo energía rápidamente",
+    ab_chip_8: "Tengo miedo de ser notado",
+    ab_chip_9: "No creo que pueda ganar más",
+    ab_chip_10: "Me cuesta mantener la atención",
+    ab_chip_11: "No tengo un plan claro",
+    ab_chip_12: "No sé actuar de manera constante",
+    hover_layer: 'Capa',
+    hover_negative: 'negativo',
+    hover_positive: 'positivo',
+    hover_neutral: 'neutral',
+    hover_frequency: 'Frecuencia',
+    // Drill-down panel
+    connected_nodes: 'Nodos conectados',
+    no_connections: 'Sin conexiones',
+    frequency_30d: 'Frecuencia en 30 días',
+    correlations: 'Correlaciones',
+    co_occurs: 'Aparece junto con',
+    layer_prefix: 'Capa',
+    valence_leak: 'fuga',
+    valence_resource: 'recurso',
+    valence_neutral: 'neutral',
+    appears_x_times: 'Aparece',
+    times_word: 'veces',
+    last_seen_prefix: 'Último:',
+    // Labels toggle
+    labels_all: 'Etiquetas: todas',
+    labels_top: 'Etiquetas: top',
+    labels_off: 'Etiquetas: no',
+    // Block names (ES — fully translated)
+    body_core_name: 'NÚCLEO CORPORAL',
+    mind_control_name: 'CONTROL MENTAL',
+    world_name: 'MUNDO',
+    // Locked button
+    expand_locked_title: 'Disponible después de elegir un programa'
+  }
+};
+
+function rpgT(key) {
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if(lang === 'ru') return null; // use original Russian
+  var map = RPG_I18N[lang];
+  return map ? (map[key] || null) : null;
+}
 
 function rpgLoadStats(profileKey){
   var token = localStorage.getItem('na_token');
@@ -1837,7 +2017,7 @@ function rpgRenderStats(stats, wmc){
   var html = '';
   RPG_STAT_META.layers.forEach(function(layer){
     html += '<div style="padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.015);">';
-    html += '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.8rem;font-family:\'Space Grotesk\',sans-serif;">'+layer.name+' <span style="opacity:0.5;font-weight:400;letter-spacing:0.08em;">— '+layer.label+'</span></p>';
+    html += '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.8rem;font-family:\'Space Grotesk\',sans-serif;">'+(rpgT(layer.key+'_name')||layer.name)+' <span style="opacity:0.5;font-weight:400;letter-spacing:0.08em;">— '+(rpgT(layer.key+'_label')||layer.label)+'</span></p>';
     layer.stats.forEach(function(s){
       var val = stats[s.key] || 0;
       var barColor = val >= 65 ? 'rgba(255,255,255,0.7)' : (val >= 40 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.25)');
@@ -1845,7 +2025,7 @@ function rpgRenderStats(stats, wmc){
       html += '<div style="flex:1;min-width:0;">';
       html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;">';
       html += '<span style="font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--text-muted);letter-spacing:0.02em;">'+s.name+'</span>';
-      html += '<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">'+s.label+'</span>';
+      html += '<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">'+(rpgT(s.key+'_label')||s.label)+'</span>';
       html += '</div>';
       html += '<div style="display:flex;align-items:center;gap:0.5rem;">';
       html += '<div style="flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden;">';
@@ -1859,11 +2039,11 @@ function rpgRenderStats(stats, wmc){
     if(isAdminRole){
       html += '<button class="rpg-layer-insight-btn" onclick="rpgShowLayerInsight(\''+layer.name+'\')" style="margin-top:0.6rem;padding:0.4rem 0.9rem;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.25)\';this.style.color=\'var(--text-primary)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.color=\'var(--text-muted)\'">';
       html += '<svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>';
-      html += 'Расширить понимание</button>';
+      html += (rpgT('expand_understanding')||'Расширить понимание')+'</button>';
     } else {
-      html += '<button class="rpg-layer-insight-btn" onclick="rpgShowLockedModal()" style="margin-top:0.6rem;padding:0.4rem 0.9rem;background:transparent;border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:var(--text-dim);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;opacity:0.6;" title="Доступно после выбора программы">';
+      html += '<button class="rpg-layer-insight-btn" onclick="rpgShowLockedModal()" style="margin-top:0.6rem;padding:0.4rem 0.9rem;background:transparent;border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:var(--text-dim);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;opacity:0.6;" title="'+(rpgT('expand_locked_title')||'Доступно после выбора программы')+'">';
       html += '<svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
-      html += 'Расширить понимание</button>';
+      html += (rpgT('expand_understanding')||'Расширить понимание')+'</button>';
     }
     html += '</div>';
   });
@@ -1881,7 +2061,7 @@ function rpgRenderStats(stats, wmc){
       wmcHtml += '<span style="font-size:11px;font-family:\'JetBrains Mono\',monospace;color:'+(active?'var(--text-primary)':'var(--text-dim)')+';">L'+lvl.level+'</span>';
       if(current) wmcHtml += '<span style="width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.6);display:inline-block;"></span>';
       wmcHtml += '</div>';
-      wmcHtml += '<span style="font-size:10px;color:'+(active?'var(--text-muted)':'var(--text-dim)')+';">'+lvl.name+'</span>';
+      wmcHtml += '<span style="font-size:10px;color:'+(active?'var(--text-muted)':'var(--text-dim)')+';">'+(rpgT('wmc_'+lvl.level)||lvl.name)+'</span>';
       wmcHtml += '</div>';
     });
     wmcContainer.innerHTML = wmcHtml;
@@ -1930,13 +2110,15 @@ function rpgShowWmcLevel(level){
     return;
   }
   var info = WMC_DESCRIPTIONS[level] || {title:'Level '+level,desc:'Описание будет добавлено.'};
+  var title = rpgT('wmc_'+level+'_title') || info.title;
+  var desc = rpgT('wmc_'+level+'_desc') || info.desc;
   var modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);';
   modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
   modal.innerHTML = '<div style="max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px);">' +
     '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.5rem;font-family:\'Space Grotesk\',sans-serif;">World Model Coherence</p>' +
-    '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">'+info.title+'</h3>' +
-    '<p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:0 0 1.5rem;">'+info.desc+'</p>' +
+    '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">'+title+'</h3>' +
+    '<p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin:0 0 1.5rem;">'+desc+'</p>' +
     '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">Закрыть</button>' +
     '</div>';
   document.body.appendChild(modal);
@@ -3530,7 +3712,7 @@ function renderNmStep(){
   var prev=document.getElementById('nm-prev');
   var next=document.getElementById('nm-next');
   prev.style.display=nmCurrentStep>0?'':'none';
-  next.textContent=nmCurrentStep===5?'Сохранить':'Далее →';
+  next.textContent=nmCurrentStep===5?(rpgT('save_btn')||'Сохранить'):(rpgT('next_btn')||'Далее →');
 
   if(nmCurrentStep===0){
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">Шаг 1 из 6</p>';
@@ -3636,7 +3818,7 @@ function renderNmStep(){
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">Чем больше цепочек, тем точнее будет анализ</p>';
     h+='<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">';
     h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">+ Ещё эмоцию</button>';
-    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">Сохранить</button>';
+    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">'+(rpgT('save_btn')||'Сохранить')+'</button>';
     h+='</div></div>';
     content.innerHTML=h;
     // Hide nav buttons on choice screen
@@ -4450,7 +4632,7 @@ function nmToggleFullscreen(){
     nmFsBuildMobileFilters();
     // Sync FS labels toggle state
     var fsLabels = document.querySelectorAll('.nm-labels-toggle');
-    var _modeText = nmLabelsMode==='all' ? 'Подписи: все' : nmLabelsMode==='top' ? 'Подписи: топ' : 'Подписи: нет';
+    var _modeText = nmLabelsMode==='all' ? (rpgT('labels_all')||'Подписи: все') : nmLabelsMode==='top' ? (rpgT('labels_top')||'Подписи: топ') : (rpgT('labels_off')||'Подписи: нет');
     fsLabels.forEach(function(b){ b.textContent = _modeText; if(nmLabelsMode!=='off') b.classList.add('active'); else b.classList.remove('active'); });
     // Sync FS 3D toggle state
     var fsBtn3d = document.getElementById('nm-fs-3d-toggle');
@@ -4552,12 +4734,12 @@ function openFsMobileBottomSheet(node){
   });
   var connHtml=connected.length?connected.map(function(c){
     return '<span style="display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);margin:2px;" onclick="openFsMobileBottomSheet(nmNodes.find(function(n){return n.id===\''+c.id+'\';}))">'+c.label+'</span>';
-  }).join(''):'<span style="color:var(--text-muted);font-size:12px;">Нет связей</span>';
+  }).join(''):'<span style="color:var(--text-muted);font-size:12px;">'+(rpgT('no_connections')||'Нет связей')+'</span>';
   content.innerHTML='<span style="display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:6px;background:'+
-    (layerColors[layerNum]||'rgba(255,255,255,0.1)')+';color:#111;margin-bottom:0.4rem;">Слой '+layerNum+': '+layerName+'</span>'+
-    '<h4 style="font-size:1rem;margin:0.3rem 0 0.2rem;">'+node.label+'</h4>'+
+    (layerColors[layerNum]||'rgba(255,255,255,0.1)')+';color:#111;margin-bottom:0.4rem;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+'</span>'+
+    '<h4 style="font-size:1rem;margin:0.3rem 0 0.2rem;">'+nmTranslate(node.label)+'</h4>'+
     '<p style="font-size:12px;color:var(--text-muted);margin:0 0 0.6rem;">×'+node.count+' | '+valTxt+'</p>'+
-    '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.3rem;">Связанные узлы</p>'+
+    '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.3rem;">'+(rpgT('connected_nodes')||'Связанные узлы')+'</p>'+
     '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:0.5rem;">'+connHtml+'</div>';
   bs.classList.add('open');
 }
@@ -4934,13 +5116,16 @@ function openFsDrilldown(node){
   var layerNum=nmTypeToLayer(node.type);
   var layerName=nmTypeToLayerName(node.type);
   var badge=document.getElementById('nm-fs-dd-type-badge');
-  badge.textContent='Слой '+layerNum+': '+layerName;
+  badge.textContent=(rpgT('layer_prefix')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum);
   badge.style.background=layerColors[layerNum]||'rgba(255,255,255,0.1)';
   badge.style.color='#111';
-  document.getElementById('nm-fs-dd-title').textContent=node.label;
-  var valTxt=node.valence<0?'утечка':'ресурс';
-  if(node.valence===0) valTxt='нейтрально';
-  document.getElementById('nm-fs-dd-stats').textContent='Встречается '+node.count+' раз | '+valTxt+(node.last_seen?' | '+node.last_seen:'');
+  document.getElementById('nm-fs-dd-title').textContent=nmTranslate(node.label);
+  var valTxt=node.valence<0?(rpgT('valence_leak')||'утечка'):(rpgT('valence_resource')||'ресурс');
+  if(node.valence===0) valTxt=rpgT('valence_neutral')||'нейтрально';
+  document.getElementById('nm-fs-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+node.count+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'')+node.last_seen:'');
+  // Translate static labels in FS drill-down panel
+  var _fsDdLabels=[{id:'nm-fs-dd-label-conn',key:'connected_nodes',fallback:'Связанные узлы'},{id:'nm-fs-dd-label-freq',key:'frequency_30d',fallback:'Частота за 30 дней'},{id:'nm-fs-dd-label-corr',key:'correlations',fallback:'Корреляции'}];
+  _fsDdLabels.forEach(function(item){var el=document.getElementById(item.id);if(el)el.textContent=rpgT(item.key)||item.fallback;});
   // Connected nodes
   var connList=document.getElementById('nm-fs-dd-conn-list');
   connList.innerHTML='';
@@ -4956,11 +5141,11 @@ function openFsDrilldown(node){
   connected.forEach(function(c){
     var chip=document.createElement('span');
     chip.style.cssText='display:inline-block;padding:3px 8px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);';
-    chip.textContent=(c.count>1?c.count+'× ':'')+c.node.label;
+    chip.textContent=(c.count>1?c.count+'× ':'')+nmTranslate(c.node.label);
     chip.onclick=function(){openFsDrilldown(c.node);};
     connList.appendChild(chip);
   });
-  if(!connected.length) connList.innerHTML='<span style="font-size:11px;color:var(--text-muted);">Нет связей</span>';
+  if(!connected.length) connList.innerHTML='<span style="font-size:11px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет связей')+'</span>';
   // Timeline
   drawFsDdTimeline(node);
   // Correlations
@@ -4987,7 +5172,7 @@ function openFsDrilldown(node){
     }
   });
   var sorted=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5);
-  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.5rem;">'+k+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:11px;color:var(--text-muted);">Нет данных</span>';
+  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.5rem;">'+nmTranslate(k)+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:11px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет данных')+'</span>';
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function drawFsDdTimeline(node){
@@ -5117,7 +5302,7 @@ function nmBuildFs3DGraph(container){
   var _fsTopNIds = nmGetTopNIds();
   nmFs3DGraph = ForceGraph3D()(container)
     .graphData({ nodes: gNodes, links: gLinks })
-    .nodeLabel(function(n){ return n.label + (n._layer ? ' ('+NM_LAYERS[n._layer]+')' : ''); })
+    .nodeLabel(function(n){ return nmTranslate(n.label) + (n._layer ? ' ('+nmTranslateLayer(n._layer)+')' : ''); })
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
@@ -5164,7 +5349,7 @@ function nmToggleLabels(){
   nmLabelsAlways = (nmLabelsMode==='all');
   try{ localStorage.setItem('nm_labels_mode', nmLabelsMode); localStorage.setItem('nm_labels_always', nmLabelsAlways?'true':'false'); }catch(e){}
   // Update all toggle buttons
-  var modeText = nmLabelsMode==='all' ? 'Подписи: все' : nmLabelsMode==='top' ? 'Подписи: топ' : 'Подписи: нет';
+  var modeText = nmLabelsMode==='all' ? (rpgT('labels_all')||'Подписи: все') : nmLabelsMode==='top' ? (rpgT('labels_top')||'Подписи: топ') : (rpgT('labels_off')||'Подписи: нет');
   var btns = document.querySelectorAll('.nm-labels-toggle');
   btns.forEach(function(b){ b.classList.toggle('active', nmLabelsMode!=='off'); b.textContent = modeText; });
   // Rebuild 3D graphs if active (labels are sprites that need regeneration)
@@ -5262,7 +5447,7 @@ function nmBuild3DGraph(){
     .height(H)
     .backgroundColor('rgba(0,0,0,0)')
     .graphData({nodes: gNodes, links: gLinks})
-    .nodeLabel(function(n){ return n.label + (n._layer ? ' ('+NM_LAYERS[n._layer]+')' : ''); })
+    .nodeLabel(function(n){ return nmTranslate(n.label) + (n._layer ? ' ('+nmTranslateLayer(n._layer)+')' : ''); })
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
@@ -5340,7 +5525,7 @@ function buildNmGraph(){
   var toggle3d=document.getElementById('nm-3d-toggle');
   if(toggle3d) toggle3d.style.display='';
   var toggleLabels=document.getElementById('nm-labels-toggle');
-  if(toggleLabels){ toggleLabels.style.display=''; var _mt=nmLabelsMode==='all'?'Подписи: все':nmLabelsMode==='top'?'Подписи: топ':'Подписи: нет'; toggleLabels.textContent=_mt; if(nmLabelsMode!=='off') toggleLabels.classList.add('active'); else toggleLabels.classList.remove('active'); }
+  if(toggleLabels){ toggleLabels.style.display=''; var _mt=nmLabelsMode==='all'?(rpgT('labels_all')||'Подписи: все'):nmLabelsMode==='top'?(rpgT('labels_top')||'Подписи: топ'):(rpgT('labels_off')||'Подписи: нет'); toggleLabels.textContent=_mt; if(nmLabelsMode!=='off') toggleLabels.classList.add('active'); else toggleLabels.classList.remove('active'); }
   var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
   if(analyzeBtn) analyzeBtn.style.display='block';
   analysis.style.display='none'; // hide until button pressed
@@ -5664,8 +5849,8 @@ function nmSimulate(canvas, initAlpha){
     if(found){
       var layerName=nmTypeToLayerName(found.type);
       var layerNum=nmTypeToLayer(found.type);
-      var valLabel=found.valence<0?'негатив':(found.valence>0?'позитив':'нейтрал');
-      tip.innerHTML='<strong>'+found.label+'</strong><br><span style="color:var(--text-muted);">Слой '+layerNum+': '+layerName+' · '+valLabel+'</span><br>Частота: ×'+found.count;
+      var valLabel=found.valence<0?(rpgT('hover_negative')||'негатив'):(found.valence>0?(rpgT('hover_positive')||'позитив'):(rpgT('hover_neutral')||'нейтрал'));
+      tip.innerHTML='<strong>'+nmTranslate(found.label)+'</strong><br><span style="color:var(--text-muted);">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+'</span><br>'+(rpgT('hover_frequency')||'Частота')+': ×'+found.count;
       tip.style.display='block';
       tip.style.left=(ev.clientX-rect.left+12)+'px';
       tip.style.top=(ev.clientY-rect.top-10)+'px';
@@ -5790,13 +5975,13 @@ function openNmDrilldown(node){
 
   // Header
   var badge=document.getElementById('nm-dd-type-badge');
-  badge.textContent='Слой '+layerNum+': '+layerName;
+  badge.textContent=(rpgT('layer_prefix')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum);
   badge.style.background=layerColors[layerNum]||'rgba(255,255,255,0.1)';
   badge.style.color='#111';
-  document.getElementById('nm-dd-title').textContent=node.label;
-  var valTxt=node.valence<0?'утечка':'ресурс';
-  if(node.valence===0) valTxt='нейтрально';
-  document.getElementById('nm-dd-stats').textContent='Встречается '+node.count+' раз | '+valTxt+(node.last_seen?' | Последний: '+node.last_seen:'');
+  document.getElementById('nm-dd-title').textContent=nmTranslate(node.label);
+  var valTxt=node.valence<0?(rpgT('valence_leak')||'утечка'):(rpgT('valence_resource')||'ресурс');
+  if(node.valence===0) valTxt=rpgT('valence_neutral')||'нейтрально';
+  document.getElementById('nm-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+node.count+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'Последний: ')+node.last_seen:'');
 
   // Connected nodes
   var connList=document.getElementById('nm-dd-conn-list');
@@ -5813,11 +5998,11 @@ function openNmDrilldown(node){
   connected.forEach(function(c){
     var chip=document.createElement('span');
     chip.style.cssText='display:inline-block;padding:4px 10px;border-radius:10px;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);';
-    chip.textContent=(c.count>1?c.count+'× ':'')+c.node.label;
+    chip.textContent=(c.count>1?c.count+'× ':'')+nmTranslate(c.node.label);
     chip.onclick=function(){openNmDrilldown(c.node);};
     connList.appendChild(chip);
   });
-  if(!connected.length) connList.innerHTML='<span style="font-size:12px;color:var(--text-muted);">Нет связей</span>';
+  if(!connected.length) connList.innerHTML='<span style="font-size:12px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет связей')+'</span>';
 
   // 30-day frequency timeline
   drawDdTimeline(node);
@@ -5846,7 +6031,7 @@ function openNmDrilldown(node){
     }
   });
   var sorted=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5);
-  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.75rem;">'+k+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:12px;color:var(--text-muted);">Нет данных</span>';
+  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.75rem;">'+nmTranslate(k)+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:12px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет данных')+'</span>';
 
   // Scroll into view
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -6176,7 +6361,7 @@ function abRenderStep(){
   pbar.style.width=((abStep+1)*20)+'%';
   label.textContent='Шаг '+(abStep+1)+' из 5';
   prev.style.display=abStep>0?'':'none';
-  next.textContent=abStep===4?'Завершить':'Далее →';
+  next.textContent=abStep===4?(rpgT('finish_btn')||'Завершить'):(rpgT('next_btn')||'Далее →');
   var h='';
 
   if(abStep===0){
@@ -6209,7 +6394,8 @@ function abRenderStep(){
     h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Что мешает перейти из точки А в точку B?</h3>';
     h+='<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.25rem;">Посмотрите на свою точку B и выпишите всё, что, по вашему ощущению, мешает вам уже сейчас быть в этой точке. Пишите всё, что всплывает первым: страхи, привычки, убеждения, отсутствие навыков, внутренние конфликты, состояние тела, окружение, действия или бездействие.</p>';
     // Quick chips
-    var chips=['Я не довожу начатое до конца','Я боюсь ошибиться','Мне не хватает дисциплины','Я не отвечаю за свои слова действиями','Я откладываю важные решения','Я не умею просить поддержку','Я быстро теряю энергию','Я боюсь быть заметным','Я не верю, что могу заработать больше','Мне сложно удерживать внимание','У меня нет ясного плана','Я не умею стабильно действовать'];
+    var chips_ru=['Я не довожу начатое до конца','Я боюсь ошибиться','Мне не хватает дисциплины','Я не отвечаю за свои слова действиями','Я откладываю важные решения','Я не умею просить поддержку','Я быстро теряю энергию','Я боюсь быть заметным','Я не верю, что могу заработать больше','Мне сложно удерживать внимание','У меня нет ясного плана','Я не умею стабильно действовать'];
+    var chips = chips_ru.map(function(ch, i) { return rpgT('ab_chip_'+(i+1)) || ch; });
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1.25rem;">';
     chips.forEach(function(ch){
       var sel=abState.reasons.indexOf(ch)!==-1;
@@ -6942,7 +7128,7 @@ if('serviceWorker' in navigator){
   <div class="nm-fs-header">
     <h3>НейроКарта — полный экран</h3>
     <div style="display:flex;align-items:center;gap:0.5rem;">
-      <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" style="font-size:10px;">Подписи: топ</button>
+      <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" style="font-size:10px;" data-i18n="a.tools.labels_always">Подписи: топ</button>
       <button class="nm-3d-toggle" id="nm-fs-3d-toggle" onclick="nmFsToggle3D()">
         <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D
       </button>
@@ -6979,15 +7165,15 @@ if('serviceWorker' in navigator){
           <p id="nm-fs-dd-stats" style="font-size:11px;color:var(--text-muted);margin:0;"></p>
         </div>
         <div style="margin-bottom:0.75rem;">
-          <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Связанные узлы</p>
+          <p id="nm-fs-dd-label-conn" style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Связанные узлы</p>
           <div id="nm-fs-dd-conn-list" style="display:flex;flex-wrap:wrap;gap:0.3rem;"></div>
         </div>
         <div style="margin-bottom:0.75rem;">
-          <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Частота за 30 дней</p>
+          <p id="nm-fs-dd-label-freq" style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Частота за 30 дней</p>
           <canvas id="nm-fs-dd-timeline" width="240" height="50" style="width:100%;height:50px;border-radius:6px;background:rgba(0,0,0,0.15);"></canvas>
         </div>
         <div>
-          <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Корреляции</p>
+          <p id="nm-fs-dd-label-corr" style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;">Корреляции</p>
           <div id="nm-fs-dd-corr-list" style="font-size:11px;"></div>
         </div>
       </div>
