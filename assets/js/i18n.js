@@ -112,6 +112,11 @@
 
     // fire custom event so dynamic JS can react
     document.dispatchEvent(new CustomEvent('langchange', { detail: { lang: currentLang } }));
+
+    // Remove FOUC-prevention style (added by inline <head> script)
+    var flashStyle = document.getElementById('i18n-flash-prevent');
+    if (flashStyle) flashStyle.remove();
+    if (document.body) document.body.style.opacity = '';
   }
 
   /* ── public API ── */
