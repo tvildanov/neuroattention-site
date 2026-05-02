@@ -1936,6 +1936,12 @@ var RPG_I18N = {
     expand_locked_title: 'Available after choosing a program',
     // WMC modal close button
     close_btn: 'Close',
+    // Layer insight / locked modals
+    layer_deep_dive: 'Deep layer analysis',
+    layer_deep_dive_desc: 'Content coming soon. Here you will find an expanded analysis of layer parameters with development recommendations and detailed diagnostics.',
+    locked_access_title: 'Extended access',
+    locked_access_desc: 'Deep analysis of each layer is available after choosing a program. Go to the programs section to begin.',
+    choose_program_btn: 'Choose program',
     // Point A→B Exercise
     ab_step_label: 'Step',
     ab_of: 'of',
@@ -2113,6 +2119,12 @@ var RPG_I18N = {
     expand_locked_title: 'Disponible después de elegir un programa',
     // WMC modal close button
     close_btn: 'Cerrar',
+    // Layer insight / locked modals
+    layer_deep_dive: 'Análisis profundo de la capa',
+    layer_deep_dive_desc: 'Contenido próximamente. Aquí encontrarás un análisis ampliado de los parámetros de la capa con recomendaciones de desarrollo y diagnósticos detallados.',
+    locked_access_title: 'Acceso extendido',
+    locked_access_desc: 'El análisis profundo de cada capa está disponible después de elegir un programa. Ve a la sección de programas para comenzar.',
+    choose_program_btn: 'Elegir programa',
     // Point A→B Exercise
     ab_step_label: 'Paso',
     ab_of: 'de',
@@ -2325,9 +2337,9 @@ function rpgShowLayerInsight(layerName){
   modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
   modal.innerHTML = '<div style="max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px);">' +
     '<p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.5rem;font-family:\'Space Grotesk\',sans-serif;">'+layerName+'</p>' +
-    '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">Глубокий разбор слоя</h3>' +
-    '<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">Контент будет добавлен. Здесь появится расширенный анализ параметров слоя с рекомендациями по развитию и детализированной диагностикой.</p>' +
-    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">Закрыть</button>' +
+    '<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1rem;font-family:\'Unbounded\',sans-serif;font-weight:500;">'+(rpgT('layer_deep_dive')||'Глубокий разбор слоя')+'</h3>' +
+    '<p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin:0 0 1.5rem;">'+(rpgT('layer_deep_dive_desc')||'Контент будет добавлен. Здесь появится расширенный анализ параметров слоя с рекомендациями по развитию и детализированной диагностикой.')+'</p>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;">'+(rpgT('close_btn')||'Закрыть')+'</button>' +
     '</div>';
   document.body.appendChild(modal);
 }
@@ -2337,9 +2349,9 @@ function rpgShowLockedModal(){
   modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
   modal.innerHTML = '<div style="max-width:400px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);text-align:center;">' +
     '<svg style="width:32px;height:32px;fill:none;stroke:rgba(255,255,255,0.3);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    '<p style="font-size:14px;color:var(--text-primary);margin:0 0 0.5rem;">Расширенный доступ</p>' +
-    '<p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Глубокий разбор каждого слоя доступен после выбора программы. Перейдите в раздел программ для начала.</p>' +
-    '<button onclick="this.closest(\'div[style*=fixed]\').remove();switchTab(\'enroll\')" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-size:12px;cursor:pointer;">Выбрать программу</button>' +
+    '<p style="font-size:14px;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('locked_access_title')||'Расширенный доступ')+'</p>' +
+    '<p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">'+(rpgT('locked_access_desc')||'Глубокий разбор каждого слоя доступен после выбора программы. Перейдите в раздел программ для начала.')+'</p>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove();switchTab(\'enroll\')" style="padding:0.5rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-size:12px;cursor:pointer;">'+(rpgT('choose_program_btn')||'Выбрать программу')+'</button>' +
     '</div>';
   document.body.appendChild(modal);
 }
