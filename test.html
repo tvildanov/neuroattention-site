@@ -1067,16 +1067,10 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     } catch(e){}
   }
 
-  // ── Auto-start ──
+  // ── Auto-start — skip welcome, go straight to Q0 ──
   (function autoStart() {
-    addBotMessage(t('t.intro.welcome'));
     showTyping();
-    setTimeout(function() {
-      removeTyping();
-      addBotMessage(t('t.intro.instruction'));
-      showTyping();
-      setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 700);
-    }, 900);
+    setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
   })();
 
 })();
