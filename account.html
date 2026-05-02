@@ -235,6 +235,15 @@
 .nm-fs-btn { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--text-dim);font-size:11px;padding:0.35rem 0.65rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.2s;min-width:44px;min-height:44px;justify-content:center; }
 .nm-fs-btn:hover { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
 @media(max-width:768px){ .nm-fs-sidebar { display:none; } .nm-fs-header h3 { font-size:13px; } .nm-fs-header { padding:0.5rem 0.8rem;flex-wrap:wrap;gap:0.4rem; } .nm-fs-header > div { flex-wrap:wrap;gap:0.3rem; } }
+/* ── Mobile NM Survey Modal ── */
+@media(max-width:600px){
+  #nmSurveyModal > div { flex-direction:column!important;width:100%!important;max-width:100%!important;max-height:100vh!important;height:100vh;gap:0!important; }
+  #nmSurveyModal > div > .modal-box { max-width:100%!important;flex:1 1 auto!important;width:100%!important;border-radius:0!important;padding:1rem 1rem 5rem!important; }
+  #nmSurveyModal > div > div:last-child { display:none!important; }
+  #nm-step-content { overflow-x:hidden; }
+  #nm-step-content h3 { font-size:0.85rem!important; }
+  #nm-nav-btns { position:fixed;bottom:0;left:0;right:0;padding:0.75rem 1rem;background:rgba(10,12,18,0.95);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.06);z-index:10; }
+}
 .nm-chip { display:inline-flex;align-items:center;padding:0.3rem 0.65rem;border-radius:8px;font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
 .nm-chip:hover { border-color:rgba(255,255,255,0.18); }
 .nm-chip.selected { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
