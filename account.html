@@ -3940,10 +3940,10 @@ function renderNmBreadcrumb(){
   var emo=nmSurveyState.emotions[idx];
   var chain=nmSurveyState.emotionChains[idx]||{};
   var parts=[];
-  if(emo) parts.push('<span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+emo+'</span>');
-  if(chain.areas&&chain.areas.length) parts.push('<span style="color:rgba(140,180,255,1);">'+chain.areas.map(function(a){return (EMOJI_AREAS[a]||'')+' '+a;}).join(', ')+'</span>');
-  if(chain.causes&&chain.causes.length&&nmCurrentStep>=3) parts.push('<span style="color:rgba(255,180,100,1);">'+chain.causes.join(', ')+'</span>');
-  if(chain.thoughts&&chain.thoughts.length&&nmCurrentStep>=4) parts.push('<span style="color:rgba(200,160,255,1);">'+chain.thoughts.map(function(t){return (EMOJI_THOUGHTS[t]||'')+' '+t;}).join(', ')+'</span>');
+  if(emo) parts.push('<span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+nmTranslate(emo)+'</span>');
+  if(chain.areas&&chain.areas.length) parts.push('<span style="color:rgba(140,180,255,1);">'+chain.areas.map(function(a){return (EMOJI_AREAS[a]||'')+' '+nmTranslate(a);}).join(', ')+'</span>');
+  if(chain.causes&&chain.causes.length&&nmCurrentStep>=3) parts.push('<span style="color:rgba(255,180,100,1);">'+chain.causes.map(function(c){return nmTranslate(c);}).join(', ')+'</span>');
+  if(chain.thoughts&&chain.thoughts.length&&nmCurrentStep>=4) parts.push('<span style="color:rgba(200,160,255,1);">'+chain.thoughts.map(function(t){return (EMOJI_THOUGHTS[t]||'')+' '+nmTranslate(t);}).join(', ')+'</span>');
   // Chain index indicator if multiple emotions
   var chainLabel='';
   if(nmSurveyState.emotions.length>1) chainLabel='<span style="font-size:10px;color:var(--text-dim);margin-right:6px;">'+(rpgT('nm_chain_label')||'цепочка')+' '+(idx+1)+'/'+nmSurveyState.emotions.length+'</span>';
@@ -3968,7 +3968,7 @@ function renderNmStep(){
     NM_ALL_EMOTIONS.forEach(function(em){
       var neg=isNegEmotion(em);
       var sel=(em===currentChainEmo);
-      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+nmEmoji(EMOJI_EMOTIONS,em)+em+'</span>';
+      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+nmEmoji(EMOJI_EMOTIONS,em)+nmTranslate(em)+'</span>';
     });
     h+='</div>';
     content.innerHTML=h;
@@ -3977,14 +3977,14 @@ function renderNmStep(){
     var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     if(!emo){ nmNext(); return; }
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 2 '+(rpgT('nm_of_total')||'из')+' 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_which_area')||'В какой сфере проявилась')+' <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+emo+'</span>'+(rpgT('nm_which_area_suffix')||'?')+'</h3>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_which_area')||'В какой сфере проявилась')+' <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+nmTranslate(emo)+'</span>'+(rpgT('nm_which_area_suffix')||'?')+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+' '+(rpgT('nm_describe_area_2')||'сфер')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
     var chain=nmSurveyState.emotionChains[nmSurveyState._chainIdx||0]||{};
     var selAreas=chain.areas||[];
     NM_AREAS.forEach(function(a){
       var sel=selAreas.indexOf(a)!==-1;
-      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleArea(this,\''+a+'\')">'+nmEmoji(EMOJI_AREAS,a)+a+'</span>';
+      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleArea(this,\''+a+'\')">'+nmEmoji(EMOJI_AREAS,a)+nmTranslate(a)+'</span>';
     });
     h+='</div>';
     if(selAreas.indexOf('другое')!==-1){
@@ -4009,7 +4009,7 @@ function renderNmStep(){
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
     causes.forEach(function(c){
       var sel=selCauses.indexOf(c)!==-1;
-      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</span>';
+      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+nmTranslate(c)+'</span>';
     });
     h+='</div>';
     if(selCauses.indexOf('другое')!==-1){
@@ -4030,7 +4030,7 @@ function renderNmStep(){
     allThoughts.forEach(function(t){
       var neg=NM_THOUGHTS.indexOf(t)<15;
       var sel=selThoughts.indexOf(t)!==-1;
-      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+nmEmoji(EMOJI_THOUGHTS,t)+t+'</span>';
+      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+nmEmoji(EMOJI_THOUGHTS,t)+nmTranslate(t)+'</span>';
     });
     h+='</div>';
     h+='<div style="display:flex;gap:0.5rem;"><input type="text" id="nm-custom-thought" class="glass-input" placeholder="'+(rpgT('nm_add_custom_thought')||'Добавить свою мысль...')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
@@ -4049,7 +4049,7 @@ function renderNmStep(){
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_add_context')||'Хотите добавить контекст?')+'</h3>';
     h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="'+(rpgT('nm_free_text')||'Свободное текстовое поле...')+'" style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
     content.innerHTML=h;
-    next.textContent='Далее →';
+    next.textContent=rpgT('next_btn')||'Далее →';
   }
   else if(nmCurrentStep===6){
     // Choice screen: add another emotion or save
