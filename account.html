@@ -753,15 +753,15 @@
     <!-- Sub-tabs: NeuroMap / Календарь / Дневник -->
     <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
       <button class="dash-tab dash-subtab active" id="tools-mode-nm" onclick="setToolsMode('nm')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.tools.neuromap">NeuroMap</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-cal" onclick="setToolsMode('cal')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.calendar">Календарь</button>
+      <!-- Calendar sub-tab removed (17.3) — DB table kept for future migration -->
       <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
     </div>
     <!-- NeuroMap content will be moved here by JS from tab-neuromap -->
     <!-- Calendar + Diary content -->
     <div id="tools-cal-diary-wrap" style="display:none;">
 
-    <!-- === CALENDAR MODE === -->
-    <div id="cal-mode-cal">
+    <!-- === CALENDAR MODE (hidden — removed from UI in 17.3, DB table kept) === -->
+    <div id="cal-mode-cal" style="display:none!important;">
       <div class="dash-grid">
         <div class="dash-card glass-card-elevated span-8">
           <div class="cal-header">
@@ -1418,9 +1418,9 @@
               <h4>NeuroMap</h4>
               <p>Карта мыслей, эмоций и состояний</p>
             </div>
-            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('calendar')">
-              <h4>Календарь + Дневник</h4>
-              <p>Дневник нейроресурса</p>
+            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('tools');setTimeout(function(){setToolsMode('diary');},50);">
+              <h4 data-i18n="a.tools.diary">Дневник</h4>
+              <p data-i18n="a.tools.diary_desc">Дневник нейроресурса</p>
             </div>
           </div>
           <!-- Old admin rebuild section removed — rebuild is now in NeuroMap section for all users -->
@@ -3439,26 +3439,24 @@ function setToolsMode(mode){
   var calPanel = document.getElementById('cal-mode-cal');
   var diaryPanel = document.getElementById('cal-mode-diary');
   var btnNm = document.getElementById('tools-mode-nm');
-  var btnCal = document.getElementById('tools-mode-cal');
   var btnDiary = document.getElementById('tools-mode-diary');
   // Reset all sub-tab buttons
-  [btnNm,btnCal,btnDiary].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
+  if(calPanel) calPanel.style.display='none'; // Calendar tab removed (17.3)
   if(mode==='nm'){
     if(btnNm){ btnNm.classList.add('active'); btnNm.style.borderBottomColor='var(--accent-cyan)'; }
     if(nmContent) nmContent.style.display='';
     setTimeout(function(){ try { buildNmGraph(); } catch(e){} }, 50);
   } else if(mode==='cal'){
-    if(btnCal){ btnCal.classList.add('active'); btnCal.style.borderBottomColor='var(--accent-cyan)'; }
-    if(calDiaryWrap) calDiaryWrap.style.display='';
-    if(calPanel) calPanel.style.display='';
-    if(diaryPanel) diaryPanel.style.display='none';
-  } else if(mode==='diary'){
+    // Calendar tab removed — redirect to diary
+    mode='diary';
+  }
+  if(mode==='diary'){
     if(btnDiary){ btnDiary.classList.add('active'); btnDiary.style.borderBottomColor='var(--accent-cyan)'; }
     if(calDiaryWrap) calDiaryWrap.style.display='';
-    if(calPanel) calPanel.style.display='none';
     if(diaryPanel) diaryPanel.style.display='';
     renderDiaryCalendar();
   }
