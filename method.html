@@ -574,21 +574,19 @@ document.getElementById('year').textContent = new Date().getFullYear();
   });
 })();
 
-// Language-aware article buttons
+// Language-aware article buttons (auto-detect + langchange)
 (function(){
-  var langBtns = document.querySelectorAll('.lang-btn');
-  function updateArticleLang(lang) {
+  function updateArticleLang() {
+    var lang = (document.documentElement.lang || 'ru').toLowerCase();
     var ruBtns = document.querySelectorAll('.article-btn-ru');
     var enBtns = document.querySelectorAll('.article-btn-en');
-    var isEn = (lang === 'EN' || lang === 'ES'); // EN/ES → EN article
+    var isEn = (lang === 'en' || lang === 'es'); // EN/ES → EN article
     ruBtns.forEach(function(b){ b.style.display = isEn ? 'none' : ''; });
     enBtns.forEach(function(b){ b.style.display = isEn ? '' : 'none'; });
   }
-  langBtns.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      updateArticleLang(btn.textContent.trim());
-    });
-  });
+  document.addEventListener('langchange', updateArticleLang);
+  // Run on load after i18n sets the lang attribute
+  if (document.documentElement.lang) updateArticleLang();
 })();
 </script>
 </body>
