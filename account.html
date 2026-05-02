@@ -1748,6 +1748,17 @@ document.addEventListener('langchange', function(){
       roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
     }
   } catch(e){ console.warn('langchange greeting update error:', e); }
+  // Re-render calendars with new locale month/day names
+  try { if(typeof renderCalendar==='function') renderCalendar(); } catch(e){}
+  try { if(typeof renderDiaryCalendar==='function') renderDiaryCalendar(); } catch(e){}
+  // Update diary day title if a day is selected
+  try {
+    if(selectedDiaryDay){
+      var parts=selectedDiaryDay.split('-');
+      var dayEl=document.getElementById('diary-day-title');
+      if(dayEl) dayEl.textContent=parseInt(parts[2],10)+' '+getMonthNameCap(parseInt(parts[1],10)-1)+' '+parts[0];
+    }
+  } catch(e){}
 });
 
 // ── Test Profile Card ──
@@ -3093,15 +3104,26 @@ function savePracticeReflection(btn){
 // ── Calendar ──
 var calMonth = new Date().getMonth(); // Current month (0-indexed)
 var calYear = new Date().getFullYear();
-var monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-var dayNames = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+function getLocale(){ var l=getLang(); return l==='ru'?'ru-RU':l==='es'?'es-ES':'en-US'; }
+function getMonthName(idx){ return new Intl.DateTimeFormat(getLocale(),{month:'long'}).format(new Date(2024,idx,1)); }
+function getMonthNameCap(idx){ var s=getMonthName(idx); return s.charAt(0).toUpperCase()+s.slice(1); }
+function getDayNames(){
+  var loc=getLocale(); var names=[];
+  for(var i=0;i<7;i++){
+    // 2024-01-01 is Monday
+    var d=new Date(2024,0,1+i);
+    var s=new Intl.DateTimeFormat(loc,{weekday:'short'}).format(d);
+    names.push(s.charAt(0).toUpperCase()+s.slice(1).replace(/\.$/,''));
+  }
+  return names;
+}
 
 var selectedCalDay=null;
 function renderCalendar(){
   var grid = document.getElementById('cal-grid');
-  document.getElementById('cal-month-title').textContent = monthNames[calMonth]+' '+calYear;
+  document.getElementById('cal-month-title').textContent = getMonthNameCap(calMonth)+' '+calYear;
   grid.innerHTML = '';
-  dayNames.forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
+  getDayNames().forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
   var first = new Date(calYear, calMonth, 1).getDay();
   first = first===0 ? 6 : first-1;
   var days = new Date(calYear, calMonth+1, 0).getDate();
@@ -3140,7 +3162,7 @@ function renderDayEvents(){
   evts.innerHTML='';
   var dayEvents=(calEventsData && calEventsData[selectedCalDay])||[];
   if(!dayEvents.length){
-    evts.innerHTML='<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;">Нет событий</p>';
+    evts.innerHTML='<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:1rem 0;">'+(t('a.tools.no_events')||'Нет событий')+'</p>';
     return;
   }
   dayEvents.forEach(function(ev){
@@ -3470,9 +3492,9 @@ function setCalMode(mode){
 // Diary calendar
 function renderDiaryCalendar(){
   var grid = document.getElementById('diary-cal-grid');
-  document.getElementById('diary-month-title').textContent = monthNames[diaryMonth]+' '+diaryYear;
+  document.getElementById('diary-month-title').textContent = getMonthNameCap(diaryMonth)+' '+diaryYear;
   grid.innerHTML = '';
-  dayNames.forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
+  getDayNames().forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
   var first = new Date(diaryYear, diaryMonth, 1).getDay();
   first = first===0 ? 6 : first-1;
   var days = new Date(diaryYear, diaryMonth+1, 0).getDate();
@@ -3503,7 +3525,7 @@ function selectDiaryDay(key, d){
   renderDiaryCalendar();
   var view = document.getElementById('diary-day-view');
   view.style.display = 'block';
-  document.getElementById('diary-day-title').textContent = d+' '+monthNames[diaryMonth]+' '+diaryYear;
+  document.getElementById('diary-day-title').textContent = d+' '+getMonthNameCap(diaryMonth)+' '+diaryYear;
   renderDayColumns(key);
 }
 
@@ -3538,7 +3560,7 @@ function updateTodaySummary(){
   var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   var entries = (diaryData && diaryData[key]) || [];
   var el = document.getElementById('diary-today-summary');
-  if(!entries.length){ el.innerHTML='<p style="font-size:13px;color:var(--text-muted);margin:0;">Нет записей</p>'; return; }
+  if(!entries.length){ el.innerHTML='<p style="font-size:13px;color:var(--text-muted);margin:0;">'+(t('a.tools.no_records')||'Нет записей')+'</p>'; return; }
   var plus=0, minus=0, mixed=0;
   entries.forEach(function(e){ var p=e.plusCount||0,m=e.minusCount||0; if(p>0&&m>0) mixed++; else if(m>0) minus++; else plus++; });
   el.innerHTML = '<p style="font-size:13px;color:var(--text-primary);margin:0 0 0.25rem;">'+entries.length+' событ'+(entries.length===1?'ие':'ий')+'</p>'
