@@ -467,14 +467,19 @@
   var ctx=c.getContext('2d');
   var W=c.width, H=c.height, cx=W/2, cy=H/2;
 
-  // Node definitions
-  var mainNodes=[
-    {label:'Я', color:'rgba(0,224,255,C)', x:cx, y:cy, r:28, isCenter:true},
-    {label:'Эмоция', color:'rgba(245,166,35,C)', x:cx-140, y:cy-160, r:22},
-    {label:'Мысль', color:'rgba(79,195,247,C)', x:cx+140, y:cy-190, r:22},
-    {label:'Событие', color:'rgba(179,136,255,C)', x:cx+180, y:cy+120, r:22},
-    {label:'Действие', color:'rgba(105,240,174,C)', x:cx-100, y:cy+200, r:22}
-  ];
+  // Node definitions (i18n: labels from t() with Russian fallback)
+  function nmCanvasLabels(){
+    return [
+      {label:(typeof t==='function'&&t('p.os.node_self'))||'Я', color:'rgba(0,224,255,C)', x:cx, y:cy, r:28, isCenter:true},
+      {label:(typeof t==='function'&&t('p.os.legend_emotions'))||'Эмоция', color:'rgba(245,166,35,C)', x:cx-140, y:cy-160, r:22},
+      {label:(typeof t==='function'&&t('p.os.legend_thoughts'))||'Мысль', color:'rgba(79,195,247,C)', x:cx+140, y:cy-190, r:22},
+      {label:(typeof t==='function'&&t('p.os.legend_events'))||'Событие', color:'rgba(179,136,255,C)', x:cx+180, y:cy+120, r:22},
+      {label:(typeof t==='function'&&t('p.os.legend_actions'))||'Действие', color:'rgba(105,240,174,C)', x:cx-100, y:cy+200, r:22}
+    ];
+  }
+  var mainNodes=nmCanvasLabels();
+  // Re-label on language change
+  document.addEventListener('langchange', function(){ mainNodes=nmCanvasLabels(); });
   // Sub-nodes (2 per main node, no labels)
   var subNodes=[];
   for(var i=1;i<mainNodes.length;i++){
