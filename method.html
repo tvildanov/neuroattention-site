@@ -574,19 +574,33 @@ document.getElementById('year').textContent = new Date().getFullYear();
   });
 })();
 
-// Language-aware article buttons (auto-detect + langchange)
+})();
+</script>
+<script>
+// Language-aware article buttons — isolated script block for safety
 (function(){
-  function updateArticleLang() {
-    var lang = (document.documentElement.lang || 'ru').toLowerCase();
-    var ruBtns = document.querySelectorAll('.article-btn-ru');
-    var enBtns = document.querySelectorAll('.article-btn-en');
-    var isEn = (lang === 'en' || lang === 'es'); // EN/ES → EN article
-    ruBtns.forEach(function(b){ b.style.display = isEn ? 'none' : ''; });
-    enBtns.forEach(function(b){ b.style.display = isEn ? '' : 'none'; });
+  function getLang(){
+    try{
+      var x=localStorage.getItem('na_lang_explicit')||localStorage.getItem('na_lang');
+      if(x) return x.toLowerCase();
+    }catch(e){}
+    return (document.documentElement.lang||'ru').toLowerCase();
   }
-  document.addEventListener('langchange', updateArticleLang);
-  // Run on load after i18n sets the lang attribute
-  if (document.documentElement.lang) updateArticleLang();
+  function update(){
+    var lang=getLang();
+    var ru=document.querySelectorAll('.article-btn-ru');
+    var en=document.querySelectorAll('.article-btn-en');
+    var isEn=(lang==='en'||lang==='es');
+    for(var i=0;i<ru.length;i++) ru[i].style.display=isEn?'none':'';
+    for(var i=0;i<en.length;i++) en[i].style.display=isEn?'':'none';
+  }
+  document.addEventListener('langchange',update);
+  update();
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){setTimeout(update,50);});
+  }else{
+    setTimeout(update,50);
+  }
 })();
 </script>
 </body>
