@@ -440,8 +440,8 @@
       </div>
       <p id="forgot-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
       <p id="forgot-success" style="font-size:12px;color:rgba(120,255,160,0.9);margin:0 0 0.75rem;min-height:1rem;display:none;"></p>
-      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_forgot">
-        Отправить ссылку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_send_link">
+        <span data-i18n="a.auth.btn_send_link">Отправить ссылку</span> <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
     </form>
     <p class="auth-hint" style="margin-top:1.25rem;"><a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;" data-i18n="a.auth.link_back_login">Вернуться ко входу</a></p>
@@ -473,8 +473,8 @@
         </div>
       </div>
       <p id="reset-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
-      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_reset">
-        Сохранить пароль <svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+      <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_save_password">
+        <span data-i18n="a.auth.btn_save_password">Сохранить пароль</span> <svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
       </button>
     </form>
   </div>
@@ -507,7 +507,7 @@
         Создать аккаунт <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </form>
-    <p class="auth-hint" style="margin-top:1.25rem;">Уже есть аккаунт? <a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;" data-i18n="a.auth.link_register">Войти</a></p>
+    <p class="auth-hint" style="margin-top:1.25rem;"><span data-i18n="a.auth.hint_has_account">Уже есть аккаунт?</span> <a href="#" onclick="toggleAuthMode('login');return false;" style="color:var(--accent-cyan);text-decoration:none;" data-i18n="a.auth.link_register">Войти</a></p>
   </div>
 </section>
 
@@ -525,7 +525,7 @@
   </div>
 
   <!-- Back to admin button (hidden by default) -->
-  <button id="back-to-admin-btn" class="btn btn-ghost" style="display:none;margin-bottom:1rem;font-size:12px;" onclick="backToAdmin()">← Вернуться в панель управления</button>
+  <button id="back-to-admin-btn" class="btn btn-ghost" style="display:none;margin-bottom:1rem;font-size:12px;" onclick="backToAdmin()" data-i18n="a.admin.back_to_admin">← Вернуться в панель управления</button>
 
   <!-- Tabs -->
   <div class="dash-tabs">
@@ -555,7 +555,7 @@
               </div>
               <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
             </div>
-            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.gallery">Галерея</button>
+            <button onclick="openPresetGallery()" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(0,224,255,0.3)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.deepen">Углубить профиль</button>
           </div>
           <div style="flex:1;min-width:200px;">
             <p id="rpg-profile-name" style="margin:0;font-size:1.4rem;font-family:'Unbounded',sans-serif;font-weight:600;color:var(--text-primary);letter-spacing:0.04em;line-height:1.3;"></p>
@@ -563,7 +563,7 @@
           </div>
           <button id="rpg-deepen-btn" onclick="switchTab('enroll')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text-muted);font-size:12px;padding:0.5rem 1rem;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(10px);transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-primary)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='var(--text-muted)'" data-i18n="a.profile.deepen">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            Углубить профиль
+            <span data-i18n="a.profile.deepen">Углубить профиль</span>
           </button>
         </div>
       </div>
@@ -599,20 +599,20 @@
 
       <!-- CTA Block: Choose Program -->
       <div style="padding:1.5rem;border-radius:16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);">
-        <p style="font-size:0.95rem;color:var(--text-primary);margin:0 0 0.3rem;font-family:'Unbounded',sans-serif;font-weight:500;">Раскройте полный доступ к персонажу</p>
-        <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;">Выберите формат работы и начните прокачку параметров</p>
+        <p style="font-size:0.95rem;color:var(--text-primary);margin:0 0 0.3rem;font-family:'Unbounded',sans-serif;font-weight:500;" data-i18n="a.profile.unlock_full">Раскройте полный доступ к персонажу</p>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;" data-i18n="a.profile.unlock_desc">Выберите формат работы и начните прокачку параметров</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
           <a href="programs.html#self-guided" style="display:block;padding:1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';this.style.background='rgba(255,255,255,0.03)'">
             <p style="font-size:12px;font-family:'Space Grotesk',sans-serif;color:var(--text-primary);margin:0 0 0.25rem;font-weight:600;">Self-Guided</p>
-            <p style="font-size:11px;color:var(--text-dim);margin:0;">Самостоятельная работа с аудиопрактиками</p>
+            <p style="font-size:11px;color:var(--text-dim);margin:0;" data-i18n="a.profile.format_self">Самостоятельная работа с аудиопрактиками</p>
           </a>
           <a href="programs.html#guided" style="display:block;padding:1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';this.style.background='rgba(255,255,255,0.03)'">
             <p style="font-size:12px;font-family:'Space Grotesk',sans-serif;color:var(--text-primary);margin:0 0 0.25rem;font-weight:600;">Guided</p>
-            <p style="font-size:11px;color:var(--text-dim);margin:0;">Сопровождение специалиста</p>
+            <p style="font-size:11px;color:var(--text-dim);margin:0;" data-i18n="a.profile.format_specialist">Сопровождение специалиста</p>
           </a>
           <a href="programs.html#group" style="display:block;padding:1rem;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';this.style.background='rgba(255,255,255,0.03)'">
             <p style="font-size:12px;font-family:'Space Grotesk',sans-serif;color:var(--text-primary);margin:0 0 0.25rem;font-weight:600;">Group</p>
-            <p style="font-size:11px;color:var(--text-dim);margin:0;">Групповой формат DOM Unity</p>
+            <p style="font-size:11px;color:var(--text-dim);margin:0;" data-i18n="a.profile.format_group">Групповой формат DOM Unity</p>
           </a>
         </div>
       </div>
@@ -620,9 +620,9 @@
 
     <!-- Fallback: shown when no test result / no stats -->
     <div id="rpg-no-test" style="display:none;text-align:center;padding:3rem 1rem;">
-      <p style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">Пройдите тест адаптации</p>
-      <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1.5rem;">Чтобы увидеть свой профиль и 13 параметров личности</p>
-      <a href="test.html" style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.06);color:var(--text-primary);font-weight:600;padding:0.75rem 1.5rem;border-radius:12px;border:1px solid rgba(255,255,255,0.14);text-decoration:none;backdrop-filter:blur(20px);transition:all 0.2s;">Начать тест</a>
+      <p style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;" data-i18n="a.profile.take_test">Пройдите тест адаптации</p>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.profile.take_test_desc">Чтобы увидеть свой профиль и 13 параметров личности</p>
+      <a href="test.html" style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.06);color:var(--text-primary);font-weight:600;padding:0.75rem 1.5rem;border-radius:12px;border:1px solid rgba(255,255,255,0.14);text-decoration:none;backdrop-filter:blur(20px);transition:all 0.2s;" data-i18n="a.profile.btn_start_test">Начать тест</a>
     </div>
   </div>
 
@@ -641,46 +641,46 @@
         <div class="module-item" data-module-id="block-1">
           <div class="module-status done">✓</div>
           <div class="module-info">
-            <p class="name">Блок 1 · Вход в практику</p>
-            <p class="meta">нед 1–2 · 4 практики · завершён</p>
+            <p class="name" data-i18n="a.protocol.block1_name">Блок 1 · Вход в практику</p>
+            <p class="meta" data-i18n="a.protocol.block1_meta">нед 1–2 · 4 практики · завершён</p>
           </div>
         </div>
         <div class="module-item" data-module-id="block-2">
           <div class="module-status done">✓</div>
           <div class="module-info">
-            <p class="name">Блок 2 · Фокус и удержание внимания</p>
-            <p class="meta">нед 3–4 · 4 практики · завершён</p>
+            <p class="name" data-i18n="a.protocol.block2_name">Блок 2 · Фокус и удержание внимания</p>
+            <p class="meta" data-i18n="a.protocol.block2_meta">нед 3–4 · 4 практики · завершён</p>
           </div>
         </div>
         <div class="module-item" data-module-id="block-3">
           <div class="module-status current">▶</div>
           <div class="module-info">
-            <p class="name">Блок 3 · Гибкость и переключение</p>
-            <p class="meta">нед 5–6 · 3 из 4 практик</p>
+            <p class="name" data-i18n="a.protocol.block3_name">Блок 3 · Гибкость и переключение</p>
+            <p class="meta" data-i18n="a.protocol.block3_meta">нед 5–6 · 3 из 4 практик</p>
           </div>
           <div class="module-action">
-            <button class="btn btn-solid" style="font-size:11px;padding:0.35rem 0.75rem;" onclick="switchTab('protocol');setProtoMode('pract')">Продолжить</button>
+            <button class="btn btn-solid" style="font-size:11px;padding:0.35rem 0.75rem;" onclick="switchTab('protocol');setProtoMode('pract')" data-i18n="a.protocol.btn_continue">Продолжить</button>
           </div>
         </div>
         <div class="module-item" data-module-id="block-4">
           <div class="module-status locked">4</div>
           <div class="module-info">
-            <p class="name">Блок 4 · Множественное внимание</p>
-            <p class="meta">нед 7–8 · 4 практики</p>
+            <p class="name" data-i18n="a.protocol.block4_name">Блок 4 · Множественное внимание</p>
+            <p class="meta" data-i18n="a.protocol.block4_meta">нед 7–8 · 4 практики</p>
           </div>
         </div>
         <div class="module-item" data-module-id="block-5">
           <div class="module-status locked">5</div>
           <div class="module-info">
-            <p class="name">Блок 5 · Объёмное восприятие тела</p>
-            <p class="meta">нед 9–10 · 3 практики</p>
+            <p class="name" data-i18n="a.protocol.block5_name">Блок 5 · Объёмное восприятие тела</p>
+            <p class="meta" data-i18n="a.protocol.block5_meta">нед 9–10 · 3 практики</p>
           </div>
         </div>
         <div class="module-item" data-module-id="block-6">
           <div class="module-status locked">6</div>
           <div class="module-info">
-            <p class="name">Блок 6 · Интероцепция и саморегуляция</p>
-            <p class="meta">нед 11–12 · 2 практики + интеграция</p>
+            <p class="name" data-i18n="a.protocol.block6_name">Блок 6 · Интероцепция и саморегуляция</p>
+            <p class="meta" data-i18n="a.protocol.block6_meta">нед 11–12 · 2 практики + интеграция</p>
           </div>
         </div>
       </div>
@@ -708,7 +708,7 @@
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
         <div id="practices-loading" style="text-align:center;padding:2rem 0;">
-          <p style="font-size:13px;color:var(--text-muted);">Загрузка практик...</p>
+          <p style="font-size:13px;color:var(--text-muted);" data-i18n="a.protocol.loading_practices">Загрузка практик...</p>
         </div>
         <div id="practices-list"></div>
         <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
@@ -769,9 +769,9 @@
                 <button onclick="changeDiaryMonth(1)">›</button>
               </div>
             </div>
-            <button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.85rem;" onclick="analyzeDiary()" data-i18n="a.tools.analyze_diary">
+            <button class="btn btn-solid" style="font-size:11px;padding:0.4rem 0.85rem;" onclick="analyzeDiary()" data-i18n="a.tools.analyze_btn">
               <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
-              Проанализировать
+              <span data-i18n="a.tools.analyze_btn">Проанализировать</span>
             </button>
           </div>
           <div class="cal-grid" id="diary-cal-grid"></div>
@@ -806,8 +806,8 @@
         <div class="dash-card glass-card-elevated span-4">
           <h3 data-i18n="a.tools.resource_diary_title">Дневник нейроресурса</h3>
           <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.6;" data-i18n="a.tools.resource_diary_desc">Записывайте события дня и оценивайте их влияние на ваш внутренний ресурс</p>
-          <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openDiaryInput()" data-i18n="a.tools.add_diary_entry">
-            Внести события
+          <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openDiaryInput()" data-i18n="a.diary.event_label">
+            <span data-i18n="a.diary.event_label">Внести события</span>
             <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
           </button>
           <div style="margin-top:1.5rem;">
@@ -826,22 +826,22 @@
       <div class="modal-box" style="max-width:440px;">
         <button class="modal-close" onclick="closeDiaryInput()">&times;</button>
         <p class="eyebrow" style="margin-bottom:0.5rem;" data-i18n="a.tools.diary_title">Дневник нейроресурса</p>
-        <h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1.25rem;">Что произошло сегодня?</h3>
+        <h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1.25rem;" data-i18n="a.diary.title">Что произошло сегодня?</h3>
 
         <!-- Event input -->
         <div id="diary-input-form">
           <div style="margin-bottom:1rem;">
-            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;">Событие</label>
+            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.event_label">Событие</label>
             <input type="text" id="diary-event-text" class="glass-input" placeholder="Опишите событие..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:14px;" data-i18n-placeholder="a.diary.event_placeholder" />
           </div>
           <div style="margin-bottom:1.25rem;">
-            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;">Комментарий (по желанию)</label>
+            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.comment_label">Комментарий (по желанию)</label>
             <input type="text" id="diary-event-comment" class="glass-input" placeholder="Дополнительные мысли..." style="width:100%;padding:0.75rem 1rem;border-radius:12px;font-size:13px;" data-i18n-placeholder="a.diary.comment_placeholder" />
           </div>
 
           <!-- Rating step -->
           <div id="rating-step" style="display:none;">
-            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem;text-align:center;">После этого события вам стало...</p>
+            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem;text-align:center;" data-i18n="a.diary.rating_prompt">После этого события вам стало...</p>
             <div style="display:flex;align-items:center;justify-content:center;gap:2rem;" id="rating-area">
               <div id="minus-area" style="display:flex;align-items:center;gap:4px;">
                 <button class="rating-btn minus" onclick="addRating('minus')" title="Хуже">
@@ -860,8 +860,8 @@
 
           <!-- Action buttons -->
           <div style="display:none;gap:0.75rem;margin-top:1.5rem;" id="diary-actions">
-            <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()">Следующее событие</button>
-            <button class="btn btn-solid" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndClose()">Выйти и сохранить</button>
+            <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()" data-i18n="a.diary.btn_next_event">Следующее событие</button>
+            <button class="btn btn-solid" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndClose()" data-i18n="a.diary.btn_save_exit">Выйти и сохранить</button>
           </div>
         </div>
       </div>
@@ -895,7 +895,7 @@
           </button>
           <button class="nm-fs-btn" onclick="nmToggleFullscreen()" id="nm-fs-toggle" style="display:none;" data-i18n="a.tools.fullscreen">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-            На весь экран
+            <span data-i18n="a.tools.fullscreen">На весь экран</span>
           </button>
         </div>
         <!-- Graph canvas -->
@@ -913,26 +913,26 @@
                 </svg>
               </div>
               <h3 style="font-size:16px;font-weight:600;color:var(--text-primary);margin:0 0 0.4rem;" data-i18n="a.tools.your_neuromap">Ваша НейроКарта</h3>
-              <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 1rem;line-height:1.5;" data-i18n="a.tools.track_connections">
-                Отслеживайте связи между эмоциями, сферами жизни и мыслями. Каждое заполнение строит вашу уникальную карту.
+              <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 1rem;line-height:1.5;" data-i18n="a.tools.neuromap_onboard_desc">
+                Отслеживайте связи между эмоциями, сферами жизни, мыслями и действиями. Каждое заполнение строит вашу карту.
               </p>
               <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:1rem;">
                 <div style="flex:1;padding:0.5rem;border-radius:10px;background:rgba(0,224,255,0.05);border:1px solid rgba(0,224,255,0.1);">
                   <div style="font-size:16px;margin-bottom:2px;">🎯</div>
-                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Паттерны<br>поведения</div>
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;" data-i18n="a.tools.patterns">Паттерны<br>поведения</div>
                 </div>
                 <div style="flex:1;padding:0.5rem;border-radius:10px;background:rgba(140,120,255,0.05);border:1px solid rgba(140,120,255,0.1);">
                   <div style="font-size:16px;margin-bottom:2px;">🔗</div>
-                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Связи<br>эмоций</div>
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;" data-i18n="a.tools.emotion_links">Связи<br>эмоций</div>
                 </div>
                 <div style="flex:1;padding:0.5rem;border-radius:10px;background:rgba(120,255,160,0.05);border:1px solid rgba(120,255,160,0.1);">
                   <div style="font-size:16px;margin-bottom:2px;">📈</div>
-                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;">Динамика<br>ресурса</div>
+                  <div style="font-size:10px;color:var(--text-dim);line-height:1.3;" data-i18n="a.tools.resource_dynamics">Динамика<br>ресурса</div>
                 </div>
               </div>
-              <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;padding:0.7rem 1.2rem;" onclick="openNmSurvey()" data-i18n="a.tools.start_first_record">
+              <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;padding:0.7rem 1.2rem;" onclick="openNmSurvey()" data-i18n="a.tools.start_first_entry">
                 <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;margin-right:6px;" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Начать первую запись
+                <span data-i18n="a.tools.start_first_entry">Начать первую запись</span>
               </button>
               <p style="font-size:10.5px;color:var(--text-dim);margin:0.6rem 0 0;opacity:0.6;" data-i18n="a.tools.takes_2_min">Занимает ~2 минуты</p>
             </div>
@@ -942,29 +942,29 @@
         <div id="nm-filters" style="display:none;margin-top:0.75rem;">
           <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;" data-i18n="a.tools.layers">Слои:</span>
-            <label class="nm-layer-chk" style="opacity:0.45;cursor:default;" title="Ощущения (скоро)"><input type="checkbox" data-layer="1" checked disabled><span class="nm-lbl">1 Ощущения</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl">2 Переживания</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl">3 Образы</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-lbl">4 Понятия</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="5" checked onchange="nmLayerToggle()"><span class="nm-lbl">5 Смыслы</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="6" checked onchange="nmLayerToggle()"><span class="nm-lbl">6 Действия</span></label>
-            <label class="nm-layer-chk" style="margin-left:auto;"><input type="checkbox" data-layer="repeat" onchange="nmLayerToggle()"><span class="nm-lbl">Повторяющиеся</span></label>
+            <label class="nm-layer-chk" style="opacity:0.45;cursor:default;" title="Ощущения (скоро)"><input type="checkbox" data-layer="1" checked disabled><span class="nm-lbl" data-i18n="a.tools.layer1">1 Ощущения</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer2">2 Переживания</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer3">3 Образы</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer4">4 Понятия</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="5" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer5">5 Смыслы</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="6" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer6">6 Действия</span></label>
+            <label class="nm-layer-chk" style="margin-left:auto;"><input type="checkbox" data-layer="repeat" onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer_repeat">Повторяющиеся</span></label>
           </div>
         </div>
         <!-- Analyze + Rebuild buttons -->
         <div id="nm-analyze-btn-wrap" style="display:none;margin-top:1rem;text-align:center;">
-          <button class="btn btn-solid" onclick="nmTriggerAnalysis()" style="padding:0.85rem 2rem;font-size:14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);gap:0.5rem;">
+          <button class="btn btn-solid" onclick="nmTriggerAnalysis()" style="padding:0.85rem 2rem;font-size:14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);gap:0.5rem;" data-i18n="a.tools.analyze_map">
             <svg style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            Проанализировать карту личности
+            <span data-i18n="a.tools.analyze_map">Проанализировать карту личности</span>
           </button>
-          <button class="btn" id="btn-rebuild-self" onclick="rebuildGraph()" style="margin-left:0.75rem;padding:0.65rem 1.2rem;font-size:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:var(--text-muted);">
-            ↻ Пересчитать граф
+          <button class="btn" id="btn-rebuild-self" onclick="rebuildGraph()" style="margin-left:0.75rem;padding:0.65rem 1.2rem;font-size:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:var(--text-muted);" data-i18n="a.tools.rebuild_graph">
+            <span data-i18n="a.tools.rebuild_graph">↻ Пересчитать граф</span>
           </button>
           <span id="rebuild-status" style="display:block;margin-top:0.5rem;font-size:12px;color:var(--text-muted);"></span>
         </div>
         <!-- Analysis block -->
         <div id="nm-analysis" style="display:none;margin-top:1rem;padding:1.25rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
-          <h3 style="font-size:0.9rem;margin:0 0 0.75rem;">Что показывает ваша карта</h3>
+          <h3 style="font-size:0.9rem;margin:0 0 0.75rem;" data-i18n="a.tools.insights_title">Что показывает ваша карта</h3>
           <div id="nm-analysis-content"></div>
         </div>
         <!-- ── Node Drill-down Panel ── -->
@@ -977,49 +977,49 @@
           </div>
           <!-- Connected nodes sub-graph -->
           <div id="nm-dd-connections" style="margin-bottom:1rem;">
-            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Связанные узлы</p>
+            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;" data-i18n="a.tools.linked_nodes">Связанные узлы</p>
             <div id="nm-dd-conn-list" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
           </div>
           <!-- Mini frequency timeline -->
           <div id="nm-dd-timeline" style="margin-bottom:1rem;">
-            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Частота за 30 дней</p>
+            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;" data-i18n="a.tools.frequency_30d">Частота за 30 дней</p>
             <canvas id="nm-dd-timeline-canvas" width="400" height="60" style="width:100%;height:60px;border-radius:8px;background:rgba(0,0,0,0.15);"></canvas>
           </div>
           <!-- Correlations -->
           <div id="nm-dd-correlations">
-            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;">Появляется вместе с</p>
+            <p style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.5rem;" data-i18n="a.tools.co_occurs">Появляется вместе с</p>
             <div id="nm-dd-corr-list" style="font-size:13px;color:var(--text-secondary);"></div>
           </div>
         </div>
       </div>
       <!-- Right panel -->
       <div class="dash-card glass-card-elevated span-4">
-        <h3 style="margin:0 0 0.25rem;">Карта дня</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;">Отслеживайте, какие эмоции, мысли и внутренние сценарии чаще всего формируют ваше состояние.</p>
-        <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openNmSurvey()">
-          Заполнить карту дня
+        <h3 style="margin:0 0 0.25rem;" data-i18n="a.tools.day_map">Карта дня</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;" data-i18n="a.tools.day_map_desc">Отслеживайте, какие эмоции сегодня и как они связаны с событиями.</p>
+        <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openNmSurvey()" data-i18n="a.tools.fill_day_map">
+          <span data-i18n="a.tools.fill_day_map">Заполнить карту дня</span>
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
         </button>
         <!-- Today entries -->
         <div style="margin-top:1.5rem;">
-          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;">Эмоции сегодня</p>
+          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;" data-i18n="a.tools.emotions_today">Эмоции сегодня</p>
           <div id="nm-today-emotions" style="display:flex;flex-wrap:wrap;gap:0.35rem;">
             <p style="font-size:12px;color:var(--text-muted);margin:0;">—</p>
           </div>
         </div>
         <div style="margin-top:1rem;">
-          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;">Главная мысль</p>
+          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;" data-i18n="a.tools.main_thought">Главная мысль</p>
           <p id="nm-today-thought" style="font-size:13px;color:var(--text-secondary);margin:0;font-style:italic;">—</p>
         </div>
         <div style="margin-top:1rem;">
-          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.5rem;">Средняя интенсивность</p>
+          <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.5rem;" data-i18n="a.tools.avg_intensity">Средняя интенсивность</p>
           <p id="nm-today-intensity" style="font-size:1.8rem;font-family:'Unbounded',sans-serif;color:var(--text-primary);margin:0;">—</p>
         </div>
         <!-- Specialist access toggle -->
         <div style="margin-top:1.75rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);">
           <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:12px;color:var(--text-muted);">
             <input type="checkbox" id="nm-specialist-access" style="accent-color:var(--accent-cyan);width:16px;height:16px;" />
-            Разрешить специалисту видеть мою NeuroMap
+            <span data-i18n="a.tools.specialist_permission">Разрешить специалисту видеть мою NeuroMap</span>
           </label>
         </div>
       </div>
@@ -1036,15 +1036,15 @@
           <div id="nm-chain-breadcrumb" style="margin-bottom:1rem;display:none;"></div>
           <div id="nm-step-content"></div>
           <div style="display:flex;gap:0.75rem;margin-top:1.5rem;" id="nm-nav-btns">
-            <button class="btn btn-ghost" id="nm-prev" onclick="nmPrev()" style="display:none;">← Назад</button>
-            <button class="btn btn-solid" id="nm-next" onclick="nmNext()" style="flex:1;justify-content:center;">Далее →</button>
+            <button class="btn btn-ghost" id="nm-prev" onclick="nmPrev()" style="display:none;" data-i18n="a.tools.nm_prev">← Назад</button>
+            <button class="btn btn-solid" id="nm-next" onclick="nmNext()" style="flex:1;justify-content:center;" data-i18n="a.tools.nm_next">Далее →</button>
           </div>
         </div>
         <!-- Right: live graph preview -->
         <div style="flex:1;min-width:300px;border-radius:20px;overflow:hidden;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);position:relative;">
           <canvas id="nm-live-canvas" style="width:100%;height:100%;"></canvas>
           <div id="nm-live-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-            <p style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;margin:0;">Ваша карта появится<br>по мере ответов</p>
+            <p style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;margin:0;" data-i18n="a.tools.map_placeholder">Ваша карта появится по мере ответов</p>
           </div>
         </div>
       </div>
@@ -1062,8 +1062,8 @@
           <h2 style="font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.6rem;color:var(--text-primary);margin:0 0 0.75rem;" data-i18n="a.pointab.title">Точка А → Точка B</h2>
           <p style="color:var(--text-secondary);font-size:14px;line-height:1.65;margin:0 0 1.5rem;max-width:640px;" data-i18n="a.pointab.intro">Определите, где вы находитесь сейчас, куда хотите прийти и какие внутренние ограничения мешают движению.</p>
           <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin:0 0 2rem;max-width:640px;" data-i18n="a.pointab.description">Это упражнение помогает увидеть разницу между текущим образом жизни и желаемым направлением развития. На основе ответов вы сформируете личную программу корректировки и запишете её своим голосом.</p>
-          <button class="btn btn-solid" style="font-size:14px;padding:0.85rem 2rem;" onclick="abStartExercise()" data-i18n="a.pointab.start_exercise">
-            Начать упражнение <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <button class="btn btn-solid" style="font-size:14px;padding:0.85rem 2rem;" onclick="abStartExercise()" data-i18n="a.pointab.btn_start">
+            <span data-i18n="a.pointab.btn_start">Начать упражнение</span> <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
           <!-- Previously saved result -->
           <div id="ab-saved-result" style="display:none;margin-top:2rem;padding:1.25rem;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
@@ -1082,10 +1082,10 @@
                 <p style="font-size:12px;color:var(--text-muted);margin:0;" data-i18n="a.pointab.calendar_reminder">Напоминание в вашем календаре</p>
               </div>
               <select id="ab-listen-freq" onchange="abSetFrequency(this.value)" style="padding:0.5rem 0.75rem;border-radius:10px;font-size:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-primary);">
-                <option value="daily">Каждый день</option>
-                <option value="3week" selected>3 раза в неделю</option>
-                <option value="1week">1 раз в неделю</option>
-                <option value="manual">Вручную</option>
+                <option value="daily" data-i18n="a.pointab.sched_daily">Каждый день</option>
+                <option value="3week" selected data-i18n="a.pointab.sched_3week">3 раза в неделю</option>
+                <option value="1week" data-i18n="a.pointab.sched_1week">1 раз в неделю</option>
+                <option value="manual" data-i18n="a.pointab.sched_manual">Вручную</option>
               </select>
             </div>
           </div>
@@ -1109,8 +1109,8 @@
           </div>
           <div id="ab-step-content"></div>
           <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
-            <button class="btn btn-ghost" id="ab-prev" onclick="abPrev()" style="display:none;">← Назад</button>
-            <button class="btn btn-solid" id="ab-next" onclick="abNext()" style="flex:1;justify-content:center;">Далее →</button>
+            <button class="btn btn-ghost" id="ab-prev" onclick="abPrev()" style="display:none;" data-i18n="a.pointab.btn_prev">← Назад</button>
+            <button class="btn btn-solid" id="ab-next" onclick="abNext()" style="flex:1;justify-content:center;" data-i18n="a.pointab.btn_next">Далее →</button>
           </div>
         </div>
 
@@ -1135,14 +1135,14 @@
         </button>
         <div id="method-strip-body" style="max-height:0;overflow:hidden;transition:max-height 0.4s ease;">
           <div style="padding:0 1.5rem 1.5rem;border-top:1px solid rgba(255,255,255,0.06);">
-            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:1.25rem 0 1rem;">
-              <strong style="color:var(--text-primary);">NeuroAttention</strong> — практический метод тренировки внимания как центральной нейрофункции. В основе лежит принцип нейропластичности: мозг способен перестраивать свои связи через направленную практику.
+            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:1.25rem 0 1rem;" data-i18n="a.enroll.method_p1">
+              <strong style="color:var(--text-primary);">NeuroAttention</strong> — программа строится вокруг вашей персональной NeuroMap — карты внимания, которая отражает текущее состояние и динамику изменений. Вы проходите адаптационный тест, получаете профиль и начинаете работу с практиками, адаптированными под ваше состояние.
             </p>
-            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">
-              Метод работает с тремя уровнями: <span style="color:var(--text-primary);">тело</span> (интероцепция, нервная система), <span style="color:var(--text-primary);">управление</span> (концентрация, переключение, устойчивость) и <span style="color:var(--text-primary);">мир</span> (восприятие среды, адаптация, коммуникация). Каждый уровень содержит конкретные навыки, которые тренируются через протоколы.
+            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;" data-i18n="a.enroll.method_p2">
+              Каждая практика — это сеанс с аудиопрактикой, направленный на развитие конкретного навыка внимания. По окончании записываются ваши ощущения, создаётся динамический граф.
             </p>
-            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">
-              Программа строится вокруг вашей персональной <span style="color:var(--accent-cyan);">NeuroMap</span> — карты внимания, которая отражает текущее состояние и динамику изменений. Вы проходите адаптационный тест, получаете профиль и начинаете работу с практиками, адаптированными под ваше состояние.
+            <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;" data-i18n="a.enroll.method_p3">
+              На протяжении программы ваша карта растёт и раскрывает скрытые связи: как события влияют на внимание, как эмоции запускают мысли, как всё это приводит к действиям.
             </p>
             <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0;">
               Подробнее о методе — <a href="method.html" style="color:var(--accent-cyan);text-decoration:none;border-bottom:1px solid rgba(0,224,255,0.3);" target="_blank">на странице Метод</a>
@@ -1296,14 +1296,14 @@
 <section id="admin-dashboard" class="dashboard">
   <div class="dash-header">
     <div>
-      <h1 class="dash-title" id="admin-greeting">Панель управления</h1>
+      <h1 class="dash-title" id="admin-greeting" data-i18n="a.admin.panel_title">Панель управления</h1>
       <p id="admin-role-text" style="color:var(--text-muted);margin:0.25rem 0 0;font-size:14px;" data-i18n="a.admin.role_text">Администрирование</p>
     </div>
     <div style="display:flex;align-items:center;gap:0.75rem;">
-      <span class="dash-role" id="admin-role-badge"><span class="pulse"></span><span id="admin-role-label">Админ</span></span>
+      <span class="dash-role" id="admin-role-badge"><span class="pulse"></span><span id="admin-role-label" data-i18n="a.admin.role_admin">Админ</span></span>
       <!-- View-as banner -->
-      <button id="admin-exit-view" class="btn btn-ghost" style="display:none;font-size:11px;padding:0.35rem 0.75rem;" onclick="exitViewAs()">← Вернуться к панели</button>
-      <button class="logout-btn" data-logout>Выйти</button>
+      <button id="admin-exit-view" class="btn btn-ghost" style="display:none;font-size:11px;padding:0.35rem 0.75rem;" onclick="exitViewAs()" data-i18n="a.admin.exit_view">← Вернуться к панели</button>
+      <button class="logout-btn" data-logout data-i18n="a.admin.btn_logout">Выйти</button>
     </div>
   </div>
 
@@ -1312,8 +1312,8 @@
     <button class="dash-tab active" data-tab="admin-stats" data-i18n="a.admin.stats">Статистика</button>
     <button class="dash-tab" data-tab="admin-users" data-i18n="a.admin.users">Пользователи</button>
     <button class="dash-tab" data-tab="admin-tools" data-i18n="a.admin.tools">Инструменты</button>
-    <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;">Заявки Rehab</button>
-    <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;">Практики</button>
+    <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
+    <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;" data-i18n="a.admin.practices_tab">Практики</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1352,14 +1352,14 @@
           </div>
         </div>
         <table class="admin-table" id="admin-full-users-table">
-          <thead><tr><th>Имя</th><th>Контакт</th><th>Роль</th><th>Программа</th><th>Доступ</th><th></th></tr></thead>
+          <thead><tr><th data-i18n="a.admin.th_name">Имя</th><th data-i18n="a.admin.th_contact">Контакт</th><th data-i18n="a.admin.th_role">Роль</th><th data-i18n="a.admin.th_program">Программа</th><th data-i18n="a.admin.th_access">Доступ</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
         <!-- Restricted message for basic admins -->
         <div id="admin-restricted-msg" style="display:none;text-align:center;padding:3rem 1rem;">
           <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;">Доступ ограничен</p>
-          <p style="font-size:12px;color:var(--text-dim);margin:0;">Ваш уровень доступа не позволяет просматривать список пользователей. Обратитесь к основателям проекта для расширения прав.</p>
+          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.admin.access_limited">Доступ ограничен</p>
+          <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.admin.access_limited_desc">Ваш уровень доступа не позволяет просматривать список пользователей. Обратитесь к основателям проекта для расширения прав.</p>
         </div>
       </div>
     </div>
@@ -1367,8 +1367,8 @@
     <div id="view-as-panel" style="display:none;">
       <div class="dash-card glass-card-elevated" style="padding:1rem 1.5rem;margin-bottom:1rem;background:rgba(0,224,255,0.03);border-color:rgba(0,224,255,0.12);">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <p style="font-size:13px;color:var(--accent-cyan);margin:0;"><strong>Режим просмотра:</strong> <span id="view-as-name">—</span></p>
-          <button class="btn btn-ghost" style="font-size:11px;padding:0.3rem 0.65rem;" onclick="exitViewAs()">← Закрыть просмотр</button>
+          <p style="font-size:13px;color:var(--accent-cyan);margin:0;"><strong data-i18n="a.admin.view_mode">Режим просмотра:</strong> <span id="view-as-name">—</span></p>
+          <button class="btn btn-ghost" style="font-size:11px;padding:0.3rem 0.65rem;" onclick="exitViewAs()" data-i18n="a.admin.close_view">← Закрыть просмотр</button>
         </div>
       </div>
       <div id="view-as-content"></div>
@@ -1381,10 +1381,10 @@
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
         <div id="admin-tools-unlocked" style="display:none;">
           <h3 data-i18n="a.admin.tools_title">Инструменты и практики</h3>
-          <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
+          <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.admin.tools_desc">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
             <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('protocol');setProtoMode('pract')">
-              <h4>Аудиопрактики</h4>
+              <h4 data-i18n="a.admin.audio_practices">Аудиопрактики</h4>
               <p>Все блоки и практики доступны</p>
             </div>
             <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('tools');setToolsMode('nm')">
@@ -3788,7 +3788,8 @@ function buildLiveGraph(){
       ctx.fillStyle='rgba(255,255,255,0.8)';
       ctx.font='500 18px Inter,sans-serif';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      var label=n.label.length>14?n.label.substring(0,12)+'…':n.label;
+      var _tl=nmTranslate(n.label);
+      var label=_tl.length>14?_tl.substring(0,12)+'…':_tl;
       ctx.fillText(label,n.x,n.y+drawR+14);
       ctx.globalAlpha=1;
     });
@@ -4105,6 +4106,41 @@ async function nmLoadVocabulary(){
     var resp=await fetch('data/neuromap-vocabulary.json?v='+Date.now());
     if(resp.ok){ nmVocabulary=await resp.json(); nmBuildPolarityMap(); console.log('[NM] vocabulary loaded, polarity map built'); }
   } catch(e){ console.warn('[NM] vocabulary load failed:',e); }
+}
+
+// i18n: translate vocabulary term (node label) based on current language
+function nmTranslate(text){
+  if(!text) return text;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if(lang === 'ru') return text;
+  if(!nmVocabulary || !nmVocabulary._translations || !nmVocabulary._translations[lang]) return text;
+  var map = nmVocabulary._translations[lang];
+  var lower = text.toLowerCase();
+  // Try exact match first, then lowercase match
+  if(map[text]) return map[text];
+  if(map[lower]) return map[lower];
+  // Try to find a case-insensitive match
+  for(var k in map){ if(k.toLowerCase() === lower) return map[k]; }
+  return text;
+}
+
+// i18n: translate node_type label
+function nmTranslateNodeType(type){
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if(lang === 'ru' || !nmVocabulary || !nmVocabulary._node_type_labels || !nmVocabulary._node_type_labels[lang]) {
+    return nmVocabulary && nmVocabulary.node_types && nmVocabulary.node_types[type] ? nmVocabulary.node_types[type].label : type;
+  }
+  return nmVocabulary._node_type_labels[lang][type] || type;
+}
+
+// i18n: translate layer name
+function nmTranslateLayer(layerNum){
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if(lang === 'ru' || !nmVocabulary || !nmVocabulary._layer_names || !nmVocabulary._layer_names[lang]) {
+    var layerNames = {1:'Ощущения',2:'Переживания',3:'Образы',4:'Понятия',5:'Смыслы',6:'Действия'};
+    return layerNames[layerNum] || '';
+  }
+  return nmVocabulary._layer_names[lang][String(layerNum)] || '';
 }
 
 // Load graph from v2 API (server-deduplicated nodes + links)
@@ -4465,7 +4501,7 @@ function nmFsBuildFilters(){
   ].forEach(function(l){
     var checked = nmActiveLayers[l.layer] ? 'checked' : '';
     var dis = l.disabled ? 'disabled style="opacity:0.45;"' : '';
-    html += '<label class="nm-layer-chk" '+dis+'><input type="checkbox" data-layer="'+l.layer+'" '+checked+' '+(l.disabled?'disabled':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">'+l.layer+' '+l.name+'</span></label>';
+    html += '<label class="nm-layer-chk" '+dis+'><input type="checkbox" data-layer="'+l.layer+'" '+checked+' '+(l.disabled?'disabled':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">'+l.layer+' '+(nmTranslateLayer(l.layer)||l.name)+'</span></label>';
   });
   html += '<label class="nm-layer-chk" style="margin-top:0.5rem;"><input type="checkbox" data-layer="repeat" '+(nmRepeatFilter?'checked':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">Повторяющиеся</span></label>';
   cont.innerHTML = html;
@@ -4484,7 +4520,7 @@ function nmFsBuildMobileFilters(){
   var html='';
   layers.forEach(function(l){
     var sel=nmActiveLayers[l.layer]?'selected':'';
-    html+='<span class="nm-chip '+sel+'" data-layer="'+l.layer+'" onclick="nmFsMobileFilterTap(this)" style="white-space:nowrap;min-height:36px;padding:0.4rem 0.7rem;font-size:12px;">'+l.name+'</span>';
+    html+='<span class="nm-chip '+sel+'" data-layer="'+l.layer+'" onclick="nmFsMobileFilterTap(this)" style="white-space:nowrap;min-height:36px;padding:0.4rem 0.7rem;font-size:12px;">'+(nmTranslateLayer(l.layer)||l.name)+'</span>';
   });
   cont.innerHTML=html;
 }
@@ -4640,7 +4676,8 @@ function nmFsStartRender(){
         ctx.fillStyle='rgba(255,255,255,0.9)';
         ctx.font='600 '+Math.round(Math.max(16,r*0.8))+'px Inter,sans-serif';
         ctx.textAlign='center';ctx.textBaseline='middle';
-        var label=n.label.length>22?n.label.substring(0,20)+'\u2026':n.label;
+        var _tl=nmTranslate(n.label);
+        var label=_tl.length>22?_tl.substring(0,20)+'\u2026':_tl;
         ctx.fillText(label,nx,ny+drawR+20);
       }
       ctx.globalAlpha=1;
@@ -5092,7 +5129,7 @@ function nmBuildFs3DGraph(container){
       if(!show) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
-          map: nmMake3DLabel(node.label),
+          map: nmMake3DLabel(nmTranslate(node.label)),
           transparent: true, depthWrite: false
         })
       );
@@ -5236,7 +5273,7 @@ function nmBuild3DGraph(){
       if(!show) return false;
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
-          map: nmMake3DLabel(node.label),
+          map: nmMake3DLabel(nmTranslate(node.label)),
           transparent: true, depthWrite: false
         })
       );
@@ -5586,7 +5623,8 @@ function nmSimulate(canvas, initAlpha){
         ctx.fillStyle='rgba(255,255,255,0.85)';
         ctx.font='600 '+(r<14?'18':'22')+'px Inter,sans-serif';
         ctx.textAlign='center';ctx.textBaseline='middle';
-        var label=n.label.length>18?n.label.substring(0,16)+'\u2026':n.label;
+        var _tl=nmTranslate(n.label);
+        var label=_tl.length>18?_tl.substring(0,16)+'\u2026':_tl;
         ctx.fillText(label,n.x,n.y+drawR+16);
       }
       ctx.globalAlpha=1;
@@ -5869,18 +5907,19 @@ function nmRunAnalysis(entries){
   // Prefer nmNodes (v2 graph) for accurate counts; fall back to raw chain counting
   if(nmNodes && nmNodes.length>0 && nmV2Graph && nmV2Graph.nodes.length>0){
     nmNodes.forEach(function(n){
+      var _tl=nmTranslate(n.label);
       if(n.type==='emotion'){
-        emoCounts[n.label]=n.count||1;
-        if(n.valence<0) leaks[n.label]=n.count||1;
-        else supports[n.label]=n.count||1;
+        emoCounts[_tl]=n.count||1;
+        if(n.valence<0) leaks[_tl]=n.count||1;
+        else supports[_tl]=n.count||1;
       }
-      if(n.type==='area') areaCounts[n.label]=n.count||1;
+      if(n.type==='area') areaCounts[_tl]=n.count||1;
       if(n.type==='cause'){
-        causeCounts[n.label]=n.count||1;
-        if(n.valence<0) leaks[n.label]=n.count||1;
-        else if(n.valence>0) supports[n.label]=n.count||1;
+        causeCounts[_tl]=n.count||1;
+        if(n.valence<0) leaks[_tl]=n.count||1;
+        else if(n.valence>0) supports[_tl]=n.count||1;
       }
-      if(n.type==='thought') thoughtCounts[n.label]=n.count||1;
+      if(n.type==='thought') thoughtCounts[_tl]=n.count||1;
     });
     // Build chains from entries for chain analysis (unique per entry)
     entries.forEach(function(e){
