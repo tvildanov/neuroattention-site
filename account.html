@@ -3115,7 +3115,7 @@ function savePracticeReflection(btn){
 var calMonth = new Date().getMonth(); // Current month (0-indexed)
 var calYear = new Date().getFullYear();
 function getLocale(){ var l=getLang(); return l==='ru'?'ru-RU':l==='es'?'es-ES':'en-US'; }
-function getMonthName(idx){ return new Intl.DateTimeFormat(getLocale(),{month:'long'}).format(new Date(2024,idx,1)); }
+function getMonthName(idx){ try{var d=new Date(2024,idx,1);if(isNaN(d.getTime()))return '';return new Intl.DateTimeFormat(getLocale(),{month:'long'}).format(d);}catch(e){return '';} }
 function getMonthNameCap(idx){ var s=getMonthName(idx); return s.charAt(0).toUpperCase()+s.slice(1); }
 function getDayNames(){
   var loc=getLocale(); var names=[];
@@ -3129,9 +3129,9 @@ function getDayNames(){
 }
 
 var selectedCalDay=null;
-function renderCalendar(){
-  var grid = document.getElementById('cal-grid');
-  document.getElementById('cal-month-title').textContent = getMonthNameCap(calMonth)+' '+calYear;
+function renderCalendar(){ try{
+  var grid = document.getElementById('cal-grid'); if(!grid) return;
+  var mt=document.getElementById('cal-month-title'); if(mt) mt.textContent = getMonthNameCap(calMonth)+' '+calYear;
   grid.innerHTML = '';
   getDayNames().forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
   var first = new Date(calYear, calMonth, 1).getDay();
@@ -3157,7 +3157,7 @@ function renderCalendar(){
     selectedCalDay=tk;
   }
   renderDayEvents();
-}
+}catch(e){console.warn('renderCalendar error:',e);}}
 try { renderCalendar(); } catch(e){ console.warn('Initial renderCalendar skipped:', e); }
 
 function changeMonth(dir){ calMonth+=dir; if(calMonth<0){calMonth=11;calYear--;} if(calMonth>11){calMonth=0;calYear++;} selectedCalDay=null; renderCalendar(); }
@@ -3500,9 +3500,9 @@ function setCalMode(mode){
 }
 
 // Diary calendar
-function renderDiaryCalendar(){
-  var grid = document.getElementById('diary-cal-grid');
-  document.getElementById('diary-month-title').textContent = getMonthNameCap(diaryMonth)+' '+diaryYear;
+function renderDiaryCalendar(){ try{
+  var grid = document.getElementById('diary-cal-grid'); if(!grid) return;
+  var mt=document.getElementById('diary-month-title'); if(mt) mt.textContent = getMonthNameCap(diaryMonth)+' '+diaryYear;
   grid.innerHTML = '';
   getDayNames().forEach(function(d){ grid.innerHTML += '<div class="cal-day-header">'+d+'</div>'; });
   var first = new Date(diaryYear, diaryMonth, 1).getDay();
@@ -3526,7 +3526,7 @@ function renderDiaryCalendar(){
     }
     grid.innerHTML += '<div class="'+cls+'" onclick="selectDiaryDay(\''+key+'\','+d+')">'+d+'</div>';
   }
-}
+}catch(e){console.warn('renderDiaryCalendar error:',e);}}
 
 function changeDiaryMonth(dir){ diaryMonth+=dir; if(diaryMonth<0){diaryMonth=11;diaryYear--;} if(diaryMonth>11){diaryMonth=0;diaryYear++;} selectedDiaryDay=null; document.getElementById('diary-day-view').style.display='none'; renderDiaryCalendar(); }
 

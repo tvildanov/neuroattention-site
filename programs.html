@@ -599,7 +599,7 @@
       var prog=Math.max(0,Math.min(1,(cycleT-delay)/0.5));
       if(prog<=0) return;
       var ep=ease(prog);
-      var r=sn.r*ep;
+      var r=Math.max(0,sn.r*ep);
       ctx.beginPath();
       ctx.arc(sn.x,sn.y,r,0,Math.PI*2);
       ctx.fillStyle=sn.color.replace('C','0.08');
@@ -617,15 +617,15 @@
       var prog=Math.max(0,Math.min(1,(cycleT-delay)/(ni===0?centerT:0.6)));
       if(prog<=0) return;
       var ep=ease(prog);
-      var r=n.r*ep;
+      var r=Math.max(0,n.r*ep);
       // Glow
       ctx.beginPath();
-      ctx.arc(n.x,n.y,r+12*ep,0,Math.PI*2);
+      ctx.arc(n.x,n.y,Math.max(0,r+12*ep),0,Math.PI*2);
       ctx.fillStyle=n.color.replace('C','0.06');
       ctx.fill();
       // Pulse for center
       if(n.isCenter && cycleT>growEnd){
-        var pulseR=r+8+Math.sin(cycleT*2)*4;
+        var pulseR=Math.max(0,r+8+Math.sin(cycleT*2)*4);
         ctx.beginPath();
         ctx.arc(n.x,n.y,pulseR,0,Math.PI*2);
         ctx.strokeStyle=n.color.replace('C','0.15');
@@ -662,7 +662,7 @@
     if(cycleT>growEnd && cycleT<holdEnd+1){
       var wt=(cycleT-growEnd);
       for(var w=0;w<2;w++){
-        var wr=(wt*60+w*80)%320;
+        var wr=Math.max(0,(wt*60+w*80)%320);
         var wo=Math.max(0,1-wr/320)*0.15;
         ctx.beginPath();
         ctx.arc(cx,cy,wr,0,Math.PI*2);
