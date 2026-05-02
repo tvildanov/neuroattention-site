@@ -1543,6 +1543,7 @@
 // AUTH SYSTEM (JWT + API)
 // ══════════════════════════════════════════
 var AUTH_API = 'https://neuroattention-api-production.up.railway.app';
+var API_BASE = AUTH_API;
 var NM_API_BASE = AUTH_API;
 var DIARY_API_BASE = AUTH_API;
 var CAL_API_BASE = AUTH_API;
@@ -1653,28 +1654,32 @@ function onLogin(user){
   try { progLoadFromLocal(); } catch(e){ console.warn('progLoadFromLocal error:', e); }
 
   // STEP 2: Show RPG dashboard for ALL roles
-  var greetText = t('a.dashboard.greeting')+', '+user.name;
-  document.getElementById('client-greeting').textContent = greetText;
-  var roleEl = document.querySelector('#client-dashboard .dash-role');
-  var ROLE_DISPLAY = {superadmin:'Superadmin',founder:t('a.dashboard.role_founder'),specialist:t('a.dashboard.role_specialist'),admin_basic:'Админ',client:t('a.dashboard.role_client')};
-  var roleLabel = ROLE_DISPLAY[user.serverRole] || ROLE_DISPLAY[user.role] || t('a.dashboard.role_client');
-  if(roleEl){
-    roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
-    roleEl.style.borderColor = (user.role!=='client') ? 'rgba(0,224,255,0.3)' : '';
-  }
-  updateClientAccess(user);
-  loadAvatar(user);
-  abCheckGuided();
+  // Each call wrapped individually — one failure must not prevent showSection('client')
+  try {
+    var greetText = t('a.dashboard.greeting')+', '+user.name;
+    document.getElementById('client-greeting').textContent = greetText;
+    var roleEl = document.querySelector('#client-dashboard .dash-role');
+    var ROLE_DISPLAY = {superadmin:'Superadmin',founder:t('a.dashboard.role_founder'),specialist:t('a.dashboard.role_specialist'),admin_basic:'Админ',client:t('a.dashboard.role_client')};
+    var roleLabel = ROLE_DISPLAY[user.serverRole] || ROLE_DISPLAY[user.role] || t('a.dashboard.role_client');
+    if(roleEl){
+      roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
+      roleEl.style.borderColor = (user.role!=='client') ? 'rgba(0,224,255,0.3)' : '';
+    }
+  } catch(e){ console.warn('onLogin greeting/role error:', e); }
+  try { updateClientAccess(user); } catch(e){ console.warn('updateClientAccess error:', e); }
+  try { loadAvatar(user); } catch(e){ console.warn('loadAvatar error:', e); }
+  try { abCheckGuided(); } catch(e){ console.warn('abCheckGuided error:', e); }
 
   // Show "Администрирование" tab for admin roles
-  var isAdminRole = (user.role==='founder'||user.role==='specialist'||user.role==='admin_basic'||user.serverRole==='superadmin');
-  var adminTabBtn = document.getElementById('tab-btn-admin');
-  if(adminTabBtn) adminTabBtn.style.display = isAdminRole ? '' : 'none';
-
-  // Pre-load admin dashboard data for admin roles (won't show until tab clicked)
-  if(isAdminRole){
-    setupAdminDashboard(user);
-  }
+  try {
+    var isAdminRole = (user.role==='founder'||user.role==='specialist'||user.role==='admin_basic'||user.serverRole==='superadmin');
+    var adminTabBtn = document.getElementById('tab-btn-admin');
+    if(adminTabBtn) adminTabBtn.style.display = isAdminRole ? '' : 'none';
+    // Pre-load admin dashboard data for admin roles (won't show until tab clicked)
+    if(isAdminRole){
+      setupAdminDashboard(user);
+    }
+  } catch(e){ console.warn('onLogin admin setup error:', e); }
 
   showSection('client');
 
@@ -2806,8 +2811,9 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
       onLogin(naAdaptUser(cached));
     } catch(e){
       console.error('Optimistic onLogin failed:', e);
-      // Safety: ensure loader is hidden even if onLogin crashes
-      showSection('auth');
+      // Don't show auth here — let API validation below decide.
+      // onLogin is now bullet-proofed, so this catch only fires
+      // on JSON.parse failure or naAdaptUser error.
     }
   }
 
@@ -3227,6 +3233,13 @@ function uploadAvatar(input){
     }).then(function(r){ return r.json(); }).then(function(data){
       if(data.avatar_url){
         document.getElementById('rpg-avatar-img').src = data.avatar_url;
+        // Persist avatar_url in cached user so it survives refresh
+        try {
+          var u = JSON.parse(localStorage.getItem('na_user') || '{}');
+          u.avatar_url = data.avatar_url;
+          localStorage.setItem('na_user', JSON.stringify(u));
+          if(currentUser) currentUser.avatar_url = data.avatar_url;
+        } catch(e){ console.warn('avatar cache update failed:', e); }
       }
     }).catch(function(err){
       console.error('Avatar upload failed:', err);
@@ -3316,6 +3329,13 @@ function selectPresetAvatar(presetFile){
   }).then(function(r){ return r.json(); }).then(function(data){
     if(data.avatar_url){
       document.getElementById('rpg-avatar-img').src = data.avatar_url;
+      // Persist avatar_url in cached user so it survives refresh
+      try {
+        var u = JSON.parse(localStorage.getItem('na_user') || '{}');
+        u.avatar_url = data.avatar_url;
+        localStorage.setItem('na_user', JSON.stringify(u));
+        if(currentUser) currentUser.avatar_url = data.avatar_url;
+      } catch(e){ console.warn('preset avatar cache update failed:', e); }
     }
   }).catch(function(err){
     console.error('Preset avatar failed:', err);
