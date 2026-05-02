@@ -2,6 +2,33 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
+<script>
+(function(){
+  var stored=localStorage.getItem("na_lang");
+  var explicit=localStorage.getItem("na_lang_explicit");
+  var lang=explicit||stored;
+  if(!lang){
+    var bl=((navigator.languages&&navigator.languages[0])||navigator.language||"en").toLowerCase();
+    if(bl.indexOf("ru")===0)lang="ru";
+    else if(bl.indexOf("es")===0)lang="es";
+    else lang="en";
+  }
+  document.documentElement.lang=lang;
+  if(lang!=="ru"){
+    var s=document.createElement("style");
+    s.id="i18n-flash-prevent";
+    s.textContent="body{opacity:0!important;transition:opacity .15s ease!important;}";
+    document.head.appendChild(s);
+    var link=document.createElement("link");
+    link.rel="preload";link.as="fetch";
+    link.href="data/i18n/"+lang+".json";
+    link.crossOrigin="anonymous";
+    document.head.appendChild(link);
+    setTimeout(function(){var el=document.getElementById("i18n-flash-prevent");if(el)el.remove();if(document.body)document.body.style.opacity="";},3000);
+  }
+})();
+</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Тест адаптации — NeuroAttention Lab</title>
 <meta name="description" content="Тест адаптации к глобальным изменениям. Узнайте свой профиль адаптации и получите персональные рекомендации." />
