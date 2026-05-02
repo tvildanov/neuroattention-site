@@ -512,7 +512,7 @@
 
   var CYCLE=12; // seconds per full cycle
   var phase=0; // 0=grow, 1=hold, 2=fadeout
-  var t=0;
+  var elapsed=0;
   var lastTime=0;
 
   function ease(x){ return x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2; }
@@ -521,13 +521,13 @@
     if(!lastTime) lastTime=now;
     var dt=(now-lastTime)/1000;
     lastTime=now;
-    t+=dt;
-    var cycleT=t%CYCLE;
+    elapsed+=dt;
+    var cycleT=elapsed%CYCLE;
 
     // Phases: 0-6s grow, 6-9s hold, 9-12s fade
     var growEnd=6, holdEnd=9, fadeEnd=CYCLE;
     var globalAlpha=1;
-    if(cycleT>fadeEnd-0.01){ t=0; cycleT=0; }
+    if(cycleT>fadeEnd-0.01){ elapsed=0; cycleT=0; }
     if(cycleT>=holdEnd){
       globalAlpha=1-ease((cycleT-holdEnd)/(fadeEnd-holdEnd));
     }
