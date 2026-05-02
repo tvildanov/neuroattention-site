@@ -1539,6 +1539,13 @@
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
 <script>
+// ── Safe i18n shim ──
+// i18n.js loads AFTER this inline script block, so t() is undefined
+// during the auto-login IIFE. This shim returns the key as-is.
+// When i18n.js loads, it overwrites window.t with the real function.
+if (typeof window.t !== 'function') { window.t = function(k){ return k; }; }
+if (typeof window.getLang !== 'function') { window.getLang = function(){ return 'ru'; }; }
+
 // ══════════════════════════════════════════
 // AUTH SYSTEM (JWT + API)
 // ══════════════════════════════════════════
@@ -1699,6 +1706,22 @@ function onLogin(user){
   try { progLoadFromAPI(); } catch(e){ console.warn('progLoadFromAPI error:', e); }
   try { loadTestProfile(); } catch(e){ console.warn('loadTestProfile error:', e); }
 }
+
+// Re-render greeting/role when i18n.js loads (it fires 'langchange' on init)
+document.addEventListener('langchange', function(){
+  if(!currentUser) return;
+  try {
+    var greetText = t('a.dashboard.greeting')+', '+currentUser.name;
+    var el = document.getElementById('client-greeting');
+    if(el) el.textContent = greetText;
+    var roleEl = document.querySelector('#client-dashboard .dash-role');
+    if(roleEl){
+      var ROLE_DISPLAY = {superadmin:'Superadmin',founder:t('a.dashboard.role_founder'),specialist:t('a.dashboard.role_specialist'),admin_basic:'Админ',client:t('a.dashboard.role_client')};
+      var roleLabel = ROLE_DISPLAY[currentUser.serverRole] || ROLE_DISPLAY[currentUser.role] || t('a.dashboard.role_client');
+      roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
+    }
+  } catch(e){ console.warn('langchange greeting update error:', e); }
+});
 
 // ── Test Profile Card ──
 var TEST_PROFILES_MAP = {
