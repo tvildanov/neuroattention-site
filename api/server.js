@@ -2700,6 +2700,291 @@ app.delete('/api/admin/practices/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ── PACK 20: Practice Blocks (composer) ──
+// Helper: check if caller has founder/superadmin role
+async function callerIsAdmin(req) {
+  const id = req.user?.sub || req.user?.id;
+  if (!id) return false;
+  const r = await sql`SELECT role FROM users WHERE id = ${id}`;
+  return r.length && ['superadmin', 'founder'].includes(r[0].role);
+}
+
+// XP helper — adds xp event, updates totals, recomputes level
+async function awardXP(userId, amount, source, refId) {
+  if (!userId || !amount) return null;
+  await sql`INSERT INTO xp_events (user_id, amount, source, source_ref_id) VALUES (${userId}, ${amount}, ${source}, ${refId || null})`;
+  const [t] = await sql`SELECT COALESCE(SUM(amount),0)::int AS total FROM xp_events WHERE user_id = ${userId}`;
+  const total = parseInt(t.total) || 0;
+  // quadratic levels: Lvl N requires total >= N*N*100. Level = floor(sqrt(total/100)) + 1, cap 50.
+  const level = Math.min(50, Math.floor(Math.sqrt(total / 100)) + 1);
+  await sql`UPDATE users SET total_xp = ${total}, current_level = ${level} WHERE id = ${userId}`;
+  return { total_xp: total, current_level: level, awarded: amount };
+}
+
+// List blocks of a practice (public read for users, full read for admins)
+app.get('/api/practices/:id/blocks', async (req, res) => {
+  try {
+    const practiceId = parseInt(req.params.id);
+    if (!practiceId) return res.status(400).json({ error: 'Bad practice id' });
+    const blocks = await sql`SELECT id, practice_id, order_idx, type, payload, xp_reward FROM practice_blocks WHERE practice_id = ${practiceId} ORDER BY order_idx ASC`;
+    res.json({ blocks });
+  } catch (err) {
+    console.error('GET /api/practices/:id/blocks:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: list blocks (alias)
+app.get('/api/admin/practices/:id/blocks', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const practiceId = parseInt(req.params.id);
+    const blocks = await sql`SELECT * FROM practice_blocks WHERE practice_id = ${practiceId} ORDER BY order_idx ASC`;
+    res.json({ blocks });
+  } catch (err) {
+    console.error('GET /api/admin/practices/:id/blocks:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: create block
+app.post('/api/admin/practices/:id/blocks', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const practiceId = parseInt(req.params.id);
+    const { type, payload, xp_reward, order_idx } = req.body || {};
+    const validTypes = ['audio_part','text','image','video','link','sensation_entry','comment_prompt','question_choice'];
+    if (!validTypes.includes(type)) return res.status(400).json({ error: 'Invalid type' });
+    // Default order_idx = max + 1
+    let idx = order_idx;
+    if (typeof idx !== 'number') {
+      const [m] = await sql`SELECT COALESCE(MAX(order_idx), -1) + 1 AS next FROM practice_blocks WHERE practice_id = ${practiceId}`;
+      idx = parseInt(m.next) || 0;
+    }
+    const xp = (typeof xp_reward === 'number') ? xp_reward : ({audio_part:100, sensation_entry:75, comment_prompt:50, question_choice:50, text:25, image:25, video:25, link:25}[type] || 25);
+    const [row] = await sql`
+      INSERT INTO practice_blocks (practice_id, order_idx, type, payload, xp_reward)
+      VALUES (${practiceId}, ${idx}, ${type}, ${JSON.stringify(payload || {})}, ${xp})
+      RETURNING *
+    `;
+    res.json({ block: row });
+  } catch (err) {
+    console.error('POST /api/admin/practices/:id/blocks:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: update block
+app.patch('/api/admin/practices/:id/blocks/:blockId', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const blockId = parseInt(req.params.blockId);
+    const { type, payload, xp_reward, order_idx } = req.body || {};
+    const cur = await sql`SELECT * FROM practice_blocks WHERE id = ${blockId}`;
+    if (!cur.length) return res.status(404).json({ error: 'Block not found' });
+    const newType = type || cur[0].type;
+    const newPayload = payload !== undefined ? payload : cur[0].payload;
+    const newXp = (typeof xp_reward === 'number') ? xp_reward : cur[0].xp_reward;
+    const newIdx = (typeof order_idx === 'number') ? order_idx : cur[0].order_idx;
+    const [row] = await sql`
+      UPDATE practice_blocks
+      SET type = ${newType}, payload = ${JSON.stringify(newPayload)}, xp_reward = ${newXp}, order_idx = ${newIdx}, updated_at = now()
+      WHERE id = ${blockId} RETURNING *
+    `;
+    res.json({ block: row });
+  } catch (err) {
+    console.error('PATCH /api/admin/practices/:id/blocks/:blockId:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: delete block
+app.delete('/api/admin/practices/:id/blocks/:blockId', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const blockId = parseInt(req.params.blockId);
+    await sql`DELETE FROM practice_blocks WHERE id = ${blockId}`;
+    res.json({ ok: true, deleted: blockId });
+  } catch (err) {
+    console.error('DELETE /api/admin/practices/:id/blocks/:blockId:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: bulk reorder (body: {order: [blockId, blockId, ...]})
+app.post('/api/admin/practices/:id/blocks/reorder', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const practiceId = parseInt(req.params.id);
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be array' });
+    for (let i = 0; i < order.length; i++) {
+      const id = parseInt(order[i]);
+      if (!id) continue;
+      await sql`UPDATE practice_blocks SET order_idx = ${i}, updated_at = now() WHERE id = ${id} AND practice_id = ${practiceId}`;
+    }
+    const blocks = await sql`SELECT * FROM practice_blocks WHERE practice_id = ${practiceId} ORDER BY order_idx ASC`;
+    res.json({ ok: true, blocks });
+  } catch (err) {
+    console.error('POST .../reorder:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User: complete a block — saves response, awards XP, optionally adds to NeuroMap
+app.post('/api/practices/:id/blocks/:blockId/complete', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const practiceId = parseInt(req.params.id);
+    const blockId = parseInt(req.params.blockId);
+    const { duration_seconds, payload_response } = req.body || {};
+    // Load block
+    const [blk] = await sql`SELECT * FROM practice_blocks WHERE id = ${blockId} AND practice_id = ${practiceId}`;
+    if (!blk) return res.status(404).json({ error: 'Block not found' });
+    // Idempotent insert: if already completed, return existing
+    const existing = await sql`SELECT id FROM practice_block_completion WHERE user_id = ${userId} AND block_id = ${blockId}`;
+    if (existing.length) {
+      return res.json({ ok: true, alreadyCompleted: true });
+    }
+    await sql`
+      INSERT INTO practice_block_completion (user_id, block_id, practice_id, duration_seconds, payload_response)
+      VALUES (${userId}, ${blockId}, ${practiceId}, ${duration_seconds || null}, ${payload_response ? JSON.stringify(payload_response) : null})
+    `;
+    // Award XP
+    const xp = await awardXP(userId, blk.xp_reward || 25, 'block_completion', blockId);
+    res.json({ ok: true, xp });
+  } catch (err) {
+    console.error('POST .../blocks/:blockId/complete:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User: save sensation-path entries to NeuroMap (called from sensation_entry block)
+// payload: { sensations: [slug,...], body_locations: [slug,...], comment?: string, practice_block_id?: int }
+app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const { sensations = [], body_locations = [], comment, practice_block_id } = req.body || {};
+    if (!Array.isArray(sensations) || !Array.isArray(body_locations)) {
+      return res.status(400).json({ error: 'sensations and body_locations must be arrays' });
+    }
+    // Resolve labels
+    const sensRows = sensations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'sensation' AND slug = ANY(${sensations}::text[])` : [];
+    const locRows = body_locations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'body_location' AND slug = ANY(${body_locations}::text[])` : [];
+    // For now, just record entries to neuro_resource_diary as freeform; full graph wiring will come with sensation_entry frontend
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const text = `Practice sensation: ${sensRows.map(s => s.label_ru).join(', ')} @ ${locRows.map(l => l.label_ru).join(', ')}${comment ? ' — ' + comment : ''}`;
+    await sql`INSERT INTO neuro_resource_diary (user_id, date_key, text, comment) VALUES (${userId}, ${dateKey}, ${text}, ${comment || ''})`;
+    res.json({ ok: true, sensations: sensRows.length, locations: locRows.length });
+  } catch (err) {
+    console.error('POST /api/neuromap/sensation:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PACK 20: Vocabulary (sensations / body locations / emotions) ──
+// Public read by category
+app.get('/api/vocab/:category', async (req, res) => {
+  try {
+    const cat = req.params.category;
+    const rows = await sql`SELECT slug, label_ru, label_en, label_es, polarity_strength, order_idx FROM vocab_terms WHERE category = ${cat} AND is_active = true ORDER BY order_idx ASC, label_ru ASC`;
+    res.json({ category: cat, terms: rows });
+  } catch (err) {
+    console.error('GET /api/vocab/:category:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: list all (or by category)
+app.get('/api/admin/vocab', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const cat = req.query.category;
+    const rows = cat
+      ? await sql`SELECT * FROM vocab_terms WHERE category = ${cat} ORDER BY order_idx ASC, id ASC`
+      : await sql`SELECT * FROM vocab_terms ORDER BY category ASC, order_idx ASC, id ASC`;
+    res.json({ terms: rows });
+  } catch (err) {
+    console.error('GET /api/admin/vocab:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/vocab', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const { category, slug, label_ru, label_en, label_es, polarity_strength, order_idx } = req.body || {};
+    if (!category || !slug || !label_ru || !label_en || !label_es) {
+      return res.status(400).json({ error: 'category, slug, label_ru, label_en, label_es required' });
+    }
+    const [row] = await sql`
+      INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, polarity_strength, order_idx)
+      VALUES (${category}, ${slug}, ${label_ru}, ${label_en}, ${label_es}, ${polarity_strength || null}, ${order_idx || 0})
+      ON CONFLICT (category, slug) DO UPDATE SET label_ru = EXCLUDED.label_ru, label_en = EXCLUDED.label_en, label_es = EXCLUDED.label_es, updated_at = now()
+      RETURNING *
+    `;
+    res.json({ term: row });
+  } catch (err) {
+    console.error('POST /api/admin/vocab:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/vocab/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id);
+    const { label_ru, label_en, label_es, polarity_strength, order_idx, is_active } = req.body || {};
+    const [cur] = await sql`SELECT * FROM vocab_terms WHERE id = ${id}`;
+    if (!cur) return res.status(404).json({ error: 'Term not found' });
+    const [row] = await sql`
+      UPDATE vocab_terms SET
+        label_ru = ${label_ru ?? cur.label_ru},
+        label_en = ${label_en ?? cur.label_en},
+        label_es = ${label_es ?? cur.label_es},
+        polarity_strength = ${polarity_strength ?? cur.polarity_strength},
+        order_idx = ${order_idx ?? cur.order_idx},
+        is_active = ${is_active ?? cur.is_active},
+        updated_at = now()
+      WHERE id = ${id} RETURNING *
+    `;
+    res.json({ term: row });
+  } catch (err) {
+    console.error('PATCH /api/admin/vocab/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/vocab/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id);
+    // Soft delete (is_active = false) — preserves referential integrity for past completions
+    await sql`UPDATE vocab_terms SET is_active = false, updated_at = now() WHERE id = ${id}`;
+    res.json({ ok: true, deactivated: id });
+  } catch (err) {
+    console.error('DELETE /api/admin/vocab/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PACK 20: User XP & Level ──
+app.get('/api/users/me/xp', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const [u] = await sql`SELECT total_xp, current_level FROM users WHERE id = ${userId}`;
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const total = parseInt(u.total_xp) || 0;
+    const level = parseInt(u.current_level) || 1;
+    const nextLevelAt = level * level * 100;
+    const prevLevelAt = (level - 1) * (level - 1) * 100;
+    res.json({ total_xp: total, current_level: level, next_level_at: nextLevelAt, prev_level_at: prevLevelAt, progress_pct: Math.min(100, Math.round(((total - prevLevelAt) / (nextLevelAt - prevLevelAt)) * 100)) });
+  } catch (err) {
+    console.error('GET /api/users/me/xp:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── ADMIN: Dashboard stats ──
 app.get('/api/admin/stats', requireAuth, async (req, res) => {
   try {
