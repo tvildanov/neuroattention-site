@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NeuroAttention — Practice</title>
+
+<!-- ASAP lang detection (FOUC prevention) -->
+<script>
+(function(){
+  var stored = localStorage.getItem('na_lang');
+  var lang = stored;
+  if (!lang) {
+    var bl = ((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+    if (bl.indexOf('ru') === 0) lang = 'ru';
+    else if (bl.indexOf('es') === 0) lang = 'es';
+    else lang = 'en';
+  }
+  document.documentElement.lang = lang;
+  if (lang !== 'ru') {
+    var s = document.createElement('style');
+    s.id = 'i18n-flash-prevent';
+    s.textContent = 'body{opacity:0!important;}';
+    document.head.appendChild(s);
+  }
+})();
+</script>
+
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  body { margin:0; background:#0a0a10; color:#e8e8ee; font-family:-apple-system,BlinkMacSystemFont,'Inter','Helvetica Neue',sans-serif; min-height:100vh; }
+  .pp-wrap { max-width:780px; margin:0 auto; padding:1.5rem 1rem 4rem; }
+  .pp-header { display:flex; align-items:center; gap:1rem; padding:0.75rem 0; border-bottom:1px solid rgba(255,255,255,0.06); margin-bottom:1.5rem; }
+  .pp-back { background:transparent; border:none; color:#888; font-size:14px; cursor:pointer; padding:6px 10px; }
+  .pp-back:hover { color:#fff; }
+  .pp-title { margin:0; font-size:1.05rem; font-weight:600; flex:1; min-width:0; }
+  .pp-progress-row { display:flex; gap:6px; margin-bottom:1.25rem; }
+  .pp-pdot { flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,0.06); transition:background 0.4s; }
+  .pp-pdot.done { background:rgba(0,255,180,0.55); }
+  .pp-pdot.cur { background:rgba(0,224,255,0.7); box-shadow:0 0 12px rgba(0,224,255,0.4); }
+  .pp-card { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:1.5rem; margin-bottom:1rem; }
+  .pp-card h2 { margin:0 0 0.75rem; font-size:1.15rem; }
+  .pp-card p { margin:0.5rem 0; line-height:1.55; color:#cdcdd6; }
+  .pp-audio { width:100%; margin-top:0.75rem; }
+  .pp-img { width:100%; max-height:480px; object-fit:cover; border-radius:10px; }
+  .pp-video { width:100%; max-height:480px; border-radius:10px; }
+  .pp-chips { display:flex; flex-wrap:wrap; gap:0.4rem; margin:0.75rem 0; }
+  .pp-chip { padding:0.4rem 0.85rem; border-radius:18px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.02); color:#cdcdd6; font-size:13px; cursor:pointer; transition:all 0.2s; user-select:none; }
+  .pp-chip:hover { border-color:rgba(0,224,255,0.4); }
+  .pp-chip.active { background:rgba(0,224,255,0.12); border-color:rgba(0,224,255,0.6); color:#fff; }
+  .pp-textarea { width:100%; min-height:120px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px; color:#fff; padding:0.75rem; font-size:14px; font-family:inherit; resize:vertical; box-sizing:border-box; }
+  .pp-btn { background:rgba(0,224,255,0.1); border:1px solid rgba(0,224,255,0.4); color:#fff; padding:0.65rem 1.5rem; border-radius:10px; font-size:14px; cursor:pointer; transition:all 0.2s; }
+  .pp-btn:hover { background:rgba(0,224,255,0.2); }
+  .pp-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .pp-actions { display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap; }
+  .pp-skip { background:transparent; border:1px solid rgba(255,255,255,0.1); color:#999; padding:0.5rem 1rem; border-radius:8px; font-size:13px; cursor:pointer; }
+  .pp-xp-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(0,200,140,0.15); border:1px solid rgba(0,255,180,0.5); padding:0.75rem 1.5rem; border-radius:10px; color:#fff; font-size:13px; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+  .pp-xp-toast.show { opacity:1; }
+  .pp-step-label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.4rem; }
+  .pp-completed { text-align:center; padding:3rem 1rem; }
+  .pp-completed h2 { font-size:1.6rem; margin-bottom:0.5rem; }
+  .pp-completed p { color:#aaa; margin:0.5rem 0 1.5rem; }
+</style>
+</head>
+<body>
+<div class="pp-wrap">
+  <div class="pp-header">
+    <button class="pp-back" onclick="window.location.href='account.html'">← <span data-i18n="practice.back">Назад</span></button>
+    <h1 id="pp-title" class="pp-title"></h1>
+  </div>
+
+  <div id="pp-progress" class="pp-progress-row"></div>
+
+  <div id="pp-content"></div>
+</div>
+
+<div id="pp-toast" class="pp-xp-toast"></div>
+
+<script src="assets/js/i18n.js"></script>
+<script>
+var API_BASE = 'https://neuroattention-api-production.up.railway.app';
+var practiceId = parseInt(new URLSearchParams(location.search).get('id')) || 0;
+var practice = null;
+var blocks = [];
+var blockIdx = 0;
+var completedIds = {};
+var sensationVocab = [];
+var bodyVocab = [];
+
+function _t(k, fallback) {
+  return (typeof t === 'function') ? t(k, fallback) : fallback;
+}
+
+function authHdr() {
+  var token = localStorage.getItem('na_token');
+  return token ? { 'Authorization': 'Bearer ' + token } : {};
+}
+
+function loadAll() {
+  if (!practiceId) {
+    document.getElementById('pp-content').innerHTML = '<p>Bad practice id.</p>';
+    return;
+  }
+  Promise.all([
+    fetch(API_BASE + '/api/practices/' + practiceId).then(function(r){return r.json();}),
+    fetch(API_BASE + '/api/practices/' + practiceId + '/blocks').then(function(r){return r.json();}),
+    fetch(API_BASE + '/api/vocab/sensation').then(function(r){return r.json();}),
+    fetch(API_BASE + '/api/vocab/body_location').then(function(r){return r.json();})
+  ]).then(function(arr){
+    practice = arr[0].practice;
+    blocks = arr[1].blocks || [];
+    sensationVocab = arr[2].terms || [];
+    bodyVocab = arr[3].terms || [];
+    if (!practice) { document.getElementById('pp-content').innerHTML = '<p>Practice not found.</p>'; return; }
+    document.getElementById('pp-title').textContent = practice.name || ('Practice #' + practiceId);
+    if (!blocks.length) {
+      // Fallback — single audio block from practice.audio_url so old practices still play
+      blocks = [{
+        id: 0, type: 'audio_part', xp_reward: 0,
+        payload: { audio_url: practice.audio_url, duration_seconds: practice.duration_seconds }
+      }];
+    }
+    renderProgress();
+    renderCurrent();
+  }).catch(function(err){
+    document.getElementById('pp-content').innerHTML = '<p>Load error: ' + err.message + '</p>';
+  });
+}
+
+function renderProgress() {
+  var box = document.getElementById('pp-progress');
+  box.innerHTML = blocks.map(function(b, i){
+    var cls = 'pp-pdot' + (completedIds[b.id] ? ' done' : (i === blockIdx ? ' cur' : ''));
+    return '<div class="' + cls + '"></div>';
+  }).join('');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('pp-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+function getLangPick(payload, baseKey) {
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var v = payload[baseKey + '_' + lang];
+  if (!v) v = payload[baseKey + '_ru'] || payload[baseKey] || '';
+  return v;
+}
+
+function renderCurrent() {
+  if (blockIdx >= blocks.length) { renderCompleted(); return; }
+  var blk = blocks[blockIdx];
+  var p = blk.payload || {};
+  var box = document.getElementById('pp-content');
+  var html = '<div class="pp-card">';
+  html += '<div class="pp-step-label">' + _t('practice.step','Шаг') + ' ' + (blockIdx+1) + ' / ' + blocks.length + ' · ' + blockTypeLabel(blk.type) + '</div>';
+
+  if (blk.type === 'audio_part') {
+    html += '<h2>' + _t('practice.audio_part','Аудио-часть') + '</h2>';
+    var url = p.audio_url || '';
+    if (url && !url.startsWith('http')) url = 'https://neuroattention.org/' + url.replace(/^\//,'');
+    html += '<audio class="pp-audio" controls preload="metadata" src="' + url + '" id="pp-audio-el"></audio>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
+  }
+  else if (blk.type === 'text') {
+    html += '<h2>' + (p.title_ru || _t('practice.text_block','Текстовый блок')) + '</h2>';
+    var text = getLangPick(p, 'markdown') || getLangPick(p, 'text') || '';
+    html += '<p>' + text.replace(/\n/g,'<br>') + '</p>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
+  }
+  else if (blk.type === 'image') {
+    var caption = getLangPick(p, 'caption');
+    if (p.url) html += '<img class="pp-img" src="' + p.url + '" alt="">';
+    if (caption) html += '<p>' + caption + '</p>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
+  }
+  else if (blk.type === 'video') {
+    if (p.url) html += '<video class="pp-video" controls src="' + p.url + '"></video>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
+  }
+  else if (blk.type === 'link') {
+    var title = getLangPick(p, 'title') || p.url;
+    html += '<h2>' + title + '</h2>';
+    html += '<p><a href="' + p.url + '" target="_blank" rel="noopener" style="color:#0e9;">' + p.url + '</a></p>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
+  }
+  else if (blk.type === 'sensation_entry') {
+    html += '<h2>' + (getLangPick(p, 'prompt') || _t('practice.sensation_q','Опиши, что ты чувствуешь')) + '</h2>';
+    html += '<div class="pp-step-label">' + _t('practice.sensation_pick','Выбери ощущения') + '</div>';
+    html += '<div class="pp-chips" id="pp-sens-chips">' + sensationVocab.map(function(v){
+      var label = v['label_'+(typeof getLang==='function'?getLang():'ru')] || v.label_ru;
+      return '<div class="pp-chip" data-slug="' + v.slug + '" onclick="this.classList.toggle(\'active\')">' + label + '</div>';
+    }).join('') + '</div>';
+    html += '<div class="pp-step-label" style="margin-top:1rem;">' + _t('practice.sensation_where','Где ты чувствуешь это?') + '</div>';
+    html += '<div class="pp-chips" id="pp-loc-chips">' + bodyVocab.map(function(v){
+      var label = v['label_'+(typeof getLang==='function'?getLang():'ru')] || v.label_ru;
+      return '<div class="pp-chip" data-slug="' + v.slug + '" onclick="this.classList.toggle(\'active\')">' + label + '</div>';
+    }).join('') + '</div>';
+    html += '<div class="pp-step-label" style="margin-top:1rem;">' + _t('practice.sensation_comment','Комментарий (по желанию)') + '</div>';
+    html += '<textarea class="pp-textarea" id="pp-sens-comment" placeholder=""></textarea>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="submitSensation()">' + _t('practice.save_continue','Сохранить и продолжить') + '</button></div>';
+  }
+  else if (blk.type === 'comment_prompt') {
+    html += '<h2>' + (getLangPick(p, 'prompt') || _t('practice.comment_q','Поделись своим комментарием')) + '</h2>';
+    html += '<textarea class="pp-textarea" id="pp-comment-text" placeholder=""></textarea>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="submitComment()">' + _t('practice.save_continue','Сохранить и продолжить') + '</button></div>';
+  }
+  else if (blk.type === 'question_choice') {
+    html += '<h2>' + (getLangPick(p, 'question') || '?') + '</h2>';
+    var opts = p.options || [];
+    html += '<div class="pp-chips" id="pp-q-chips">' + opts.map(function(o, i){
+      var label = o['label_'+(typeof getLang==='function'?getLang():'ru')] || o.label_ru || o.value || ('Option ' + (i+1));
+      return '<div class="pp-chip" data-value="' + (o.value || i) + '" onclick="this.classList.toggle(\'active\')">' + label + '</div>';
+    }).join('') + '</div>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="submitQuestion()">' + _t('practice.save_continue','Сохранить и продолжить') + '</button></div>';
+  }
+  else {
+    html += '<p>Unknown block type: ' + blk.type + '</p>';
+    html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
+  }
+
+  html += '</div>';
+  box.innerHTML = html;
+  renderProgress();
+
+  // Setup Media Session API for audio blocks
+  if (blk.type === 'audio_part') {
+    setTimeout(setupMediaSession, 100);
+  }
+}
+
+function blockTypeLabel(type) {
+  var map = {
+    audio_part: _t('practice.t_audio','Аудио'),
+    text: _t('practice.t_text','Текст'),
+    image: _t('practice.t_image','Картинка'),
+    video: _t('practice.t_video','Видео'),
+    link: _t('practice.t_link','Ссылка'),
+    sensation_entry: _t('practice.t_sensation','Ощущения'),
+    comment_prompt: _t('practice.t_comment','Комментарий'),
+    question_choice: _t('practice.t_question','Вопрос')
+  };
+  return map[type] || type;
+}
+
+function setupMediaSession() {
+  var audio = document.getElementById('pp-audio-el');
+  if (!audio || !('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: practice.name || 'Practice',
+    artist: 'NeuroAttention',
+    album: practice.block_id || ''
+  });
+  navigator.mediaSession.setActionHandler('play', function(){ audio.play(); });
+  navigator.mediaSession.setActionHandler('pause', function(){ audio.pause(); });
+  navigator.mediaSession.setActionHandler('seekbackward', function(){ audio.currentTime = Math.max(0, audio.currentTime - 10); });
+  navigator.mediaSession.setActionHandler('seekforward', function(){ audio.currentTime = Math.min(audio.duration, audio.currentTime + 10); });
+}
+
+function completeBlock(extraPayload) {
+  var blk = blocks[blockIdx];
+  if (!blk) return;
+  var token = localStorage.getItem('na_token');
+  if (!token) {
+    // Not logged in — just advance locally
+    blockIdx++;
+    renderCurrent();
+    return;
+  }
+  if (!blk.id) { // fallback synthetic block (no real id) — just advance
+    blockIdx++;
+    renderCurrent();
+    return;
+  }
+  fetch(API_BASE + '/api/practices/' + practiceId + '/blocks/' + blk.id + '/complete', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ payload_response: extraPayload || null })
+  }).then(function(r){ return r.json(); })
+    .then(function(d){
+      completedIds[blk.id] = true;
+      if (d && d.xp && d.xp.awarded) {
+        showToast('+' + d.xp.awarded + ' XP · Уровень ' + d.xp.current_level);
+      }
+      blockIdx++;
+      renderCurrent();
+    })
+    .catch(function(){
+      blockIdx++;
+      renderCurrent();
+    });
+}
+
+function submitSensation() {
+  var sens = Array.from(document.querySelectorAll('#pp-sens-chips .pp-chip.active')).map(function(c){return c.dataset.slug;});
+  var locs = Array.from(document.querySelectorAll('#pp-loc-chips .pp-chip.active')).map(function(c){return c.dataset.slug;});
+  var comment = document.getElementById('pp-sens-comment').value;
+  // Save to neuromap (best-effort)
+  var token = localStorage.getItem('na_token');
+  if (token) {
+    fetch(API_BASE + '/api/neuromap/sensation', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensations: sens, body_locations: locs, comment: comment, practice_block_id: blocks[blockIdx].id })
+    });
+  }
+  completeBlock({ sensations: sens, body_locations: locs, comment: comment });
+}
+
+function submitComment() {
+  var txt = document.getElementById('pp-comment-text').value;
+  completeBlock({ comment: txt });
+}
+
+function submitQuestion() {
+  var sels = Array.from(document.querySelectorAll('#pp-q-chips .pp-chip.active')).map(function(c){return c.dataset.value;});
+  completeBlock({ choices: sels });
+}
+
+function renderCompleted() {
+  var box = document.getElementById('pp-content');
+  box.innerHTML = '<div class="pp-card pp-completed"><h2>' + _t('practice.done_title','Практика завершена!') + '</h2><p>' + _t('practice.done_desc','Все блоки пройдены. XP начислен в твой профиль.') + '</p><div class="pp-actions" style="justify-content:center;"><button class="pp-btn" onclick="window.location.href=\'account.html\'">' + _t('practice.back_to_account','Вернуться в ЛК') + '</button></div></div>';
+  renderProgress();
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  if (typeof setLang === 'function') setLang(getLang());
+  loadAll();
+});
+</script>
+</body>
+</html>
