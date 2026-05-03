@@ -3236,6 +3236,8 @@ function backToAdmin(){
   document.getElementById('back-to-admin-btn').style.display='none';
 }
 document.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
+  // Skip admin subtabs — they have their own switchAdminTab handler
+  if(t.dataset.tab && t.dataset.tab.indexOf('admin-')===0) return;
   t.addEventListener('click', function(){ switchTab(t.dataset.tab); });
 });
 // Move NeuroMap panel content into Инструменты tab on init
