@@ -2721,6 +2721,20 @@ async function awardXP(userId, amount, source, refId) {
   return { total_xp: total, current_level: level, awarded: amount };
 }
 
+// Single practice metadata (public)
+app.get('/api/practices/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Bad id' });
+    const [row] = await sql`SELECT id, slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx, created_at FROM practices WHERE id = ${id}`;
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json({ practice: row });
+  } catch (err) {
+    console.error('GET /api/practices/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List blocks of a practice (public read for users, full read for admins)
 app.get('/api/practices/:id/blocks', async (req, res) => {
   try {
