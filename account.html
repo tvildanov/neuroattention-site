@@ -605,6 +605,25 @@
         </div>
       </div>
 
+      <!-- Pack 20.6: XP / Level card -->
+      <div id="rpg-xp-card" style="padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.015);margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.4rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.xp_title">Опыт и уровень</p>
+            <p style="margin:0;font-family:'Unbounded',sans-serif;font-weight:600;font-size:1.1rem;color:var(--text-primary);">
+              <span data-i18n="a.profile.level">Уровень</span>
+              <span id="rpg-xp-level" style="color:#0e9;">1</span>
+            </p>
+          </div>
+          <div style="font-size:13px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">
+            <span id="rpg-xp-current">0</span> / <span id="rpg-xp-needed">100</span> XP
+          </div>
+        </div>
+        <div style="margin-top:0.75rem;height:8px;background:rgba(255,255,255,0.05);border-radius:6px;overflow:hidden;">
+          <div id="rpg-xp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,rgba(0,200,140,0.3),rgba(0,255,180,0.6));border-radius:6px;transition:width 0.5s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+      </div>
+
       <!-- 13 Stats in 3 Layers -->
       <div id="rpg-stats-container" style="display:flex;flex-direction:column;gap:1.5rem;margin-bottom:1.5rem;"></div>
 
@@ -7850,6 +7869,33 @@ if('serviceWorker' in navigator){
 </div>
 
 <script>
+// ── Pack 20.6: XP / Level UI ──
+function loadUserXP() {
+  var token = localStorage.getItem('na_token');
+  if (!token) return;
+  fetch(AUTH_API + '/api/users/me/xp', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || d.error) return;
+      var lvl = document.getElementById('rpg-xp-level');
+      var cur = document.getElementById('rpg-xp-current');
+      var nd = document.getElementById('rpg-xp-needed');
+      var bar = document.getElementById('rpg-xp-bar');
+      if (lvl) lvl.textContent = d.current_level || 1;
+      if (cur) cur.textContent = d.total_xp || 0;
+      if (nd) nd.textContent = d.next_level_at || 100;
+      if (bar) bar.style.width = (d.progress_pct || 0) + '%';
+    })
+    .catch(function(){});
+}
+window.loadUserXP = loadUserXP;
+// Refresh XP whenever profile tab is shown
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(loadUserXP, 800);
+  // re-poll every 30s while page open
+  setInterval(loadUserXP, 30000);
+});
+
 // ── Pack 20: Practice Builder UI ──
 var PB_PRACTICE_ID = null;
 var PB_BLOCKS = [];
