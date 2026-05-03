@@ -2649,9 +2649,9 @@ app.get('/api/admin/users', requireAuth, async (req, res) => {
     // Enrich each user with test/neuromap/diary/rehab counts
     for (const u of users) {
       try {
-        const [tr] = await sql`SELECT profile_type FROM test_results WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1`;
+        const [tr] = await sql`SELECT profile FROM test_results WHERE user_id = ${u.id} ORDER BY completed_at DESC LIMIT 1`;
         u.test_completed = !!tr;
-        u.test_profile = tr ? tr.profile_type : null;
+        u.test_profile = tr ? tr.profile : null;
         const [nm] = await sql`SELECT COUNT(*) AS cnt FROM nm_nodes WHERE user_id = ${u.id}`;
         u.nm_entries_count = parseInt(nm.cnt);
         const [di] = await sql`SELECT COUNT(*) AS cnt FROM neuro_resource_diary WHERE user_id = ${u.id}`;
@@ -2688,7 +2688,7 @@ app.get('/api/admin/users/:id', requireAuth, async (req, res) => {
 
     // Test result
     const [testResult] = await sql`
-      SELECT * FROM test_results WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 1
+      SELECT id, user_id, profile, scores, completed_at FROM test_results WHERE user_id = ${userId} ORDER BY completed_at DESC LIMIT 1
     `;
 
     // Rehab application

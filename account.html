@@ -2881,9 +2881,9 @@ function renderUserDetail(data){
   if(test){
     h+='<div style="font-size:13px;color:var(--accent-green);margin-bottom:0.5rem;">✓ Пройден</div>';
     h+='<div style="font-size:12px;color:var(--text-muted);line-height:1.8;">';
-    if(test.profile_type) h+='Профиль: <span style="color:var(--text-primary);">'+test.profile_type+'</span><br>';
-    if(test.total_score!==undefined) h+='Балл: <span style="color:var(--accent-cyan);">'+test.total_score+'</span><br>';
-    if(test.created_at) h+='Дата: '+new Date(test.created_at).toLocaleDateString('ru-RU');
+    if(test.profile) h+='Профиль: <span style="color:var(--text-primary);">'+test.profile+'</span><br>';
+    if(test.scores) h+='Баллы: <span style="color:var(--accent-cyan);">'+JSON.stringify(test.scores).substring(0,60)+'</span><br>';
+    if(test.completed_at) h+='Дата: '+new Date(test.completed_at).toLocaleDateString('ru-RU');
     h+='</div>';
   } else {
     h+='<div style="font-size:13px;color:var(--text-dim);">Тест не пройден</div>';
