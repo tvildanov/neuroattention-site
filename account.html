@@ -2759,7 +2759,7 @@ function renderAdminUsersList(list,admin){
     return;
   }
 
-  var isSuperadmin=admin.role==='superadmin';
+  var isSuperadmin=admin.role==='superadmin'||admin.role==='founder';
   var ALL_ROLES=['user','client','specialist','admin','superadmin','founder'];
 
   list.forEach(function(u){
