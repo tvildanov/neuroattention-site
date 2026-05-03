@@ -1370,6 +1370,7 @@
     <button class="dash-tab" data-tab="admin-tools" data-i18n="a.admin.tools">Инструменты</button>
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;" data-i18n="a.admin.practices_tab">Практики</button>
+    <button class="dash-tab" data-tab="admin-vocab" id="admin-vocab-tab" style="display:none;" data-i18n="a.admin.vocab_tab">Словарь</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1598,6 +1599,58 @@
           </table>
         </div>
         <p id="admin-practices-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.admin.practices.empty">Практик пока нет.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Pack 20.5: Vocabulary Editor tab ── -->
+  <div class="tab-panel" id="tab-admin-vocab">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <h3 style="margin:0 0 0.5rem;" data-i18n="a.admin.vocab.title">Управление словарём</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;" data-i18n="a.admin.vocab.subtitle">Список вариантов ответов в путях добавления событий: ощущения, локации тела, эмоции и т.д. Все термины трёхъязычные. Изменение применяется во всех 3 языках сразу.</p>
+
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+          <button class="nm-filter-btn active" onclick="loadAdminVocab('sensation',this)" data-i18n="a.admin.vocab.cat_sensation">Ощущения</button>
+          <button class="nm-filter-btn" onclick="loadAdminVocab('body_location',this)" data-i18n="a.admin.vocab.cat_body">Локации тела</button>
+          <button class="nm-filter-btn" onclick="loadAdminVocab('emotion',this)" data-i18n="a.admin.vocab.cat_emotion">Эмоции</button>
+          <button class="nm-filter-btn" onclick="loadAdminVocab('cause',this)" data-i18n="a.admin.vocab.cat_cause">Причины</button>
+          <button class="nm-filter-btn" onclick="loadAdminVocab('thought',this)" data-i18n="a.admin.vocab.cat_thought">Мысли</button>
+          <button class="nm-filter-btn" onclick="loadAdminVocab('action',this)" data-i18n="a.admin.vocab.cat_action">Действия</button>
+        </div>
+
+        <!-- Add new term form -->
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1rem;margin-bottom:1rem;">
+          <h4 style="font-size:13px;color:var(--text-primary);margin:0 0 0.75rem;" data-i18n="a.admin.vocab.add_title">Добавить новый термин</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <input id="vocab-new-slug" type="text" placeholder="slug-en" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:12px;font-family:JetBrains Mono,monospace;">
+            <input id="vocab-new-ru" type="text" data-i18n-placeholder="a.admin.vocab.label_ru" placeholder="Метка RU" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="vocab-new-en" type="text" data-i18n-placeholder="a.admin.vocab.label_en" placeholder="Label EN" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="vocab-new-es" type="text" data-i18n-placeholder="a.admin.vocab.label_es" placeholder="Etiqueta ES" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:12px;">
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button class="btn btn-solid" onclick="addVocabTerm()" style="font-size:12px;padding:0.4rem 1rem;" data-i18n="a.admin.vocab.add_btn">Добавить</button>
+            <span id="vocab-add-status" style="font-size:12px;color:var(--text-muted);"></span>
+          </div>
+        </div>
+
+        <!-- Existing terms table -->
+        <div style="overflow-x:auto;">
+          <table class="admin-table" id="admin-vocab-table">
+            <thead>
+              <tr>
+                <th>Slug</th>
+                <th>RU</th>
+                <th>EN</th>
+                <th>ES</th>
+                <th data-i18n="a.admin.vocab.th_order">Порядок</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="admin-vocab-tbody"></tbody>
+          </table>
+        </div>
+        <p id="admin-vocab-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.admin.vocab.empty">Терминов в этой категории пока нет.</p>
       </div>
     </div>
   </div>
@@ -2524,6 +2577,12 @@ function setupAdminDashboard(user){
   if(practTab && isFounder){
     practTab.style.display = '';
     loadAdminPractices('all');
+  }
+  // Vocabulary tab — founder/superadmin only
+  var vocabTab = document.getElementById('admin-vocab-tab');
+  if(vocabTab && isFounder){
+    vocabTab.style.display = '';
+    if (typeof loadAdminVocab === 'function') loadAdminVocab('sensation');
   }
 }
 
@@ -7869,6 +7928,116 @@ if('serviceWorker' in navigator){
 </div>
 
 <script>
+// ── Pack 20.5: Vocabulary Editor ──
+var VOCAB_CATEGORY = 'sensation';
+function loadAdminVocab(category, btn){
+  if (category) VOCAB_CATEGORY = category;
+  if (btn) {
+    var parent = btn.parentNode;
+    parent.querySelectorAll('.nm-filter-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  }
+  var token = localStorage.getItem('na_token');
+  if (!token) return;
+  fetch(AUTH_API + '/api/admin/vocab?category=' + encodeURIComponent(VOCAB_CATEGORY), {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var tbody = document.getElementById('admin-vocab-tbody');
+    var empty = document.getElementById('admin-vocab-empty');
+    var terms = d.terms || [];
+    if (!terms.length) {
+      tbody.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    tbody.innerHTML = terms.map(function(t){
+      var inactiveStyle = t.is_active ? '' : 'opacity:0.4;';
+      return '<tr data-vocab-id="' + t.id + '" style="' + inactiveStyle + '">' +
+        '<td style="font-family:JetBrains Mono,monospace;font-size:11px;">' + t.slug + '</td>' +
+        '<td><input class="vocab-edit-input" data-field="label_ru" value="' + (t.label_ru||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
+        '<td><input class="vocab-edit-input" data-field="label_en" value="' + (t.label_en||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
+        '<td><input class="vocab-edit-input" data-field="label_es" value="' + (t.label_es||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
+        '<td style="text-align:center;"><input class="vocab-edit-input" data-field="order_idx" type="number" value="' + (t.order_idx||0) + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:60px;text-align:center;"></td>' +
+        '<td style="white-space:nowrap;">' +
+        '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;margin-right:0.25rem;" onclick="saveVocabRow(' + t.id + ')" data-i18n="a.admin.vocab.save">Сохранить</button>' +
+        '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deleteVocabTerm(' + t.id + ')" data-i18n="a.admin.vocab.delete">Удалить</button>' +
+        '</td></tr>';
+    }).join('');
+    if (window.applyAllTranslations) applyAllTranslations();
+  })
+  .catch(function(){});
+}
+function saveVocabRow(id){
+  var tr = document.querySelector('tr[data-vocab-id="' + id + '"]');
+  if (!tr) return;
+  var data = {};
+  tr.querySelectorAll('.vocab-edit-input').forEach(function(inp){
+    data[inp.dataset.field] = inp.dataset.field === 'order_idx' ? parseInt(inp.value)||0 : inp.value;
+  });
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/vocab/' + id, {
+    method: 'PATCH',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.term) {
+      tr.style.background = 'rgba(0,255,180,0.1)';
+      setTimeout(function(){ tr.style.background = ''; }, 1500);
+    } else {
+      alert('Ошибка: ' + (d.error || 'unknown'));
+    }
+  });
+}
+function deleteVocabTerm(id){
+  if (!confirm('Удалить (деактивировать) этот термин? Старые записи юзеров останутся, но термин больше не будет показываться при добавлении новых.')) return;
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/vocab/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(){ loadAdminVocab(VOCAB_CATEGORY); });
+}
+function addVocabTerm(){
+  var slug = document.getElementById('vocab-new-slug').value.trim();
+  var ru = document.getElementById('vocab-new-ru').value.trim();
+  var en = document.getElementById('vocab-new-en').value.trim();
+  var es = document.getElementById('vocab-new-es').value.trim();
+  if (!slug || !ru || !en || !es) {
+    document.getElementById('vocab-add-status').textContent = (typeof t === 'function' ? t('a.admin.vocab.add_required','Заполни все 4 поля') : 'Заполни все 4 поля');
+    return;
+  }
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/vocab', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: VOCAB_CATEGORY, slug: slug, label_ru: ru, label_en: en, label_es: es })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.term) {
+      document.getElementById('vocab-new-slug').value = '';
+      document.getElementById('vocab-new-ru').value = '';
+      document.getElementById('vocab-new-en').value = '';
+      document.getElementById('vocab-new-es').value = '';
+      document.getElementById('vocab-add-status').textContent = '✓';
+      setTimeout(function(){ document.getElementById('vocab-add-status').textContent = ''; }, 2000);
+      loadAdminVocab(VOCAB_CATEGORY);
+    } else {
+      document.getElementById('vocab-add-status').textContent = 'Ошибка: ' + (d.error || 'unknown');
+    }
+  });
+}
+window.loadAdminVocab = loadAdminVocab;
+window.saveVocabRow = saveVocabRow;
+window.deleteVocabTerm = deleteVocabTerm;
+window.addVocabTerm = addVocabTerm;
+
 // ── Pack 20.6: XP / Level UI ──
 function loadUserXP() {
   var token = localStorage.getItem('na_token');
