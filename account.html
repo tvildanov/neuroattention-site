@@ -8017,7 +8017,8 @@ function loadSmRecent(){
       if (!box) return;
       var entries = (d.entries || []).filter(function(e){ return (e.text||'').indexOf('Practice sensation') >= 0 || (e.text||'').indexOf('Sensation') >= 0 || (e.text||'').match(/[жтп]/); }).slice(0, 5);
       if (!entries.length) {
-        box.innerHTML = '<p style="color:var(--text-muted);font-size:13px;margin:0;">Записей пока нет.</p>';
+        var emptyMsg = (typeof t==='function')?t('a.tools.sensation_empty_recent','Записей пока нет.'):'Записей пока нет.';
+        box.innerHTML = '<p style="color:var(--text-muted);font-size:13px;margin:0;">' + emptyMsg + '</p>';
         return;
       }
       box.innerHTML = entries.map(function(e){
