@@ -1411,6 +1411,16 @@
       </div>
       <div id="view-as-content"></div>
     </div>
+    <!-- User detail drill-down panel -->
+    <div id="user-detail-panel" style="display:none;">
+      <div class="dash-card glass-card-elevated" style="padding:1rem 1.5rem;margin-bottom:1rem;background:rgba(0,224,255,0.03);border-color:rgba(0,224,255,0.12);">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <p style="font-size:13px;color:var(--accent-cyan);margin:0;"><strong>Пользователь:</strong> <span id="detail-user-name">—</span></p>
+          <button class="btn btn-ghost" style="font-size:11px;padding:0.3rem 0.65rem;" onclick="closeUserDetail()">← Назад к списку</button>
+        </div>
+      </div>
+      <div id="user-detail-content" style="opacity:0;transition:opacity 0.3s;"></div>
+    </div>
   </div>
 
   <!-- TAB: Tools (practices, neuromap for admins) -->
@@ -2787,10 +2797,180 @@ function renderAdminUsersList(list,admin){
   }
 }
 
-// Stub: opens user detail panel (will be fleshed out in task 377)
+// ══════════════════════════════════════════
+// USER DETAIL DRILL-DOWN (19.4)
+// ══════════════════════════════════════════
 function openUserDetail(userId){
-  console.log('openUserDetail',userId);
-  // TODO: 19.4 — fetch /api/admin/users/:id and show drill-down
+  var panel=document.getElementById('user-detail-panel');
+  var content=document.getElementById('user-detail-content');
+  var table=document.getElementById('admin-full-users-table');
+  if(!panel||!content) return;
+
+  // Hide table, show detail panel
+  table.parentElement.style.display='none';
+  panel.style.display='block';
+  content.style.opacity='0';
+  content.innerHTML='<div style="text-align:center;padding:3rem;color:var(--text-muted);">Загрузка...</div>';
+  content.style.opacity='1';
+
+  var token=localStorage.getItem('na_token');
+  if(!token) return;
+
+  fetch(AUTH_API+'/api/admin/users/'+userId,{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){
+      if(!r.ok) throw new Error('Detail API '+r.status);
+      return r.json();
+    })
+    .then(function(data){
+      renderUserDetail(data);
+    })
+    .catch(function(e){
+      console.warn('openUserDetail error:',e);
+      content.innerHTML='<div style="text-align:center;padding:3rem;color:var(--accent-rose);">Ошибка загрузки: '+e.message+'</div>';
+    });
+}
+
+function closeUserDetail(){
+  var panel=document.getElementById('user-detail-panel');
+  var table=document.getElementById('admin-full-users-table');
+  if(panel) panel.style.display='none';
+  if(table) table.parentElement.style.display='';
+}
+
+function renderUserDetail(data){
+  var content=document.getElementById('user-detail-content');
+  if(!content) return;
+  var u=data.user;
+  var test=data.test_result;
+  var rehab=data.rehab_application;
+  var nm=data.neuromap_summary;
+  var diary=data.diary_summary;
+  var stats=data.user_stats||[];
+  var progress=data.course_progress||[];
+
+  // Header
+  document.getElementById('detail-user-name').textContent=(u.display_name||u.email)+' · '+(u.role);
+
+  var roleLbl=ROLE_LABELS[u.role];
+  var roleText=typeof roleLbl==='function'?roleLbl():roleLbl||u.role;
+  var created=u.created_at?new Date(u.created_at).toLocaleDateString('ru-RU'):'—';
+  var lastLogin=u.last_login_at?new Date(u.last_login_at).toLocaleDateString('ru-RU'):'никогда';
+
+  var h='<div class="dash-grid">';
+
+  // ── Card 1: Profile ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 4;">';
+  h+='<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">';
+  if(u.avatar_url){
+    h+='<img src="'+u.avatar_url+'" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.1);">';
+  } else {
+    h+='<div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text-muted);">'+((u.display_name||'?')[0].toUpperCase())+'</div>';
+  }
+  h+='<div><div style="font-size:15px;color:var(--text-primary);font-weight:600;">'+(u.display_name||'—')+'</div>';
+  h+='<div style="font-size:12px;color:var(--text-muted);">'+roleText+'</div></div></div>';
+  h+='<div style="font-size:12px;color:var(--text-muted);line-height:1.8;">';
+  h+='Email: <span style="color:var(--text-primary);font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+(u.email||'—')+'</span><br>';
+  h+='Тел: <span style="color:var(--text-primary);">'+(u.phone||'—')+'</span><br>';
+  h+='Регистрация: '+created+'<br>';
+  h+='Последний вход: '+lastLogin;
+  h+='</div></div>';
+
+  // ── Card 2: Test Result ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 4;">';
+  h+='<h3 style="margin:0 0 0.75rem;font-size:14px;">Адаптационный тест</h3>';
+  if(test){
+    h+='<div style="font-size:13px;color:var(--accent-green);margin-bottom:0.5rem;">✓ Пройден</div>';
+    h+='<div style="font-size:12px;color:var(--text-muted);line-height:1.8;">';
+    if(test.profile_type) h+='Профиль: <span style="color:var(--text-primary);">'+test.profile_type+'</span><br>';
+    if(test.total_score!==undefined) h+='Балл: <span style="color:var(--accent-cyan);">'+test.total_score+'</span><br>';
+    if(test.created_at) h+='Дата: '+new Date(test.created_at).toLocaleDateString('ru-RU');
+    h+='</div>';
+  } else {
+    h+='<div style="font-size:13px;color:var(--text-dim);">Тест не пройден</div>';
+  }
+  h+='</div>';
+
+  // ── Card 3: Rehab Application ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 4;">';
+  h+='<h3 style="margin:0 0 0.75rem;font-size:14px;">Заявка на реабилитацию</h3>';
+  if(rehab){
+    var statusColors={new:'var(--accent-amber)',contacted:'var(--accent-cyan)',in_progress:'var(--accent-violet)',accepted:'var(--accent-green)',declined:'var(--accent-rose)'};
+    var statusLabels={new:'Новая',contacted:'Связались',in_progress:'В работе',accepted:'Принята',declined:'Отклонена'};
+    h+='<div style="font-size:12px;margin-bottom:0.5rem;"><span style="color:'+(statusColors[rehab.status]||'var(--text-muted)')+';font-weight:600;">'+(statusLabels[rehab.status]||rehab.status)+'</span></div>';
+    h+='<div style="font-size:12px;color:var(--text-muted);line-height:1.8;">';
+    if(rehab.city) h+='Город: '+rehab.city+'<br>';
+    if(rehab.age) h+='Возраст: '+rehab.age+'<br>';
+    if(rehab.description) h+='Описание: <span style="color:var(--text-primary);">'+((rehab.description||'').substring(0,120))+'</span>';
+    h+='</div>';
+  } else {
+    h+='<div style="font-size:13px;color:var(--text-dim);">Заявки нет</div>';
+  }
+  h+='</div>';
+
+  // ── Card 4: NeuroMap ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 6;">';
+  h+='<h3 style="margin:0 0 0.75rem;font-size:14px;">NeuroMap</h3>';
+  if(nm.nodes_count>0){
+    h+='<div style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;">Узлов: <span style="color:var(--accent-violet);font-weight:600;">'+nm.nodes_count+'</span>';
+    if(nm.last_entry_at) h+=' · Последний: '+new Date(nm.last_entry_at).toLocaleDateString('ru-RU');
+    h+='</div>';
+    if(nm.top_concepts&&nm.top_concepts.length){
+      h+='<div style="display:flex;flex-wrap:wrap;gap:0.4rem;">';
+      nm.top_concepts.forEach(function(c){
+        var typeColors={emotion:'var(--accent-amber)',area:'var(--accent-cyan)',cause:'var(--accent-violet)',strategy:'var(--accent-green)',resource:'var(--accent-rose)',goal:'rgba(255,255,255,0.5)'};
+        var bg=typeColors[c.type]||'rgba(255,255,255,0.15)';
+        h+='<span style="display:inline-block;padding:0.2rem 0.5rem;font-size:11px;border-radius:12px;background:color-mix(in srgb,'+bg+' 15%,transparent);border:1px solid color-mix(in srgb,'+bg+' 30%,transparent);color:'+bg+';">'+c.label+(c.count>1?' ×'+c.count:'')+'</span>';
+      });
+      h+='</div>';
+    }
+  } else {
+    h+='<div style="font-size:13px;color:var(--text-dim);">Нет данных NeuroMap</div>';
+  }
+  h+='</div>';
+
+  // ── Card 5: Diary ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 6;">';
+  h+='<h3 style="margin:0 0 0.75rem;font-size:14px;">Дневник нейроресурса</h3>';
+  if(diary.entries_count>0){
+    h+='<div style="font-size:13px;color:var(--text-muted);">Записей: <span style="color:var(--accent-amber);font-weight:600;">'+diary.entries_count+'</span>';
+    if(diary.last_entry_at) h+=' · Последняя: '+new Date(diary.last_entry_at).toLocaleDateString('ru-RU');
+    h+='</div>';
+  } else {
+    h+='<div style="font-size:13px;color:var(--text-dim);">Нет записей в дневнике</div>';
+  }
+  h+='</div>';
+
+  // ── Card 6: User Stats (RPG) ──
+  if(stats.length>0){
+    h+='<div class="dash-card glass-card-elevated" style="grid-column:span 12;">';
+    h+='<h3 style="margin:0 0 0.75rem;font-size:14px;">Профиль-статистика</h3>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;">';
+    stats.forEach(function(s){
+      h+='<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:0.6rem 0.8rem;">';
+      h+='<div style="font-size:11px;color:var(--text-muted);margin-bottom:0.25rem;">'+s.stat_key+'</div>';
+      h+='<div style="font-size:18px;font-weight:700;color:var(--accent-cyan);">'+s.stat_value+'</div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  }
+
+  // ── Card 7: Course Progress ──
+  if(progress.length>0){
+    h+='<div class="dash-card glass-card-elevated" style="grid-column:span 12;">';
+    h+='<h3 style="margin:0 0 0.75rem;font-size:14px;">Прогресс курса</h3>';
+    h+='<table class="admin-table"><thead><tr><th>Модуль</th><th>Неделя</th><th>Прогресс</th><th>Обновлено</th></tr></thead><tbody>';
+    progress.forEach(function(p){
+      h+='<tr><td>'+(p.module_id||'—')+'</td><td>'+(p.week||'—')+'</td><td>'+
+        '<div class="progress-track" style="width:100px;display:inline-block;vertical-align:middle;"><div class="progress-fill" style="width:'+(p.progress||0)+'%"></div></div> '+(p.progress||0)+'%'+
+        '</td><td style="font-size:11px;color:var(--text-muted);">'+(p.updated_at?new Date(p.updated_at).toLocaleDateString('ru-RU'):'—')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  h+='</div>'; // close dash-grid
+
+  content.innerHTML=h;
+  content.style.opacity='1';
 }
 
 // View-As mode
