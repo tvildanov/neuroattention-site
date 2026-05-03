@@ -2790,8 +2790,8 @@ app.get('/api/admin/users/:id/progress', requireAuth, async (req, res) => {
 app.patch('/api/admin/users/:id/role', requireAuth, async (req, res) => {
   try {
     const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
-    if (!caller.length || caller[0].role !== 'superadmin') {
-      return res.status(403).json({ error: 'Only superadmin can change roles' });
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Only superadmin/founder can change roles' });
     }
 
     const targetId = req.params.id;
