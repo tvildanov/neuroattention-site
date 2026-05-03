@@ -7717,7 +7717,8 @@ function renderAdminPractices(filterLang) {
       '<td style="font-family:JetBrains Mono,monospace;font-size:12px;">' + dur + '</td>' +
       '<td style="text-align:center;">' + p.order_idx + '</td>' +
       '<td style="font-size:11px;color:var(--text-muted);">' + date + '</td>' +
-      '<td><button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deletePractice(' + p.id + ')">Удалить</button></td>' +
+      '<td style="white-space:nowrap;"><button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;margin-right:0.25rem;" onclick="openPracticeBuilder(' + p.id + ',\'' + (p.name||'').replace(/\'/g,'\\\'') + '\')" data-i18n="a.admin.practices.builder">Конструктор</button>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deletePractice(' + p.id + ')">Удалить</button></td>' +
       '</tr>';
   }).join('');
 }
@@ -7821,6 +7822,188 @@ if('serviceWorker' in navigator){
     <div id="presetGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;"></div>
   </div>
 </div>
+<!-- ── Pack 20: Practice Builder Modal ── -->
+<div id="practiceBuilderOverlay" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;padding:2rem 1rem;">
+  <div class="modal-box glass-card-elevated" style="max-width:900px;margin:0 auto;padding:1.5rem;border-radius:14px;background:rgba(15,15,22,0.96);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div>
+        <h3 style="margin:0;font-size:18px;" data-i18n="a.admin.builder.title">Конструктор практики</h3>
+        <p id="pbTitleSub" style="margin:0.25rem 0 0;color:var(--text-muted);font-size:13px;"></p>
+      </div>
+      <button class="btn btn-ghost" onclick="closePracticeBuilder()" style="font-size:14px;">✕</button>
+    </div>
+
+    <div id="pbBlockList" style="margin-bottom:1.25rem;"></div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;border-top:1px solid rgba(255,255,255,0.06);padding-top:1rem;">
+      <span style="font-size:12px;color:var(--text-muted);" data-i18n="a.admin.builder.add_block">Добавить блок:</span>
+      <button class="btn btn-ghost" onclick="pbAddBlock('audio_part')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_audio">Аудио-часть</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('text')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_text">Текст</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('image')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_image">Картинка</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('video')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_video">Видео</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('link')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_link">Ссылка</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('sensation_entry')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_sensation">Запрос ощущений</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('comment_prompt')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_comment">Запрос комментария</button>
+      <button class="btn btn-ghost" onclick="pbAddBlock('question_choice')" style="font-size:11px;padding:0.25rem 0.6rem;" data-i18n="a.admin.builder.t_question">Вопрос с выбором</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Pack 20: Practice Builder UI ──
+var PB_PRACTICE_ID = null;
+var PB_BLOCKS = [];
+
+function openPracticeBuilder(practiceId, practiceName) {
+  PB_PRACTICE_ID = practiceId;
+  document.getElementById('pbTitleSub').textContent = '#' + practiceId + (practiceName ? ' · ' + practiceName : '');
+  document.getElementById('practiceBuilderOverlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  pbLoadBlocks();
+}
+function closePracticeBuilder() {
+  document.getElementById('practiceBuilderOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  PB_PRACTICE_ID = null;
+  PB_BLOCKS = [];
+}
+function pbLoadBlocks() {
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){ PB_BLOCKS = d.blocks || []; pbRender(); })
+  .catch(function(){ PB_BLOCKS = []; pbRender(); });
+}
+function pbTypeLabel(t) {
+  var T = (window.t || function(k,f){return f;});
+  var map = {
+    audio_part: T('a.admin.builder.t_audio','Аудио-часть'),
+    text: T('a.admin.builder.t_text','Текст'),
+    image: T('a.admin.builder.t_image','Картинка'),
+    video: T('a.admin.builder.t_video','Видео'),
+    link: T('a.admin.builder.t_link','Ссылка'),
+    sensation_entry: T('a.admin.builder.t_sensation','Запрос ощущений'),
+    comment_prompt: T('a.admin.builder.t_comment','Запрос комментария'),
+    question_choice: T('a.admin.builder.t_question','Вопрос с выбором')
+  };
+  return map[t] || t;
+}
+function pbBlockSummary(blk) {
+  var p = blk.payload || {};
+  var lines = [];
+  if (blk.type === 'audio_part') lines.push((p.audio_url || '').split('/').pop() || 'no file');
+  else if (blk.type === 'text') lines.push((p.markdown_ru || p.text_ru || '').slice(0, 60) + ((p.markdown_ru || p.text_ru || '').length > 60 ? '…' : ''));
+  else if (blk.type === 'image') lines.push(p.url || '');
+  else if (blk.type === 'video') lines.push(p.url || '');
+  else if (blk.type === 'link') lines.push((p.title_ru || p.title || '') + ' → ' + (p.url || ''));
+  else if (blk.type === 'sensation_entry') lines.push(p.prompt_ru || 'Опиши, что ты чувствуешь');
+  else if (blk.type === 'comment_prompt') lines.push(p.prompt_ru || 'Поделись комментарием');
+  else if (blk.type === 'question_choice') lines.push(p.question_ru || 'Вопрос');
+  return lines.join(' · ');
+}
+function pbRender() {
+  var box = document.getElementById('pbBlockList');
+  if (!PB_BLOCKS.length) {
+    box.innerHTML = '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:2rem 0;" data-i18n="a.admin.builder.empty">Блоков пока нет. Добавь ниже.</p>';
+    if (window.applyAllTranslations) applyAllTranslations();
+    return;
+  }
+  box.innerHTML = PB_BLOCKS.map(function(blk, i) {
+    var sumStr = pbBlockSummary(blk).replace(/[<>]/g, '');
+    return '<div style="display:flex;gap:0.5rem;align-items:center;padding:0.6rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.5rem;">' +
+      '<div style="display:flex;flex-direction:column;gap:2px;">' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:0;width:22px;height:18px;" onclick="pbMove('+i+',-1)" '+(i===0?'disabled style="opacity:0.3"':'')+'>↑</button>' +
+        '<button class="btn btn-ghost" style="font-size:10px;padding:0;width:22px;height:18px;" onclick="pbMove('+i+',1)" '+(i===PB_BLOCKS.length-1?'disabled style="opacity:0.3"':'')+'>↓</button>' +
+      '</div>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:12px;color:var(--accent-color,#0e9);">' + pbTypeLabel(blk.type) + ' · +' + (blk.xp_reward||0) + ' XP</div>' +
+        '<div style="font-size:13px;color:var(--text-primary);margin-top:2px;">' + sumStr + '</div>' +
+      '</div>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;" onclick="pbEdit('+blk.id+')" data-i18n="a.admin.builder.edit">Редактировать</button>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="pbDelete('+blk.id+')" data-i18n="a.admin.builder.delete">Удалить</button>' +
+      '</div>';
+  }).join('');
+  if (window.applyAllTranslations) applyAllTranslations();
+}
+function pbMove(idx, delta) {
+  var newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= PB_BLOCKS.length) return;
+  var tmp = PB_BLOCKS[idx]; PB_BLOCKS[idx] = PB_BLOCKS[newIdx]; PB_BLOCKS[newIdx] = tmp;
+  pbRender();
+  // persist new order
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks/reorder', {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order: PB_BLOCKS.map(function(b){return b.id;}) })
+  });
+}
+function pbDelete(blockId) {
+  if (!confirm('Удалить блок?')) return;
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks/' + blockId, {
+    method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+  }).then(pbLoadBlocks);
+}
+function pbAddBlock(type) {
+  // Build minimal default payload per type
+  var defaults = {
+    audio_part: { audio_url: '', duration_seconds: 0 },
+    text: { markdown_ru: '', markdown_en: '', markdown_es: '' },
+    image: { url: '', caption_ru: '', caption_en: '', caption_es: '' },
+    video: { url: '' },
+    link: { url: '', title_ru: '', title_en: '', title_es: '' },
+    sensation_entry: { prompt_ru: 'Опиши, что ты чувствуешь', prompt_en: 'Describe what you feel', prompt_es: 'Describe lo que sientes' },
+    comment_prompt: { prompt_ru: 'Поделись своим комментарием', prompt_en: 'Share your comment', prompt_es: 'Comparte tu comentario', allow_audio: true },
+    question_choice: { question_ru: '', question_en: '', question_es: '', options: [], multiselect: false }
+  };
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks', {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type, payload: defaults[type] || {} })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){ pbLoadBlocks(); if (d.block && d.block.id) setTimeout(function(){ pbEdit(d.block.id); }, 200); })
+  .catch(function(err){ alert('Ошибка: ' + err.message); });
+}
+function pbEdit(blockId) {
+  var blk = PB_BLOCKS.filter(function(b){return b.id === blockId;})[0];
+  if (!blk) return;
+  var p = blk.payload || {};
+  // Build a simple inline edit form via prompts (MVP). Full inline editor deferred.
+  var fields = [];
+  if (blk.type === 'audio_part') fields = [['audio_url','URL аудио'],['duration_seconds','Длительность (сек)']];
+  else if (blk.type === 'text') fields = [['markdown_ru','Текст RU'],['markdown_en','Текст EN'],['markdown_es','Текст ES']];
+  else if (blk.type === 'image') fields = [['url','URL картинки'],['caption_ru','Подпись RU'],['caption_en','Подпись EN'],['caption_es','Подпись ES']];
+  else if (blk.type === 'video') fields = [['url','URL видео']];
+  else if (blk.type === 'link') fields = [['url','URL'],['title_ru','Заголовок RU'],['title_en','Заголовок EN'],['title_es','Заголовок ES']];
+  else if (blk.type === 'sensation_entry') fields = [['prompt_ru','Вопрос RU'],['prompt_en','Вопрос EN'],['prompt_es','Вопрос ES']];
+  else if (blk.type === 'comment_prompt') fields = [['prompt_ru','Текст RU'],['prompt_en','Текст EN'],['prompt_es','Текст ES']];
+  else if (blk.type === 'question_choice') fields = [['question_ru','Вопрос RU'],['question_en','Вопрос EN'],['question_es','Вопрос ES']];
+  var newPayload = Object.assign({}, p);
+  for (var i = 0; i < fields.length; i++) {
+    var f = fields[i];
+    var v = prompt(f[1] + ':', p[f[0]] != null ? p[f[0]] : '');
+    if (v === null) return; // cancelled
+    newPayload[f[0]] = v;
+  }
+  var newXp = prompt('XP за прохождение:', blk.xp_reward || 25);
+  if (newXp === null) return;
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks/' + blockId, {
+    method: 'PATCH', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ payload: newPayload, xp_reward: parseInt(newXp) || 0 })
+  }).then(pbLoadBlocks);
+}
+window.openPracticeBuilder = openPracticeBuilder;
+window.closePracticeBuilder = closePracticeBuilder;
+window.pbAddBlock = pbAddBlock;
+window.pbDelete = pbDelete;
+window.pbEdit = pbEdit;
+window.pbMove = pbMove;
+</script>
+
 <script src="assets/js/i18n.js"></script>
 <script>
   // Initialize i18n on page load
