@@ -8279,19 +8279,49 @@ function pbRender() {
   }
   box.innerHTML = PB_BLOCKS.map(function(blk, i) {
     var sumStr = pbBlockSummary(blk).replace(/[<>]/g, '');
-    return '<div style="display:flex;gap:0.5rem;align-items:center;padding:0.6rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.5rem;">' +
-      '<div style="display:flex;flex-direction:column;gap:2px;">' +
-        '<button class="btn btn-ghost" style="font-size:10px;padding:0;width:22px;height:18px;" onclick="pbMove('+i+',-1)" '+(i===0?'disabled style="opacity:0.3"':'')+'>↑</button>' +
-        '<button class="btn btn-ghost" style="font-size:10px;padding:0;width:22px;height:18px;" onclick="pbMove('+i+',1)" '+(i===PB_BLOCKS.length-1?'disabled style="opacity:0.3"':'')+'>↓</button>' +
-      '</div>' +
-      '<div style="flex:1;">' +
+    return '<div class="pb-row" draggable="true" data-blk-idx="' + i + '" data-blk-id="' + blk.id + '" style="display:flex;gap:0.5rem;align-items:center;padding:0.6rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.5rem;cursor:grab;transition:background 0.15s,border 0.15s;">' +
+      '<div style="font-size:14px;color:var(--text-dim);user-select:none;padding:0 0.25rem;cursor:grab;" title="Drag to reorder">⋮⋮</div>' +
+      '<div style="flex:1;min-width:0;">' +
         '<div style="font-size:12px;color:var(--accent-color,#0e9);">' + pbTypeLabel(blk.type) + ' · +' + (blk.xp_reward||0) + ' XP</div>' +
-        '<div style="font-size:13px;color:var(--text-primary);margin-top:2px;">' + sumStr + '</div>' +
+        '<div style="font-size:13px;color:var(--text-primary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;">' + sumStr + '</div>' +
       '</div>' +
       '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;" onclick="pbEdit('+blk.id+')" data-i18n="a.admin.builder.edit">Редактировать</button>' +
       '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="pbDelete('+blk.id+')" data-i18n="a.admin.builder.delete">Удалить</button>' +
       '</div>';
   }).join('');
+  // Wire drag-and-drop reorder
+  var rows = box.querySelectorAll('.pb-row');
+  rows.forEach(function(row){
+    row.addEventListener('dragstart', function(e){
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.blkIdx);
+      row.style.opacity = '0.4';
+    });
+    row.addEventListener('dragend', function(){ row.style.opacity = ''; });
+    row.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      row.style.borderColor = 'rgba(0,224,255,0.5)';
+    });
+    row.addEventListener('dragleave', function(){
+      row.style.borderColor = 'rgba(255,255,255,0.06)';
+    });
+    row.addEventListener('drop', function(e){
+      e.preventDefault();
+      row.style.borderColor = 'rgba(255,255,255,0.06)';
+      var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+      var toIdx = parseInt(row.dataset.blkIdx);
+      if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
+      var moved = PB_BLOCKS.splice(fromIdx, 1)[0];
+      PB_BLOCKS.splice(toIdx, 0, moved);
+      pbRender();
+      var token = localStorage.getItem('na_token');
+      fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks/reorder', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: PB_BLOCKS.map(function(b){return b.id;}) })
+      });
+    });
+  });
   if (window.applyAllTranslations) applyAllTranslations();
 }
 function pbMove(idx, delta) {
@@ -8334,35 +8364,94 @@ function pbAddBlock(type) {
   .then(function(d){ pbLoadBlocks(); if (d.block && d.block.id) setTimeout(function(){ pbEdit(d.block.id); }, 200); })
   .catch(function(err){ alert('Ошибка: ' + err.message); });
 }
+// Pack 20.9 — inline edit modal (replaces prompt() dialogs)
+function pbFieldDefs(type) {
+  // [field_key, label, multiline]
+  if (type === 'audio_part') return [['audio_url','URL аудио (mp3)',false],['duration_seconds','Длительность (сек)',false]];
+  if (type === 'text') return [['markdown_ru','Текст RU',true],['markdown_en','Текст EN',true],['markdown_es','Текст ES',true]];
+  if (type === 'image') return [['url','URL картинки',false],['caption_ru','Подпись RU',false],['caption_en','Подпись EN',false],['caption_es','Подпись ES',false]];
+  if (type === 'video') return [['url','URL видео',false]];
+  if (type === 'link') return [['url','URL',false],['title_ru','Заголовок RU',false],['title_en','Заголовок EN',false],['title_es','Заголовок ES',false]];
+  if (type === 'sensation_entry') return [['prompt_ru','Вопрос RU',true],['prompt_en','Вопрос EN',true],['prompt_es','Вопрос ES',true]];
+  if (type === 'comment_prompt') return [['prompt_ru','Текст RU',true],['prompt_en','Текст EN',true],['prompt_es','Текст ES',true]];
+  if (type === 'question_choice') return [['question_ru','Вопрос RU',true],['question_en','Вопрос EN',true],['question_es','Вопрос ES',true]];
+  return [];
+}
 function pbEdit(blockId) {
   var blk = PB_BLOCKS.filter(function(b){return b.id === blockId;})[0];
   if (!blk) return;
   var p = blk.payload || {};
-  // Build a simple inline edit form via prompts (MVP). Full inline editor deferred.
-  var fields = [];
-  if (blk.type === 'audio_part') fields = [['audio_url','URL аудио'],['duration_seconds','Длительность (сек)']];
-  else if (blk.type === 'text') fields = [['markdown_ru','Текст RU'],['markdown_en','Текст EN'],['markdown_es','Текст ES']];
-  else if (blk.type === 'image') fields = [['url','URL картинки'],['caption_ru','Подпись RU'],['caption_en','Подпись EN'],['caption_es','Подпись ES']];
-  else if (blk.type === 'video') fields = [['url','URL видео']];
-  else if (blk.type === 'link') fields = [['url','URL'],['title_ru','Заголовок RU'],['title_en','Заголовок EN'],['title_es','Заголовок ES']];
-  else if (blk.type === 'sensation_entry') fields = [['prompt_ru','Вопрос RU'],['prompt_en','Вопрос EN'],['prompt_es','Вопрос ES']];
-  else if (blk.type === 'comment_prompt') fields = [['prompt_ru','Текст RU'],['prompt_en','Текст EN'],['prompt_es','Текст ES']];
-  else if (blk.type === 'question_choice') fields = [['question_ru','Вопрос RU'],['question_en','Вопрос EN'],['question_es','Вопрос ES']];
-  var newPayload = Object.assign({}, p);
+  var fields = pbFieldDefs(blk.type);
+
+  // Build modal HTML
+  var html = '<div id="pbEditModal" class="modal-overlay" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;overflow-y:auto;padding:2rem 1rem;align-items:flex-start;justify-content:center;">';
+  html += '<div class="modal-box glass-card-elevated" style="max-width:640px;width:100%;padding:1.5rem;border-radius:14px;background:rgba(15,15,22,0.98);box-sizing:border-box;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">';
+  html += '<h3 style="margin:0;font-size:16px;">' + pbTypeLabel(blk.type) + ' · ' + (typeof t==='function'?t('a.admin.builder.edit_title','Редактировать блок'):'Редактировать блок') + '</h3>';
+  html += '<button class="btn btn-ghost" onclick="pbCloseEdit()" style="font-size:14px;">✕</button>';
+  html += '</div>';
+
   for (var i = 0; i < fields.length; i++) {
     var f = fields[i];
-    var v = prompt(f[1] + ':', p[f[0]] != null ? p[f[0]] : '');
-    if (v === null) return; // cancelled
-    newPayload[f[0]] = v;
+    var key = f[0]; var lbl = f[1]; var multi = f[2];
+    var val = p[key] != null ? String(p[key]) : '';
+    val = val.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += '<div style="margin-bottom:0.85rem;">';
+    html += '<label style="display:block;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">' + lbl + '</label>';
+    if (multi) {
+      html += '<textarea data-pb-field="' + key + '" rows="3" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;">' + val + '</textarea>';
+    } else {
+      html += '<input type="text" data-pb-field="' + key + '" value="' + val + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+    }
+    html += '</div>';
   }
-  var newXp = prompt('XP за прохождение:', blk.xp_reward || 25);
-  if (newXp === null) return;
+
+  // XP reward field (always shown)
+  html += '<div style="margin-bottom:0.85rem;">';
+  html += '<label style="display:block;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">' + (typeof t==='function'?t('a.admin.builder.xp_reward','XP за прохождение'):'XP за прохождение') + '</label>';
+  html += '<input type="number" data-pb-xp="1" value="' + (blk.xp_reward || 25) + '" style="width:120px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;">';
+  html += '</div>';
+
+  html += '<div style="display:flex;gap:0.5rem;justify-content:flex-end;border-top:1px solid rgba(255,255,255,0.06);padding-top:1rem;margin-top:1rem;">';
+  html += '<button class="btn btn-ghost" onclick="pbCloseEdit()">' + (typeof t==='function'?t('a.admin.builder.cancel','Отмена'):'Отмена') + '</button>';
+  html += '<button class="btn btn-solid" onclick="pbSaveEdit(' + blockId + ')" style="font-size:13px;padding:0.5rem 1.25rem;">' + (typeof t==='function'?t('a.admin.builder.save','Сохранить'):'Сохранить') + '</button>';
+  html += '</div>';
+  html += '</div></div>';
+
+  // Append modal to body
+  var existing = document.getElementById('pbEditModal');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function pbCloseEdit(){
+  var m = document.getElementById('pbEditModal');
+  if (m) m.remove();
+}
+function pbSaveEdit(blockId){
+  var modal = document.getElementById('pbEditModal');
+  if (!modal) return;
+  var blk = PB_BLOCKS.filter(function(b){return b.id === blockId;})[0];
+  if (!blk) return;
+  var newPayload = Object.assign({}, blk.payload || {});
+  modal.querySelectorAll('[data-pb-field]').forEach(function(el){
+    var k = el.dataset.pbField;
+    var v = el.value;
+    if (k === 'duration_seconds') v = parseInt(v) || 0;
+    newPayload[k] = v;
+  });
+  var xpEl = modal.querySelector('[data-pb-xp]');
+  var newXp = xpEl ? (parseInt(xpEl.value) || 0) : (blk.xp_reward || 25);
   var token = localStorage.getItem('na_token');
   fetch(AUTH_API + '/api/admin/practices/' + PB_PRACTICE_ID + '/blocks/' + blockId, {
     method: 'PATCH', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payload: newPayload, xp_reward: parseInt(newXp) || 0 })
-  }).then(pbLoadBlocks);
+    body: JSON.stringify({ payload: newPayload, xp_reward: newXp })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(){ pbCloseEdit(); pbLoadBlocks(); })
+  .catch(function(err){ alert('Ошибка: ' + err.message); });
 }
+window.pbCloseEdit = pbCloseEdit;
+window.pbSaveEdit = pbSaveEdit;
 window.openPracticeBuilder = openPracticeBuilder;
 window.closePracticeBuilder = closePracticeBuilder;
 window.pbAddBlock = pbAddBlock;
