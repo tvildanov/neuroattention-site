@@ -2550,6 +2550,237 @@ app.delete('/api/admin/practices/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ── ADMIN: Dashboard stats ──
+app.get('/api/admin/stats', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Aggregate counts
+    const [totalR] = await sql`SELECT COUNT(*) AS cnt FROM users`;
+    const [activeR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE last_login_at > NOW() - INTERVAL '30 days'`;
+    const [clientsR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role IN ('user','client')`;
+    const [specsR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'specialist'`;
+    const [paidR] = await sql`SELECT COUNT(DISTINCT cl.user_id) AS cnt FROM consent_log cl WHERE cl.status = 'completed'`;
+
+    // Recent signups (last 10)
+    const recent = await sql`
+      SELECT id, email, display_name AS name, role, phone, created_at, avatar_url
+      FROM users ORDER BY created_at DESC LIMIT 10
+    `;
+
+    // Sales by program (from consent_log)
+    const salesRows = await sql`
+      SELECT COALESCE(product, 'unknown') AS program, COUNT(*) AS cnt
+      FROM consent_log WHERE status = 'completed'
+      GROUP BY product
+    `;
+    const salesMap = { self_guided: 0, guided: 0, group: 0 };
+    salesRows.forEach(r => {
+      const k = r.program.toLowerCase().replace(/[\s-]/g, '_');
+      if (k in salesMap) salesMap[k] = parseInt(r.cnt);
+      else if (k.includes('self')) salesMap.self_guided = parseInt(r.cnt);
+      else if (k.includes('guided')) salesMap.guided = parseInt(r.cnt);
+      else if (k.includes('group')) salesMap.group = parseInt(r.cnt);
+    });
+
+    res.json({
+      total_users: parseInt(totalR.cnt),
+      active_users: parseInt(activeR.cnt),
+      clients: parseInt(clientsR.cnt),
+      specialists: parseInt(specsR.cnt),
+      with_program: parseInt(paidR.cnt),
+      recent_signups: recent,
+      sales_by_program: salesMap
+    });
+  } catch (err) {
+    console.error('GET /api/admin/stats:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN: Users list ──
+app.get('/api/admin/users', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { role, search, page = 1, limit = 50 } = req.query;
+    const lim = Math.min(parseInt(limit) || 50, 200);
+    const off = (Math.max(parseInt(page) || 1, 1) - 1) * lim;
+
+    // Simple approach: fetch all matching users, then enrich
+    let users, countR;
+    const like = search ? `%${search.toLowerCase()}%` : null;
+
+    if (role && role !== 'all' && like) {
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ${role} AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
+      users = await sql`
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        FROM users WHERE role = ${role} AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
+        ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
+      `;
+    } else if (role && role !== 'all') {
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ${role}`;
+      users = await sql`
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        FROM users WHERE role = ${role}
+        ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
+      `;
+    } else if (like) {
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
+      users = await sql`
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        FROM users WHERE (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
+        ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
+      `;
+    } else {
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users`;
+      users = await sql`
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        FROM users ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
+      `;
+    }
+
+    // Enrich each user with test/neuromap/diary/rehab counts
+    for (const u of users) {
+      const [tr] = await sql`SELECT profile_type FROM test_results WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1`;
+      u.test_completed = !!tr;
+      u.test_profile = tr ? tr.profile_type : null;
+      const [nm] = await sql`SELECT COUNT(*) AS cnt FROM nm_nodes WHERE user_id = ${u.id}`;
+      u.nm_entries_count = parseInt(nm.cnt);
+      const [di] = await sql`SELECT COUNT(*) AS cnt FROM neuro_resource_diary WHERE user_id = ${u.id}`;
+      u.diary_entries_count = parseInt(di.cnt);
+      const [ra] = await sql`SELECT id FROM rehab_applications WHERE user_id = ${u.id} LIMIT 1`;
+      u.rehab_flag = !!ra;
+    }
+
+    res.json({ users, total: parseInt(countR.cnt), page: parseInt(page), limit: lim });
+  } catch (err) {
+    console.error('GET /api/admin/users:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN: User detail ──
+app.get('/api/admin/users/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const userId = req.params.id;
+    const [user] = await sql`
+      SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+      FROM users WHERE id = ${userId}
+    `;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Test result
+    const [testResult] = await sql`
+      SELECT * FROM test_results WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 1
+    `;
+
+    // Rehab application
+    const [rehabApp] = await sql`
+      SELECT * FROM rehab_applications WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 1
+    `;
+
+    // NeuroMap summary
+    const [nmCount] = await sql`SELECT COUNT(*) AS cnt FROM nm_nodes WHERE user_id = ${userId}`;
+    const [nmLastEntry] = await sql`SELECT MAX(updated_at) AS last_at FROM nm_nodes WHERE user_id = ${userId}`;
+    const topConcepts = await sql`
+      SELECT label, type, count FROM nm_nodes WHERE user_id = ${userId} ORDER BY count DESC LIMIT 10
+    `;
+
+    // Diary summary
+    const [diaryCount] = await sql`SELECT COUNT(*) AS cnt FROM neuro_resource_diary WHERE user_id = ${userId}`;
+    const [diaryLast] = await sql`SELECT MAX(created_at) AS last_at FROM neuro_resource_diary WHERE user_id = ${userId}`;
+
+    // Course progress
+    const courseProgress = await sql`SELECT * FROM course_progress WHERE user_id = ${userId}`;
+
+    // User stats
+    const userStats = await sql`SELECT * FROM user_stats WHERE user_id = ${userId}`;
+
+    res.json({
+      user,
+      test_result: testResult || null,
+      rehab_application: rehabApp || null,
+      neuromap_summary: {
+        nodes_count: parseInt(nmCount.cnt),
+        last_entry_at: nmLastEntry?.last_at || null,
+        top_concepts: topConcepts
+      },
+      diary_summary: {
+        entries_count: parseInt(diaryCount.cnt),
+        last_entry_at: diaryLast?.last_at || null
+      },
+      course_progress: courseProgress,
+      user_stats: userStats
+    });
+  } catch (err) {
+    console.error('GET /api/admin/users/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN: User NeuroMap graph (read-only) ──
+app.get('/api/admin/users/:id/neuromap', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const userId = req.params.id;
+    const nodes = await sql`SELECT * FROM nm_nodes WHERE user_id = ${userId}`;
+    const links = await sql`SELECT * FROM nm_links WHERE user_id = ${userId}`;
+    res.json({ nodes, links });
+  } catch (err) {
+    console.error('GET /api/admin/users/:id/neuromap:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN: User diary (read-only) ──
+app.get('/api/admin/users/:id/diary', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const userId = req.params.id;
+    const entries = await sql`
+      SELECT * FROM neuro_resource_diary WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 500
+    `;
+    res.json({ entries });
+  } catch (err) {
+    console.error('GET /api/admin/users/:id/diary:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN: User progress (read-only) ──
+app.get('/api/admin/users/:id/progress', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const userId = req.params.id;
+    const progress = await sql`SELECT * FROM course_progress WHERE user_id = ${userId}`;
+    res.json({ progress });
+  } catch (err) {
+    console.error('GET /api/admin/users/:id/progress:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
 });
