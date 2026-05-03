@@ -2613,22 +2613,43 @@ app.get('/api/admin/users', requireAuth, async (req, res) => {
     const lim = Math.min(parseInt(limit) || 50, 200);
     const off = (Math.max(parseInt(page) || 1, 1) - 1) * lim;
 
+    // Normalize role aliases — frontend buttons may send legacy/plural/synonym names.
+    // We expand to an array of acceptable DB roles. Empty array = no filter.
+    const roleAliasMap = {
+      'admin': ['admin'],
+      'admins': ['admin'],
+      'admin_basic': ['admin'],
+      'client': ['user', 'client'],
+      'clients': ['user', 'client'],
+      'user': ['user'],
+      'users': ['user'],
+      'specialist': ['specialist'],
+      'specialists': ['specialist'],
+      'founder': ['founder', 'superadmin'],
+      'founders': ['founder', 'superadmin'],
+      'superadmin': ['superadmin']
+    };
+    let roleArr = null;
+    if (role && role !== 'all' && role !== '') {
+      roleArr = roleAliasMap[role.toLowerCase()] || [role];
+    }
+
     // Simple approach: fetch all matching users, then enrich
     let users, countR;
     const like = search ? `%${search.toLowerCase()}%` : null;
 
-    if (role && role !== 'all' && like) {
-      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ${role} AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
+    if (roleArr && like) {
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
       users = await sql`
         SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
-        FROM users WHERE role = ${role} AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
+        FROM users WHERE role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
-    } else if (role && role !== 'all') {
-      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ${role}`;
+    } else if (roleArr) {
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ANY(${roleArr}::text[])`;
       users = await sql`
         SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
-        FROM users WHERE role = ${role}
+        FROM users WHERE role = ANY(${roleArr}::text[])
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else if (like) {
