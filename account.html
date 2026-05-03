@@ -8037,6 +8037,13 @@ window.loadAdminVocab = loadAdminVocab;
 window.saveVocabRow = saveVocabRow;
 window.deleteVocabTerm = deleteVocabTerm;
 window.addVocabTerm = addVocabTerm;
+// Auto-reload vocab when sub-tab clicked
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var vt = document.getElementById('admin-vocab-tab');
+    if (vt) vt.addEventListener('click', function(){ loadAdminVocab(VOCAB_CATEGORY); });
+  }, 800);
+});
 
 // ── Pack 20.6: XP / Level UI ──
 function loadUserXP() {
