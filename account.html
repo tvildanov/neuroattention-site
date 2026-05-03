@@ -1609,7 +1609,7 @@ var viewAsUser = null;
 // Placeholder: admin features will use server-side user list later
 var users = [];
 
-var ROLE_LABELS = {founder:function(){ return t('a.dashboard.role_founder'); },specialist:function(){ return t('a.dashboard.role_specialist'); },admin_basic:'Админ',client:function(){ return t('a.dashboard.role_client'); }};
+var ROLE_LABELS = {founder:function(){ return t('a.dashboard.role_founder','Founder'); },specialist:function(){ return t('a.dashboard.role_specialist','Specialist'); },admin_basic:'Админ',admin:function(){ return t('a.dashboard.role_admin','Admin'); },superadmin:function(){ return t('a.dashboard.role_superadmin','Superadmin'); },client:function(){ return t('a.dashboard.role_client','Client'); },user:function(){ return t('a.dashboard.role_user','User'); }};
 var PROG_LABELS = {self:'Self-Guided',guided:'Guided Program',group:'Group Program'};
 
 // Handle magic-link login from email
@@ -2759,6 +2759,9 @@ function renderAdminUsersList(list,admin){
     return;
   }
 
+  var isSuperadmin=admin.role==='superadmin';
+  var ALL_ROLES=['user','client','specialist','admin','superadmin','founder'];
+
   list.forEach(function(u){
     var roleLbl=ROLE_LABELS[u.role];
     var roleText=typeof roleLbl==='function'?roleLbl():roleLbl||u.role;
@@ -2772,17 +2775,63 @@ function renderAdminUsersList(list,admin){
     if(u.nm_entries_count>0) progText+=' <span style="color:var(--accent-violet);">NM:'+u.nm_entries_count+'</span>';
     if(u.diary_entries_count>0) progText+=' <span style="color:var(--accent-amber);">D:'+u.diary_entries_count+'</span>';
 
+    // Role cell: dropdown for superadmin, plain text for others
+    var roleCell;
+    if(isSuperadmin && u.id!==admin.id){
+      roleCell='<select class="admin-role-select" data-uid="'+u.id+'" style="background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-dim);border-radius:6px;padding:2px 6px;font-size:11px;cursor:pointer;">';
+      ALL_ROLES.forEach(function(r){
+        var rl=ROLE_LABELS[r]; var label=typeof rl==='function'?rl():rl||r;
+        roleCell+='<option value="'+r+'"'+(r===u.role?' selected':'')+'>'+label+'</option>';
+      });
+      roleCell+='</select>';
+    } else {
+      roleCell=roleText;
+    }
+
     var tr=document.createElement('tr');
     tr.style.cursor='pointer';
     tr.onclick=function(){ openUserDetail(u.id); };
     tr.innerHTML='<td>'+name+'</td>'+
       '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+contact+'</td>'+
-      '<td>'+roleText+'</td>'+
+      '<td>'+roleCell+'</td>'+
       '<td style="font-size:11px;">'+progText+'</td>'+
       '<td style="font-size:11px;">'+accessText+'</td>'+
-      '<td><button class="event-edit" onclick="event.stopPropagation();openUserDetail('+u.id+')">'+t('a.admin.view_btn','Просмотр')+'</button></td>';
+      '<td><button class="event-edit" onclick="event.stopPropagation();openUserDetail(\''+u.id+'\')">'+t('a.admin.view_btn','Просмотр')+'</button></td>';
     tbody.appendChild(tr);
   });
+
+  // Attach change listeners to role selects
+  if(isSuperadmin){
+    var selects=tbody.querySelectorAll('.admin-role-select');
+    for(var s=0;s<selects.length;s++){
+      selects[s].addEventListener('click',function(e){ e.stopPropagation(); });
+      selects[s].addEventListener('change',function(){
+        var sel=this;
+        var uid=sel.getAttribute('data-uid');
+        var newRole=sel.value;
+        var token=localStorage.getItem('na_token');
+        fetch(AUTH_API+'/api/admin/users/'+uid+'/role',{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+          body:JSON.stringify({role:newRole})
+        }).then(function(r){
+          if(!r.ok) return r.json().then(function(d){ throw new Error(d.error||r.status); });
+          return r.json();
+        }).then(function(d){
+          // Toast notification
+          var toast=document.createElement('div');
+          toast.textContent=t('a.admin.role_changed','Роль обновлена')+': '+d.old_role+' → '+d.new_role;
+          toast.style.cssText='position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--accent-green);color:#000;padding:0.6rem 1.5rem;border-radius:8px;font-size:13px;z-index:99999;animation:fadeIn 0.3s;';
+          document.body.appendChild(toast);
+          setTimeout(function(){ toast.remove(); },3000);
+        }).catch(function(e){
+          alert(t('a.admin.role_error','Ошибка смены роли')+': '+e.message);
+          sel.value=sel.getAttribute('data-prev')||sel.value;
+        });
+        sel.setAttribute('data-prev',sel.value);
+      });
+    }
+  }
 
   // Pagination info
   if(adminUsersTotal>50){

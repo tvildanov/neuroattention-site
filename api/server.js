@@ -2698,7 +2698,7 @@ app.get('/api/admin/users/:id', requireAuth, async (req, res) => {
 
     // NeuroMap summary
     const [nmCount] = await sql`SELECT COUNT(*) AS cnt FROM nm_nodes WHERE user_id = ${userId}`;
-    const [nmLastEntry] = await sql`SELECT MAX(updated_at) AS last_at FROM nm_nodes WHERE user_id = ${userId}`;
+    const [nmLastEntry] = await sql`SELECT MAX(last_seen_at) AS last_at FROM nm_nodes WHERE user_id = ${userId}`;
     const topConcepts = await sql`
       SELECT label, type, count FROM nm_nodes WHERE user_id = ${userId} ORDER BY count DESC LIMIT 10
     `;
@@ -2782,6 +2782,40 @@ app.get('/api/admin/users/:id/progress', requireAuth, async (req, res) => {
     res.json({ progress });
   } catch (err) {
     console.error('GET /api/admin/users/:id/progress:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ADMIN: Change user role (superadmin only) ──
+app.patch('/api/admin/users/:id/role', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || caller[0].role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only superadmin can change roles' });
+    }
+
+    const targetId = req.params.id;
+    const { role } = req.body;
+    const VALID_ROLES = ['user', 'client', 'specialist', 'admin', 'superadmin', 'founder'];
+    if (!role || !VALID_ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Valid: ' + VALID_ROLES.join(', ') });
+    }
+
+    // Prevent superadmin from changing own role
+    if (targetId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot change your own role' });
+    }
+
+    const [target] = await sql`SELECT id, role FROM users WHERE id = ${targetId}`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    const oldRole = target.role;
+    await sql`UPDATE users SET role = ${role} WHERE id = ${targetId}`;
+
+    console.log(`[ROLE CHANGE] ${req.user.id} changed ${targetId} from ${oldRole} to ${role}`);
+    res.json({ ok: true, old_role: oldRole, new_role: role });
+  } catch (err) {
+    console.error('PATCH /api/admin/users/:id/role:', err);
     res.status(500).json({ error: err.message });
   }
 });
