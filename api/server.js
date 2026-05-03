@@ -396,7 +396,157 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_practices_slug ON practices(slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_practices_order ON practices(block_id, lang, order_idx)`;
 
-    res.json({ ok: true, message: 'Migrations 003-016 applied successfully' });
+    // Migration 017: practice_blocks — composable parts of a practice (audio_part / text / image / video / link / sensation_entry / comment_prompt / question_choice)
+    await sql`CREATE TABLE IF NOT EXISTS practice_blocks (
+      id SERIAL PRIMARY KEY,
+      practice_id INTEGER REFERENCES practices(id) ON DELETE CASCADE,
+      order_idx INTEGER NOT NULL DEFAULT 0,
+      type TEXT NOT NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      xp_reward INTEGER DEFAULT 50,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_practice_blocks_practice ON practice_blocks(practice_id, order_idx)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_practice_blocks_type ON practice_blocks(type)`;
+
+    // Migration 018: practice_block_completion — per-user progress tracking
+    await sql`CREATE TABLE IF NOT EXISTS practice_block_completion (
+      id SERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      block_id INTEGER REFERENCES practice_blocks(id) ON DELETE CASCADE,
+      practice_id INTEGER REFERENCES practices(id) ON DELETE CASCADE,
+      completed_at TIMESTAMP DEFAULT now(),
+      duration_seconds INTEGER,
+      payload_response JSONB
+    )`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_pbc_unique ON practice_block_completion(user_id, block_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_pbc_user ON practice_block_completion(user_id, completed_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_pbc_practice ON practice_block_completion(user_id, practice_id)`;
+
+    // Migration 019: vocab_terms — unified vocabulary for sensations / body locations / emotions / etc., editable via admin
+    await sql`CREATE TABLE IF NOT EXISTS vocab_terms (
+      id SERIAL PRIMARY KEY,
+      category TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      label_ru TEXT NOT NULL,
+      label_en TEXT NOT NULL,
+      label_es TEXT NOT NULL,
+      polarity_strength NUMERIC(4,2),
+      order_idx INTEGER DEFAULT 0,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_vocab_cat_slug ON vocab_terms(category, slug)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_vocab_active ON vocab_terms(category, is_active, order_idx)`;
+
+    // Seed sensations (28 terms)
+    const sensSeed = [
+      ['heat','жар','heat','calor'],
+      ['warmth','тепло','warmth','calidez'],
+      ['coolness','прохлада','coolness','frescor'],
+      ['cold','холод','cold','frío'],
+      ['pressure','давление','pressure','presión'],
+      ['heaviness','тяжесть','heaviness','pesadez'],
+      ['lightness','лёгкость','lightness','ligereza'],
+      ['pulsation','пульсация','pulsation','pulsación'],
+      ['vibration','вибрация','vibration','vibración'],
+      ['pain','боль','pain','dolor'],
+      ['swelling','набухание','swelling','hinchazón'],
+      ['tickling','щекотка','tickling','cosquilleo'],
+      ['electric_like','электроподобные ощущения','electric-like sensations','sensaciones eléctricas'],
+      ['tingling','покалывания','tingling','hormigueo'],
+      ['weight','вес','weight','peso'],
+      ['flowing','стекание','flowing','fluir'],
+      ['deepening','углубление','deepening','profundización'],
+      ['softness','мягкость','softness','suavidad'],
+      ['hardness','твердость','hardness','dureza'],
+      ['density','плотность','density','densidad'],
+      ['seeping','просачивание','seeping','filtración'],
+      ['expanding','увеличение','expanding','aumento'],
+      ['shrinking','уменьшение','shrinking','disminución'],
+      ['broadening','расширение','broadening','ensanchamiento'],
+      ['narrowing','сужение','narrowing','estrechamiento'],
+      ['permeability','проницаемость','permeability','permeabilidad'],
+      ['moisture','влажность','moisture','humedad'],
+      ['dryness','сухость','dryness','sequedad']
+    ];
+    for (let i = 0; i < sensSeed.length; i++) {
+      const [slug, ru, en, es] = sensSeed[i];
+      await sql`INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, order_idx)
+                VALUES ('sensation', ${slug}, ${ru}, ${en}, ${es}, ${i})
+                ON CONFLICT (category, slug) DO NOTHING`;
+    }
+
+    // Seed body locations (44 terms)
+    const bodySeed = [
+      ['body','тело','body','cuerpo'],
+      ['head','голова','head','cabeza'],
+      ['right_leg','правая нога','right leg','pierna derecha'],
+      ['left_leg','левая нога','left leg','pierna izquierda'],
+      ['right_arm','правая рука','right arm','brazo derecho'],
+      ['left_arm','левая рука','left arm','brazo izquierdo'],
+      ['belly','живот','belly','vientre'],
+      ['neck','шея','neck','cuello'],
+      ['chest','грудь','chest','pecho'],
+      ['back','спина','back','espalda'],
+      ['right_palm','правая ладонь','right palm','palma derecha'],
+      ['left_palm','левая ладонь','left palm','palma izquierda'],
+      ['right_hand_fingers','пальцы правой руки','right hand fingers','dedos de la mano derecha'],
+      ['left_hand_fingers','пальцы левой руки','left hand fingers','dedos de la mano izquierda'],
+      ['right_foot_toes','пальцы правой ноги','right foot toes','dedos del pie derecho'],
+      ['left_foot_toes','пальцы левой ноги','left foot toes','dedos del pie izquierdo'],
+      ['heart','сердце','heart','corazón'],
+      ['brain','мозг','brain','cerebro'],
+      ['mid_brain','середина мозга','mid-brain','centro del cerebro'],
+      ['brain_surface','поверхность мозга','brain surface','superficie cerebral'],
+      ['lungs','лёгкие','lungs','pulmones'],
+      ['stomach','желудок','stomach','estómago'],
+      ['perineum','промежность','perineum','perineo'],
+      ['pelvis','таз','pelvis','pelvis'],
+      ['thighs','бёдра','thighs','muslos'],
+      ['shins','голени','shins','espinillas'],
+      ['knees','колени','knees','rodillas'],
+      ['crown','макушка','crown of head','coronilla'],
+      ['face','лицо','face','rostro'],
+      ['eyes','глаза','eyes','ojos'],
+      ['ears','уши','ears','oídos'],
+      ['whole_body','всё тело','whole body','todo el cuerpo'],
+      ['mouth','рот','mouth','boca'],
+      ['teeth','зубы','teeth','dientes'],
+      ['chin','подбородок','chin','mentón'],
+      ['behind_back','за спиной','behind the back','detrás de la espalda'],
+      ['front_body','перед телом','in front of body','frente al cuerpo'],
+      ['above_head','над головой','above the head','sobre la cabeza'],
+      ['under_feet','под стопами','under the feet','bajo los pies'],
+      ['hand_fingertips','кончики пальцев рук','hand fingertips','puntas de los dedos de las manos'],
+      ['foot_fingertips','кончики пальцев ног','foot fingertips','puntas de los dedos de los pies'],
+      ['spine','позвоночник','spine','columna vertebral'],
+      ['sacrum','крестец','sacrum','sacro'],
+      ['coccyx','копчик','coccyx','cóccix']
+    ];
+    for (let i = 0; i < bodySeed.length; i++) {
+      const [slug, ru, en, es] = bodySeed[i];
+      await sql`INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, order_idx)
+                VALUES ('body_location', ${slug}, ${ru}, ${en}, ${es}, ${i})
+                ON CONFLICT (category, slug) DO NOTHING`;
+    }
+
+    // Migration 020: XP system
+    await sql`CREATE TABLE IF NOT EXISTS xp_events (
+      id SERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      amount INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      source_ref_id INTEGER,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_xp_events_user ON xp_events(user_id, created_at DESC)`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_xp INTEGER DEFAULT 0`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS current_level INTEGER DEFAULT 1`;
+
+    res.json({ ok: true, message: 'Migrations 003-020 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
