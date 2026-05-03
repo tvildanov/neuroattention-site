@@ -2563,7 +2563,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
     const [activeR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE last_login_at > NOW() - INTERVAL '30 days'`;
     const [clientsR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role IN ('user','client')`;
     const [specsR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'specialist'`;
-    const [paidR] = await sql`SELECT COUNT(DISTINCT cl.user_id) AS cnt FROM consent_log cl WHERE cl.status = 'completed'`;
+    const [paidR] = await sql`SELECT COUNT(DISTINCT cl.user_id) AS cnt FROM consent_log cl WHERE cl.payment_status = 'completed'`;
 
     // Recent signups (last 10)
     const recent = await sql`
@@ -2574,7 +2574,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
     // Sales by program (from consent_log)
     const salesRows = await sql`
       SELECT COALESCE(product, 'unknown') AS program, COUNT(*) AS cnt
-      FROM consent_log WHERE status = 'completed'
+      FROM consent_log WHERE payment_status = 'completed'
       GROUP BY product
     `;
     const salesMap = { self_guided: 0, guided: 0, group: 0 };
@@ -2648,15 +2648,20 @@ app.get('/api/admin/users', requireAuth, async (req, res) => {
 
     // Enrich each user with test/neuromap/diary/rehab counts
     for (const u of users) {
-      const [tr] = await sql`SELECT profile_type FROM test_results WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1`;
-      u.test_completed = !!tr;
-      u.test_profile = tr ? tr.profile_type : null;
-      const [nm] = await sql`SELECT COUNT(*) AS cnt FROM nm_nodes WHERE user_id = ${u.id}`;
-      u.nm_entries_count = parseInt(nm.cnt);
-      const [di] = await sql`SELECT COUNT(*) AS cnt FROM neuro_resource_diary WHERE user_id = ${u.id}`;
-      u.diary_entries_count = parseInt(di.cnt);
-      const [ra] = await sql`SELECT id FROM rehab_applications WHERE user_id = ${u.id} LIMIT 1`;
-      u.rehab_flag = !!ra;
+      try {
+        const [tr] = await sql`SELECT profile_type FROM test_results WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 1`;
+        u.test_completed = !!tr;
+        u.test_profile = tr ? tr.profile_type : null;
+        const [nm] = await sql`SELECT COUNT(*) AS cnt FROM nm_nodes WHERE user_id = ${u.id}`;
+        u.nm_entries_count = parseInt(nm.cnt);
+        const [di] = await sql`SELECT COUNT(*) AS cnt FROM neuro_resource_diary WHERE user_id = ${u.id}`;
+        u.diary_entries_count = parseInt(di.cnt);
+        const [ra] = await sql`SELECT id FROM rehab_applications WHERE user_id = ${u.id} LIMIT 1`;
+        u.rehab_flag = !!ra;
+      } catch (enrichErr) {
+        console.warn('Enrich user', u.id, enrichErr.message);
+        u.test_completed = false; u.nm_entries_count = 0; u.diary_entries_count = 0; u.rehab_flag = false;
+      }
     }
 
     res.json({ users, total: parseInt(countR.cnt), page: parseInt(page), limit: lim });
