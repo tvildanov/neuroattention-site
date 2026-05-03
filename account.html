@@ -1378,9 +1378,10 @@
   <div class="tab-panel" id="tab-admin-users">
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
           <h3 style="margin:0;" data-i18n="a.admin.all_users">Все пользователи</h3>
-          <div style="display:flex;gap:0.5rem;">
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="admin-user-search" placeholder="Поиск по email / имени..." data-i18n-placeholder="a.admin.search_placeholder" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.4rem 0.75rem;font-size:12px;color:var(--text-primary);width:200px;" oninput="clearTimeout(window._adminSearchTimer);window._adminSearchTimer=setTimeout(function(){adminUserSearch=document.getElementById('admin-user-search').value;adminUsersPage=1;populateUsersList(currentUser);},400)">
             <button class="nm-filter-btn active" onclick="filterAdminUsers('all',this)" data-i18n="a.admin.filter_all">Все</button>
             <button class="nm-filter-btn" onclick="filterAdminUsers('founder',this)" data-i18n="a.admin.filter_founders">Основатели</button>
             <button class="nm-filter-btn" onclick="filterAdminUsers('specialist',this)" data-i18n="a.admin.filter_specialists">Специалисты</button>
@@ -1580,7 +1581,7 @@
 // i18n.js loads AFTER this inline script block, so t() is undefined
 // during the auto-login IIFE. This shim returns the key as-is.
 // When i18n.js loads, it overwrites window.t with the real function.
-if (typeof window.t !== 'function') { window.t = function(k){ return k; }; }
+if (typeof window.t !== 'function') { window.t = function(k,d){ return d||k; }; }
 if (typeof window.getLang !== 'function') { window.getLang = function(){ return 'ru'; }; }
 
 // ══════════════════════════════════════════
@@ -2627,38 +2628,72 @@ document.querySelectorAll('#admin-dashboard .dash-tab[data-tab]').forEach(functi
 });
 
 function populateAdminStats(user){
-  var clients=users.filter(function(u){return u.role==='client';});
-  var specs=users.filter(function(u){return u.role==='specialist';});
-  var paid=users.filter(function(u){return u.program;});
-  document.getElementById('stat-active').textContent=users.length;
-  document.getElementById('stat-clients').textContent=clients.length;
-  document.getElementById('stat-specs').textContent=specs.length;
-  document.getElementById('stat-paid').textContent=paid.length;
+  var token=localStorage.getItem('na_token');
+  if(!token) return;
 
-  // Recent users table
-  var tbody=document.getElementById('admin-users-table');
-  tbody.innerHTML='';
-  var shown=users.slice(-5).reverse();
-  shown.forEach(function(u){
-    var tr=document.createElement('tr');
-    var canView=user.role==='founder'||(user.role==='specialist'&&u.specialistId===user.id&&u.allowSpecialist);
-    tr.innerHTML='<td>'+u.name+'</td><td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+(u.email||u.phone)+'</td><td>'+ROLE_LABELS[u.role]+'</td><td>'+(PROG_LABELS[u.program]||'—')+'</td><td>'+(canView&&u.role==='client'?'<button class="event-edit" onclick="viewUserAs('+u.id+')">Просмотр ЛК</button>':'')+'</td>';
-    tbody.appendChild(tr);
-  });
+  // Show loading state
+  document.getElementById('stat-active').textContent='…';
+  document.getElementById('stat-clients').textContent='…';
+  document.getElementById('stat-specs').textContent='…';
+  document.getElementById('stat-paid').textContent='…';
 
-  // Sales
-  var salesEl=document.getElementById('admin-sales-list');
-  var progCounts={self:0,guided:0,group:0};
-  users.forEach(function(u){if(u.program)progCounts[u.program]++;});
-  salesEl.innerHTML='';
-  Object.keys(progCounts).forEach(function(p){
-    salesEl.innerHTML+='<div class="program-row"><span class="name">'+(PROG_LABELS[p]||p)+'</span><span class="week">'+progCounts[p]+'</span></div>';
-  });
+  fetch(AUTH_API+'/api/admin/stats',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){
+      if(!r.ok) throw new Error('Stats API '+r.status);
+      return r.json();
+    })
+    .then(function(data){
+      // 4 stat cards
+      document.getElementById('stat-active').textContent=data.active_users||0;
+      document.getElementById('stat-clients').textContent=data.clients||0;
+      document.getElementById('stat-specs').textContent=data.specialists||0;
+      document.getElementById('stat-paid').textContent=data.with_program||0;
+
+      // Recent signups table
+      var tbody=document.getElementById('admin-users-table');
+      tbody.innerHTML='';
+      var signups=data.recent_signups||[];
+      signups.forEach(function(u){
+        var tr=document.createElement('tr');
+        var roleLbl=ROLE_LABELS[u.role];
+        var roleText=typeof roleLbl==='function'?roleLbl():roleLbl||u.role;
+        var canView=user.role==='founder'||user.role==='superadmin';
+        tr.innerHTML='<td>'+(u.name||'—')+'</td>'+
+          '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+(u.email||u.phone||'—')+'</td>'+
+          '<td>'+roleText+'</td>'+
+          '<td>—</td>'+
+          '<td>'+(canView?'<button class="event-edit" onclick="openUserDetail('+u.id+')">'+t('a.admin.view_btn','Просмотр')+'</button>':'')+'</td>';
+        tbody.appendChild(tr);
+      });
+
+      // Sales by program
+      var salesEl=document.getElementById('admin-sales-list');
+      salesEl.innerHTML='';
+      var salesMap=data.sales_by_program||{};
+      var salesLabels={self_guided:'Self-Guided',guided:'Guided Program',group:'Group Program'};
+      Object.keys(salesLabels).forEach(function(k){
+        var cnt=salesMap[k]||0;
+        salesEl.innerHTML+='<div class="program-row"><span class="name">'+salesLabels[k]+'</span><span class="week">'+cnt+'</span></div>';
+      });
+    })
+    .catch(function(e){
+      console.warn('populateAdminStats error:',e);
+      document.getElementById('stat-active').textContent='–';
+      document.getElementById('stat-clients').textContent='–';
+      document.getElementById('stat-specs').textContent='–';
+      document.getElementById('stat-paid').textContent='–';
+    });
 }
 
 var adminUserFilter='all';
+var adminUserSearch='';
+var adminUsersPage=1;
+var adminUsersTotal=0;
+var adminUsersCache=[];
+
 function filterAdminUsers(filter,btn){
   adminUserFilter=filter;
+  adminUsersPage=1;
   btn.parentElement.querySelectorAll('.nm-filter-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   populateUsersList(currentUser);
@@ -2668,7 +2703,7 @@ function populateUsersList(admin){
   var table=document.getElementById('admin-full-users-table');
   var tbody=table.querySelector('tbody');
   var restricted=document.getElementById('admin-restricted-msg');
-  var isFounder=admin.role==='founder';
+  var isFounder=admin.role==='founder'||admin.role==='superadmin';
   var isSpec=admin.role==='specialist';
 
   if(admin.role==='admin_basic'){
@@ -2678,33 +2713,84 @@ function populateUsersList(admin){
   }
   table.style.display='';
   restricted.style.display='none';
-  tbody.innerHTML='';
+  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">'+t('a.admin.loading','Загрузка...')+'</td></tr>';
 
-  var list=users;
-  if(adminUserFilter!=='all') list=users.filter(function(u){return u.role===adminUserFilter;});
-  // Specialist sees only clients
-  if(isSpec) list=list.filter(function(u){return u.role==='client';});
+  var token=localStorage.getItem('na_token');
+  if(!token) return;
+
+  var params='?page='+adminUsersPage+'&limit=50';
+  if(adminUserFilter!=='all') params+='&role='+adminUserFilter;
+  if(adminUserSearch) params+='&search='+encodeURIComponent(adminUserSearch);
+
+  fetch(AUTH_API+'/api/admin/users'+params,{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){
+      if(!r.ok) throw new Error('Users API '+r.status);
+      return r.json();
+    })
+    .then(function(data){
+      adminUsersCache=data.users||[];
+      adminUsersTotal=data.total||0;
+      renderAdminUsersList(adminUsersCache,admin);
+    })
+    .catch(function(e){
+      console.warn('populateUsersList error:',e);
+      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--accent-rose);padding:2rem;">'+t('a.admin.error_load','Ошибка загрузки')+'</td></tr>';
+    });
+}
+
+function renderAdminUsersList(list,admin){
+  var tbody=document.querySelector('#admin-full-users-table tbody');
+  if(!tbody) return;
+  tbody.innerHTML='';
+  var isFounder=admin.role==='founder'||admin.role==='superadmin';
+
+  if(!list.length){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">'+t('a.admin.no_users','Пользователи не найдены')+'</td></tr>';
+    return;
+  }
 
   list.forEach(function(u){
-    var canView=false;
-    var accessText='—';
-    if(isFounder){
-      canView=true;
-      accessText='<span style="color:var(--accent-cyan);">Полный</span>';
-    } else if(isSpec){
-      if(u.specialistId===admin.id && u.allowSpecialist){
-        canView=true;
-        accessText='<span style="color:rgba(120,255,160,0.9);">Разрешён</span>';
-      } else if(u.specialistId===admin.id){
-        accessText='<span style="color:rgba(255,120,120,0.8);">Клиент не дал доступ</span>';
-      } else {
-        accessText='<span style="color:var(--text-dim);">Не ваш клиент</span>';
-      }
-    }
+    var roleLbl=ROLE_LABELS[u.role];
+    var roleText=typeof roleLbl==='function'?roleLbl():roleLbl||u.role;
+    var accessText=isFounder?'<span style="color:var(--accent-cyan);">'+t('a.admin.access_full','Полный')+'</span>':'<span style="color:var(--text-dim);">—</span>';
+    var name=u.display_name||u.email||'—';
+    var contact=u.email||u.phone||'—';
+
+    // Program / activity indicator
+    var progText='—';
+    if(u.test_completed) progText='<span style="color:var(--accent-green);">✓ '+t('a.admin.test_done','Тест')+'</span>';
+    if(u.nm_entries_count>0) progText+=' <span style="color:var(--accent-violet);">NM:'+u.nm_entries_count+'</span>';
+    if(u.diary_entries_count>0) progText+=' <span style="color:var(--accent-amber);">D:'+u.diary_entries_count+'</span>';
+
     var tr=document.createElement('tr');
-    tr.innerHTML='<td>'+u.name+'</td><td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+(u.email||u.phone)+'</td><td>'+ROLE_LABELS[u.role]+'</td><td>'+(PROG_LABELS[u.program]||'—')+'</td><td style="font-size:11px;">'+accessText+'</td><td>'+(canView?'<button class="event-edit" onclick="viewUserAs('+u.id+')">Просмотр ЛК</button>':'')+'</td>';
+    tr.style.cursor='pointer';
+    tr.onclick=function(){ openUserDetail(u.id); };
+    tr.innerHTML='<td>'+name+'</td>'+
+      '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+contact+'</td>'+
+      '<td>'+roleText+'</td>'+
+      '<td style="font-size:11px;">'+progText+'</td>'+
+      '<td style="font-size:11px;">'+accessText+'</td>'+
+      '<td><button class="event-edit" onclick="event.stopPropagation();openUserDetail('+u.id+')">'+t('a.admin.view_btn','Просмотр')+'</button></td>';
     tbody.appendChild(tr);
   });
+
+  // Pagination info
+  if(adminUsersTotal>50){
+    var pages=Math.ceil(adminUsersTotal/50);
+    var pageInfo=document.createElement('tr');
+    pageInfo.innerHTML='<td colspan="6" style="text-align:center;padding:1rem;font-size:12px;color:var(--text-muted);">'+
+      (adminUsersPage>1?'<button class="event-edit" style="margin-right:1rem;" onclick="adminUsersPage--;populateUsersList(currentUser)">← '+t('a.admin.prev','Назад')+'</button>':'')+
+      t('a.admin.page','Стр.')+' '+adminUsersPage+' / '+pages+' ('+adminUsersTotal+' '+t('a.admin.total_short','всего')+')'+
+      (adminUsersPage<pages?'<button class="event-edit" style="margin-left:1rem;" onclick="adminUsersPage++;populateUsersList(currentUser)">'+t('a.admin.next','Далее')+' →</button>':'')+
+      '</td>';
+    tbody.appendChild(pageInfo);
+  }
+}
+
+// Stub: opens user detail panel (will be fleshed out in task 377)
+function openUserDetail(userId){
+  console.log('openUserDetail',userId);
+  // TODO: 19.4 — fetch /api/admin/users/:id and show drill-down
 }
 
 // View-As mode

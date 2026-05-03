@@ -140,10 +140,10 @@
     });
   };
 
-  window.t = function (key) {
+  window.t = function (key, fallback) {
     var dict = cache[currentLang] || {};
     var fb = cache[DEFAULT_LANG] || {};
-    return dict[key] || fb[key] || key;
+    return dict[key] || fb[key] || fallback || key;
   };
 
   window.getLang = function () {
