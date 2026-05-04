@@ -1689,7 +1689,8 @@
         </div>
 
         <!-- Existing terms table -->
-        <div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;gap:0.5rem;">
+          <button class="btn btn-ghost" onclick="resyncVocabFromJson()" id="vocab-resync-btn" style="font-size:11px;padding:0.35rem 0.75rem;color:var(--text-muted);" title="Перечитать словарь из JSON и удалить устаревшие/поломанные записи">↻ Пересинхронизировать из JSON</button>
           <button id="vocab-save-all-btn" class="btn btn-solid" onclick="saveAllVocab()" style="font-size:12px;padding:0.4rem 1rem;display:none;">Сохранить порядок и правки</button>
         </div>
         <div style="overflow-x:auto;">
@@ -8381,6 +8382,29 @@ function saveAllVocab(){
 }
 window.markVocabDirty = markVocabDirty;
 window.saveAllVocab = saveAllVocab;
+function resyncVocabFromJson(){
+  if (!confirm('Перечитать словарь из JSON?\nЭто:\n• обновит лейблы (RU/EN/ES) для существующих slug-ов\n• удалит записи, которых нет в JSON и которые содержат битые символы.\nПродолжить?')) return;
+  var btn = document.getElementById('vocab-resync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Синхронизация…'; }
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/vocab/import-from-json', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+  })
+  .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; }); })
+  .then(function(d){
+    var msg = 'Готово.\nДобавлено/обновлено: ' + JSON.stringify(d.counts||{}) +
+              '\nУдалено устаревших: ' + JSON.stringify(d.purged||{});
+    alert(msg);
+    if (btn) { btn.disabled=false; btn.textContent='↻ Пересинхронизировать из JSON'; }
+    if (typeof loadAdminVocab === 'function') loadAdminVocab(VOCAB_CATEGORY);
+  })
+  .catch(function(e){
+    alert('Ошибка: ' + e.message);
+    if (btn) { btn.disabled=false; btn.textContent='↻ Пересинхронизировать из JSON'; }
+  });
+}
+window.resyncVocabFromJson = resyncVocabFromJson;
 function saveVocabRow(id){
   var tr = document.querySelector('tr[data-vocab-id="' + id + '"]');
   if (!tr) return;
