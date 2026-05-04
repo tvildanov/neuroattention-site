@@ -9350,51 +9350,63 @@ window.pbMove = pbMove;
     window.addEventListener('hashchange', applyHashTabs);
   })();
 
-  // ── Pack 21 round 5: re-bind purchase tab buttons defensively ──
-  // Tahir reports inline onclick attributes don't fire in some browsers/extensions.
-  // Add programmatic listeners as backup so the buttons always work.
+  // ── Pack 21 round 6: BODY-LEVEL delegation for purchase tab ──
+  // Tahir reported buttons + row click still don't fire after addEventListener-on-element backup.
+  // Strongest possible binding: capture-phase listener on document.body that
+  // checks the click target and dispatches manually. This bypasses any element-
+  // level pointer-events / stopPropagation / extension interference.
+  // Also marks unique button id-s so we can target them precisely.
   (function(){
-    function bind(){
-      // "Обновить" button — find by text inside admin-purchases-tbody parent area
-      var purchasesPanel = document.getElementById('tab-admin-purchases');
-      if (!purchasesPanel || purchasesPanel.dataset.bound === '1') return;
-      purchasesPanel.dataset.bound = '1';
-      // Header buttons
-      var btns = purchasesPanel.querySelectorAll('button.btn');
+    function applyIds(){
+      var p = document.getElementById('tab-admin-purchases');
+      if (!p) return;
+      var btns = p.querySelectorAll('button.btn');
       btns.forEach(function(b){
-        var label = (b.textContent || '').trim().toLowerCase();
-        if (label === 'обновить') {
-          b.addEventListener('click', function(e){ e.preventDefault(); if (typeof loadAdminPurchases === 'function') loadAdminPurchases(); });
-        } else if (label.indexOf('тест email') === 0 || label.indexOf('test email') === 0) {
-          b.addEventListener('click', function(e){ e.preventDefault(); if (typeof openTestEmailModal === 'function') openTestEmailModal(); });
-        }
+        var lbl = (b.textContent || '').trim().toLowerCase();
+        if (lbl === 'обновить' && !b.id) b.id = 'btn-purch-refresh';
+        else if ((lbl.indexOf('тест email') === 0 || lbl.indexOf('test email') === 0) && !b.id) b.id = 'btn-purch-testemail';
       });
-      // Row clicks via event delegation
-      var tbody = purchasesPanel.querySelector('#admin-purchases-tbody');
-      if (tbody) {
-        tbody.addEventListener('click', function(e){
-          // Find the TR
-          var tr = e.target.closest('tr');
-          if (!tr) return;
-          // Skip if clicked on a button or its TD that has stopPropagation
-          if (e.target.closest('button')) return;
-          // Find row index from window cache
-          var cache = window._adminPurchasesCache || [];
-          var rows = tbody.querySelectorAll('tr');
-          var idx = Array.prototype.indexOf.call(rows, tr);
-          if (idx < 0 || idx >= cache.length) return;
-          if (typeof openPurchaseDetail === 'function') openPurchaseDetail(idx);
-        });
-      }
     }
     document.addEventListener('DOMContentLoaded', function(){
-      setTimeout(bind, 800);
-      setTimeout(bind, 2000);
-      // Re-bind when admin embed container is populated
-      var observer = new MutationObserver(function(){ bind(); });
+      setTimeout(applyIds, 600);
+      setTimeout(applyIds, 1500);
       var c = document.getElementById('admin-embed-container');
-      if (c) observer.observe(c, { childList: true, subtree: true });
+      if (c) new MutationObserver(applyIds).observe(c, { childList: true, subtree: true });
     });
+    // Capture-phase delegated listener — fires before any per-element handler
+    // and before bubble-phase stopPropagation can prevent delivery.
+    document.body.addEventListener('click', function(e){
+      try {
+        var t = e.target;
+        if (!t) return;
+        // Walk up to find a relevant control inside #tab-admin-purchases
+        var purchPanel = t.closest && t.closest('#tab-admin-purchases');
+        if (!purchPanel) return;
+        // 1) Refresh button
+        if (t.closest('#btn-purch-refresh')) {
+          if (typeof loadAdminPurchases === 'function') loadAdminPurchases();
+          return;
+        }
+        // 2) Test email button
+        if (t.closest('#btn-purch-testemail')) {
+          if (typeof openTestEmailModal === 'function') openTestEmailModal();
+          return;
+        }
+        // 3) Row click — TR inside #admin-purchases-tbody
+        var tr = t.closest('#admin-purchases-tbody tr');
+        if (tr) {
+          // Skip if click landed on a button (those have their own action)
+          if (t.closest('button')) return;
+          var tbody = document.getElementById('admin-purchases-tbody');
+          if (!tbody) return;
+          var rows = tbody.querySelectorAll('tr');
+          var idx = Array.prototype.indexOf.call(rows, tr);
+          if (idx < 0) return;
+          if (typeof openPurchaseDetail === 'function') openPurchaseDetail(idx);
+          return;
+        }
+      } catch(err){ console.warn('purchase delegated click error:', err); }
+    }, true /* useCapture */);
   })();
 
   // ── Pack 23: re-fetch diagnostic templates whenever the tab is shown ──
