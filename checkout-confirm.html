@@ -597,7 +597,8 @@ button, a, input { cursor: pointer !important; }
     payBtn.classList.add('loading');
     payBtn.disabled = true;
 
-    // Collect consent data
+    // Collect consent data + locale for Stripe checkout page
+    var userLang = (typeof getLang === 'function') ? getLang() : (localStorage.getItem('na_lang') || 'ru');
     var consentData = {
       product: productKey,
       tos: document.getElementById('consent-tos').checked,
@@ -605,7 +606,8 @@ button, a, input { cursor: pointer !important; }
       digital: document.getElementById('consent-digital').checked,
       rehab: product.requireRehab ? document.getElementById('consent-rehab').checked : null,
       timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
+      locale: userLang
     };
 
     // For guests, include email
