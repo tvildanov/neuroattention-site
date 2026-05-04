@@ -2361,7 +2361,7 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
         const bcrypt = require('bcryptjs');
         const randomPass = require('crypto').randomBytes(16).toString('hex');
         const hash = await bcrypt.hash(randomPass, 10);
-        const inserted = await sql`INSERT INTO users (email, password_hash, name, role) VALUES (${userEmail}, ${hash}, ${'Guest'}, ${'client'}) RETURNING id`;
+        const inserted = await sql`INSERT INTO users (email, password_hash, display_name, role) VALUES (${userEmail}, ${hash}, ${'Guest'}, ${'client'}) RETURNING id`;
         userId = inserted[0].id;
       }
     } else if (!req.user && !guestEmail) {
