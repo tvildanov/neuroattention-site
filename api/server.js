@@ -176,15 +176,22 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     try {
       const meta = session.metadata || {};
       const customerEmail = session.customer_details?.email || meta.email;
-      // Update existing consent_log row payment_status
+      // If consent_log row missing user_id, try to backfill from email
+      let userIdForLog = null;
+      if (customerEmail) {
+        const u = await sql`SELECT id FROM users WHERE email = ${customerEmail}`;
+        if (u.length) userIdForLog = u[0].id;
+      }
+      // Update existing consent_log row payment_status (Pack 21: also backfill user_id)
       await sql`UPDATE consent_log SET
         stripe_session_id = ${session.id},
         stripe_customer_id = ${session.customer || null},
-        payment_status = ${session.payment_status || 'paid'}
+        payment_status = ${session.payment_status || 'paid'},
+        user_id = COALESCE(user_id, ${userIdForLog})
         WHERE product = ${meta.product} AND email = ${customerEmail}
         AND payment_status = 'pending'
       `;
-      console.log('Stripe webhook: consent_log updated for session', session.id);
+      console.log('Stripe webhook: consent_log updated for session', session.id, 'user_id:', userIdForLog);
 
       // Send confirmation email
       if (session.payment_status === 'paid') {
@@ -2999,6 +3006,82 @@ app.get('/api/users/me/xp', requireAuth, async (req, res) => {
   }
 });
 
+// ── PACK 21: Post-purchase flow — list of user's paid programs ──
+// Default activation window: 14 days from purchase
+const ACTIVATION_DAYS = 14;
+app.get('/api/users/me/purchases', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const [u] = await sql`SELECT email FROM users WHERE id = ${userId}`;
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const rows = await sql`
+      SELECT id, product, payment_status, amount_total, currency, consent_timestamp, stripe_session_id
+      FROM consent_log
+      WHERE (user_id = ${userId} OR email = ${u.email})
+        AND payment_status IN ('paid','completed')
+      ORDER BY consent_timestamp DESC
+    `;
+    const purchases = rows.map(r => {
+      const purchasedAt = r.consent_timestamp || new Date();
+      const activationDate = new Date(new Date(purchasedAt).getTime() + ACTIVATION_DAYS * 24 * 60 * 60 * 1000);
+      const now = Date.now();
+      const isActivated = now >= activationDate.getTime();
+      const daysLeft = Math.max(0, Math.ceil((activationDate.getTime() - now) / (24 * 60 * 60 * 1000)));
+      return {
+        id: r.id,
+        product: r.product,
+        purchased_at: purchasedAt,
+        activation_date: activationDate.toISOString(),
+        days_until_activation: daysLeft,
+        is_activated: isActivated,
+        amount_total: r.amount_total,
+        currency: r.currency,
+        stripe_session_id: r.stripe_session_id
+      };
+    });
+    res.json({ purchases, has_active_purchase: purchases.length > 0 });
+  } catch (err) {
+    console.error('GET /api/users/me/purchases:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PACK 21: Admin — recent purchases / sales feed ──
+app.get('/api/admin/purchases', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder', 'specialist'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const rows = await sql`
+      SELECT cl.id, cl.product, cl.email, cl.user_id, cl.payment_status, cl.amount_total, cl.currency, cl.consent_timestamp, cl.stripe_session_id,
+             u.display_name AS user_name
+      FROM consent_log cl
+      LEFT JOIN users u ON u.id = cl.user_id
+      WHERE cl.payment_status IN ('paid','completed')
+      ORDER BY cl.consent_timestamp DESC
+      LIMIT ${limit}
+    `;
+    const purchases = rows.map(r => {
+      const purchasedAt = r.consent_timestamp || new Date();
+      const activationDate = new Date(new Date(purchasedAt).getTime() + ACTIVATION_DAYS * 24 * 60 * 60 * 1000);
+      const now = Date.now();
+      const daysLeft = Math.max(0, Math.ceil((activationDate.getTime() - now) / (24 * 60 * 60 * 1000)));
+      return {
+        ...r,
+        activation_date: activationDate.toISOString(),
+        days_until_activation: daysLeft,
+        is_activated: now >= activationDate.getTime()
+      };
+    });
+    res.json({ purchases });
+  } catch (err) {
+    console.error('GET /api/admin/purchases:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── ADMIN: Dashboard stats ──
 app.get('/api/admin/stats', requireAuth, async (req, res) => {
   try {
@@ -3012,7 +3095,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
     const [activeR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE last_login_at > NOW() - INTERVAL '30 days'`;
     const [clientsR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role IN ('user','client')`;
     const [specsR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'specialist'`;
-    const [paidR] = await sql`SELECT COUNT(DISTINCT cl.user_id) AS cnt FROM consent_log cl WHERE cl.payment_status = 'completed'`;
+    const [paidR] = await sql`SELECT COUNT(DISTINCT cl.user_id) AS cnt FROM consent_log cl WHERE cl.payment_status IN ('paid','completed')`;
 
     // Recent signups (last 10)
     const recent = await sql`
@@ -3023,7 +3106,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
     // Sales by program (from consent_log)
     const salesRows = await sql`
       SELECT COALESCE(product, 'unknown') AS program, COUNT(*) AS cnt
-      FROM consent_log WHERE payment_status = 'completed'
+      FROM consent_log WHERE payment_status IN ('paid','completed')
       GROUP BY product
     `;
     const salesMap = { self_guided: 0, guided: 0, group: 0 };
@@ -3128,9 +3211,26 @@ app.get('/api/admin/users', requireAuth, async (req, res) => {
         u.diary_entries_count = parseInt(di.cnt);
         const [ra] = await sql`SELECT id FROM rehab_applications WHERE user_id = ${u.id} LIMIT 1`;
         u.rehab_flag = !!ra;
+        // Pack 21: include latest paid purchase
+        const [pp] = await sql`
+          SELECT product, payment_status, amount_total, currency, consent_timestamp
+          FROM consent_log
+          WHERE (user_id = ${u.id} OR email = ${u.email})
+            AND payment_status IN ('paid','completed')
+          ORDER BY consent_timestamp DESC LIMIT 1
+        `;
+        if (pp) {
+          u.purchased_product = pp.product;
+          u.purchased_at = pp.consent_timestamp;
+          u.purchase_amount = pp.amount_total;
+          u.purchase_currency = pp.currency;
+          u.has_paid_program = true;
+        } else {
+          u.has_paid_program = false;
+        }
       } catch (enrichErr) {
         console.warn('Enrich user', u.id, enrichErr.message);
-        u.test_completed = false; u.nm_entries_count = 0; u.diary_entries_count = 0; u.rehab_flag = false;
+        u.test_completed = false; u.nm_entries_count = 0; u.diary_entries_count = 0; u.rehab_flag = false; u.has_paid_program = false;
       }
     }
 
