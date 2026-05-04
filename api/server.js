@@ -603,6 +603,117 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_xp INTEGER DEFAULT 0`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS current_level INTEGER DEFAULT 1`;
 
+    // ── PACK 23: Diagnostic form templates ──
+    // Templates: a default (owner_user_id NULL) plus per-specialist clones.
+    await sql`CREATE TABLE IF NOT EXISTS diagnostic_templates (
+      id SERIAL PRIMARY KEY,
+      owner_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT 'Базовая диагностика',
+      is_default BOOLEAN DEFAULT false,
+      cloned_from INTEGER REFERENCES diagnostic_templates(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_diag_tpl_owner ON diagnostic_templates(owner_user_id)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS diagnostic_items (
+      id SERIAL PRIMARY KEY,
+      template_id INTEGER REFERENCES diagnostic_templates(id) ON DELETE CASCADE,
+      order_idx INTEGER NOT NULL DEFAULT 0,
+      kind TEXT NOT NULL DEFAULT 'question',
+      response_type TEXT NOT NULL DEFAULT 'text',
+      label_ru TEXT NOT NULL DEFAULT '',
+      label_en TEXT NOT NULL DEFAULT '',
+      label_es TEXT NOT NULL DEFAULT '',
+      hint_ru TEXT DEFAULT '',
+      hint_en TEXT DEFAULT '',
+      hint_es TEXT DEFAULT '',
+      options JSONB,
+      is_required BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_diag_items_tpl ON diagnostic_items(template_id, order_idx)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS diagnostic_sessions (
+      id SERIAL PRIMARY KEY,
+      template_id INTEGER REFERENCES diagnostic_templates(id) ON DELETE SET NULL,
+      specialist_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      client_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      client_email TEXT,
+      client_name TEXT,
+      started_at TIMESTAMP DEFAULT now(),
+      completed_at TIMESTAMP,
+      responses JSONB,
+      notes TEXT
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_diag_sess_specialist ON diagnostic_sessions(specialist_id, started_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_diag_sess_client ON diagnostic_sessions(client_id)`;
+
+    // Seed default template once (only if no defaults exist yet)
+    const [hasDefault] = await sql`SELECT id FROM diagnostic_templates WHERE is_default = true LIMIT 1`;
+    if (!hasDefault) {
+      const [defTpl] = await sql`INSERT INTO diagnostic_templates (owner_user_id, name, is_default)
+                                  VALUES (NULL, 'Базовая диагностика', true) RETURNING id`;
+      const tplId = defTpl.id;
+      // Tahir's 24 questions
+      const questions = [
+        { ru: 'Имя', en: 'Name', es: 'Nombre', type: 'text' },
+        { ru: 'Возраст', en: 'Age', es: 'Edad', type: 'number' },
+        { ru: 'Живёте в городе или ближе к природе?', en: 'Live in a city or closer to nature?', es: '¿Vives en la ciudad o más cerca de la naturaleza?', type: 'choice', options: [{ru:'Город',en:'City',es:'Ciudad'},{ru:'Природа',en:'Nature',es:'Naturaleza'},{ru:'Смешанно',en:'Mixed',es:'Mixto'}] },
+        { ru: 'Род деятельности', en: 'Occupation', es: 'Ocupación', type: 'text' },
+        { ru: 'Оцени по 10-балльной шкале удовлетворённость в настоящем моменте: Работа, Семья, Здоровье, Отдых (не саморазвитие), Друзья, Хобби, Саморазвитие, Духовность (Контакт с собой)', en: 'Rate present-moment satisfaction on a 10-point scale across: Work, Family, Health, Rest (not self-development), Friends, Hobby, Self-development, Spirituality (contact with self)', es: 'Califica del 1 al 10 tu satisfacción actual en: Trabajo, Familia, Salud, Descanso (no autodesarrollo), Amigos, Hobbies, Autodesarrollo, Espiritualidad (contacto contigo mismo)', type: 'scale_grid', options: { rows: [
+          {ru:'Работа',en:'Work',es:'Trabajo'},{ru:'Семья',en:'Family',es:'Familia'},{ru:'Здоровье',en:'Health',es:'Salud'},{ru:'Отдых',en:'Rest',es:'Descanso'},{ru:'Друзья',en:'Friends',es:'Amigos'},{ru:'Хобби',en:'Hobby',es:'Hobby'},{ru:'Саморазвитие',en:'Self-development',es:'Autodesarrollo'},{ru:'Духовность',en:'Spirituality',es:'Espiritualidad'}
+        ], min: 1, max: 10 } },
+        { ru: 'Есть ли хронические заболевания / перенесённые тяжёлые травмы или болезни?', en: 'Any chronic conditions or serious past injuries / illnesses?', es: '¿Enfermedades crónicas o traumas/enfermedades graves pasadas?', type: 'multiline' },
+        { ru: 'Есть ли зависимости?', en: 'Any addictions?', es: '¿Tienes adicciones?', type: 'multiline' },
+        { ru: 'Есть ли что-то, что вас беспокоит по вашему здоровью / физическому или ментальному состоянию?', en: 'Anything bothering you about your health, physical or mental state?', es: '¿Algo que te preocupe sobre tu salud, estado físico o mental?', type: 'multiline' },
+        { ru: 'Как вы считаете, вы пессимист, реалист или оптимист?', en: 'Do you consider yourself a pessimist, realist or optimist?', es: '¿Te consideras pesimista, realista u optimista?', type: 'choice', options: [{ru:'Пессимист',en:'Pessimist',es:'Pesimista'},{ru:'Реалист',en:'Realist',es:'Realista'},{ru:'Оптимист',en:'Optimist',es:'Optimista'}] },
+        { ru: 'Сталкивались ли вы с ухудшением когнитивных способностей? Внимание, память, рассеянность, забывчивость', en: 'Have you experienced cognitive decline? Attention, memory, distractibility, forgetfulness', es: '¿Has experimentado deterioro cognitivo? Atención, memoria, distracción, olvidos', type: 'multiline' },
+        { ru: 'Много ли стресса в вашей жизни?', en: 'Is there a lot of stress in your life?', es: '¿Hay mucho estrés en tu vida?', type: 'multiline' },
+        { ru: 'Считаете себя стрессоустойчивым? Оценка по 10 баллам', en: 'Do you consider yourself stress-resilient? Rate 1–10', es: '¿Te consideras resiliente al estrés? Califica 1-10', type: 'scale', options: { min: 1, max: 10 } },
+        { ru: 'Считаете своё повседневное состояние стабильным? (Если нет — что именно нестабильно?)', en: 'Do you consider your daily state stable? (If not — what specifically is unstable?)', es: '¿Consideras tu estado diario estable? (Si no, ¿qué es inestable?)', type: 'multiline' },
+        { ru: 'Занимаетесь физической активностью?', en: 'Do you do physical activity?', es: '¿Haces actividad física?', type: 'multiline' },
+        { ru: 'Активность ума по 10-балльной шкале', en: 'Mental activity on a 10-point scale', es: 'Actividad mental en una escala de 10', type: 'scale', options: { min: 1, max: 10 } },
+        { ru: 'Бывает ли у вас, что вы проснулись уже уставшим?', en: 'Do you ever wake up already tired?', es: '¿Te despiertas ya cansado a veces?', type: 'multiline' },
+        { ru: 'Часто ли вы испытываете ощущение тревоги / волнения / беспокойства?', en: 'Do you often feel anxiety / worry / unease?', es: '¿Sientes a menudo ansiedad / preocupación / inquietud?', type: 'multiline' },
+        { ru: 'Ваша работа — это то, что вы любите?', en: 'Is your work something you love?', es: '¿Es tu trabajo algo que amas?', type: 'multiline' },
+        { ru: 'Вы любите себя?', en: 'Do you love yourself?', es: '¿Te amas a ti mismo?', type: 'multiline' },
+        { ru: 'Как вы считаете, вы управляете своей жизнью?', en: 'Do you feel you are in charge of your own life?', es: '¿Sientes que controlas tu vida?', type: 'multiline' },
+        { ru: 'Удовлетворены ли своей жизнью?', en: 'Are you satisfied with your life?', es: '¿Estás satisfecho con tu vida?', type: 'multiline' },
+        { ru: 'Вы счастливы?', en: 'Are you happy?', es: '¿Eres feliz?', type: 'multiline' },
+        { ru: 'Что для вас счастье?', en: 'What does happiness mean to you?', es: '¿Qué es la felicidad para ti?', type: 'multiline' },
+        { ru: 'Есть ли у вас мечта?', en: 'Do you have a dream?', es: '¿Tienes un sueño?', type: 'multiline' }
+      ];
+      // Tahir's 13 tasks
+      const tasks = [
+        { ru: 'Тест естественного дыхания на минуту (загибайте палец на каждом вдохе и каждом выдохе)', en: 'One-minute natural breathing test (bend a finger on each inhale and each exhale)', es: 'Prueba de respiración natural de un minuto (dobla un dedo en cada inhalación y exhalación)' },
+        { ru: 'Дыхание 360 — следим, как расширяются рёбра во все стороны (куда меньше всего расширяются?)', en: '360° breathing — observe how the ribs expand in all directions (where do they expand least?)', es: 'Respiración 360° — observa cómo se expanden las costillas en todas direcciones (¿dónde menos?)' },
+        { ru: 'Задержка дыхания на выдохе', en: 'Breath hold after exhale', es: 'Retención de la respiración tras exhalar' },
+        { ru: 'Сядьте прямо, вниманием пробегитесь по телу и скажите, где ощущаете основное напряжение / тяжесть / усталость? (Плечи, глаза, затылок, живот, спина и т.д.)', en: 'Sit upright, scan the body with attention and report where you feel the main tension / heaviness / fatigue (Shoulders, eyes, back of head, belly, back, etc.)', es: 'Siéntate erguido, recorre el cuerpo con la atención e indica dónde sientes la tensión / pesadez / fatiga principal (Hombros, ojos, nuca, abdomen, espalda, etc.)' },
+        { ru: 'Движение глаз по горизонтали (медленно) — влево, вправо', en: 'Slow horizontal eye movements — left, right', es: 'Movimientos oculares horizontales lentos — izquierda, derecha' },
+        { ru: 'Фиксация глаз на одной точке 30 секунд', en: 'Fix eyes on a single point for 30 seconds', es: 'Fija la mirada en un punto durante 30 segundos' },
+        { ru: 'Нарисуйте спираль (правой и левой рукой)', en: 'Draw a spiral (with right and left hand)', es: 'Dibuja una espiral (con la mano derecha y la izquierda)' },
+        { ru: 'Поворот головы по 8 направлениям (глаза зафиксированы на одной точке)', en: 'Head turns in 8 directions (eyes fixed on one point)', es: 'Giros de cabeza en 8 direcciones (ojos fijos en un punto)' },
+        { ru: 'Стоя на одной ноге, носок второй ноги опущен — поворот головы по 8 направлениям', en: 'Standing on one leg with the other toe pointed down — head turns in 8 directions', es: 'De pie sobre una pierna, con la punta del otro pie hacia abajo — gira la cabeza en 8 direcciones' },
+        { ru: 'Стоим на одной ноге 30 сек (голову плавно поворачиваем влево-вправо), меняем ногу', en: 'Stand on one leg 30s (smoothly turning the head left–right), switch legs', es: 'De pie sobre una pierna 30 s (girando suavemente la cabeza izquierda-derecha), cambia de pierna' },
+        { ru: 'Медленный наклон, округляя позвонок за позвонком, и такой же медленный подъём', en: 'Slow forward bend rolling vertebra by vertebra, and equally slow rise', es: 'Inclinación lenta hacia delante vértebra por vértebra, y subida igualmente lenta' },
+        { ru: 'Шаг на месте с закрытыми глазами — 50 шагов', en: 'March in place with eyes closed — 50 steps', es: 'Marcha en el lugar con ojos cerrados — 50 pasos' },
+        { ru: 'Дополнительное наблюдение специалиста', en: 'Additional specialist observation', es: 'Observación adicional del especialista' }
+      ];
+      let idx = 0;
+      for (const q of questions) {
+        await sql`INSERT INTO diagnostic_items (template_id, order_idx, kind, response_type, label_ru, label_en, label_es, options)
+                  VALUES (${tplId}, ${idx}, 'question', ${q.type}, ${q.ru}, ${q.en}, ${q.es}, ${q.options ? JSON.stringify(q.options) : null})`;
+        idx++;
+      }
+      for (const t of tasks) {
+        await sql`INSERT INTO diagnostic_items (template_id, order_idx, kind, response_type, label_ru, label_en, label_es)
+                  VALUES (${tplId}, ${idx}, 'task', 'multiline', ${t.ru}, ${t.en}, ${t.es})`;
+        idx++;
+      }
+      console.log('Seeded default diagnostic template id=' + tplId + ' with ' + idx + ' items');
+    }
+
     res.json({ ok: true, message: 'Migrations 003-020 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
@@ -3097,6 +3208,276 @@ app.get('/api/users/me/purchases', requireAuth, async (req, res) => {
     res.json({ purchases, has_active_purchase: purchases.length > 0 });
   } catch (err) {
     console.error('GET /api/users/me/purchases:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PACK 23: Diagnostic templates & sessions ──
+async function callerHasSpecialistAccess(req) {
+  const id = req.user?.sub || req.user?.id;
+  if (!id) return false;
+  const r = await sql`SELECT role FROM users WHERE id = ${id}`;
+  return r.length && ['superadmin', 'founder', 'specialist', 'admin'].includes(r[0].role);
+}
+
+// List templates: default + caller's own
+app.get('/api/admin/diagnostic/templates', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT t.id, t.name, t.is_default, t.cloned_from, t.owner_user_id, t.created_at, t.updated_at,
+             (SELECT COUNT(*) FROM diagnostic_items WHERE template_id = t.id) AS item_count
+      FROM diagnostic_templates t
+      WHERE t.is_default = true OR t.owner_user_id = ${userId}
+      ORDER BY t.is_default DESC, t.updated_at DESC
+    `;
+    res.json({ templates: rows });
+  } catch (err) {
+    console.error('GET /api/admin/diagnostic/templates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get single template with items
+app.get('/api/admin/diagnostic/templates/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id);
+    const [tpl] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${id} AND (is_default = true OR owner_user_id = ${userId})`;
+    if (!tpl) return res.status(404).json({ error: 'Template not found or access denied' });
+    const items = await sql`SELECT * FROM diagnostic_items WHERE template_id = ${id} ORDER BY order_idx ASC`;
+    res.json({ template: tpl, items });
+  } catch (err) {
+    console.error('GET diagnostic template:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Clone default template into caller's own (so they can customize)
+app.post('/api/admin/diagnostic/templates/clone', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const { from_id, name } = req.body || {};
+    const sourceId = parseInt(from_id);
+    const [src] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${sourceId}`;
+    if (!src) return res.status(404).json({ error: 'Source template not found' });
+    const [newTpl] = await sql`
+      INSERT INTO diagnostic_templates (owner_user_id, name, is_default, cloned_from)
+      VALUES (${userId}, ${name || (src.name + ' (моя)')}, false, ${sourceId})
+      RETURNING *
+    `;
+    // Copy items
+    const items = await sql`SELECT * FROM diagnostic_items WHERE template_id = ${sourceId} ORDER BY order_idx ASC`;
+    for (const it of items) {
+      await sql`INSERT INTO diagnostic_items (template_id, order_idx, kind, response_type, label_ru, label_en, label_es, hint_ru, hint_en, hint_es, options, is_required)
+                VALUES (${newTpl.id}, ${it.order_idx}, ${it.kind}, ${it.response_type}, ${it.label_ru}, ${it.label_en}, ${it.label_es}, ${it.hint_ru}, ${it.hint_en}, ${it.hint_es}, ${it.options ? JSON.stringify(it.options) : null}, ${it.is_required})`;
+    }
+    res.json({ template: newTpl, copied_items: items.length });
+  } catch (err) {
+    console.error('POST diagnostic clone:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update template name
+app.patch('/api/admin/diagnostic/templates/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id);
+    const [tpl] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${id}`;
+    if (!tpl) return res.status(404).json({ error: 'Not found' });
+    if (tpl.is_default && tpl.owner_user_id !== userId) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (caller.role !== 'superadmin' && caller.role !== 'founder') return res.status(403).json({ error: 'Default template can only be edited by founder/superadmin' });
+    } else if (tpl.owner_user_id !== userId) {
+      return res.status(403).json({ error: 'Not your template' });
+    }
+    const { name } = req.body || {};
+    const [updated] = await sql`UPDATE diagnostic_templates SET name = COALESCE(${name}, name), updated_at = now() WHERE id = ${id} RETURNING *`;
+    res.json({ template: updated });
+  } catch (err) {
+    console.error('PATCH diagnostic template:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete template (only own, not default)
+app.delete('/api/admin/diagnostic/templates/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id);
+    const [tpl] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${id}`;
+    if (!tpl) return res.status(404).json({ error: 'Not found' });
+    if (tpl.is_default) return res.status(400).json({ error: 'Cannot delete default template' });
+    if (tpl.owner_user_id !== userId) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (caller.role !== 'superadmin' && caller.role !== 'founder') return res.status(403).json({ error: 'Not your template' });
+    }
+    await sql`DELETE FROM diagnostic_templates WHERE id = ${id}`;
+    res.json({ ok: true, deleted: id });
+  } catch (err) {
+    console.error('DELETE diagnostic template:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add item to template
+app.post('/api/admin/diagnostic/templates/:id/items', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const tplId = parseInt(req.params.id);
+    const [tpl] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${tplId}`;
+    if (!tpl) return res.status(404).json({ error: 'Template not found' });
+    if (tpl.is_default) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (caller.role !== 'superadmin' && caller.role !== 'founder') return res.status(403).json({ error: 'Cannot edit default — clone first' });
+    } else if (tpl.owner_user_id !== userId) {
+      return res.status(403).json({ error: 'Not your template' });
+    }
+    const { kind = 'question', response_type = 'text', label_ru = '', label_en = '', label_es = '', hint_ru = '', hint_en = '', hint_es = '', options = null, is_required = false } = req.body || {};
+    const [maxRow] = await sql`SELECT COALESCE(MAX(order_idx), -1) + 1 AS next FROM diagnostic_items WHERE template_id = ${tplId}`;
+    const [row] = await sql`
+      INSERT INTO diagnostic_items (template_id, order_idx, kind, response_type, label_ru, label_en, label_es, hint_ru, hint_en, hint_es, options, is_required)
+      VALUES (${tplId}, ${parseInt(maxRow.next) || 0}, ${kind}, ${response_type}, ${label_ru}, ${label_en}, ${label_es}, ${hint_ru}, ${hint_en}, ${hint_es}, ${options ? JSON.stringify(options) : null}, ${!!is_required})
+      RETURNING *
+    `;
+    res.json({ item: row });
+  } catch (err) {
+    console.error('POST diagnostic item:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update item
+app.patch('/api/admin/diagnostic/templates/:id/items/:itemId', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const itemId = parseInt(req.params.itemId);
+    const [cur] = await sql`SELECT i.*, t.owner_user_id, t.is_default FROM diagnostic_items i JOIN diagnostic_templates t ON t.id = i.template_id WHERE i.id = ${itemId}`;
+    if (!cur) return res.status(404).json({ error: 'Not found' });
+    const userId = req.user.sub || req.user.id;
+    if (cur.is_default) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (caller.role !== 'superadmin' && caller.role !== 'founder') return res.status(403).json({ error: 'Cannot edit default' });
+    } else if (cur.owner_user_id !== userId) return res.status(403).json({ error: 'Not your template' });
+    const { kind, response_type, label_ru, label_en, label_es, hint_ru, hint_en, hint_es, options, is_required, order_idx } = req.body || {};
+    const [updated] = await sql`UPDATE diagnostic_items SET
+      kind = COALESCE(${kind}, kind),
+      response_type = COALESCE(${response_type}, response_type),
+      label_ru = COALESCE(${label_ru}, label_ru),
+      label_en = COALESCE(${label_en}, label_en),
+      label_es = COALESCE(${label_es}, label_es),
+      hint_ru = COALESCE(${hint_ru}, hint_ru),
+      hint_en = COALESCE(${hint_en}, hint_en),
+      hint_es = COALESCE(${hint_es}, hint_es),
+      options = COALESCE(${options !== undefined ? JSON.stringify(options) : null}::jsonb, options),
+      is_required = COALESCE(${is_required}, is_required),
+      order_idx = COALESCE(${order_idx}, order_idx)
+      WHERE id = ${itemId} RETURNING *`;
+    res.json({ item: updated });
+  } catch (err) {
+    console.error('PATCH diagnostic item:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete item
+app.delete('/api/admin/diagnostic/templates/:id/items/:itemId', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const itemId = parseInt(req.params.itemId);
+    const [cur] = await sql`SELECT i.*, t.owner_user_id, t.is_default FROM diagnostic_items i JOIN diagnostic_templates t ON t.id = i.template_id WHERE i.id = ${itemId}`;
+    if (!cur) return res.status(404).json({ error: 'Not found' });
+    const userId = req.user.sub || req.user.id;
+    if (cur.is_default) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (caller.role !== 'superadmin' && caller.role !== 'founder') return res.status(403).json({ error: 'Cannot edit default' });
+    } else if (cur.owner_user_id !== userId) return res.status(403).json({ error: 'Not your template' });
+    await sql`DELETE FROM diagnostic_items WHERE id = ${itemId}`;
+    res.json({ ok: true, deleted: itemId });
+  } catch (err) {
+    console.error('DELETE diagnostic item:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reorder items
+app.post('/api/admin/diagnostic/templates/:id/items/reorder', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const tplId = parseInt(req.params.id);
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order array required' });
+    for (let i = 0; i < order.length; i++) {
+      const id = parseInt(order[i]);
+      if (id) await sql`UPDATE diagnostic_items SET order_idx = ${i} WHERE id = ${id} AND template_id = ${tplId}`;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST diagnostic reorder:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sessions: list / create / save responses
+app.get('/api/admin/diagnostic/sessions', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT s.*, t.name AS template_name, c.email AS client_email_real, c.display_name AS client_name_real
+      FROM diagnostic_sessions s
+      LEFT JOIN diagnostic_templates t ON t.id = s.template_id
+      LEFT JOIN users c ON c.id = s.client_id
+      WHERE s.specialist_id = ${userId}
+      ORDER BY s.started_at DESC LIMIT 100
+    `;
+    res.json({ sessions: rows });
+  } catch (err) {
+    console.error('GET diagnostic sessions:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/diagnostic/sessions', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const { template_id, client_id, client_email, client_name } = req.body || {};
+    if (!template_id) return res.status(400).json({ error: 'template_id required' });
+    const [row] = await sql`
+      INSERT INTO diagnostic_sessions (template_id, specialist_id, client_id, client_email, client_name)
+      VALUES (${parseInt(template_id)}, ${userId}, ${client_id || null}, ${client_email || null}, ${client_name || null})
+      RETURNING *
+    `;
+    res.json({ session: row });
+  } catch (err) {
+    console.error('POST diagnostic session:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/diagnostic/sessions/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id);
+    const { responses, notes, completed } = req.body || {};
+    const [updated] = await sql`UPDATE diagnostic_sessions SET
+      responses = COALESCE(${responses !== undefined ? JSON.stringify(responses) : null}::jsonb, responses),
+      notes = COALESCE(${notes}, notes),
+      completed_at = CASE WHEN ${!!completed} THEN now() ELSE completed_at END
+      WHERE id = ${id} AND specialist_id = ${userId} RETURNING *`;
+    if (!updated) return res.status(404).json({ error: 'Not found' });
+    res.json({ session: updated });
+  } catch (err) {
+    console.error('PATCH diagnostic session:', err);
     res.status(500).json({ error: err.message });
   }
 });
