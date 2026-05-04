@@ -85,6 +85,11 @@ async function sendConfirmationEmail(email, product, sessionId) {
     console.error('Magic link generation error:', e.message);
   }
 
+  const purchasedAt = new Date();
+  const activationDate = new Date(purchasedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const dateOpts = { day: 'numeric', month: 'long', year: 'numeric' };
+  const purchaseStr = purchasedAt.toLocaleDateString('ru-RU', dateOpts);
+  const activationStr = activationDate.toLocaleDateString('ru-RU', dateOpts);
   return sendEmail(email, `Подтверждение оплаты — ${productName}`, `
     <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
       <div style="background:#0a0a0a;padding:24px;text-align:center;">
@@ -92,25 +97,26 @@ async function sendConfirmationEmail(email, product, sessionId) {
       </div>
       <div style="padding:32px 24px;">
         <h2 style="font-size:20px;margin-bottom:8px;color:#333;">Спасибо за покупку!</h2>
-        <p style="color:#555;font-size:15px;line-height:1.6;">
-          Ваш заказ на <strong>${productName}</strong> успешно оплачен.
-        </p>
+        <p style="color:#555;font-size:15px;line-height:1.6;">Ваш заказ на <strong>${productName}</strong> успешно оплачен. Вся актуальная информация по программе ниже.</p>
         <div style="background:#f0fffe;border:1px solid #00e5ff33;border-radius:12px;padding:16px;margin:20px 0;">
           <p style="margin:0;font-size:14px;color:#333;"><strong>Программа:</strong> ${productName}</p>
-          <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>ID сессии:</strong> ${sessionId}</p>
+          <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>Дата оплаты:</strong> ${purchaseStr}</p>
+          <p style="margin:8px 0 0;font-size:14px;color:#333;"><strong>Активация программы:</strong> до ${activationStr} (в течение 14 дней)</p>
+          <p style="margin:8px 0 0;font-size:13px;color:#666;"><strong>ID сессии:</strong> <span style="font-family:monospace;font-size:11px;">${sessionId}</span></p>
+        </div>
+        <div style="background:#fff8e6;border:1px solid #ffd60044;border-radius:12px;padding:16px;margin:20px 0;">
+          <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Что будет дальше:</strong></p>
+          <ol style="margin:0;padding-left:20px;color:#555;font-size:13px;line-height:1.8;">
+            <li>В течение 1–3 рабочих дней с вами свяжется куратор для приветственной диагностики и обсуждения вашего запроса.</li>
+            <li>До <strong>${activationStr}</strong> программа будет полностью активирована: откроется доступ к практикам, материалам и инструментам в вашем личном кабинете.</li>
+            <li>Если есть срочные вопросы или необходимо изменить контактные данные — ответьте на это письмо.</li>
+          </ol>
         </div>
         ${magicLinkHtml}
-        <p style="color:#555;font-size:14px;line-height:1.6;">
-          Доступ к программе появится в вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a>
-          в течение нескольких минут.
-        </p>
-        <p style="color:#999;font-size:13px;margin-top:24px;">
-          Если у вас есть вопросы — ответьте на это письмо.
-        </p>
+        <p style="color:#555;font-size:14px;line-height:1.6;">В вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a> уже виден статус приобретённой программы и таймер до активации. Дополнительные инструменты будут открываться по мере прохождения онбординга.</p>
+        <p style="color:#999;font-size:13px;margin-top:24px;line-height:1.5;">NeuroAttention — не медицинский сервис. Программы носят образовательный, исследовательский и тренировочный характер. Подробнее: <a href="${FRONTEND_URL}/terms-of-service.html" style="color:#999;">Terms of Service</a> · <a href="${FRONTEND_URL}/privacy-policy.html" style="color:#999;">Privacy Policy</a>.</p>
       </div>
-      <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">
-        NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a>
-      </div>
+      <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a></div>
     </div>
   `);
 }
@@ -3047,6 +3053,75 @@ app.get('/api/users/me/purchases', requireAuth, async (req, res) => {
   }
 });
 
+// ── PACK 21: Admin test confirmation email ──
+app.post('/api/admin/test-email', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { email, product = 'lab' } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const result = await sendConfirmationEmail(email, product, 'TEST_' + Date.now());
+    res.json({ ok: true, sent_to: email, product: product, result: result || null });
+  } catch (err) {
+    console.error('POST /api/admin/test-email:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PACK 21: Bulk seed vocab_terms from neuromap-vocabulary.json (idempotent) ──
+app.post('/api/admin/vocab/import-from-json', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const vocabPath = path.join(__dirname, 'neuromap-vocabulary.json');
+    const vocab = JSON.parse(fs.readFileSync(vocabPath, 'utf8'));
+    const enMap = (vocab._translations && vocab._translations.en) || {};
+    const esMap = (vocab._translations && vocab._translations.es) || {};
+    function transliterate(s) {
+      const map = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya' };
+      return String(s).toLowerCase().split('').map(c => map[c] !== undefined ? map[c] : c).join('').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60);
+    }
+    const counts = { emotion: 0, area: 0, cause: 0, thought: 0, action: 0 };
+    if (vocab.emotions) {
+      for (const polarity of ['negative', 'positive', 'neutral']) {
+        const list = vocab.emotions[polarity] || [];
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i]; const ru = e.name; const slug = transliterate(ru);
+          if (!slug) continue;
+          await sql`INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, polarity_strength, order_idx)
+                    VALUES ('emotion', ${slug}, ${ru}, ${enMap[ru] || ru}, ${esMap[ru] || ru}, ${e.polarity_strength || null}, ${counts.emotion})
+                    ON CONFLICT (category, slug) DO UPDATE SET label_ru = EXCLUDED.label_ru, label_en = EXCLUDED.label_en, label_es = EXCLUDED.label_es, polarity_strength = COALESCE(EXCLUDED.polarity_strength, vocab_terms.polarity_strength), updated_at = now()`;
+          counts.emotion++;
+        }
+      }
+    }
+    async function seedSimpleArray(category, source, idxKey) {
+      if (!source) return;
+      const items = Array.isArray(source) ? source : Object.values(source).flat();
+      for (let i = 0; i < items.length; i++) {
+        const ru = items[i]; if (!ru) continue;
+        const slug = transliterate(ru); if (!slug) continue;
+        await sql`INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, order_idx)
+                  VALUES (${category}, ${slug}, ${ru}, ${enMap[ru] || ru}, ${esMap[ru] || ru}, ${i})
+                  ON CONFLICT (category, slug) DO UPDATE SET label_ru = EXCLUDED.label_ru, label_en = EXCLUDED.label_en, label_es = EXCLUDED.label_es, updated_at = now()`;
+        counts[idxKey]++;
+      }
+    }
+    await seedSimpleArray('area', vocab.areas, 'area');
+    await seedSimpleArray('cause', vocab.causes, 'cause');
+    await seedSimpleArray('thought', vocab.thoughts, 'thought');
+    await seedSimpleArray('action', vocab.practices, 'action');
+    res.json({ ok: true, counts });
+  } catch (err) {
+    console.error('POST /api/admin/vocab/import-from-json:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── PACK 21: Admin — recent purchases / sales feed ──
 app.get('/api/admin/purchases', requireAuth, async (req, res) => {
   try {
@@ -3284,6 +3359,26 @@ app.get('/api/admin/users/:id', requireAuth, async (req, res) => {
     // User stats
     const userStats = await sql`SELECT * FROM user_stats WHERE user_id = ${userId}`;
 
+    // Pack 21: Purchases linked by user_id OR email
+    const purchaseRows = await sql`
+      SELECT id, product, payment_status, amount_total, currency, consent_timestamp, stripe_session_id
+      FROM consent_log
+      WHERE (user_id = ${userId} OR email = ${user.email})
+        AND payment_status IN ('paid','completed')
+      ORDER BY consent_timestamp DESC
+    `;
+    const purchases = purchaseRows.map(r => {
+      const purchasedAt = r.consent_timestamp || new Date();
+      const activationDate = new Date(new Date(purchasedAt).getTime() + 14 * 24 * 60 * 60 * 1000);
+      const now = Date.now();
+      return {
+        ...r,
+        activation_date: activationDate.toISOString(),
+        days_until_activation: Math.max(0, Math.ceil((activationDate.getTime() - now) / (24 * 60 * 60 * 1000))),
+        is_activated: now >= activationDate.getTime()
+      };
+    });
+
     res.json({
       user,
       test_result: testResult || null,
@@ -3298,7 +3393,8 @@ app.get('/api/admin/users/:id', requireAuth, async (req, res) => {
         last_entry_at: diaryLast?.last_at || null
       },
       course_progress: courseProgress,
-      user_stats: userStats
+      user_stats: userStats,
+      purchases: purchases
     });
   } catch (err) {
     console.error('GET /api/admin/users/:id:', err);
