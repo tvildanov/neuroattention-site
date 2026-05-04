@@ -1751,13 +1751,22 @@
       <div class="dash-card glass-card-elevated" style="grid-column:span 8;" id="diag-editor-card">
         <div id="diag-editor-empty" style="text-align:center;color:var(--text-muted);font-size:13px;padding:3rem 1rem;" data-i18n="a.admin.diag.empty_select">Выберите шаблон слева, чтобы редактировать</div>
         <div id="diag-editor" style="display:none;">
-          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.6rem;flex-wrap:wrap;">
             <input id="diag-tpl-name" type="text" placeholder="Название шаблона" style="flex:1;min-width:180px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:14px;font-weight:600;">
-            <button class="btn btn-solid" onclick="diagSaveAll()" id="diag-save-btn" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.admin.diag.btn_save">Сохранить</button>
+            <button class="btn btn-solid" onclick="diagSaveAll()" id="diag-save-btn" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.admin.diag.btn_save">Сохранить шаблон</button>
             <button class="btn btn-ghost" onclick="diagCloneCurrent()" id="diag-clone-btn" style="font-size:12px;padding:0.4rem 0.7rem;display:none;" data-i18n="a.admin.diag.btn_clone">Сделать свою копию</button>
-            <button class="btn btn-ghost" onclick="diagStartFill()" id="diag-fill-btn" style="font-size:12px;padding:0.4rem 0.7rem;" data-i18n="a.admin.diag.btn_fill">Заполнить с клиентом</button>
             <button class="btn btn-ghost" onclick="diagDeleteTemplate()" id="diag-delete-btn" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-rose);display:none;" data-i18n="a.admin.diag.btn_delete_tpl">Удалить</button>
           </div>
+
+          <!-- Inline session fields: client info + save-as-session -->
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;padding:0.6rem 0.7rem;border:1px dashed rgba(0,229,255,0.18);border-radius:10px;background:rgba(0,229,255,0.03);flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Сеанс с клиентом</span>
+            <input id="diag-session-client-name" type="text" placeholder="Имя клиента" style="flex:1;min-width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="diag-session-client-email" type="email" placeholder="Email клиента" style="flex:1;min-width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <button class="btn btn-solid" onclick="diagSaveSessionInline()" id="diag-save-session-btn" style="font-size:12px;padding:0.4rem 0.9rem;background:rgba(0,229,255,0.15);color:var(--accent-cyan);border-color:rgba(0,229,255,0.3);">💾 Сохранить сеанс</button>
+            <button class="btn btn-ghost" onclick="diagClearAnswers()" style="font-size:11px;padding:0.3rem 0.6rem;color:var(--text-muted);">Очистить ответы</button>
+          </div>
+
           <p id="diag-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
 
           <div id="diag-items-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
@@ -8673,11 +8682,68 @@ function diagSelectTemplate(id){
   diagApi('/api/admin/diagnostic/templates/' + id).then(function(d){
     diagState.currentTpl = d.template;
     diagState.currentItems = (d.items || []).map(function(it){ return Object.assign({}, it); });
+    diagState.responses = {};   // fresh blank for the new client session
     diagState.dirty = false;
+    var nameInput = document.getElementById('diag-session-client-name'); if (nameInput) nameInput.value = '';
+    var emailInput = document.getElementById('diag-session-client-email'); if (emailInput) emailInput.value = '';
     renderDiagTemplatesList();
     renderDiagEditor();
   }).catch(function(e){ alert(e.message); });
 }
+
+// Wipe the client-answer fields without touching the template editor
+function diagClearAnswers(){
+  if (!confirm('Очистить все введённые ответы клиента?')) return;
+  diagState.responses = {};
+  var n = document.getElementById('diag-session-client-name'); if (n) n.value = '';
+  var em = document.getElementById('diag-session-client-email'); if (em) em.value = '';
+  renderDiagItems();
+}
+
+// Save the inline answers as a new diagnostic_sessions row
+function diagSaveSessionInline(){
+  if (!diagState.currentTpl){ alert('Выберите шаблон'); return; }
+  var responses = diagState.responses || {};
+  var hasAny = Object.keys(responses).some(function(k){
+    var v = responses[k];
+    if (v == null || v === '') return false;
+    if (typeof v === 'object') return Object.keys(v).length > 0;
+    return true;
+  });
+  if (!hasAny){
+    if (!confirm('Ответы пусты. Всё равно сохранить пустой сеанс?')) return;
+  }
+  var name = (document.getElementById('diag-session-client-name')||{}).value || null;
+  var email = (document.getElementById('diag-session-client-email')||{}).value || null;
+  var btn = document.getElementById('diag-save-session-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Сохранение…'; }
+  diagApi('/api/admin/diagnostic/sessions', {
+    method: 'POST',
+    body: JSON.stringify({
+      template_id: diagState.currentTpl.id,
+      client_name: name,
+      client_email: email,
+      responses: responses,
+      completed: true
+    })
+  })
+  .then(function(){
+    if (btn) { btn.disabled=false; btn.textContent='✓ Сохранено'; setTimeout(function(){ btn.textContent='💾 Сохранить сеанс'; }, 1500); }
+    diagSetStatus('Сеанс сохранён.', true);
+    // Clear answers and reload the sessions list
+    diagState.responses = {};
+    var n = document.getElementById('diag-session-client-name'); if (n) n.value = '';
+    var em = document.getElementById('diag-session-client-email'); if (em) em.value = '';
+    renderDiagItems();
+    if (typeof loadDiagSessions === 'function') loadDiagSessions();
+  })
+  .catch(function(e){
+    if (btn) { btn.disabled=false; btn.textContent='💾 Сохранить сеанс'; }
+    alert('Ошибка: ' + e.message);
+  });
+}
+window.diagSaveSessionInline = diagSaveSessionInline;
+window.diagClearAnswers = diagClearAnswers;
 
 function renderDiagEditor(){
   var emptyEl = document.getElementById('diag-editor-empty');
@@ -8701,6 +8767,7 @@ function renderDiagItems(){
   var box = document.getElementById('diag-items-list');
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var isDefault = diagState.currentTpl && diagState.currentTpl.is_default;
+  if (!diagState.responses) diagState.responses = {};
   box.innerHTML = diagState.currentItems.map(function(it, idx){
     var draggable = isDefault ? '' : 'draggable="true"';
     var dragHandlers = isDefault ? '' :
@@ -8722,19 +8789,109 @@ function renderDiagItems(){
                    + '<textarea ' + (isDefault?'readonly':'') + ' onchange="diagItemField(' + idx + ',\'options_text\',this.value)" rows="3" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:11px;font-family:JetBrains Mono,monospace;box-sizing:border-box;resize:vertical;">' + optsText.replace(/</g,'&lt;') + '</textarea>'
                    + '<p style="font-size:10px;color:var(--text-dim);margin:0.2rem 0 0;" data-i18n="a.admin.diag.options_hint">По одному варианту на строку.</p>';
     }
+
+    // ── Inline answer field for the client's response ──
+    var existing = diagState.responses[idx];
+    var ansBlock = renderDiagAnswerInput(it, idx, lang, existing);
+
     return '<div ' + draggable + dragHandlers + ' style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:0.7rem;background:rgba(0,0,0,0.18);">'
          + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">'
          + (isDefault?'':'<span style="cursor:grab;color:var(--text-dim);user-select:none;">⋮⋮</span>')
          + '<span style="font-size:10px;color:' + kindColor + ';font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">' + kindLabel + ' #' + (idx+1) + '</span>'
-         + '<select ' + (isDefault?'disabled':'') + ' onchange="diagItemField(' + idx + ',\'response_type\',this.value)" style="margin-left:auto;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.5rem;color:var(--text-primary);font-size:11px;">' + typeOpts + '</select>'
+         + '<select ' + (isDefault?'disabled':'') + ' onchange="diagItemField(' + idx + ',\'response_type\',this.value);renderDiagItems()" style="margin-left:auto;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.5rem;color:var(--text-primary);font-size:11px;">' + typeOpts + '</select>'
          + (isDefault?'':'<button class="btn btn-ghost" onclick="diagDeleteItem(' + idx + ')" style="font-size:11px;padding:0.2rem 0.5rem;color:var(--accent-rose);">✕</button>')
          + '</div>'
-         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_ru||'').replace(/"/g,'&quot;') + '" placeholder="RU" onchange="diagItemField(' + idx + ',\'label_ru\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
-         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_en||'').replace(/"/g,'&quot;') + '" placeholder="EN" onchange="diagItemField(' + idx + ',\'label_en\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
-         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_es||'').replace(/"/g,'&quot;') + '" placeholder="ES" onchange="diagItemField(' + idx + ',\'label_es\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_ru||'').replace(/"/g,'&quot;') + '" placeholder="Текст вопроса (RU)" onchange="diagItemField(' + idx + ',\'label_ru\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_en||'').replace(/"/g,'&quot;') + '" placeholder="Текст вопроса (EN)" onchange="diagItemField(' + idx + ',\'label_en\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_es||'').replace(/"/g,'&quot;') + '" placeholder="Текст вопроса (ES)" onchange="diagItemField(' + idx + ',\'label_es\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
          + optionsBlock
+         + '<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px dashed rgba(0,229,255,0.18);">'
+         +   '<label style="display:block;font-size:10px;color:var(--accent-cyan);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Ответ клиента</label>'
+         +   ansBlock
+         + '</div>'
          + '</div>';
   }).join('');
+  // Re-attach handlers on dynamic answer inputs (they use addEventListener,
+  // not inline onchange, to keep the responses object always in sync).
+  wireDiagAnswerInputs();
+}
+
+// Render the client's-answer input for a single item, depending on its response_type.
+function renderDiagAnswerInput(it, idx, lang, existingValue){
+  var rt = it.response_type || 'text';
+  function val(v){ return (v == null) ? '' : String(v).replace(/"/g,'&quot;'); }
+  if (rt === 'multiline'){
+    return '<textarea data-ans-idx="' + idx + '" rows="3" placeholder="Запишите ответ клиента…" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;">' + (existingValue||'') + '</textarea>';
+  }
+  if (rt === 'number'){
+    return '<input type="number" data-ans-idx="' + idx + '" value="' + val(existingValue) + '" placeholder="Число" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+  }
+  if (rt === 'choice'){
+    var opts = (Array.isArray(it.options) ? it.options : []).map(function(o){
+      var v = (typeof o==='string') ? o : (o[lang]||o.ru||o.en||'');
+      var sel = (existingValue===v) ? ' selected' : '';
+      return '<option value="' + val(v) + '"' + sel + '>' + v + '</option>';
+    }).join('');
+    return '<select data-ans-idx="' + idx + '" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;"><option value="">—</option>' + opts + '</select>';
+  }
+  if (rt === 'scale'){
+    var min = (it.options && it.options.min) || 1;
+    var max = (it.options && it.options.max) || 10;
+    var current = existingValue!=null && existingValue!=='' ? existingValue : '';
+    return '<div style="display:flex;align-items:center;gap:0.6rem;">'
+         + '<input type="range" data-ans-idx="' + idx + '" min="' + min + '" max="' + max + '" value="' + (current||Math.floor((min+max)/2)) + '" oninput="this.nextElementSibling.textContent=this.value" style="flex:1;">'
+         + '<span style="min-width:24px;color:var(--accent-cyan);font-weight:600;font-family:\'JetBrains Mono\',monospace;">' + (current || '—') + '</span>'
+         + '</div>';
+  }
+  if (rt === 'scale_grid'){
+    var rows = (it.options && it.options.rows) || [];
+    var minG = (it.options && it.options.min) || 1;
+    var maxG = (it.options && it.options.max) || 10;
+    var existingObj = (existingValue && typeof existingValue === 'object') ? existingValue : {};
+    return rows.map(function(r){
+      var rl = r[lang] || r.ru || r.en || '';
+      var key = r.ru || r.en || rl;
+      var cur = existingObj[key] || '';
+      return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">'
+           + '<span style="flex:0 0 130px;font-size:12px;color:var(--text-secondary);">' + rl + '</span>'
+           + '<input type="range" data-ans-idx="' + idx + '" data-ans-row-key="' + val(key) + '" min="' + minG + '" max="' + maxG + '" value="' + (cur||Math.floor((minG+maxG)/2)) + '" oninput="this.nextElementSibling.textContent=this.value" style="flex:1;">'
+           + '<span style="width:24px;color:var(--accent-cyan);font-weight:600;font-family:\'JetBrains Mono\',monospace;">' + (cur||'—') + '</span>'
+           + '</div>';
+    }).join('');
+  }
+  // Default: short text
+  return '<input type="text" data-ans-idx="' + idx + '" value="' + val(existingValue) + '" placeholder="Краткий ответ" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+}
+
+function wireDiagAnswerInputs(){
+  var box = document.getElementById('diag-items-list');
+  if (!box) return;
+  box.querySelectorAll('[data-ans-idx]').forEach(function(node){
+    var idx = parseInt(node.getAttribute('data-ans-idx'), 10);
+    var rowKey = node.getAttribute('data-ans-row-key'); // only for scale_grid
+    var evt = (node.tagName === 'SELECT' || node.type === 'range') ? 'change' : 'input';
+    node.addEventListener(evt, function(){
+      if (!diagState.responses) diagState.responses = {};
+      if (rowKey){
+        if (!diagState.responses[idx] || typeof diagState.responses[idx] !== 'object') diagState.responses[idx] = {};
+        diagState.responses[idx][rowKey] = node.value;
+      } else {
+        diagState.responses[idx] = node.value;
+      }
+    });
+    // Also fire 'input' on range so the live readout next to it stays current
+    if (node.type === 'range') {
+      node.addEventListener('input', function(){
+        if (!diagState.responses) diagState.responses = {};
+        if (rowKey){
+          if (!diagState.responses[idx] || typeof diagState.responses[idx] !== 'object') diagState.responses[idx] = {};
+          diagState.responses[idx][rowKey] = node.value;
+        } else {
+          diagState.responses[idx] = node.value;
+        }
+      });
+    }
+  });
 }
 
 function diagItemField(idx, field, val){
