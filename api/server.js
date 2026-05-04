@@ -424,6 +424,16 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE consent_log ADD COLUMN IF NOT EXISTS promotion_code TEXT`;
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_pi ON consent_log(stripe_payment_intent_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_session ON consent_log(stripe_session_id)`;
+    // Dedupe consent_log rows that share the same stripe_session_id (keep newest)
+    await sql`DELETE FROM consent_log
+              WHERE id NOT IN (
+                SELECT MAX(id) FROM consent_log
+                WHERE stripe_session_id IS NOT NULL AND stripe_session_id <> ''
+                GROUP BY stripe_session_id
+              )
+              AND stripe_session_id IS NOT NULL AND stripe_session_id <> ''`;
+    // Unique constraint to prevent future duplicates per session
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_consent_log_session ON consent_log(stripe_session_id) WHERE stripe_session_id IS NOT NULL AND stripe_session_id <> ''`;
 
     // Migration 016: practices table
     await sql`CREATE TABLE IF NOT EXISTS practices (
