@@ -3639,7 +3639,43 @@ app.post('/api/admin/vocab/import-from-json', requireAuth, async (req, res) => {
     await seedDeepCategory('cause', vocab.causes, 'cause');
     await seedDeepCategory('thought', vocab.thoughts, 'thought');
     await seedDeepCategory('action', vocab.practices, 'action');
-    res.json({ ok: true, counts });
+
+    // ── Purge stale + corrupted entries ──
+    // 1) Build set of valid slugs from JSON for each deep category
+    const validSlugs = { area: new Set(), cause: new Set(), thought: new Set(), action: new Set() };
+    function collectValidSlugs(category, source) {
+      if (!source) return;
+      const items = [];
+      flattenStrings(source, items);
+      const seen = new Set();
+      for (const ru of items) {
+        if (!ru || seen.has(ru)) continue;
+        seen.add(ru);
+        const slug = transliterate(ru);
+        if (slug) validSlugs[category].add(slug);
+      }
+    }
+    collectValidSlugs('area', vocab.areas);
+    collectValidSlugs('cause', vocab.causes);
+    collectValidSlugs('thought', vocab.thoughts);
+    collectValidSlugs('action', vocab.practices);
+    const purged = { area: 0, cause: 0, thought: 0, action: 0, broken: 0 };
+    for (const cat of ['area', 'cause', 'thought', 'action']) {
+      const validArr = Array.from(validSlugs[cat]);
+      if (validArr.length === 0) continue;
+      const result = await sql`DELETE FROM vocab_terms WHERE category = ${cat} AND slug <> ALL(${validArr}::text[]) RETURNING id`;
+      purged[cat] = (result || []).length;
+    }
+    // 2) Delete any row whose label contains the U+FFFD replacement char in any language
+    const FFFD = String.fromCharCode(0xFFFD);
+    const broken = await sql`DELETE FROM vocab_terms
+                              WHERE label_ru LIKE ${'%'+FFFD+'%'}
+                                 OR label_en LIKE ${'%'+FFFD+'%'}
+                                 OR label_es LIKE ${'%'+FFFD+'%'}
+                                 OR label_ru LIKE '{%' OR label_ru LIKE '[%'
+                              RETURNING id`;
+    purged.broken = (broken || []).length;
+    res.json({ ok: true, counts, purged });
   } catch (err) {
     console.error('POST /api/admin/vocab/import-from-json:', err);
     res.status(500).json({ error: err.message });
