@@ -2390,7 +2390,7 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
     // Create real Stripe Checkout session when keys are configured
     if (stripe) {
       const sessionParams = {
-        payment_method_types: ['card'],
+        payment_method_types: ['card', 'klarna'],
         mode: 'payment',
         line_items: [{
           price_data: {
