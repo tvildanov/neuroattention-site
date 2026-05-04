@@ -1688,15 +1688,18 @@
         </div>
 
         <!-- Existing terms table -->
+        <div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;">
+          <button id="vocab-save-all-btn" class="btn btn-solid" onclick="saveAllVocab()" style="font-size:12px;padding:0.4rem 1rem;display:none;">Сохранить порядок и правки</button>
+        </div>
         <div style="overflow-x:auto;">
           <table class="admin-table" id="admin-vocab-table">
             <thead>
               <tr>
+                <th style="width:24px;"></th>
                 <th>Slug</th>
                 <th>RU</th>
                 <th>EN</th>
                 <th>ES</th>
-                <th data-i18n="a.admin.vocab.th_order">Порядок</th>
                 <th></th>
               </tr>
             </thead>
@@ -8216,23 +8219,95 @@ function loadAdminVocab(category, btn){
       return;
     }
     if (empty) empty.style.display = 'none';
+    window._vocabCache = terms;
     tbody.innerHTML = terms.map(function(t){
       var inactiveStyle = t.is_active ? '' : 'opacity:0.4;';
-      return '<tr data-vocab-id="' + t.id + '" style="' + inactiveStyle + '">' +
+      return '<tr class="vocab-row" draggable="true" data-vocab-id="' + t.id + '" style="' + inactiveStyle + '">' +
+        '<td style="cursor:grab;font-size:14px;color:var(--text-dim);text-align:center;user-select:none;width:24px;" title="Перетащить">⋮⋮</td>' +
         '<td style="font-family:JetBrains Mono,monospace;font-size:11px;">' + t.slug + '</td>' +
         '<td><input class="vocab-edit-input" data-field="label_ru" value="' + (t.label_ru||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
         '<td><input class="vocab-edit-input" data-field="label_en" value="' + (t.label_en||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
         '<td><input class="vocab-edit-input" data-field="label_es" value="' + (t.label_es||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
-        '<td style="text-align:center;"><input class="vocab-edit-input" data-field="order_idx" type="number" value="' + (t.order_idx||0) + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:60px;text-align:center;"></td>' +
         '<td style="white-space:nowrap;">' +
-        '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;margin-right:0.25rem;" onclick="saveVocabRow(' + t.id + ')" data-i18n="a.admin.vocab.save">Сохранить</button>' +
         '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deleteVocabTerm(' + t.id + ')" data-i18n="a.admin.vocab.delete">Удалить</button>' +
         '</td></tr>';
     }).join('');
+    // Wire drag-and-drop reorder on rows
+    var rows = tbody.querySelectorAll('.vocab-row');
+    rows.forEach(function(row){
+      row.addEventListener('dragstart', function(e){ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', row.dataset.vocabId); row.style.opacity='0.4'; });
+      row.addEventListener('dragend', function(){ row.style.opacity=''; });
+      row.addEventListener('dragover', function(e){ e.preventDefault(); row.style.borderTop='2px solid #0cf'; });
+      row.addEventListener('dragleave', function(){ row.style.borderTop=''; });
+      row.addEventListener('drop', function(e){
+        e.preventDefault();
+        row.style.borderTop='';
+        var fromId = parseInt(e.dataTransfer.getData('text/plain'));
+        var toId = parseInt(row.dataset.vocabId);
+        if (!fromId || !toId || fromId===toId) return;
+        var cache = window._vocabCache || [];
+        var fromIdx = cache.findIndex(function(t){return t.id===fromId;});
+        var toIdx = cache.findIndex(function(t){return t.id===toId;});
+        if (fromIdx<0 || toIdx<0) return;
+        var moved = cache.splice(fromIdx,1)[0];
+        cache.splice(toIdx,0,moved);
+        window._vocabCache = cache;
+        // Re-render via direct DOM swap (visual feedback)
+        loadAdminVocab(VOCAB_CATEGORY);
+        // Mark dirty so user sees the unsaved button
+        markVocabDirty();
+      });
+    });
+    // Mark dirty when any input changes
+    tbody.querySelectorAll('.vocab-edit-input').forEach(function(inp){
+      inp.addEventListener('input', markVocabDirty);
+    });
     if (window.applyAllTranslations) applyAllTranslations();
   })
   .catch(function(){});
 }
+function markVocabDirty(){
+  var btn = document.getElementById('vocab-save-all-btn');
+  if (btn) { btn.style.display=''; btn.style.background='rgba(255,200,0,0.15)'; btn.style.color='#fc0'; }
+}
+function saveAllVocab(){
+  var token = localStorage.getItem('na_token');
+  if (!token) return;
+  var cache = window._vocabCache || [];
+  // Persist new order: send order_idx based on array index
+  var promises = [];
+  cache.forEach(function(t, i){
+    if (t.order_idx !== i) {
+      promises.push(fetch(AUTH_API + '/api/admin/vocab/' + t.id, {
+        method: 'PATCH',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_idx: i })
+      }));
+    }
+    // Also persist any edited labels from inputs
+    var tr = document.querySelector('tr[data-vocab-id="' + t.id + '"]');
+    if (tr) {
+      var changed = {};
+      tr.querySelectorAll('.vocab-edit-input').forEach(function(inp){
+        if (inp.value !== t[inp.dataset.field]) changed[inp.dataset.field] = inp.value;
+      });
+      if (Object.keys(changed).length) {
+        promises.push(fetch(AUTH_API + '/api/admin/vocab/' + t.id, {
+          method: 'PATCH',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify(changed)
+        }));
+      }
+    }
+  });
+  Promise.all(promises).then(function(){
+    var btn = document.getElementById('vocab-save-all-btn');
+    if (btn) { btn.style.background='rgba(0,200,140,0.15)'; btn.style.color='#0e9'; btn.textContent='✓ Сохранено'; setTimeout(function(){ btn.style.display='none'; btn.textContent='Сохранить порядок и правки'; },2000); }
+    loadAdminVocab(VOCAB_CATEGORY);
+  });
+}
+window.markVocabDirty = markVocabDirty;
+window.saveAllVocab = saveAllVocab;
 function saveVocabRow(id){
   var tr = document.querySelector('tr[data-vocab-id="' + id + '"]');
   if (!tr) return;
