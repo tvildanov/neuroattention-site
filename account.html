@@ -576,6 +576,18 @@
 
   <!-- TAB: Overview -->
   <div class="tab-panel active" id="tab-overview">
+    <!-- Pack 21: Purchase banner — visible always, outside rpg-dashboard so it shows even before user takes the test -->
+    <div id="purchase-banner-outer" style="display:none;padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(0,255,180,0.25);background:linear-gradient(135deg,rgba(0,200,140,0.08),rgba(0,224,255,0.05));margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div style="font-size:24px;line-height:1;">✓</div>
+        <div style="flex:1;min-width:240px;">
+          <p style="font-size:10px;color:#0e9;text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.4rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.purchase_status">Приобретённая программа</p>
+          <p id="pb-product-name-outer" style="margin:0;font-family:'Unbounded',sans-serif;font-weight:600;font-size:1.1rem;color:var(--text-primary);"></p>
+          <p id="pb-status-text-outer" style="margin:0.5rem 0 0;font-size:13px;color:var(--text-muted);line-height:1.5;"></p>
+        </div>
+      </div>
+    </div>
+
     <!-- RPG Dashboard: Персональная операционная система -->
     <div id="rpg-dashboard" style="display:none;">
       <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.18em;margin:0 0 0.5rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.personal_os">Персональная операционная система вашей личности</p>
@@ -1411,6 +1423,7 @@
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;" data-i18n="a.admin.practices_tab">Практики</button>
     <button class="dash-tab" data-tab="admin-vocab" id="admin-vocab-tab" style="display:none;" data-i18n="a.admin.vocab_tab">Словарь</button>
+    <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1692,6 +1705,51 @@
         </div>
         <p id="admin-vocab-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.admin.vocab.empty">Терминов в этой категории пока нет.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Pack 21: Purchases admin tab ── -->
+  <div class="tab-panel" id="tab-admin-purchases">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <h3 style="margin:0 0 0.5rem;">Покупки и платежи</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;">Все успешные оплаты через Stripe. Активация программы — через 14 дней после оплаты.</p>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="loadAdminPurchases()" style="font-size:12px;padding:0.4rem 1rem;">Обновить</button>
+          <span id="admin-purchases-count" style="font-size:12px;color:var(--text-muted);"></span>
+          <button class="btn btn-ghost" onclick="openTestEmailModal()" style="font-size:12px;padding:0.4rem 1rem;margin-left:auto;">Тест email</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table" id="admin-purchases-table">
+            <thead><tr><th>Дата</th><th>Email</th><th>Имя</th><th>Продукт</th><th>Сумма</th><th>Статус</th><th>Активация</th><th></th></tr></thead>
+            <tbody id="admin-purchases-tbody"></tbody>
+          </table>
+        </div>
+        <p id="admin-purchases-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Покупок пока нет.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="testEmailModal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;padding:2rem 1rem;align-items:flex-start;justify-content:center;">
+    <div class="modal-box glass-card-elevated" style="max-width:480px;width:100%;padding:1.5rem;border-radius:14px;background:rgba(15,15,22,0.98);box-sizing:border-box;margin:0 auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;font-size:16px;">Тестовое письмо о покупке</h3>
+        <button class="btn btn-ghost" onclick="closeTestEmailModal()" style="font-size:14px;">✕</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;">Отправит тестовое confirmation-email на указанный адрес. Используется для проверки SMTP без оплаты.</p>
+      <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:0.3rem;">Email получателя</label>
+      <input id="test-email-to" type="email" placeholder="user@example.com" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;margin-bottom:1rem;">
+      <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:0.3rem;">Продукт</label>
+      <select id="test-email-product" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;margin-bottom:1rem;">
+        <option value="lab">NeuroAttention Lab</option>
+        <option value="rehab">NeuroAttention Rehabilitation</option>
+        <option value="guided">Guided Program</option>
+      </select>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="closeTestEmailModal()">Отмена</button>
+        <button class="btn btn-solid" onclick="sendTestEmail()">Отправить</button>
+      </div>
+      <p id="test-email-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);"></p>
     </div>
   </div>
 </section>
@@ -2624,6 +2682,12 @@ function setupAdminDashboard(user){
     vocabTab.style.display = '';
     if (typeof loadAdminVocab === 'function') loadAdminVocab('sensation');
   }
+  // Pack 21: Purchases tab — founder/superadmin/specialist
+  var purchasesTab = document.getElementById('admin-purchases-tab');
+  if(purchasesTab && (isFounder || isSpec)){
+    purchasesTab.style.display = '';
+    if (typeof loadAdminPurchases === 'function') loadAdminPurchases();
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3064,6 +3128,29 @@ function renderUserDetail(data){
     h+='<div style="font-size:13px;color:var(--text-dim);">Тест не пройден</div>';
   }
   h+='</div>';
+
+  // ── Pack 21 Card: Purchases ──
+  var purchases = data.purchases || [];
+  if (purchases.length > 0) {
+    h+='<div class="dash-card glass-card-elevated" style="grid-column:span 12;border-color:rgba(0,255,180,0.2);">';
+    h+='<h3 style="margin:0 0 0.75rem;font-size:14px;color:#0e9;">💳 Приобретённые программы</h3>';
+    h+='<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+    purchases.forEach(function(p){
+      var purchaseDate = p.consent_timestamp ? new Date(p.consent_timestamp).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"}) : "—";
+      var actDate = p.activation_date ? new Date(p.activation_date).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"}) : "—";
+      var amount = p.amount_total ? ((p.amount_total/100).toLocaleString("ru-RU",{style:"currency",currency:(p.currency||"usd").toUpperCase()})) : "—";
+      var statusBadge = p.is_activated
+        ? '<span style="background:rgba(0,200,140,0.15);color:#0e9;padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;font-weight:600;">Активна</span>'
+        : '<span style="background:rgba(255,200,0,0.12);color:#fc0;padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;font-weight:600;">Ожидание · '+(p.days_until_activation||0)+'д</span>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:0.6rem 0.75rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;flex-wrap:wrap;">';
+      h+='<div style="flex:1;min-width:200px;"><div style="font-size:13px;color:var(--text-primary);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">'+(p.product||"—")+'</div>';
+      h+='<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Куплено: '+purchaseDate+' · Активация: '+actDate+'</div></div>';
+      h+='<div style="text-align:right;"><div style="font-family:JetBrains Mono,monospace;font-size:13px;color:var(--text-primary);">'+amount+'</div>';
+      h+='<div style="margin-top:4px;">'+statusBadge+'</div></div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+  }
 
   // ── Card 3: Rehab Application ──
   h+='<div class="dash-card glass-card-elevated" style="grid-column:span 4;">';
@@ -8231,6 +8318,83 @@ function loadUserXP() {
 }
 window.loadUserXP = loadUserXP;
 
+// ── Pack 21: Admin Purchases tab ──
+function loadAdminPurchases(){
+  var token = localStorage.getItem('na_token');
+  if (!token) return;
+  fetch(AUTH_API + '/api/admin/purchases?limit=200', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var tbody = document.getElementById('admin-purchases-tbody');
+      var empty = document.getElementById('admin-purchases-empty');
+      var countEl = document.getElementById('admin-purchases-count');
+      var purchases = d.purchases || [];
+      if (countEl) countEl.textContent = 'Всего: ' + purchases.length;
+      if (!purchases.length) { if (tbody) tbody.innerHTML=''; if (empty) empty.style.display=''; return; }
+      if (empty) empty.style.display = 'none';
+      var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+      var locale = lang === 'en' ? 'en-US' : (lang === 'es' ? 'es-ES' : 'ru-RU');
+      tbody.innerHTML = purchases.map(function(p){
+        var dateStr = p.consent_timestamp ? new Date(p.consent_timestamp).toLocaleDateString(locale, { day:'numeric', month:'short', year:'numeric' }) : '—';
+        var actStr = p.activation_date ? new Date(p.activation_date).toLocaleDateString(locale, { day:'numeric', month:'short' }) : '—';
+        var amount = p.amount_total ? ((p.amount_total/100).toLocaleString(locale, { style:'currency', currency: (p.currency||'usd').toUpperCase() })) : '—';
+        var statusBadge = p.is_activated
+          ? '<span style="background:rgba(0,200,140,0.15);color:#0e9;padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;font-weight:600;">Активна</span>'
+          : '<span style="background:rgba(255,200,0,0.12);color:#fc0;padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;font-weight:600;">Ожидание · ' + (p.days_until_activation||0) + 'd</span>';
+        var userName = p.user_name || '—';
+        return '<tr>' +
+          '<td style="font-size:11px;color:var(--text-muted);">' + dateStr + '</td>' +
+          '<td style="font-family:JetBrains Mono,monospace;font-size:11px;">' + (p.email||'—') + '</td>' +
+          '<td>' + userName + '</td>' +
+          '<td><span style="background:rgba(0,224,255,0.1);color:#0cf;padding:2px 8px;border-radius:4px;font-size:11px;text-transform:uppercase;font-weight:600;">' + (p.product||'—') + '</span></td>' +
+          '<td style="font-family:JetBrains Mono,monospace;">' + amount + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td style="font-size:11px;">' + actStr + '</td>' +
+          '<td>' + (p.user_id ? '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;" onclick="openUserDetail(\'' + p.user_id + '\')">Просмотр</button>' : '') + '</td>' +
+          '</tr>';
+      }).join('');
+    })
+    .catch(function(err){ console.warn('loadAdminPurchases:', err.message); });
+}
+function openTestEmailModal(){ document.getElementById('testEmailModal').style.display='flex'; }
+function closeTestEmailModal(){ document.getElementById('testEmailModal').style.display='none'; }
+function sendTestEmail(){
+  var to = document.getElementById('test-email-to').value.trim();
+  var product = document.getElementById('test-email-product').value;
+  if (!to) { document.getElementById('test-email-status').textContent = 'Email обязателен'; return; }
+  var token = localStorage.getItem('na_token');
+  document.getElementById('test-email-status').textContent = '...';
+  fetch(AUTH_API + '/api/admin/test-email', {
+    method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body: JSON.stringify({ email: to, product: product })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.ok) {
+      document.getElementById('test-email-status').style.color = '#0e9';
+      document.getElementById('test-email-status').textContent = '✓ Отправлено. Проверь inbox/spam.';
+      setTimeout(closeTestEmailModal, 2000);
+    } else {
+      document.getElementById('test-email-status').style.color = '#ff8a8a';
+      document.getElementById('test-email-status').textContent = 'Ошибка: ' + (d.error || 'unknown');
+    }
+  })
+  .catch(function(err){
+    document.getElementById('test-email-status').style.color = '#ff8a8a';
+    document.getElementById('test-email-status').textContent = 'Сеть: ' + err.message;
+  });
+}
+window.loadAdminPurchases = loadAdminPurchases;
+window.openTestEmailModal = openTestEmailModal;
+window.closeTestEmailModal = closeTestEmailModal;
+window.sendTestEmail = sendTestEmail;
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var pt = document.getElementById('admin-purchases-tab');
+    if (pt) pt.addEventListener('click', loadAdminPurchases);
+  }, 800);
+});
+
 // ── Pack 21: Post-purchase banner ──
 function loadUserPurchases() {
   var token = localStorage.getItem('na_token');
@@ -8239,15 +8403,19 @@ function loadUserPurchases() {
     .then(function(r){ return r.json(); })
     .then(function(d){
       var banner = document.getElementById('purchase-banner');
-      if (!banner) return;
+      var bannerOuter = document.getElementById('purchase-banner-outer');
       if (!d || !d.purchases || !d.purchases.length) {
-        banner.style.display = 'none';
+        if (banner) banner.style.display = 'none';
+        if (bannerOuter) bannerOuter.style.display = 'none';
         return;
       }
       var p = d.purchases[0];
-      banner.style.display = '';
+      if (banner) banner.style.display = '';
+      if (bannerOuter) bannerOuter.style.display = '';
       var nameEl = document.getElementById('pb-product-name');
       var stEl = document.getElementById('pb-status-text');
+      var nameElOuter = document.getElementById('pb-product-name-outer');
+      var stElOuter = document.getElementById('pb-status-text-outer');
       function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
       var productMap = {
         lab: 'NeuroAttention Lab',
@@ -8257,6 +8425,7 @@ function loadUserPurchases() {
       };
       var productName = productMap[p.product] || p.product;
       if (nameEl) nameEl.textContent = productName;
+      if (nameElOuter) nameElOuter.textContent = productName;
       var lang = (typeof getLang === 'function') ? getLang() : 'ru';
       var locale = lang === 'en' ? 'en-US' : (lang === 'es' ? 'es-ES' : 'ru-RU');
       var actDate = new Date(p.activation_date);
@@ -8272,6 +8441,7 @@ function loadUserPurchases() {
         statusMsg = statusMsg.replace('{date}', dateStr).replace('{days}', p.days_until_activation);
       }
       if (stEl) stEl.textContent = statusMsg;
+      if (stElOuter) stElOuter.textContent = statusMsg;
     })
     .catch(function(){});
 }
