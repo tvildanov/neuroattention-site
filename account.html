@@ -605,6 +605,18 @@
         </div>
       </div>
 
+      <!-- Pack 21: Active purchase banner (shown only after successful Stripe payment) -->
+      <div id="purchase-banner" style="display:none;padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(0,255,180,0.25);background:linear-gradient(135deg,rgba(0,200,140,0.08),rgba(0,224,255,0.05));margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+          <div style="font-size:24px;line-height:1;">✓</div>
+          <div style="flex:1;min-width:240px;">
+            <p style="font-size:10px;color:#0e9;text-transform:uppercase;letter-spacing:0.15em;margin:0 0 0.4rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.purchase_status">Приобретённая программа</p>
+            <p id="pb-product-name" style="margin:0;font-family:'Unbounded',sans-serif;font-weight:600;font-size:1.1rem;color:var(--text-primary);"></p>
+            <p id="pb-status-text" style="margin:0.5rem 0 0;font-size:13px;color:var(--text-muted);line-height:1.5;"></p>
+          </div>
+        </div>
+      </div>
+
       <!-- Pack 20.6: XP / Level card -->
       <div id="rpg-xp-card" style="padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.015);margin-bottom:1.5rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
@@ -2877,9 +2889,17 @@ function renderAdminUsersList(list,admin){
 
     // Program / activity indicator
     var progText='—';
-    if(u.test_completed) progText='<span style="color:var(--accent-green);">✓ '+t('a.admin.test_done','Тест')+'</span>';
-    if(u.nm_entries_count>0) progText+=' <span style="color:var(--accent-violet);">NM:'+u.nm_entries_count+'</span>';
-    if(u.diary_entries_count>0) progText+=' <span style="color:var(--accent-amber);">D:'+u.diary_entries_count+'</span>';
+    var indicators=[];
+    // Pack 21: paid program shown first as colored badge
+    if(u.has_paid_program && u.purchased_product){
+      var prodMap={lab:'Lab',rehab:'Rehab',attention:'Attention',recovery:'Recovery'};
+      var prodLabel=prodMap[u.purchased_product]||u.purchased_product;
+      indicators.push('<span style="background:rgba(0,200,140,0.15);color:#0e9;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">💳 '+prodLabel+'</span>');
+    }
+    if(u.test_completed) indicators.push('<span style="color:var(--accent-green);">✓ '+t('a.admin.test_done','Тест')+'</span>');
+    if(u.nm_entries_count>0) indicators.push('<span style="color:var(--accent-violet);">NM:'+u.nm_entries_count+'</span>');
+    if(u.diary_entries_count>0) indicators.push('<span style="color:var(--accent-amber);">D:'+u.diary_entries_count+'</span>');
+    if(indicators.length) progText=indicators.join(' ');
 
     // Role cell: dropdown for superadmin, plain text for others
     var roleCell;
@@ -8210,11 +8230,60 @@ function loadUserXP() {
     .catch(function(){});
 }
 window.loadUserXP = loadUserXP;
+
+// ── Pack 21: Post-purchase banner ──
+function loadUserPurchases() {
+  var token = localStorage.getItem('na_token');
+  if (!token) return;
+  fetch(AUTH_API + '/api/users/me/purchases', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var banner = document.getElementById('purchase-banner');
+      if (!banner) return;
+      if (!d || !d.purchases || !d.purchases.length) {
+        banner.style.display = 'none';
+        return;
+      }
+      var p = d.purchases[0];
+      banner.style.display = '';
+      var nameEl = document.getElementById('pb-product-name');
+      var stEl = document.getElementById('pb-status-text');
+      function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+      var productMap = {
+        lab: 'NeuroAttention Lab',
+        rehab: 'NeuroAttention Rehabilitation',
+        attention: _t('a.profile.product_attention','Программа развития внимания'),
+        recovery: _t('a.profile.product_recovery','Программа восстановления')
+      };
+      var productName = productMap[p.product] || p.product;
+      if (nameEl) nameEl.textContent = productName;
+      var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+      var locale = lang === 'en' ? 'en-US' : (lang === 'es' ? 'es-ES' : 'ru-RU');
+      var actDate = new Date(p.activation_date);
+      var dateStr = actDate.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+      var statusMsg;
+      if (p.is_activated) {
+        statusMsg = _t('a.profile.purchase_active','Программа активирована. Дополнительные инструменты и материалы открыты в твоём ЛК.');
+      } else if (p.days_until_activation <= 1) {
+        statusMsg = _t('a.profile.purchase_pending_soon','Активация ожидается в ближайшие 24 часа. С тобой свяжутся для приветственной диагностики.');
+      } else {
+        var daysWord = lang==='ru' ? 'дней' : (lang==='es' ? 'días' : 'days');
+        statusMsg = _t('a.profile.purchase_pending', 'Активация программы ожидается до {date} (через {days} ' + daysWord + '). С тобой свяжутся для приветственной диагностики и расскажут все детали запуска.');
+        statusMsg = statusMsg.replace('{date}', dateStr).replace('{days}', p.days_until_activation);
+      }
+      if (stEl) stEl.textContent = statusMsg;
+    })
+    .catch(function(){});
+}
+window.loadUserPurchases = loadUserPurchases;
+
 // Refresh XP whenever profile tab is shown
 document.addEventListener('DOMContentLoaded', function(){
   setTimeout(loadUserXP, 800);
+  setTimeout(loadUserPurchases, 900);
   // re-poll every 30s while page open
   setInterval(loadUserXP, 30000);
+  setInterval(loadUserPurchases, 60000);
 });
 
 // ── Pack 20: Practice Builder UI ──
