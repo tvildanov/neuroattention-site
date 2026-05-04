@@ -2548,6 +2548,8 @@ function rpgRenderFallbackStats(profileKey){
 }
 
 function rpgRenderStats(stats, wmc){
+  // Cache for re-render on language switch
+  window._rpgLastRender = { stats: stats, wmc: wmc };
   var container = document.getElementById('rpg-stats-container');
   if(!container) return;
   var html = '';
@@ -8284,52 +8286,59 @@ function loadAdminVocab(category, btn){
     }
     if (empty) empty.style.display = 'none';
     window._vocabCache = terms;
-    tbody.innerHTML = terms.map(function(t){
-      var inactiveStyle = t.is_active ? '' : 'opacity:0.4;';
-      return '<tr class="vocab-row" draggable="true" data-vocab-id="' + t.id + '" style="' + inactiveStyle + '">' +
-        '<td style="cursor:grab;font-size:14px;color:var(--text-dim);text-align:center;user-select:none;width:24px;" title="Перетащить">⋮⋮</td>' +
-        '<td style="font-family:JetBrains Mono,monospace;font-size:11px;">' + t.slug + '</td>' +
-        '<td><input class="vocab-edit-input" data-field="label_ru" value="' + (t.label_ru||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
-        '<td><input class="vocab-edit-input" data-field="label_en" value="' + (t.label_en||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
-        '<td><input class="vocab-edit-input" data-field="label_es" value="' + (t.label_es||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
-        '<td style="white-space:nowrap;">' +
-        '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deleteVocabTerm(' + t.id + ')" data-i18n="a.admin.vocab.delete">Удалить</button>' +
-        '</td></tr>';
-    }).join('');
-    // Wire drag-and-drop reorder on rows
-    var rows = tbody.querySelectorAll('.vocab-row');
-    rows.forEach(function(row){
-      row.addEventListener('dragstart', function(e){ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', row.dataset.vocabId); row.style.opacity='0.4'; });
-      row.addEventListener('dragend', function(){ row.style.opacity=''; });
-      row.addEventListener('dragover', function(e){ e.preventDefault(); row.style.borderTop='2px solid #0cf'; });
-      row.addEventListener('dragleave', function(){ row.style.borderTop=''; });
-      row.addEventListener('drop', function(e){
-        e.preventDefault();
-        row.style.borderTop='';
-        var fromId = parseInt(e.dataTransfer.getData('text/plain'));
-        var toId = parseInt(row.dataset.vocabId);
-        if (!fromId || !toId || fromId===toId) return;
-        var cache = window._vocabCache || [];
-        var fromIdx = cache.findIndex(function(t){return t.id===fromId;});
-        var toIdx = cache.findIndex(function(t){return t.id===toId;});
-        if (fromIdx<0 || toIdx<0) return;
-        var moved = cache.splice(fromIdx,1)[0];
-        cache.splice(toIdx,0,moved);
-        window._vocabCache = cache;
-        // Re-render via direct DOM swap (visual feedback)
-        loadAdminVocab(VOCAB_CATEGORY);
-        // Mark dirty so user sees the unsaved button
-        markVocabDirty();
-      });
-    });
-    // Mark dirty when any input changes
-    tbody.querySelectorAll('.vocab-edit-input').forEach(function(inp){
-      inp.addEventListener('input', markVocabDirty);
-    });
-    if (window.applyAllTranslations) applyAllTranslations();
+    renderVocabTable();
   })
   .catch(function(){});
 }
+
+function renderVocabTable(){
+  var tbody = document.getElementById('admin-vocab-tbody');
+  if (!tbody) return;
+  var terms = window._vocabCache || [];
+  tbody.innerHTML = terms.map(function(t){
+    var inactiveStyle = t.is_active ? '' : 'opacity:0.4;';
+    return '<tr class="vocab-row" draggable="true" data-vocab-id="' + t.id + '" style="' + inactiveStyle + '">' +
+      '<td style="cursor:grab;font-size:14px;color:var(--text-dim);text-align:center;user-select:none;width:24px;" title="Перетащить">⋮⋮</td>' +
+      '<td style="font-family:JetBrains Mono,monospace;font-size:11px;">' + t.slug + '</td>' +
+      '<td><input class="vocab-edit-input" data-field="label_ru" value="' + (t.label_ru||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
+      '<td><input class="vocab-edit-input" data-field="label_en" value="' + (t.label_en||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
+      '<td><input class="vocab-edit-input" data-field="label_es" value="' + (t.label_es||'').replace(/"/g,'&quot;') + '" style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.2rem 0.4rem;color:#fff;font-size:12px;width:100%;"></td>' +
+      '<td style="white-space:nowrap;">' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deleteVocabTerm(' + t.id + ')" data-i18n="a.admin.vocab.delete">Удалить</button>' +
+      '</td></tr>';
+  }).join('');
+  // Wire drag-and-drop reorder on rows
+  var rows = tbody.querySelectorAll('.vocab-row');
+  rows.forEach(function(row){
+    row.addEventListener('dragstart', function(e){ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', row.dataset.vocabId); row.style.opacity='0.4'; });
+    row.addEventListener('dragend', function(){ row.style.opacity=''; });
+    row.addEventListener('dragover', function(e){ e.preventDefault(); row.style.borderTop='2px solid #0cf'; });
+    row.addEventListener('dragleave', function(){ row.style.borderTop=''; });
+    row.addEventListener('drop', function(e){
+      e.preventDefault();
+      row.style.borderTop='';
+      var fromId = parseInt(e.dataTransfer.getData('text/plain'));
+      var toId = parseInt(row.dataset.vocabId);
+      if (!fromId || !toId || fromId===toId) return;
+      var cache = window._vocabCache || [];
+      var fromIdx = cache.findIndex(function(t){return t.id===fromId;});
+      var toIdx = cache.findIndex(function(t){return t.id===toId;});
+      if (fromIdx<0 || toIdx<0) return;
+      var moved = cache.splice(fromIdx,1)[0];
+      cache.splice(toIdx,0,moved);
+      window._vocabCache = cache;
+      // Re-render from cache only (do NOT refetch from server — that would clobber the move)
+      renderVocabTable();
+      markVocabDirty();
+    });
+  });
+  // Mark dirty when any input changes
+  tbody.querySelectorAll('.vocab-edit-input').forEach(function(inp){
+    inp.addEventListener('input', markVocabDirty);
+  });
+  if (window.applyAllTranslations) applyAllTranslations();
+}
+window.renderVocabTable = renderVocabTable;
 function markVocabDirty(){
   var btn = document.getElementById('vocab-save-all-btn');
   if (btn) { btn.style.display=''; btn.style.background='rgba(255,200,0,0.15)'; btn.style.color='#fc0'; }
@@ -8604,19 +8613,25 @@ function diagL(item, lang){
 }
 
 function loadDiagTemplates(){
+  var box = document.getElementById('diag-templates-list');
+  if (box) box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Загрузка…</p>';
   diagApi('/api/admin/diagnostic/templates').then(function(d){
     diagState.templates = d.templates || [];
     renderDiagTemplatesList();
     loadDiagSessions();
-  }).catch(function(e){ console.warn('loadDiagTemplates:', e.message); });
+  }).catch(function(e){
+    console.warn('loadDiagTemplates:', e.message);
+    if (box) box.innerHTML = '<p style="font-size:11px;color:#f55;">Не удалось загрузить шаблоны: ' + (e.message||'ошибка').replace(/</g,'&lt;') + '<br><button class="btn btn-ghost" onclick="loadDiagTemplates()" style="margin-top:0.4rem;font-size:11px;padding:0.3rem 0.6rem;">Повторить</button></p>';
+  });
 }
+window.diagState = diagState;
 
 function renderDiagTemplatesList(){
   var box = document.getElementById('diag-templates-list');
   if (!box) return;
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   if (!diagState.templates.length){
-    box.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">—</p>';
+    box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Шаблонов нет. Возможно, миграция базы не запускалась.</p>';
     return;
   }
   box.innerHTML = diagState.templates.map(function(tpl){
@@ -9224,6 +9239,157 @@ window.pbMove = pbMove;
   document.addEventListener('DOMContentLoaded', function() {
     setLang(getLang());
   });
+
+  // ── Re-render RPG stats panel on language change ──
+  // i18n.js's setLang() only re-applies data-i18n attributes; dynamically-built
+  // RPG layer cards (Body Core / Mind Control / World) and L1-L4 WMC panel
+  // need a manual re-render with their cached values.
+  (function(){
+    if (!window.setLang) return;
+    var origSetLang = window.setLang;
+    window.setLang = function(lang, isExplicit){
+      var ret = origSetLang.apply(this, arguments);
+      try {
+        if (window._rpgLastRender && typeof rpgRenderStats === 'function') {
+          rpgRenderStats(window._rpgLastRender.stats, window._rpgLastRender.wmc);
+        }
+        // Re-render diagnostic editor labels if open
+        if (typeof renderDiagItems === 'function' && window.diagState && window.diagState.currentTpl) renderDiagItems();
+        if (typeof renderDiagTemplatesList === 'function') renderDiagTemplatesList();
+      } catch(e){ console.warn('RPG re-render on lang change failed:', e); }
+      return ret;
+    };
+  })();
+
+  // ── Persist active tab in URL hash so refresh stays put ──
+  (function(){
+    function readHashTabs(){
+      var h = (location.hash || '').replace(/^#/, '');
+      if (!h) return null;
+      var parts = h.split('/'); // e.g. "administration/admin-diagnostic"
+      return { main: parts[0] || null, sub: parts[1] || null };
+    }
+    function writeHashTabs(main, sub){
+      var h = main || '';
+      if (sub) h += '/' + sub;
+      var newHash = '#' + h;
+      if (location.hash !== newHash) {
+        // replaceState avoids polluting history on every click
+        history.replaceState(null, '', location.pathname + location.search + newHash);
+      }
+    }
+    // Hook ALL tab buttons (main client tabs + admin sub-tabs)
+    function hookTabButtons(){
+      // Main client dashboard tabs
+      document.querySelectorAll('#client-dashboard > .dash-tabs > .dash-tab[data-tab]').forEach(function(t){
+        t.addEventListener('click', function(){
+          var sub = null;
+          var activeAdmin = document.querySelector('#admin-embed-container .dash-tab.active[data-tab], #admin-dashboard .dash-tab.active[data-tab]');
+          if (t.dataset.tab === 'administration' && activeAdmin) sub = activeAdmin.dataset.tab;
+          writeHashTabs(t.dataset.tab, sub);
+        });
+      });
+      // Admin sub-tabs (live in either admin-dashboard or admin-embed-container)
+      document.querySelectorAll('#admin-dashboard .dash-tab[data-tab], #admin-embed-container .dash-tab[data-tab]').forEach(function(t){
+        t.addEventListener('click', function(){
+          writeHashTabs('administration', t.dataset.tab);
+        });
+      });
+    }
+    function applyHashTabs(){
+      var h = readHashTabs();
+      if (!h) return;
+      // Click main tab if exists
+      if (h.main && typeof switchTab === 'function') {
+        try { switchTab(h.main); } catch(e){}
+      }
+      // After main tab switch, click sub-tab if applicable
+      if (h.sub) {
+        setTimeout(function(){
+          var subBtn = document.querySelector('[data-tab="' + h.sub + '"]');
+          if (subBtn) subBtn.click();
+        }, 200);
+      }
+    }
+    // Wait for DOM + tabs to be set up
+    document.addEventListener('DOMContentLoaded', function(){
+      // Initial hook may miss admin tabs (which become available only after admin login)
+      // So we re-hook periodically for the first second
+      setTimeout(hookTabButtons, 100);
+      setTimeout(hookTabButtons, 600);
+      setTimeout(hookTabButtons, 1200);
+      // Apply hash a bit later (after dashboard is rendered)
+      setTimeout(applyHashTabs, 700);
+      setTimeout(applyHashTabs, 1500);
+    });
+    // React to back/forward navigation
+    window.addEventListener('hashchange', applyHashTabs);
+  })();
+
+  // ── Pack 21 round 5: re-bind purchase tab buttons defensively ──
+  // Tahir reports inline onclick attributes don't fire in some browsers/extensions.
+  // Add programmatic listeners as backup so the buttons always work.
+  (function(){
+    function bind(){
+      // "Обновить" button — find by text inside admin-purchases-tbody parent area
+      var purchasesPanel = document.getElementById('tab-admin-purchases');
+      if (!purchasesPanel || purchasesPanel.dataset.bound === '1') return;
+      purchasesPanel.dataset.bound = '1';
+      // Header buttons
+      var btns = purchasesPanel.querySelectorAll('button.btn');
+      btns.forEach(function(b){
+        var label = (b.textContent || '').trim().toLowerCase();
+        if (label === 'обновить') {
+          b.addEventListener('click', function(e){ e.preventDefault(); if (typeof loadAdminPurchases === 'function') loadAdminPurchases(); });
+        } else if (label.indexOf('тест email') === 0 || label.indexOf('test email') === 0) {
+          b.addEventListener('click', function(e){ e.preventDefault(); if (typeof openTestEmailModal === 'function') openTestEmailModal(); });
+        }
+      });
+      // Row clicks via event delegation
+      var tbody = purchasesPanel.querySelector('#admin-purchases-tbody');
+      if (tbody) {
+        tbody.addEventListener('click', function(e){
+          // Find the TR
+          var tr = e.target.closest('tr');
+          if (!tr) return;
+          // Skip if clicked on a button or its TD that has stopPropagation
+          if (e.target.closest('button')) return;
+          // Find row index from window cache
+          var cache = window._adminPurchasesCache || [];
+          var rows = tbody.querySelectorAll('tr');
+          var idx = Array.prototype.indexOf.call(rows, tr);
+          if (idx < 0 || idx >= cache.length) return;
+          if (typeof openPurchaseDetail === 'function') openPurchaseDetail(idx);
+        });
+      }
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(bind, 800);
+      setTimeout(bind, 2000);
+      // Re-bind when admin embed container is populated
+      var observer = new MutationObserver(function(){ bind(); });
+      var c = document.getElementById('admin-embed-container');
+      if (c) observer.observe(c, { childList: true, subtree: true });
+    });
+  })();
+
+  // ── Pack 23: re-fetch diagnostic templates whenever the tab is shown ──
+  // setupAdminDashboard fires once on login; clicking the tab afterwards
+  // doesn't re-load the list. This ensures fresh data and surfaces errors.
+  (function(){
+    function bindDiagTab(){
+      var diagTab = document.getElementById('admin-diag-tab');
+      if (!diagTab || diagTab.dataset.bound === '1') return;
+      diagTab.dataset.bound = '1';
+      diagTab.addEventListener('click', function(){
+        if (typeof loadDiagTemplates === 'function') loadDiagTemplates();
+      });
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(bindDiagTab, 800);
+      setTimeout(bindDiagTab, 2000);
+    });
+  })();
 </script>
 </body>
 </html>
