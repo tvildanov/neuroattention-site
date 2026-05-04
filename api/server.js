@@ -3256,12 +3256,31 @@ app.get('/api/admin/diagnostic/templates/:id', requireAuth, async (req, res) => 
 });
 
 // Clone default template into caller's own (so they can customize)
+// Create blank template owned by the caller
+app.post('/api/admin/diagnostic/templates', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const { name } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'name required' });
+    const [tpl] = await sql`
+      INSERT INTO diagnostic_templates (owner_user_id, name, is_default)
+      VALUES (${userId}, ${String(name).trim()}, false)
+      RETURNING *
+    `;
+    res.json({ template: tpl });
+  } catch (err) {
+    console.error('POST diagnostic blank template:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/admin/diagnostic/templates/clone', requireAuth, async (req, res) => {
   try {
     if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
     const userId = req.user.sub || req.user.id;
-    const { from_id, name } = req.body || {};
-    const sourceId = parseInt(from_id);
+    const { from_id, template_id, name } = req.body || {};
+    const sourceId = parseInt(from_id || template_id);
     const [src] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${sourceId}`;
     if (!src) return res.status(404).json({ error: 'Source template not found' });
     const [newTpl] = await sql`
@@ -3408,6 +3427,50 @@ app.delete('/api/admin/diagnostic/templates/:id/items/:itemId', requireAuth, asy
 });
 
 // Reorder items
+// Atomic full-replace of all items in a template
+app.put('/api/admin/diagnostic/templates/:id/items/replace', requireAuth, async (req, res) => {
+  try {
+    if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const tplId = parseInt(req.params.id);
+    const { items } = req.body || {};
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'items array required' });
+    const [tpl] = await sql`SELECT * FROM diagnostic_templates WHERE id = ${tplId}`;
+    if (!tpl) return res.status(404).json({ error: 'Template not found' });
+    if (tpl.is_default) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (!caller || (caller.role !== 'superadmin' && caller.role !== 'founder')) {
+        return res.status(403).json({ error: 'Default template can only be edited by founder/superadmin' });
+      }
+    } else if (tpl.owner_user_id !== userId) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+      if (!caller || (caller.role !== 'superadmin' && caller.role !== 'founder')) {
+        return res.status(403).json({ error: 'Not your template' });
+      }
+    }
+    await sql`DELETE FROM diagnostic_items WHERE template_id = ${tplId}`;
+    let inserted = 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i] || {};
+      await sql`
+        INSERT INTO diagnostic_items
+          (template_id, order_idx, kind, response_type, label_ru, label_en, label_es, hint_ru, hint_en, hint_es, options, is_required)
+        VALUES
+          (${tplId}, ${i}, ${it.kind || 'question'}, ${it.response_type || 'text'},
+           ${it.label_ru || ''}, ${it.label_en || ''}, ${it.label_es || ''},
+           ${it.hint_ru || ''}, ${it.hint_en || ''}, ${it.hint_es || ''},
+           ${it.options ? JSON.stringify(it.options) : null}, ${!!it.is_required})
+      `;
+      inserted++;
+    }
+    await sql`UPDATE diagnostic_templates SET updated_at = now() WHERE id = ${tplId}`;
+    res.json({ ok: true, replaced: inserted });
+  } catch (err) {
+    console.error('PUT diagnostic items replace:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/admin/diagnostic/templates/:id/items/reorder', requireAuth, async (req, res) => {
   try {
     if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
@@ -3449,11 +3512,16 @@ app.post('/api/admin/diagnostic/sessions', requireAuth, async (req, res) => {
   try {
     if (!await callerHasSpecialistAccess(req)) return res.status(403).json({ error: 'Forbidden' });
     const userId = req.user.sub || req.user.id;
-    const { template_id, client_id, client_email, client_name } = req.body || {};
+    const { template_id, client_id, client_email, client_name, responses, notes, completed } = req.body || {};
     if (!template_id) return res.status(400).json({ error: 'template_id required' });
+    const hasResp = responses !== undefined && responses !== null;
+    const completedAt = (completed || hasResp) ? new Date() : null;
     const [row] = await sql`
-      INSERT INTO diagnostic_sessions (template_id, specialist_id, client_id, client_email, client_name)
-      VALUES (${parseInt(template_id)}, ${userId}, ${client_id || null}, ${client_email || null}, ${client_name || null})
+      INSERT INTO diagnostic_sessions
+        (template_id, specialist_id, client_id, client_email, client_name, responses, notes, completed_at)
+      VALUES
+        (${parseInt(template_id)}, ${userId}, ${client_id || null}, ${client_email || null}, ${client_name || null},
+         ${hasResp ? JSON.stringify(responses) : null}::jsonb, ${notes || null}, ${completedAt})
       RETURNING *
     `;
     res.json({ session: row });

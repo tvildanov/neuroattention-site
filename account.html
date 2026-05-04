@@ -1424,6 +1424,7 @@
     <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;" data-i18n="a.admin.practices_tab">Практики</button>
     <button class="dash-tab" data-tab="admin-vocab" id="admin-vocab-tab" style="display:none;" data-i18n="a.admin.vocab_tab">Словарь</button>
     <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
+    <button class="dash-tab" data-tab="admin-diagnostic" id="admin-diag-tab" style="display:none;" data-i18n="a.admin.diag_tab">Диагностика</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1730,6 +1731,63 @@
         </div>
         <p id="admin-purchases-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Покупок пока нет.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- Pack 23: Diagnostic templates -->
+  <div class="tab-panel" id="tab-admin-diagnostic">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 4;">
+        <h3 style="margin:0 0 0.25rem;font-size:15px;" data-i18n="a.admin.diag.title">Диагностические шаблоны</h3>
+        <p style="margin:0 0 1rem;font-size:11px;color:var(--text-muted);line-height:1.4;" data-i18n="a.admin.diag.subtitle">Базовый шаблон + ваши кастомные.</p>
+        <div id="diag-templates-list" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.75rem;"></div>
+        <button class="btn btn-ghost" onclick="diagCreateBlank()" style="width:100%;font-size:12px;padding:0.4rem 0.5rem;" data-i18n="a.admin.diag.btn_new_blank">Создать с нуля</button>
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:1rem 0;">
+        <h4 style="margin:0 0 0.5rem;font-size:12px;color:var(--text-muted);" data-i18n="a.admin.diag.sessions_title">Прошлые сеансы</h4>
+        <div id="diag-sessions-list" style="display:flex;flex-direction:column;gap:0.3rem;font-size:11px;"></div>
+      </div>
+
+      <div class="dash-card glass-card-elevated" style="grid-column:span 8;" id="diag-editor-card">
+        <div id="diag-editor-empty" style="text-align:center;color:var(--text-muted);font-size:13px;padding:3rem 1rem;" data-i18n="a.admin.diag.empty_select">Выберите шаблон слева, чтобы редактировать</div>
+        <div id="diag-editor" style="display:none;">
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
+            <input id="diag-tpl-name" type="text" placeholder="Название шаблона" style="flex:1;min-width:180px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:14px;font-weight:600;">
+            <button class="btn btn-solid" onclick="diagSaveAll()" id="diag-save-btn" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.admin.diag.btn_save">Сохранить</button>
+            <button class="btn btn-ghost" onclick="diagCloneCurrent()" id="diag-clone-btn" style="font-size:12px;padding:0.4rem 0.7rem;display:none;" data-i18n="a.admin.diag.btn_clone">Сделать свою копию</button>
+            <button class="btn btn-ghost" onclick="diagStartFill()" id="diag-fill-btn" style="font-size:12px;padding:0.4rem 0.7rem;" data-i18n="a.admin.diag.btn_fill">Заполнить с клиентом</button>
+            <button class="btn btn-ghost" onclick="diagDeleteTemplate()" id="diag-delete-btn" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-rose);display:none;" data-i18n="a.admin.diag.btn_delete_tpl">Удалить</button>
+          </div>
+          <p id="diag-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
+
+          <div id="diag-items-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+
+          <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+            <button class="btn btn-ghost" onclick="diagAddItem('question')" style="font-size:12px;padding:0.4rem 0.8rem;" data-i18n="a.admin.diag.btn_add_question">+ Вопрос</button>
+            <button class="btn btn-ghost" onclick="diagAddItem('task')" style="font-size:12px;padding:0.4rem 0.8rem;" data-i18n="a.admin.diag.btn_add_task">+ Задание</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pack 23: Diagnostic fill modal -->
+  <div id="diagFillModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:10001;padding:1.5rem 1rem;overflow-y:auto;">
+    <div class="glass-card-elevated" style="max-width:760px;margin:0 auto;padding:1.5rem;border-radius:14px;background:rgba(15,15,22,0.99);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;font-size:16px;" data-i18n="a.admin.diag.fill_title">Сеанс диагностики</h3>
+        <button class="btn btn-ghost" onclick="diagCancelFill()" style="font-size:14px;" data-i18n="a.admin.diag.fill_cancel">Отмена</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:1rem;">
+        <input id="diag-fill-client-name" placeholder="Имя клиента" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;">
+        <input id="diag-fill-client-email" placeholder="Email клиента" type="email" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;">
+      </div>
+      <div id="diag-fill-items" style="display:flex;flex-direction:column;gap:0.7rem;"></div>
+      <textarea id="diag-fill-notes" placeholder="Заметки специалиста (видны только вам)" rows="3" style="width:100%;margin-top:1rem;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.7rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+        <button class="btn btn-ghost" onclick="diagCancelFill()" data-i18n="a.admin.diag.fill_cancel">Отмена</button>
+        <button class="btn btn-solid" onclick="diagFinishFill()" data-i18n="a.admin.diag.fill_finish">Завершить и сохранить</button>
+      </div>
+      <p id="diag-fill-status" style="margin:0.5rem 0 0;font-size:12px;color:var(--text-muted);"></p>
     </div>
   </div>
 
@@ -2701,6 +2759,12 @@ function setupAdminDashboard(user){
   if(purchasesTab && (isFounder || isSpec)){
     purchasesTab.style.display = '';
     if (typeof loadAdminPurchases === 'function') loadAdminPurchases();
+  }
+  // Pack 23: Diagnostic tab — founder/superadmin/specialist
+  var diagTab = document.getElementById('admin-diag-tab');
+  if(diagTab && (isFounder || isSpec)){
+    diagTab.style.display = '';
+    if (typeof loadDiagTemplates === 'function') loadDiagTemplates();
   }
 }
 
@@ -8520,6 +8584,335 @@ document.addEventListener('DOMContentLoaded', function(){
     if (pt) pt.addEventListener('click', loadAdminPurchases);
   }, 800);
 });
+
+// ══════════════════════════════════════════
+// Pack 23: Diagnostic templates editor
+// ══════════════════════════════════════════
+var diagState = { templates: [], currentTpl: null, currentItems: [], dirty: false, fillItems: [] };
+
+function diagApi(path, opts){
+  var token = localStorage.getItem('na_token');
+  opts = opts || {};
+  opts.headers = Object.assign({ 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, opts.headers || {});
+  return fetch(AUTH_API + path, opts).then(function(r){
+    return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; });
+  });
+}
+
+function diagL(item, lang){
+  return item['label_' + lang] || item.label_ru || item.label_en || '';
+}
+
+function loadDiagTemplates(){
+  diagApi('/api/admin/diagnostic/templates').then(function(d){
+    diagState.templates = d.templates || [];
+    renderDiagTemplatesList();
+    loadDiagSessions();
+  }).catch(function(e){ console.warn('loadDiagTemplates:', e.message); });
+}
+
+function renderDiagTemplatesList(){
+  var box = document.getElementById('diag-templates-list');
+  if (!box) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if (!diagState.templates.length){
+    box.innerHTML = '<p style="font-size:12px;color:var(--text-muted);">—</p>';
+    return;
+  }
+  box.innerHTML = diagState.templates.map(function(tpl){
+    var sub = tpl.is_default ? t('a.admin.diag.tpl_default','Базовая (по умолчанию)') : t('a.admin.diag.tpl_owner_you','Ваша копия');
+    var active = (diagState.currentTpl && diagState.currentTpl.id === tpl.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
+    return '<div onclick="diagSelectTemplate(' + tpl.id + ')" style="cursor:pointer;padding:0.55rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;'+active+'">'
+         + '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + (tpl.name || '—') + '</div>'
+         + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + sub + '</div>'
+         + '</div>';
+  }).join('');
+}
+
+function diagSelectTemplate(id){
+  if (diagState.dirty && !confirm(t('a.admin.diag.dirty_warn','Есть несохранённые изменения') + '. Продолжить?')) return;
+  diagApi('/api/admin/diagnostic/templates/' + id).then(function(d){
+    diagState.currentTpl = d.template;
+    diagState.currentItems = (d.items || []).map(function(it){ return Object.assign({}, it); });
+    diagState.dirty = false;
+    renderDiagTemplatesList();
+    renderDiagEditor();
+  }).catch(function(e){ alert(e.message); });
+}
+
+function renderDiagEditor(){
+  var emptyEl = document.getElementById('diag-editor-empty');
+  var editor = document.getElementById('diag-editor');
+  if (!editor) return;
+  if (!diagState.currentTpl){ emptyEl.style.display = ''; editor.style.display = 'none'; return; }
+  emptyEl.style.display = 'none';
+  editor.style.display = '';
+  document.getElementById('diag-tpl-name').value = diagState.currentTpl.name || '';
+  var isDefault = diagState.currentTpl.is_default;
+  var ownsTpl = !isDefault && diagState.currentTpl.owner_user_id === (currentUser && currentUser.id);
+  document.getElementById('diag-clone-btn').style.display = isDefault ? '' : 'none';
+  document.getElementById('diag-delete-btn').style.display = ownsTpl ? '' : 'none';
+  document.getElementById('diag-save-btn').disabled = isDefault;
+  document.getElementById('diag-save-btn').style.opacity = isDefault ? '0.5' : '1';
+  document.getElementById('diag-tpl-name').readOnly = isDefault;
+  renderDiagItems();
+}
+
+function renderDiagItems(){
+  var box = document.getElementById('diag-items-list');
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var isDefault = diagState.currentTpl && diagState.currentTpl.is_default;
+  box.innerHTML = diagState.currentItems.map(function(it, idx){
+    var draggable = isDefault ? '' : 'draggable="true"';
+    var dragHandlers = isDefault ? '' :
+      ' ondragstart="diagDragStart(event,' + idx + ')" ondragover="event.preventDefault()" ondrop="diagDrop(event,' + idx + ')"';
+    var kindLabel = it.kind === 'task' ? t('a.admin.diag.kind_task','Задание') : t('a.admin.diag.kind_question','Вопрос');
+    var kindColor = it.kind === 'task' ? 'var(--accent-violet)' : 'var(--accent-cyan)';
+    var typeOpts = ['text','number','multiline','choice','scale','scale_grid'].map(function(tp){
+      var label = t('a.admin.diag.type_' + tp, tp);
+      return '<option value="' + tp + '"' + (it.response_type===tp?' selected':'') + '>' + label + '</option>';
+    }).join('');
+    var optionsBlock = '';
+    if (it.response_type === 'choice'){
+      var optsArr = Array.isArray(it.options) ? it.options : [];
+      var optsText = optsArr.map(function(o){
+        if (typeof o === 'string') return o;
+        return [o.ru||'', o.en||'', o.es||''].filter(Boolean).join('|');
+      }).join('\n');
+      optionsBlock = '<label style="display:block;font-size:10px;color:var(--text-dim);margin:0.5rem 0 0.2rem;" data-i18n="a.admin.diag.options">Варианты ответа</label>'
+                   + '<textarea ' + (isDefault?'readonly':'') + ' onchange="diagItemField(' + idx + ',\'options_text\',this.value)" rows="3" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:11px;font-family:JetBrains Mono,monospace;box-sizing:border-box;resize:vertical;">' + optsText.replace(/</g,'&lt;') + '</textarea>'
+                   + '<p style="font-size:10px;color:var(--text-dim);margin:0.2rem 0 0;" data-i18n="a.admin.diag.options_hint">По одному варианту на строку.</p>';
+    }
+    return '<div ' + draggable + dragHandlers + ' style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:0.7rem;background:rgba(0,0,0,0.18);">'
+         + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">'
+         + (isDefault?'':'<span style="cursor:grab;color:var(--text-dim);user-select:none;">⋮⋮</span>')
+         + '<span style="font-size:10px;color:' + kindColor + ';font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">' + kindLabel + ' #' + (idx+1) + '</span>'
+         + '<select ' + (isDefault?'disabled':'') + ' onchange="diagItemField(' + idx + ',\'response_type\',this.value)" style="margin-left:auto;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.5rem;color:var(--text-primary);font-size:11px;">' + typeOpts + '</select>'
+         + (isDefault?'':'<button class="btn btn-ghost" onclick="diagDeleteItem(' + idx + ')" style="font-size:11px;padding:0.2rem 0.5rem;color:var(--accent-rose);">✕</button>')
+         + '</div>'
+         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_ru||'').replace(/"/g,'&quot;') + '" placeholder="RU" onchange="diagItemField(' + idx + ',\'label_ru\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_en||'').replace(/"/g,'&quot;') + '" placeholder="EN" onchange="diagItemField(' + idx + ',\'label_en\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_es||'').replace(/"/g,'&quot;') + '" placeholder="ES" onchange="diagItemField(' + idx + ',\'label_es\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + optionsBlock
+         + '</div>';
+  }).join('');
+}
+
+function diagItemField(idx, field, val){
+  if (!diagState.currentItems[idx]) return;
+  if (field === 'options_text'){
+    var lines = String(val||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+    diagState.currentItems[idx].options = lines.map(function(l){
+      var parts = l.split('|').map(function(p){ return p.trim(); });
+      return { ru: parts[0]||'', en: parts[1]||parts[0]||'', es: parts[2]||parts[0]||'' };
+    });
+  } else {
+    diagState.currentItems[idx][field] = val;
+  }
+  diagState.dirty = true;
+  diagSetStatus(t('a.admin.diag.dirty_warn','Есть несохранённые изменения'));
+}
+
+function diagAddItem(kind){
+  diagState.currentItems.push({ kind: kind, response_type: 'text', label_ru:'', label_en:'', label_es:'', options:null, order_idx: diagState.currentItems.length });
+  diagState.dirty = true;
+  renderDiagItems();
+  diagSetStatus(t('a.admin.diag.dirty_warn','Есть несохранённые изменения'));
+}
+
+function diagDeleteItem(idx){
+  if (!confirm(t('a.admin.diag.confirm_delete_item','Удалить элемент?'))) return;
+  diagState.currentItems.splice(idx, 1);
+  diagState.dirty = true;
+  renderDiagItems();
+  diagSetStatus(t('a.admin.diag.dirty_warn','Есть несохранённые изменения'));
+}
+
+function diagDragStart(e, idx){ e.dataTransfer.setData('text/plain', String(idx)); }
+function diagDrop(e, toIdx){
+  e.preventDefault();
+  var fromIdx = parseInt(e.dataTransfer.getData('text/plain'),10);
+  if (isNaN(fromIdx) || fromIdx === toIdx) return;
+  var moved = diagState.currentItems.splice(fromIdx, 1)[0];
+  diagState.currentItems.splice(toIdx, 0, moved);
+  diagState.dirty = true;
+  renderDiagItems();
+  diagSetStatus(t('a.admin.diag.dirty_warn','Есть несохранённые изменения'));
+}
+
+function diagSetStatus(msg, ok){
+  var s = document.getElementById('diag-status-line');
+  if (!s) return;
+  s.textContent = msg || '';
+  s.style.color = ok ? '#0e9' : 'var(--text-muted)';
+}
+
+function diagSaveAll(){
+  if (!diagState.currentTpl || diagState.currentTpl.is_default){ alert('Базовый шаблон нельзя редактировать. Нажмите «Сделать свою копию».'); return; }
+  diagSetStatus(t('a.admin.diag.saving','Сохранение…'));
+  var tplId = diagState.currentTpl.id;
+  var newName = (document.getElementById('diag-tpl-name').value || '').trim() || diagState.currentTpl.name;
+  diagApi('/api/admin/diagnostic/templates/' + tplId, { method:'PATCH', body: JSON.stringify({ name: newName }) })
+    .then(function(){
+      // Replace items: send full list to /items/replace endpoint (PUT)
+      return diagApi('/api/admin/diagnostic/templates/' + tplId + '/items/replace', {
+        method:'PUT',
+        body: JSON.stringify({ items: diagState.currentItems.map(function(it, i){ return {
+          kind: it.kind, response_type: it.response_type,
+          label_ru: it.label_ru||'', label_en: it.label_en||'', label_es: it.label_es||'',
+          options: it.options || null, is_required: !!it.is_required, order_idx: i
+        }; }) })
+      });
+    })
+    .then(function(){
+      diagState.dirty = false;
+      diagSetStatus(t('a.admin.diag.saved','Сохранено'), true);
+      diagState.currentTpl.name = newName;
+      renderDiagTemplatesList();
+    })
+    .catch(function(e){ diagSetStatus('Ошибка: ' + e.message); });
+}
+
+function diagCreateBlank(){
+  var name = prompt(t('a.admin.diag.tpl_name_ph','Название шаблона'));
+  if (!name) return;
+  diagApi('/api/admin/diagnostic/templates', { method:'POST', body: JSON.stringify({ name: name }) })
+    .then(function(d){ loadDiagTemplates(); setTimeout(function(){ diagSelectTemplate(d.template.id); }, 400); })
+    .catch(function(e){ alert(e.message); });
+}
+
+function diagCloneCurrent(){
+  if (!diagState.currentTpl) return;
+  diagApi('/api/admin/diagnostic/templates/clone', { method:'POST', body: JSON.stringify({ template_id: diagState.currentTpl.id }) })
+    .then(function(d){ loadDiagTemplates(); setTimeout(function(){ diagSelectTemplate(d.template.id); }, 400); })
+    .catch(function(e){ alert(e.message); });
+}
+
+function diagDeleteTemplate(){
+  if (!diagState.currentTpl || diagState.currentTpl.is_default) return;
+  if (!confirm(t('a.admin.diag.confirm_delete_tpl','Удалить шаблон вместе со всеми вопросами?'))) return;
+  diagApi('/api/admin/diagnostic/templates/' + diagState.currentTpl.id, { method:'DELETE' })
+    .then(function(){
+      diagState.currentTpl = null; diagState.currentItems = []; diagState.dirty = false;
+      loadDiagTemplates();
+      renderDiagEditor();
+    })
+    .catch(function(e){ alert(e.message); });
+}
+
+// ── Fill flow ──
+function diagStartFill(){
+  if (!diagState.currentTpl){ alert(t('a.admin.diag.empty_select','Выберите шаблон')); return; }
+  diagState.fillItems = JSON.parse(JSON.stringify(diagState.currentItems));
+  document.getElementById('diag-fill-client-name').value = '';
+  document.getElementById('diag-fill-client-email').value = '';
+  document.getElementById('diag-fill-notes').value = '';
+  document.getElementById('diag-fill-status').textContent = '';
+  renderDiagFill();
+  document.getElementById('diagFillModal').style.display = 'block';
+}
+
+function diagCancelFill(){ document.getElementById('diagFillModal').style.display = 'none'; }
+
+function renderDiagFill(){
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var box = document.getElementById('diag-fill-items');
+  box.innerHTML = diagState.fillItems.map(function(it, idx){
+    var label = diagL(it, lang) || ('#' + (idx+1));
+    var kindLabel = it.kind === 'task' ? t('a.admin.diag.kind_task','Задание') : t('a.admin.diag.kind_question','Вопрос');
+    var kindColor = it.kind === 'task' ? 'var(--accent-violet)' : 'var(--accent-cyan)';
+    var input = '';
+    if (it.response_type === 'multiline'){
+      input = '<textarea rows="2" data-fill-idx="' + idx + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+    } else if (it.response_type === 'number'){
+      input = '<input type="number" data-fill-idx="' + idx + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+    } else if (it.response_type === 'choice'){
+      var opts = (it.options || []).map(function(o){ var v = (typeof o==='string') ? o : (o[lang]||o.ru||o.en||''); return '<option value="' + v.replace(/"/g,'&quot;') + '">' + v + '</option>'; }).join('');
+      input = '<select data-fill-idx="' + idx + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;"><option value="">—</option>' + opts + '</select>';
+    } else if (it.response_type === 'scale'){
+      var min = (it.options && it.options.min) || 1;
+      var max = (it.options && it.options.max) || 10;
+      input = '<input type="range" min="' + min + '" max="' + max + '" data-fill-idx="' + idx + '" oninput="this.nextElementSibling.textContent=this.value" style="width:80%;"><span style="margin-left:0.5rem;color:var(--accent-cyan);font-weight:600;">—</span>';
+    } else if (it.response_type === 'scale_grid'){
+      var rows = (it.options && it.options.rows) || [];
+      var minG = (it.options && it.options.min) || 1;
+      var maxG = (it.options && it.options.max) || 10;
+      input = rows.map(function(r, ri){
+        var rl = r[lang] || r.ru || r.en || '';
+        return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;"><span style="flex:0 0 130px;font-size:12px;color:var(--text-secondary);">' + rl + '</span><input type="range" min="' + minG + '" max="' + maxG + '" data-fill-idx="' + idx + '" data-fill-row="' + ri + '" data-fill-row-key="' + (r.ru||r.en||'').replace(/"/g,'&quot;') + '" oninput="this.nextElementSibling.textContent=this.value" style="flex:1;"><span style="width:24px;color:var(--accent-cyan);font-weight:600;">—</span></div>';
+      }).join('');
+    } else {
+      input = '<input type="text" data-fill-idx="' + idx + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+    }
+    return '<div style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:0.7rem;background:rgba(0,0,0,0.18);">'
+         + '<div style="font-size:10px;color:' + kindColor + ';font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.3rem;">' + kindLabel + ' #' + (idx+1) + '</div>'
+         + '<div style="font-size:13px;color:var(--text-primary);margin-bottom:0.5rem;line-height:1.4;">' + label + '</div>'
+         + input
+         + '</div>';
+  }).join('');
+}
+
+function diagFinishFill(){
+  var responses = {};
+  diagState.fillItems.forEach(function(it, idx){
+    var nodes = document.querySelectorAll('[data-fill-idx="' + idx + '"]');
+    if (it.response_type === 'scale_grid'){
+      var grid = {};
+      nodes.forEach(function(n){ grid[n.getAttribute('data-fill-row-key') || n.getAttribute('data-fill-row')] = n.value; });
+      responses[idx] = grid;
+    } else if (nodes.length){
+      responses[idx] = nodes[0].value;
+    }
+  });
+  var body = {
+    template_id: diagState.currentTpl.id,
+    client_name: document.getElementById('diag-fill-client-name').value || null,
+    client_email: document.getElementById('diag-fill-client-email').value || null,
+    notes: document.getElementById('diag-fill-notes').value || null,
+    responses: responses
+  };
+  document.getElementById('diag-fill-status').textContent = t('a.admin.diag.saving','Сохранение…');
+  diagApi('/api/admin/diagnostic/sessions', { method:'POST', body: JSON.stringify(body) })
+    .then(function(){
+      document.getElementById('diag-fill-status').textContent = t('a.admin.diag.saved','Сохранено');
+      setTimeout(function(){ diagCancelFill(); loadDiagSessions(); }, 600);
+    })
+    .catch(function(e){ document.getElementById('diag-fill-status').textContent = 'Ошибка: ' + e.message; });
+}
+
+function loadDiagSessions(){
+  diagApi('/api/admin/diagnostic/sessions').then(function(d){
+    var box = document.getElementById('diag-sessions-list');
+    if (!box) return;
+    var sessions = d.sessions || [];
+    if (!sessions.length){ box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);" data-i18n="a.admin.diag.sessions_empty">Сеансов пока нет.</p>'; return; }
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var locale = lang==='en'?'en-US':(lang==='es'?'es-ES':'ru-RU');
+    box.innerHTML = sessions.slice(0,15).map(function(s){
+      var date = s.completed_at || s.started_at;
+      var nm = s.client_name || s.client_email || '—';
+      return '<div style="padding:0.4rem 0.5rem;border:1px solid rgba(255,255,255,0.05);border-radius:6px;cursor:pointer;" onclick="alert(JSON.stringify(' + JSON.stringify(s).replace(/'/g,"\\'") + ',null,2))">'
+           + '<div style="font-size:11px;color:var(--text-primary);">' + nm + '</div>'
+           + '<div style="font-size:10px;color:var(--text-muted);">' + (date ? new Date(date).toLocaleString(locale) : '—') + '</div>'
+           + '</div>';
+    }).join('');
+  }).catch(function(e){ console.warn('loadDiagSessions:', e.message); });
+}
+
+window.loadDiagTemplates = loadDiagTemplates;
+window.diagSelectTemplate = diagSelectTemplate;
+window.diagItemField = diagItemField;
+window.diagAddItem = diagAddItem;
+window.diagDeleteItem = diagDeleteItem;
+window.diagDragStart = diagDragStart;
+window.diagDrop = diagDrop;
+window.diagSaveAll = diagSaveAll;
+window.diagCreateBlank = diagCreateBlank;
+window.diagCloneCurrent = diagCloneCurrent;
+window.diagDeleteTemplate = diagDeleteTemplate;
+window.diagStartFill = diagStartFill;
+window.diagCancelFill = diagCancelFill;
+window.diagFinishFill = diagFinishFill;
 
 // ── Pack 21: Post-purchase banner ──
 function loadUserPurchases() {
