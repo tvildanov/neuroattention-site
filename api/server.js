@@ -177,6 +177,24 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     return res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 
+  // Pack 21 round 3: handle refunds
+  if (event.type === 'charge.refunded' || event.type === 'refund.created' || event.type === 'refund.updated') {
+    try {
+      const obj = event.data.object;
+      const paymentIntentId = obj.payment_intent || obj.charge?.payment_intent;
+      const chargeId = obj.id || obj.charge?.id;
+      if (paymentIntentId) {
+        await sql`UPDATE consent_log SET payment_status = 'refunded', refunded_at = now()
+                  WHERE stripe_payment_intent_id = ${paymentIntentId}
+                    OR stripe_charge_id = ${chargeId}`;
+        console.log('Stripe webhook: marked refunded — pi:', paymentIntentId, 'charge:', chargeId);
+      }
+    } catch (err) {
+      console.error('Stripe webhook refund DB error:', err.message);
+    }
+    return res.json({ received: true });
+  }
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     try {
@@ -188,11 +206,19 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         const u = await sql`SELECT id FROM users WHERE email = ${customerEmail}`;
         if (u.length) userIdForLog = u[0].id;
       }
-      // Update existing consent_log row payment_status (Pack 21: also backfill user_id)
+      // Pack 21 round 3: capture payment_intent + amount + discount details
+      const paymentIntent = session.payment_intent || null;
+      const discountAmount = session.total_details?.amount_discount || 0;
+      const promoCode = (session.discounts && session.discounts[0]?.promotion_code) || null;
+      // Update existing consent_log row payment_status
       await sql`UPDATE consent_log SET
         stripe_session_id = ${session.id},
         stripe_customer_id = ${session.customer || null},
+        stripe_payment_intent_id = ${paymentIntent},
         payment_status = ${session.payment_status || 'paid'},
+        amount_total = COALESCE(${session.amount_total || null}, amount_total),
+        discount_amount = ${discountAmount},
+        promotion_code = ${promoCode},
         user_id = COALESCE(user_id, ${userIdForLog})
         WHERE product = ${meta.product} AND email = ${customerEmail}
         AND payment_status = 'pending'
@@ -390,6 +416,14 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_product ON consent_log(product)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_email ON consent_log(email)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_created ON consent_log(created_at DESC)`;
+    // Pack 21 round 3: add columns for payment_intent / charge / refund metadata
+    await sql`ALTER TABLE consent_log ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT`;
+    await sql`ALTER TABLE consent_log ADD COLUMN IF NOT EXISTS stripe_charge_id TEXT`;
+    await sql`ALTER TABLE consent_log ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP`;
+    await sql`ALTER TABLE consent_log ADD COLUMN IF NOT EXISTS discount_amount INTEGER DEFAULT 0`;
+    await sql`ALTER TABLE consent_log ADD COLUMN IF NOT EXISTS promotion_code TEXT`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_pi ON consent_log(stripe_payment_intent_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_consent_log_session ON consent_log(stripe_session_id)`;
 
     // Migration 016: practices table
     await sql`CREATE TABLE IF NOT EXISTS practices (
@@ -2431,6 +2465,10 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
         }
       };
       if (userEmail) sessionParams.customer_email = userEmail;
+      // Pack 21 round 3: pass user's locale to Stripe so checkout page is in their language
+      // Stripe supports: auto, bg, cs, da, de, el, en, en-GB, es, es-419, et, fi, fil, fr, fr-CA, hr, hu, id, it, ja, ko, lt, lv, ms, mt, nb, nl, pl, pt, pt-BR, ro, ru, sk, sl, sv, th, tr, vi, zh, zh-HK, zh-TW
+      const userLocale = (req.body && req.body.locale) || (req.headers['accept-language'] || '').split(',')[0].split('-')[0].toLowerCase();
+      if (['ru', 'en', 'es'].includes(userLocale)) sessionParams.locale = userLocale;
       const session = await stripe.checkout.sessions.create(sessionParams);
       return res.json({ url: session.url, sessionId: session.id });
     }
@@ -3099,22 +3137,49 @@ app.post('/api/admin/vocab/import-from-json', requireAuth, async (req, res) => {
         }
       }
     }
-    async function seedSimpleArray(category, source, idxKey) {
+    // Recursively flatten nested objects/arrays into a list of strings.
+    // Handles both string entries and {text, emoji} objects (used for thoughts).
+    function flattenStrings(node, out) {
+      if (node == null) return;
+      if (Array.isArray(node)) {
+        for (const item of node) flattenStrings(item, out);
+        return;
+      }
+      if (typeof node === 'object') {
+        if (typeof node.text === 'string') {
+          out.push(node.text);
+          return;
+        }
+        if (typeof node.name === 'string') {
+          out.push(node.name);
+          return;
+        }
+        for (const k of Object.keys(node)) flattenStrings(node[k], out);
+        return;
+      }
+      if (typeof node === 'string' && node.trim()) out.push(node.trim());
+    }
+    async function seedDeepCategory(category, source, idxKey) {
       if (!source) return;
-      const items = Array.isArray(source) ? source : Object.values(source).flat();
-      for (let i = 0; i < items.length; i++) {
-        const ru = items[i]; if (!ru) continue;
+      const items = [];
+      flattenStrings(source, items);
+      const seen = new Set();
+      let idx = 0;
+      for (const ru of items) {
+        if (!ru || seen.has(ru)) continue;
+        seen.add(ru);
         const slug = transliterate(ru); if (!slug) continue;
         await sql`INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, order_idx)
-                  VALUES (${category}, ${slug}, ${ru}, ${enMap[ru] || ru}, ${esMap[ru] || ru}, ${i})
+                  VALUES (${category}, ${slug}, ${ru}, ${enMap[ru] || ru}, ${esMap[ru] || ru}, ${idx})
                   ON CONFLICT (category, slug) DO UPDATE SET label_ru = EXCLUDED.label_ru, label_en = EXCLUDED.label_en, label_es = EXCLUDED.label_es, updated_at = now()`;
         counts[idxKey]++;
+        idx++;
       }
     }
-    await seedSimpleArray('area', vocab.areas, 'area');
-    await seedSimpleArray('cause', vocab.causes, 'cause');
-    await seedSimpleArray('thought', vocab.thoughts, 'thought');
-    await seedSimpleArray('action', vocab.practices, 'action');
+    await seedDeepCategory('area', vocab.areas, 'area');
+    await seedDeepCategory('cause', vocab.causes, 'cause');
+    await seedDeepCategory('thought', vocab.thoughts, 'thought');
+    await seedDeepCategory('action', vocab.practices, 'action');
     res.json({ ok: true, counts });
   } catch (err) {
     console.error('POST /api/admin/vocab/import-from-json:', err);
@@ -3131,11 +3196,11 @@ app.get('/api/admin/purchases', requireAuth, async (req, res) => {
     }
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const rows = await sql`
-      SELECT cl.id, cl.product, cl.email, cl.user_id, cl.payment_status, cl.amount_total, cl.currency, cl.consent_timestamp, cl.stripe_session_id,
+      SELECT cl.id, cl.product, cl.email, cl.user_id, cl.payment_status, cl.amount_total, cl.currency, cl.consent_timestamp, cl.stripe_session_id, cl.stripe_payment_intent_id, cl.discount_amount, cl.promotion_code, cl.refunded_at,
              u.display_name AS user_name
       FROM consent_log cl
       LEFT JOIN users u ON u.id = cl.user_id
-      WHERE cl.payment_status IN ('paid','completed')
+      WHERE cl.payment_status IN ('paid','completed','refunded')
       ORDER BY cl.consent_timestamp DESC
       LIMIT ${limit}
     `;
