@@ -90,6 +90,14 @@
       if (v !== undefined) els[i].setAttribute('title', v);
     }
 
+    // data-i18n-aria-label
+    els = document.querySelectorAll('[data-i18n-aria-label]');
+    for (var i = 0; i < els.length; i++) {
+      var k = els[i].getAttribute('data-i18n-aria-label');
+      var v = dict[k] || fb[k];
+      if (v !== undefined) els[i].setAttribute('aria-label', v);
+    }
+
     // <title> + meta description
     var titleVal = dict['meta.title'] || fb['meta.title'];
     if (titleVal) document.title = titleVal;
