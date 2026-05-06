@@ -497,7 +497,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
         <button class="lang-btn">ES</button>
       </div>
       <a href="account.html" class="nav-login"><span class="login-dot"></span><span data-i18n="nav.cabinet">Кабинет</span></a>
-      <button class="mobile-menu-btn" aria-label="Меню">
+      <button class="mobile-menu-btn" aria-label="Меню" data-i18n-aria-label="nav.menu">
         <svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
     </div>
@@ -529,7 +529,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
         </svg>
       </div>
       <div class="test-chat-header-info">
-        <p class="test-chat-header-title">Тест адаптации</p>
+        <p class="test-chat-header-title" data-i18n="t.header.title">Тест адаптации</p>
         <p class="test-chat-header-sub" id="chat-step-label">Вопрос 1 / 10</p>
       </div>
     </div>
@@ -607,57 +607,57 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     STABLE_EXPLORER: {
       key_name:'t.profile.stable_explorer.name', key_subtitle:'t.profile.stable_explorer.subtitle', color:'var(--accent-green)',
       key_sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.stable_explorer.r1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.stable_explorer.s1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.stable_explorer.l1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.stable_explorer.p1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.stable_explorer.v1' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.stable_explorer.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.stable_explorer.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.stable_explorer.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.stable_explorer.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.stable_explorer.v1' }
       ],
       key_unlock:'t.profile.stable_explorer.unlock'
     },
     HIGH_LOAD_ADAPTER: {
-      key_name:'t.profile.high_load_adapter.name', key_subtitle:'t.profile.high_load_adapter.subtitle', color:'var(--accent-amber)',
+      key_name:'t.profile.high_load.name', key_subtitle:'t.profile.high_load.subtitle', color:'var(--accent-amber)',
       key_sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.high_load_adapter.r1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.high_load_adapter.s1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.high_load_adapter.l1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.high_load_adapter.p1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.high_load_adapter.v1' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.high_load.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.high_load.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.high_load.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.high_load.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.high_load.v1' }
       ],
-      key_unlock:'t.profile.high_load_adapter.unlock'
+      key_unlock:'t.profile.high_load.unlock'
     },
     NERVOUS_SYSTEM_SENSITIVE: {
-      key_name:'t.profile.nervous_system_sensitive.name', key_subtitle:'t.profile.nervous_system_sensitive.subtitle', color:'var(--accent-rose)',
+      key_name:'t.profile.nervous.name', key_subtitle:'t.profile.nervous.subtitle', color:'var(--accent-rose)',
       key_sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.nervous_system_sensitive.r1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.nervous_system_sensitive.s1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.nervous_system_sensitive.l1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.nervous_system_sensitive.p1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.nervous_system_sensitive.v1' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.nervous.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.nervous.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.nervous.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.nervous.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.nervous.v1' }
       ],
-      key_unlock:'t.profile.nervous_system_sensitive.unlock'
+      key_unlock:'t.profile.nervous.unlock'
     },
     DISTRACTED_EXPLORER: {
-      key_name:'t.profile.fragmented_focus.name', key_subtitle:'t.profile.fragmented_focus.subtitle', color:'var(--accent-violet)',
+      key_name:'t.profile.fragmented.name', key_subtitle:'t.profile.fragmented.subtitle', color:'var(--accent-violet)',
       key_sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.fragmented_focus.r1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.fragmented_focus.s1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.fragmented_focus.l1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.fragmented_focus.p1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.fragmented_focus.v1' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.fragmented.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.fragmented.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.fragmented.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.fragmented.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.fragmented.v1' }
       ],
-      key_unlock:'t.profile.fragmented_focus.unlock'
+      key_unlock:'t.profile.fragmented.unlock'
     },
     FUTURE_SPECIALIST: {
-      key_name:'t.profile.future_specialist.name', key_subtitle:'t.profile.future_specialist.subtitle', color:'var(--accent-cyan)',
+      key_name:'t.profile.specialist.name', key_subtitle:'t.profile.specialist.subtitle', color:'var(--accent-cyan)',
       key_sections:[
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.profile.role', key_content:'t.profile.future_specialist.r1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.profile.strengths', key_content:'t.profile.future_specialist.s1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.profile.limitation', key_content:'t.profile.future_specialist.l1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.profile.potential', key_content:'t.profile.future_specialist.p1' },
-        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.profile.vector', key_content:'t.profile.future_specialist.v1' }
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.specialist.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.specialist.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.specialist.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.specialist.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.specialist.v1' }
       ],
-      key_unlock:'t.profile.future_specialist.unlock'
+      key_unlock:'t.profile.specialist.unlock'
     }
   };
 
