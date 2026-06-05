@@ -4306,6 +4306,104 @@ app.post('/api/feed/posts/:id/comments', requireAuth, async (req, res) => {
   } catch (err) { console.error('POST comment:', err); res.status(500).json({ error: err.message }); }
 });
 
+// ── DOMunity: Group chat rooms (admin-managed) ──
+app.get('/api/chat/rooms', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT r.*, (SELECT COUNT(*) FROM chat_room_members WHERE room_id = r.id) AS member_count,
+             (SELECT body FROM chat_room_messages WHERE room_id = r.id ORDER BY created_at DESC LIMIT 1) AS last_body
+      FROM chat_rooms r
+      WHERE EXISTS (SELECT 1 FROM chat_room_members m WHERE m.room_id = r.id AND m.user_id = ${me})
+         OR ${(['superadmin','founder','admin'].includes(req.user.role||''))}
+      ORDER BY r.created_at DESC
+    `;
+    res.json({ rooms: rows });
+  } catch (err) { console.error('GET rooms:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/chat/rooms', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [user] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    if (!user || !['superadmin','founder','admin'].includes(user.role)) return res.status(403).json({ error: 'Admin only' });
+    const { slug, name, description, course_id, member_ids } = req.body || {};
+    if (!slug || !name) return res.status(400).json({ error: 'slug and name required' });
+    const [room] = await sql`INSERT INTO chat_rooms (slug, name, description, course_id, created_by)
+                              VALUES (${slug}, ${name}, ${description||''}, ${course_id ? parseInt(course_id,10) : null}, ${me}) RETURNING *`;
+    // Add creator as admin member
+    await sql`INSERT INTO chat_room_members (room_id, user_id, role) VALUES (${room.id}, ${me}, 'admin')`;
+    // Add other members
+    if (Array.isArray(member_ids)) {
+      for (const uid of member_ids) {
+        if (uid !== me) await sql`INSERT INTO chat_room_members (room_id, user_id) VALUES (${room.id}, ${uid}) ON CONFLICT DO NOTHING`;
+      }
+    }
+    res.status(201).json({ room });
+  } catch (err) { console.error('POST room:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.id, 10);
+    // Access check
+    const [member] = await sql`SELECT 1 FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
+    const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
+    if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
+    const rows = await sql`SELECT m.*, u.display_name AS sender_name FROM chat_room_messages m
+                           LEFT JOIN users u ON u.id = m.sender_id
+                           WHERE m.room_id = ${rid} ORDER BY m.created_at ASC LIMIT 300`;
+    res.json({ messages: rows });
+  } catch (err) { console.error('GET room messages:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.id, 10);
+    const { body, is_announcement } = req.body || {};
+    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    const [member] = await sql`SELECT role FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
+    const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
+    if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
+    const ann = !!is_announcement && (isAdmin || (member && member.role === 'admin'));
+    const [row] = await sql`INSERT INTO chat_room_messages (room_id, sender_id, body, is_announcement)
+                            VALUES (${rid}, ${me}, ${body}, ${ann}) RETURNING *`;
+    res.status(201).json({ message: row });
+  } catch (err) { console.error('POST room message:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── DOMunity: Donations via Stripe (one-off) ──
+app.post('/api/donate/checkout', requireAuth, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const me = req.user.sub || req.user.id;
+    const { amount_cents, currency, message } = req.body || {};
+    const amt = parseInt(amount_cents, 10);
+    if (!amt || amt < 100) return res.status(400).json({ error: 'amount_cents must be >= 100' });
+    const cur = (currency || 'usd').toLowerCase();
+    const lang = (req.headers['accept-language'] || '').split(',')[0].split('-')[0].toLowerCase();
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: cur,
+          unit_amount: amt,
+          product_data: { name: 'Donation to NeuroAttention Lab', description: 'Support our research and platform' }
+        },
+        quantity: 1
+      }],
+      success_url: 'https://neuroattention.org/account.html?donation=success',
+      cancel_url: 'https://neuroattention.org/account.html?donation=cancel',
+      metadata: { user_id: me, donation_message: message || '' },
+      locale: ['ru','en','es'].includes(lang) ? lang : 'auto'
+    });
+    res.json({ checkout_url: session.url, session_id: session.id });
+  } catch (err) { console.error('donate checkout:', err); res.status(500).json({ error: err.message }); }
+});
+
 // ── Notifications ──
 app.get('/api/notifications', requireAuth, async (req, res) => {
   try {
