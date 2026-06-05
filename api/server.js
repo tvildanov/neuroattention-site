@@ -2616,14 +2616,21 @@ app.get('/api/stripe/status', (req, res) => {
 // ─── GitHub PAT for practices audio upload ───
 const GITHUB_PAT = process.env.GITHUB_PAT || '';
 const GITHUB_REPO_OWNER = 'tvildanov';
-const GITHUB_REPO_NAME = 'NeuroAttention';
+const GITHUB_REPO_NAME = 'neuroattention-site';
 const GITHUB_AUDIO_PATH = 'assets/audio/practices';
+
+// Percent-encode each path segment so non-ASCII chars (Cyrillic, spaces, etc.)
+// don't trigger Node's "Request path contains unescaped characters" in https.request
+function encodeGitHubPath(filePath) {
+  return String(filePath).split('/').map(encodeURIComponent).join('/');
+}
 
 // Helper: upload file to GitHub via Contents API
 async function githubUploadFile(filePath, contentBase64, commitMessage) {
   if (!GITHUB_PAT) throw new Error('GITHUB_PAT not configured');
   const https = require('https');
-  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}`;
+  const encodedPath = encodeGitHubPath(filePath);
+  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${encodedPath}`;
 
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
@@ -2667,7 +2674,8 @@ async function githubUploadFile(filePath, contentBase64, commitMessage) {
 async function githubDeleteFile(filePath, sha, commitMessage) {
   if (!GITHUB_PAT) throw new Error('GITHUB_PAT not configured');
   const https = require('https');
-  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}`;
+  const encodedPath = encodeGitHubPath(filePath);
+  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${encodedPath}`;
 
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
@@ -2711,7 +2719,8 @@ async function githubDeleteFile(filePath, sha, commitMessage) {
 async function githubGetFileSha(filePath) {
   if (!GITHUB_PAT) throw new Error('GITHUB_PAT not configured');
   const https = require('https');
-  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${filePath}`;
+  const encodedPath = encodeGitHubPath(filePath);
+  const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${encodedPath}`;
 
   return new Promise((resolve, reject) => {
     const options = {
@@ -2762,8 +2771,24 @@ app.post('/api/admin/practices', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Required: slug, block_id, lang, name, audio_base64' });
     }
 
+    // Sanitize slug: transliterate Cyrillic → Latin, then strip to [a-z0-9-] so
+    // the file name is safe for both Node's https.request and GitHub Pages URLs.
+    function transliterateSlug(s) {
+      const map = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya' };
+      return String(s).toLowerCase()
+        .split('').map(c => map[c] !== undefined ? map[c] : c).join('')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80);
+    }
+    const cleanSlug = transliterateSlug(slug);
+    if (!cleanSlug) {
+      return res.status(400).json({ error: 'Slug must contain at least one Latin/Cyrillic letter or digit' });
+    }
+    const cleanLang = String(lang).toLowerCase().replace(/[^a-z]/g, '').slice(0, 4) || 'ru';
+
     // Upload audio to GitHub
-    const fileName = `${slug}-${lang}.mp3`;
+    const fileName = `${cleanSlug}-${cleanLang}.mp3`;
     const gitPath = `${GITHUB_AUDIO_PATH}/${fileName}`;
     const commitMsg = `[practices] Add audio: ${fileName}`;
 
@@ -2772,10 +2797,10 @@ app.post('/api/admin/practices', requireAuth, async (req, res) => {
     // Raw URL for the file on GitHub Pages
     const audioUrl = `https://neuroattention.org/${gitPath}`;
 
-    // Insert into DB
+    // Insert into DB (use cleaned slug/lang so the row matches the uploaded filename)
     const rows = await sql`
       INSERT INTO practices (slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx)
-      VALUES (${slug}, ${block_id}, ${lang}, ${name}, ${description || ''}, ${audioUrl}, ${duration_seconds || 0}, ${order_idx || 0})
+      VALUES (${cleanSlug}, ${block_id}, ${cleanLang}, ${name}, ${description || ''}, ${audioUrl}, ${duration_seconds || 0}, ${order_idx || 0})
       RETURNING *
     `;
 
