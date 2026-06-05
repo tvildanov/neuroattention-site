@@ -722,7 +722,77 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('Seeded default diagnostic template id=' + tplId + ' with ' + idx + ' items');
     }
 
-    res.json({ ok: true, message: 'Migrations 003-020 applied successfully' });
+    // ── PACK 24: Course Constructor ──
+    await sql`CREATE TABLE IF NOT EXISTS courses (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      name_ru TEXT NOT NULL DEFAULT '',
+      name_en TEXT NOT NULL DEFAULT '',
+      name_es TEXT NOT NULL DEFAULT '',
+      description_ru TEXT DEFAULT '',
+      description_en TEXT DEFAULT '',
+      description_es TEXT DEFAULT '',
+      cover_url TEXT DEFAULT '',
+      program_access TEXT[] DEFAULT '{}',
+      is_published BOOLEAN DEFAULT FALSE,
+      order_idx INTEGER DEFAULT 0,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_courses_published ON courses(is_published, order_idx)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS course_blocks (
+      id SERIAL PRIMARY KEY,
+      course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+      order_idx INTEGER NOT NULL DEFAULT 0,
+      block_type TEXT NOT NULL,
+      title_ru TEXT DEFAULT '',
+      title_en TEXT DEFAULT '',
+      title_es TEXT DEFAULT '',
+      payload JSONB DEFAULT '{}'::jsonb,
+      points INTEGER DEFAULT 0,
+      unlock_condition JSONB,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_blocks_course ON course_blocks(course_id, order_idx)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS course_branches (
+      id SERIAL PRIMARY KEY,
+      block_id INTEGER REFERENCES course_blocks(id) ON DELETE CASCADE,
+      answer_key TEXT NOT NULL,
+      next_block_id INTEGER REFERENCES course_blocks(id) ON DELETE SET NULL,
+      label_ru TEXT DEFAULT '',
+      label_en TEXT DEFAULT '',
+      label_es TEXT DEFAULT ''
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_branches_block ON course_branches(block_id)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS course_assets (
+      id SERIAL PRIMARY KEY,
+      course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+      filename TEXT NOT NULL,
+      asset_type TEXT NOT NULL,
+      github_url TEXT NOT NULL,
+      size_bytes INTEGER DEFAULT 0,
+      uploaded_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_assets_course ON course_assets(course_id)`;
+
+    // User progress per block (which blocks they completed, when, points earned)
+    await sql`CREATE TABLE IF NOT EXISTS course_progress (
+      id SERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+      block_id INTEGER REFERENCES course_blocks(id) ON DELETE CASCADE,
+      response JSONB,
+      points_earned INTEGER DEFAULT 0,
+      completed_at TIMESTAMP DEFAULT now(),
+      UNIQUE(user_id, block_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_progress_user_course ON course_progress(user_id, course_id)`;
+
+    res.json({ ok: true, message: 'Migrations 003-024 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3593,6 +3663,231 @@ app.patch('/api/admin/diagnostic/sessions/:id', requireAuth, async (req, res) =>
     console.error('PATCH diagnostic session:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// ── PACK 24: Course Constructor (courses → blocks → branches) ──
+// ══════════════════════════════════════════════════════════════════
+async function callerIsAdmin(req) {
+  const id = req.user?.sub || req.user?.id;
+  if (!id) return false;
+  const r = await sql`SELECT role FROM users WHERE id = ${id}`;
+  return r.length && ['superadmin', 'founder', 'admin'].includes(r[0].role);
+}
+
+// GET /api/admin/courses — list all courses
+app.get('/api/admin/courses', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const rows = await sql`
+      SELECT c.*, (SELECT COUNT(*) FROM course_blocks WHERE course_id = c.id) AS block_count
+      FROM courses c ORDER BY c.order_idx ASC, c.id DESC
+    `;
+    res.json({ courses: rows });
+  } catch (err) { console.error('GET courses:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/courses — create new course
+app.post('/api/admin/courses', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const userId = req.user.sub || req.user.id;
+    const { slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
+            cover_url, program_access, is_published } = req.body || {};
+    if (!slug || !String(slug).trim()) return res.status(400).json({ error: 'slug required' });
+    // Sanitize slug
+    function transliterate(s) {
+      const map = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya' };
+      return String(s).toLowerCase().split('').map(c => map[c] !== undefined ? map[c] : c).join('').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
+    }
+    const cleanSlug = transliterate(slug);
+    if (!cleanSlug) return res.status(400).json({ error: 'slug must contain letters/digits' });
+    const accessArr = Array.isArray(program_access) ? program_access : [];
+    const [row] = await sql`
+      INSERT INTO courses (slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
+                           cover_url, program_access, is_published, created_by)
+      VALUES (${cleanSlug}, ${name_ru||''}, ${name_en||''}, ${name_es||''},
+              ${description_ru||''}, ${description_en||''}, ${description_es||''},
+              ${cover_url||''}, ${accessArr}::text[], ${!!is_published}, ${userId})
+      RETURNING *
+    `;
+    res.status(201).json({ course: row });
+  } catch (err) {
+    console.error('POST course:', err);
+    if (String(err.message).includes('duplicate')) return res.status(409).json({ error: 'Course with this slug already exists' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/courses/:id — get course with blocks
+app.get('/api/admin/courses/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id, 10);
+    const [course] = await sql`SELECT * FROM courses WHERE id = ${id}`;
+    if (!course) return res.status(404).json({ error: 'Not found' });
+    const blocks = await sql`SELECT * FROM course_blocks WHERE course_id = ${id} ORDER BY order_idx ASC, id ASC`;
+    const branches = await sql`SELECT cb.* FROM course_branches cb JOIN course_blocks b ON b.id = cb.block_id WHERE b.course_id = ${id}`;
+    res.json({ course, blocks, branches });
+  } catch (err) { console.error('GET course:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/admin/courses/:id — update course meta
+app.patch('/api/admin/courses/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id, 10);
+    const b = req.body || {};
+    const [updated] = await sql`UPDATE courses SET
+      name_ru = COALESCE(${b.name_ru}, name_ru),
+      name_en = COALESCE(${b.name_en}, name_en),
+      name_es = COALESCE(${b.name_es}, name_es),
+      description_ru = COALESCE(${b.description_ru}, description_ru),
+      description_en = COALESCE(${b.description_en}, description_en),
+      description_es = COALESCE(${b.description_es}, description_es),
+      cover_url = COALESCE(${b.cover_url}, cover_url),
+      program_access = COALESCE(${Array.isArray(b.program_access) ? b.program_access : null}::text[], program_access),
+      is_published = COALESCE(${b.is_published !== undefined ? !!b.is_published : null}, is_published),
+      order_idx = COALESCE(${b.order_idx !== undefined ? parseInt(b.order_idx,10) : null}, order_idx),
+      updated_at = now()
+      WHERE id = ${id} RETURNING *`;
+    if (!updated) return res.status(404).json({ error: 'Not found' });
+    res.json({ course: updated });
+  } catch (err) { console.error('PATCH course:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/admin/courses/:id — delete course (cascades blocks, branches)
+app.delete('/api/admin/courses/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id, 10);
+    await sql`DELETE FROM courses WHERE id = ${id}`;
+    res.json({ ok: true, deleted: id });
+  } catch (err) { console.error('DELETE course:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Course blocks CRUD ──
+
+// POST /api/admin/courses/:id/blocks — append a new block
+app.post('/api/admin/courses/:id/blocks', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const courseId = parseInt(req.params.id, 10);
+    const { block_type, title_ru, title_en, title_es, payload, points } = req.body || {};
+    if (!block_type) return res.status(400).json({ error: 'block_type required' });
+    const [{ max_idx }] = await sql`SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM course_blocks WHERE course_id = ${courseId}`;
+    const nextIdx = (max_idx ?? -1) + 1;
+    const [row] = await sql`
+      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points)
+      VALUES (${courseId}, ${nextIdx}, ${block_type}, ${title_ru||''}, ${title_en||''}, ${title_es||''},
+              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0})
+      RETURNING *
+    `;
+    res.status(201).json({ block: row });
+  } catch (err) { console.error('POST block:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/admin/courses/:cid/blocks/:bid — edit block
+app.patch('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const bid = parseInt(req.params.bid, 10);
+    const b = req.body || {};
+    const [updated] = await sql`UPDATE course_blocks SET
+      block_type = COALESCE(${b.block_type}, block_type),
+      title_ru = COALESCE(${b.title_ru}, title_ru),
+      title_en = COALESCE(${b.title_en}, title_en),
+      title_es = COALESCE(${b.title_es}, title_es),
+      payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
+      points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
+      unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition)
+      WHERE id = ${bid} RETURNING *`;
+    if (!updated) return res.status(404).json({ error: 'Not found' });
+    res.json({ block: updated });
+  } catch (err) { console.error('PATCH block:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/admin/courses/:cid/blocks/:bid — remove a block
+app.delete('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const bid = parseInt(req.params.bid, 10);
+    await sql`DELETE FROM course_blocks WHERE id = ${bid}`;
+    res.json({ ok: true, deleted: bid });
+  } catch (err) { console.error('DELETE block:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/courses/:id/blocks/reorder — set order_idx for each id in given array
+app.post('/api/admin/courses/:id/blocks/reorder', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const courseId = parseInt(req.params.id, 10);
+    const order = Array.isArray(req.body?.order) ? req.body.order : null;
+    if (!order) return res.status(400).json({ error: 'order array required' });
+    for (let i = 0; i < order.length; i++) {
+      const bid = parseInt(order[i], 10);
+      if (bid) await sql`UPDATE course_blocks SET order_idx = ${i} WHERE id = ${bid} AND course_id = ${courseId}`;
+    }
+    res.json({ ok: true, reordered: order.length });
+  } catch (err) { console.error('reorder blocks:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Course branches (for question_branch blocks) ──
+app.post('/api/admin/courses/:cid/blocks/:bid/branches', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const bid = parseInt(req.params.bid, 10);
+    const { answer_key, next_block_id, label_ru, label_en, label_es } = req.body || {};
+    if (!answer_key) return res.status(400).json({ error: 'answer_key required' });
+    const [row] = await sql`
+      INSERT INTO course_branches (block_id, answer_key, next_block_id, label_ru, label_en, label_es)
+      VALUES (${bid}, ${answer_key}, ${next_block_id ? parseInt(next_block_id,10) : null},
+              ${label_ru||''}, ${label_en||''}, ${label_es||''})
+      RETURNING *
+    `;
+    res.status(201).json({ branch: row });
+  } catch (err) { console.error('POST branch:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/courses/:cid/blocks/:bid/branches/:brid', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const brid = parseInt(req.params.brid, 10);
+    await sql`DELETE FROM course_branches WHERE id = ${brid}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE branch:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Course assets (upload audio/image/video for sound cues, covers, inline media) ──
+app.post('/api/admin/courses/:id/assets', requireAuth, uploadAudio.single('file'), async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const courseId = parseInt(req.params.id, 10);
+    const { asset_type, filename } = req.body || {};
+    if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'file required (multipart "file")' });
+    const safeName = String(filename || req.file.originalname || 'asset').toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
+    const ext = (safeName.split('.').pop() || 'bin').slice(0, 8);
+    const stamp = Date.now();
+    const gitPath = `assets/audio/courses/${courseId}/${stamp}-${safeName}`;
+    await githubUploadFile(gitPath, req.file.buffer.toString('base64'), `[course ${courseId}] add asset: ${safeName}`);
+    const url = `https://neuroattention.org/${gitPath}`;
+    const [row] = await sql`
+      INSERT INTO course_assets (course_id, filename, asset_type, github_url, size_bytes)
+      VALUES (${courseId}, ${safeName}, ${asset_type || ext}, ${url}, ${req.file.size || 0})
+      RETURNING *
+    `;
+    res.status(201).json({ asset: row });
+  } catch (err) { console.error('POST asset:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/admin/courses/:id/assets — list assets for a course
+app.get('/api/admin/courses/:id/assets', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const courseId = parseInt(req.params.id, 10);
+    const rows = await sql`SELECT * FROM course_assets WHERE course_id = ${courseId} ORDER BY uploaded_at DESC`;
+    res.json({ assets: rows });
+  } catch (err) { console.error('GET assets:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PACK 21: Admin test confirmation email ──

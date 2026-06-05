@@ -1425,6 +1425,7 @@
     <button class="dash-tab" data-tab="admin-vocab" id="admin-vocab-tab" style="display:none;" data-i18n="a.admin.vocab_tab">Словарь</button>
     <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
     <button class="dash-tab" data-tab="admin-diagnostic" id="admin-diag-tab" style="display:none;" data-i18n="a.admin.diag_tab">Диагностика</button>
+    <button class="dash-tab" data-tab="admin-courses" id="admin-courses-tab" style="display:none;" data-i18n="a.admin.courses_tab">Конструктор курсов</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -1774,6 +1775,77 @@
           <div style="display:flex;gap:0.5rem;margin-top:1rem;">
             <button class="btn btn-ghost" onclick="diagAddItem('question')" style="font-size:12px;padding:0.4rem 0.8rem;" data-i18n="a.admin.diag.btn_add_question">+ Вопрос</button>
             <button class="btn btn-ghost" onclick="diagAddItem('task')" style="font-size:12px;padding:0.4rem 0.8rem;" data-i18n="a.admin.diag.btn_add_task">+ Задание</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pack 24: Course Constructor -->
+  <div class="tab-panel" id="tab-admin-courses">
+    <div class="dash-grid">
+      <!-- Left rail: course list -->
+      <div class="dash-card glass-card-elevated" style="grid-column:span 4;">
+        <h3 style="margin:0 0 0.25rem;font-size:15px;" data-i18n="a.admin.courses.list_title">Курсы</h3>
+        <p style="margin:0 0 1rem;font-size:11px;color:var(--text-muted);" data-i18n="a.admin.courses.list_subtitle">Список созданных курсов. Нажмите чтобы редактировать.</p>
+        <div id="courses-list" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.75rem;"></div>
+        <button class="btn btn-solid" onclick="courseCreateBlank()" style="width:100%;font-size:12px;padding:0.5rem 0.75rem;" data-i18n="a.admin.courses.btn_new">+ Создать новый курс</button>
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:1rem 0;">
+        <h4 style="margin:0 0 0.5rem;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;" data-i18n="a.admin.courses.legacy_title">Старые практики</h4>
+        <p style="margin:0;font-size:11px;color:var(--text-dim);line-height:1.45;" data-i18n="a.admin.courses.legacy_hint">Загруженные ранее аудио по-прежнему доступны как блоки внутри курса (через «+ Добавить вставку» → Практика).</p>
+      </div>
+
+      <!-- Right rail: course editor -->
+      <div class="dash-card glass-card-elevated" style="grid-column:span 8;" id="course-editor-card">
+        <div id="course-editor-empty" style="text-align:center;color:var(--text-muted);font-size:13px;padding:3rem 1rem;" data-i18n="a.admin.courses.empty_select">Выберите курс слева или создайте новый</div>
+        <div id="course-editor" style="display:none;">
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.6rem;flex-wrap:wrap;">
+            <input id="course-slug" type="text" data-i18n-placeholder="a.admin.courses.slug_ph" placeholder="slug (латиница)" style="flex:0 0 180px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace;">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:12px;color:var(--text-muted);">
+              <input id="course-published" type="checkbox" style="accent-color:var(--accent-cyan);"> <span data-i18n="a.admin.courses.published">Опубликован</span>
+            </label>
+            <button class="btn btn-solid" onclick="courseSaveMeta()" id="course-save-btn" style="font-size:12px;padding:0.4rem 0.9rem;margin-left:auto;" data-i18n="a.admin.courses.btn_save">Сохранить</button>
+            <button class="btn btn-ghost" onclick="courseDelete()" id="course-delete-btn" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-rose);" data-i18n="a.admin.courses.btn_delete">Удалить</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <input id="course-name-ru" type="text" placeholder="Название (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="course-name-en" type="text" placeholder="Name (EN)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="course-name-es" type="text" placeholder="Nombre (ES)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <textarea id="course-desc-ru" rows="2" placeholder="Описание (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+            <textarea id="course-desc-en" rows="2" placeholder="Description (EN)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+            <textarea id="course-desc-es" rows="2" placeholder="Descripción (ES)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+          </div>
+
+          <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;padding:0.5rem 0.6rem;background:rgba(0,224,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;">
+            <span style="font-size:11px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;" data-i18n="a.admin.courses.access_title">Доступ по программе:</span>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="self" style="accent-color:var(--accent-cyan);"> Self-Guided</label>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="guided" style="accent-color:var(--accent-cyan);"> Guided</label>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="group" style="accent-color:var(--accent-cyan);"> Group</label>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="rehab" style="accent-color:var(--accent-cyan);"> Rehabilitation</label>
+          </div>
+
+          <p id="course-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
+
+          <!-- Blocks editor -->
+          <h4 style="margin:1rem 0 0.5rem;font-size:13px;color:var(--text-primary);" data-i18n="a.admin.courses.blocks_title">Блоки курса</h4>
+          <div id="course-blocks-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+
+          <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="courseAddBlock('practice')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Практика"><span>+ Практика</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('text')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Текст"><span>+ Текст</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('video')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Видео"><span>+ Видео</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('audio')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Аудио"><span>+ Аудио</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('image')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Фото"><span>+ Фото</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('link')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Ссылка"><span>+ Ссылка</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('sensation_prompt')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Запрос ощущений"><span>+ Запрос ощущений</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('break')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Перерыв"><span>+ Перерыв</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('student_audio')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Аудио от ученика"><span>+ Аудио ответ</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('student_text')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Текст от ученика"><span>+ Текст ответ</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('question_branch')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Ветвление по ответу"><span>+ Ветвление</span></button>
+            <button class="btn btn-ghost" onclick="courseAddBlock('sound_cue')" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-amber);" title="Звуковой сигнал"><span>+ Звуковой сигнал</span></button>
           </div>
         </div>
       </div>
@@ -2777,6 +2849,12 @@ function setupAdminDashboard(user){
   if(diagTab && (isFounder || isSpec)){
     diagTab.style.display = '';
     if (typeof loadDiagTemplates === 'function') loadDiagTemplates();
+  }
+  // Pack 24: Course Constructor tab — founder/superadmin/admin
+  var coursesTab = document.getElementById('admin-courses-tab');
+  if(coursesTab && isFounder){
+    coursesTab.style.display = '';
+    if (typeof loadCourses === 'function') loadCourses();
   }
 }
 
@@ -8775,6 +8853,331 @@ function diagSaveSessionInline(){
 }
 window.diagSaveSessionInline = diagSaveSessionInline;
 window.diagClearAnswers = diagClearAnswers;
+
+// ══════════════════════════════════════════
+// Pack 24: Course Constructor
+// ══════════════════════════════════════════
+var courseState = { courses: [], currentId: null, currentCourse: null, currentBlocks: [], dirtyMeta: false };
+
+function courseApi(path, opts){
+  var token = localStorage.getItem('na_token');
+  opts = opts || {};
+  opts.headers = Object.assign({ 'Authorization': 'Bearer ' + token }, opts.headers || {});
+  if (opts.body && !(opts.body instanceof FormData) && typeof opts.body !== 'string') {
+    opts.body = JSON.stringify(opts.body);
+    opts.headers['Content-Type'] = 'application/json';
+  } else if (typeof opts.body === 'string') {
+    opts.headers['Content-Type'] = 'application/json';
+  }
+  return fetch(AUTH_API + path, opts).then(function(r){
+    return r.text().then(function(txt){
+      var data; try { data = JSON.parse(txt); } catch(e) { data = { error: txt.slice(0,200) }; }
+      if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+      return data;
+    });
+  });
+}
+
+function loadCourses(){
+  var box = document.getElementById('courses-list');
+  if (box) box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Загрузка…</p>';
+  courseApi('/api/admin/courses').then(function(d){
+    courseState.courses = d.courses || [];
+    renderCoursesList();
+  }).catch(function(e){
+    if (box) box.innerHTML = '<p style="font-size:11px;color:#f55;">Ошибка: ' + e.message + '</p>';
+  });
+}
+window.loadCourses = loadCourses;
+
+function renderCoursesList(){
+  var box = document.getElementById('courses-list');
+  if (!box) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if (!courseState.courses.length){
+    box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">—</p>';
+    return;
+  }
+  box.innerHTML = courseState.courses.map(function(c){
+    var nm = c['name_'+lang] || c.name_ru || c.name_en || c.slug;
+    var active = (courseState.currentId === c.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
+    var pub = c.is_published ? '<span style="color:var(--accent-green);font-size:9px;margin-left:0.3rem;">●&nbsp;PUB</span>' : '<span style="color:var(--text-dim);font-size:9px;margin-left:0.3rem;">○ DRAFT</span>';
+    return '<div onclick="courseSelect(' + c.id + ')" style="cursor:pointer;padding:0.55rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;' + active + '">'
+         + '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + nm + pub + '</div>'
+         + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-family:JetBrains Mono,monospace;">' + (c.slug || '') + ' · ' + (c.block_count || 0) + ' блоков</div>'
+         + '</div>';
+  }).join('');
+}
+
+function courseSelect(id){
+  if (courseState.dirtyMeta && !confirm('Есть несохранённые изменения в текущем курсе. Продолжить?')) return;
+  courseApi('/api/admin/courses/' + id).then(function(d){
+    courseState.currentId = id;
+    courseState.currentCourse = d.course;
+    courseState.currentBlocks = d.blocks || [];
+    courseState.dirtyMeta = false;
+    renderCoursesList();
+    renderCourseEditor();
+  }).catch(function(e){ alert(e.message); });
+}
+window.courseSelect = courseSelect;
+
+function courseCreateBlank(){
+  var slug = prompt('Slug нового курса (латиница, например: focus-week-1):');
+  if (!slug) return;
+  courseApi('/api/admin/courses', { method: 'POST', body: { slug: slug, name_ru: 'Новый курс' } })
+    .then(function(d){
+      loadCourses();
+      setTimeout(function(){ courseSelect(d.course.id); }, 300);
+    })
+    .catch(function(e){ alert(e.message); });
+}
+window.courseCreateBlank = courseCreateBlank;
+
+function renderCourseEditor(){
+  var emptyEl = document.getElementById('course-editor-empty');
+  var editor = document.getElementById('course-editor');
+  if (!editor) return;
+  if (!courseState.currentCourse){ emptyEl.style.display = ''; editor.style.display = 'none'; return; }
+  emptyEl.style.display = 'none'; editor.style.display = '';
+  var c = courseState.currentCourse;
+  document.getElementById('course-slug').value = c.slug || '';
+  document.getElementById('course-name-ru').value = c.name_ru || '';
+  document.getElementById('course-name-en').value = c.name_en || '';
+  document.getElementById('course-name-es').value = c.name_es || '';
+  document.getElementById('course-desc-ru').value = c.description_ru || '';
+  document.getElementById('course-desc-en').value = c.description_en || '';
+  document.getElementById('course-desc-es').value = c.description_es || '';
+  document.getElementById('course-published').checked = !!c.is_published;
+  // Program access
+  var access = c.program_access || [];
+  document.querySelectorAll('.course-access-cb').forEach(function(cb){
+    cb.checked = access.indexOf(cb.value) !== -1;
+  });
+  renderCourseBlocks();
+}
+
+function courseSaveMeta(){
+  if (!courseState.currentCourse) return;
+  var access = Array.from(document.querySelectorAll('.course-access-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
+  var body = {
+    name_ru: document.getElementById('course-name-ru').value,
+    name_en: document.getElementById('course-name-en').value,
+    name_es: document.getElementById('course-name-es').value,
+    description_ru: document.getElementById('course-desc-ru').value,
+    description_en: document.getElementById('course-desc-en').value,
+    description_es: document.getElementById('course-desc-es').value,
+    is_published: document.getElementById('course-published').checked,
+    program_access: access
+  };
+  courseSetStatus('Сохранение…');
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id, { method: 'PATCH', body: body })
+    .then(function(d){
+      courseState.currentCourse = d.course;
+      courseState.dirtyMeta = false;
+      courseSetStatus('Сохранено', true);
+      loadCourses();
+    })
+    .catch(function(e){ courseSetStatus('Ошибка: ' + e.message); });
+}
+window.courseSaveMeta = courseSaveMeta;
+
+function courseDelete(){
+  if (!courseState.currentCourse) return;
+  if (!confirm('Удалить курс целиком? Все блоки и ассеты тоже пропадут.')) return;
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id, { method: 'DELETE' })
+    .then(function(){
+      courseState.currentId = null;
+      courseState.currentCourse = null;
+      courseState.currentBlocks = [];
+      loadCourses();
+      renderCourseEditor();
+    })
+    .catch(function(e){ alert(e.message); });
+}
+window.courseDelete = courseDelete;
+
+function courseSetStatus(msg, ok){
+  var s = document.getElementById('course-status-line');
+  if (!s) return;
+  s.textContent = msg || '';
+  s.style.color = ok ? '#0e9' : 'var(--text-muted)';
+}
+
+function courseAddBlock(blockType){
+  if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
+  // Default payload shape for each block_type
+  var payloadDefaults = {
+    practice: { practice_id: null },
+    text: { body_ru: '', body_en: '', body_es: '' },
+    video: { url: '', duration_seconds: 0 },
+    audio: { audio_url: '', duration_seconds: 0 },
+    image: { image_url: '', caption_ru: '', caption_en: '', caption_es: '' },
+    link: { url: '', label_ru: '', label_en: '', label_es: '' },
+    sensation_prompt: { prompt_ru: '', prompt_en: '', prompt_es: '' },
+    break: { duration_seconds: 60 },
+    student_audio: { prompt_ru: '', prompt_en: '', prompt_es: '', max_duration_seconds: 120 },
+    student_text: { prompt_ru: '', prompt_en: '', prompt_es: '' },
+    question_branch: { question_ru: '', question_en: '', question_es: '', options: [] },
+    sound_cue: { audio_url: '', label: '' }
+  };
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', {
+    method: 'POST',
+    body: { block_type: blockType, title_ru: '', payload: payloadDefaults[blockType] || {}, points: 0 }
+  })
+  .then(function(d){
+    courseState.currentBlocks.push(d.block);
+    renderCourseBlocks();
+  })
+  .catch(function(e){ alert(e.message); });
+}
+window.courseAddBlock = courseAddBlock;
+
+function courseDeleteBlock(blockId){
+  if (!confirm('Удалить блок?')) return;
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks/' + blockId, { method: 'DELETE' })
+    .then(function(){
+      courseState.currentBlocks = courseState.currentBlocks.filter(function(b){ return b.id !== blockId; });
+      renderCourseBlocks();
+    })
+    .catch(function(e){ alert(e.message); });
+}
+window.courseDeleteBlock = courseDeleteBlock;
+
+function courseUpdateBlock(blockId, patch){
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks/' + blockId, { method: 'PATCH', body: patch })
+    .then(function(d){
+      var idx = courseState.currentBlocks.findIndex(function(b){ return b.id === blockId; });
+      if (idx >= 0) courseState.currentBlocks[idx] = d.block;
+      courseSetStatus('Блок сохранён', true);
+    })
+    .catch(function(e){ courseSetStatus('Ошибка: ' + e.message); });
+}
+window.courseUpdateBlock = courseUpdateBlock;
+
+function courseReorderBlocks(){
+  var ids = courseState.currentBlocks.map(function(b){ return b.id; });
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks/reorder', { method: 'POST', body: { order: ids } })
+    .then(function(){ courseSetStatus('Порядок сохранён', true); })
+    .catch(function(e){ courseSetStatus('Ошибка: ' + e.message); });
+}
+
+function courseBlockDragStart(e, idx){ e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move'; }
+function courseBlockDrop(e, toIdx){
+  e.preventDefault();
+  var fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+  if (isNaN(fromIdx) || fromIdx === toIdx) return;
+  var moved = courseState.currentBlocks.splice(fromIdx, 1)[0];
+  courseState.currentBlocks.splice(toIdx, 0, moved);
+  renderCourseBlocks();
+  courseReorderBlocks();
+}
+window.courseBlockDragStart = courseBlockDragStart;
+window.courseBlockDrop = courseBlockDrop;
+
+function renderCourseBlocks(){
+  var box = document.getElementById('course-blocks-list');
+  if (!box) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if (!courseState.currentBlocks.length){
+    box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);text-align:center;padding:1.5rem 0;" data-i18n="a.admin.courses.empty_blocks">Блоков пока нет. Добавьте первый из меню ниже.</p>';
+    return;
+  }
+  var typeLabels = {
+    practice: '🎧 Практика', text: '📝 Текст', video: '🎬 Видео', audio: '🔊 Аудио',
+    image: '🖼 Фото', link: '🔗 Ссылка', sensation_prompt: '✨ Запрос ощущений',
+    break: '⏸ Перерыв', student_audio: '🎙 Аудио ответ', student_text: '✍️ Текст ответ',
+    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал'
+  };
+  box.innerHTML = courseState.currentBlocks.map(function(b, idx){
+    var label = typeLabels[b.block_type] || b.block_type;
+    var color = b.block_type === 'sound_cue' ? 'var(--accent-amber)'
+              : (b.block_type === 'question_branch' ? 'var(--accent-violet)'
+              : 'var(--accent-cyan)');
+    return '<div draggable="true" ondragstart="courseBlockDragStart(event,' + idx + ')" ondragover="event.preventDefault()" ondrop="courseBlockDrop(event,' + idx + ')" style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:0.7rem;background:rgba(0,0,0,0.18);">'
+         + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">'
+         +   '<span style="cursor:grab;color:var(--text-dim);user-select:none;">⋮⋮</span>'
+         +   '<span style="font-size:10px;color:' + color + ';font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">' + label + ' #' + (idx+1) + '</span>'
+         +   '<input type="number" value="' + (b.points||0) + '" onchange="courseUpdateBlock(' + b.id + ',{points: parseInt(this.value,10)||0})" title="Очки" style="margin-left:auto;width:60px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.4rem;color:var(--text-primary);font-size:11px;text-align:right;"><span style="font-size:10px;color:var(--text-dim);">XP</span>'
+         +   '<button class="btn btn-ghost" onclick="courseDeleteBlock(' + b.id + ')" style="font-size:11px;padding:0.2rem 0.5rem;color:var(--accent-rose);">✕</button>'
+         + '</div>'
+         + '<input value="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" placeholder="Заголовок блока (RU)" onchange="courseUpdateBlock(' + b.id + ', {title_ru: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input value="' + (b.title_en||'').replace(/"/g,'&quot;') + '" placeholder="Block title (EN)" onchange="courseUpdateBlock(' + b.id + ', {title_en: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + '<input value="' + (b.title_es||'').replace(/"/g,'&quot;') + '" placeholder="Título del bloque (ES)" onchange="courseUpdateBlock(' + b.id + ', {title_es: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
+         + renderCourseBlockPayload(b)
+         + '</div>';
+  }).join('');
+}
+window.renderCourseBlocks = renderCourseBlocks;
+
+// Render the per-type payload editor (text body, video URL, etc.)
+function renderCourseBlockPayload(b){
+  var p = b.payload || {};
+  function payInput(field, label, type){
+    var val = p[field] || '';
+    var inputAttr = type === 'textarea' ? '' : ('type="' + (type||'text') + '"');
+    if (type === 'textarea'){
+      return '<label style="font-size:10px;color:var(--text-dim);display:block;margin:0.3rem 0 0.15rem;">' + label + '</label>'
+           + '<textarea rows="3" onchange="courseUpdateBlock(' + b.id + ', {payload: Object.assign({}, ' + JSON.stringify(p) + ', {' + field + ': this.value})})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;resize:vertical;">' + String(val).replace(/</g,'&lt;') + '</textarea>';
+    }
+    return '<label style="font-size:10px;color:var(--text-dim);display:block;margin:0.3rem 0 0.15rem;">' + label + '</label>'
+         + '<input ' + inputAttr + ' value="' + String(val).replace(/"/g,'&quot;') + '" onchange="courseUpdateBlock(' + b.id + ', {payload: Object.assign({}, ' + JSON.stringify(p) + ', {' + field + ': ' + (type==='number'?'parseInt(this.value,10)||0':'this.value') + '})})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;">';
+  }
+  var inner = '';
+  switch (b.block_type) {
+    case 'practice':
+      inner = payInput('practice_id', 'ID практики (audio) — задаётся позже из библиотеки', 'number');
+      break;
+    case 'text':
+      inner = payInput('body_ru', 'Текст RU (markdown)', 'textarea') + payInput('body_en', 'Body EN', 'textarea') + payInput('body_es', 'Cuerpo ES', 'textarea');
+      break;
+    case 'video':
+      inner = payInput('url', 'URL видео (YouTube/Vimeo)') + payInput('duration_seconds', 'Длительность (сек)', 'number');
+      break;
+    case 'audio':
+      inner = payInput('audio_url', 'URL аудио (https://neuroattention.org/...)') + payInput('duration_seconds', 'Длительность (сек)', 'number');
+      break;
+    case 'image':
+      inner = payInput('image_url', 'URL изображения') + payInput('caption_ru', 'Подпись RU') + payInput('caption_en', 'Caption EN') + payInput('caption_es', 'Subtítulo ES');
+      break;
+    case 'link':
+      inner = payInput('url', 'URL') + payInput('label_ru', 'Подпись RU') + payInput('label_en', 'Label EN') + payInput('label_es', 'Texto ES');
+      break;
+    case 'sensation_prompt':
+      inner = payInput('prompt_ru', 'Вопрос об ощущениях (RU)', 'textarea') + payInput('prompt_en', 'Sensation prompt (EN)', 'textarea') + payInput('prompt_es', 'Pregunta de sensación (ES)', 'textarea');
+      break;
+    case 'break':
+      inner = payInput('duration_seconds', 'Длительность перерыва (сек)', 'number');
+      break;
+    case 'student_audio':
+      inner = payInput('prompt_ru', 'Задание для аудио-ответа (RU)', 'textarea') + payInput('prompt_en', 'Audio task (EN)', 'textarea') + payInput('prompt_es', 'Tarea de audio (ES)', 'textarea') + payInput('max_duration_seconds', 'Макс. длительность (сек)', 'number');
+      break;
+    case 'student_text':
+      inner = payInput('prompt_ru', 'Задание для текста (RU)', 'textarea') + payInput('prompt_en', 'Text task (EN)', 'textarea') + payInput('prompt_es', 'Tarea de texto (ES)', 'textarea');
+      break;
+    case 'question_branch':
+      inner = payInput('question_ru', 'Вопрос RU', 'textarea') + payInput('question_en', 'Question EN', 'textarea') + payInput('question_es', 'Pregunta ES', 'textarea')
+            + '<p style="font-size:10px;color:var(--text-dim);margin:0.4rem 0 0;">Варианты ответа и куда вести — в этапе 3 редактора ветвлений (приходит следующим паком).</p>';
+      break;
+    case 'sound_cue':
+      inner = payInput('audio_url', 'URL звукового сигнала (MP3)') + payInput('label', 'Метка (для отладки)');
+      break;
+    default:
+      inner = '<p style="font-size:11px;color:var(--text-muted);">Редактор для типа «' + b.block_type + '» в разработке.</p>';
+  }
+  return '<div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.06);">' + inner + '</div>';
+}
+
+// Re-fetch courses when tab is clicked (in case data changed)
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var coursesTab = document.getElementById('admin-courses-tab');
+    if (coursesTab && !coursesTab.dataset.bound) {
+      coursesTab.dataset.bound = '1';
+      coursesTab.addEventListener('click', function(){ if (typeof loadCourses === 'function') loadCourses(); });
+    }
+  }, 800);
+});
 
 function renderDiagEditor(){
   var emptyEl = document.getElementById('diag-editor-empty');
