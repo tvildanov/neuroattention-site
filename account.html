@@ -9110,35 +9110,112 @@ function renderCourseBlocks(){
 }
 window.renderCourseBlocks = renderCourseBlocks;
 
+// Patch a single payload field on a block (uses current cached payload, sends PATCH)
+function cbSetField(blockId, field, value){
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  var newPayload = Object.assign({}, blk.payload || {});
+  newPayload[field] = value;
+  blk.payload = newPayload; // optimistic local update
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks/' + blockId, { method: 'PATCH', body: { payload: newPayload } })
+    .then(function(d){
+      var idx = courseState.currentBlocks.findIndex(function(b){ return b.id === blockId; });
+      if (idx >= 0) courseState.currentBlocks[idx] = d.block;
+      courseSetStatus('Сохранено', true);
+    })
+    .catch(function(e){ courseSetStatus('Ошибка: ' + e.message); });
+}
+window.cbSetField = cbSetField;
+
+// Upload an asset (multipart) to a course and fill a payload field with the resulting URL
+function cbUploadAsset(blockId, field, assetType){
+  if (!courseState.currentCourse) return;
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  if (assetType === 'audio') inp.accept = 'audio/*,.mp3,.wav,.m4a,.ogg';
+  else if (assetType === 'video') inp.accept = 'video/*,.mp4,.mov,.webm';
+  else if (assetType === 'image') inp.accept = 'image/*';
+  inp.onchange = function(ev){
+    var file = ev.target.files[0];
+    if (!file) return;
+    var fd = new FormData();
+    fd.append('file', file, file.name);
+    fd.append('asset_type', assetType || (file.type.split('/')[0] || 'audio'));
+    fd.append('filename', file.name);
+    courseSetStatus('Загрузка файла ' + file.name + '…');
+    courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/assets', { method: 'POST', body: fd })
+      .then(function(d){
+        courseSetStatus('Файл загружен: ' + d.asset.filename, true);
+        cbSetField(blockId, field, d.asset.github_url);
+        renderCourseBlocks();
+      })
+      .catch(function(e){ courseSetStatus('Ошибка загрузки: ' + e.message); });
+  };
+  inp.click();
+}
+window.cbUploadAsset = cbUploadAsset;
+
+// Practice picker modal — list existing practices, pick one to populate practice_id
+function cbPickPractice(blockId){
+  courseApi('/api/admin/practices').then(function(d){
+    var practices = d.practices || [];
+    if (!practices.length) { alert('Нет загруженных практик. Сначала добавь хотя бы одну через блок «🔊 Аудио».'); return; }
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10005;padding:2rem 1rem;overflow-y:auto;';
+    var inner = '<div style="max-width:560px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">';
+    inner += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;"><h3 style="margin:0;font-size:15px;">Выбери практику</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:14px;">✕</button></div>';
+    inner += practices.map(function(pr){
+      return '<div onclick="cbSetField(' + blockId + ',\'practice_id\',' + pr.id + ');renderCourseBlocks();this.closest(\'div[style*=fixed]\').remove();" style="cursor:pointer;padding:0.6rem 0.75rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.4rem;background:rgba(0,0,0,0.2);">'
+           + '<div style="font-size:13px;font-weight:600;">' + (pr.name||'—') + '</div>'
+           + '<div style="font-size:10px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">'+pr.slug+' · '+pr.lang+' · '+(pr.duration_seconds||0)+'s</div>'
+           + '</div>';
+    }).join('');
+    inner += '</div>';
+    modal.innerHTML = inner;
+    document.body.appendChild(modal);
+  }).catch(function(e){ alert(e.message); });
+}
+window.cbPickPractice = cbPickPractice;
+
 // Render the per-type payload editor (text body, video URL, etc.)
 function renderCourseBlockPayload(b){
   var p = b.payload || {};
-  function payInput(field, label, type){
-    var val = p[field] || '';
-    var inputAttr = type === 'textarea' ? '' : ('type="' + (type||'text') + '"');
+  function payInput(field, label, type, uploadAssetType){
+    var val = p[field];
+    if (val == null) val = '';
+    var uploadBtn = uploadAssetType
+      ? '<button type="button" class="btn btn-ghost" onclick="cbUploadAsset(' + b.id + ',\'' + field + '\',\'' + uploadAssetType + '\')" style="font-size:10px;padding:0.2rem 0.5rem;margin-left:0.4rem;" title="Загрузить файл">📤 Файл</button>'
+      : '';
     if (type === 'textarea'){
       return '<label style="font-size:10px;color:var(--text-dim);display:block;margin:0.3rem 0 0.15rem;">' + label + '</label>'
-           + '<textarea rows="3" onchange="courseUpdateBlock(' + b.id + ', {payload: Object.assign({}, ' + JSON.stringify(p) + ', {' + field + ': this.value})})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;resize:vertical;">' + String(val).replace(/</g,'&lt;') + '</textarea>';
+           + '<textarea rows="3" onchange="cbSetField(' + b.id + ',\'' + field + '\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;resize:vertical;">' + String(val).replace(/</g,'&lt;') + '</textarea>';
     }
-    return '<label style="font-size:10px;color:var(--text-dim);display:block;margin:0.3rem 0 0.15rem;">' + label + '</label>'
-         + '<input ' + inputAttr + ' value="' + String(val).replace(/"/g,'&quot;') + '" onchange="courseUpdateBlock(' + b.id + ', {payload: Object.assign({}, ' + JSON.stringify(p) + ', {' + field + ': ' + (type==='number'?'parseInt(this.value,10)||0':'this.value') + '})})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;">';
+    var inputAttr = 'type="' + (type==='number'?'number':'text') + '"';
+    var conv = type==='number' ? 'parseInt(this.value,10)||0' : 'this.value';
+    return '<label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;margin:0.3rem 0 0.15rem;">' + label + uploadBtn + '</label>'
+         + '<input ' + inputAttr + ' value="' + String(val).replace(/"/g,'&quot;') + '" onchange="cbSetField(' + b.id + ',\'' + field + '\',' + conv + ')" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;">';
   }
   var inner = '';
   switch (b.block_type) {
     case 'practice':
-      inner = payInput('practice_id', 'ID практики (audio) — задаётся позже из библиотеки', 'number');
+      var prId = p.practice_id;
+      inner = '<div style="display:flex;gap:0.4rem;align-items:center;">'
+            +   payInput('practice_id', 'Practice ID', 'number')
+            + '</div>'
+            + '<button type="button" class="btn btn-ghost" onclick="cbPickPractice(' + b.id + ')" style="margin-top:0.4rem;font-size:11px;padding:0.3rem 0.7rem;">🔎 Выбрать из библиотеки</button>'
+            + (prId ? '<span style="font-size:10px;color:var(--accent-green);margin-left:0.5rem;">✓ id=' + prId + '</span>' : '');
       break;
     case 'text':
       inner = payInput('body_ru', 'Текст RU (markdown)', 'textarea') + payInput('body_en', 'Body EN', 'textarea') + payInput('body_es', 'Cuerpo ES', 'textarea');
       break;
     case 'video':
-      inner = payInput('url', 'URL видео (YouTube/Vimeo)') + payInput('duration_seconds', 'Длительность (сек)', 'number');
+      inner = payInput('url', 'URL видео (YouTube/Vimeo/MP4)', 'text', 'video') + payInput('duration_seconds', 'Длительность (сек)', 'number');
       break;
     case 'audio':
-      inner = payInput('audio_url', 'URL аудио (https://neuroattention.org/...)') + payInput('duration_seconds', 'Длительность (сек)', 'number');
+      inner = payInput('audio_url', 'URL аудио', 'text', 'audio') + payInput('duration_seconds', 'Длительность (сек)', 'number');
       break;
     case 'image':
-      inner = payInput('image_url', 'URL изображения') + payInput('caption_ru', 'Подпись RU') + payInput('caption_en', 'Caption EN') + payInput('caption_es', 'Subtítulo ES');
+      inner = payInput('image_url', 'URL изображения', 'text', 'image') + payInput('caption_ru', 'Подпись RU') + payInput('caption_en', 'Caption EN') + payInput('caption_es', 'Subtítulo ES');
       break;
     case 'link':
       inner = payInput('url', 'URL') + payInput('label_ru', 'Подпись RU') + payInput('label_en', 'Label EN') + payInput('label_es', 'Texto ES');
@@ -9156,17 +9233,72 @@ function renderCourseBlockPayload(b){
       inner = payInput('prompt_ru', 'Задание для текста (RU)', 'textarea') + payInput('prompt_en', 'Text task (EN)', 'textarea') + payInput('prompt_es', 'Tarea de texto (ES)', 'textarea');
       break;
     case 'question_branch':
+      var opts = Array.isArray(p.options) ? p.options : [];
+      var optsRows = opts.map(function(o, oi){
+        var label = (typeof o === 'string') ? o : (o.label || o.key || ('Option '+(oi+1)));
+        var nextId = (typeof o === 'object') ? (o.next_block_id || '') : '';
+        var nextSel = '<select onchange="cbBranchSetNext(' + b.id + ',' + oi + ',this.value)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.4rem;color:var(--text-primary);font-size:11px;"><option value="">— конец / следующий по порядку —</option>';
+        courseState.currentBlocks.forEach(function(bb, bi){ if (bb.id !== b.id) nextSel += '<option value="' + bb.id + '"' + (String(nextId)===String(bb.id)?' selected':'') + '>#' + (bi+1) + ' ' + (bb.title_ru || bb.block_type) + '</option>'; });
+        nextSel += '</select>';
+        return '<div style="display:flex;gap:0.3rem;align-items:center;margin-bottom:0.3rem;">'
+             + '<input value="' + String(label).replace(/"/g,'&quot;') + '" onchange="cbBranchSetLabel(' + b.id + ',' + oi + ',this.value)" placeholder="Вариант ответа" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.5rem;color:var(--text-primary);font-size:11px;">'
+             + nextSel
+             + '<button type="button" class="btn btn-ghost" onclick="cbBranchRemove(' + b.id + ',' + oi + ')" style="font-size:11px;padding:0.15rem 0.4rem;color:var(--accent-rose);">✕</button>'
+             + '</div>';
+      }).join('');
       inner = payInput('question_ru', 'Вопрос RU', 'textarea') + payInput('question_en', 'Question EN', 'textarea') + payInput('question_es', 'Pregunta ES', 'textarea')
-            + '<p style="font-size:10px;color:var(--text-dim);margin:0.4rem 0 0;">Варианты ответа и куда вести — в этапе 3 редактора ветвлений (приходит следующим паком).</p>';
+            + '<label style="font-size:10px;color:var(--text-dim);display:block;margin:0.6rem 0 0.3rem;">Варианты ответа → куда ведут:</label>'
+            + optsRows
+            + '<button type="button" class="btn btn-ghost" onclick="cbBranchAdd(' + b.id + ')" style="font-size:11px;padding:0.25rem 0.6rem;">+ Добавить вариант</button>';
       break;
     case 'sound_cue':
-      inner = payInput('audio_url', 'URL звукового сигнала (MP3)') + payInput('label', 'Метка (для отладки)');
+      inner = payInput('audio_url', 'URL звукового сигнала (MP3)', 'text', 'audio') + payInput('label', 'Метка (для отладки)');
       break;
     default:
       inner = '<p style="font-size:11px;color:var(--text-muted);">Редактор для типа «' + b.block_type + '» в разработке.</p>';
   }
   return '<div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.06);">' + inner + '</div>';
 }
+
+// Branch helpers — store options inline in payload.options as [{label, next_block_id}]
+function cbBranchAdd(blockId){
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  var p = Object.assign({}, blk.payload || {});
+  var opts = Array.isArray(p.options) ? p.options.slice() : [];
+  opts.push({ label: 'Вариант ' + (opts.length + 1), next_block_id: null });
+  p.options = opts;
+  cbSetField(blockId, 'options', opts);
+  setTimeout(renderCourseBlocks, 100);
+}
+function cbBranchRemove(blockId, idx){
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  var opts = Array.isArray(blk.payload?.options) ? blk.payload.options.slice() : [];
+  opts.splice(idx, 1);
+  cbSetField(blockId, 'options', opts);
+  setTimeout(renderCourseBlocks, 100);
+}
+function cbBranchSetLabel(blockId, idx, label){
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  var opts = Array.isArray(blk.payload?.options) ? blk.payload.options.slice() : [];
+  if (typeof opts[idx] === 'string') opts[idx] = { label: opts[idx] };
+  opts[idx] = Object.assign({}, opts[idx] || {}, { label: label });
+  cbSetField(blockId, 'options', opts);
+}
+function cbBranchSetNext(blockId, idx, nextId){
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  var opts = Array.isArray(blk.payload?.options) ? blk.payload.options.slice() : [];
+  if (typeof opts[idx] === 'string') opts[idx] = { label: opts[idx] };
+  opts[idx] = Object.assign({}, opts[idx] || {}, { next_block_id: nextId ? parseInt(nextId,10) : null });
+  cbSetField(blockId, 'options', opts);
+}
+window.cbBranchAdd = cbBranchAdd;
+window.cbBranchRemove = cbBranchRemove;
+window.cbBranchSetLabel = cbBranchSetLabel;
+window.cbBranchSetNext = cbBranchSetNext;
 
 // Re-fetch courses when tab is clicked (in case data changed)
 document.addEventListener('DOMContentLoaded', function(){
