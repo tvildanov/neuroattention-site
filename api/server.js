@@ -3892,6 +3892,100 @@ app.get('/api/admin/courses/:id/assets', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET assets:', err); res.status(500).json({ error: err.message }); }
 });
 
+// ──────────────────────────────────────────────────────────────────
+// PACK 24 phase 3 — student-side: list, fetch, complete blocks
+// ──────────────────────────────────────────────────────────────────
+
+// Resolve the set of program access keys for a given user.
+// Returns a string[] like ['self','rehab'] — admins/founders always get all.
+async function getUserAccessTags(userId) {
+  if (!userId) return [];
+  const [user] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+  if (!user) return [];
+  if (['superadmin', 'founder', 'admin'].includes(user.role)) return ['self','guided','group','rehab'];
+  // Purchases via consent_log (Pack 21 schema): map product → access tag
+  // product values seen: 'lab' (Self-Guided), 'rehab' (Rehabilitation), 'guided', 'group'
+  const rows = await sql`SELECT DISTINCT product FROM consent_log
+    WHERE user_id = ${userId} AND payment_status IN ('paid','completed')`;
+  const map = { lab: 'self', rehab: 'rehab', guided: 'guided', group: 'group' };
+  const tags = new Set();
+  for (const r of rows) if (map[r.product]) tags.add(map[r.product]);
+  return Array.from(tags);
+}
+
+// GET /api/courses — list published courses available to the caller (gated by their access tags)
+app.get('/api/courses', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const access = await getUserAccessTags(userId);
+    // If user has no access, return only courses with empty program_access (open to all logged-in users)
+    const rows = await sql`
+      SELECT id, slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
+             cover_url, program_access,
+             (SELECT COUNT(*) FROM course_blocks WHERE course_id = courses.id) AS block_count
+      FROM courses
+      WHERE is_published = true
+        AND (program_access = '{}' OR program_access && ${access}::text[])
+      ORDER BY order_idx ASC, id DESC
+    `;
+    res.json({ courses: rows, access });
+  } catch (err) { console.error('GET /api/courses:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/courses/:slug — get full course (with blocks) for the student
+app.get('/api/courses/:slug', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const access = await getUserAccessTags(userId);
+    const [course] = await sql`SELECT * FROM courses WHERE slug = ${req.params.slug} AND is_published = true`;
+    if (!course) return res.status(404).json({ error: 'Course not found' });
+    // Access check
+    const courseAccess = course.program_access || [];
+    const hasAccess = courseAccess.length === 0 || courseAccess.some(t => access.includes(t));
+    if (!hasAccess) return res.status(403).json({ error: 'No access to this course' });
+    const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points
+                              FROM course_blocks WHERE course_id = ${course.id} ORDER BY order_idx ASC`;
+    const progress = await sql`SELECT block_id, response, points_earned, completed_at FROM course_block_progress
+                                WHERE user_id = ${userId} AND course_id = ${course.id}`;
+    res.json({ course, blocks, progress });
+  } catch (err) { console.error('GET /api/courses/:slug:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/courses/:id/blocks/:bid/complete — mark block complete, save response, award points
+app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const courseId = parseInt(req.params.id, 10);
+    const blockId = parseInt(req.params.bid, 10);
+    const { response } = req.body || {};
+    const [block] = await sql`SELECT * FROM course_blocks WHERE id = ${blockId} AND course_id = ${courseId}`;
+    if (!block) return res.status(404).json({ error: 'Block not found' });
+    const points = parseInt(block.points, 10) || 0;
+    await sql`
+      INSERT INTO course_block_progress (user_id, course_id, block_id, response, points_earned)
+      VALUES (${userId}, ${courseId}, ${blockId}, ${response !== undefined ? JSON.stringify(response) : null}::jsonb, ${points})
+      ON CONFLICT (user_id, block_id) DO UPDATE
+        SET response = EXCLUDED.response, points_earned = EXCLUDED.points_earned, completed_at = now()
+    `;
+    // Determine next block: if question_branch, look up answer→next_block_id; else next by order_idx
+    let nextId = null;
+    if (block.block_type === 'question_branch' && response && (block.payload?.options || []).length) {
+      const ans = String(response.answer || response).trim();
+      const match = (block.payload.options || []).find(o =>
+        (o.label && String(o.label).trim() === ans) || (o.key && String(o.key).trim() === ans)
+      );
+      if (match && match.next_block_id) nextId = match.next_block_id;
+    }
+    if (!nextId) {
+      const [next] = await sql`SELECT id FROM course_blocks
+        WHERE course_id = ${courseId} AND order_idx > ${block.order_idx}
+        ORDER BY order_idx ASC LIMIT 1`;
+      nextId = next ? next.id : null;
+    }
+    res.json({ ok: true, next_block_id: nextId, points_earned: points });
+  } catch (err) { console.error('POST complete:', err); res.status(500).json({ error: err.message }); }
+});
+
 // ── PACK 21: Admin test confirmation email ──
 app.post('/api/admin/test-email', requireAuth, async (req, res) => {
   try {
