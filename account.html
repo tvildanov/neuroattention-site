@@ -889,6 +889,18 @@
           </label>
           <button class="btn btn-solid" onclick="domSaveProfile()" style="font-size:12px;padding:0.45rem 1.2rem;" data-i18n="a.domunity.save">Сохранить</button>
           <p id="dom-prof-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);"></p>
+
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:1.5rem 0;">
+          <h4 style="margin:0 0 0.5rem;font-size:14px;color:var(--text-primary);" data-i18n="a.domunity.donate_title">Поддержать NeuroAttention</h4>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.55;margin:0 0 0.75rem;" data-i18n="a.domunity.donate_subtitle">Любая сумма поможет нам продолжать исследования и развивать платформу.</p>
+          <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="domDonate(500)" style="font-size:12px;padding:0.35rem 0.7rem;">$5</button>
+            <button class="btn btn-ghost" onclick="domDonate(1000)" style="font-size:12px;padding:0.35rem 0.7rem;">$10</button>
+            <button class="btn btn-ghost" onclick="domDonate(2500)" style="font-size:12px;padding:0.35rem 0.7rem;">$25</button>
+            <button class="btn btn-ghost" onclick="domDonate(5000)" style="font-size:12px;padding:0.35rem 0.7rem;">$50</button>
+            <input id="dom-donate-amount" type="number" min="1" placeholder="$ другое" style="width:120px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <button class="btn btn-solid" onclick="domDonate(null)" style="font-size:12px;padding:0.35rem 1rem;" data-i18n="a.domunity.donate_btn">Поддержать</button>
+          </div>
         </div>
       </div>
     </div>
@@ -9819,6 +9831,19 @@ function domSaveProfile(){
     .catch(function(e){ document.getElementById('dom-prof-status').textContent='Ошибка: '+e.message; });
 }
 window.domSaveProfile = domSaveProfile;
+
+function domDonate(presetCents){
+  var cents = presetCents;
+  if (!cents) {
+    var v = parseFloat(document.getElementById('dom-donate-amount').value);
+    if (!v || v < 1) { alert('Введите сумму $1+'); return; }
+    cents = Math.round(v * 100);
+  }
+  domApi('/api/donate/checkout', { method:'POST', body: { amount_cents: cents, currency: 'usd' } })
+    .then(function(d){ if (d.checkout_url) window.location.href = d.checkout_url; })
+    .catch(function(e){ alert('Ошибка: ' + e.message); });
+}
+window.domDonate = domDonate;
 
 // Hook DOMunity tab — load when first shown + on click
 document.addEventListener('DOMContentLoaded', function(){
