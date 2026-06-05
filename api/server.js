@@ -239,6 +239,14 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 
 app.use(express.json({ limit: '25mb' }));
 
+// Multer for multipart/form-data uploads (audio practices). Uses memory storage
+// because we forward the buffer straight to GitHub Contents API — no disk needed.
+const multer = require('multer');
+const uploadAudio = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 60 * 1024 * 1024 } // 60 MB hard cap (matches client 50 MB + headroom)
+});
+
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -2757,9 +2765,13 @@ async function githubGetFileSha(filePath) {
 // ─── PRACTICES ENDPOINTS ───
 
 // POST /api/admin/practices — upload practice (founder/superadmin only)
-// Accepts: { slug, block_id, lang, name, description, duration_seconds, order_idx, audio_base64 }
-// audio_base64 is the raw base64 of the mp3 file (no data: prefix)
-app.post('/api/admin/practices', requireAuth, async (req, res) => {
+// Accepts either:
+//   • application/json: { slug, block_id, lang, name, description, duration_seconds,
+//                         order_idx, audio_base64 } — audio_base64 is raw base64 (no data: prefix)
+//   • multipart/form-data: same fields as form fields + `audio` file part
+// Multipart is strongly preferred — iOS Safari fails JSON+base64 over ~25 MB
+// with "the string did not match the expected pattern".
+app.post('/api/admin/practices', requireAuth, uploadAudio.single('audio'), async (req, res) => {
   try {
     const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
     if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
@@ -2767,8 +2779,13 @@ app.post('/api/admin/practices', requireAuth, async (req, res) => {
     }
 
     const { slug, block_id, lang, name, description, duration_seconds, order_idx, audio_base64 } = req.body;
-    if (!slug || !block_id || !lang || !name || !audio_base64) {
-      return res.status(400).json({ error: 'Required: slug, block_id, lang, name, audio_base64' });
+    // Resolve the audio base64 from either path
+    let resolvedB64 = audio_base64;
+    if (!resolvedB64 && req.file && req.file.buffer) {
+      resolvedB64 = req.file.buffer.toString('base64');
+    }
+    if (!slug || !block_id || !lang || !name || !resolvedB64) {
+      return res.status(400).json({ error: 'Required: slug, block_id, lang, name, audio (multipart) or audio_base64 (json)' });
     }
 
     // Sanitize slug: transliterate Cyrillic → Latin, then strip to [a-z0-9-] so
@@ -2792,15 +2809,18 @@ app.post('/api/admin/practices', requireAuth, async (req, res) => {
     const gitPath = `${GITHUB_AUDIO_PATH}/${fileName}`;
     const commitMsg = `[practices] Add audio: ${fileName}`;
 
-    await githubUploadFile(gitPath, audio_base64, commitMsg);
+    await githubUploadFile(gitPath, resolvedB64, commitMsg);
 
     // Raw URL for the file on GitHub Pages
     const audioUrl = `https://neuroattention.org/${gitPath}`;
 
-    // Insert into DB (use cleaned slug/lang so the row matches the uploaded filename)
+    // Insert into DB (use cleaned slug/lang so the row matches the uploaded filename).
+    // duration_seconds / order_idx arrive as strings via multipart, parseInt safely.
+    const durNum = parseInt(duration_seconds, 10) || 0;
+    const orderNum = parseInt(order_idx, 10) || 0;
     const rows = await sql`
       INSERT INTO practices (slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx)
-      VALUES (${cleanSlug}, ${block_id}, ${cleanLang}, ${name}, ${description || ''}, ${audioUrl}, ${duration_seconds || 0}, ${order_idx || 0})
+      VALUES (${cleanSlug}, ${block_id}, ${cleanLang}, ${name}, ${description || ''}, ${audioUrl}, ${durNum}, ${orderNum})
       RETURNING *
     `;
 
