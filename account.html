@@ -7895,9 +7895,10 @@ function processPractAudioFile(file) {
     return;
   }
   practAudioFileName = file.name;
+  practAudioFile = file;  // kept for memory-efficient multipart upload
   var reader = new FileReader();
   reader.onload = function(ev) {
-    // Extract pure base64 (remove data:audio/mpeg;base64, prefix)
+    // Extract pure base64 (remove data:audio/mpeg;base64, prefix) — kept as legacy fallback
     var b64 = ev.target.result.split(',')[1];
     practAudioBase64 = b64;
     document.getElementById('pract-drop-text').textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
@@ -7923,8 +7924,12 @@ document.getElementById('pract-drop-zone').addEventListener('click', function() 
   document.getElementById('pract-file-input').click();
 });
 
+// Keep raw File alongside the base64 — we use raw File for the multipart
+// upload (memory-efficient) but base64 stays for a legacy fallback.
+var practAudioFile = null;
+
 function uploadPractice() {
-  if (!practAudioBase64) return;
+  if (!practAudioBase64 && !practAudioFile) return;
   var slug = document.getElementById('pract-slug').value.trim();
   var block_id = document.getElementById('pract-block').value.trim();
   var lang = document.getElementById('pract-lang').value;
@@ -7941,26 +7946,51 @@ function uploadPractice() {
   var btn = document.getElementById('pract-upload-btn');
   btn.disabled = true;
   btn.textContent = 'Загрузка...';
-  document.getElementById('pract-upload-status').textContent = 'Загружаем на GitHub...';
+  var statusEl = document.getElementById('pract-upload-status');
+  statusEl.textContent = 'Загружаем на GitHub...';
 
-  fetch(AUTH_API + '/api/admin/practices', {
-    method: 'POST',
-    headers: naAuthHeaders(),
-    body: JSON.stringify({
-      slug: slug,
-      block_id: block_id,
-      lang: lang,
-      name: name,
-      description: desc,
-      duration_seconds: duration,
-      order_idx: order,
+  // ── Prefer FormData (multipart/streaming) — Safari iOS handles a 25+ MB JSON
+  // body badly ("the string did not match the expected pattern"), but multipart
+  // lets WebKit stream the file. Fallback to JSON+base64 only if the raw File
+  // got lost (e.g. tab restored from background).
+  var useMultipart = !!practAudioFile;
+  var token = naGetToken();
+  var headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  var body;
+  if (useMultipart) {
+    body = new FormData();
+    body.append('slug', slug);
+    body.append('block_id', block_id);
+    body.append('lang', lang);
+    body.append('name', name);
+    body.append('description', desc);
+    body.append('duration_seconds', String(duration));
+    body.append('order_idx', String(order));
+    body.append('audio', practAudioFile, practAudioFileName || 'audio.mp3');
+    // DO NOT set Content-Type — browser sets multipart boundary itself
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify({
+      slug: slug, block_id: block_id, lang: lang, name: name,
+      description: desc, duration_seconds: duration, order_idx: order,
       audio_base64: practAudioBase64
-    })
+    });
+  }
+
+  fetch(AUTH_API + '/api/admin/practices', { method: 'POST', headers: headers, body: body })
+  .then(function(r) {
+    return r.text().then(function(txt){
+      var data;
+      try { data = JSON.parse(txt); } catch (e) { data = { error: 'Сервер ответил не-JSON: ' + txt.slice(0, 200) }; }
+      data._status = r.status;
+      return data;
+    });
   })
-  .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.ok) {
-      document.getElementById('pract-upload-status').textContent = 'Практика загружена!';
+      statusEl.textContent = 'Практика загружена!';
       // Reset form
       document.getElementById('pract-slug').value = '';
       document.getElementById('pract-name').value = '';
@@ -7970,17 +8000,18 @@ function uploadPractice() {
       document.getElementById('pract-drop-text').textContent = 'Перетащите MP3 файл сюда или нажмите для выбора';
       practAudioBase64 = null;
       practAudioFileName = '';
+      practAudioFile = null;
       btn.textContent = 'Загрузить практику';
-      // Reload list
       loadAdminPractices('all');
     } else {
-      document.getElementById('pract-upload-status').textContent = 'Ошибка: ' + (data.error || 'unknown');
+      statusEl.textContent = 'Ошибка (' + (data._status || '?') + '): ' + (data.error || 'unknown');
       btn.disabled = false;
       btn.textContent = 'Загрузить практику';
     }
   })
   .catch(function(err) {
-    document.getElementById('pract-upload-status').textContent = 'Ошибка сети: ' + err.message;
+    statusEl.textContent = 'Ошибка сети: ' + (err && err.message ? err.message : err) +
+      ' (size: ' + (practAudioFile ? (practAudioFile.size/1024/1024).toFixed(1) + ' MB' : 'unknown') + ')';
     btn.disabled = false;
     btn.textContent = 'Загрузить практику';
   });
