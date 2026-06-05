@@ -794,7 +794,143 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_course_block_progress_user_course ON course_block_progress(user_id, course_id)`;
 
-    res.json({ ok: true, message: 'Migrations 003-024 applied successfully' });
+    // ── PACK 25: DOMunity (community layer) ──
+    // Profile privacy + notification preferences
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_public BOOLEAN DEFAULT true`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN DEFAULT true`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT ''`;
+
+    // 1:1 direct message threads
+    await sql`CREATE TABLE IF NOT EXISTS dm_threads (
+      id SERIAL PRIMARY KEY,
+      user_a UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_b UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      last_message_at TIMESTAMP DEFAULT now(),
+      created_at TIMESTAMP DEFAULT now(),
+      UNIQUE(user_a, user_b)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_dm_threads_users ON dm_threads(user_a, user_b)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_dm_threads_b ON dm_threads(user_b)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS dm_messages (
+      id SERIAL PRIMARY KEY,
+      thread_id INTEGER NOT NULL REFERENCES dm_threads(id) ON DELETE CASCADE,
+      sender_id UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+      body TEXT NOT NULL DEFAULT '',
+      attachments JSONB DEFAULT '[]'::jsonb,
+      read_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_dm_messages_thread ON dm_messages(thread_id, created_at)`;
+
+    // Group chat rooms (created by admins; can be tied to a course cohort)
+    await sql`CREATE TABLE IF NOT EXISTS chat_rooms (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+      cover_url TEXT DEFAULT '',
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_chat_rooms_course ON chat_rooms(course_id)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS chat_room_members (
+      room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT DEFAULT 'member',
+      joined_at TIMESTAMP DEFAULT now(),
+      PRIMARY KEY(room_id, user_id)
+    )`;
+
+    await sql`CREATE TABLE IF NOT EXISTS chat_room_messages (
+      id SERIAL PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+      sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      body TEXT NOT NULL DEFAULT '',
+      attachments JSONB DEFAULT '[]'::jsonb,
+      is_announcement BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room ON chat_room_messages(room_id, created_at)`;
+
+    // News feed (admin posts visible to all logged-in users)
+    await sql`CREATE TABLE IF NOT EXISTS feed_posts (
+      id SERIAL PRIMARY KEY,
+      author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      title TEXT DEFAULT '',
+      body TEXT NOT NULL,
+      cover_url TEXT DEFAULT '',
+      attachments JSONB DEFAULT '[]'::jsonb,
+      is_pinned BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_feed_posts_created ON feed_posts(created_at DESC)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS feed_reactions (
+      id SERIAL PRIMARY KEY,
+      target_type TEXT NOT NULL,
+      target_id INTEGER NOT NULL,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji TEXT NOT NULL DEFAULT '❤',
+      created_at TIMESTAMP DEFAULT now(),
+      UNIQUE(target_type, target_id, user_id, emoji)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_feed_reactions_target ON feed_reactions(target_type, target_id)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS feed_comments (
+      id SERIAL PRIMARY KEY,
+      post_id INTEGER NOT NULL REFERENCES feed_posts(id) ON DELETE CASCADE,
+      parent_id INTEGER REFERENCES feed_comments(id) ON DELETE CASCADE,
+      author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      body TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_feed_comments_post ON feed_comments(post_id, created_at)`;
+
+    // Notifications inbox
+    await sql`CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      payload JSONB DEFAULT '{}'::jsonb,
+      seen_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_notifications_user_unseen ON notifications(user_id, seen_at, created_at DESC)`;
+
+    // Joint practice invites
+    await sql`CREATE TABLE IF NOT EXISTS joint_practice_sessions (
+      id SERIAL PRIMARY KEY,
+      host_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      practice_id INTEGER,
+      course_block_id INTEGER REFERENCES course_blocks(id) ON DELETE SET NULL,
+      scheduled_at TIMESTAMP,
+      status TEXT DEFAULT 'planned',
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE TABLE IF NOT EXISTS joint_practice_participants (
+      session_id INTEGER REFERENCES joint_practice_sessions(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      joined_at TIMESTAMP DEFAULT now(),
+      PRIMARY KEY(session_id, user_id)
+    )`;
+
+    // Donations
+    await sql`CREATE TABLE IF NOT EXISTS donations (
+      id SERIAL PRIMARY KEY,
+      donor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      amount_cents INTEGER NOT NULL,
+      currency TEXT DEFAULT 'usd',
+      stripe_session_id TEXT,
+      stripe_payment_intent_id TEXT,
+      message TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+
+    res.json({ ok: true, message: 'Migrations 003-025 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3984,6 +4120,213 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
     }
     res.json({ ok: true, next_block_id: nextId, points_earned: points });
   } catch (err) { console.error('POST complete:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PACK 25: DOMunity — community layer (DMs, feed, notifications, profiles)
+// ══════════════════════════════════════════════════════════════════
+
+// User search / profile lookup
+app.get('/api/users/search', requireAuth, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim().toLowerCase();
+    if (q.length < 2) return res.json({ users: [] });
+    const rows = await sql`
+      SELECT id, display_name, email, role, profile_public
+      FROM users
+      WHERE (LOWER(display_name) LIKE ${'%' + q + '%'} OR LOWER(email) LIKE ${'%' + q + '%'})
+        AND id <> ${req.user.sub || req.user.id}
+        AND (profile_public = true OR ${(['superadmin','founder','admin'].includes((req.user.role||'')))})
+      LIMIT 25
+    `;
+    res.json({ users: rows });
+  } catch (err) { console.error('user search:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/users/:id/profile', requireAuth, async (req, res) => {
+  try {
+    const [u] = await sql`SELECT id, display_name, role, bio, profile_public, created_at FROM users WHERE id = ${req.params.id}`;
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
+    const isSelf = (req.user.sub || req.user.id) === req.params.id;
+    if (!u.profile_public && !isAdmin && !isSelf) {
+      return res.json({ user: { id: u.id, display_name: u.display_name, profile_public: false } });
+    }
+    res.json({ user: u });
+  } catch (err) { console.error('GET profile:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/users/me/profile', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const { display_name, bio, profile_public, notifications_enabled } = req.body || {};
+    const [updated] = await sql`UPDATE users SET
+      display_name = COALESCE(${display_name}, display_name),
+      bio = COALESCE(${bio}, bio),
+      profile_public = COALESCE(${profile_public !== undefined ? !!profile_public : null}, profile_public),
+      notifications_enabled = COALESCE(${notifications_enabled !== undefined ? !!notifications_enabled : null}, notifications_enabled),
+      updated_at = now()
+      WHERE id = ${userId} RETURNING id, display_name, email, role, bio, profile_public, notifications_enabled`;
+    res.json({ user: updated });
+  } catch (err) { console.error('PATCH profile:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── DM threads + messages ──
+function orderedPair(a, b) { return a < b ? [a, b] : [b, a]; }
+
+app.get('/api/dm/threads', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT t.*,
+        ua.display_name AS user_a_name, ub.display_name AS user_b_name,
+        (SELECT body FROM dm_messages WHERE thread_id = t.id ORDER BY created_at DESC LIMIT 1) AS last_body,
+        (SELECT COUNT(*) FROM dm_messages WHERE thread_id = t.id AND sender_id <> ${me} AND read_at IS NULL) AS unread
+      FROM dm_threads t
+      JOIN users ua ON ua.id = t.user_a
+      JOIN users ub ON ub.id = t.user_b
+      WHERE t.user_a = ${me} OR t.user_b = ${me}
+      ORDER BY t.last_message_at DESC
+    `;
+    res.json({ threads: rows });
+  } catch (err) { console.error('GET dm threads:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/dm/threads', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const { peer_id } = req.body || {};
+    if (!peer_id || peer_id === me) return res.status(400).json({ error: 'valid peer_id required' });
+    const [a, b] = orderedPair(me, peer_id);
+    const [existing] = await sql`SELECT id FROM dm_threads WHERE user_a = ${a} AND user_b = ${b}`;
+    if (existing) return res.json({ thread_id: existing.id, created: false });
+    const [row] = await sql`INSERT INTO dm_threads (user_a, user_b) VALUES (${a}, ${b}) RETURNING id`;
+    res.json({ thread_id: row.id, created: true });
+  } catch (err) { console.error('POST dm thread:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
+    if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
+    const msgs = await sql`SELECT * FROM dm_messages WHERE thread_id = ${tid} ORDER BY created_at ASC LIMIT 200`;
+    // Mark incoming as read
+    await sql`UPDATE dm_messages SET read_at = now() WHERE thread_id = ${tid} AND sender_id <> ${me} AND read_at IS NULL`;
+    res.json({ thread: t, messages: msgs });
+  } catch (err) { console.error('GET dm messages:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const { body } = req.body || {};
+    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
+    if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
+    const [row] = await sql`INSERT INTO dm_messages (thread_id, sender_id, body) VALUES (${tid}, ${me}, ${String(body)}) RETURNING *`;
+    await sql`UPDATE dm_threads SET last_message_at = now() WHERE id = ${tid}`;
+    // Notification for recipient
+    const recipient = t.user_a === me ? t.user_b : t.user_a;
+    await sql`INSERT INTO notifications (user_id, kind, payload)
+              VALUES (${recipient}, 'dm', ${JSON.stringify({ thread_id: tid, from: me, preview: String(body).slice(0, 80) })}::jsonb)`;
+    res.status(201).json({ message: row });
+  } catch (err) { console.error('POST dm message:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Feed posts ──
+app.get('/api/feed/posts', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT p.*, u.display_name AS author_name,
+        (SELECT COUNT(*) FROM feed_reactions WHERE target_type = 'post' AND target_id = p.id) AS reaction_count,
+        (SELECT COUNT(*) FROM feed_comments WHERE post_id = p.id) AS comment_count
+      FROM feed_posts p
+      LEFT JOIN users u ON u.id = p.author_id
+      ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT 100
+    `;
+    res.json({ posts: rows });
+  } catch (err) { console.error('GET feed:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/feed/posts', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const [user] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+    if (!user || !['superadmin','founder','admin'].includes(user.role)) return res.status(403).json({ error: 'Admin only' });
+    const { title, body, cover_url, is_pinned } = req.body || {};
+    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    const [row] = await sql`INSERT INTO feed_posts (author_id, title, body, cover_url, is_pinned)
+                            VALUES (${userId}, ${title||''}, ${body}, ${cover_url||''}, ${!!is_pinned}) RETURNING *`;
+    // Broadcast notification to all users with notifications enabled
+    await sql`INSERT INTO notifications (user_id, kind, payload)
+              SELECT id, 'feed_post', ${JSON.stringify({ post_id: row.id, title: title||'', preview: String(body).slice(0, 100) })}::jsonb
+              FROM users WHERE notifications_enabled = true AND id <> ${userId}`;
+    res.status(201).json({ post: row });
+  } catch (err) { console.error('POST feed:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/feed/posts/:id/react', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const postId = parseInt(req.params.id, 10);
+    const emoji = (req.body && req.body.emoji) || '❤';
+    // Toggle: if exists, delete; else insert
+    const existing = await sql`SELECT id FROM feed_reactions WHERE target_type='post' AND target_id=${postId} AND user_id=${userId} AND emoji=${emoji}`;
+    if (existing.length) {
+      await sql`DELETE FROM feed_reactions WHERE id = ${existing[0].id}`;
+      return res.json({ reacted: false });
+    }
+    await sql`INSERT INTO feed_reactions (target_type, target_id, user_id, emoji) VALUES ('post', ${postId}, ${userId}, ${emoji})`;
+    res.json({ reacted: true });
+  } catch (err) { console.error('react:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/feed/posts/:id/comments', requireAuth, async (req, res) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    const rows = await sql`SELECT c.*, u.display_name AS author_name FROM feed_comments c
+                           LEFT JOIN users u ON u.id = c.author_id
+                           WHERE c.post_id = ${postId} ORDER BY c.created_at ASC LIMIT 500`;
+    res.json({ comments: rows });
+  } catch (err) { console.error('GET comments:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/feed/posts/:id/comments', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const postId = parseInt(req.params.id, 10);
+    const { body, parent_id } = req.body || {};
+    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    const [row] = await sql`INSERT INTO feed_comments (post_id, parent_id, author_id, body)
+                            VALUES (${postId}, ${parent_id ? parseInt(parent_id, 10) : null}, ${userId}, ${body}) RETURNING *`;
+    res.status(201).json({ comment: row });
+  } catch (err) { console.error('POST comment:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Notifications ──
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rows = await sql`SELECT * FROM notifications WHERE user_id = ${me} ORDER BY created_at DESC LIMIT 100`;
+    const unseen = await sql`SELECT COUNT(*) AS n FROM notifications WHERE user_id = ${me} AND seen_at IS NULL`;
+    res.json({ notifications: rows, unseen: parseInt(unseen[0].n, 10) || 0 });
+  } catch (err) { console.error('GET notifications:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/notifications/seen', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(i => parseInt(i, 10)).filter(Boolean) : null;
+    if (ids && ids.length) {
+      await sql`UPDATE notifications SET seen_at = now() WHERE user_id = ${me} AND id = ANY(${ids}::int[])`;
+    } else {
+      await sql`UPDATE notifications SET seen_at = now() WHERE user_id = ${me} AND seen_at IS NULL`;
+    }
+    res.json({ ok: true });
+  } catch (err) { console.error('POST seen:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PACK 21: Admin test confirmation email ──
