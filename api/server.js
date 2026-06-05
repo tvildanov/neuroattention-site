@@ -779,8 +779,10 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_course_assets_course ON course_assets(course_id)`;
 
-    // User progress per block (which blocks they completed, when, points earned)
-    await sql`CREATE TABLE IF NOT EXISTS course_progress (
+    // Per-block completion progress for Pack 24 (distinct from legacy course_progress
+    // which is keyed by item_type/item_id). Renamed to avoid colliding with the
+    // older course_progress schema in migration 006.
+    await sql`CREATE TABLE IF NOT EXISTS course_block_progress (
       id SERIAL PRIMARY KEY,
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
@@ -790,7 +792,7 @@ app.post('/api/run-migrations', async (req, res) => {
       completed_at TIMESTAMP DEFAULT now(),
       UNIQUE(user_id, block_id)
     )`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_course_progress_user_course ON course_progress(user_id, course_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_block_progress_user_course ON course_block_progress(user_id, course_id)`;
 
     res.json({ ok: true, message: 'Migrations 003-024 applied successfully' });
   } catch (err) {
