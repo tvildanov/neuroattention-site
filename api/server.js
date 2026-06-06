@@ -4372,6 +4372,64 @@ app.post('/api/feed/posts', requireAuth, async (req, res) => {
   } catch (err) { console.error('POST feed:', err); res.status(500).json({ error: err.message }); }
 });
 
+// PATCH /api/feed/posts/:id — edit own post (author-only)
+app.patch('/api/feed/posts/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const postId = parseInt(req.params.id, 10);
+    const [existing] = await sql`SELECT author_id FROM feed_posts WHERE id = ${postId}`;
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    // Server-side guard: only the author who is still an admin can edit
+    const [me] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+    if (existing.author_id !== userId || !me || !['superadmin','founder','admin'].includes(me.role)) {
+      return res.status(403).json({ error: 'You can only edit your own posts' });
+    }
+    const { title, body, cover_url, is_pinned } = req.body || {};
+    const [updated] = await sql`UPDATE feed_posts SET
+      title = COALESCE(${title}, title),
+      body = COALESCE(${body}, body),
+      cover_url = COALESCE(${cover_url}, cover_url),
+      is_pinned = COALESCE(${is_pinned !== undefined ? !!is_pinned : null}, is_pinned),
+      updated_at = now()
+      WHERE id = ${postId} RETURNING *`;
+    res.json({ post: updated });
+  } catch (err) { console.error('PATCH feed:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/feed/posts/:id — author-only delete
+app.delete('/api/feed/posts/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const postId = parseInt(req.params.id, 10);
+    const [existing] = await sql`SELECT author_id FROM feed_posts WHERE id = ${postId}`;
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    const [me] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+    if (existing.author_id !== userId || !me || !['superadmin','founder','admin'].includes(me.role)) {
+      return res.status(403).json({ error: 'You can only delete your own posts' });
+    }
+    await sql`DELETE FROM feed_posts WHERE id = ${postId}`;
+    res.json({ ok: true, deleted: postId });
+  } catch (err) { console.error('DELETE feed:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Lightweight badge endpoint — returns unread counts only (cheap; safe to poll often)
+app.get('/api/badges', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [n] = await sql`SELECT COUNT(*)::int AS n FROM notifications WHERE user_id = ${me} AND seen_at IS NULL`;
+    const [dm] = await sql`SELECT COUNT(*)::int AS n FROM dm_messages m
+      JOIN dm_threads t ON t.id = m.thread_id
+      WHERE (t.user_a = ${me} OR t.user_b = ${me}) AND m.sender_id <> ${me} AND m.read_at IS NULL`;
+    const [latest] = await sql`SELECT id, created_at FROM feed_posts ORDER BY created_at DESC LIMIT 1`;
+    res.json({
+      unseen_notifs: n.n,
+      unread_dms: dm.n,
+      latest_feed_post_id: latest ? latest.id : 0,
+      latest_feed_post_at: latest ? latest.created_at : null
+    });
+  } catch (err) { console.error('GET badges:', err); res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/feed/posts/:id/react', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;

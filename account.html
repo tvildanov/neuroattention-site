@@ -341,7 +341,7 @@
         <button class="lang-btn">EN</button>
         <button class="lang-btn">ES</button>
       </div>
-      <a href="account.html" class="nav-login"><span class="login-dot"></span><span data-i18n="nav.account">Кабинет</span></a>
+      <a href="account.html" class="nav-login"><span class="login-dot"></span><span data-i18n="nav.account">Кабинет</span><span id="nav-cabinet-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:6px;font-family:'JetBrains Mono',monospace;"></span></a>
       <button class="mobile-menu-btn" aria-label="Меню"><svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     </div>
   </div>
@@ -838,6 +838,7 @@
               <button class="btn btn-solid" onclick="domPublishPost()" style="margin-left:auto;font-size:12px;padding:0.4rem 1rem;" data-i18n="a.domunity.publish">Опубликовать</button>
             </div>
           </div>
+          <div id="dom-feed-new-banner" onclick="domLoadFeed()" style="display:none;cursor:pointer;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.3);color:var(--accent-cyan);text-align:center;padding:0.6rem;border-radius:8px;font-size:12px;margin-bottom:1rem;">↑ Доступны новые публикации — нажми чтобы обновить</div>
           <div id="dom-feed-list" style="display:flex;flex-direction:column;gap:1rem;"></div>
           <p id="dom-feed-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.domunity.feed_empty">Пока постов нет.</p>
         </div>
@@ -9919,6 +9920,7 @@ function domSwitch(sub){
 }
 window.domSwitch = domSwitch;
 
+var domFeed = { posts: [], lastTopId: 0, pollTimer: null, knownTopId: 0 };
 function domLoadFeed(){
   // Show admin create-form if current user is admin
   var adminForm = document.getElementById('dom-feed-admin-form');
@@ -9926,34 +9928,110 @@ function domLoadFeed(){
     adminForm.style.display = '';
   }
   domApi('/api/feed/posts').then(function(d){
-    var box = document.getElementById('dom-feed-list');
-    var empty = document.getElementById('dom-feed-empty');
-    if (!box) return;
-    var posts = d.posts || [];
-    if (!posts.length) { box.innerHTML = ''; if (empty) empty.style.display=''; return; }
-    if (empty) empty.style.display = 'none';
-    box.innerHTML = posts.map(function(p){
-      var d2 = new Date(p.created_at);
-      var pinBadge = p.is_pinned ? '<span style="background:rgba(255,200,0,0.15);color:#fc0;padding:1px 6px;border-radius:4px;font-size:10px;margin-right:0.4rem;">📌 PINNED</span>' : '';
-      var authSpan = p.author_id
-        ? '<span onclick="domShowUserProfile(\'' + p.author_id + '\')" style="cursor:pointer;text-decoration:underline dotted;">' + (p.author_name || '—') + '</span>'
-        : (p.author_name || '—');
-      return '<div class="lab-card in-view" style="padding:1rem 1.25rem;">'
-           + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
-           +   pinBadge
-           +   '<span style="font-size:11px;color:var(--text-muted);">' + authSpan + ' · ' + d2.toLocaleString() + '</span>'
-           + '</div>'
-           + (p.title ? '<h3 style="margin:0 0 0.4rem;font-size:15px;color:var(--text-primary);">' + p.title + '</h3>' : '')
-           + '<div style="font-size:13px;color:var(--text-primary);line-height:1.65;white-space:pre-wrap;">' + p.body + '</div>'
-           + '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">'
-           +   '<button class="btn btn-ghost" onclick="domReact(' + p.id + ')" style="font-size:11px;padding:0.25rem 0.6rem;">❤ ' + (p.reaction_count||0) + '</button>'
-           +   '<button class="btn btn-ghost" onclick="domToggleComments(' + p.id + ')" style="font-size:11px;padding:0.25rem 0.6rem;">💬 ' + (p.comment_count||0) + '</button>'
-           + '</div>'
-           + '<div id="dom-comments-' + p.id + '" style="display:none;margin-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.06);padding-top:0.5rem;"></div>'
-           + '</div>';
-    }).join('');
+    domFeed.posts = d.posts || [];
+    // Track the latest top id so we can hide the "X новых" banner once we render
+    var top = domFeed.posts[0] ? domFeed.posts[0].id : 0;
+    domFeed.knownTopId = top;
+    domFeed.lastTopId = top;
+    domRenderFeed();
+    var banner = document.getElementById('dom-feed-new-banner'); if (banner) banner.style.display = 'none';
   }).catch(function(e){ console.warn('feed:', e); });
+  // Start polling for new posts while on the feed pane
+  if (domFeed.pollTimer) clearInterval(domFeed.pollTimer);
+  domFeed.pollTimer = setInterval(domFeedCheckNew, 30000);
 }
+
+// Lightweight check — only re-renders banner if new posts arrived
+function domFeedCheckNew(){
+  if (dom.sub !== 'feed') { clearInterval(domFeed.pollTimer); return; }
+  fetch(AUTH_API + '/api/badges', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('na_token') } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d) return;
+      var newest = d.latest_feed_post_id || 0;
+      if (newest > domFeed.knownTopId) {
+        var banner = document.getElementById('dom-feed-new-banner');
+        var delta = 0;
+        // We don't know exact count without fetching. Show the banner with no count first,
+        // then on click refresh fully.
+        if (banner) { banner.textContent = '↑ Доступны новые публикации — нажми чтобы обновить'; banner.style.display = ''; }
+      }
+    }).catch(function(){});
+}
+
+function domRenderFeed(){
+  var box = document.getElementById('dom-feed-list');
+  var empty = document.getElementById('dom-feed-empty');
+  if (!box) return;
+  var posts = domFeed.posts;
+  if (!posts.length) { box.innerHTML = ''; if (empty) empty.style.display=''; return; }
+  if (empty) empty.style.display = 'none';
+  var me = currentUser && currentUser.id;
+  box.innerHTML = posts.map(function(p){
+    var d2 = new Date(p.created_at);
+    var pinBadge = p.is_pinned ? '<span style="background:rgba(255,200,0,0.15);color:#fc0;padding:1px 6px;border-radius:4px;font-size:10px;margin-right:0.4rem;">📌 PINNED</span>' : '';
+    var authSpan = p.author_id
+      ? '<span onclick="domShowUserProfile(\'' + p.author_id + '\')" style="cursor:pointer;text-decoration:underline dotted;">' + (p.author_name || '—') + '</span>'
+      : (p.author_name || '—');
+    var mine = p.author_id === me;
+    var editBtn = mine ? '<button class="btn btn-ghost" onclick="domEditPost(' + p.id + ')" style="font-size:11px;padding:0.25rem 0.5rem;color:var(--text-muted);margin-left:auto;">✏️</button>'
+                       + '<button class="btn btn-ghost" onclick="domDeletePost(' + p.id + ')" style="font-size:11px;padding:0.25rem 0.5rem;color:var(--accent-rose);">🗑</button>' : '';
+    var editedNote = (p.updated_at && p.created_at && new Date(p.updated_at) - new Date(p.created_at) > 5000) ? ' · отредактировано' : '';
+    return '<div class="lab-card in-view" style="padding:1rem 1.25rem;" data-post-id="' + p.id + '">'
+         + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
+         +   pinBadge
+         +   '<span style="font-size:11px;color:var(--text-muted);">' + authSpan + ' · ' + d2.toLocaleString() + editedNote + '</span>'
+         +   editBtn
+         + '</div>'
+         + (p.title ? '<h3 style="margin:0 0 0.4rem;font-size:15px;color:var(--text-primary);">' + p.title + '</h3>' : '')
+         + '<div style="font-size:13px;color:var(--text-primary);line-height:1.65;white-space:pre-wrap;">' + p.body + '</div>'
+         + '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">'
+         +   '<button class="btn btn-ghost" onclick="domReact(' + p.id + ')" style="font-size:11px;padding:0.25rem 0.6rem;">❤ ' + (p.reaction_count||0) + '</button>'
+         +   '<button class="btn btn-ghost" onclick="domToggleComments(' + p.id + ')" style="font-size:11px;padding:0.25rem 0.6rem;">💬 ' + (p.comment_count||0) + '</button>'
+         + '</div>'
+         + '<div id="dom-comments-' + p.id + '" style="display:none;margin-top:0.5rem;border-top:1px dashed rgba(255,255,255,0.06);padding-top:0.5rem;"></div>'
+         + '</div>';
+  }).join('');
+}
+
+function domEditPost(postId){
+  var p = domFeed.posts.find(function(x){ return x.id === postId; }); if (!p) return;
+  var newTitle = prompt('Заголовок поста:', p.title || '');
+  if (newTitle === null) return;
+  var newBody = prompt('Текст поста:', p.body || '');
+  if (newBody === null) return;
+  domApi('/api/feed/posts/' + postId, { method:'PATCH', body: { title: newTitle, body: newBody } })
+    .then(function(d){
+      // Update in-place without full reload to feel snappy
+      var idx = domFeed.posts.findIndex(function(x){ return x.id === postId; });
+      if (idx >= 0) domFeed.posts[idx] = Object.assign({}, domFeed.posts[idx], d.post);
+      domRenderFeed();
+    })
+    .catch(function(e){ alert(e.message); });
+}
+
+function domDeletePost(postId){
+  if (!confirm('Вы уверены, что хотите удалить пост?')) return;
+  domApi('/api/feed/posts/' + postId, { method:'DELETE' })
+    .then(function(){
+      domFeed.posts = domFeed.posts.filter(function(x){ return x.id !== postId; });
+      domRenderFeed();
+      domToast('Пост удалён');
+    })
+    .catch(function(e){ alert(e.message); });
+}
+
+// Small toast utility
+function domToast(msg){
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(15,15,22,0.97);color:var(--text-primary);padding:0.75rem 1.5rem;border-radius:10px;border:1px solid rgba(0,229,255,0.3);z-index:10100;font-size:13px;box-shadow:0 4px 24px rgba(0,229,255,0.2);';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.opacity = '0'; t.style.transition = 'opacity 0.5s'; setTimeout(function(){ t.remove(); }, 600); }, 2500);
+}
+window.domEditPost = domEditPost;
+window.domDeletePost = domDeletePost;
+window.domToast = domToast;
 function domPublishPost(){
   var title = document.getElementById('dom-post-title').value;
   var body = document.getElementById('dom-post-body').value;
@@ -10027,26 +10105,51 @@ function domStartThread(peerId, peerName){
       setTimeout(function(){ domOpenThread(d.thread_id, peerName); }, 300);
     });
 }
+var domDM = { pollTimer: null, lastCount: 0 };
 function domOpenThread(threadId, peerName){
   dom.activeThread = threadId;
   document.getElementById('dom-dm-empty').style.display = 'none';
   document.getElementById('dom-dm-thread').style.display = 'flex';
   document.getElementById('dom-dm-thread-head').textContent = peerName || '—';
-  domApi('/api/dm/threads/' + threadId + '/messages').then(function(d){
+  domLoadThreadMessages();
+  // Start auto-polling every 5s while the thread is open so incoming
+  // messages appear without a manual refresh
+  if (domDM.pollTimer) clearInterval(domDM.pollTimer);
+  domDM.pollTimer = setInterval(function(){
+    if (dom.activeThread === threadId) domLoadThreadMessages();
+    else clearInterval(domDM.pollTimer);
+  }, 5000);
+}
+function domLoadThreadMessages(){
+  if (!dom.activeThread) return;
+  domApi('/api/dm/threads/' + dom.activeThread + '/messages').then(function(d){
     var box = document.getElementById('dom-dm-messages');
+    if (!box) return;
     var me = currentUser && currentUser.id;
-    box.innerHTML = (d.messages||[]).map(function(m){
+    var msgs = d.messages || [];
+    // Only re-render if message count changed (avoid scroll jumping on idle polls)
+    if (msgs.length === domDM.lastCount && box.children.length === msgs.length) return;
+    var wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 80;
+    box.innerHTML = msgs.map(function(m){
       var mine = m.sender_id === me;
       return '<div style="align-self:'+(mine?'flex-end':'flex-start')+';max-width:75%;background:'+(mine?'rgba(0,229,255,0.15)':'rgba(255,255,255,0.05)')+';color:var(--text-primary);padding:0.45rem 0.7rem;border-radius:12px;font-size:13px;line-height:1.4;">'+m.body+'<div style="font-size:9px;color:var(--text-muted);margin-top:0.2rem;">'+new Date(m.created_at).toLocaleString()+'</div></div>';
     }).join('');
-    box.scrollTop = box.scrollHeight;
+    domDM.lastCount = msgs.length;
+    if (wasNearBottom) box.scrollTop = box.scrollHeight;
   });
 }
 function domSendDM(){
   var inp = document.getElementById('dom-dm-input');
   if (!inp || !inp.value.trim() || !dom.activeThread) return;
-  domApi('/api/dm/threads/' + dom.activeThread + '/messages', { method:'POST', body: { body: inp.value } })
-    .then(function(){ inp.value=''; domOpenThread(dom.activeThread, document.getElementById('dom-dm-thread-head').textContent); domLoadThreads(); });
+  var text = inp.value;
+  // Optimistic — clear immediately so user feels snap, then sync on response
+  inp.value = '';
+  domApi('/api/dm/threads/' + dom.activeThread + '/messages', { method:'POST', body: { body: text } })
+    .then(function(){
+      domLoadThreadMessages();
+      domLoadThreads();
+    })
+    .catch(function(e){ inp.value = text; alert(e.message); });
 }
 window.domSearchUsers = domSearchUsers;
 window.domStartThread = domStartThread;
@@ -10348,16 +10451,32 @@ document.addEventListener('DOMContentLoaded', function(){
       domTab.dataset.bound = '1';
       domTab.addEventListener('click', function(){ domSwitch(dom.sub || 'feed'); });
     }
-    // Periodically refresh unread count
-    setInterval(function(){
+    // Global poller — drives 3 badges: DOMunity tab, DM sub-tab count, nav «Кабинет» pill.
+    // Uses the cheap /api/badges endpoint (single sql roundtrip per call).
+    function pollBadges(){
       var token = localStorage.getItem('na_token'); if (!token) return;
-      fetch(AUTH_API + '/api/notifications', { headers: { 'Authorization':'Bearer '+token } })
+      fetch(AUTH_API + '/api/badges', { headers: { 'Authorization':'Bearer '+token } })
         .then(function(r){ return r.json(); })
         .then(function(d){
-          var topBadge = document.getElementById('domunity-unread-badge');
-          if (topBadge) { if (d.unseen > 0) { topBadge.textContent = d.unseen; topBadge.style.display = ''; } else topBadge.style.display = 'none'; }
+          if (!d) return;
+          var total = (d.unseen_notifs || 0) + (d.unread_dms || 0);
+          var domBadge = document.getElementById('domunity-unread-badge');
+          var navBadge = document.getElementById('nav-cabinet-badge');
+          var dmCount = document.getElementById('dom-dms-count');
+          var notifCount = document.getElementById('dom-notif-count');
+          if (domBadge) { if (total > 0) { domBadge.textContent = total; domBadge.style.display = ''; } else domBadge.style.display = 'none'; }
+          if (navBadge) { if (total > 0) { navBadge.textContent = total; navBadge.style.display = ''; } else navBadge.style.display = 'none'; }
+          if (dmCount) dmCount.textContent = d.unread_dms ? '('+d.unread_dms+')' : '';
+          if (notifCount) notifCount.textContent = d.unseen_notifs ? '('+d.unseen_notifs+')' : '';
+          // Feed sync — if on feed pane and a newer post id is now visible, show banner
+          if (dom.sub === 'feed' && d.latest_feed_post_id > (domFeed.knownTopId || 0)) {
+            var banner = document.getElementById('dom-feed-new-banner');
+            if (banner) banner.style.display = '';
+          }
         }).catch(function(){});
-    }, 60000); // every minute
+    }
+    pollBadges();              // immediate first run
+    setInterval(pollBadges, 20000); // then every 20s
   }, 1500);
 });
 
