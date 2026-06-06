@@ -993,7 +993,13 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_jpm_session ON joint_practice_messages(session_id, created_at)`;
 
-    res.json({ ok: true, message: 'Migrations 003-026 applied successfully' });
+    // Pack 25 phase 3: live-stream toggle on group rooms, join/leave timestamps for joint practice
+    await sql`ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS is_live BOOLEAN DEFAULT FALSE`;
+    await sql`ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS live_started_at TIMESTAMP`;
+    await sql`ALTER TABLE joint_practice_participants ADD COLUMN IF NOT EXISTS left_at TIMESTAMP`;
+    await sql`ALTER TABLE joint_practice_participants ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT now()`;
+
+    res.json({ ok: true, message: 'Migrations 003-027 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4465,7 +4471,15 @@ app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     const [member] = await sql`SELECT role FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
     const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
     if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
-    const ann = !!is_announcement && (isAdmin || (member && member.role === 'admin'));
+    // Live-stream gate: while is_live, only admins/room-admins can post full messages.
+    // Regular members are limited to short comments (<= 80 chars) — emulates a stream
+    // chat where the host broadcasts and audience replies in short bursts.
+    const [room] = await sql`SELECT is_live FROM chat_rooms WHERE id = ${rid}`;
+    const isRoomAdmin = isAdmin || (member && member.role === 'admin');
+    if (room?.is_live && !isRoomAdmin && String(body).length > 80) {
+      return res.status(403).json({ error: 'Live mode: только реакции и короткие комменты (≤ 80 знаков). Лектор говорит.' });
+    }
+    const ann = !!is_announcement && isRoomAdmin;
     const [row] = await sql`INSERT INTO chat_room_messages (room_id, sender_id, body, is_announcement)
                             VALUES (${rid}, ${me}, ${body}, ${ann}) RETURNING *`;
     res.status(201).json({ message: row });
@@ -4573,6 +4587,61 @@ app.get('/api/joint-practice/:id/messages', requireAuth, async (req, res) => {
                            WHERE m.session_id = ${sid} ORDER BY m.created_at ASC LIMIT 200`;
     res.json({ messages: rows });
   } catch (err) { console.error('joint msgs:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Toggle live mode on a chat room (admin/superadmin/founder + room creator)
+app.patch('/api/chat/rooms/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.id, 10);
+    const [room] = await sql`SELECT * FROM chat_rooms WHERE id = ${rid}`;
+    if (!room) return res.status(404).json({ error: 'Not found' });
+    const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
+    if (room.created_by !== me && !isAdmin) return res.status(403).json({ error: 'Not your room' });
+    const { is_live, name, description } = req.body || {};
+    let liveStartedAt = room.live_started_at;
+    if (is_live === true && !room.is_live) liveStartedAt = new Date();
+    if (is_live === false) liveStartedAt = null;
+    const [updated] = await sql`UPDATE chat_rooms SET
+      is_live = COALESCE(${is_live !== undefined ? !!is_live : null}, is_live),
+      live_started_at = ${liveStartedAt},
+      name = COALESCE(${name}, name),
+      description = COALESCE(${description}, description)
+      WHERE id = ${rid} RETURNING *`;
+    if (is_live !== undefined) {
+      // System message announcing the state change
+      await sql`INSERT INTO chat_room_messages (room_id, sender_id, body, is_announcement)
+                VALUES (${rid}, ${me}, ${is_live ? '🔴 LIVE началась' : '⏹ LIVE завершена'}, true)`;
+    }
+    res.json({ room: updated });
+  } catch (err) { console.error('PATCH room:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Joint practice: join/leave (posts system messages)
+app.post('/api/joint-practice/:id/join', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const sid = parseInt(req.params.id, 10);
+    await sql`INSERT INTO joint_practice_participants (session_id, user_id, last_seen_at)
+              VALUES (${sid}, ${me}, now())
+              ON CONFLICT (session_id, user_id) DO UPDATE SET left_at = NULL, last_seen_at = now()`;
+    const [u] = await sql`SELECT display_name FROM users WHERE id = ${me}`;
+    await sql`INSERT INTO joint_practice_messages (session_id, user_id, kind, body)
+              VALUES (${sid}, ${me}, 'system', ${(u?.display_name || 'Кто-то') + ' присоединился к практике'})`;
+    res.json({ ok: true });
+  } catch (err) { console.error('joint join:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/joint-practice/:id/leave', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const sid = parseInt(req.params.id, 10);
+    await sql`UPDATE joint_practice_participants SET left_at = now() WHERE session_id = ${sid} AND user_id = ${me}`;
+    const [u] = await sql`SELECT display_name FROM users WHERE id = ${me}`;
+    await sql`INSERT INTO joint_practice_messages (session_id, user_id, kind, body)
+              VALUES (${sid}, ${me}, 'system', ${(u?.display_name || 'Кто-то') + ' покинул(а) практику'})`;
+    res.json({ ok: true });
+  } catch (err) { console.error('joint leave:', err); res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/joint-practice/:id/messages', requireAuth, async (req, res) => {
