@@ -9935,10 +9935,13 @@ function domLoadFeed(){
     box.innerHTML = posts.map(function(p){
       var d2 = new Date(p.created_at);
       var pinBadge = p.is_pinned ? '<span style="background:rgba(255,200,0,0.15);color:#fc0;padding:1px 6px;border-radius:4px;font-size:10px;margin-right:0.4rem;">📌 PINNED</span>' : '';
+      var authSpan = p.author_id
+        ? '<span onclick="domShowUserProfile(\'' + p.author_id + '\')" style="cursor:pointer;text-decoration:underline dotted;">' + (p.author_name || '—') + '</span>'
+        : (p.author_name || '—');
       return '<div class="lab-card in-view" style="padding:1rem 1.25rem;">'
            + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
            +   pinBadge
-           +   '<span style="font-size:11px;color:var(--text-muted);">' + (p.author_name || '—') + ' · ' + d2.toLocaleString() + '</span>'
+           +   '<span style="font-size:11px;color:var(--text-muted);">' + authSpan + ' · ' + d2.toLocaleString() + '</span>'
            + '</div>'
            + (p.title ? '<h3 style="margin:0 0 0.4rem;font-size:15px;color:var(--text-primary);">' + p.title + '</h3>' : '')
            + '<div style="font-size:13px;color:var(--text-primary);line-height:1.65;white-space:pre-wrap;">' + p.body + '</div>'
@@ -10099,6 +10102,39 @@ function domClickNotif(n){
 }
 window.domClickNotif = domClickNotif;
 
+// ── User profile modal — click on a sender name anywhere to view their public card ──
+function domShowUserProfile(userId){
+  Promise.all([
+    domApi('/api/users/' + userId + '/profile'),
+    domApi('/api/users/' + userId + '/achievements')
+  ]).then(function(arr){
+    var u = arr[0].user || {};
+    var ach = arr[1].achievements || [];
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10025;padding:2rem 1rem;overflow-y:auto;';
+    var bio = u.bio || '';
+    var roleTag = u.role && u.role !== 'user' ? '<span style="background:rgba(0,229,255,0.15);color:var(--accent-cyan);padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;margin-left:0.5rem;">' + u.role + '</span>' : '';
+    var privacyNote = u.profile_public === false ? '<p style="font-size:11px;color:var(--text-muted);font-style:italic;">Профиль скрыт пользователем — видно только имя.</p>' : '';
+    var achHtml = ach.length ? ach.map(function(a){ return '<div style="display:inline-block;padding:0.4rem 0.6rem;border:1px solid rgba(0,229,255,0.2);border-radius:8px;background:rgba(0,229,255,0.04);margin:0.2rem;text-align:center;"><div style="font-size:22px;">'+(a.badge_emoji||'🏅')+'</div><div style="font-size:11px;margin-top:0.2rem;">'+(a['title_'+lang]||a.title_ru||a.title_en||a.slug)+'</div></div>'; }).join('') : '<p style="font-size:11px;color:var(--text-muted);">Достижений пока нет.</p>';
+    modal.innerHTML = '<div style="max-width:480px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;"><h3 style="margin:0;font-size:16px;">' + (u.display_name||'Пользователь') + roleTag + '</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+      + privacyNote
+      + (bio ? '<p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0 0 1rem;">' + bio + '</p>' : '')
+      + '<h4 style="margin:0.75rem 0 0.5rem;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Публичные достижения</h4>'
+      + '<div style="display:flex;flex-wrap:wrap;">' + achHtml + '</div>'
+      + (u.profile_public !== false ? '<button class="btn btn-solid" onclick="domStartThreadFromProfile(\'' + userId + '\',\'' + (u.display_name||'').replace(/\'/g,"\\'") + '\'); this.closest(\'div[style*=fixed]\').remove()" style="width:100%;margin-top:1rem;font-size:13px;padding:0.5rem;">💬 Написать сообщение</button>' : '')
+      + '</div>';
+    document.body.appendChild(modal);
+  }).catch(function(e){ alert(e.message); });
+}
+function domStartThreadFromProfile(uid, name){
+  domSwitch('dms');
+  setTimeout(function(){ domStartThread(uid, name); }, 200);
+}
+window.domShowUserProfile = domShowUserProfile;
+window.domStartThreadFromProfile = domStartThreadFromProfile;
+
 function domLoadProfile(){
   if (!currentUser) return;
   document.getElementById('dom-prof-name').value = currentUser.display_name || '';
@@ -10212,14 +10248,30 @@ function domGroupOpen(roomId, roomName){
   domGroups.activeId = roomId;
   document.getElementById('dom-group-empty').style.display = 'none';
   document.getElementById('dom-group-active').style.display = 'flex';
-  document.getElementById('dom-group-head').textContent = roomName || '—';
-  // Show announcement button if user is admin
+  var room = domGroups.rooms.find(function(r){ return r.id === roomId; }) || { name: roomName };
+  var liveBadge = room.is_live ? ' <span style="background:rgba(255,80,80,0.2);color:#f55;padding:1px 7px;border-radius:8px;font-size:9px;font-weight:600;">🔴 LIVE</span>' : '';
+  // Inline Go Live toggle for admins
+  var isAdmin = currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin');
+  var liveToggle = isAdmin ? ' <button class="btn btn-ghost" onclick="domGroupToggleLive(' + roomId + ',' + (room.is_live?'false':'true') + ')" style="font-size:11px;padding:0.2rem 0.5rem;margin-left:0.4rem;">' + (room.is_live ? '⏹ Завершить LIVE' : '🔴 Начать LIVE') + '</button>' : '';
+  document.getElementById('dom-group-head').innerHTML = (room.name || roomName || '—') + liveBadge + liveToggle;
   var annBtn = document.getElementById('dom-group-announce-btn');
-  if (annBtn && currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin')) annBtn.style.display = '';
+  if (annBtn && isAdmin) annBtn.style.display = '';
   domGroupLoadMessages();
   if (domGroups.pollTimer) clearInterval(domGroups.pollTimer);
-  domGroups.pollTimer = setInterval(domGroupLoadMessages, 5000);
+  // Faster poll during live mode
+  domGroups.pollTimer = setInterval(domGroupLoadMessages, room.is_live ? 2000 : 5000);
 }
+function domGroupToggleLive(roomId, makeLive){
+  domApi('/api/chat/rooms/' + roomId, { method:'PATCH', body: { is_live: makeLive === 'true' || makeLive === true } })
+    .then(function(d){
+      // Refresh rooms cache so the head re-renders correctly
+      var idx = domGroups.rooms.findIndex(function(r){ return r.id === roomId; });
+      if (idx >= 0) domGroups.rooms[idx] = Object.assign({}, domGroups.rooms[idx], d.room);
+      domGroupOpen(roomId, d.room.name);
+    })
+    .catch(function(e){ alert(e.message); });
+}
+window.domGroupToggleLive = domGroupToggleLive;
 function domGroupLoadMessages(){
   if (!domGroups.activeId) return;
   domApi('/api/chat/rooms/' + domGroups.activeId + '/messages').then(function(d){
@@ -10230,9 +10282,12 @@ function domGroupLoadMessages(){
       var mine = m.sender_id === me;
       var ann = m.is_announcement;
       var bg = ann ? 'rgba(255,200,0,0.1)' : (mine ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)');
+      var nameSpan = m.sender_id
+        ? '<span onclick="domShowUserProfile(\'' + m.sender_id + '\')" style="cursor:pointer;text-decoration:underline dotted;">' + (m.sender_name||'—') + '</span>'
+        : (m.sender_name||'—');
       return '<div style="align-self:'+(mine?'flex-end':'flex-start')+';max-width:75%;background:'+bg+';color:var(--text-primary);padding:0.45rem 0.7rem;border-radius:12px;font-size:13px;line-height:1.4;">'
            + (ann ? '<div style="font-size:9px;color:#fc0;font-weight:600;margin-bottom:0.2rem;text-transform:uppercase;">📢 Объявление</div>' : '')
-           + '<div style="font-size:10px;color:var(--text-muted);margin-bottom:0.2rem;">'+(m.sender_name||'—')+'</div>'
+           + '<div style="font-size:10px;color:var(--text-muted);margin-bottom:0.2rem;">'+nameSpan+'</div>'
            + m.body
            + '<div style="font-size:9px;color:var(--text-muted);margin-top:0.2rem;">'+new Date(m.created_at).toLocaleString()+'</div>'
            + '</div>';
