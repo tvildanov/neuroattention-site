@@ -823,6 +823,7 @@
           <button class="dash-tab active" id="dom-subtab-feed" onclick="domSwitch('feed')" data-i18n="a.domunity.feed">Лента</button>
           <button class="dash-tab" id="dom-subtab-dms" onclick="domSwitch('dms')" data-i18n="a.domunity.dms">Сообщения <span id="dom-dms-count" style="color:var(--accent-cyan);"></span></button>
           <button class="dash-tab" id="dom-subtab-notifs" onclick="domSwitch('notifs')" data-i18n="a.domunity.notifs">Уведомления <span id="dom-notif-count" style="color:var(--accent-rose);"></span></button>
+          <button class="dash-tab" id="dom-subtab-groups" onclick="domSwitch('groups')" data-i18n="a.domunity.groups">Группы</button>
           <button class="dash-tab" id="dom-subtab-profile" onclick="domSwitch('profile')" data-i18n="a.domunity.profile">Настройки профиля</button>
         </div>
 
@@ -874,6 +875,28 @@
           <div id="dom-notifs-list" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
         </div>
 
+        <!-- Groups -->
+        <div id="dom-pane-groups" style="display:none;">
+          <div style="display:grid;grid-template-columns:280px 1fr;gap:1rem;min-height:400px;">
+            <div style="border-right:1px solid rgba(255,255,255,0.06);padding-right:1rem;">
+              <button class="btn btn-solid" id="dom-group-create-btn" onclick="domGroupCreate()" style="width:100%;font-size:12px;padding:0.45rem 0.75rem;margin-bottom:0.75rem;display:none;" data-i18n="a.domunity.group_new">+ Создать комнату</button>
+              <div id="dom-groups-list" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
+            </div>
+            <div id="dom-group-chat" style="display:flex;flex-direction:column;">
+              <div id="dom-group-empty" style="margin:auto;text-align:center;color:var(--text-muted);font-size:13px;" data-i18n="a.domunity.group_empty">Выберите комнату.</div>
+              <div id="dom-group-active" style="display:none;flex:1;flex-direction:column;">
+                <div id="dom-group-head" style="padding:0.5rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;font-weight:600;"></div>
+                <div id="dom-group-messages" style="flex:1;overflow-y:auto;padding:0.75rem 0.5rem;max-height:380px;display:flex;flex-direction:column;gap:0.4rem;"></div>
+                <div style="display:flex;gap:0.5rem;padding:0.5rem 0;border-top:1px solid rgba(255,255,255,0.06);">
+                  <textarea id="dom-group-input" rows="2" placeholder="Сообщение в комнату…" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:none;"></textarea>
+                  <button class="btn btn-ghost" id="dom-group-announce-btn" onclick="domGroupSend(true)" style="font-size:12px;padding:0.4rem 0.7rem;align-self:flex-end;display:none;" title="Объявление (только для админа)">📢</button>
+                  <button class="btn btn-solid" onclick="domGroupSend(false)" style="font-size:13px;padding:0.4rem 1rem;align-self:flex-end;" data-i18n="a.domunity.send">Отправить</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Profile settings -->
         <div id="dom-pane-profile" style="display:none;max-width:560px;">
           <h4 style="margin:0 0 0.75rem;font-size:14px;" data-i18n="a.domunity.profile_title">Настройки профиля</h4>
@@ -889,6 +912,10 @@
           </label>
           <button class="btn btn-solid" onclick="domSaveProfile()" style="font-size:12px;padding:0.45rem 1.2rem;" data-i18n="a.domunity.save">Сохранить</button>
           <p id="dom-prof-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);"></p>
+
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:1.5rem 0;">
+          <h4 style="margin:0 0 0.75rem;font-size:14px;color:var(--text-primary);" data-i18n="a.domunity.achievements_title">Достижения</h4>
+          <div id="dom-achievements-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.5rem;margin-bottom:1rem;"></div>
 
           <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:1.5rem 0;">
           <h4 style="margin:0 0 0.5rem;font-size:14px;color:var(--text-primary);" data-i18n="a.domunity.donate_title">Поддержать NeuroAttention</h4>
@@ -1928,7 +1955,15 @@
               <input id="course-published" type="checkbox" style="accent-color:var(--accent-cyan);"> <span data-i18n="a.admin.courses.published">Опубликован</span>
             </label>
             <button class="btn btn-solid" onclick="courseSaveMeta()" id="course-save-btn" style="font-size:12px;padding:0.4rem 0.9rem;margin-left:auto;" data-i18n="a.admin.courses.btn_save">Сохранить</button>
+            <button class="btn btn-ghost" onclick="coursePreviewAsStudent()" id="course-preview-btn" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-cyan);" title="Открыть курс как студент" data-i18n="a.admin.courses.btn_preview">👁 Превью</button>
             <button class="btn btn-ghost" onclick="courseDelete()" id="course-delete-btn" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-rose);" data-i18n="a.admin.courses.btn_delete">Удалить</button>
+          </div>
+
+          <!-- Cover image row -->
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">
+            <input id="course-cover-url" type="text" placeholder="URL обложки курса" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:12px;">
+            <button class="btn btn-ghost" onclick="courseUploadCover()" style="font-size:11px;padding:0.35rem 0.7rem;" data-i18n="a.admin.courses.upload_cover">📤 Загрузить обложку</button>
+            <div id="course-cover-preview" style="width:60px;height:40px;background:rgba(0,0,0,0.4);border-radius:6px;background-size:cover;background-position:center;"></div>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
@@ -9072,6 +9107,10 @@ function renderCourseEditor(){
   document.getElementById('course-desc-en').value = c.description_en || '';
   document.getElementById('course-desc-es').value = c.description_es || '';
   document.getElementById('course-published').checked = !!c.is_published;
+  var cover = document.getElementById('course-cover-url');
+  if (cover) cover.value = c.cover_url || '';
+  var prv = document.getElementById('course-cover-preview');
+  if (prv) prv.style.backgroundImage = c.cover_url ? "url('" + c.cover_url + "')" : '';
   // Program access
   var access = c.program_access || [];
   document.querySelectorAll('.course-access-cb').forEach(function(cb){
@@ -9079,6 +9118,49 @@ function renderCourseEditor(){
   });
   renderCourseBlocks();
 }
+
+// Upload cover image via assets endpoint then set cover_url on course
+function courseUploadCover(){
+  if (!courseState.currentCourse) { alert('Сохрани курс сначала'); return; }
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = function(ev){
+    var file = ev.target.files[0]; if (!file) return;
+    var fd = new FormData();
+    fd.append('file', file, file.name);
+    fd.append('asset_type', 'image');
+    fd.append('filename', file.name);
+    courseSetStatus('Загрузка обложки…');
+    courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/assets', { method:'POST', body: fd })
+      .then(function(d){
+        document.getElementById('course-cover-url').value = d.asset.github_url;
+        document.getElementById('course-cover-preview').style.backgroundImage = "url('" + d.asset.github_url + "')";
+        courseSetStatus('Нажми «Сохранить» чтобы обновить курс', true);
+      })
+      .catch(function(e){ courseSetStatus('Ошибка: ' + e.message); });
+  };
+  inp.click();
+}
+window.courseUploadCover = courseUploadCover;
+
+// Preview current course as a student (uses the same modal player). Works
+// even on drafts because we bypass the public /api/courses gate by feeding
+// the player directly from the admin-side data we already have.
+function coursePreviewAsStudent(){
+  if (!courseState.currentCourse) return;
+  // Player expects course + blocks + progress. We have course + blocks already.
+  coursePlayer.course = courseState.currentCourse;
+  coursePlayer.blocks = courseState.currentBlocks || [];
+  coursePlayer.progress = {};
+  coursePlayer.idx = 0;
+  coursePlayer.history = [];
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var nm = courseState.currentCourse['name_'+lang] || courseState.currentCourse.name_ru || courseState.currentCourse.slug;
+  document.getElementById('cp-course-name').textContent = '[ПРЕВЬЮ] ' + nm;
+  document.getElementById('coursePlayerModal').style.display = 'block';
+  cpRenderBlock();
+}
+window.coursePreviewAsStudent = coursePreviewAsStudent;
 
 function courseSaveMeta(){
   if (!courseState.currentCourse) return;
@@ -9091,6 +9173,7 @@ function courseSaveMeta(){
     description_en: document.getElementById('course-desc-en').value,
     description_es: document.getElementById('course-desc-es').value,
     is_published: document.getElementById('course-published').checked,
+    cover_url: (document.getElementById('course-cover-url')||{}).value || '',
     program_access: access
   };
   courseSetStatus('Сохранение…');
@@ -9534,8 +9617,13 @@ function cpRenderBlock(){
       setTimeout(function(){ var el=document.getElementById('cp-break-timer'); if(!el) return; var n=sec; var t=setInterval(function(){ n--; if(!document.getElementById('cp-break-timer')){clearInterval(t);return;} if(n<=0){clearInterval(t); el.textContent='0';} else el.textContent=n; }, 1000); }, 100);
       break;
     case 'student_audio':
+      var maxSec = parseInt(p.max_duration_seconds,10) || 120;
       body = '<p style="font-size:14px;color:var(--text-secondary);margin:0 0 1rem;">'+(p['prompt_'+lang]||p.prompt_ru||'')+'</p>'
-           + '<p style="font-size:12px;color:var(--text-dim);">Запись голоса появится в следующем обновлении. Пока — пропустите.</p>';
+           + '<div style="text-align:center;padding:1rem 0;">'
+           +   '<button id="cp-rec-btn" class="btn btn-solid" onclick="cpRecToggle('+maxSec+')" style="font-size:13px;padding:0.6rem 1.2rem;">🎙 Начать запись</button>'
+           +   '<div id="cp-rec-status" style="margin-top:0.5rem;font-size:11px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">Готов. Макс. ' + maxSec + ' сек.</div>'
+           +   '<audio id="cp-rec-playback" controls style="display:none;margin-top:0.75rem;width:100%;"></audio>'
+           + '</div>';
       break;
     case 'student_text':
       body = '<p style="font-size:14px;color:var(--text-secondary);margin:0 0 1rem;">'+(p['prompt_'+lang]||p.prompt_ru||'')+'</p>'
@@ -9567,6 +9655,50 @@ function cpPickBranch(answerLabel){
 }
 window.cpPickBranch = cpPickBranch;
 
+// MediaRecorder for student_audio block — record voice → upload via /assets,
+// store the resulting URL in coursePlayer.blockResponse so cpNext sends it.
+var cpRec = { recorder: null, chunks: [], stream: null, timerId: null };
+function cpRecToggle(maxSec){
+  var btn = document.getElementById('cp-rec-btn');
+  var status = document.getElementById('cp-rec-status');
+  var pb = document.getElementById('cp-rec-playback');
+  if (cpRec.recorder && cpRec.recorder.state === 'recording') {
+    cpRec.recorder.stop();
+    return;
+  }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { alert('Запись не поддерживается этим браузером.'); return; }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+    cpRec.stream = stream;
+    cpRec.chunks = [];
+    var mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+    var mr = new MediaRecorder(stream, { mimeType: mime });
+    cpRec.recorder = mr;
+    mr.ondataavailable = function(e){ if (e.data && e.data.size) cpRec.chunks.push(e.data); };
+    mr.onstop = function(){
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      var blob = new Blob(cpRec.chunks, { type: mime });
+      var url = URL.createObjectURL(blob);
+      pb.src = url; pb.style.display = '';
+      btn.textContent = '🎙 Записать заново';
+      status.textContent = 'Готово (' + Math.round(blob.size/1024) + ' KB). Жми «Далее» чтобы сохранить.';
+      if (cpRec.timerId) { clearInterval(cpRec.timerId); cpRec.timerId = null; }
+      // Save blob for cpNext to upload
+      coursePlayer.recBlob = blob; coursePlayer.recMime = mime;
+    };
+    mr.start();
+    btn.textContent = '⏹ Остановить';
+    var t0 = Date.now();
+    cpRec.timerId = setInterval(function(){
+      var sec = Math.floor((Date.now()-t0)/1000);
+      status.textContent = 'Запись… ' + sec + 's / ' + maxSec + 's';
+      if (sec >= maxSec) { try { mr.stop(); } catch(e){} }
+    }, 250);
+  }).catch(function(e){
+    status.textContent = 'Нет доступа к микрофону: ' + e.message;
+  });
+}
+window.cpRecToggle = cpRecToggle;
+
 function cpNext(){
   var block = coursePlayer.blocks[coursePlayer.idx];
   if (!block) { cpClose(); return; }
@@ -9574,6 +9706,31 @@ function cpNext(){
   var respEl = document.getElementById('cp-response');
   var response = coursePlayer.blockResponse;
   if (!response && respEl) response = { text: respEl.value };
+  var token = localStorage.getItem('na_token'); if (!token) return;
+
+  // If a voice recording is queued for this block, upload it first via the
+  // course assets endpoint, then attach the URL to the response.
+  if (coursePlayer.recBlob && block.block_type === 'student_audio') {
+    var fd = new FormData();
+    var ext = (coursePlayer.recMime||'audio/webm').split('/')[1] || 'webm';
+    fd.append('file', coursePlayer.recBlob, 'student-response-' + Date.now() + '.' + ext);
+    fd.append('asset_type', 'audio');
+    fd.append('filename', 'student-response.' + ext);
+    fetch(AUTH_API + '/api/admin/courses/' + coursePlayer.course.id + '/assets', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      response = Object.assign({}, response || {}, { audio_url: d.asset && d.asset.github_url });
+      coursePlayer.recBlob = null; coursePlayer.recMime = null;
+      _cpFinalize(block, response);
+    })
+    .catch(function(e){ alert('Не удалось загрузить запись: ' + e.message); });
+    return;
+  }
+  _cpFinalize(block, response);
+}
+function _cpFinalize(block, response){
   var token = localStorage.getItem('na_token'); if (!token) return;
   fetch(AUTH_API + '/api/courses/' + coursePlayer.course.id + '/blocks/' + block.id + '/complete', {
     method: 'POST',
@@ -9646,7 +9803,8 @@ function domSwitch(sub){
   if (sub === 'feed') domLoadFeed();
   else if (sub === 'dms') domLoadThreads();
   else if (sub === 'notifs') domLoadNotifs();
-  else if (sub === 'profile') domLoadProfile();
+  else if (sub === 'groups') domLoadGroups();
+  else if (sub === 'profile') { domLoadProfile(); domLoadAchievements(); }
 }
 window.domSwitch = domSwitch;
 
@@ -9831,6 +9989,103 @@ function domSaveProfile(){
     .catch(function(e){ document.getElementById('dom-prof-status').textContent='Ошибка: '+e.message; });
 }
 window.domSaveProfile = domSaveProfile;
+
+// ── Groups (chat rooms) ──
+var domGroups = { rooms: [], activeId: null, pollTimer: null };
+function domLoadGroups(){
+  // Show create button for admins
+  var createBtn = document.getElementById('dom-group-create-btn');
+  if (createBtn && currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin')) {
+    createBtn.style.display = '';
+  }
+  domApi('/api/chat/rooms').then(function(d){
+    domGroups.rooms = d.rooms || [];
+    var box = document.getElementById('dom-groups-list');
+    if (!box) return;
+    if (!domGroups.rooms.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Пока нет комнат.</p>'; return; }
+    box.innerHTML = domGroups.rooms.map(function(r){
+      var active = (domGroups.activeId === r.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
+      return '<div onclick="domGroupOpen(' + r.id + ',\''+r.name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
+           + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">'+r.name+'</div>'
+           + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+(r.member_count||0)+' участников</div>'
+           + '</div>';
+    }).join('');
+  }).catch(function(e){ console.warn('groups:', e); });
+}
+function domGroupCreate(){
+  var name = prompt('Название комнаты:');
+  if (!name) return;
+  var slug = name.toLowerCase().replace(/[^a-z0-9а-я]+/g,'-').replace(/^-+|-+$/g,'') + '-' + Date.now();
+  domApi('/api/admin/chat/rooms', { method:'POST', body: { slug: slug, name: name, description: '', member_ids: [] } })
+    .then(function(d){
+      domLoadGroups();
+      setTimeout(function(){ domGroupOpen(d.room.id, d.room.name); }, 200);
+    })
+    .catch(function(e){ alert(e.message); });
+}
+function domGroupOpen(roomId, roomName){
+  domGroups.activeId = roomId;
+  document.getElementById('dom-group-empty').style.display = 'none';
+  document.getElementById('dom-group-active').style.display = 'flex';
+  document.getElementById('dom-group-head').textContent = roomName || '—';
+  // Show announcement button if user is admin
+  var annBtn = document.getElementById('dom-group-announce-btn');
+  if (annBtn && currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin')) annBtn.style.display = '';
+  domGroupLoadMessages();
+  if (domGroups.pollTimer) clearInterval(domGroups.pollTimer);
+  domGroups.pollTimer = setInterval(domGroupLoadMessages, 5000);
+}
+function domGroupLoadMessages(){
+  if (!domGroups.activeId) return;
+  domApi('/api/chat/rooms/' + domGroups.activeId + '/messages').then(function(d){
+    var box = document.getElementById('dom-group-messages');
+    if (!box) return;
+    var me = currentUser && currentUser.id;
+    box.innerHTML = (d.messages||[]).map(function(m){
+      var mine = m.sender_id === me;
+      var ann = m.is_announcement;
+      var bg = ann ? 'rgba(255,200,0,0.1)' : (mine ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)');
+      return '<div style="align-self:'+(mine?'flex-end':'flex-start')+';max-width:75%;background:'+bg+';color:var(--text-primary);padding:0.45rem 0.7rem;border-radius:12px;font-size:13px;line-height:1.4;">'
+           + (ann ? '<div style="font-size:9px;color:#fc0;font-weight:600;margin-bottom:0.2rem;text-transform:uppercase;">📢 Объявление</div>' : '')
+           + '<div style="font-size:10px;color:var(--text-muted);margin-bottom:0.2rem;">'+(m.sender_name||'—')+'</div>'
+           + m.body
+           + '<div style="font-size:9px;color:var(--text-muted);margin-top:0.2rem;">'+new Date(m.created_at).toLocaleString()+'</div>'
+           + '</div>';
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }).catch(function(){});
+}
+function domGroupSend(isAnnouncement){
+  var inp = document.getElementById('dom-group-input');
+  if (!inp || !inp.value.trim() || !domGroups.activeId) return;
+  domApi('/api/chat/rooms/' + domGroups.activeId + '/messages', { method:'POST', body: { body: inp.value, is_announcement: !!isAnnouncement } })
+    .then(function(){ inp.value=''; domGroupLoadMessages(); });
+}
+window.domLoadGroups = domLoadGroups;
+window.domGroupCreate = domGroupCreate;
+window.domGroupOpen = domGroupOpen;
+window.domGroupSend = domGroupSend;
+
+// ── Achievements display ──
+function domLoadAchievements(){
+  domApi('/api/achievements').then(function(d){
+    var box = document.getElementById('dom-achievements-list');
+    if (!box) return;
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    box.innerHTML = (d.achievements||[]).map(function(a){
+      var title = a['title_'+lang] || a.title_ru || a.title_en || a.slug;
+      var desc = a['description_'+lang] || a.description_ru || a.description_en || '';
+      var got = a.has;
+      var op = got ? '1' : '0.35';
+      return '<div title="'+desc.replace(/"/g,'&quot;')+'" style="padding:0.6rem 0.7rem;border:1px solid '+(got?'rgba(0,229,255,0.3)':'rgba(255,255,255,0.06)')+';border-radius:8px;background:'+(got?'rgba(0,229,255,0.06)':'rgba(0,0,0,0.18)')+';opacity:'+op+';">'
+           + '<div style="font-size:22px;">'+(a.badge_emoji||'🏅')+'</div>'
+           + '<div style="font-size:12px;font-weight:600;margin-top:0.3rem;">'+title+'</div>'
+           + (a.xp_reward ? '<div style="font-size:10px;color:var(--accent-cyan);margin-top:0.2rem;">+'+a.xp_reward+' XP</div>' : '')
+           + '</div>';
+    }).join('');
+  }).catch(function(){});
+}
+window.domLoadAchievements = domLoadAchievements;
 
 function domDonate(presetCents){
   var cents = presetCents;
