@@ -2955,12 +2955,19 @@ async function githubUploadFile(filePath, contentBase64, commitMessage) {
   const encodedPath = encodeGitHubPath(filePath);
   const url = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${encodedPath}`;
 
+  // GitHub Contents API requires sha when overwriting an existing file. Fetch
+  // it up-front so we never get the "Invalid request. sha wasn't supplied" 422.
+  let existingSha = null;
+  try { existingSha = await githubGetFileSha(filePath); } catch (_) { existingSha = null; }
+
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
+    const payload = {
       message: commitMessage,
       content: contentBase64,
       branch: 'main'
-    });
+    };
+    if (existingSha) payload.sha = existingSha;
+    const body = JSON.stringify(payload);
     const options = {
       hostname: 'api.github.com',
       path: url,
@@ -3133,11 +3140,37 @@ app.post('/api/admin/practices', requireAuth, uploadAudio.single('audio'), async
     // duration_seconds / order_idx arrive as strings via multipart, parseInt safely.
     const durNum = parseInt(duration_seconds, 10) || 0;
     const orderNum = parseInt(order_idx, 10) || 0;
-    const rows = await sql`
-      INSERT INTO practices (slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx)
-      VALUES (${cleanSlug}, ${block_id}, ${cleanLang}, ${name}, ${description || ''}, ${audioUrl}, ${durNum}, ${orderNum})
-      RETURNING *
-    `;
+    // Upsert: if a row with the same slug+lang exists, update it instead of failing
+    // (matches the GitHub overwrite behaviour above). Fallback to INSERT if no unique constraint.
+    let rows;
+    try {
+      rows = await sql`
+        INSERT INTO practices (slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx)
+        VALUES (${cleanSlug}, ${block_id}, ${cleanLang}, ${name}, ${description || ''}, ${audioUrl}, ${durNum}, ${orderNum})
+        ON CONFLICT (slug, lang) DO UPDATE SET
+          block_id = EXCLUDED.block_id,
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          audio_url = EXCLUDED.audio_url,
+          duration_seconds = EXCLUDED.duration_seconds,
+          order_idx = EXCLUDED.order_idx,
+          updated_at = now()
+        RETURNING *
+      `;
+    } catch (upsertErr) {
+      // If there's no unique index on (slug, lang), fall back to manual update-or-insert
+      const existing = await sql`SELECT id FROM practices WHERE slug = ${cleanSlug} AND lang = ${cleanLang} LIMIT 1`;
+      if (existing.length) {
+        rows = await sql`UPDATE practices SET
+          block_id = ${block_id}, name = ${name}, description = ${description || ''},
+          audio_url = ${audioUrl}, duration_seconds = ${durNum}, order_idx = ${orderNum},
+          updated_at = now()
+          WHERE id = ${existing[0].id} RETURNING *`;
+      } else {
+        rows = await sql`INSERT INTO practices (slug, block_id, lang, name, description, audio_url, duration_seconds, order_idx)
+                         VALUES (${cleanSlug}, ${block_id}, ${cleanLang}, ${name}, ${description || ''}, ${audioUrl}, ${durNum}, ${orderNum}) RETURNING *`;
+      }
+    }
 
     res.status(201).json({ ok: true, practice: rows[0] });
   } catch (err) {
