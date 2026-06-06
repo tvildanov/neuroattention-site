@@ -888,6 +888,18 @@
               <div id="dom-group-active" style="display:none;flex:1;flex-direction:column;">
                 <div id="dom-group-head" style="padding:0.5rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;font-weight:600;"></div>
                 <div id="dom-group-messages" style="flex:1;overflow-y:auto;padding:0.75rem 0.5rem;max-height:380px;display:flex;flex-direction:column;gap:0.4rem;"></div>
+                <!-- Live stream area — visible only when room.is_live -->
+                <div id="dom-group-stream" style="display:none;padding:0.5rem 0;border-top:1px solid rgba(255,255,255,0.06);">
+                  <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:0.5rem;">
+                    <button class="btn btn-ghost" onclick="rtcStartHost(false)" id="rtc-host-audio" style="font-size:12px;padding:0.3rem 0.6rem;display:none;">🎙 Микрофон</button>
+                    <button class="btn btn-ghost" onclick="rtcStartHost(true)" id="rtc-host-video" style="font-size:12px;padding:0.3rem 0.6rem;display:none;">📹 Микрофон + камера</button>
+                    <button class="btn btn-ghost" onclick="rtcStopHost()" id="rtc-host-stop" style="font-size:12px;padding:0.3rem 0.6rem;color:var(--accent-rose);display:none;">⏹ Завершить стрим</button>
+                    <button class="btn btn-solid" onclick="rtcStartViewer()" id="rtc-viewer-join" style="font-size:12px;padding:0.3rem 0.7rem;background:rgba(0,229,255,0.15);color:var(--accent-cyan);display:none;">📡 Подключиться к стриму</button>
+                    <span id="rtc-status" style="font-size:11px;color:var(--text-muted);"></span>
+                  </div>
+                  <video id="rtc-host-preview" autoplay muted playsinline style="display:none;width:100%;max-height:200px;background:#000;border-radius:8px;"></video>
+                  <video id="rtc-viewer-stream" autoplay playsinline style="display:none;width:100%;max-height:300px;background:#000;border-radius:8px;"></video>
+                </div>
                 <div style="display:flex;gap:0.5rem;padding:0.5rem 0;border-top:1px solid rgba(255,255,255,0.06);">
                   <textarea id="dom-group-input" rows="2" placeholder="Сообщение в комнату…" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:none;"></textarea>
                   <button class="btn btn-ghost" id="dom-group-announce-btn" onclick="domGroupSend(true)" style="font-size:12px;padding:0.4rem 0.7rem;align-self:flex-end;display:none;" title="Объявление (только для админа)">📢</button>
@@ -10236,6 +10248,126 @@ window.createCustomAch = createCustomAch;
 window.deleteCustomAch = deleteCustomAch;
 window.awardCustomAch = awardCustomAch;
 
+// ══════════════════════════════════════════
+// Pack 27: Minimal WebRTC LIVE streaming for group rooms
+// One-to-many: admin streams mic/cam to viewers via RTCPeerConnection.
+// Signaling: poll /api/rtc/:roomId/signals every 2s.
+// No TURN — works on most networks; strict NAT will fail silently.
+// ══════════════════════════════════════════
+var rtc = {
+  roomId: null, isHost: false, stream: null,
+  pcs: {},          // viewerUserId → RTCPeerConnection (for host)
+  hostPc: null,     // single PC for viewer
+  signalsSince: new Date().toISOString(),
+  pollTimer: null,
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
+};
+function rtcSetStatus(t){ var el=document.getElementById('rtc-status'); if(el) el.textContent = t||''; }
+function rtcStartHost(withVideo){
+  if (!domGroups.activeId) return;
+  rtc.roomId = domGroups.activeId; rtc.isHost = true;
+  navigator.mediaDevices.getUserMedia({ audio: true, video: withVideo ? { width: 640, height: 360 } : false })
+    .then(function(stream){
+      rtc.stream = stream;
+      var vid = document.getElementById('rtc-host-preview');
+      vid.style.display = ''; vid.srcObject = stream;
+      document.getElementById('rtc-host-audio').style.display = 'none';
+      document.getElementById('rtc-host-video').style.display = 'none';
+      document.getElementById('rtc-host-stop').style.display = '';
+      rtcSetStatus('🔴 Стрим запущен — ждём подключений');
+      // Announce in the chat that stream is live
+      domApi('/api/chat/rooms/' + rtc.roomId + '/messages', { method:'POST', body: { body: '📡 Стрим запущен — подключайтесь', is_announcement: true } });
+      rtcStartPolling();
+    })
+    .catch(function(e){ rtcSetStatus('Нет доступа к устройствам: ' + e.message); });
+}
+function rtcStopHost(){
+  if (rtc.stream) rtc.stream.getTracks().forEach(function(t){ t.stop(); });
+  Object.values(rtc.pcs).forEach(function(pc){ try { pc.close(); } catch(e){} });
+  rtc.pcs = {};
+  rtc.stream = null;
+  document.getElementById('rtc-host-preview').style.display = 'none';
+  document.getElementById('rtc-host-audio').style.display = '';
+  document.getElementById('rtc-host-video').style.display = '';
+  document.getElementById('rtc-host-stop').style.display = 'none';
+  rtcStopPolling();
+  rtcSetStatus('Стрим завершён');
+}
+function rtcStartViewer(){
+  if (!domGroups.activeId) return;
+  rtc.roomId = domGroups.activeId; rtc.isHost = false;
+  var pc = new RTCPeerConnection({ iceServers: rtc.iceServers });
+  rtc.hostPc = pc;
+  pc.ontrack = function(ev){
+    var v = document.getElementById('rtc-viewer-stream');
+    v.style.display = '';
+    v.srcObject = ev.streams[0];
+  };
+  pc.onicecandidate = function(ev){
+    if (ev.candidate) rtcSend('ice', { candidate: ev.candidate }, null);
+  };
+  document.getElementById('rtc-viewer-join').style.display = 'none';
+  rtcSetStatus('🔌 Подключение к стримеру…');
+  // Tell host I'm here. Host will offer.
+  rtcSend('subscribe', { wantVideo: true }, null);
+  rtcStartPolling();
+}
+function rtcSend(kind, payload, toId){
+  return domApi('/api/rtc/' + rtc.roomId + '/signal', { method:'POST', body: { kind: kind, payload: payload, to_id: toId } });
+}
+function rtcStartPolling(){
+  if (rtc.pollTimer) clearInterval(rtc.pollTimer);
+  rtc.signalsSince = new Date(Date.now() - 5000).toISOString();
+  rtc.pollTimer = setInterval(rtcFetchSignals, 2000);
+  rtcFetchSignals();
+}
+function rtcStopPolling(){ if (rtc.pollTimer) { clearInterval(rtc.pollTimer); rtc.pollTimer = null; } }
+function rtcFetchSignals(){
+  if (!rtc.roomId) return;
+  domApi('/api/rtc/' + rtc.roomId + '/signals?since=' + encodeURIComponent(rtc.signalsSince))
+    .then(function(d){
+      var sigs = d.signals || [];
+      if (!sigs.length) return;
+      rtc.signalsSince = sigs[sigs.length - 1].created_at;
+      sigs.forEach(rtcHandleSignal);
+    })
+    .catch(function(e){ console.warn('rtc poll:', e.message); });
+}
+function rtcHandleSignal(sig){
+  // Host receives subscribe → create new PC for that viewer, addTracks, createOffer
+  if (rtc.isHost && sig.kind === 'subscribe') {
+    if (rtc.pcs[sig.from_id]) return; // already handling
+    var pc = new RTCPeerConnection({ iceServers: rtc.iceServers });
+    rtc.pcs[sig.from_id] = pc;
+    rtc.stream.getTracks().forEach(function(t){ pc.addTrack(t, rtc.stream); });
+    pc.onicecandidate = function(ev){ if (ev.candidate) rtcSend('ice', { candidate: ev.candidate }, sig.from_id); };
+    pc.createOffer().then(function(offer){ return pc.setLocalDescription(offer).then(function(){ rtcSend('offer', { sdp: pc.localDescription }, sig.from_id); }); });
+    rtcSetStatus('🔴 Стрим активен — слушателей: ' + Object.keys(rtc.pcs).length);
+  }
+  // Host receives answer from a viewer
+  else if (rtc.isHost && sig.kind === 'answer' && rtc.pcs[sig.from_id]) {
+    rtc.pcs[sig.from_id].setRemoteDescription(new RTCSessionDescription(sig.payload.sdp));
+  }
+  // Host receives ICE from a viewer
+  else if (rtc.isHost && sig.kind === 'ice' && rtc.pcs[sig.from_id]) {
+    rtc.pcs[sig.from_id].addIceCandidate(new RTCIceCandidate(sig.payload.candidate));
+  }
+  // Viewer receives offer from host
+  else if (!rtc.isHost && sig.kind === 'offer' && rtc.hostPc) {
+    var pc = rtc.hostPc;
+    pc.setRemoteDescription(new RTCSessionDescription(sig.payload.sdp))
+      .then(function(){ return pc.createAnswer(); })
+      .then(function(ans){ return pc.setLocalDescription(ans).then(function(){ rtcSend('answer', { sdp: pc.localDescription }, sig.from_id); }); });
+  }
+  // Viewer receives ICE from host
+  else if (!rtc.isHost && sig.kind === 'ice' && rtc.hostPc) {
+    rtc.hostPc.addIceCandidate(new RTCIceCandidate(sig.payload.candidate));
+  }
+}
+window.rtcStartHost = rtcStartHost;
+window.rtcStopHost = rtcStopHost;
+window.rtcStartViewer = rtcStartViewer;
+
 // Auto-populate the achievements list when the admin tools tab is shown
 document.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
@@ -10588,6 +10720,20 @@ function domGroupOpen(roomId, roomName){
   if (domGroups.pollTimer) clearInterval(domGroups.pollTimer);
   // Faster poll during live mode
   domGroups.pollTimer = setInterval(domGroupLoadMessages, room.is_live ? 2000 : 5000);
+  domGroupRefreshStreamButtons(room);
+}
+function domGroupRefreshStreamButtons(room){
+  var streamArea = document.getElementById('dom-group-stream');
+  if (!streamArea) return;
+  var isAdmin = currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin' || (room && room.created_by === currentUser.id));
+  if (!room || !room.is_live) {
+    streamArea.style.display = 'none';
+    return;
+  }
+  streamArea.style.display = '';
+  document.getElementById('rtc-host-audio').style.display = isAdmin ? '' : 'none';
+  document.getElementById('rtc-host-video').style.display = isAdmin ? '' : 'none';
+  document.getElementById('rtc-viewer-join').style.display = isAdmin ? 'none' : '';
 }
 function domGroupToggleLive(roomId, makeLive){
   domApi('/api/chat/rooms/' + roomId, { method:'PATCH', body: { is_live: makeLive === 'true' || makeLive === true } })
