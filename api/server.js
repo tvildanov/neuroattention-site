@@ -199,6 +199,26 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     const session = event.data.object;
     try {
       const meta = session.metadata || {};
+
+      // ── Donations branch (Pack 25/26) ──
+      // Distinguished by absence of a `product` metadata field AND presence of
+      // a `donation_message` (which is set when the donate checkout is created).
+      if (!meta.product && (meta.donation_message !== undefined || meta.donation === 'true')) {
+        const donorUserId = meta.user_id || null;
+        const paymentIntent = session.payment_intent || null;
+        await sql`INSERT INTO donations (donor_user_id, amount_cents, currency, stripe_session_id, stripe_payment_intent_id, message)
+                  VALUES (${donorUserId}, ${session.amount_total || 0}, ${session.currency || 'usd'},
+                          ${session.id}, ${paymentIntent}, ${meta.donation_message || ''})`;
+        if (donorUserId) {
+          // Award first_donation achievement; tryAwardAchievement is defined later in the file
+          // and handles the idempotency + notification fan-out.
+          try { await tryAwardAchievement(donorUserId, 'first_donation', []); }
+          catch (e) { console.warn('first_donation award:', e.message); }
+        }
+        console.log('Stripe webhook: donation recorded for session', session.id, 'user_id:', donorUserId);
+        return res.json({ received: true, kind: 'donation' });
+      }
+
       const customerEmail = session.customer_details?.email || meta.email;
       // If consent_log row missing user_id, try to backfill from email
       let userIdForLog = null;
@@ -4475,7 +4495,7 @@ app.post('/api/donate/checkout', requireAuth, async (req, res) => {
       }],
       success_url: 'https://neuroattention.org/account.html?donation=success',
       cancel_url: 'https://neuroattention.org/account.html?donation=cancel',
-      metadata: { user_id: me, donation_message: message || '' },
+      metadata: { user_id: me, donation_message: message || '', donation: 'true' },
       locale: ['ru','en','es'].includes(lang) ? lang : 'auto'
     });
     res.json({ checkout_url: session.url, session_id: session.id });
