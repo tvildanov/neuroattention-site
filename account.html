@@ -897,8 +897,25 @@
                     <button class="btn btn-solid" onclick="rtcStartViewer()" id="rtc-viewer-join" style="font-size:12px;padding:0.3rem 0.7rem;background:rgba(0,229,255,0.15);color:var(--accent-cyan);display:none;">📡 Подключиться к стриму</button>
                     <span id="rtc-status" style="font-size:11px;color:var(--text-muted);"></span>
                   </div>
+                  <!-- Recording controls (host-only, visible after stream starts) -->
+                  <div id="rec-controls" style="display:none;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;padding:0.45rem 0.6rem;background:rgba(255,80,80,0.05);border:1px dashed rgba(255,80,80,0.25);border-radius:8px;">
+                    <button class="btn btn-solid" onclick="recStart()" id="rec-start-btn" style="font-size:12px;padding:0.3rem 0.7rem;background:rgba(255,80,80,0.15);color:#f55;">⏺ Запись</button>
+                    <button class="btn btn-ghost" onclick="recStop()" id="rec-stop-btn" style="font-size:12px;padding:0.3rem 0.7rem;display:none;color:#f55;">⏹ Остановить и загрузить</button>
+                    <label style="font-size:11px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:0.3rem;">
+                      <input type="checkbox" id="rec-overlay" style="accent-color:var(--accent-cyan);"> Включить чат и реакции в видео
+                    </label>
+                    <select id="rec-quality" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.45rem;color:var(--text-primary);font-size:11px;">
+                      <option value="high" selected>HD (720p · 4 Mbps)</option>
+                      <option value="med">SD (480p · 2 Mbps)</option>
+                      <option value="audio">Только звук (128 kbps)</option>
+                    </select>
+                    <span id="rec-status" style="font-size:11px;color:var(--text-muted);"></span>
+                  </div>
+                  <canvas id="rec-canvas" width="1280" height="720" style="display:none;"></canvas>
                   <video id="rtc-host-preview" autoplay muted playsinline style="display:none;width:100%;max-height:200px;background:#000;border-radius:8px;"></video>
                   <video id="rtc-viewer-stream" autoplay playsinline style="display:none;width:100%;max-height:300px;background:#000;border-radius:8px;"></video>
+                  <!-- Past recordings list -->
+                  <div id="rec-list" style="margin-top:0.5rem;display:flex;flex-direction:column;gap:0.3rem;"></div>
                 </div>
                 <div style="display:flex;gap:0.5rem;padding:0.5rem 0;border-top:1px solid rgba(255,255,255,0.06);">
                   <textarea id="dom-group-input" rows="2" placeholder="Сообщение в комнату…" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:none;"></textarea>
@@ -10274,6 +10291,7 @@ function rtcStartHost(withVideo){
       document.getElementById('rtc-host-audio').style.display = 'none';
       document.getElementById('rtc-host-video').style.display = 'none';
       document.getElementById('rtc-host-stop').style.display = '';
+      document.getElementById('rec-controls').style.display = 'flex';
       rtcSetStatus('🔴 Стрим запущен — ждём подключений');
       // Announce in the chat that stream is live
       domApi('/api/chat/rooms/' + rtc.roomId + '/messages', { method:'POST', body: { body: '📡 Стрим запущен — подключайтесь', is_announcement: true } });
@@ -10282,6 +10300,7 @@ function rtcStartHost(withVideo){
     .catch(function(e){ rtcSetStatus('Нет доступа к устройствам: ' + e.message); });
 }
 function rtcStopHost(){
+  if (rec.recording) recStop();
   if (rtc.stream) rtc.stream.getTracks().forEach(function(t){ t.stop(); });
   Object.values(rtc.pcs).forEach(function(pc){ try { pc.close(); } catch(e){} });
   rtc.pcs = {};
@@ -10290,6 +10309,7 @@ function rtcStopHost(){
   document.getElementById('rtc-host-audio').style.display = '';
   document.getElementById('rtc-host-video').style.display = '';
   document.getElementById('rtc-host-stop').style.display = 'none';
+  document.getElementById('rec-controls').style.display = 'none';
   rtcStopPolling();
   rtcSetStatus('Стрим завершён');
 }
@@ -10367,6 +10387,186 @@ function rtcHandleSignal(sig){
 window.rtcStartHost = rtcStartHost;
 window.rtcStopHost = rtcStopHost;
 window.rtcStartViewer = rtcStartViewer;
+
+// ══════════════════════════════════════════
+// Pack 27.1: Local recording of host stream (MediaRecorder)
+// Modes: HD/SD with full A/V, or audio-only. Optional chat-overlay
+// composites the webcam + recent messages onto a Canvas and records that.
+// ══════════════════════════════════════════
+var rec = { recorder: null, chunks: [], stream: null, recording: false, startedAt: null, overlayRafId: null };
+
+function recStart(){
+  if (!rtc.stream) { alert('Сначала запусти стрим'); return; }
+  var qual = document.getElementById('rec-quality').value;
+  var overlay = document.getElementById('rec-overlay').checked;
+  rec.startedAt = new Date().toISOString();
+  rec.chunks = [];
+
+  var srcStream;
+  var opts = { mimeType: 'video/webm;codecs=vp8,opus', videoBitsPerSecond: 4000000, audioBitsPerSecond: 128000 };
+
+  if (qual === 'audio') {
+    // Audio-only: clone only the audio track
+    var audioOnly = new MediaStream(rtc.stream.getAudioTracks());
+    srcStream = audioOnly;
+    opts = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 128000 };
+  } else if (overlay && rtc.stream.getVideoTracks().length) {
+    // Composite via canvas + audio from mic
+    srcStream = recBuildOverlayStream(qual);
+  } else {
+    srcStream = rtc.stream;
+    if (qual === 'med') opts.videoBitsPerSecond = 2000000;
+  }
+
+  if (!MediaRecorder.isTypeSupported(opts.mimeType)) {
+    opts.mimeType = qual === 'audio' ? 'audio/webm' : 'video/webm';
+  }
+  try {
+    rec.recorder = new MediaRecorder(srcStream, opts);
+  } catch (e) { alert('MediaRecorder error: ' + e.message); return; }
+  rec.recorder.ondataavailable = function(e){ if (e.data && e.data.size) rec.chunks.push(e.data); };
+  rec.recorder.onstop = function(){ recUpload(qual, overlay); };
+  rec.recorder.start(1000);
+  rec.recording = true;
+  document.getElementById('rec-start-btn').style.display = 'none';
+  document.getElementById('rec-stop-btn').style.display = '';
+  document.getElementById('rec-status').textContent = '⏺ Идёт запись…';
+}
+
+function recStop(){
+  if (!rec.recorder) return;
+  try { rec.recorder.stop(); } catch(e){}
+  rec.recording = false;
+  if (rec.overlayRafId) cancelAnimationFrame(rec.overlayRafId);
+  if (rec.canvasStream) rec.canvasStream.getTracks().forEach(function(t){ t.stop(); });
+  document.getElementById('rec-stop-btn').style.display = 'none';
+  document.getElementById('rec-start-btn').style.display = '';
+  document.getElementById('rec-status').textContent = '⏫ Загружаем…';
+}
+
+// Build a MediaStream from a Canvas where we composite the video + chat sidebar.
+// Audio track comes from the original mic.
+function recBuildOverlayStream(qual){
+  var canvas = document.getElementById('rec-canvas');
+  var ctx = canvas.getContext('2d');
+  var W = qual === 'med' ? 854 : 1280;
+  var H = qual === 'med' ? 480 : 720;
+  canvas.width = W; canvas.height = H;
+  var videoEl = document.getElementById('rtc-host-preview');
+  var t0 = Date.now();
+  function drawFrame(){
+    if (!rec.recording) return;
+    // Left 70%: video
+    var vw = Math.floor(W * 0.7), vh = H;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    if (videoEl && videoEl.videoWidth > 0) {
+      // Letterbox fit
+      var ratio = Math.min(vw / videoEl.videoWidth, vh / videoEl.videoHeight);
+      var dw = videoEl.videoWidth * ratio, dh = videoEl.videoHeight * ratio;
+      ctx.drawImage(videoEl, (vw - dw) / 2, (vh - dh) / 2, dw, dh);
+    }
+    // Right 30%: chat panel
+    var px = vw + 10, pw = W - vw - 20;
+    ctx.fillStyle = 'rgba(0,229,255,0.06)';
+    ctx.fillRect(vw, 0, W - vw, H);
+    ctx.fillStyle = 'rgba(0,229,255,0.9)';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('💬 Live chat', px, 30);
+    ctx.strokeStyle = 'rgba(0,229,255,0.3)';
+    ctx.beginPath(); ctx.moveTo(px, 40); ctx.lineTo(px + pw, 40); ctx.stroke();
+    // Pull recent messages from current DOM
+    var mbox = document.getElementById('dom-group-messages');
+    var msgs = mbox ? Array.from(mbox.children).slice(-10) : [];
+    var y = 60;
+    ctx.font = '14px sans-serif';
+    msgs.forEach(function(node){
+      var lines = node.textContent.trim().split(/\n+/).slice(0, 3);
+      lines.forEach(function(line){
+        if (y > H - 20) return;
+        ctx.fillStyle = '#fff';
+        // Word-wrap
+        var words = line.split(' '); var ln = '';
+        for (var i = 0; i < words.length; i++){
+          var tst = ln + words[i] + ' ';
+          if (ctx.measureText(tst).width > pw - 10) {
+            ctx.fillText(ln, px, y); y += 18; ln = words[i] + ' ';
+            if (y > H - 20) break;
+          } else ln = tst;
+        }
+        if (y <= H - 20) { ctx.fillText(ln, px, y); y += 22; }
+      });
+      y += 6;
+    });
+    // Timestamp watermark
+    var secs = Math.floor((Date.now() - t0) / 1000);
+    var mm = String(Math.floor(secs / 60)).padStart(2, '0');
+    var ss = String(secs % 60).padStart(2, '0');
+    ctx.fillStyle = 'rgba(255,80,80,0.9)';
+    ctx.fillRect(10, H - 30, 80, 20);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('● REC ' + mm + ':' + ss, 14, H - 14);
+    rec.overlayRafId = requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+  var canvasStream = canvas.captureStream(30);
+  rec.canvasStream = canvasStream;
+  // Add the audio track from the live mic stream
+  rtc.stream.getAudioTracks().forEach(function(t){ canvasStream.addTrack(t); });
+  return canvasStream;
+}
+
+function recUpload(qual, overlay){
+  if (!rec.chunks.length) { document.getElementById('rec-status').textContent = ''; return; }
+  var mime = rec.recorder && rec.recorder.mimeType || 'video/webm';
+  var blob = new Blob(rec.chunks, { type: mime });
+  var dur = Math.floor((Date.now() - new Date(rec.startedAt).getTime()) / 1000);
+  var fd = new FormData();
+  fd.append('file', blob, 'recording-' + Date.now() + '.webm');
+  fd.append('has_overlay', overlay ? 'true' : 'false');
+  fd.append('has_video', qual === 'audio' ? 'false' : 'true');
+  fd.append('duration_seconds', String(dur));
+  fd.append('started_at', rec.startedAt);
+  fd.append('ended_at', new Date().toISOString());
+  var token = localStorage.getItem('na_token');
+  document.getElementById('rec-status').textContent = '⏫ Загрузка ' + (blob.size/1024/1024).toFixed(1) + ' MB…';
+  fetch(AUTH_API + '/api/chat/rooms/' + rtc.roomId + '/recordings', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token },
+    body: fd
+  })
+  .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || r.status); return j; }); })
+  .then(function(d){
+    document.getElementById('rec-status').textContent = '✓ Сохранено: ' + d.recording.filename;
+    rec.chunks = []; rec.startedAt = null;
+    recLoadList();
+  })
+  .catch(function(e){ document.getElementById('rec-status').textContent = 'Ошибка загрузки: ' + e.message; });
+}
+
+function recLoadList(){
+  if (!domGroups.activeId) return;
+  domApi('/api/chat/rooms/' + domGroups.activeId + '/recordings').then(function(d){
+    var box = document.getElementById('rec-list');
+    if (!box) return;
+    var recs = d.recordings || [];
+    if (!recs.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<h4 style="margin:0.75rem 0 0.3rem;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">🎬 Записи стримов</h4>'
+      + recs.map(function(r){
+        var label = r.has_video ? (r.has_overlay ? '📹+💬' : '📹') : '🔊';
+        var dur = r.duration_seconds ? Math.floor(r.duration_seconds/60)+':'+String(r.duration_seconds%60).padStart(2,'0') : '—';
+        var sz = r.size_bytes ? (r.size_bytes/1024/1024).toFixed(1)+' MB' : '';
+        return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.6rem;background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.06);border-radius:6px;">'
+          + '<span style="font-size:14px;">' + label + '</span>'
+          + '<a href="' + r.url + '" target="_blank" style="color:var(--accent-cyan);font-size:12px;text-decoration:none;flex:1;">' + r.filename + '</a>'
+          + '<span style="font-size:10px;color:var(--text-muted);">' + dur + ' · ' + sz + '</span>'
+          + '</div>';
+      }).join('');
+  }).catch(function(){});
+}
+window.recStart = recStart;
+window.recStop = recStop;
+window.recLoadList = recLoadList;
 
 // Auto-populate the achievements list when the admin tools tab is shown
 document.addEventListener('DOMContentLoaded', function(){
@@ -10721,6 +10921,7 @@ function domGroupOpen(roomId, roomName){
   // Faster poll during live mode
   domGroups.pollTimer = setInterval(domGroupLoadMessages, room.is_live ? 2000 : 5000);
   domGroupRefreshStreamButtons(room);
+  if (typeof recLoadList === 'function') recLoadList();
 }
 function domGroupRefreshStreamButtons(room){
   var streamArea = document.getElementById('dom-group-stream');
