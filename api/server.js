@@ -999,7 +999,22 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE joint_practice_participants ADD COLUMN IF NOT EXISTS left_at TIMESTAMP`;
     await sql`ALTER TABLE joint_practice_participants ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT now()`;
 
-    res.json({ ok: true, message: 'Migrations 003-027 applied successfully' });
+    // Pack 28: per-kind notification mute + admin-author flag on achievements + LIVE room signaling table
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS notif_mute TEXT[] DEFAULT '{}'`;
+    await sql`ALTER TABLE achievements ADD COLUMN IF NOT EXISTS author_id UUID REFERENCES users(id) ON DELETE SET NULL`;
+    // Simple WebRTC signaling table — peers POST offers/answers/ice candidates; viewers GET pending ones for them
+    await sql`CREATE TABLE IF NOT EXISTS rtc_signals (
+      id SERIAL PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+      from_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      to_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      payload JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_rtc_signals_to ON rtc_signals(room_id, to_id, created_at DESC)`;
+
+    res.json({ ok: true, message: 'Migrations 003-028 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4206,6 +4221,19 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
   } catch (err) { console.error('POST complete:', err); res.status(500).json({ error: err.message }); }
 });
 
+// Helper: insert a notification but respect the recipient's per-kind mute list.
+// Returns true if inserted, false if user has muted this kind.
+async function notifyUser(userId, kind, payload) {
+  try {
+    const [u] = await sql`SELECT notifications_enabled, notif_mute FROM users WHERE id = ${userId}`;
+    if (!u) return false;
+    if (u.notifications_enabled === false) return false;
+    if (Array.isArray(u.notif_mute) && u.notif_mute.includes(kind)) return false;
+    await sql`INSERT INTO notifications (user_id, kind, payload) VALUES (${userId}, ${kind}, ${JSON.stringify(payload)}::jsonb)`;
+    return true;
+  } catch (e) { console.warn('notifyUser:', e.message); return false; }
+}
+
 // Helper: award an achievement by slug if user doesn't have it yet.
 // Pushes the slug into `out` if granted (so the caller can return it).
 async function tryAwardAchievement(userId, slug, out) {
@@ -4214,14 +4242,14 @@ async function tryAwardAchievement(userId, slug, out) {
   const [existing] = await sql`SELECT 1 FROM user_achievements WHERE user_id = ${userId} AND achievement_id = ${ach.id}`;
   if (existing) return;
   await sql`INSERT INTO user_achievements (user_id, achievement_id) VALUES (${userId}, ${ach.id}) ON CONFLICT DO NOTHING`;
-  await sql`INSERT INTO notifications (user_id, kind, payload)
-            VALUES (${userId}, 'achievement', ${JSON.stringify({ slug, title: ach.title_ru, emoji: ach.badge_emoji, xp: ach.xp_reward })}::jsonb)`;
-  // Broadcast to other users (only those who have notifications enabled and have a public profile)
+  await notifyUser(userId, 'achievement', { slug, title: ach.title_ru, emoji: ach.badge_emoji, xp: ach.xp_reward });
+  // Broadcast peer_achievement (respects each recipient's notif_mute)
   const [usr] = await sql`SELECT display_name, profile_public FROM users WHERE id = ${userId}`;
   if (usr && usr.profile_public) {
     await sql`INSERT INTO notifications (user_id, kind, payload)
               SELECT id, 'peer_achievement', ${JSON.stringify({ user_id: userId, user_name: usr.display_name, slug, title: ach.title_ru, emoji: ach.badge_emoji })}::jsonb
-              FROM users WHERE notifications_enabled = true AND id <> ${userId}`;
+              FROM users WHERE notifications_enabled = true AND id <> ${userId}
+                AND NOT ('peer_achievement' = ANY(COALESCE(notif_mute, '{}'::text[])))`;
   }
   if (out) out.push(slug);
 }
@@ -4334,8 +4362,7 @@ app.post('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
     await sql`UPDATE dm_threads SET last_message_at = now() WHERE id = ${tid}`;
     // Notification for recipient
     const recipient = t.user_a === me ? t.user_b : t.user_a;
-    await sql`INSERT INTO notifications (user_id, kind, payload)
-              VALUES (${recipient}, 'dm', ${JSON.stringify({ thread_id: tid, from: me, preview: String(body).slice(0, 80) })}::jsonb)`;
+    await notifyUser(recipient, 'dm', { thread_id: tid, from: me, preview: String(body).slice(0, 80) });
     res.status(201).json({ message: row });
   } catch (err) { console.error('POST dm message:', err); res.status(500).json({ error: err.message }); }
 });
@@ -4367,7 +4394,8 @@ app.post('/api/feed/posts', requireAuth, async (req, res) => {
     // Broadcast notification to all users with notifications enabled
     await sql`INSERT INTO notifications (user_id, kind, payload)
               SELECT id, 'feed_post', ${JSON.stringify({ post_id: row.id, title: title||'', preview: String(body).slice(0, 100) })}::jsonb
-              FROM users WHERE notifications_enabled = true AND id <> ${userId}`;
+              FROM users WHERE notifications_enabled = true AND id <> ${userId}
+                AND NOT ('feed_post' = ANY(COALESCE(notif_mute, '{}'::text[])))`;
     res.status(201).json({ post: row });
   } catch (err) { console.error('POST feed:', err); res.status(500).json({ error: err.message }); }
 });
@@ -4410,6 +4438,104 @@ app.delete('/api/feed/posts/:id', requireAuth, async (req, res) => {
     await sql`DELETE FROM feed_posts WHERE id = ${postId}`;
     res.json({ ok: true, deleted: postId });
   } catch (err) { console.error('DELETE feed:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Notification mute preferences ──
+app.patch('/api/users/me/notif-mute', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const { mute } = req.body || {};
+    if (!Array.isArray(mute)) return res.status(400).json({ error: 'mute must be array of kinds' });
+    const allowed = ['dm','feed_post','achievement','peer_achievement','joint_invite'];
+    const clean = mute.filter(k => allowed.includes(k));
+    await sql`UPDATE users SET notif_mute = ${clean}::text[] WHERE id = ${me}`;
+    res.json({ ok: true, mute: clean });
+  } catch (err) { console.error('mute:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Pack 26: Admin manages custom achievements ──
+app.post('/api/admin/achievements', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const { slug, title_ru, title_en, title_es, description_ru, description_en, description_es, badge_emoji, xp_reward, condition_kind } = req.body || {};
+    if (!slug || !title_ru) return res.status(400).json({ error: 'slug + title_ru required' });
+    const cleanSlug = String(slug).toLowerCase().replace(/[^a-z0-9_-]+/g,'_').slice(0,40);
+    const [row] = await sql`INSERT INTO achievements
+      (slug, title_ru, title_en, title_es, description_ru, description_en, description_es, badge_emoji, xp_reward, condition_kind, author_id)
+      VALUES (${cleanSlug}, ${title_ru}, ${title_en||title_ru}, ${title_es||title_ru},
+              ${description_ru||''}, ${description_en||''}, ${description_es||''},
+              ${badge_emoji||'🏅'}, ${parseInt(xp_reward,10)||0}, ${condition_kind||'manual'}, ${me})
+      RETURNING *`;
+    res.status(201).json({ achievement: row });
+  } catch (err) {
+    if (String(err.message).includes('duplicate')) return res.status(409).json({ error: 'Achievement with this slug already exists' });
+    console.error('POST achievement:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/achievements/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const [a] = await sql`SELECT author_id FROM achievements WHERE id = ${id}`;
+    if (!a) return res.status(404).json({ error: 'Not found' });
+    if (a.author_id !== me && !['superadmin','founder'].includes(caller.role)) {
+      return res.status(403).json({ error: 'Only the author or a founder can delete' });
+    }
+    await sql`DELETE FROM achievements WHERE id = ${id}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE achievement:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Award an achievement to a user by email (manual badge granting)
+app.post('/api/admin/achievements/:id/award', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const [target] = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    const [a] = await sql`SELECT slug FROM achievements WHERE id = ${id}`;
+    if (!a) return res.status(404).json({ error: 'Achievement not found' });
+    await tryAwardAchievement(target.id, a.slug, []);
+    res.json({ ok: true });
+  } catch (err) { console.error('award achievement:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── WebRTC signaling for LIVE rooms (Pack 27 minimal) ──
+// Tiny polling-based signaling: clients POST offers/answers/ICE; receivers
+// long-poll via GET. Once the peer connection is established WebRTC carries
+// the media stream directly between admin and viewers. No TURN — works on
+// most networks; strict NATs will silently fail.
+app.post('/api/rtc/:roomId/signal', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.roomId, 10);
+    const { kind, payload, to_id } = req.body || {};
+    if (!kind || !payload) return res.status(400).json({ error: 'kind and payload required' });
+    await sql`INSERT INTO rtc_signals (room_id, from_id, to_id, kind, payload)
+              VALUES (${rid}, ${me}, ${to_id || null}, ${kind}, ${JSON.stringify(payload)}::jsonb)`;
+    res.json({ ok: true });
+  } catch (err) { console.error('rtc signal:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/rtc/:roomId/signals', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.roomId, 10);
+    const since = req.query.since ? new Date(req.query.since) : new Date(Date.now() - 30000);
+    const rows = await sql`SELECT * FROM rtc_signals
+      WHERE room_id = ${rid} AND (to_id = ${me} OR to_id IS NULL) AND from_id <> ${me} AND created_at > ${since}
+      ORDER BY created_at ASC LIMIT 100`;
+    res.json({ signals: rows });
+  } catch (err) { console.error('rtc fetch:', err); res.status(500).json({ error: err.message }); }
 });
 
 // Lightweight badge endpoint — returns unread counts only (cheap; safe to poll often)
@@ -4630,8 +4756,7 @@ app.post('/api/joint-practice', requireAuth, async (req, res) => {
     if (Array.isArray(invitee_ids)) {
       for (const uid of invitee_ids) {
         await sql`INSERT INTO joint_practice_participants (session_id, user_id) VALUES (${row.id}, ${uid}) ON CONFLICT DO NOTHING`;
-        await sql`INSERT INTO notifications (user_id, kind, payload)
-                  VALUES (${uid}, 'joint_invite', ${JSON.stringify({ session_id: row.id, host: me, block_id: course_block_id })}::jsonb)`;
+        await notifyUser(uid, 'joint_invite', { session_id: row.id, host: me, block_id: course_block_id });
       }
     }
     res.status(201).json({ session: row });

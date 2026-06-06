@@ -908,9 +908,20 @@
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:13px;color:var(--text-secondary);margin-bottom:0.5rem;cursor:pointer;">
             <input id="dom-prof-public" type="checkbox" style="accent-color:var(--accent-cyan);"> <span data-i18n="a.domunity.public_profile">Открытый профиль (другие видят имя, био, активность)</span>
           </label>
-          <label style="display:flex;align-items:center;gap:0.4rem;font-size:13px;color:var(--text-secondary);margin-bottom:0.75rem;cursor:pointer;">
+          <label style="display:flex;align-items:center;gap:0.4rem;font-size:13px;color:var(--text-secondary);margin-bottom:0.5rem;cursor:pointer;">
             <input id="dom-prof-notifs" type="checkbox" style="accent-color:var(--accent-cyan);"> <span data-i18n="a.domunity.allow_notifs">Получать уведомления (DM, посты в ленте, достижения других)</span>
           </label>
+
+          <details style="margin:0.5rem 0 0.75rem;">
+            <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;">Тонкая настройка — отключить отдельные типы уведомлений</summary>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;padding:0.5rem 0 0 1rem;">
+              <label style="font-size:12px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="dom-mute-cb" value="dm" style="accent-color:var(--accent-cyan);margin-right:0.4rem;"> Личные сообщения</label>
+              <label style="font-size:12px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="dom-mute-cb" value="feed_post" style="accent-color:var(--accent-cyan);margin-right:0.4rem;"> Новые посты в ленте</label>
+              <label style="font-size:12px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="dom-mute-cb" value="peer_achievement" style="accent-color:var(--accent-cyan);margin-right:0.4rem;"> Достижения других участников</label>
+              <label style="font-size:12px;color:var(--text-secondary);cursor:pointer;"><input type="checkbox" class="dom-mute-cb" value="joint_invite" style="accent-color:var(--accent-cyan);margin-right:0.4rem;"> Приглашения на совместные практики</label>
+            </div>
+          </details>
+
           <button class="btn btn-solid" onclick="domSaveProfile()" style="font-size:12px;padding:0.45rem 1.2rem;" data-i18n="a.domunity.save">Сохранить</button>
           <p id="dom-prof-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);"></p>
 
@@ -10332,6 +10343,11 @@ function domLoadProfile(){
   document.getElementById('dom-prof-bio').value = currentUser.bio || '';
   document.getElementById('dom-prof-public').checked = currentUser.profile_public !== false;
   document.getElementById('dom-prof-notifs').checked = currentUser.notifications_enabled !== false;
+  // Apply per-kind mute checkboxes
+  var muted = Array.isArray(currentUser.notif_mute) ? currentUser.notif_mute : [];
+  document.querySelectorAll('.dom-mute-cb').forEach(function(cb){
+    cb.checked = muted.indexOf(cb.value) !== -1;
+  });
 }
 function domSaveProfile(){
   var body = {
@@ -10340,10 +10356,16 @@ function domSaveProfile(){
     profile_public: document.getElementById('dom-prof-public').checked,
     notifications_enabled: document.getElementById('dom-prof-notifs').checked
   };
+  var muted = Array.from(document.querySelectorAll('.dom-mute-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
   document.getElementById('dom-prof-status').textContent = 'Сохранение…';
   domApi('/api/users/me/profile', { method:'PATCH', body: body })
     .then(function(d){
       Object.assign(currentUser, d.user);
+      // Save mute preferences in parallel
+      return domApi('/api/users/me/notif-mute', { method: 'PATCH', body: { mute: muted } });
+    })
+    .then(function(d){
+      currentUser.notif_mute = d.mute || [];
       document.getElementById('dom-prof-status').textContent = '✓ Сохранено';
       setTimeout(function(){ document.getElementById('dom-prof-status').textContent=''; }, 2000);
     })
