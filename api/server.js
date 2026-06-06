@@ -930,7 +930,50 @@ app.post('/api/run-migrations', async (req, res) => {
       created_at TIMESTAMP DEFAULT now()
     )`;
 
-    res.json({ ok: true, message: 'Migrations 003-025 applied successfully' });
+    // ── PACK 26: Achievements / XP badges ──
+    await sql`CREATE TABLE IF NOT EXISTS achievements (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title_ru TEXT NOT NULL DEFAULT '',
+      title_en TEXT NOT NULL DEFAULT '',
+      title_es TEXT NOT NULL DEFAULT '',
+      description_ru TEXT DEFAULT '',
+      description_en TEXT DEFAULT '',
+      description_es TEXT DEFAULT '',
+      badge_emoji TEXT DEFAULT '🏅',
+      xp_reward INTEGER DEFAULT 0,
+      condition_kind TEXT DEFAULT 'manual',
+      condition_value JSONB,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE TABLE IF NOT EXISTS user_achievements (
+      id SERIAL PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      achievement_id INTEGER NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+      earned_at TIMESTAMP DEFAULT now(),
+      UNIQUE(user_id, achievement_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id, earned_at DESC)`;
+    await sql`INSERT INTO achievements (slug, title_ru, title_en, title_es, description_ru, description_en, description_es, badge_emoji, xp_reward, condition_kind)
+      VALUES
+        ('first_steps', 'Первые шаги', 'First Steps', 'Primeros pasos', 'Завершите первый блок любого курса.', 'Complete your first block of any course.', 'Completa tu primer bloque.', '🌱', 50, 'first_block'),
+        ('course_done', 'Курс пройден', 'Course Completed', 'Curso completado', 'Завершите курс целиком.', 'Finish a course in full.', 'Finaliza un curso completo.', '🎓', 250, 'course_done'),
+        ('focused_streak', 'Поток внимания', 'Focus Streak', 'Racha de enfoque', 'Завершите 7 блоков подряд за неделю.', 'Complete 7 blocks within a week.', 'Completa 7 bloques en una semana.', '⚡', 150, 'weekly_streak'),
+        ('first_donation', 'Поддержавший', 'Supporter', 'Quien apoya', 'Сделайте первое пожертвование лаборатории.', 'Make your first donation to the lab.', 'Realiza tu primera donación.', '💛', 100, 'first_donation')
+      ON CONFLICT (slug) DO NOTHING`;
+
+    await sql`CREATE TABLE IF NOT EXISTS joint_practice_messages (
+      id SERIAL PRIMARY KEY,
+      session_id INTEGER NOT NULL REFERENCES joint_practice_sessions(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      kind TEXT DEFAULT 'text',
+      body TEXT DEFAULT '',
+      emoji TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_jpm_session ON joint_practice_messages(session_id, created_at)`;
+
+    res.json({ ok: true, message: 'Migrations 003-026 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4118,9 +4161,44 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
         ORDER BY order_idx ASC LIMIT 1`;
       nextId = next ? next.id : null;
     }
-    res.json({ ok: true, next_block_id: nextId, points_earned: points });
+
+    // ── Achievements check (Pack 26) ──
+    const earnedNow = [];
+    try {
+      // first_block: any block ever completed
+      const totalDone = await sql`SELECT COUNT(*)::int AS n FROM course_block_progress WHERE user_id = ${userId}`;
+      if (totalDone[0].n >= 1) await tryAwardAchievement(userId, 'first_steps', earnedNow);
+      // course_done: nextId === null means we just finished the last block
+      if (!nextId) await tryAwardAchievement(userId, 'course_done', earnedNow);
+      // weekly_streak: 7+ blocks completed in last 7 days
+      const recent = await sql`SELECT COUNT(*)::int AS n FROM course_block_progress
+                               WHERE user_id = ${userId} AND completed_at > now() - interval '7 days'`;
+      if (recent[0].n >= 7) await tryAwardAchievement(userId, 'focused_streak', earnedNow);
+    } catch(achErr) { console.warn('achievement check:', achErr.message); }
+
+    res.json({ ok: true, next_block_id: nextId, points_earned: points, earned_achievements: earnedNow });
   } catch (err) { console.error('POST complete:', err); res.status(500).json({ error: err.message }); }
 });
+
+// Helper: award an achievement by slug if user doesn't have it yet.
+// Pushes the slug into `out` if granted (so the caller can return it).
+async function tryAwardAchievement(userId, slug, out) {
+  const [ach] = await sql`SELECT id, badge_emoji, title_ru, xp_reward FROM achievements WHERE slug = ${slug}`;
+  if (!ach) return;
+  const [existing] = await sql`SELECT 1 FROM user_achievements WHERE user_id = ${userId} AND achievement_id = ${ach.id}`;
+  if (existing) return;
+  await sql`INSERT INTO user_achievements (user_id, achievement_id) VALUES (${userId}, ${ach.id}) ON CONFLICT DO NOTHING`;
+  await sql`INSERT INTO notifications (user_id, kind, payload)
+            VALUES (${userId}, 'achievement', ${JSON.stringify({ slug, title: ach.title_ru, emoji: ach.badge_emoji, xp: ach.xp_reward })}::jsonb)`;
+  // Broadcast to other users (only those who have notifications enabled and have a public profile)
+  const [usr] = await sql`SELECT display_name, profile_public FROM users WHERE id = ${userId}`;
+  if (usr && usr.profile_public) {
+    await sql`INSERT INTO notifications (user_id, kind, payload)
+              SELECT id, 'peer_achievement', ${JSON.stringify({ user_id: userId, user_name: usr.display_name, slug, title: ach.title_ru, emoji: ach.badge_emoji })}::jsonb
+              FROM users WHERE notifications_enabled = true AND id <> ${userId}`;
+  }
+  if (out) out.push(slug);
+}
 
 // ══════════════════════════════════════════════════════════════════
 // PACK 25: DOMunity — community layer (DMs, feed, notifications, profiles)
@@ -4425,6 +4503,67 @@ app.post('/api/notifications/seen', requireAuth, async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) { console.error('POST seen:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── PACK 26: Achievements ──
+app.get('/api/achievements', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const all = await sql`SELECT * FROM achievements ORDER BY id ASC`;
+    const mine = await sql`SELECT achievement_id, earned_at FROM user_achievements WHERE user_id = ${me}`;
+    const earned = new Map(mine.map(r => [r.achievement_id, r.earned_at]));
+    res.json({ achievements: all.map(a => ({ ...a, earned_at: earned.get(a.id) || null, has: earned.has(a.id) })) });
+  } catch (err) { console.error('GET achievements:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/users/:id/achievements', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`SELECT a.* FROM user_achievements ua
+                            JOIN achievements a ON a.id = ua.achievement_id
+                            WHERE ua.user_id = ${req.params.id}
+                            ORDER BY ua.earned_at DESC`;
+    res.json({ achievements: rows });
+  } catch (err) { console.error('GET user achievements:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Joint practice sessions — invite peers to do a course block together
+app.post('/api/joint-practice', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const { course_block_id, scheduled_at, invitee_ids } = req.body || {};
+    const [row] = await sql`INSERT INTO joint_practice_sessions (host_id, course_block_id, scheduled_at)
+                            VALUES (${me}, ${course_block_id ? parseInt(course_block_id,10) : null}, ${scheduled_at || null}) RETURNING *`;
+    await sql`INSERT INTO joint_practice_participants (session_id, user_id) VALUES (${row.id}, ${me}) ON CONFLICT DO NOTHING`;
+    if (Array.isArray(invitee_ids)) {
+      for (const uid of invitee_ids) {
+        await sql`INSERT INTO joint_practice_participants (session_id, user_id) VALUES (${row.id}, ${uid}) ON CONFLICT DO NOTHING`;
+        await sql`INSERT INTO notifications (user_id, kind, payload)
+                  VALUES (${uid}, 'joint_invite', ${JSON.stringify({ session_id: row.id, host: me, block_id: course_block_id })}::jsonb)`;
+      }
+    }
+    res.status(201).json({ session: row });
+  } catch (err) { console.error('joint create:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/joint-practice/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const sid = parseInt(req.params.id, 10);
+    const rows = await sql`SELECT m.*, u.display_name FROM joint_practice_messages m
+                           LEFT JOIN users u ON u.id = m.user_id
+                           WHERE m.session_id = ${sid} ORDER BY m.created_at ASC LIMIT 200`;
+    res.json({ messages: rows });
+  } catch (err) { console.error('joint msgs:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/joint-practice/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const sid = parseInt(req.params.id, 10);
+    const { body, emoji, kind } = req.body || {};
+    const [row] = await sql`INSERT INTO joint_practice_messages (session_id, user_id, kind, body, emoji)
+                            VALUES (${sid}, ${me}, ${kind||'text'}, ${body||''}, ${emoji||''}) RETURNING *`;
+    res.status(201).json({ message: row });
+  } catch (err) { console.error('joint post msg:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PACK 21: Admin test confirmation email ──
