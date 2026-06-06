@@ -941,9 +941,28 @@
           <h2 id="cp-course-name" style="margin:0;font-size:18px;color:var(--text-primary);">—</h2>
           <p id="cp-progress-text" style="margin:0.2rem 0 0;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">—</p>
         </div>
-        <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;">✕ Закрыть</button>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-ghost" onclick="cpInvitePeer()" style="font-size:12px;padding:0.4rem 0.7rem;" title="Пригласить на совместную практику" data-i18n="a.courses.btn_invite">🤝 Пригласить</button>
+          <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;">✕ Закрыть</button>
+        </div>
       </div>
-      <div id="cp-block-area" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;min-height:280px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 280px;gap:1rem;" id="cp-grid">
+        <div id="cp-block-area" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;min-height:280px;"></div>
+        <div id="cp-joint-panel" style="display:none;background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.15);border-radius:14px;padding:1rem;">
+          <h4 style="margin:0 0 0.5rem;font-size:12px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.04em;">🤝 Совместная практика</h4>
+          <div id="cp-joint-msgs" style="display:flex;flex-direction:column;gap:0.4rem;max-height:280px;overflow-y:auto;font-size:12px;"></div>
+          <div style="display:flex;gap:0.3rem;margin-top:0.5rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.5rem;">
+            <input id="cp-joint-input" placeholder="Сообщение…" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.3rem 0.5rem;color:var(--text-primary);font-size:11px;">
+            <button class="btn btn-ghost" onclick="cpJointSend()" style="font-size:11px;padding:0.25rem 0.6rem;">→</button>
+          </div>
+          <div style="display:flex;gap:0.3rem;margin-top:0.4rem;justify-content:space-around;">
+            <button class="btn btn-ghost" onclick="cpJointReact('❤')" style="font-size:14px;padding:0.2rem 0.5rem;">❤</button>
+            <button class="btn btn-ghost" onclick="cpJointReact('🔥')" style="font-size:14px;padding:0.2rem 0.5rem;">🔥</button>
+            <button class="btn btn-ghost" onclick="cpJointReact('✨')" style="font-size:14px;padding:0.2rem 0.5rem;">✨</button>
+            <button class="btn btn-ghost" onclick="cpJointReact('🙏')" style="font-size:14px;padding:0.2rem 0.5rem;">🙏</button>
+          </div>
+        </div>
+      </div>
       <div style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:1rem;">
         <button class="btn btn-ghost" onclick="cpPrev()" id="cp-prev-btn" style="font-size:12px;padding:0.5rem 1rem;" data-i18n="a.courses.btn_prev">← Назад</button>
         <button class="btn btn-solid" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
@@ -9560,7 +9579,13 @@ function cpOpenCourse(slug){
     .catch(function(e){ alert(e.message); });
 }
 window.cpOpenCourse = cpOpenCourse;
-function cpClose(){ document.getElementById('coursePlayerModal').style.display='none'; coursePlayer.course = null; }
+function cpClose(){
+  document.getElementById('coursePlayerModal').style.display='none';
+  coursePlayer.course = null;
+  if (cpJoint.pollTimer) { clearInterval(cpJoint.pollTimer); cpJoint.pollTimer = null; }
+  cpJoint.sessionId = null;
+  var jp = document.getElementById('cp-joint-panel'); if (jp) jp.style.display='none';
+}
 window.cpClose = cpClose;
 
 function cpRenderBlock(){
@@ -9698,6 +9723,92 @@ function cpRecToggle(maxSec){
   });
 }
 window.cpRecToggle = cpRecToggle;
+
+// ── Joint practice: invite + live comments side-panel ──
+var cpJoint = { sessionId: null, pollTimer: null };
+
+function cpInvitePeer(){
+  // Open a small inline picker modal
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10020;padding:2rem 1rem;overflow-y:auto;';
+  modal.innerHTML = '<div style="max-width:480px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">Пригласить на совместную практику</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+    + '<input id="cp-invite-search" type="text" placeholder="Найти пользователя…" oninput="cpInviteSearch(this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;margin-bottom:0.75rem;">'
+    + '<div id="cp-invite-results" style="margin-bottom:0.75rem;max-height:300px;overflow-y:auto;"></div>'
+    + '<div id="cp-invite-selected" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.75rem;"></div>'
+    + '<button class="btn btn-solid" onclick="cpInviteSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">Создать сеанс и пригласить</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  modal.dataset.invitees = JSON.stringify([]);
+}
+function cpInviteSearch(q){
+  if (!q || q.length < 2) { document.getElementById('cp-invite-results').innerHTML=''; return; }
+  domApi('/api/users/search?q=' + encodeURIComponent(q)).then(function(d){
+    var box = document.getElementById('cp-invite-results');
+    box.innerHTML = (d.users||[]).map(function(u){
+      return '<div onclick="cpInviteAdd(\''+u.id+'\',\''+(u.display_name||u.email).replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.4rem 0.6rem;background:rgba(0,229,255,0.04);border:1px dashed rgba(0,229,255,0.2);border-radius:6px;margin-bottom:0.3rem;font-size:12px;">'+(u.display_name||u.email)+'</div>';
+    }).join('');
+  });
+}
+function cpInviteAdd(uid, name){
+  var modal = document.querySelector('div[style*="z-index:10020"]');
+  if (!modal) return;
+  var arr = JSON.parse(modal.dataset.invitees||'[]');
+  if (!arr.find(function(x){ return x.id===uid; })) arr.push({ id: uid, name: name });
+  modal.dataset.invitees = JSON.stringify(arr);
+  document.getElementById('cp-invite-selected').innerHTML = arr.map(function(x){
+    return '<span style="background:rgba(0,229,255,0.15);color:var(--accent-cyan);padding:0.2rem 0.6rem;border-radius:12px;font-size:11px;">'+x.name+'</span>';
+  }).join('');
+}
+function cpInviteSubmit(){
+  var modal = document.querySelector('div[style*="z-index:10020"]');
+  var arr = JSON.parse(modal.dataset.invitees||'[]');
+  var block = coursePlayer.blocks[coursePlayer.idx];
+  if (!arr.length) { alert('Выбери хотя бы одного'); return; }
+  domApi('/api/joint-practice', { method:'POST', body: { course_block_id: block?.id, invitee_ids: arr.map(function(x){return x.id;}) } })
+    .then(function(d){
+      modal.remove();
+      cpJointOpen(d.session.id);
+    })
+    .catch(function(e){ alert(e.message); });
+}
+window.cpInvitePeer = cpInvitePeer;
+window.cpInviteSearch = cpInviteSearch;
+window.cpInviteAdd = cpInviteAdd;
+window.cpInviteSubmit = cpInviteSubmit;
+
+function cpJointOpen(sessionId){
+  cpJoint.sessionId = sessionId;
+  document.getElementById('cp-joint-panel').style.display = '';
+  cpJointPoll();
+  if (cpJoint.pollTimer) clearInterval(cpJoint.pollTimer);
+  cpJoint.pollTimer = setInterval(cpJointPoll, 4000);
+}
+function cpJointPoll(){
+  if (!cpJoint.sessionId) return;
+  domApi('/api/joint-practice/'+cpJoint.sessionId+'/messages').then(function(d){
+    var box = document.getElementById('cp-joint-msgs'); if(!box) return;
+    box.innerHTML = (d.messages||[]).map(function(m){
+      var disp = m.kind === 'emoji' ? '<span style="font-size:20px;">'+m.emoji+'</span>' : (m.body||'');
+      return '<div style="background:rgba(0,0,0,0.18);border-radius:8px;padding:0.3rem 0.5rem;"><div style="font-size:10px;color:var(--text-muted);">'+(m.display_name||'—')+'</div><div>'+disp+'</div></div>';
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }).catch(function(){});
+}
+function cpJointSend(){
+  var inp = document.getElementById('cp-joint-input');
+  if (!inp || !inp.value.trim() || !cpJoint.sessionId) return;
+  domApi('/api/joint-practice/'+cpJoint.sessionId+'/messages', { method:'POST', body: { body: inp.value, kind: 'text' } })
+    .then(function(){ inp.value=''; cpJointPoll(); });
+}
+function cpJointReact(emoji){
+  if (!cpJoint.sessionId) return;
+  domApi('/api/joint-practice/'+cpJoint.sessionId+'/messages', { method:'POST', body: { kind: 'emoji', emoji: emoji } })
+    .then(cpJointPoll);
+}
+window.cpJointOpen = cpJointOpen;
+window.cpJointSend = cpJointSend;
+window.cpJointReact = cpJointReact;
 
 function cpNext(){
   var block = coursePlayer.blocks[coursePlayer.idx];
@@ -9951,9 +10062,12 @@ function domLoadNotifs(){
       var unseen = !n.seen_at;
       var label = n.kind === 'dm' ? '💬 Личное сообщение' :
                   n.kind === 'feed_post' ? '📰 Новый пост в ленте' :
-                  n.kind === 'achievement' ? '🏆 Достижение' : n.kind;
+                  n.kind === 'achievement' ? '🏆 Достижение' :
+                  n.kind === 'peer_achievement' ? '👏 Достижение другого участника' :
+                  n.kind === 'joint_invite' ? '🤝 Приглашение на совместную практику' :
+                  n.kind;
       var preview = (n.payload && (n.payload.preview||n.payload.title)) || '';
-      return '<div style="padding:0.6rem 0.8rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:'+(unseen?'rgba(0,229,255,0.05)':'rgba(0,0,0,0.18)')+';">'
+      return '<div onclick="domClickNotif(' + JSON.stringify(n).replace(/"/g,'&quot;') + ')" style="cursor:pointer;padding:0.6rem 0.8rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:'+(unseen?'rgba(0,229,255,0.05)':'rgba(0,0,0,0.18)')+';">'
            + '<div style="font-size:12px;color:var(--text-primary);font-weight:'+(unseen?'600':'400')+';">'+label+'</div>'
            + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+preview+' · '+new Date(n.created_at).toLocaleString()+'</div>'
            + '</div>';
@@ -9964,6 +10078,26 @@ function domMarkAllSeen(){
   domApi('/api/notifications/seen', { method:'POST', body:{} }).then(function(){ domLoadNotifs(); });
 }
 window.domMarkAllSeen = domMarkAllSeen;
+
+// Click on a notification — deep-link to the relevant view + mark seen
+function domClickNotif(n){
+  // Mark this single notification seen
+  domApi('/api/notifications/seen', { method:'POST', body: { ids: [n.id] } }).then(domLoadNotifs);
+  var p = n.payload || {};
+  if (n.kind === 'dm' && p.thread_id) {
+    domSwitch('dms');
+    setTimeout(function(){ domOpenThread(p.thread_id, p.from_name || 'Беседа'); }, 200);
+  } else if (n.kind === 'feed_post') {
+    domSwitch('feed');
+  } else if (n.kind === 'joint_invite' && p.session_id) {
+    // Open course player (if course context available) + show joint panel
+    cpJointOpen(p.session_id);
+    alert('Совместный сеанс открыт. Откройте курс, чтобы видеть live-комменты.');
+  } else if (n.kind === 'achievement' || n.kind === 'peer_achievement') {
+    domSwitch('profile');
+  }
+}
+window.domClickNotif = domClickNotif;
 
 function domLoadProfile(){
   if (!currentUser) return;
@@ -10013,16 +10147,67 @@ function domLoadGroups(){
   }).catch(function(e){ console.warn('groups:', e); });
 }
 function domGroupCreate(){
-  var name = prompt('Название комнаты:');
-  if (!name) return;
-  var slug = name.toLowerCase().replace(/[^a-z0-9а-я]+/g,'-').replace(/^-+|-+$/g,'') + '-' + Date.now();
-  domApi('/api/admin/chat/rooms', { method:'POST', body: { slug: slug, name: name, description: '', member_ids: [] } })
+  // Two-step modal: name → pick members → create
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10020;padding:2rem 1rem;overflow-y:auto;';
+  modal.innerHTML = '<div style="max-width:520px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">Создать комнату</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Название</label>'
+    + '<input id="dom-room-name" type="text" placeholder="Например: Поток 1 — март" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.75rem;box-sizing:border-box;">'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Добавить участников</label>'
+    + '<input id="dom-room-search" type="text" placeholder="Найти по имени/email…" oninput="domRoomSearch(this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:12px;margin-bottom:0.5rem;box-sizing:border-box;">'
+    + '<div id="dom-room-results" style="max-height:200px;overflow-y:auto;margin-bottom:0.5rem;"></div>'
+    + '<div id="dom-room-selected" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.75rem;"></div>'
+    + '<button class="btn btn-solid" onclick="domRoomSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">Создать</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  modal.dataset.members = JSON.stringify([]);
+}
+function domRoomSearch(q){
+  if (!q || q.length < 2) { document.getElementById('dom-room-results').innerHTML=''; return; }
+  domApi('/api/users/search?q='+encodeURIComponent(q)).then(function(d){
+    var box = document.getElementById('dom-room-results');
+    box.innerHTML = (d.users||[]).map(function(u){
+      return '<div onclick="domRoomAddMember(\''+u.id+'\',\''+(u.display_name||u.email).replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.4rem 0.6rem;background:rgba(0,229,255,0.04);border:1px dashed rgba(0,229,255,0.2);border-radius:6px;margin-bottom:0.3rem;font-size:12px;">'+(u.display_name||u.email)+' <span style="color:var(--text-muted);font-size:10px;">'+(u.email||'')+'</span></div>';
+    }).join('');
+  });
+}
+function domRoomAddMember(uid, name){
+  var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
+  var arr = JSON.parse(modal.dataset.members||'[]');
+  if (!arr.find(function(x){ return x.id===uid; })) arr.push({ id: uid, name: name });
+  modal.dataset.members = JSON.stringify(arr);
+  document.getElementById('dom-room-selected').innerHTML = arr.map(function(x, i){
+    return '<span style="background:rgba(0,229,255,0.15);color:var(--accent-cyan);padding:0.2rem 0.6rem;border-radius:12px;font-size:11px;">'+x.name+' <span style="cursor:pointer;margin-left:0.3rem;" onclick="domRoomRemoveMember('+i+')">✕</span></span>';
+  }).join('');
+}
+function domRoomRemoveMember(idx){
+  var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
+  var arr = JSON.parse(modal.dataset.members||'[]');
+  arr.splice(idx, 1);
+  modal.dataset.members = JSON.stringify(arr);
+  document.getElementById('dom-room-selected').innerHTML = arr.map(function(x, i){
+    return '<span style="background:rgba(0,229,255,0.15);color:var(--accent-cyan);padding:0.2rem 0.6rem;border-radius:12px;font-size:11px;">'+x.name+' <span style="cursor:pointer;margin-left:0.3rem;" onclick="domRoomRemoveMember('+i+')">✕</span></span>';
+  }).join('');
+}
+function domRoomSubmit(){
+  var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
+  var name = document.getElementById('dom-room-name').value.trim();
+  if (!name) { alert('Название обязательно'); return; }
+  var arr = JSON.parse(modal.dataset.members||'[]');
+  var slug = name.toLowerCase().replace(/[^a-z0-9а-я]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) + '-' + Date.now();
+  domApi('/api/admin/chat/rooms', { method:'POST', body: { slug: slug, name: name, description: '', member_ids: arr.map(function(x){return x.id;}) } })
     .then(function(d){
+      modal.remove();
       domLoadGroups();
       setTimeout(function(){ domGroupOpen(d.room.id, d.room.name); }, 200);
     })
     .catch(function(e){ alert(e.message); });
 }
+window.domRoomSearch = domRoomSearch;
+window.domRoomAddMember = domRoomAddMember;
+window.domRoomRemoveMember = domRoomRemoveMember;
+window.domRoomSubmit = domRoomSubmit;
 function domGroupOpen(roomId, roomName){
   domGroups.activeId = roomId;
   document.getElementById('dom-group-empty').style.display = 'none';
