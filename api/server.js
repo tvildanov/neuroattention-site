@@ -3266,6 +3266,79 @@ app.delete('/api/admin/practices/:id', requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/admin/practices/:id — edit a practice's metadata
+// (name / description / slug / block_id / lang / duration / order; audio
+// stays unless you re-upload via the regular POST flow with the same slug).
+app.patch('/api/admin/practices/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.sub || req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const practiceId = parseInt(req.params.id, 10);
+    const [existing] = await sql`SELECT * FROM practices WHERE id = ${practiceId}`;
+    if (!existing) return res.status(404).json({ error: 'Practice not found' });
+
+    const b = req.body || {};
+    // Sanitize slug + lang same way as the upload path so the DB stays internally consistent
+    function transliterateSlug(s) {
+      const map = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya' };
+      return String(s).toLowerCase().split('').map(c => map[c] !== undefined ? map[c] : c).join('').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
+    }
+    const cleanSlug = b.slug !== undefined ? (transliterateSlug(b.slug) || existing.slug) : existing.slug;
+    const cleanLang = b.lang !== undefined ? (String(b.lang).toLowerCase().replace(/[^a-z]/g,'').slice(0,4) || existing.lang) : existing.lang;
+    const durNum = b.duration_seconds !== undefined ? (parseInt(b.duration_seconds, 10) || 0) : existing.duration_seconds;
+    const orderNum = b.order_idx !== undefined ? (parseInt(b.order_idx, 10) || 0) : existing.order_idx;
+
+    // If slug or lang changed, rename the audio file on GitHub too so the URL stays in sync
+    let newAudioUrl = existing.audio_url;
+    if (cleanSlug !== existing.slug || cleanLang !== existing.lang) {
+      try {
+        const oldPath = existing.audio_url.replace('https://neuroattention.org/', '');
+        const newFileName = `${cleanSlug}-${cleanLang}.mp3`;
+        const newPath = `assets/audio/practices/${newFileName}`;
+        if (oldPath && oldPath !== newPath) {
+          const oldSha = await githubGetFileSha(oldPath);
+          if (oldSha) {
+            // Get the old file's base64 content, write it to the new path, delete the old.
+            // Cheaper alternative: just download the raw bytes via HTTPS, then re-upload.
+            const https = require('https');
+            const rawUrl = `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/contents/${encodeGitHubPath(oldPath)}`;
+            const buf = await new Promise((resolve, reject) => {
+              const r = https.request({ hostname: 'api.github.com', path: rawUrl, method: 'GET',
+                headers: { 'Authorization': `token ${GITHUB_PAT}`, 'User-Agent': 'NeuroAttention-API', 'Accept': 'application/vnd.github.v3+json' } },
+                (res) => { let d=''; res.on('data', c=>d+=c); res.on('end', ()=>{ try { resolve(JSON.parse(d).content || ''); } catch(e){ reject(e); } }); });
+              r.on('error', reject); r.end();
+            });
+            const cleanedB64 = String(buf).replace(/\s+/g, '');
+            await githubUploadFile(newPath, cleanedB64, `[practices] Rename ${existing.slug}-${existing.lang} → ${cleanSlug}-${cleanLang}`);
+            await githubDeleteFile(oldPath, oldSha, `[practices] Remove old ${existing.slug}-${existing.lang}`);
+            newAudioUrl = `https://neuroattention.org/${newPath}`;
+          }
+        }
+      } catch (gitErr) {
+        console.warn('Audio rename failed (keeping old URL):', gitErr.message);
+      }
+    }
+
+    const [updated] = await sql`UPDATE practices SET
+      slug = ${cleanSlug},
+      block_id = COALESCE(${b.block_id ?? null}, block_id),
+      lang = ${cleanLang},
+      name = COALESCE(${b.name ?? null}, name),
+      description = COALESCE(${b.description ?? null}, description),
+      audio_url = ${newAudioUrl},
+      duration_seconds = ${durNum},
+      order_idx = ${orderNum},
+      updated_at = now()
+      WHERE id = ${practiceId} RETURNING *`;
+    res.json({ ok: true, practice: updated });
+  } catch (err) {
+    console.error('PATCH /api/admin/practices/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── PACK 20: Practice Blocks (composer) ──
 // Helper: check if caller has founder/superadmin role
 async function callerIsAdmin(req) {
