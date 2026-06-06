@@ -8433,7 +8433,8 @@ function renderAdminPractices(filterLang) {
       '<td style="font-family:JetBrains Mono,monospace;font-size:12px;">' + dur + '</td>' +
       '<td style="text-align:center;">' + p.order_idx + '</td>' +
       '<td style="font-size:11px;color:var(--text-muted);">' + date + '</td>' +
-      '<td style="white-space:nowrap;"><button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;margin-right:0.25rem;" onclick="openPracticeBuilder(' + p.id + ',\'' + (p.name||'').replace(/\'/g,'\\\'') + '\')" data-i18n="a.admin.practices.builder">Конструктор</button>' +
+      '<td style="white-space:nowrap;"><button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;margin-right:0.25rem;" onclick="editPractice(' + p.id + ')">✏️ Edit</button>' +
+      '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;margin-right:0.25rem;" onclick="openPracticeBuilder(' + p.id + ',\'' + (p.name||'').replace(/\'/g,'\\\'') + '\')" data-i18n="a.admin.practices.builder">Конструктор</button>' +
       '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;color:#ff6b6b;" onclick="deletePractice(' + p.id + ')">Удалить</button></td>' +
       '</tr>';
   }).join('');
@@ -8446,6 +8447,85 @@ function filterAdminPractices(lang, btn) {
   btn.classList.add('active');
   renderAdminPractices(lang);
 }
+
+// Open inline modal to edit a practice's metadata. Audio file is NOT re-uploaded
+// from here — if you need a new MP3, use the regular upload flow with the same slug.
+function editPractice(id){
+  var p = (adminPracticesCache || []).find(function(x){ return x.id === id; });
+  if (!p) return;
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:10030;padding:2rem 1rem;overflow-y:auto;';
+  function fld(label, id, val, type){
+    var t = type || 'text';
+    var inp = (t === 'textarea')
+      ? '<textarea id="' + id + '" rows="3" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;">' + (val||'').replace(/</g,'&lt;') + '</textarea>'
+      : '<input type="' + t + '" id="' + id + '" value="' + String(val == null ? '' : val).replace(/"/g,'&quot;') + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+    return '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">' + label + '</label>' + inp;
+  }
+  modal.innerHTML = '<div style="max-width:560px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">'
+    +   '<h3 style="margin:0;font-size:16px;">Редактирование практики #' + p.id + '</h3>'
+    +   '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 100px;gap:0.5rem;margin-bottom:0.5rem;">'
+    +   '<div>' + fld('Slug (латиница)', 'ep-slug', p.slug) + '</div>'
+    +   '<div>' + fld('Блок (block_id)', 'ep-block', p.block_id) + '</div>'
+    +   '<div>'
+    +     '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Язык</label>'
+    +     '<select id="ep-lang" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;">'
+    +       ['ru','en','es'].map(function(l){ return '<option value="'+l+'"'+(p.lang===l?' selected':'')+'>'+l.toUpperCase()+'</option>'; }).join('')
+    +     '</select>'
+    +   '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:0.5rem;">' + fld('Название', 'ep-name', p.name) + '</div>'
+    + '<div style="margin-bottom:0.5rem;">' + fld('Описание', 'ep-desc', p.description, 'textarea') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;">'
+    +   '<div>' + fld('Длительность (сек)', 'ep-dur', p.duration_seconds, 'number') + '</div>'
+    +   '<div>' + fld('Порядок (order_idx)', 'ep-order', p.order_idx, 'number') + '</div>'
+    + '</div>'
+    + '<p style="font-size:11px;color:var(--text-muted);margin:0 0 1rem;">⚠️ Если меняешь slug или язык — аудиофайл на GitHub будет переименован, ссылка обновится автоматически.</p>'
+    + '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">'
+    +   '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">Отмена</button>'
+    +   '<button class="btn btn-solid" onclick="savePracticeEdit(' + p.id + ', this)">Сохранить</button>'
+    + '</div>'
+    + '<p id="ep-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);min-height:16px;"></p>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+function savePracticeEdit(id, btn){
+  var body = {
+    slug: document.getElementById('ep-slug').value,
+    block_id: document.getElementById('ep-block').value,
+    lang: document.getElementById('ep-lang').value,
+    name: document.getElementById('ep-name').value,
+    description: document.getElementById('ep-desc').value,
+    duration_seconds: parseInt(document.getElementById('ep-dur').value, 10) || 0,
+    order_idx: parseInt(document.getElementById('ep-order').value, 10) || 0
+  };
+  var status = document.getElementById('ep-status');
+  if (status) status.textContent = 'Сохранение…';
+  if (btn) { btn.disabled = true; btn.textContent = 'Сохраняется…'; }
+  var token = localStorage.getItem('na_token');
+  fetch(AUTH_API + '/api/admin/practices/' + id, {
+    method: 'PATCH',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(function(r){ return r.text().then(function(txt){ var d; try{ d=JSON.parse(txt); }catch(e){ d={error:txt.slice(0,200)}; } if (!r.ok) throw new Error(d.error||r.status); return d; }); })
+  .then(function(){
+    if (status) { status.style.color = '#0e9'; status.textContent = '✓ Сохранено'; }
+    setTimeout(function(){
+      var modal = document.querySelector('div[style*="z-index:10030"]'); if (modal) modal.remove();
+      loadAdminPractices('all');
+    }, 600);
+  })
+  .catch(function(e){
+    if (status) { status.style.color = '#f55'; status.textContent = 'Ошибка: ' + (e.message||e); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Сохранить'; }
+  });
+}
+window.editPractice = editPractice;
+window.savePracticeEdit = savePracticeEdit;
 
 function deletePractice(id) {
   if (!confirm('Удалить практику #' + id + '? Файл также будет удалён из GitHub.')) return;
