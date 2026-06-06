@@ -266,6 +266,11 @@ const uploadAudio = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 60 * 1024 * 1024 } // 60 MB hard cap (matches client 50 MB + headroom)
 });
+// Bigger uploader for stream recordings (up to ~500 MB / 30 min @ 2 Mbps)
+const uploadRecording = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 }
+});
 
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -1014,7 +1019,25 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_rtc_signals_to ON rtc_signals(room_id, to_id, created_at DESC)`;
 
-    res.json({ ok: true, message: 'Migrations 003-028 applied successfully' });
+    // Pack 27.1: stream recordings
+    await sql`CREATE TABLE IF NOT EXISTS room_recordings (
+      id SERIAL PRIMARY KEY,
+      room_id INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+      recorder_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      url TEXT NOT NULL,
+      filename TEXT NOT NULL DEFAULT 'recording.webm',
+      mime_type TEXT DEFAULT 'video/webm',
+      size_bytes BIGINT DEFAULT 0,
+      duration_seconds INTEGER DEFAULT 0,
+      has_overlay BOOLEAN DEFAULT FALSE,
+      has_video BOOLEAN DEFAULT TRUE,
+      started_at TIMESTAMP,
+      ended_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_room_recordings_room ON room_recordings(room_id, created_at DESC)`;
+
+    res.json({ ok: true, message: 'Migrations 003-029 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4771,6 +4794,53 @@ app.get('/api/joint-practice/:id/messages', requireAuth, async (req, res) => {
                            WHERE m.session_id = ${sid} ORDER BY m.created_at ASC LIMIT 200`;
     res.json({ messages: rows });
   } catch (err) { console.error('joint msgs:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Stream recordings — upload + list ──
+app.post('/api/chat/rooms/:id/recordings', requireAuth, uploadRecording.single('file'), async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.id, 10);
+    if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'file part required' });
+    const [room] = await sql`SELECT created_by FROM chat_rooms WHERE id = ${rid}`;
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    const isAdmin = caller && ['superadmin','founder','admin'].includes(caller.role);
+    if (room.created_by !== me && !isAdmin) return res.status(403).json({ error: 'Only host can upload' });
+
+    const hasOverlay = String(req.body.has_overlay) === 'true' || req.body.has_overlay === '1';
+    const hasVideo = String(req.body.has_video) !== 'false';
+    const duration = parseInt(req.body.duration_seconds, 10) || 0;
+    const startedAt = req.body.started_at || null;
+    const endedAt = req.body.ended_at || new Date().toISOString();
+    const ext = hasVideo ? 'webm' : 'webm';     // audio-only is also webm-opus
+    const mime = req.file.mimetype || (hasVideo ? 'video/webm' : 'audio/webm');
+    const safeName = (req.body.filename || ('room-' + rid + '-' + Date.now() + '.' + ext)).toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
+    const gitPath = 'assets/recordings/rooms/' + rid + '/' + Date.now() + '-' + safeName;
+    await githubUploadFile(gitPath, req.file.buffer.toString('base64'), '[room ' + rid + '] add recording: ' + safeName);
+    const url = 'https://neuroattention.org/' + gitPath;
+    const [row] = await sql`INSERT INTO room_recordings
+      (room_id, recorder_user_id, url, filename, mime_type, size_bytes, duration_seconds, has_overlay, has_video, started_at, ended_at)
+      VALUES (${rid}, ${me}, ${url}, ${safeName}, ${mime}, ${req.file.size || 0}, ${duration}, ${hasOverlay}, ${hasVideo}, ${startedAt}, ${endedAt})
+      RETURNING *`;
+    // Post a system message in the room linking to the recording
+    await sql`INSERT INTO chat_room_messages (room_id, sender_id, body, is_announcement)
+              VALUES (${rid}, ${me}, ${'🎬 Запись стрима доступна: ' + url}, true)`;
+    res.status(201).json({ recording: row });
+  } catch (err) { console.error('POST recording:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/chat/rooms/:id/recordings', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rid = parseInt(req.params.id, 10);
+    const [member] = await sql`SELECT 1 FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    const isAdmin = caller && ['superadmin','founder','admin'].includes(caller.role);
+    if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
+    const rows = await sql`SELECT * FROM room_recordings WHERE room_id = ${rid} ORDER BY created_at DESC LIMIT 50`;
+    res.json({ recordings: rows });
+  } catch (err) { console.error('GET recordings:', err); res.status(500).json({ error: err.message }); }
 });
 
 // Toggle live mode on a chat room (admin/superadmin/founder + room creator)
