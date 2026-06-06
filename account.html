@@ -1743,6 +1743,42 @@
             </div>
             <p id="grant-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);min-height:16px;"></p>
           </div>
+
+          <!-- ── CUSTOM ACHIEVEMENTS MANAGER ── -->
+          <div style="margin-top:1.5rem;padding:1.25rem;border:1px dashed rgba(255,200,0,0.25);border-radius:12px;background:rgba(255,200,0,0.03);">
+            <h4 style="margin:0 0 0.25rem;font-size:14px;color:#fc0;">🏅 Кастомные достижения</h4>
+            <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;">Создавайте свои бейджи для участников. Поля RU обязательны; EN/ES скопируются с RU если оставить пустыми. Условие <code>manual</code> = выдача только вручную.</p>
+            <div id="custom-ach-list" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;"></div>
+
+            <details style="margin-bottom:0.75rem;">
+              <summary style="font-size:13px;color:var(--text-secondary);cursor:pointer;font-weight:600;">+ Создать новый бейдж</summary>
+              <div style="padding:0.75rem 0.5rem;display:flex;flex-direction:column;gap:0.4rem;">
+                <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:0.5rem;">
+                  <input id="newach-slug" type="text" placeholder="slug (латиница, без пробелов)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;font-family:'JetBrains Mono',monospace;">
+                  <input id="newach-emoji" type="text" placeholder="🏅" maxlength="4" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:18px;text-align:center;">
+                  <input id="newach-xp" type="number" placeholder="XP (50)" min="0" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+                </div>
+                <input id="newach-title-ru" type="text" placeholder="Название (RU) — обязательно" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+                <input id="newach-title-en" type="text" placeholder="Title (EN, опц.)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+                <input id="newach-title-es" type="text" placeholder="Título (ES, опц.)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+                <textarea id="newach-desc-ru" rows="2" placeholder="Описание (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+                <button class="btn btn-solid" onclick="createCustomAch()" style="font-size:12px;padding:0.4rem 0.9rem;align-self:flex-start;">Создать бейдж</button>
+              </div>
+            </details>
+
+            <div style="display:flex;gap:0.5rem;align-items:end;flex-wrap:wrap;">
+              <div style="flex:1;min-width:200px;">
+                <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Email участника</label>
+                <input id="awardach-email" type="email" placeholder="user@example.com" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">
+              </div>
+              <div style="min-width:200px;">
+                <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Бейдж</label>
+                <select id="awardach-id" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:13px;width:100%;"></select>
+              </div>
+              <button class="btn btn-solid" onclick="awardCustomAch()" style="font-size:12px;padding:0.45rem 1rem;">Наградить</button>
+            </div>
+            <p id="ach-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);min-height:16px;"></p>
+          </div>
         </div>
         <div id="admin-tools-locked" style="display:none;text-align:center;padding:3rem 1rem;">
           <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -10131,6 +10167,85 @@ function setUserRole(){
 window.grantTestAccess = grantTestAccess;
 window.revokeTestAccess = revokeTestAccess;
 window.setUserRole = setUserRole;
+
+// ── Custom Achievements manager ──
+function loadCustomAchList(){
+  domApi('/api/achievements').then(function(d){
+    var list = d.achievements || [];
+    var box = document.getElementById('custom-ach-list');
+    var sel = document.getElementById('awardach-id');
+    if (box) {
+      box.innerHTML = list.map(function(a){
+        return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.6rem;background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.06);border-radius:6px;">'
+          + '<span style="font-size:18px;">' + (a.badge_emoji||'🏅') + '</span>'
+          + '<span style="font-size:12px;color:var(--text-primary);flex:1;">' + (a.title_ru||a.slug) + ' <span style="color:var(--text-dim);font-size:10px;">· ' + a.slug + ' · ' + (a.xp_reward||0) + ' XP · ' + (a.condition_kind||'manual') + '</span></span>'
+          + '<button class="btn btn-ghost" onclick="deleteCustomAch(' + a.id + ')" style="font-size:11px;padding:0.15rem 0.5rem;color:var(--accent-rose);" title="Удалить">🗑</button>'
+          + '</div>';
+      }).join('');
+    }
+    if (sel) {
+      sel.innerHTML = list.map(function(a){
+        return '<option value="' + a.id + '">' + (a.badge_emoji||'🏅') + ' ' + (a.title_ru||a.slug) + '</option>';
+      }).join('');
+    }
+  });
+}
+function createCustomAch(){
+  var body = {
+    slug: document.getElementById('newach-slug').value.trim(),
+    badge_emoji: document.getElementById('newach-emoji').value.trim() || '🏅',
+    xp_reward: parseInt(document.getElementById('newach-xp').value, 10) || 0,
+    title_ru: document.getElementById('newach-title-ru').value.trim(),
+    title_en: document.getElementById('newach-title-en').value.trim(),
+    title_es: document.getElementById('newach-title-es').value.trim(),
+    description_ru: document.getElementById('newach-desc-ru').value.trim()
+  };
+  var status = document.getElementById('ach-status');
+  if (!body.slug || !body.title_ru) { status.textContent = 'slug и title_ru обязательны'; return; }
+  status.textContent = 'Создание…';
+  domApi('/api/admin/achievements', { method:'POST', body: body })
+    .then(function(d){
+      status.style.color = '#0e9';
+      status.textContent = '✓ Создан бейдж id=' + d.achievement.id;
+      ['slug','emoji','xp','title-ru','title-en','title-es','desc-ru'].forEach(function(k){ var el = document.getElementById('newach-'+k); if (el) el.value = ''; });
+      loadCustomAchList();
+    })
+    .catch(function(e){ status.style.color = '#f55'; status.textContent = 'Ошибка: ' + e.message; });
+}
+function deleteCustomAch(id){
+  if (!confirm('Удалить этот бейдж? Все награды у пользователей тоже пропадут.')) return;
+  domApi('/api/admin/achievements/' + id, { method:'DELETE' })
+    .then(loadCustomAchList);
+}
+function awardCustomAch(){
+  var email = document.getElementById('awardach-email').value.trim();
+  var id = parseInt(document.getElementById('awardach-id').value, 10);
+  var status = document.getElementById('ach-status');
+  if (!email || !id) { status.textContent = 'Заполни email и выбери бейдж'; return; }
+  status.textContent = 'Награждение…';
+  domApi('/api/admin/achievements/' + id + '/award', { method:'POST', body: { email: email } })
+    .then(function(){
+      status.style.color = '#0e9';
+      status.textContent = '✓ Бейдж выдан ' + email;
+      document.getElementById('awardach-email').value = '';
+    })
+    .catch(function(e){ status.style.color = '#f55'; status.textContent = 'Ошибка: ' + e.message; });
+}
+window.loadCustomAchList = loadCustomAchList;
+window.createCustomAch = createCustomAch;
+window.deleteCustomAch = deleteCustomAch;
+window.awardCustomAch = awardCustomAch;
+
+// Auto-populate the achievements list when the admin tools tab is shown
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var toolsTab = document.querySelector('[data-tab="admin-tools"]');
+    if (toolsTab && !toolsTab.dataset.achBound) {
+      toolsTab.dataset.achBound = '1';
+      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); });
+    }
+  }, 1500);
+});
 function domPublishPost(){
   var title = document.getElementById('dom-post-title').value;
   var body = document.getElementById('dom-post-body').value;
