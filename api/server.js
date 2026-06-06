@@ -4568,6 +4568,7 @@ app.post('/api/donate/checkout', requireAuth, async (req, res) => {
       success_url: 'https://neuroattention.org/account.html?donation=success',
       cancel_url: 'https://neuroattention.org/account.html?donation=cancel',
       metadata: { user_id: me, donation_message: message || '', donation: 'true' },
+      allow_promotion_codes: true,   // tester can use a 100% coupon to verify the flow
       locale: ['ru','en','es'].includes(lang) ? lang : 'auto'
     });
     res.json({ checkout_url: session.url, session_id: session.id });
@@ -4711,6 +4712,64 @@ app.post('/api/joint-practice/:id/messages', requireAuth, async (req, res) => {
                             VALUES (${sid}, ${me}, ${kind||'text'}, ${body||''}, ${emoji||''}) RETURNING *`;
     res.status(201).json({ message: row });
   } catch (err) { console.error('joint post msg:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Admin: grant test access to a user (writes a synthetic completed consent_log row)
+// Use this to give a tester program-access without making them go through Stripe.
+// After call, getUserAccessTags(user) will include the chosen tag → courses with
+// matching program_access will be visible in their student dashboard.
+app.post('/api/admin/grant-test-access', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const { email, product } = req.body || {};
+    if (!email || !product) return res.status(400).json({ error: 'email and product required (product = lab/rehab/guided/group)' });
+    if (!['lab','rehab','guided','group'].includes(product)) return res.status(400).json({ error: 'product must be lab|rehab|guided|group' });
+    const [target] = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
+    if (!target) return res.status(404).json({ error: 'User with that email not found' });
+    // Idempotent — skip if already has a paid row for this product
+    const existing = await sql`SELECT id FROM consent_log WHERE user_id = ${target.id} AND product = ${product} AND payment_status IN ('paid','completed')`;
+    if (existing.length) return res.json({ ok: true, already_granted: true });
+    const [row] = await sql`INSERT INTO consent_log
+      (user_id, email, product, payment_status, consent_timestamp, consent_tos, consent_privacy, consent_digital, amount_total, stripe_session_id)
+      VALUES (${target.id}, ${email.toLowerCase()}, ${product}, 'paid', now(), true, true, true, 0, ${'TEST_GRANT_' + Date.now()})
+      RETURNING id`;
+    res.json({ ok: true, granted: { user_id: target.id, product, consent_log_id: row.id } });
+  } catch (err) { console.error('grant test access:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Admin: revoke test access (deletes the synthetic row)
+app.post('/api/admin/revoke-test-access', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const { email, product } = req.body || {};
+    const [target] = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    const result = await sql`DELETE FROM consent_log
+      WHERE user_id = ${target.id} AND product = ${product}
+        AND stripe_session_id LIKE 'TEST_GRANT_%' RETURNING id`;
+    res.json({ ok: true, revoked: result.length });
+  } catch (err) { console.error('revoke test access:', err); res.status(500).json({ error: err.message }); }
+});
+
+// Admin: promote/demote a user (assign role). Used to make someone an admin tester
+// so they can write/edit/delete posts and use admin-only courses constructor in sandbox.
+app.post('/api/admin/set-user-role', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder'].includes(caller.role)) return res.status(403).json({ error: 'superadmin/founder only' });
+    const { email, role } = req.body || {};
+    if (!email || !role) return res.status(400).json({ error: 'email and role required' });
+    if (!['user','admin','specialist','founder'].includes(role)) return res.status(400).json({ error: 'role must be user|admin|specialist|founder' });
+    const [target] = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    await sql`UPDATE users SET role = ${role} WHERE id = ${target.id}`;
+    res.json({ ok: true, user_id: target.id, new_role: role });
+  } catch (err) { console.error('set role:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PACK 21: Admin test confirmation email ──
