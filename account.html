@@ -1731,6 +1731,34 @@
           </div>
           <!-- Old admin rebuild section removed — rebuild is now in NeuroMap section for all users -->
 
+          <!-- ── STORAGE BACKEND STATUS ── -->
+          <div id="storage-status-panel" style="margin-top:1.25rem;padding:1.25rem;border:1px dashed rgba(255,200,0,0.25);border-radius:12px;background:rgba(255,200,0,0.03);">
+            <h4 style="margin:0 0 0.25rem;font-size:14px;color:#fc0;">💾 Хранилище медиа</h4>
+            <div id="storage-status-body" style="font-size:12px;color:var(--text-muted);line-height:1.55;">Загрузка…</div>
+            <details style="margin-top:0.6rem;">
+              <summary style="font-size:12px;color:var(--text-secondary);cursor:pointer;font-weight:600;">📋 Как подключить Cloudflare R2 (рекомендуется для больших объёмов)</summary>
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;padding:0.5rem 0 0 0.5rem;">
+                <ol style="margin:0 0 0.5rem 1rem;padding:0;">
+                  <li>Зарегистрируй Cloudflare аккаунт (бесплатно, R2 идёт без egress-сборов)</li>
+                  <li>R2 → Create bucket (например <code>neuroattention-media</code>)</li>
+                  <li>Manage R2 API Tokens → создай Read+Write токен. Сохрани Access Key ID + Secret</li>
+                  <li>Settings бакета → Public access → Allow Access. Запиши Public Bucket URL (либо подключи свой домен <code>media.neuroattention.org</code>)</li>
+                  <li>В Railway-переменных neuroattention-api добавь:
+                    <ul style="margin:0.4rem 0 0.4rem 1rem;padding:0;font-family:JetBrains Mono,monospace;font-size:11px;">
+                      <li>R2_ACCOUNT_ID</li>
+                      <li>R2_BUCKET</li>
+                      <li>R2_ACCESS_KEY_ID</li>
+                      <li>R2_SECRET_ACCESS_KEY</li>
+                      <li>R2_PUBLIC_BASE_URL <span style="color:var(--text-dim);">— например https://pub-xxx.r2.dev или https://media.neuroattention.org</span></li>
+                    </ul>
+                  </li>
+                  <li>Railway передеплоит. Все новые загрузки автоматически пойдут в R2. Старые файлы на GitHub Pages продолжат работать без миграции.</li>
+                </ol>
+                <p style="margin:0;color:var(--text-dim);">Стоимость R2: $0.015/GB-месяц хранения, <strong>$0 egress</strong>. Первые 10 GB бесплатно. Файл 1 GB MP4 в месяц = $0.015. Для сравнения: GitHub Pages начинает предупреждать на 5 GB репозитория.</p>
+              </div>
+            </details>
+          </div>
+
           <!-- ── TEST ACCESS GRANT PANEL (for QA testers) ── -->
           <div style="margin-top:2rem;padding:1.25rem;border:1px dashed rgba(0,229,255,0.25);border-radius:12px;background:rgba(0,229,255,0.03);">
             <h4 style="margin:0 0 0.25rem;font-size:14px;color:var(--accent-cyan);">🧪 Тестовый доступ для QA</h4>
@@ -10654,10 +10682,29 @@ document.addEventListener('DOMContentLoaded', function(){
     var toolsTab = document.querySelector('[data-tab="admin-tools"]');
     if (toolsTab && !toolsTab.dataset.achBound) {
       toolsTab.dataset.achBound = '1';
-      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); });
+      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); setTimeout(loadStorageStatus, 200); });
     }
   }, 1500);
 });
+
+function loadStorageStatus(){
+  var body = document.getElementById('storage-status-body');
+  if (!body) return;
+  domApi('/api/admin/storage-status').then(function(d){
+    var primary = d.primary === 'r2' ? '<span style="color:#0e9;font-weight:600;">✓ Cloudflare R2 (рекомендуется)</span>' : '<span style="color:#fc0;font-weight:600;">⚠ GitHub Pages (заслужил замену)</span>';
+    var r2line = d.r2_configured
+      ? '<span style="color:#0e9;">✓ Настроен · bucket: <code>' + (d.r2_bucket||'') + '</code> · public: <code>' + (d.r2_public_base||'') + '</code></span>'
+      : '<span style="color:var(--text-muted);">не настроен</span>';
+    var ghline = d.github_configured
+      ? '<span style="color:#0e9;">✓ Доступен · repo: <code>' + (d.github_repo||'') + '</code></span>'
+      : '<span style="color:#f55;">❌ GITHUB_PAT отсутствует</span>';
+    body.innerHTML = '<div><strong>Активный бэкенд:</strong> ' + primary + '</div>'
+      + '<div style="margin-top:0.3rem;"><strong>R2:</strong> ' + r2line + '</div>'
+      + '<div style="margin-top:0.3rem;"><strong>GitHub:</strong> ' + ghline + '</div>'
+      + (d.primary === 'github' ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,200,0,0.08);border-radius:6px;font-size:11px;">GitHub Pages подходит до 5 GB репозитория. С учётом видео + стрим-записями ты быстро упрёшься. Настрой R2 ниже — миграция бесшовная (старые файлы продолжат работать).</div>' : '');
+  }).catch(function(e){ body.innerHTML = '<span style="color:#f55;">Ошибка: '+e.message+'</span>'; });
+}
+window.loadStorageStatus = loadStorageStatus;
 function domPublishPost(){
   var title = document.getElementById('dom-post-title').value;
   var body = document.getElementById('dom-post-body').value;

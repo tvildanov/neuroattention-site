@@ -2936,11 +2936,117 @@ app.get('/api/stripe/status', (req, res) => {
   });
 });
 
-// ─── GitHub PAT for practices audio upload ───
+// ─── GitHub PAT for practices audio upload (legacy) ───
 const GITHUB_PAT = process.env.GITHUB_PAT || '';
 const GITHUB_REPO_OWNER = 'tvildanov';
 const GITHUB_REPO_NAME = 'neuroattention-site';
 const GITHUB_AUDIO_PATH = 'assets/audio/practices';
+
+// ─── Cloudflare R2 (object storage for large media) ───
+// R2 is the recommended backend for audio/video/stream recordings because
+// GitHub repos start to choke at ~5 GB (warnings) and hard-fail near 100 GB.
+// R2 has S3-compatible API, no egress fees, and tiered pricing ($0.015/GB).
+//
+// Required env vars (set them in Railway):
+//   R2_ACCOUNT_ID            Cloudflare account ID (visible in dashboard URL)
+//   R2_BUCKET                bucket name, e.g. 'neuroattention-media'
+//   R2_ACCESS_KEY_ID         from R2 → Manage API Tokens
+//   R2_SECRET_ACCESS_KEY     from the same place
+//   R2_PUBLIC_BASE_URL       public URL for the bucket. Either a custom
+//                            domain ('https://media.neuroattention.org')
+//                            or the dev URL ('https://pub-XXX.r2.dev').
+//
+// If any of those are missing, storage falls back to GitHub. Existing
+// files (already on GitHub Pages) keep working forever — only NEW
+// uploads go to R2.
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
+const R2_BUCKET = process.env.R2_BUCKET || '';
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
+const R2_PUBLIC_BASE_URL = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+const r2Configured = !!(R2_ACCOUNT_ID && R2_BUCKET && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_PUBLIC_BASE_URL);
+let r2Client = null;
+if (r2Configured) {
+  try {
+    const { S3Client } = require('@aws-sdk/client-s3');
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY }
+    });
+    console.log('R2 storage configured: bucket=' + R2_BUCKET);
+  } catch (e) {
+    console.warn('R2 SDK not loaded:', e.message);
+    r2Client = null;
+  }
+}
+
+// Public status (admin can inspect)
+function getStorageStatus() {
+  return {
+    primary: r2Client ? 'r2' : 'github',
+    r2_configured: r2Configured,
+    r2_bucket: R2_BUCKET || null,
+    r2_public_base: R2_PUBLIC_BASE_URL || null,
+    github_configured: !!GITHUB_PAT,
+    github_repo: GITHUB_REPO_OWNER + '/' + GITHUB_REPO_NAME
+  };
+}
+
+// Upload to R2 (if configured) — returns public URL on success
+async function uploadToR2(key, buffer, contentType) {
+  if (!r2Client) throw new Error('R2 not configured');
+  const { PutObjectCommand } = require('@aws-sdk/client-s3');
+  await r2Client.send(new PutObjectCommand({
+    Bucket: R2_BUCKET, Key: key, Body: buffer, ContentType: contentType || 'application/octet-stream'
+  }));
+  return R2_PUBLIC_BASE_URL + '/' + key.replace(/^\/+/, '');
+}
+
+// Delete from R2 (best-effort)
+async function deleteFromR2(key) {
+  if (!r2Client) return;
+  try {
+    const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+    await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+  } catch (e) { console.warn('R2 delete failed:', e.message); }
+}
+
+// Storage abstraction: route a file to R2 if configured, else GitHub.
+// Returns { url, backend, key }. Existing GitHub URLs continue working forever.
+async function storeMediaAsset(key, buffer, contentType, commitMessage) {
+  if (r2Client) {
+    try {
+      const url = await uploadToR2(key, buffer, contentType);
+      return { url, backend: 'r2', key };
+    } catch (e) {
+      console.warn('R2 upload failed, falling back to GitHub:', e.message);
+    }
+  }
+  // GitHub fallback
+  const b64 = buffer.toString('base64');
+  await githubUploadFile(key, b64, commitMessage || ('[storage] add ' + key));
+  return { url: 'https://neuroattention.org/' + key, backend: 'github', key };
+}
+
+// Delete by URL — picks the right backend based on the URL host
+async function deleteMediaAsset(url) {
+  if (!url) return;
+  if (R2_PUBLIC_BASE_URL && url.indexOf(R2_PUBLIC_BASE_URL) === 0) {
+    const key = url.slice(R2_PUBLIC_BASE_URL.length + 1);
+    await deleteFromR2(key);
+    return 'r2';
+  }
+  if (url.indexOf('https://neuroattention.org/') === 0) {
+    const path = url.replace('https://neuroattention.org/', '');
+    try {
+      const sha = await githubGetFileSha(path);
+      if (sha) await githubDeleteFile(path, sha, '[storage] remove ' + path);
+    } catch (e) { console.warn('GitHub delete failed:', e.message); }
+    return 'github';
+  }
+  return 'unknown';
+}
 
 // Percent-encode each path segment so non-ASCII chars (Cyrillic, spaces, etc.)
 // don't trigger Node's "Request path contains unescaped characters" in https.request
@@ -3131,10 +3237,10 @@ app.post('/api/admin/practices', requireAuth, uploadAudio.single('audio'), async
     const gitPath = `${GITHUB_AUDIO_PATH}/${fileName}`;
     const commitMsg = `[practices] Add audio: ${fileName}`;
 
-    await githubUploadFile(gitPath, resolvedB64, commitMsg);
-
-    // Raw URL for the file on GitHub Pages
-    const audioUrl = `https://neuroattention.org/${gitPath}`;
+    // Route through storage abstraction (R2 if configured, GitHub fallback)
+    const audioBuffer = Buffer.from(resolvedB64, 'base64');
+    const stored = await storeMediaAsset(gitPath, audioBuffer, 'audio/mpeg', commitMsg);
+    const audioUrl = stored.url;
 
     // Insert into DB (use cleaned slug/lang so the row matches the uploaded filename).
     // duration_seconds / order_idx arrive as strings via multipart, parseInt safely.
@@ -4219,9 +4325,10 @@ app.post('/api/admin/courses/:id/assets', requireAuth, uploadAudio.single('file'
     const safeName = String(filename || req.file.originalname || 'asset').toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
     const ext = (safeName.split('.').pop() || 'bin').slice(0, 8);
     const stamp = Date.now();
-    const gitPath = `assets/audio/courses/${courseId}/${stamp}-${safeName}`;
-    await githubUploadFile(gitPath, req.file.buffer.toString('base64'), `[course ${courseId}] add asset: ${safeName}`);
-    const url = `https://neuroattention.org/${gitPath}`;
+    const objectKey = `assets/audio/courses/${courseId}/${stamp}-${safeName}`;
+    const stored = await storeMediaAsset(objectKey, req.file.buffer, req.file.mimetype || 'application/octet-stream',
+                                          `[course ${courseId}] add asset: ${safeName}`);
+    const url = stored.url;
     const [row] = await sql`
       INSERT INTO course_assets (course_id, filename, asset_type, github_url, size_bytes)
       VALUES (${courseId}, ${safeName}, ${asset_type || ext}, ${url}, ${req.file.size || 0})
@@ -4922,9 +5029,9 @@ app.post('/api/chat/rooms/:id/recordings', requireAuth, uploadRecording.single('
     const ext = hasVideo ? 'webm' : 'webm';     // audio-only is also webm-opus
     const mime = req.file.mimetype || (hasVideo ? 'video/webm' : 'audio/webm');
     const safeName = (req.body.filename || ('room-' + rid + '-' + Date.now() + '.' + ext)).toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
-    const gitPath = 'assets/recordings/rooms/' + rid + '/' + Date.now() + '-' + safeName;
-    await githubUploadFile(gitPath, req.file.buffer.toString('base64'), '[room ' + rid + '] add recording: ' + safeName);
-    const url = 'https://neuroattention.org/' + gitPath;
+    const objectKey = 'assets/recordings/rooms/' + rid + '/' + Date.now() + '-' + safeName;
+    const stored = await storeMediaAsset(objectKey, req.file.buffer, mime, '[room ' + rid + '] add recording: ' + safeName);
+    const url = stored.url;
     const [row] = await sql`INSERT INTO room_recordings
       (room_id, recorder_user_id, url, filename, mime_type, size_bytes, duration_seconds, has_overlay, has_video, started_at, ended_at)
       VALUES (${rid}, ${me}, ${url}, ${safeName}, ${mime}, ${req.file.size || 0}, ${duration}, ${hasOverlay}, ${hasVideo}, ${startedAt}, ${endedAt})
@@ -5071,6 +5178,16 @@ app.post('/api/admin/set-user-role', requireAuth, async (req, res) => {
     await sql`UPDATE users SET role = ${role} WHERE id = ${target.id}`;
     res.json({ ok: true, user_id: target.id, new_role: role });
   } catch (err) { console.error('set role:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Storage backend status (admin diagnostic) ──
+app.get('/api/admin/storage-status', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    res.json(getStorageStatus());
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ── PACK 21: Admin test confirmation email ──
