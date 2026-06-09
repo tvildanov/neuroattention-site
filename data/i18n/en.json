@@ -1171,6 +1171,8 @@
   "a.admin.courses.btn_save": "Save",
   "a.admin.courses.btn_delete": "Delete",
   "a.admin.courses.access_title": "Program access:",
+  "a.admin.courses.lang_title": "Site languages:",
+  "a.admin.courses.lang_hint": "Empty = available in all languages",
   "a.admin.courses.blocks_title": "Course blocks",
   "a.admin.courses.dirty": "Unsaved changes",
   "a.admin.courses.saved": "Saved",
