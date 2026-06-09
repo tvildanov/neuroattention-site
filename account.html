@@ -2151,6 +2151,15 @@
             <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="rehab" style="accent-color:var(--accent-cyan);"> Rehabilitation</label>
           </div>
 
+          <!-- Site-language gating -->
+          <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;padding:0.5rem 0.6rem;background:rgba(255,200,0,0.03);border:1px dashed rgba(255,200,0,0.18);border-radius:8px;">
+            <span style="font-size:11px;color:#fc0;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;" data-i18n="a.admin.courses.lang_title">Языки сайта:</span>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-lang-cb" value="ru" style="accent-color:#fc0;"> 🇷🇺 RU</label>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-lang-cb" value="en" style="accent-color:#fc0;"> 🇬🇧 EN</label>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-lang-cb" value="es" style="accent-color:#fc0;"> 🇪🇸 ES</label>
+            <span style="font-size:10px;color:var(--text-muted);font-style:italic;margin-left:auto;" data-i18n="a.admin.courses.lang_hint">Пусто = на всех языках</span>
+          </div>
+
           <p id="course-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
 
           <!-- Blocks editor -->
@@ -9362,6 +9371,11 @@ function renderCourseEditor(){
   document.querySelectorAll('.course-access-cb').forEach(function(cb){
     cb.checked = access.indexOf(cb.value) !== -1;
   });
+  // Site-language gating
+  var langs = c.languages || [];
+  document.querySelectorAll('.course-lang-cb').forEach(function(cb){
+    cb.checked = langs.indexOf(cb.value) !== -1;
+  });
   renderCourseBlocks();
 }
 
@@ -9411,6 +9425,7 @@ window.coursePreviewAsStudent = coursePreviewAsStudent;
 function courseSaveMeta(){
   if (!courseState.currentCourse) return;
   var access = Array.from(document.querySelectorAll('.course-access-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
+  var langs = Array.from(document.querySelectorAll('.course-lang-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
   var body = {
     name_ru: document.getElementById('course-name-ru').value,
     name_en: document.getElementById('course-name-en').value,
@@ -9420,7 +9435,8 @@ function courseSaveMeta(){
     description_es: document.getElementById('course-desc-es').value,
     is_published: document.getElementById('course-published').checked,
     cover_url: (document.getElementById('course-cover-url')||{}).value || '',
-    program_access: access
+    program_access: access,
+    languages: langs
   };
   courseSetStatus('Сохранение…');
   courseApi('/api/admin/courses/' + courseState.currentCourse.id, { method: 'PATCH', body: body })
@@ -9759,7 +9775,8 @@ var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, history: []
 
 function loadStudentCourses(){
   var token = localStorage.getItem('na_token'); if (!token) return;
-  fetch(AUTH_API + '/api/courses', { headers: { 'Authorization': 'Bearer ' + token } })
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  fetch(AUTH_API + '/api/courses?lang=' + encodeURIComponent(lang), { headers: { 'Authorization': 'Bearer ' + token } })
     .then(function(r){ return r.json(); })
     .then(function(d){
       var box = document.getElementById('student-courses-list');
@@ -9787,7 +9804,8 @@ window.loadStudentCourses = loadStudentCourses;
 
 function cpOpenCourse(slug){
   var token = localStorage.getItem('na_token'); if (!token) return;
-  fetch(AUTH_API + '/api/courses/' + encodeURIComponent(slug), { headers: { 'Authorization': 'Bearer ' + token } })
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  fetch(AUTH_API + '/api/courses/' + encodeURIComponent(slug) + '?lang=' + encodeURIComponent(lang), { headers: { 'Authorization': 'Bearer ' + token } })
     .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.error||r.status); return d; }); })
     .then(function(d){
       coursePlayer.course = d.course;

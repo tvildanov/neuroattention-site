@@ -1169,6 +1169,8 @@
   "a.admin.courses.btn_save": "Сохранить",
   "a.admin.courses.btn_delete": "Удалить",
   "a.admin.courses.access_title": "Доступ по программе:",
+  "a.admin.courses.lang_title": "Языки сайта:",
+  "a.admin.courses.lang_hint": "Пусто = на всех языках",
   "a.admin.courses.blocks_title": "Блоки курса",
   "a.admin.courses.dirty": "Есть несохранённые изменения",
   "a.admin.courses.saved": "Сохранено",

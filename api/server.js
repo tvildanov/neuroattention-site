@@ -1037,7 +1037,12 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_room_recordings_room ON room_recordings(room_id, created_at DESC)`;
 
-    res.json({ ok: true, message: 'Migrations 003-029 applied successfully' });
+    // Pack 24 follow-up: per-language gating on courses
+    // Empty array (default) = available in all languages of the site.
+    // Specific values like ['ru'] = only shown when site lang is RU.
+    await sql`ALTER TABLE courses ADD COLUMN IF NOT EXISTS languages TEXT[] DEFAULT '{}'`;
+
+    res.json({ ok: true, message: 'Migrations 003-030 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4150,7 +4155,7 @@ app.post('/api/admin/courses', requireAuth, async (req, res) => {
     if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
     const userId = req.user.sub || req.user.id;
     const { slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
-            cover_url, program_access, is_published } = req.body || {};
+            cover_url, program_access, is_published, languages } = req.body || {};
     if (!slug || !String(slug).trim()) return res.status(400).json({ error: 'slug required' });
     // Sanitize slug
     function transliterate(s) {
@@ -4160,12 +4165,13 @@ app.post('/api/admin/courses', requireAuth, async (req, res) => {
     const cleanSlug = transliterate(slug);
     if (!cleanSlug) return res.status(400).json({ error: 'slug must contain letters/digits' });
     const accessArr = Array.isArray(program_access) ? program_access : [];
+    const langArr = Array.isArray(languages) ? languages.filter(l => ['ru','en','es'].includes(l)) : [];
     const [row] = await sql`
       INSERT INTO courses (slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
-                           cover_url, program_access, is_published, created_by)
+                           cover_url, program_access, is_published, languages, created_by)
       VALUES (${cleanSlug}, ${name_ru||''}, ${name_en||''}, ${name_es||''},
               ${description_ru||''}, ${description_en||''}, ${description_es||''},
-              ${cover_url||''}, ${accessArr}::text[], ${!!is_published}, ${userId})
+              ${cover_url||''}, ${accessArr}::text[], ${!!is_published}, ${langArr}::text[], ${userId})
       RETURNING *
     `;
     res.status(201).json({ course: row });
@@ -4204,6 +4210,7 @@ app.patch('/api/admin/courses/:id', requireAuth, async (req, res) => {
       description_es = COALESCE(${b.description_es}, description_es),
       cover_url = COALESCE(${b.cover_url}, cover_url),
       program_access = COALESCE(${Array.isArray(b.program_access) ? b.program_access : null}::text[], program_access),
+      languages = COALESCE(${Array.isArray(b.languages) ? b.languages.filter(l => ['ru','en','es'].includes(l)) : null}::text[], languages),
       is_published = COALESCE(${b.is_published !== undefined ? !!b.is_published : null}, is_published),
       order_idx = COALESCE(${b.order_idx !== undefined ? parseInt(b.order_idx,10) : null}, order_idx),
       updated_at = now()
@@ -4374,17 +4381,22 @@ app.get('/api/courses', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
     const access = await getUserAccessTags(userId);
-    // If user has no access, return only courses with empty program_access (open to all logged-in users)
+    // Language gate: if ?lang= is passed (current site language), show only
+    // courses with that lang in their `languages` array, or with no langs set
+    // (= available everywhere). Defaults to RU if absent.
+    const lang = ['ru','en','es'].includes(String(req.query.lang||'').toLowerCase())
+      ? String(req.query.lang).toLowerCase() : 'ru';
     const rows = await sql`
       SELECT id, slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
-             cover_url, program_access,
+             cover_url, program_access, languages,
              (SELECT COUNT(*) FROM course_blocks WHERE course_id = courses.id) AS block_count
       FROM courses
       WHERE is_published = true
         AND (program_access = '{}' OR program_access && ${access}::text[])
+        AND (COALESCE(languages, '{}') = '{}' OR ${lang} = ANY(COALESCE(languages, '{}')))
       ORDER BY order_idx ASC, id DESC
     `;
-    res.json({ courses: rows, access });
+    res.json({ courses: rows, access, filtered_lang: lang });
   } catch (err) { console.error('GET /api/courses:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -4399,6 +4411,12 @@ app.get('/api/courses/:slug', requireAuth, async (req, res) => {
     const courseAccess = course.program_access || [];
     const hasAccess = courseAccess.length === 0 || courseAccess.some(t => access.includes(t));
     if (!hasAccess) return res.status(403).json({ error: 'No access to this course' });
+    // Language check (advisory — block at the listing level but allow direct link
+    // if user explicitly navigates to a course for another lang)
+    const langPref = ['ru','en','es'].includes(String(req.query.lang||'').toLowerCase()) ? String(req.query.lang).toLowerCase() : null;
+    if (langPref && Array.isArray(course.languages) && course.languages.length > 0 && !course.languages.includes(langPref)) {
+      return res.status(404).json({ error: 'Course not available in this language' });
+    }
     const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points
                               FROM course_blocks WHERE course_id = ${course.id} ORDER BY order_idx ASC`;
     const progress = await sql`SELECT block_id, response, points_earned, completed_at FROM course_block_progress

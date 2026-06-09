@@ -1171,6 +1171,8 @@
   "a.admin.courses.btn_save": "Guardar",
   "a.admin.courses.btn_delete": "Eliminar",
   "a.admin.courses.access_title": "Acceso por programa:",
+  "a.admin.courses.lang_title": "Idiomas del sitio:",
+  "a.admin.courses.lang_hint": "Vacío = disponible en todos los idiomas",
   "a.admin.courses.blocks_title": "Bloques del curso",
   "a.admin.courses.dirty": "Cambios sin guardar",
   "a.admin.courses.saved": "Guardado",
