@@ -2162,11 +2162,15 @@
 
           <p id="course-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
 
+          <!-- Path roadmap visualization (sections horizontally) -->
+          <div id="course-roadmap" style="margin:1rem 0 0.5rem;padding:0.6rem 0.5rem;background:rgba(0,0,0,0.18);border:1px solid rgba(255,255,255,0.05);border-radius:10px;overflow-x:auto;white-space:nowrap;display:none;"></div>
+
           <!-- Blocks editor -->
-          <h4 style="margin:1rem 0 0.5rem;font-size:13px;color:var(--text-primary);" data-i18n="a.admin.courses.blocks_title">Блоки курса</h4>
-          <div id="course-blocks-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+          <h4 style="margin:1rem 0 0.5rem;font-size:13px;color:var(--text-primary);" data-i18n="a.admin.courses.blocks_title">Структура курса</h4>
+          <div id="course-blocks-list" style="display:flex;flex-direction:column;gap:0.7rem;"></div>
 
           <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="btn btn-solid" onclick="courseAddSection()" style="font-size:12px;padding:0.4rem 0.9rem;background:rgba(255,200,0,0.15);color:#fc0;border-color:rgba(255,200,0,0.3);" title="Раздел / Блок"><span>📦 + Раздел</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('practice')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Практика"><span>+ Практика</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('text')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Текст"><span>+ Текст</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('video')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Видео"><span>+ Видео</span></button>
@@ -9511,10 +9515,11 @@ function courseSetStatus(msg, ok){
   s.style.color = ok ? '#0e9' : 'var(--text-muted)';
 }
 
-function courseAddBlock(blockType){
+function courseAddBlock(blockType, parentBlockId){
   if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
   // Default payload shape for each block_type
   var payloadDefaults = {
+    section: {},
     practice: { practice_id: null },
     text: { body_ru: '', body_en: '', body_es: '' },
     video: { url: '', duration_seconds: 0 },
@@ -9528,9 +9533,16 @@ function courseAddBlock(blockType){
     question_branch: { question_ru: '', question_en: '', question_es: '', options: [] },
     sound_cue: { audio_url: '', label: '' }
   };
+  var body = {
+    block_type: blockType,
+    title_ru: blockType === 'section' ? 'Новый раздел' : '',
+    payload: payloadDefaults[blockType] || {},
+    points: 0
+  };
+  if (parentBlockId) body.parent_block_id = parentBlockId;
   courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', {
     method: 'POST',
-    body: { block_type: blockType, title_ru: '', payload: payloadDefaults[blockType] || {}, points: 0 }
+    body: body
   })
   .then(function(d){
     courseState.currentBlocks.push(d.block);
@@ -9539,6 +9551,9 @@ function courseAddBlock(blockType){
   .catch(function(e){ alert(e.message); });
 }
 window.courseAddBlock = courseAddBlock;
+
+function courseAddSection(){ courseAddBlock('section', null); }
+window.courseAddSection = courseAddSection;
 
 function courseDeleteBlock(blockId){
   if (!confirm('Удалить блок?')) return;
@@ -9582,39 +9597,145 @@ function courseBlockDrop(e, toIdx){
 window.courseBlockDragStart = courseBlockDragStart;
 window.courseBlockDrop = courseBlockDrop;
 
+// Type → emoji label + accent color
+function _cbTypeMeta(t){
+  var labels = {
+    section: '📦 Раздел',
+    practice: '🎧 Практика', text: '📝 Текст', video: '🎬 Видео', audio: '🔊 Аудио',
+    image: '🖼 Фото', link: '🔗 Ссылка', sensation_prompt: '✨ Запрос ощущений',
+    break: '⏸ Перерыв', student_audio: '🎙 Аудио ответ', student_text: '✍️ Текст ответ',
+    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал'
+  };
+  var color = t === 'sound_cue' ? 'var(--accent-amber)'
+            : t === 'question_branch' ? 'var(--accent-violet)'
+            : t === 'section' ? '#fc0' : 'var(--accent-cyan)';
+  return { label: labels[t] || t, color: color };
+}
+
+// Render one item card (works inside a section or at top-level)
+function _renderItemCard(b, idx, allowedLangs, isInSection){
+  if (b.block_type === 'section') return ''; // sections handled separately
+  var m = _cbTypeMeta(b.block_type);
+  var pad = isInSection ? '0.5rem' : '0.7rem';
+  return '<div draggable="true" ondragstart="courseBlockDragStart(event,' + idx + ')" ondragover="event.preventDefault()" ondrop="courseBlockDrop(event,' + idx + ')" style="border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:' + pad + ';background:rgba(0,0,0,0.18);' + (isInSection ? 'margin-left:1rem;' : '') + '">'
+       + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
+       +   '<span style="cursor:grab;color:var(--text-dim);user-select:none;">⋮⋮</span>'
+       +   '<span style="font-size:10px;color:' + m.color + ';font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">' + m.label + ' #' + (idx+1) + '</span>'
+       +   '<input type="number" value="' + (b.points||0) + '" onchange="courseUpdateBlock(' + b.id + ',{points: parseInt(this.value,10)||0})" title="Очки" style="margin-left:auto;width:55px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.2rem 0.35rem;color:var(--text-primary);font-size:11px;text-align:right;"><span style="font-size:10px;color:var(--text-dim);">XP</span>'
+       +   '<button class="btn btn-ghost" onclick="courseMoveToSection(' + b.id + ')" title="Перенести в раздел" style="font-size:11px;padding:0.15rem 0.4rem;color:var(--text-muted);">↪</button>'
+       +   '<button class="btn btn-ghost" onclick="courseDeleteBlock(' + b.id + ')" style="font-size:11px;padding:0.15rem 0.4rem;color:var(--accent-rose);">✕</button>'
+       + '</div>'
+       + (allowedLangs.indexOf('ru') !== -1 ? '<input value="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" placeholder="Заголовок (RU)" onchange="courseUpdateBlock(' + b.id + ', {title_ru: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.3rem 0.55rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+       + (allowedLangs.indexOf('en') !== -1 ? '<input value="' + (b.title_en||'').replace(/"/g,'&quot;') + '" placeholder="Title (EN)" onchange="courseUpdateBlock(' + b.id + ', {title_en: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.3rem 0.55rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+       + (allowedLangs.indexOf('es') !== -1 ? '<input value="' + (b.title_es||'').replace(/"/g,'&quot;') + '" placeholder="Título (ES)" onchange="courseUpdateBlock(' + b.id + ', {title_es: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.3rem 0.55rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+       + renderCourseBlockPayload(b, allowedLangs)
+       + '</div>';
+}
+
+// Mini-toolbar to add items inside a section
+function _renderSectionMiniToolbar(sectionId){
+  var types = [
+    ['practice','+ Практика'], ['text','+ Текст'], ['video','+ Видео'],
+    ['audio','+ Аудио'], ['image','+ Фото'], ['link','+ Ссылка'],
+    ['sensation_prompt','+ Ощущения'], ['break','+ Перерыв'],
+    ['student_audio','+ Аудио ответ'], ['student_text','+ Текст ответ'],
+    ['question_branch','+ Ветвление'], ['sound_cue','+ Сигнал']
+  ];
+  return '<div style="display:flex;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;margin-left:1rem;">'
+    + types.map(function(p){
+        return '<button class="btn btn-ghost" onclick="courseAddBlock(\'' + p[0] + '\',' + sectionId + ')" style="font-size:10px;padding:0.2rem 0.5rem;">' + p[1] + '</button>';
+      }).join('')
+    + '</div>';
+}
+
+// Update the horizontal roadmap (sections + standalone items as nodes)
+function renderCourseRoadmap(){
+  var rm = document.getElementById('course-roadmap');
+  if (!rm) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var topLevel = courseState.currentBlocks.filter(function(b){ return !b.parent_block_id; });
+  if (!topLevel.length) { rm.style.display = 'none'; return; }
+  rm.style.display = '';
+  var html = '<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-right:0.5rem;">Маршрут:</span>';
+  html += '<span style="display:inline-flex;gap:0.4rem;align-items:center;">';
+  topLevel.forEach(function(b, i){
+    var m = _cbTypeMeta(b.block_type);
+    var nm = b['title_'+lang] || b.title_ru || b.title_en || m.label;
+    if (b.block_type === 'section') {
+      var kids = courseState.currentBlocks.filter(function(x){ return x.parent_block_id === b.id; });
+      nm = nm + (kids.length ? ' (' + kids.length + ')' : '');
+    }
+    html += '<span style="display:inline-block;padding:0.3rem 0.7rem;border:1px solid ' + m.color + ';color:' + m.color + ';border-radius:14px;font-size:11px;background:rgba(0,0,0,0.3);">' + nm + '</span>';
+    if (i < topLevel.length - 1) html += '<span style="color:var(--text-dim);">→</span>';
+  });
+  html += '</span>';
+  rm.innerHTML = html;
+}
+window.renderCourseRoadmap = renderCourseRoadmap;
+
+// Move an item to a section (prompt for which one)
+function courseMoveToSection(blockId){
+  var sections = courseState.currentBlocks.filter(function(b){ return b.block_type === 'section'; });
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  if (!sections.length) { alert('Сначала создай раздел 📦, чтобы было куда перенести.'); return; }
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var opts = '0:— Верхний уровень (вне раздела) —\n' + sections.map(function(s){ return s.id + ':📦 ' + (s['title_'+lang]||s.title_ru||s.title_en||'Раздел #'+s.id); }).join('\n');
+  var raw = prompt('Куда перенести этот элемент? Введи число id:\n\n' + opts, blk.parent_block_id || '0');
+  if (raw === null) return;
+  var newParentId = parseInt(raw, 10);
+  var body = { parent_block_id: newParentId > 0 ? newParentId : null };
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks/' + blockId, { method:'PATCH', body: body })
+    .then(function(d){
+      var idx = courseState.currentBlocks.findIndex(function(b){ return b.id === blockId; });
+      if (idx >= 0) courseState.currentBlocks[idx] = d.block;
+      renderCourseBlocks();
+      courseSetStatus('Перенос выполнен', true);
+    })
+    .catch(function(e){ alert(e.message); });
+}
+window.courseMoveToSection = courseMoveToSection;
+
 function renderCourseBlocks(){
   var box = document.getElementById('course-blocks-list');
   if (!box) return;
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var allowedLangs = (typeof activeCourseLangsOrAll === 'function') ? activeCourseLangsOrAll() : ['ru','en','es'];
   if (!courseState.currentBlocks.length){
-    box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);text-align:center;padding:1.5rem 0;" data-i18n="a.admin.courses.empty_blocks">Блоков пока нет. Добавьте первый из меню ниже.</p>';
+    box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);text-align:center;padding:1.5rem 0;">Курс пуст. Создай раздел 📦 или добавь отдельный элемент из тулбара ниже.</p>';
+    renderCourseRoadmap();
     return;
   }
-  var typeLabels = {
-    practice: '🎧 Практика', text: '📝 Текст', video: '🎬 Видео', audio: '🔊 Аудио',
-    image: '🖼 Фото', link: '🔗 Ссылка', sensation_prompt: '✨ Запрос ощущений',
-    break: '⏸ Перерыв', student_audio: '🎙 Аудио ответ', student_text: '✍️ Текст ответ',
-    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал'
-  };
-  box.innerHTML = courseState.currentBlocks.map(function(b, idx){
-    var label = typeLabels[b.block_type] || b.block_type;
-    var color = b.block_type === 'sound_cue' ? 'var(--accent-amber)'
-              : (b.block_type === 'question_branch' ? 'var(--accent-violet)'
-              : 'var(--accent-cyan)');
-    return '<div draggable="true" ondragstart="courseBlockDragStart(event,' + idx + ')" ondragover="event.preventDefault()" ondrop="courseBlockDrop(event,' + idx + ')" style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:0.7rem;background:rgba(0,0,0,0.18);">'
-         + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">'
-         +   '<span style="cursor:grab;color:var(--text-dim);user-select:none;">⋮⋮</span>'
-         +   '<span style="font-size:10px;color:' + color + ';font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">' + label + ' #' + (idx+1) + '</span>'
-         +   '<input type="number" value="' + (b.points||0) + '" onchange="courseUpdateBlock(' + b.id + ',{points: parseInt(this.value,10)||0})" title="Очки" style="margin-left:auto;width:60px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.4rem;color:var(--text-primary);font-size:11px;text-align:right;"><span style="font-size:10px;color:var(--text-dim);">XP</span>'
-         +   '<button class="btn btn-ghost" onclick="courseDeleteBlock(' + b.id + ')" style="font-size:11px;padding:0.2rem 0.5rem;color:var(--accent-rose);">✕</button>'
-         + '</div>'
-         + (allowedLangs.indexOf('ru') !== -1 ? '<input value="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" placeholder="Заголовок блока (RU)" onchange="courseUpdateBlock(' + b.id + ', {title_ru: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
-         + (allowedLangs.indexOf('en') !== -1 ? '<input value="' + (b.title_en||'').replace(/"/g,'&quot;') + '" placeholder="Block title (EN)" onchange="courseUpdateBlock(' + b.id + ', {title_en: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
-         + (allowedLangs.indexOf('es') !== -1 ? '<input value="' + (b.title_es||'').replace(/"/g,'&quot;') + '" placeholder="Título del bloque (ES)" onchange="courseUpdateBlock(' + b.id + ', {title_es: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
-         + renderCourseBlockPayload(b, allowedLangs)
-         + '</div>';
+  // Build two-level structure: top-level items (parent_block_id IS NULL) and child items.
+  var allBlocks = courseState.currentBlocks;
+  var indexById = {}; allBlocks.forEach(function(b, i){ indexById[b.id] = i; });
+  var topLevel = allBlocks.filter(function(b){ return !b.parent_block_id; });
+  var html = topLevel.map(function(b){
+    var idxAll = indexById[b.id];
+    if (b.block_type === 'section') {
+      var kids = allBlocks.filter(function(x){ return x.parent_block_id === b.id; });
+      var sectionHead = '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">'
+        + '<span style="cursor:grab;color:#fc0;user-select:none;font-size:14px;">⋮⋮</span>'
+        + '<span style="font-size:11px;color:#fc0;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">📦 Раздел</span>'
+        + '<button class="btn btn-ghost" onclick="courseDeleteBlock(' + b.id + ')" title="Удалить раздел (с содержимым)" style="margin-left:auto;font-size:11px;padding:0.15rem 0.4rem;color:var(--accent-rose);">✕</button>'
+        + '</div>'
+        + (allowedLangs.indexOf('ru') !== -1 ? '<input value="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" placeholder="Название раздела (RU)" onchange="courseUpdateBlock(' + b.id + ', {title_ru: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,200,0,0.2);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;font-weight:600;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+        + (allowedLangs.indexOf('en') !== -1 ? '<input value="' + (b.title_en||'').replace(/"/g,'&quot;') + '" placeholder="Section name (EN)" onchange="courseUpdateBlock(' + b.id + ', {title_en: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,200,0,0.2);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;font-weight:600;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+        + (allowedLangs.indexOf('es') !== -1 ? '<input value="' + (b.title_es||'').replace(/"/g,'&quot;') + '" placeholder="Nombre del bloque (ES)" onchange="courseUpdateBlock(' + b.id + ', {title_es: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,200,0,0.2);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:13px;font-weight:600;margin-bottom:0.3rem;box-sizing:border-box;">' : '');
+      var kidsHtml = kids.length
+        ? kids.map(function(k){ return _renderItemCard(k, indexById[k.id], allowedLangs, true); }).join('')
+        : '<p style="font-size:11px;color:var(--text-dim);text-align:center;padding:0.5rem 0;font-style:italic;">Раздел пуст — добавь элементы ниже</p>';
+      return '<div data-section-id="' + b.id + '" style="border:1px solid rgba(255,200,0,0.25);border-radius:12px;padding:0.75rem;background:rgba(255,200,0,0.04);">'
+           + sectionHead
+           + '<div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem;">' + kidsHtml + '</div>'
+           + _renderSectionMiniToolbar(b.id)
+           + '</div>';
+    }
+    // Top-level stand-alone item
+    return _renderItemCard(b, idxAll, allowedLangs, false);
   }).join('');
+  box.innerHTML = html;
+  renderCourseRoadmap();
 }
 window.renderCourseBlocks = renderCourseBlocks;
 

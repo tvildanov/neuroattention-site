@@ -1042,7 +1042,14 @@ app.post('/api/run-migrations', async (req, res) => {
     // Specific values like ['ru'] = only shown when site lang is RU.
     await sql`ALTER TABLE courses ADD COLUMN IF NOT EXISTS languages TEXT[] DEFAULT '{}'`;
 
-    res.json({ ok: true, message: 'Migrations 003-030 applied successfully' });
+    // Pack 24 v2: two-level structure (section → child items)
+    // parent_block_id IS NULL → top-level section or stand-alone item
+    // parent_block_id INTEGER → child item inside that section
+    // block_type='section' is just a container with a multilingual title.
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS parent_block_id INTEGER REFERENCES course_blocks(id) ON DELETE CASCADE`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_blocks_parent ON course_blocks(parent_block_id)`;
+
+    res.json({ ok: true, message: 'Migrations 003-031 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4237,14 +4244,18 @@ app.post('/api/admin/courses/:id/blocks', requireAuth, async (req, res) => {
   try {
     if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
     const courseId = parseInt(req.params.id, 10);
-    const { block_type, title_ru, title_en, title_es, payload, points } = req.body || {};
+    const { block_type, title_ru, title_en, title_es, payload, points, parent_block_id } = req.body || {};
     if (!block_type) return res.status(400).json({ error: 'block_type required' });
-    const [{ max_idx }] = await sql`SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM course_blocks WHERE course_id = ${courseId}`;
-    const nextIdx = (max_idx ?? -1) + 1;
+    // order_idx scope: next-after-max within the SAME parent_block_id (or top-level if null)
+    const parent = parent_block_id ? parseInt(parent_block_id, 10) : null;
+    const maxRows = parent
+      ? await sql`SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM course_blocks WHERE course_id = ${courseId} AND parent_block_id = ${parent}`
+      : await sql`SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM course_blocks WHERE course_id = ${courseId} AND parent_block_id IS NULL`;
+    const nextIdx = (maxRows[0]?.max_idx ?? -1) + 1;
     const [row] = await sql`
-      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points)
+      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id)
       VALUES (${courseId}, ${nextIdx}, ${block_type}, ${title_ru||''}, ${title_en||''}, ${title_es||''},
-              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0})
+              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0}, ${parent})
       RETURNING *
     `;
     res.status(201).json({ block: row });
@@ -4257,15 +4268,31 @@ app.patch('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) =
     if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
     const bid = parseInt(req.params.bid, 10);
     const b = req.body || {};
-    const [updated] = await sql`UPDATE course_blocks SET
-      block_type = COALESCE(${b.block_type}, block_type),
-      title_ru = COALESCE(${b.title_ru}, title_ru),
-      title_en = COALESCE(${b.title_en}, title_en),
-      title_es = COALESCE(${b.title_es}, title_es),
-      payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
-      points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
-      unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition)
-      WHERE id = ${bid} RETURNING *`;
+    let updated;
+    if (Object.prototype.hasOwnProperty.call(b, 'parent_block_id')) {
+      // Explicit parent change (null clears it, integer sets it)
+      const newParent = b.parent_block_id === null ? null : parseInt(b.parent_block_id, 10);
+      [updated] = await sql`UPDATE course_blocks SET
+        block_type = COALESCE(${b.block_type}, block_type),
+        title_ru = COALESCE(${b.title_ru}, title_ru),
+        title_en = COALESCE(${b.title_en}, title_en),
+        title_es = COALESCE(${b.title_es}, title_es),
+        payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
+        points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
+        unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition),
+        parent_block_id = ${newParent}
+        WHERE id = ${bid} RETURNING *`;
+    } else {
+      [updated] = await sql`UPDATE course_blocks SET
+        block_type = COALESCE(${b.block_type}, block_type),
+        title_ru = COALESCE(${b.title_ru}, title_ru),
+        title_en = COALESCE(${b.title_en}, title_en),
+        title_es = COALESCE(${b.title_es}, title_es),
+        payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
+        points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
+        unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition)
+        WHERE id = ${bid} RETURNING *`;
+    }
     if (!updated) return res.status(404).json({ error: 'Not found' });
     res.json({ block: updated });
   } catch (err) { console.error('PATCH block:', err); res.status(500).json({ error: err.message }); }
