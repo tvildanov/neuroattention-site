@@ -2132,15 +2132,15 @@
             <div id="course-cover-preview" style="width:60px;height:40px;background:rgba(0,0,0,0.4);border-radius:6px;background-size:cover;background-position:center;"></div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
-            <input id="course-name-ru" type="text" placeholder="Название (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
-            <input id="course-name-en" type="text" placeholder="Name (EN)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
-            <input id="course-name-es" type="text" placeholder="Nombre (ES)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
+          <div id="course-names-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <input data-cf-lang="ru" id="course-name-ru" type="text" placeholder="Название (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input data-cf-lang="en" id="course-name-en" type="text" placeholder="Name (EN)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input data-cf-lang="es" id="course-name-es" type="text" placeholder="Nombre (ES)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;">
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
-            <textarea id="course-desc-ru" rows="2" placeholder="Описание (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
-            <textarea id="course-desc-en" rows="2" placeholder="Description (EN)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
-            <textarea id="course-desc-es" rows="2" placeholder="Descripción (ES)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+          <div id="course-descs-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+            <textarea data-cf-lang="ru" id="course-desc-ru" rows="2" placeholder="Описание (RU)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+            <textarea data-cf-lang="en" id="course-desc-en" rows="2" placeholder="Description (EN)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
+            <textarea data-cf-lang="es" id="course-desc-es" rows="2" placeholder="Descripción (ES)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>
           </div>
 
           <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;padding:0.5rem 0.6rem;background:rgba(0,224,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;">
@@ -9375,9 +9375,48 @@ function renderCourseEditor(){
   var langs = c.languages || [];
   document.querySelectorAll('.course-lang-cb').forEach(function(cb){
     cb.checked = langs.indexOf(cb.value) !== -1;
+    // Wire change listener once so toggling the lang gate immediately reflows
+    // visible name/desc inputs (and any blocks with multilingual fields).
+    if (!cb.dataset.cfBound) {
+      cb.dataset.cfBound = '1';
+      cb.addEventListener('change', function(){
+        applyCourseLangVisibility();
+        renderCourseBlocks();
+      });
+    }
   });
+  applyCourseLangVisibility();
   renderCourseBlocks();
 }
+
+// Reads the current course-lang-cb selection and shows/hides name + desc
+// inputs (and similar in block payloads). Empty selection = show all.
+function getActiveCourseLangs(){
+  var langs = Array.from(document.querySelectorAll('.course-lang-cb'))
+    .filter(function(cb){ return cb.checked; })
+    .map(function(cb){ return cb.value; });
+  return langs;
+}
+function activeCourseLangsOrAll(){
+  var langs = getActiveCourseLangs();
+  return langs.length ? langs : ['ru','en','es'];
+}
+function applyCourseLangVisibility(){
+  var allowed = activeCourseLangsOrAll();
+  // Top-level course name + description inputs
+  document.querySelectorAll('#course-names-row [data-cf-lang], #course-descs-row [data-cf-lang]').forEach(function(el){
+    el.style.display = allowed.indexOf(el.dataset.cfLang) !== -1 ? '' : 'none';
+  });
+  // Adjust grid column count so visible fields fill the row
+  var cols = allowed.length || 1;
+  var nrow = document.getElementById('course-names-row');
+  var drow = document.getElementById('course-descs-row');
+  if (nrow) nrow.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+  if (drow) drow.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+}
+window.applyCourseLangVisibility = applyCourseLangVisibility;
+window.getActiveCourseLangs = getActiveCourseLangs;
+window.activeCourseLangsOrAll = activeCourseLangsOrAll;
 
 // Upload cover image via assets endpoint then set cover_url on course
 function courseUploadCover(){
@@ -9547,6 +9586,7 @@ function renderCourseBlocks(){
   var box = document.getElementById('course-blocks-list');
   if (!box) return;
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var allowedLangs = (typeof activeCourseLangsOrAll === 'function') ? activeCourseLangsOrAll() : ['ru','en','es'];
   if (!courseState.currentBlocks.length){
     box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);text-align:center;padding:1.5rem 0;" data-i18n="a.admin.courses.empty_blocks">Блоков пока нет. Добавьте первый из меню ниже.</p>';
     return;
@@ -9569,10 +9609,10 @@ function renderCourseBlocks(){
          +   '<input type="number" value="' + (b.points||0) + '" onchange="courseUpdateBlock(' + b.id + ',{points: parseInt(this.value,10)||0})" title="Очки" style="margin-left:auto;width:60px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.25rem 0.4rem;color:var(--text-primary);font-size:11px;text-align:right;"><span style="font-size:10px;color:var(--text-dim);">XP</span>'
          +   '<button class="btn btn-ghost" onclick="courseDeleteBlock(' + b.id + ')" style="font-size:11px;padding:0.2rem 0.5rem;color:var(--accent-rose);">✕</button>'
          + '</div>'
-         + '<input value="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" placeholder="Заголовок блока (RU)" onchange="courseUpdateBlock(' + b.id + ', {title_ru: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
-         + '<input value="' + (b.title_en||'').replace(/"/g,'&quot;') + '" placeholder="Block title (EN)" onchange="courseUpdateBlock(' + b.id + ', {title_en: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
-         + '<input value="' + (b.title_es||'').replace(/"/g,'&quot;') + '" placeholder="Título del bloque (ES)" onchange="courseUpdateBlock(' + b.id + ', {title_es: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
-         + renderCourseBlockPayload(b)
+         + (allowedLangs.indexOf('ru') !== -1 ? '<input value="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" placeholder="Заголовок блока (RU)" onchange="courseUpdateBlock(' + b.id + ', {title_ru: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+         + (allowedLangs.indexOf('en') !== -1 ? '<input value="' + (b.title_en||'').replace(/"/g,'&quot;') + '" placeholder="Block title (EN)" onchange="courseUpdateBlock(' + b.id + ', {title_en: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+         + (allowedLangs.indexOf('es') !== -1 ? '<input value="' + (b.title_es||'').replace(/"/g,'&quot;') + '" placeholder="Título del bloque (ES)" onchange="courseUpdateBlock(' + b.id + ', {title_es: this.value})" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">' : '')
+         + renderCourseBlockPayload(b, allowedLangs)
          + '</div>';
   }).join('');
 }
@@ -9627,26 +9667,71 @@ window.cbUploadAsset = cbUploadAsset;
 function cbPickPractice(blockId){
   courseApi('/api/admin/practices').then(function(d){
     var practices = d.practices || [];
-    if (!practices.length) { alert('Нет загруженных практик. Сначала добавь хотя бы одну через блок «🔊 Аудио».'); return; }
+    if (!practices.length) { alert('Нет загруженных практик. Сначала загрузи хотя бы одну через таб «Практики».'); return; }
+    var allowed = (typeof activeCourseLangsOrAll === 'function') ? activeCourseLangsOrAll() : ['ru','en','es'];
+    // Filter practices to those in languages allowed for this course
+    var filtered = practices.filter(function(pr){ return allowed.indexOf(pr.lang) !== -1; });
     var modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10005;padding:2rem 1rem;overflow-y:auto;';
     var inner = '<div style="max-width:560px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">';
-    inner += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;"><h3 style="margin:0;font-size:15px;">Выбери практику</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:14px;">✕</button></div>';
-    inner += practices.map(function(pr){
-      return '<div onclick="cbSetField(' + blockId + ',\'practice_id\',' + pr.id + ');renderCourseBlocks();this.closest(\'div[style*=fixed]\').remove();" style="cursor:pointer;padding:0.6rem 0.75rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.4rem;background:rgba(0,0,0,0.2);">'
-           + '<div style="font-size:13px;font-weight:600;">' + (pr.name||'—') + '</div>'
-           + '<div style="font-size:10px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">'+pr.slug+' · '+pr.lang+' · '+(pr.duration_seconds||0)+'s</div>'
-           + '</div>';
-    }).join('');
+    inner += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;"><h3 style="margin:0;font-size:15px;">Выбери практику</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:14px;">✕</button></div>';
+    inner += '<p style="font-size:11px;color:var(--text-muted);margin:0 0 1rem;">Только практики на языках курса: ' + allowed.join(', ').toUpperCase() + '</p>';
+    if (!filtered.length) {
+      inner += '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:1rem 0;">Нет практик на этих языках. Загрузи через таб «Практики».</p>';
+    } else {
+      inner += filtered.map(function(pr){
+        var prJ = JSON.stringify(pr).replace(/"/g,'&quot;');
+        return '<div onclick="cbApplyPracticePick(' + blockId + ', JSON.parse(this.dataset.pr))" data-pr="' + prJ + '" style="cursor:pointer;padding:0.6rem 0.75rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:0.4rem;background:rgba(0,0,0,0.2);">'
+             + '<div style="font-size:13px;font-weight:600;">' + (pr.name||'—') + '</div>'
+             + '<div style="font-size:10px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">'+pr.slug+' · '+pr.lang+' · '+(pr.duration_seconds||0)+'s</div>'
+             + '</div>';
+      }).join('');
+    }
     inner += '</div>';
     modal.innerHTML = inner;
     document.body.appendChild(modal);
   }).catch(function(e){ alert(e.message); });
 }
+
+// Apply the picked practice: sets practice_id AND auto-fills title in the
+// practice's language, plus a status badge in the block. Closes the modal.
+function cbApplyPracticePick(blockId, pr){
+  var blk = courseState.currentBlocks.find(function(b){ return b.id === blockId; });
+  if (!blk) return;
+  // Update payload locally
+  var newPayload = Object.assign({}, blk.payload || {}, { practice_id: pr.id, practice_slug: pr.slug, practice_lang: pr.lang, practice_name: pr.name });
+  blk.payload = newPayload;
+  // Auto-fill the title in the matching language if currently blank
+  var patch = { payload: newPayload };
+  var titleField = 'title_' + pr.lang;
+  if (!blk[titleField]) { patch[titleField] = pr.name; blk[titleField] = pr.name; }
+  // If the course is mono-lang (only the practice's language), also set the
+  // other-lang titles to the same name so they don't stay empty.
+  var allowed = (typeof activeCourseLangsOrAll === 'function') ? activeCourseLangsOrAll() : ['ru','en','es'];
+  if (allowed.length === 1 && allowed[0] === pr.lang) {
+    ['ru','en','es'].forEach(function(L){
+      var f = 'title_' + L;
+      if (!blk[f]) { patch[f] = pr.name; blk[f] = pr.name; }
+    });
+  }
+  courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks/' + blockId, { method:'PATCH', body: patch })
+    .then(function(d){
+      var idx = courseState.currentBlocks.findIndex(function(b){ return b.id === blockId; });
+      if (idx >= 0) courseState.currentBlocks[idx] = d.block;
+      renderCourseBlocks();
+      courseSetStatus('Практика «' + pr.name + '» выбрана', true);
+    })
+    .catch(function(e){ courseSetStatus('Ошибка: ' + e.message); });
+  // Close the picker modal
+  var m = document.querySelector('div[style*="z-index:10005"]'); if (m) m.remove();
+}
 window.cbPickPractice = cbPickPractice;
+window.cbApplyPracticePick = cbApplyPracticePick;
 
 // Render the per-type payload editor (text body, video URL, etc.)
-function renderCourseBlockPayload(b){
+function renderCourseBlockPayload(b, allowedLangs){
+  if (!allowedLangs) allowedLangs = (typeof activeCourseLangsOrAll === 'function') ? activeCourseLangsOrAll() : ['ru','en','es'];
+  function L(lang){ return allowedLangs.indexOf(lang) !== -1; }
   var p = b.payload || {};
   function payInput(field, label, type, uploadAssetType){
     var val = p[field];
@@ -9667,14 +9752,21 @@ function renderCourseBlockPayload(b){
   switch (b.block_type) {
     case 'practice':
       var prId = p.practice_id;
-      inner = '<div style="display:flex;gap:0.4rem;align-items:center;">'
-            +   payInput('practice_id', 'Practice ID', 'number')
-            + '</div>'
-            + '<button type="button" class="btn btn-ghost" onclick="cbPickPractice(' + b.id + ')" style="margin-top:0.4rem;font-size:11px;padding:0.3rem 0.7rem;">🔎 Выбрать из библиотеки</button>'
-            + (prId ? '<span style="font-size:10px;color:var(--accent-green);margin-left:0.5rem;">✓ id=' + prId + '</span>' : '');
+      var prName = p.practice_name || '';
+      var prSlug = p.practice_slug || '';
+      var prLang = p.practice_lang || '';
+      inner = '<button type="button" class="btn btn-solid" onclick="cbPickPractice(' + b.id + ')" style="font-size:12px;padding:0.4rem 0.9rem;background:rgba(0,229,255,0.12);color:var(--accent-cyan);">🔎 ' + (prId ? 'Сменить выбранную практику' : 'Выбрать из библиотеки') + '</button>'
+            + (prId
+                ? '<div style="margin-top:0.5rem;padding:0.5rem 0.7rem;background:rgba(0,229,0,0.06);border:1px solid rgba(0,229,0,0.25);border-radius:8px;">'
+                    + '<div style="font-size:12px;font-weight:600;color:var(--accent-green);">✓ Выбрана: ' + (prName || ('id=' + prId)) + '</div>'
+                    + (prSlug ? '<div style="font-size:10px;color:var(--text-muted);font-family:JetBrains Mono,monospace;margin-top:2px;">' + prSlug + ' · ' + prLang + '</div>' : '')
+                  + '</div>'
+                : '<div style="margin-top:0.5rem;font-size:11px;color:var(--text-muted);font-style:italic;">Нажми кнопку и выбери практику из загруженных — заголовок блока заполнится автоматически.</div>');
       break;
     case 'text':
-      inner = payInput('body_ru', 'Текст RU (markdown)', 'textarea') + payInput('body_en', 'Body EN', 'textarea') + payInput('body_es', 'Cuerpo ES', 'textarea');
+      inner = (L('ru')?payInput('body_ru', 'Текст RU (markdown)', 'textarea'):'')
+            + (L('en')?payInput('body_en', 'Body EN', 'textarea'):'')
+            + (L('es')?payInput('body_es', 'Cuerpo ES', 'textarea'):'');
       break;
     case 'video':
       inner = payInput('url', 'URL видео (YouTube/Vimeo/MP4)', 'text', 'video') + payInput('duration_seconds', 'Длительность (сек)', 'number');
@@ -9683,22 +9775,35 @@ function renderCourseBlockPayload(b){
       inner = payInput('audio_url', 'URL аудио', 'text', 'audio') + payInput('duration_seconds', 'Длительность (сек)', 'number');
       break;
     case 'image':
-      inner = payInput('image_url', 'URL изображения', 'text', 'image') + payInput('caption_ru', 'Подпись RU') + payInput('caption_en', 'Caption EN') + payInput('caption_es', 'Subtítulo ES');
+      inner = payInput('image_url', 'URL изображения', 'text', 'image')
+            + (L('ru')?payInput('caption_ru', 'Подпись RU'):'')
+            + (L('en')?payInput('caption_en', 'Caption EN'):'')
+            + (L('es')?payInput('caption_es', 'Subtítulo ES'):'');
       break;
     case 'link':
-      inner = payInput('url', 'URL') + payInput('label_ru', 'Подпись RU') + payInput('label_en', 'Label EN') + payInput('label_es', 'Texto ES');
+      inner = payInput('url', 'URL')
+            + (L('ru')?payInput('label_ru', 'Подпись RU'):'')
+            + (L('en')?payInput('label_en', 'Label EN'):'')
+            + (L('es')?payInput('label_es', 'Texto ES'):'');
       break;
     case 'sensation_prompt':
-      inner = payInput('prompt_ru', 'Вопрос об ощущениях (RU)', 'textarea') + payInput('prompt_en', 'Sensation prompt (EN)', 'textarea') + payInput('prompt_es', 'Pregunta de sensación (ES)', 'textarea');
+      inner = (L('ru')?payInput('prompt_ru', 'Вопрос об ощущениях (RU)', 'textarea'):'')
+            + (L('en')?payInput('prompt_en', 'Sensation prompt (EN)', 'textarea'):'')
+            + (L('es')?payInput('prompt_es', 'Pregunta de sensación (ES)', 'textarea'):'');
       break;
     case 'break':
       inner = payInput('duration_seconds', 'Длительность перерыва (сек)', 'number');
       break;
     case 'student_audio':
-      inner = payInput('prompt_ru', 'Задание для аудио-ответа (RU)', 'textarea') + payInput('prompt_en', 'Audio task (EN)', 'textarea') + payInput('prompt_es', 'Tarea de audio (ES)', 'textarea') + payInput('max_duration_seconds', 'Макс. длительность (сек)', 'number');
+      inner = (L('ru')?payInput('prompt_ru', 'Задание для аудио-ответа (RU)', 'textarea'):'')
+            + (L('en')?payInput('prompt_en', 'Audio task (EN)', 'textarea'):'')
+            + (L('es')?payInput('prompt_es', 'Tarea de audio (ES)', 'textarea'):'')
+            + payInput('max_duration_seconds', 'Макс. длительность (сек)', 'number');
       break;
     case 'student_text':
-      inner = payInput('prompt_ru', 'Задание для текста (RU)', 'textarea') + payInput('prompt_en', 'Text task (EN)', 'textarea') + payInput('prompt_es', 'Tarea de texto (ES)', 'textarea');
+      inner = (L('ru')?payInput('prompt_ru', 'Задание для текста (RU)', 'textarea'):'')
+            + (L('en')?payInput('prompt_en', 'Text task (EN)', 'textarea'):'')
+            + (L('es')?payInput('prompt_es', 'Tarea de texto (ES)', 'textarea'):'');
       break;
     case 'question_branch':
       var opts = Array.isArray(p.options) ? p.options : [];
@@ -9714,7 +9819,9 @@ function renderCourseBlockPayload(b){
              + '<button type="button" class="btn btn-ghost" onclick="cbBranchRemove(' + b.id + ',' + oi + ')" style="font-size:11px;padding:0.15rem 0.4rem;color:var(--accent-rose);">✕</button>'
              + '</div>';
       }).join('');
-      inner = payInput('question_ru', 'Вопрос RU', 'textarea') + payInput('question_en', 'Question EN', 'textarea') + payInput('question_es', 'Pregunta ES', 'textarea')
+      inner = (L('ru')?payInput('question_ru', 'Вопрос RU', 'textarea'):'')
+            + (L('en')?payInput('question_en', 'Question EN', 'textarea'):'')
+            + (L('es')?payInput('question_es', 'Pregunta ES', 'textarea'):'')
             + '<label style="font-size:10px;color:var(--text-dim);display:block;margin:0.6rem 0 0.3rem;">Варианты ответа → куда ведут:</label>'
             + optsRows
             + '<button type="button" class="btn btn-ghost" onclick="cbBranchAdd(' + b.id + ')" style="font-size:11px;padding:0.25rem 0.6rem;">+ Добавить вариант</button>';
