@@ -1049,7 +1049,69 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS parent_block_id INTEGER REFERENCES course_blocks(id) ON DELETE CASCADE`;
     await sql`CREATE INDEX IF NOT EXISTS idx_course_blocks_parent ON course_blocks(parent_block_id)`;
 
-    res.json({ ok: true, message: 'Migrations 003-031 applied successfully' });
+    // Pack 30: Teams (small groups within the community, owner-configurable broadcasts)
+    await sql`CREATE TABLE IF NOT EXISTS teams (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      broadcast_kinds TEXT[] DEFAULT '{block_done,course_done,achievement_earned}',
+      is_public BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams(owner_user_id)`;
+    await sql`CREATE TABLE IF NOT EXISTS team_members (
+      team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT DEFAULT 'member',
+      joined_at TIMESTAMP DEFAULT now(),
+      PRIMARY KEY (team_id, user_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id)`;
+
+    // Pack 31: «Мицелий сознания» foundation tables — universal journey
+    // events log + links + global cycles. UI layers consume these in
+    // future iterations; for now they exist so we don't have to refactor
+    // when the visualization expands.
+    await sql`CREATE TABLE IF NOT EXISTS journey_events (
+      id BIGSERIAL PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,                -- block_done, achievement, emotion_note, sensation_note,
+                                         -- life_event, neuromap_node, macro_anchor, etc.
+      layer TEXT NOT NULL DEFAULT 'practice',
+      payload JSONB DEFAULT '{}'::jsonb,
+      occurred_at TIMESTAMP DEFAULT now(),
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_journey_events_user_time ON journey_events(user_id, occurred_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_journey_events_kind ON journey_events(kind, occurred_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_journey_events_layer ON journey_events(layer, occurred_at DESC)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS journey_links (
+      id BIGSERIAL PRIMARY KEY,
+      event_a BIGINT NOT NULL REFERENCES journey_events(id) ON DELETE CASCADE,
+      event_b BIGINT NOT NULL REFERENCES journey_events(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,                -- sequence, correlation, cross_user, macro_anchor
+      weight REAL DEFAULT 1.0,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_journey_links_a ON journey_links(event_a)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_journey_links_b ON journey_links(event_b)`;
+
+    await sql`CREATE TABLE IF NOT EXISTS cycles (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      kind TEXT NOT NULL,                -- astro, lunar, holiday, geomag, economic
+      name TEXT NOT NULL,
+      occurred_at TIMESTAMP NOT NULL,
+      payload JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMP DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_cycles_time ON cycles(occurred_at)`;
+
+    res.json({ ok: true, message: 'Migrations 003-033 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4498,6 +4560,27 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
       if (recent[0].n >= 7) await tryAwardAchievement(userId, 'focused_streak', earnedNow);
     } catch(achErr) { console.warn('achievement check:', achErr.message); }
 
+    // ── Team broadcasts + journey event log (Pack 30/31) ──
+    try {
+      await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at)
+                VALUES (${userId}, 'block_done', 'practice', ${JSON.stringify({
+                  course_id: courseId, block_id: blockId,
+                  block_type: block.block_type, points: points
+                })}::jsonb, now())`;
+    } catch (jeErr) { console.warn('journey log:', jeErr.message); }
+
+    const teamPayload = {
+      user_id: userId,
+      course_id: courseId,
+      block_id: blockId,
+      block_title: block.title_ru || block.block_type,
+      points: points
+    };
+    await broadcastToTeams(userId, 'block_done', teamPayload);
+    if (!nextId) {
+      await broadcastToTeams(userId, 'course_done', { user_id: userId, course_id: courseId });
+    }
+
     // ── Peer progress broadcast (Pack 29) ──
     // Notify other users with public profile that this user just finished
     // a block / a course. Receivers can react with «делать вместе» or just
@@ -4527,6 +4610,166 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
 
     res.json({ ok: true, next_block_id: nextId, points_earned: points, earned_achievements: earnedNow });
   } catch (err) { console.error('POST complete:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Pack 30: Teams — owner-configurable broadcasts ──
+// Sends a per-team notification (kind='team_X') to each team-mate when this
+// event kind is enabled in the team's broadcast_kinds array.
+async function broadcastToTeams(actorUserId, kind, payload) {
+  try {
+    const teams = await sql`
+      SELECT t.id, t.name, t.broadcast_kinds
+      FROM teams t
+      JOIN team_members m ON m.team_id = t.id
+      WHERE m.user_id = ${actorUserId} AND ${kind} = ANY(COALESCE(t.broadcast_kinds, '{}'::text[]))`;
+    if (!teams.length) return;
+    for (const t of teams) {
+      const enriched = Object.assign({}, payload, { team_id: t.id, team_name: t.name });
+      await sql`
+        INSERT INTO notifications (user_id, kind, payload)
+        SELECT m.user_id, ${'team_' + kind}, ${JSON.stringify(enriched)}::jsonb
+        FROM team_members m
+        JOIN users u ON u.id = m.user_id
+        WHERE m.team_id = ${t.id} AND m.user_id <> ${actorUserId}
+          AND u.notifications_enabled = true
+          AND NOT (${'team_' + kind} = ANY(COALESCE(u.notif_mute, '{}'::text[])))`;
+    }
+  } catch (e) { console.warn('broadcastToTeams:', e.message); }
+}
+
+// GET /api/teams — teams I'm in (any role)
+app.get('/api/teams', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT t.*, m.role AS my_role,
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) AS member_count
+      FROM teams t JOIN team_members m ON m.team_id = t.id AND m.user_id = ${me}
+      ORDER BY t.created_at DESC`;
+    res.json({ teams: rows });
+  } catch (err) { console.error('GET teams:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/teams/:id — team detail with members
+app.get('/api/teams/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT * FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Team not found' });
+    const [member] = await sql`SELECT role FROM team_members WHERE team_id = ${tid} AND user_id = ${me}`;
+    if (!member && !t.is_public) return res.status(403).json({ error: 'Not a member' });
+    const members = await sql`
+      SELECT tm.role, tm.joined_at, u.id, u.display_name, u.email
+      FROM team_members tm JOIN users u ON u.id = tm.user_id
+      WHERE tm.team_id = ${tid} ORDER BY tm.joined_at ASC`;
+    res.json({ team: t, members, my_role: member?.role || null });
+  } catch (err) { console.error('GET team:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/teams — create a new team (creator = owner)
+app.post('/api/teams', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const { name, description, broadcast_kinds, is_public } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'name required' });
+    const slug = String(name).toLowerCase().replace(/[^a-z0-9а-я]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) + '-' + Date.now();
+    const kinds = Array.isArray(broadcast_kinds) ? broadcast_kinds : ['block_done','course_done','achievement_earned'];
+    const [t] = await sql`INSERT INTO teams (slug, name, description, owner_user_id, broadcast_kinds, is_public)
+                          VALUES (${slug}, ${name.trim()}, ${description||''}, ${me}, ${kinds}::text[], ${!!is_public})
+                          RETURNING *`;
+    await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${t.id}, ${me}, 'owner')`;
+    res.status(201).json({ team: t });
+  } catch (err) { console.error('POST team:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/teams/:id — owner edits team settings (incl. broadcast kinds)
+app.patch('/api/teams/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT owner_user_id FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.owner_user_id !== me) return res.status(403).json({ error: 'Owner only' });
+    const b = req.body || {};
+    const [updated] = await sql`UPDATE teams SET
+      name = COALESCE(${b.name}, name),
+      description = COALESCE(${b.description}, description),
+      broadcast_kinds = COALESCE(${Array.isArray(b.broadcast_kinds) ? b.broadcast_kinds : null}::text[], broadcast_kinds),
+      is_public = COALESCE(${b.is_public !== undefined ? !!b.is_public : null}, is_public),
+      updated_at = now()
+      WHERE id = ${tid} RETURNING *`;
+    res.json({ team: updated });
+  } catch (err) { console.error('PATCH team:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/teams/:id — owner disbands team
+app.delete('/api/teams/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT owner_user_id FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.owner_user_id !== me) return res.status(403).json({ error: 'Owner only' });
+    await sql`DELETE FROM teams WHERE id = ${tid}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE team:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/teams/:id/members — owner adds member by email
+app.post('/api/teams/:id/members', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT owner_user_id, name FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.owner_user_id !== me) return res.status(403).json({ error: 'Owner only' });
+    const { email, user_id } = req.body || {};
+    let uid = user_id || null;
+    if (!uid && email) {
+      const [u] = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${email})`;
+      if (!u) return res.status(404).json({ error: 'User not found' });
+      uid = u.id;
+    }
+    if (!uid) return res.status(400).json({ error: 'email or user_id required' });
+    await sql`INSERT INTO team_members (team_id, user_id) VALUES (${tid}, ${uid}) ON CONFLICT DO NOTHING`;
+    await notifyUser(uid, 'team_invite', { team_id: tid, team_name: t.name, inviter: me });
+    res.json({ ok: true });
+  } catch (err) { console.error('add member:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/teams/:id/members/:uid — owner removes a member
+app.delete('/api/teams/:id/members/:uid', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT owner_user_id FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.owner_user_id !== me && req.params.uid !== me) return res.status(403).json({ error: 'Owner only or self' });
+    await sql`DELETE FROM team_members WHERE team_id = ${tid} AND user_id = ${req.params.uid}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('rm member:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/teams/:id/announce — owner posts an announcement to team (notification fanout)
+app.post('/api/teams/:id/announce', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT owner_user_id, name, broadcast_kinds FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.owner_user_id !== me) return res.status(403).json({ error: 'Owner only' });
+    const { body } = req.body || {};
+    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    await sql`
+      INSERT INTO notifications (user_id, kind, payload)
+      SELECT m.user_id, 'team_announcement', ${JSON.stringify({ team_id: tid, team_name: t.name, body: String(body).slice(0, 500), from: me })}::jsonb
+      FROM team_members m JOIN users u ON u.id = m.user_id
+      WHERE m.team_id = ${tid} AND m.user_id <> ${me}
+        AND u.notifications_enabled = true
+        AND NOT ('team_announcement' = ANY(COALESCE(u.notif_mute, '{}'::text[])))`;
+    res.json({ ok: true });
+  } catch (err) { console.error('team announce:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── Pack 29: User journey + admin path-map grid ──
@@ -4672,6 +4915,14 @@ async function tryAwardAchievement(userId, slug, out) {
   if (existing) return;
   await sql`INSERT INTO user_achievements (user_id, achievement_id) VALUES (${userId}, ${ach.id}) ON CONFLICT DO NOTHING`;
   await notifyUser(userId, 'achievement', { slug, title: ach.title_ru, emoji: ach.badge_emoji, xp: ach.xp_reward });
+  // Journey + team broadcast
+  try {
+    await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at)
+              VALUES (${userId}, 'achievement', 'practice',
+                      ${JSON.stringify({ slug, title: ach.title_ru, emoji: ach.badge_emoji, xp: ach.xp_reward })}::jsonb, now())`;
+  } catch (e) { console.warn('journey log ach:', e.message); }
+  await broadcastToTeams(userId, 'achievement_earned',
+    { user_id: userId, slug, title: ach.title_ru, emoji: ach.badge_emoji });
   // Broadcast peer_achievement (respects each recipient's notif_mute)
   const [usr] = await sql`SELECT display_name, profile_public FROM users WHERE id = ${userId}`;
   if (usr && usr.profile_public) {

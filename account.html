@@ -824,6 +824,7 @@
           <button class="dash-tab" id="dom-subtab-dms" onclick="domSwitch('dms')" data-i18n="a.domunity.dms">Сообщения <span id="dom-dms-count" style="color:var(--accent-cyan);"></span></button>
           <button class="dash-tab" id="dom-subtab-notifs" onclick="domSwitch('notifs')" data-i18n="a.domunity.notifs">Уведомления <span id="dom-notif-count" style="color:var(--accent-rose);"></span></button>
           <button class="dash-tab" id="dom-subtab-groups" onclick="domSwitch('groups')" data-i18n="a.domunity.groups">Группы</button>
+          <button class="dash-tab" id="dom-subtab-teams" onclick="domSwitch('teams')">Команды</button>
           <button class="dash-tab" id="dom-subtab-profile" onclick="domSwitch('profile')" data-i18n="a.domunity.profile">Настройки профиля</button>
         </div>
 
@@ -923,6 +924,23 @@
                   <button class="btn btn-solid" onclick="domGroupSend(false)" style="font-size:13px;padding:0.4rem 1rem;align-self:flex-end;" data-i18n="a.domunity.send">Отправить</button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Teams -->
+        <div id="dom-pane-teams" style="display:none;">
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-solid" onclick="domTeamCreatePrompt()" style="font-size:12px;padding:0.4rem 0.9rem;">+ Создать команду</button>
+            <span style="font-size:11px;color:var(--text-muted);">Команда — приватный круг участников с настраиваемой рассылкой уведомлений.</span>
+          </div>
+          <div style="display:grid;grid-template-columns:280px 1fr;gap:1rem;min-height:400px;">
+            <div style="border-right:1px solid rgba(255,255,255,0.06);padding-right:1rem;">
+              <div id="dom-teams-list" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
+            </div>
+            <div id="dom-team-detail" style="display:flex;flex-direction:column;">
+              <div id="dom-team-empty" style="margin:auto;text-align:center;color:var(--text-muted);font-size:13px;">Выберите команду слева или создайте новую.</div>
+              <div id="dom-team-active" style="display:none;"></div>
             </div>
           </div>
         </div>
@@ -10401,6 +10419,7 @@ function domSwitch(sub){
   else if (sub === 'dms') domLoadThreads();
   else if (sub === 'notifs') domLoadNotifs();
   else if (sub === 'groups') domLoadGroups();
+  else if (sub === 'teams') domLoadTeams();
   else if (sub === 'profile') { domLoadProfile(); domLoadAchievements(); }
 }
 window.domSwitch = domSwitch;
@@ -11059,6 +11078,144 @@ function openPathMapDetail(uid){
 }
 window.openPathMapDetail = openPathMapDetail;
 
+// ══════════════════════════════════════════
+// Pack 30: Teams (DOMunity → Команды)
+// ══════════════════════════════════════════
+var domTeams = { list: [], activeId: null };
+var BROADCAST_KINDS = [
+  { key: 'block_done',         label: 'Завершение блока курса' },
+  { key: 'course_done',        label: 'Завершение целого курса' },
+  { key: 'achievement_earned', label: 'Получение достижения / бейджа' },
+  { key: 'practice_start',     label: 'Начало практики (зови «делать вместе»)' },
+  { key: 'feed_post',          label: 'Публикация поста в общей ленте' },
+  { key: 'team_announcement',  label: 'Объявление от владельца команды' }
+];
+
+function domLoadTeams(){
+  domApi('/api/teams').then(function(d){
+    domTeams.list = d.teams || [];
+    renderTeamsList();
+  }).catch(function(e){
+    document.getElementById('dom-teams-list').innerHTML = '<span style="color:#f55;font-size:11px;">Ошибка: '+e.message+'</span>';
+  });
+}
+function renderTeamsList(){
+  var box = document.getElementById('dom-teams-list');
+  if (!box) return;
+  if (!domTeams.list.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Пока команд нет.</p>'; return; }
+  box.innerHTML = domTeams.list.map(function(t){
+    var active = (domTeams.activeId === t.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
+    var roleTag = t.my_role === 'owner' ? '<span style="color:#fc0;font-size:9px;font-weight:600;margin-left:0.3rem;">👑 OWNER</span>' : '';
+    return '<div onclick="domTeamOpen(' + t.id + ')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">' + t.name + roleTag + '</div>'
+      + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (t.member_count||0) + ' участников</div>'
+      + '</div>';
+  }).join('');
+}
+function domTeamCreatePrompt(){
+  var name = prompt('Название команды:');
+  if (!name || !name.trim()) return;
+  domApi('/api/teams', { method:'POST', body: { name: name.trim() } })
+    .then(function(d){ domLoadTeams(); setTimeout(function(){ domTeamOpen(d.team.id); }, 200); })
+    .catch(function(e){ alert(e.message); });
+}
+function domTeamOpen(tid){
+  domTeams.activeId = tid;
+  renderTeamsList();
+  domApi('/api/teams/' + tid).then(function(d){
+    var t = d.team || {};
+    var members = d.members || [];
+    var iAmOwner = d.my_role === 'owner';
+    document.getElementById('dom-team-empty').style.display = 'none';
+    var active = document.getElementById('dom-team-active');
+    active.style.display = '';
+    var kinds = t.broadcast_kinds || [];
+    var kindRows = BROADCAST_KINDS.map(function(k){
+      var on = kinds.indexOf(k.key) !== -1;
+      return '<label style="display:flex;align-items:center;gap:0.4rem;font-size:12px;color:var(--text-secondary);margin-bottom:0.25rem;' + (iAmOwner?'cursor:pointer;':'opacity:0.65;') + '">'
+        + '<input type="checkbox" class="team-kind-cb" value="' + k.key + '" ' + (on?'checked':'') + ' ' + (iAmOwner?'':'disabled') + ' style="accent-color:var(--accent-cyan);">'
+        + k.label + '</label>';
+    }).join('');
+    var memberRows = members.map(function(m){
+      var roleTag = m.role === 'owner' ? '<span style="color:#fc0;font-size:9px;margin-left:0.4rem;">👑</span>' : '';
+      var rm = (iAmOwner && m.role !== 'owner')
+        ? '<button class="btn btn-ghost" onclick="domTeamRemoveMember(' + tid + ',\'' + m.id + '\')" style="font-size:10px;padding:0.15rem 0.4rem;color:var(--accent-rose);margin-left:auto;">Удалить</button>'
+        : '';
+      return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;border:1px solid rgba(255,255,255,0.05);border-radius:6px;margin-bottom:0.2rem;">'
+        + '<span onclick="domShowUserProfile(\'' + m.id + '\')" style="cursor:pointer;text-decoration:underline dotted;font-size:12px;">' + (m.display_name||m.email) + '</span>'
+        + roleTag
+        + '<span style="font-size:10px;color:var(--text-muted);margin-left:0.4rem;">' + (m.email||'') + '</span>'
+        + rm
+        + '</div>';
+    }).join('');
+    active.innerHTML = '<h3 style="margin:0 0 0.5rem;font-size:16px;">' + t.name + '</h3>'
+      + (t.description ? '<p style="font-size:13px;color:var(--text-secondary);margin:0 0 0.75rem;">' + t.description + '</p>' : '')
+      + '<h4 style="margin:1rem 0 0.5rem;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Рассылать в команду:</h4>'
+      + '<div style="padding:0.5rem 0.7rem;background:rgba(0,229,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;margin-bottom:0.75rem;">' + kindRows + '</div>'
+      + (iAmOwner ? '<button class="btn btn-solid" onclick="domTeamSaveKinds(' + tid + ')" style="font-size:12px;padding:0.35rem 0.9rem;">💾 Сохранить настройки рассылки</button>' : '')
+      + '<h4 style="margin:1.25rem 0 0.5rem;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Участники (' + members.length + ')</h4>'
+      + '<div style="margin-bottom:0.75rem;">' + memberRows + '</div>'
+      + (iAmOwner
+          ? '<div style="display:flex;gap:0.4rem;margin-bottom:1rem;">'
+          +   '<input id="team-add-email" type="email" placeholder="Email участника" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">'
+          +   '<button class="btn btn-ghost" onclick="domTeamAddMember(' + tid + ')" style="font-size:11px;padding:0.3rem 0.7rem;">+ Добавить</button>'
+          + '</div>'
+          : '')
+      + (iAmOwner
+          ? '<div style="display:flex;flex-direction:column;gap:0.4rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.75rem;">'
+          +   '<h4 style="margin:0;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Объявление в команду</h4>'
+          +   '<textarea id="team-ann" rows="2" placeholder="Текст объявления…" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;resize:vertical;"></textarea>'
+          +   '<button class="btn btn-solid" onclick="domTeamAnnounce(' + tid + ')" style="font-size:12px;padding:0.35rem 0.9rem;align-self:flex-start;background:rgba(255,200,0,0.15);color:#fc0;">📢 Разослать</button>'
+          + '</div>'
+          + '<button class="btn btn-ghost" onclick="domTeamDelete(' + tid + ')" style="margin-top:1rem;font-size:11px;color:var(--accent-rose);">Распустить команду</button>'
+          : '<button class="btn btn-ghost" onclick="domTeamLeave(' + tid + ')" style="margin-top:1rem;font-size:11px;color:var(--accent-rose);">Покинуть команду</button>');
+  }).catch(function(e){ alert(e.message); });
+}
+function domTeamSaveKinds(tid){
+  var kinds = Array.from(document.querySelectorAll('.team-kind-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
+  domApi('/api/teams/' + tid, { method:'PATCH', body: { broadcast_kinds: kinds } })
+    .then(function(){ domToast('✓ Настройки сохранены'); })
+    .catch(function(e){ alert(e.message); });
+}
+function domTeamAddMember(tid){
+  var email = document.getElementById('team-add-email').value.trim();
+  if (!email) return;
+  domApi('/api/teams/' + tid + '/members', { method:'POST', body: { email: email } })
+    .then(function(){ domTeamOpen(tid); })
+    .catch(function(e){ alert(e.message); });
+}
+function domTeamRemoveMember(tid, uid){
+  if (!confirm('Удалить этого участника из команды?')) return;
+  domApi('/api/teams/' + tid + '/members/' + uid, { method:'DELETE' })
+    .then(function(){ domTeamOpen(tid); });
+}
+function domTeamAnnounce(tid){
+  var body = document.getElementById('team-ann').value;
+  if (!body || !body.trim()) return;
+  domApi('/api/teams/' + tid + '/announce', { method:'POST', body: { body: body } })
+    .then(function(){ document.getElementById('team-ann').value=''; domToast('✓ Объявление отправлено'); });
+}
+function domTeamLeave(tid){
+  if (!confirm('Покинуть команду?')) return;
+  var me = currentUser && currentUser.id;
+  domApi('/api/teams/' + tid + '/members/' + me, { method:'DELETE' })
+    .then(function(){ domTeams.activeId = null; document.getElementById('dom-team-active').style.display='none'; document.getElementById('dom-team-empty').style.display=''; domLoadTeams(); });
+}
+function domTeamDelete(tid){
+  if (!confirm('Распустить команду полностью? Это удалит её для всех.')) return;
+  domApi('/api/teams/' + tid, { method:'DELETE' })
+    .then(function(){ domTeams.activeId = null; document.getElementById('dom-team-active').style.display='none'; document.getElementById('dom-team-empty').style.display=''; domLoadTeams(); });
+}
+window.domLoadTeams = domLoadTeams;
+window.domTeamOpen = domTeamOpen;
+window.domTeamCreatePrompt = domTeamCreatePrompt;
+window.domTeamSaveKinds = domTeamSaveKinds;
+window.domTeamAddMember = domTeamAddMember;
+window.domTeamRemoveMember = domTeamRemoveMember;
+window.domTeamAnnounce = domTeamAnnounce;
+window.domTeamLeave = domTeamLeave;
+window.domTeamDelete = domTeamDelete;
+
 function grantBonusXp(uid){
   var amount = parseInt(document.getElementById('xp-amount').value, 10) || 0;
   var reason = document.getElementById('xp-reason').value || 'бонус';
@@ -11232,9 +11389,14 @@ function domLoadNotifs(){
                   n.kind === 'feed_post' ? '📰 Новый пост в ленте' :
                   n.kind === 'achievement' ? '🏆 Достижение' :
                   n.kind === 'peer_achievement' ? '👏 Достижение другого участника' :
-                  n.kind === 'peer_progress' ? '🛤 Участник прошёл блок — присоединяйся' :
+                  n.kind === 'peer_progress' ? '🛤 Участник прошёл блок' :
                   n.kind === 'peer_course_done' ? '🎓 Кто-то прошёл курс целиком' :
                   n.kind === 'joint_invite' ? '🤝 Приглашение на совместную практику' :
+                  n.kind === 'team_invite' ? '👥 Тебя добавили в команду' :
+                  n.kind === 'team_block_done' ? '👥🛤 Командник прошёл блок' :
+                  n.kind === 'team_course_done' ? '👥🎓 Командник прошёл курс' :
+                  n.kind === 'team_achievement_earned' ? '👥🏆 Командник получил достижение' :
+                  n.kind === 'team_announcement' ? '👥📢 Объявление от команды' :
                   n.kind;
       var preview = (n.payload && (n.payload.preview||n.payload.title)) || '';
       return '<div onclick="domClickNotif(' + JSON.stringify(n).replace(/"/g,'&quot;') + ')" style="cursor:pointer;padding:0.6rem 0.8rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:'+(unseen?'rgba(0,229,255,0.05)':'rgba(0,0,0,0.18)')+';">'
