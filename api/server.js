@@ -4498,8 +4498,156 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
       if (recent[0].n >= 7) await tryAwardAchievement(userId, 'focused_streak', earnedNow);
     } catch(achErr) { console.warn('achievement check:', achErr.message); }
 
+    // ── Peer progress broadcast (Pack 29) ──
+    // Notify other users with public profile that this user just finished
+    // a block / a course. Receivers can react with «делать вместе» or just
+    // see it as a 'X прошёл блок Y' card.
+    try {
+      const [actor] = await sql`SELECT display_name, profile_public FROM users WHERE id = ${userId}`;
+      const [course] = await sql`SELECT name_ru, slug FROM courses WHERE id = ${courseId}`;
+      if (actor && actor.profile_public !== false) {
+        const isCourseDone = !nextId;
+        const kind = isCourseDone ? 'peer_course_done' : 'peer_progress';
+        const payload = {
+          user_id: userId,
+          user_name: actor.display_name || null,
+          course_id: courseId,
+          course_name: course?.name_ru || course?.slug || null,
+          block_id: blockId,
+          block_title: block.title_ru || block.block_type,
+          completed_at: new Date().toISOString()
+        };
+        await sql`INSERT INTO notifications (user_id, kind, payload)
+                  SELECT id, ${kind}, ${JSON.stringify(payload)}::jsonb
+                  FROM users
+                  WHERE notifications_enabled = true AND id <> ${userId}
+                    AND NOT (${kind} = ANY(COALESCE(notif_mute, '{}'::text[])))`;
+      }
+    } catch (peerErr) { console.warn('peer broadcast:', peerErr.message); }
+
     res.json({ ok: true, next_block_id: nextId, points_earned: points, earned_achievements: earnedNow });
   } catch (err) { console.error('POST complete:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Pack 29: User journey + admin path-map grid ──
+
+// GET /api/users/me/journey — full progress + XP for the calling user
+app.get('/api/users/me/journey', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const courses = await sql`
+      SELECT c.id, c.slug, c.name_ru, c.name_en, c.name_es, c.cover_url,
+             (SELECT COUNT(*) FROM course_blocks WHERE course_id = c.id) AS total_blocks,
+             (SELECT COUNT(*) FROM course_block_progress WHERE user_id = ${me} AND course_id = c.id) AS done_blocks
+      FROM courses c
+      WHERE c.is_published = true
+      ORDER BY c.order_idx ASC, c.id DESC
+    `;
+    const xpRow = await sql`
+      SELECT COALESCE(SUM(points_earned),0)::int AS xp_blocks FROM course_block_progress WHERE user_id = ${me}
+    `;
+    const achRow = await sql`
+      SELECT COALESCE(SUM(a.xp_reward),0)::int AS xp_ach
+      FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id
+      WHERE ua.user_id = ${me}
+    `;
+    const recent = await sql`
+      SELECT cbp.course_id, cbp.block_id, cbp.points_earned, cbp.completed_at,
+             cb.title_ru AS block_title, cb.block_type, c.slug AS course_slug, c.name_ru AS course_name
+      FROM course_block_progress cbp
+      LEFT JOIN course_blocks cb ON cb.id = cbp.block_id
+      LEFT JOIN courses c ON c.id = cbp.course_id
+      WHERE cbp.user_id = ${me}
+      ORDER BY cbp.completed_at DESC LIMIT 25
+    `;
+    res.json({
+      total_xp: (xpRow[0].xp_blocks||0) + (achRow[0].xp_ach||0),
+      xp_breakdown: { blocks: xpRow[0].xp_blocks, achievements: achRow[0].xp_ach },
+      courses,
+      recent
+    });
+  } catch (err) { console.error('GET me/journey:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/admin/journeys — list all users with progress summary (admin only)
+app.get('/api/admin/journeys', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const rows = await sql`
+      SELECT u.id, u.display_name, u.email, u.role, u.created_at, u.profile_public,
+             (SELECT COALESCE(SUM(points_earned),0)::int FROM course_block_progress WHERE user_id = u.id) AS xp_blocks,
+             (SELECT COALESCE(SUM(a.xp_reward),0)::int FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id WHERE ua.user_id = u.id) AS xp_ach,
+             (SELECT COUNT(*)::int FROM course_block_progress WHERE user_id = u.id) AS blocks_done,
+             (SELECT COUNT(DISTINCT course_id)::int FROM course_block_progress WHERE user_id = u.id) AS courses_touched,
+             (SELECT MAX(completed_at) FROM course_block_progress WHERE user_id = u.id) AS last_active,
+             (SELECT COUNT(*)::int FROM user_achievements WHERE user_id = u.id) AS badges_count
+      FROM users u
+      ORDER BY (
+        (SELECT COALESCE(SUM(points_earned),0) FROM course_block_progress WHERE user_id = u.id) +
+        (SELECT COALESCE(SUM(a.xp_reward),0) FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id WHERE ua.user_id = u.id)
+      ) DESC, u.created_at DESC
+      LIMIT 500
+    `;
+    res.json({ users: rows.map(r => ({ ...r, total_xp: (r.xp_blocks||0) + (r.xp_ach||0) })) });
+  } catch (err) { console.error('GET admin/journeys:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/admin/journeys/:userId — detailed view of one user's journey
+app.get('/api/admin/journeys/:userId', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const uid = req.params.userId;
+    const courses = await sql`
+      SELECT c.id, c.slug, c.name_ru, c.name_en, c.name_es,
+             (SELECT COUNT(*) FROM course_blocks WHERE course_id = c.id) AS total_blocks,
+             (SELECT COUNT(*) FROM course_block_progress WHERE user_id = ${uid} AND course_id = c.id) AS done_blocks
+      FROM courses c
+      WHERE c.is_published = true OR EXISTS (SELECT 1 FROM course_block_progress WHERE user_id = ${uid} AND course_id = c.id)
+      ORDER BY c.order_idx ASC, c.id DESC
+    `;
+    const recent = await sql`
+      SELECT cbp.*, cb.title_ru AS block_title, cb.block_type
+      FROM course_block_progress cbp
+      LEFT JOIN course_blocks cb ON cb.id = cbp.block_id
+      WHERE cbp.user_id = ${uid}
+      ORDER BY cbp.completed_at DESC LIMIT 50
+    `;
+    const badges = await sql`
+      SELECT a.* FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id
+      WHERE ua.user_id = ${uid} ORDER BY ua.earned_at DESC
+    `;
+    res.json({ courses, recent, badges });
+  } catch (err) { console.error('GET journey detail:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/users/:id/xp — grant manual XP bonus (admin only)
+// Records as a synthetic course_block_progress row with block_id = NULL would
+// fail FK; we instead use a dedicated bonus achievement on the fly.
+app.post('/api/admin/users/:id/xp', requireAuth, async (req, res) => {
+  try {
+    const callerId = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
+    if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
+    const targetId = req.params.id;
+    const amount = parseInt(req.body?.amount, 10) || 0;
+    const reason = String(req.body?.reason || 'manual bonus');
+    if (!amount || amount < 1) return res.status(400).json({ error: 'amount must be > 0' });
+    // Ensure a one-off bonus achievement record per grant
+    const slug = 'bonus_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+    const [ach] = await sql`INSERT INTO achievements
+      (slug, title_ru, title_en, title_es, description_ru, badge_emoji, xp_reward, condition_kind, author_id)
+      VALUES (${slug}, ${'⭐ ' + reason}, ${'⭐ ' + reason}, ${'⭐ ' + reason},
+              ${'Бонус от админа: ' + reason}, '⭐', ${amount}, 'admin_bonus', ${callerId})
+      RETURNING *`;
+    await sql`INSERT INTO user_achievements (user_id, achievement_id) VALUES (${targetId}, ${ach.id})
+              ON CONFLICT DO NOTHING`;
+    await notifyUser(targetId, 'achievement', { slug, title: ach.title_ru, emoji: '⭐', xp: amount });
+    res.json({ ok: true, granted_xp: amount, achievement_id: ach.id });
+  } catch (err) { console.error('grant xp:', err); res.status(500).json({ error: err.message }); }
 });
 
 // Helper: insert a notification but respect the recipient's per-kind mute list.

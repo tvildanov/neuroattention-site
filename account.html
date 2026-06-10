@@ -1836,6 +1836,19 @@
             </div>
             <p id="ach-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);min-height:16px;"></p>
           </div>
+
+          <!-- ── PATH MAP (all users' journeys) ── -->
+          <div style="margin-top:1.5rem;padding:1.25rem;border:1px dashed rgba(78,205,196,0.25);border-radius:12px;background:rgba(78,205,196,0.03);">
+            <h4 style="margin:0 0 0.25rem;font-size:14px;color:#4ecdc4;">👥 Карта путей персонажей</h4>
+            <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;">Все участники, сортировка по XP. Каждая полоса — путь развития: кружки разделов и элементов курсов, баджи достижений, XP.</p>
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap;">
+              <input id="pathmap-search" type="text" placeholder="Поиск по имени/email…" oninput="renderPathMap()" style="flex:1;min-width:200px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:13px;">
+              <button class="btn btn-ghost" onclick="loadPathMap()" style="font-size:12px;padding:0.4rem 0.9rem;">↻ Обновить</button>
+            </div>
+            <div id="pathmap-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:600px;overflow-y:auto;">Загрузка…</div>
+          </div>
+
+          <!-- Detailed user journey modal opens via JS -->
         </div>
         <div id="admin-tools-locked" style="display:none;text-align:center;padding:3rem 1rem;">
           <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.15);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -10928,10 +10941,140 @@ document.addEventListener('DOMContentLoaded', function(){
     var toolsTab = document.querySelector('[data-tab="admin-tools"]');
     if (toolsTab && !toolsTab.dataset.achBound) {
       toolsTab.dataset.achBound = '1';
-      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); setTimeout(loadStorageStatus, 200); });
+      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); setTimeout(loadStorageStatus, 200); setTimeout(loadPathMap, 200); });
     }
   }, 1500);
 });
+
+// ══════════════════════════════════════════
+// Pack 29: Path-Map (all users journey grid)
+// ══════════════════════════════════════════
+var pathMap = { users: [] };
+function loadPathMap(){
+  var box = document.getElementById('pathmap-list');
+  if (box) box.innerHTML = 'Загрузка…';
+  domApi('/api/admin/journeys').then(function(d){
+    pathMap.users = d.users || [];
+    renderPathMap();
+  }).catch(function(e){
+    if (box) box.innerHTML = '<span style="color:#f55;">Ошибка: '+e.message+'</span>';
+  });
+}
+function renderPathMap(){
+  var box = document.getElementById('pathmap-list');
+  if (!box) return;
+  var q = (document.getElementById('pathmap-search')||{}).value || '';
+  q = q.trim().toLowerCase();
+  var users = pathMap.users.filter(function(u){
+    if (!q) return true;
+    return (u.display_name||'').toLowerCase().indexOf(q) !== -1
+        || (u.email||'').toLowerCase().indexOf(q) !== -1;
+  });
+  if (!users.length) { box.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:1rem 0;">Никого не найдено.</p>'; return; }
+  var maxXp = Math.max.apply(null, users.map(function(u){ return u.total_xp||0; }).concat([1]));
+  box.innerHTML = users.map(function(u){
+    var pct = Math.round(((u.total_xp||0) / maxXp) * 100);
+    var roleTag = u.role && u.role !== 'user'
+      ? '<span style="background:rgba(0,229,255,0.15);color:var(--accent-cyan);padding:1px 6px;border-radius:4px;font-size:9px;margin-left:0.4rem;text-transform:uppercase;">' + u.role + '</span>'
+      : '';
+    var lastAct = u.last_active ? new Date(u.last_active).toLocaleDateString() : '—';
+    return '<div onclick="openPathMapDetail(\'' + u.id + '\')" style="cursor:pointer;padding:0.6rem 0.75rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);">'
+      + '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem;">'
+      +   '<span style="font-size:13px;font-weight:600;color:var(--text-primary);">' + (u.display_name||'—') + '</span>'
+      +   roleTag
+      +   '<span style="font-size:10px;color:var(--text-muted);">' + (u.email||'') + '</span>'
+      +   '<span style="margin-left:auto;font-size:11px;color:#4ecdc4;font-weight:600;">' + (u.total_xp||0) + ' XP</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:0.5rem;font-size:10px;color:var(--text-muted);">'
+      +   '<span>📚 ' + (u.blocks_done||0) + ' блоков</span>'
+      +   '<span>🎓 ' + (u.courses_touched||0) + ' курсов</span>'
+      +   '<span>🏅 ' + (u.badges_count||0) + ' бейджей</span>'
+      +   '<span>· последняя активность ' + lastAct + '</span>'
+      + '</div>'
+      + '<div style="margin-top:0.4rem;height:6px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;">'
+      +   '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#4ecdc4,#0cf);border-radius:3px;"></div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+window.loadPathMap = loadPathMap;
+window.renderPathMap = renderPathMap;
+
+function openPathMapDetail(uid){
+  Promise.all([
+    domApi('/api/users/' + uid + '/profile').catch(function(){ return null; }),
+    domApi('/api/admin/journeys/' + uid)
+  ]).then(function(arr){
+    var u = (arr[0]||{}).user || {};
+    var d = arr[1] || {};
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:10035;padding:2rem 1rem;overflow-y:auto;';
+    var coursesHtml = (d.courses||[]).map(function(c){
+      var pct = c.total_blocks > 0 ? Math.round((c.done_blocks/c.total_blocks)*100) : 0;
+      var nm = c['name_'+lang] || c.name_ru || c.name_en || c.slug;
+      return '<div style="display:flex;align-items:center;gap:0.5rem;font-size:12px;margin-bottom:0.4rem;">'
+        + '<div style="flex:0 0 200px;">' + nm + '</div>'
+        + '<div style="flex:1;height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">'
+        +   '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#4ecdc4,#0cf);"></div>'
+        + '</div>'
+        + '<div style="flex:0 0 80px;text-align:right;color:var(--text-muted);">' + c.done_blocks + ' / ' + c.total_blocks + '</div>'
+        + '</div>';
+    }).join('') || '<p style="color:var(--text-muted);font-size:12px;">Курсов не проходил.</p>';
+    var badgesHtml = (d.badges||[]).slice(0, 30).map(function(b){
+      return '<span title="' + (b.title_ru||'').replace(/"/g,'&quot;') + '" style="display:inline-block;font-size:24px;margin:0.2rem;">' + (b.badge_emoji||'🏅') + '</span>';
+    }).join('') || '<p style="color:var(--text-muted);font-size:12px;">Бейджей пока нет.</p>';
+    var recentHtml = (d.recent||[]).slice(0, 10).map(function(r){
+      return '<div style="font-size:11px;color:var(--text-secondary);padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">'
+        + '<span style="color:var(--accent-cyan);">+' + (r.points_earned||0) + 'XP</span> · '
+        + (r.block_title || r.block_type) + ' · '
+        + '<span style="color:var(--text-muted);">' + new Date(r.completed_at).toLocaleString() + '</span>'
+        + '</div>';
+    }).join('') || '<p style="color:var(--text-muted);font-size:12px;">Активности нет.</p>';
+
+    modal.innerHTML = '<div style="max-width:680px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">'
+      +   '<h3 style="margin:0;font-size:16px;">' + (u.display_name||'Пользователь') + '</h3>'
+      +   '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button>'
+      + '</div>'
+      + (u.bio ? '<p style="font-size:13px;color:var(--text-secondary);margin:0 0 1rem;">' + u.bio + '</p>' : '')
+      + '<h4 style="margin:0 0 0.5rem;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Прогресс по курсам</h4>'
+      + '<div style="margin-bottom:1rem;">' + coursesHtml + '</div>'
+      + '<h4 style="margin:0.5rem 0 0.5rem;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Бейджи</h4>'
+      + '<div style="margin-bottom:1rem;">' + badgesHtml + '</div>'
+      + '<h4 style="margin:0.5rem 0 0.5rem;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Последние действия</h4>'
+      + '<div style="margin-bottom:1rem;max-height:200px;overflow-y:auto;">' + recentHtml + '</div>'
+      + '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:1rem 0;">'
+      + '<h4 style="margin:0 0 0.5rem;font-size:13px;color:var(--text-primary);">⭐ Подарить XP</h4>'
+      + '<div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">'
+      +   '<input id="xp-amount" type="number" min="1" value="50" style="width:80px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.5rem;color:var(--text-primary);font-size:13px;">'
+      +   '<input id="xp-reason" type="text" placeholder="Повод" value="бонус" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:13px;">'
+      +   '<button class="btn btn-solid" onclick="grantBonusXp(\'' + uid + '\')" style="font-size:12px;padding:0.4rem 0.9rem;background:rgba(255,200,0,0.15);color:#fc0;">Дать XP</button>'
+      +   '<button class="btn btn-ghost" onclick="domStartThreadFromProfile(\'' + uid + '\',\'' + ((u.display_name||'').replace(/\'/g,"\\'")) + '\'); this.closest(\'div[style*=fixed]\').remove()" style="font-size:12px;padding:0.4rem 0.9rem;">💬 Написать</button>'
+      + '</div>'
+      + '<p id="xp-status" style="margin:0.5rem 0 0;font-size:12px;color:var(--text-muted);min-height:14px;"></p>'
+      + '</div>';
+    document.body.appendChild(modal);
+  }).catch(function(e){ alert(e.message); });
+}
+window.openPathMapDetail = openPathMapDetail;
+
+function grantBonusXp(uid){
+  var amount = parseInt(document.getElementById('xp-amount').value, 10) || 0;
+  var reason = document.getElementById('xp-reason').value || 'бонус';
+  var status = document.getElementById('xp-status');
+  if (amount < 1) { status.textContent = 'Сумма должна быть ≥ 1'; return; }
+  status.textContent = 'Награждаю…';
+  domApi('/api/admin/users/' + uid + '/xp', { method:'POST', body: { amount: amount, reason: reason } })
+    .then(function(d){
+      status.style.color = '#0e9';
+      status.textContent = '✓ +' + d.granted_xp + ' XP отправлено';
+      // Refresh underlying list
+      setTimeout(loadPathMap, 500);
+    })
+    .catch(function(e){ status.style.color = '#f55'; status.textContent = 'Ошибка: ' + e.message; });
+}
+window.grantBonusXp = grantBonusXp;
 
 function loadStorageStatus(){
   var body = document.getElementById('storage-status-body');
@@ -11089,6 +11232,8 @@ function domLoadNotifs(){
                   n.kind === 'feed_post' ? '📰 Новый пост в ленте' :
                   n.kind === 'achievement' ? '🏆 Достижение' :
                   n.kind === 'peer_achievement' ? '👏 Достижение другого участника' :
+                  n.kind === 'peer_progress' ? '🛤 Участник прошёл блок — присоединяйся' :
+                  n.kind === 'peer_course_done' ? '🎓 Кто-то прошёл курс целиком' :
                   n.kind === 'joint_invite' ? '🤝 Приглашение на совместную практику' :
                   n.kind;
       var preview = (n.payload && (n.payload.preview||n.payload.title)) || '';
