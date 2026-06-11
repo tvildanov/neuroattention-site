@@ -9484,10 +9484,14 @@ function coursePreviewAsStudent(){
   if (!courseState.currentCourse) return;
   // Player expects course + blocks + progress. We have course + blocks already.
   coursePlayer.course = courseState.currentCourse;
-  coursePlayer.blocks = courseState.currentBlocks || [];
+  // Linearize the two-level hierarchy (section → children) into reading order.
+  // Without this the player iterates the raw flat array, whose order_idx is
+  // scoped per-parent and therefore jumbled across sections.
+  coursePlayer.blocks = cpLinearizeBlocks(courseState.currentBlocks || []);
   coursePlayer.progress = {};
   coursePlayer.idx = 0;
   coursePlayer.history = [];
+  coursePlayer.previewMode = true; // navigate locally; never POST completion
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var nm = courseState.currentCourse['name_'+lang] || courseState.currentCourse.name_ru || courseState.currentCourse.slug;
   document.getElementById('cp-course-name').textContent = '[ПРЕВЬЮ] ' + nm;
@@ -9495,6 +9499,55 @@ function coursePreviewAsStudent(){
   cpRenderBlock();
 }
 window.coursePreviewAsStudent = coursePreviewAsStudent;
+
+// Flatten the two-level course structure into the order a student reads it:
+// each top-level item in (order_idx, id) order; every section is immediately
+// followed by its children (also in (order_idx, id) order). Standalone
+// top-level items keep their place. Degrades to a stable flat sort when no
+// parent_block_id is present (older single-level courses).
+function cpLinearizeBlocks(blocks){
+  var all = (blocks || []).slice();
+  function byOrder(a, b){
+    var ao = (a.order_idx == null ? 0 : a.order_idx);
+    var bo = (b.order_idx == null ? 0 : b.order_idx);
+    if (ao !== bo) return ao - bo;
+    return (a.id || 0) - (b.id || 0);
+  }
+  var topLevel = all.filter(function(b){ return !b.parent_block_id; }).sort(byOrder);
+  var seq = [];
+  topLevel.forEach(function(b){
+    seq.push(b);
+    if (b.block_type === 'section') {
+      all.filter(function(x){ return x.parent_block_id === b.id; })
+         .sort(byOrder)
+         .forEach(function(kid){ seq.push(kid); });
+    }
+  });
+  // Safety net: append any orphans (parent_block_id pointing nowhere) so they
+  // are never silently dropped from the preview.
+  var inSeq = {}; seq.forEach(function(b){ inSeq[b.id] = true; });
+  all.filter(function(b){ return !inSeq[b.id]; }).sort(byOrder).forEach(function(b){ seq.push(b); });
+  return seq;
+}
+window.cpLinearizeBlocks = cpLinearizeBlocks;
+
+// Human label for a block type (used in section contents preview).
+function _cpTypeLabel(t){
+  var map = {
+    section:'Раздел', practice:'Практика', text:'Текст', video:'Видео', audio:'Аудио',
+    image:'Изображение', link:'Ссылка', sensation_prompt:'Вопрос об ощущениях', break:'Перерыв',
+    student_audio:'Аудио-ответ', student_text:'Текстовый ответ', question_branch:'Вопрос с ветвлением',
+    sound_cue:'Звуковой сигнал'
+  };
+  return map[t] || t || '(без названия)';
+}
+// Russian plural picker: forms = [one, few, many].
+function _cpPlural(n, forms){
+  var n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return forms[0];
+  if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
+  return forms[2];
+}
 
 function courseSaveMeta(){
   if (!courseState.currentCourse) return;
@@ -10030,7 +10083,7 @@ window.cbBranchSetNext = cbBranchSetNext;
 // ══════════════════════════════════════════
 // Pack 24 phase 3: Student-side Course Player
 // ══════════════════════════════════════════
-var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, history: [], blockResponse: null };
+var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, history: [], blockResponse: null, previewMode: false };
 
 function loadStudentCourses(){
   var token = localStorage.getItem('na_token'); if (!token) return;
@@ -10068,7 +10121,10 @@ function cpOpenCourse(slug){
     .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.error||r.status); return d; }); })
     .then(function(d){
       coursePlayer.course = d.course;
-      coursePlayer.blocks = d.blocks || [];
+      // Same two-level linearization as the preview, so children read in order
+      // under their section instead of the server's per-parent flat ordering.
+      coursePlayer.blocks = cpLinearizeBlocks(d.blocks || []);
+      coursePlayer.previewMode = false; // real run — DO write completion/progress
       coursePlayer.progress = {};
       (d.progress || []).forEach(function(p){ coursePlayer.progress[p.block_id] = p; });
       // Find first uncompleted block, else start from 0
@@ -10086,6 +10142,7 @@ window.cpOpenCourse = cpOpenCourse;
 function cpClose(){
   document.getElementById('coursePlayerModal').style.display='none';
   coursePlayer.course = null;
+  coursePlayer.previewMode = false;
   if (cpJoint.pollTimer) { clearInterval(cpJoint.pollTimer); cpJoint.pollTimer = null; }
   cpJoint.sessionId = null;
   var jp = document.getElementById('cp-joint-panel'); if (jp) jp.style.display='none';
@@ -10108,10 +10165,32 @@ function cpRenderBlock(){
   document.getElementById('cp-next-btn').style.display = '';
   coursePlayer.blockResponse = null;
   var p = block.payload || {};
-  var title = block['title_'+lang] || block.title_ru || block.title_en || '';
+  var title = block['title_'+lang] || block.title_ru || block.title_en || block.title_es || p.practice_name || '';
   var titleHtml = title ? '<h3 style="font-size:16px;margin:0 0 1rem;color:var(--text-primary);">' + title + '</h3>' : '';
   var body = '';
   switch (block.block_type) {
+    case 'section':
+      // A section is a grouping header, not content. Show its title (already in
+      // titleHtml) + optional description, and a preview of the lessons inside.
+      var secDesc = p['description_'+lang] || p.description_ru || p['body_'+lang] || p.body_ru || '';
+      var kids = (coursePlayer.blocks || []).filter(function(x){ return x.parent_block_id === block.id; });
+      var kidsList = kids.map(function(k, ki){
+        var kt = k['title_'+lang] || k.title_ru || k.title_en || k.title_es || (k.payload && k.payload.practice_name) || _cpTypeLabel(k.block_type);
+        return '<li style="padding:0.45rem 0.7rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;display:flex;align-items:center;gap:0.5rem;">'
+             + '<span style="font-size:11px;color:var(--text-dim);font-family:JetBrains Mono,monospace;min-width:1.4em;">' + (ki+1) + '.</span>'
+             + '<span style="font-size:13px;color:var(--text-primary);">' + kt + '</span>'
+             + '<span style="margin-left:auto;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">' + k.block_type + '</span>'
+             + '</li>';
+      }).join('');
+      body = '<div style="border-left:3px solid #fc0;padding-left:0.9rem;">'
+           + '<div style="font-size:10px;color:#fc0;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">📦 Раздел</div>'
+           + (secDesc ? '<div style="font-size:14px;line-height:1.7;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.75rem;">' + secDesc + '</div>' : '')
+           + (kids.length
+               ? '<div style="font-size:11px;color:var(--text-muted);margin:0.5rem 0 0.4rem;">В этом разделе ' + kids.length + ' ' + _cpPlural(kids.length, ['элемент','элемента','элементов']) + ':</div>'
+                 + '<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.35rem;">' + kidsList + '</ul>'
+               : '<div style="font-size:13px;color:var(--text-dim);font-style:italic;">Раздел пока пуст.</div>')
+           + '</div>';
+      break;
     case 'text':
       body = '<div style="font-size:14px;line-height:1.7;color:var(--text-primary);white-space:pre-wrap;">' + (p['body_'+lang]||p.body_ru||p.body_en||'') + '</div>';
       break;
@@ -10124,9 +10203,22 @@ function cpRenderBlock(){
       else body = '<a href="'+vurl+'" target="_blank" style="color:var(--accent-cyan);">'+vurl+'</a>';
       break;
     case 'audio':
-    case 'practice':
       var aurl = p.audio_url || '';
       body = '<audio controls style="width:100%;"><source src="'+aurl+'"></audio>';
+      break;
+    case 'practice':
+      // A practice block references a library practice (by practice_id); its
+      // audio lives in the practices table, not in payload. Show the linked
+      // practice name/slug card, plus an inline player if a URL is present.
+      var prName = p.practice_name || block['title_'+lang] || block.title_ru || '';
+      var prSlug = p.practice_slug || '';
+      var prAudio = p.audio_url || '';
+      body = '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;">'
+           + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">🧠 Практика</div>'
+           + '<div style="font-size:15px;color:var(--text-primary);font-weight:600;">' + (prName || '(практика не выбрана)') + '</div>'
+           + (prSlug ? '<div style="font-size:11px;color:var(--text-muted);font-family:JetBrains Mono,monospace;margin-top:2px;">' + prSlug + (p.practice_lang ? ' · ' + p.practice_lang : '') + '</div>' : '')
+           + '</div>'
+           + (prAudio ? '<audio controls style="width:100%;margin-top:0.75rem;"><source src="'+prAudio+'"></audio>' : '');
       break;
     case 'image':
       body = '<img src="'+(p.image_url||'')+'" style="width:100%;border-radius:10px;">'
@@ -10315,8 +10407,20 @@ window.cpJointSend = cpJointSend;
 window.cpJointReact = cpJointReact;
 
 function cpNext(){
+  // Re-entrancy guard: inline onclick + addEventListener backup can both fire on
+  // one click — collapse them into a single step.
+  if (window._cpNavLock) return; window._cpNavLock = true; setTimeout(function(){ window._cpNavLock = false; }, 60);
   var block = coursePlayer.blocks[coursePlayer.idx];
   if (!block) { cpClose(); return; }
+  // Preview mode (admin previewing a draft) OR a section header: advance through
+  // the already-linearized list locally, without writing completion/progress to
+  // the server. Sections are pure grouping headers — they are never "completed".
+  if (coursePlayer.previewMode || block.block_type === 'section') {
+    coursePlayer.history.push(coursePlayer.idx);
+    coursePlayer.idx = coursePlayer.idx + 1; // step into section's first child / next item
+    cpRenderBlock();
+    return;
+  }
   // Capture text/textarea response if present
   var respEl = document.getElementById('cp-response');
   var response = coursePlayer.blockResponse;
@@ -10368,11 +10472,27 @@ function _cpFinalize(block, response){
 }
 window.cpNext = cpNext;
 function cpPrev(){
+  if (window._cpNavLock) return; window._cpNavLock = true; setTimeout(function(){ window._cpNavLock = false; }, 60);
   if (!coursePlayer.history.length) return;
   coursePlayer.idx = coursePlayer.history.pop();
   cpRenderBlock();
 }
 window.cpPrev = cpPrev;
+
+// Backup wiring for the critical nav buttons: inline onclick can be stripped by
+// some browser extensions, so bind listeners directly too. cpNext/cpPrev carry
+// their own re-entrancy lock (see top of each), so inline + listener firing on
+// the same click collapses to a single navigation step.
+(function(){
+  function bindOnce(){
+    var nb = document.getElementById('cp-next-btn');
+    var pb = document.getElementById('cp-prev-btn');
+    if (nb && !nb.dataset.cpBound) { nb.dataset.cpBound = '1'; nb.addEventListener('click', function(){ cpNext(); }); }
+    if (pb && !pb.dataset.cpBound) { pb.dataset.cpBound = '1'; pb.addEventListener('click', function(){ cpPrev(); }); }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindOnce);
+  else bindOnce();
+})();
 
 // Hook the Courses tab — load when it becomes visible
 document.addEventListener('DOMContentLoaded', function(){
@@ -12435,6 +12555,10 @@ window.pbMove = pbMove;
         // Re-render diagnostic editor labels if open
         if (typeof renderDiagItems === 'function' && window.diagState && window.diagState.currentTpl) renderDiagItems();
         if (typeof renderDiagTemplatesList === 'function') renderDiagTemplatesList();
+        // Re-render the course player / preview if it's open — its block body is
+        // built dynamically (not static data-i18n), so it needs a manual refresh.
+        var cpModal = document.getElementById('coursePlayerModal');
+        if (cpModal && cpModal.style.display !== 'none' && coursePlayer && coursePlayer.course && typeof cpRenderBlock === 'function') cpRenderBlock();
       } catch(e){ console.warn('RPG re-render on lang change failed:', e); }
       return ret;
     };
