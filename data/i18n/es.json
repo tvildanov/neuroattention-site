@@ -1180,6 +1180,7 @@
   "a.admin.courses.confirm_delete_block": "¿Eliminar este bloque?",
   "a.admin.courses.empty_blocks": "Aún no hay bloques. Añade el primero desde el menú de abajo.",
   "a.tabs.courses": "Cursos",
+  "a.tabs.evolution": "Camino de evolución",
   "a.courses.title": "Mis cursos",
   "a.courses.subtitle": "Cursos disponibles para ti según tu programa adquirido.",
   "a.courses.empty": "Aún no hay cursos disponibles. Vuelve más tarde o adquiere un programa.",
