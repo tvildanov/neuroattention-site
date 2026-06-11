@@ -37,6 +37,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
+<link rel="stylesheet" href="data/css/mycelium.css" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -1005,6 +1006,8 @@
           <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;">✕ Закрыть</button>
         </div>
       </div>
+      <!-- Mycelium Stage 1: light-map of the course path -->
+      <div id="cp-path-view" style="margin-bottom:1rem;"></div>
       <div style="display:grid;grid-template-columns:1fr 280px;gap:1rem;" id="cp-grid">
         <div id="cp-block-area" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;min-height:280px;"></div>
         <div id="cp-joint-panel" style="display:none;background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.15);border-radius:14px;padding:1rem;">
@@ -10079,10 +10082,40 @@ function cpOpenCourse(slug){
       document.getElementById('cp-course-name').textContent = d.course['name_'+lang] || d.course.name_ru || d.course.name_en || d.course.slug;
       document.getElementById('coursePlayerModal').style.display = 'block';
       cpRenderBlock();
+      cpMountPathView(); // Mycelium Stage 1: render the course light-map
     })
     .catch(function(e){ alert(e.message); });
 }
 window.cpOpenCourse = cpOpenCourse;
+
+// Mycelium Stage 1 — mount/refresh the SVG light-map of the course path.
+// Reads straight from coursePlayer state (no extra fetch). Degrades silently
+// if the module or container is absent.
+function cpMountPathView(){
+  try {
+    var box = document.getElementById('cp-path-view');
+    if (!box || typeof window.mountCoursePathView !== 'function' || !coursePlayer.course) return;
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var progressArr = Object.keys(coursePlayer.progress || {}).map(function(k){ return coursePlayer.progress[k]; });
+    window.mountCoursePathView(box, {
+      course: coursePlayer.course,
+      blocks: coursePlayer.blocks || [],
+      progress: progressArr
+    }, {
+      lang: lang,
+      currentIdx: coursePlayer.idx,
+      onNavigate: function(i){
+        // Jump the player to the chosen step, then refresh the map focus.
+        if (i === coursePlayer.idx) return;
+        coursePlayer.history.push(coursePlayer.idx);
+        coursePlayer.idx = i;
+        cpRenderBlock();
+        cpMountPathView();
+      }
+    });
+  } catch(e){ console.warn('cpMountPathView:', e); }
+}
+window.cpMountPathView = cpMountPathView;
 function cpClose(){
   document.getElementById('coursePlayerModal').style.display='none';
   coursePlayer.course = null;
@@ -12413,6 +12446,7 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/i18n.js"></script>
+<script src="assets/js/course-path-view.js"></script>
 <script>
   // Initialize i18n on page load
   document.addEventListener('DOMContentLoaded', function() {
