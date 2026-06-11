@@ -4506,7 +4506,7 @@ app.get('/api/courses/:slug', requireAuth, async (req, res) => {
     if (langPref && Array.isArray(course.languages) && course.languages.length > 0 && !course.languages.includes(langPref)) {
       return res.status(404).json({ error: 'Course not available in this language' });
     }
-    const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points
+    const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id, unlock_condition
                               FROM course_blocks WHERE course_id = ${course.id} ORDER BY order_idx ASC`;
     const progress = await sql`SELECT block_id, response, points_earned, completed_at FROM course_block_progress
                                 WHERE user_id = ${userId} AND course_id = ${course.id}`;
