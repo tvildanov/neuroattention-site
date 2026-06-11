@@ -154,3 +154,50 @@
 }
 .myc-empty-glyph { font-size: 26px; opacity: .5; }
 .myc-empty-text { font-size: 13px; color: var(--myc-text-dim); max-width: 320px; line-height: 1.5; }
+
+/* ============================================================================
+   Stage 2 — Personal Evolution Path chrome (shares the tokens above)
+   ============================================================================ */
+.myc-evo-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem;
+}
+.myc-evo-title { margin: 0 0 0.2rem; font-size: 16px; color: var(--myc-text); font-weight: 600; }
+.myc-evo-sub { margin: 0; font-size: 12px; color: var(--myc-text-dim); max-width: 520px; line-height: 1.5; }
+
+.myc-controls { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.myc-seg {
+  display: inline-flex; border: 1px solid var(--myc-line-muted); border-radius: 10px;
+  overflow: hidden; background: rgba(255,255,255,0.02);
+}
+.myc-seg button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  color: var(--myc-text-dim); font-size: 11px; letter-spacing: .02em;
+  padding: 0.4rem 0.7rem; font-family: inherit; transition: background .2s, color .2s;
+  white-space: nowrap;
+}
+.myc-seg button + button { border-left: 1px solid var(--myc-line-faint); }
+.myc-seg button:hover { color: var(--myc-text); }
+.myc-seg button.is-active {
+  background: rgba(168,247,255,0.08); color: var(--myc-cyan);
+  box-shadow: inset 0 -2px 0 var(--myc-cyan-deep);
+}
+
+/* layer-view lane labels */
+.myc-lane-label {
+  font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; fill: var(--myc-text-mono);
+}
+
+/* time-cursor slider (single-character view) */
+.myc-scrub {
+  display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: var(--myc-text-mono);
+}
+.myc-scrub input[type=range] { flex: 1; accent-color: var(--myc-cyan-deep); }
+
+/* small stat readouts */
+.myc-stats { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.myc-stat { display: flex; flex-direction: column; gap: 2px; }
+.myc-stat b { font-size: 15px; color: var(--myc-text); font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.myc-stat span { font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--myc-text-mono); }

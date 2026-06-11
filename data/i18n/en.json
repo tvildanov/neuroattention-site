@@ -1180,6 +1180,7 @@
   "a.admin.courses.confirm_delete_block": "Delete this block?",
   "a.admin.courses.empty_blocks": "No blocks yet. Add the first from the menu below.",
   "a.tabs.courses": "Courses",
+  "a.tabs.evolution": "Evolution Path",
   "a.courses.title": "My courses",
   "a.courses.subtitle": "Courses available to you under your purchased program.",
   "a.courses.empty": "No courses available yet. Check back later or purchase a program.",
