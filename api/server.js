@@ -4812,6 +4812,111 @@ app.get('/api/users/me/journey', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET me/journey:', err); res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/users/me/evolution — Mycelium Stage 2 (Personal Evolution Path).
+// Read-only aggregation of the user's journey across layers, over a period.
+// Sources: journey_events (Pack 31) + course_block_progress for practice/xp,
+// nm_nodes for emotion/thought/sensation/event-trigger, calendar_events for
+// life events, neuro_resource_diary for insights. No writes, no schema change.
+// Every source query is fault-tolerant — a missing table yields an empty layer
+// rather than a 500, so the view degrades gracefully on sparse data.
+app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const period = ['day','week','month','3months','year','all'].includes(String(req.query.period||'').toLowerCase())
+      ? String(req.query.period).toLowerCase() : 'month';
+    const days = { day:1, week:7, month:30, '3months':90, year:365, all:36500 }[period];
+    const since = new Date(Date.now() - days*24*60*60*1000);
+    const sinceIso = since.toISOString();
+    const safe = (p) => p.then(r => r).catch(() => []);
+    const clamp01 = (n) => Math.max(0, Math.min(1, n));
+
+    const [je, cbp, nm, cal, diary] = await Promise.all([
+      safe(sql`SELECT kind, layer, payload, occurred_at FROM journey_events
+               WHERE user_id = ${me} AND occurred_at >= ${sinceIso} ORDER BY occurred_at ASC`),
+      safe(sql`SELECT cbp.points_earned, cbp.completed_at, cb.block_type
+               FROM course_block_progress cbp LEFT JOIN course_blocks cb ON cb.id = cbp.block_id
+               WHERE cbp.user_id = ${me} AND cbp.completed_at >= ${sinceIso} ORDER BY cbp.completed_at ASC`),
+      safe(sql`SELECT type, label, valence, count, last_seen_at FROM nm_nodes
+               WHERE user_id = ${me} AND last_seen_at >= ${sinceIso} ORDER BY last_seen_at ASC`),
+      safe(sql`SELECT title, event_type, date_key, done, done_at, created_at FROM calendar_events
+               WHERE user_id = ${me} AND created_at >= ${sinceIso} ORDER BY created_at ASC`),
+      safe(sql`SELECT text, comment, plus_count, minus_count, date_key, created_at FROM neuro_resource_diary
+               WHERE user_id = ${me} AND created_at >= ${sinceIso} ORDER BY created_at ASC`)
+    ]);
+
+    const layers = { practice:[], emotion:[], event:[], thought:[], sensation:[], insight:[], xp_gain:[] };
+
+    // practice — prefer Pack 31 journey log; fall back to raw block progress
+    const jeBlock = je.filter(e => e.kind === 'block_done');
+    if (jeBlock.length) {
+      jeBlock.forEach(e => layers.practice.push({ t: e.occurred_at, label: (e.payload && e.payload.block_type) || 'practice', weight: (e.payload && e.payload.points) || 1 }));
+    } else {
+      cbp.forEach(r => layers.practice.push({ t: r.completed_at, label: r.block_type || 'practice', weight: r.points_earned || 1 }));
+    }
+
+    // xp_gain — cumulative timeline from block points + achievement rewards
+    const xpItems = [];
+    cbp.forEach(r => xpItems.push({ t: r.completed_at, amount: r.points_earned || 0 }));
+    je.filter(e => e.kind === 'achievement').forEach(e => xpItems.push({ t: e.occurred_at, amount: (e.payload && e.payload.xp) || 0 }));
+    xpItems.sort((a, b) => new Date(a.t) - new Date(b.t));
+    let cum = 0;
+    xpItems.forEach(x => { cum += x.amount; layers.xp_gain.push({ t: x.t, amount: x.amount, cumulative: cum }); });
+
+    // neuromap nodes → emotion / thought / sensation(area) / event(cause)
+    nm.forEach(n => {
+      const item = { t: n.last_seen_at, label: n.label, valence: n.valence, weight: n.count || 1 };
+      if (n.type === 'emotion') layers.emotion.push(item);
+      else if (n.type === 'thought') layers.thought.push(item);
+      else if (n.type === 'area') layers.sensation.push(item);
+      else if (n.type === 'cause') layers.event.push(item);
+    });
+
+    // calendar → life events; diary → insights
+    cal.forEach(c => layers.event.push({ t: c.created_at, label: c.title, valence: 'neutral', weight: 1, kind: c.event_type || '' }));
+    diary.forEach(d => layers.insight.push({
+      t: d.created_at, label: String(d.text || '').slice(0, 90),
+      valence: (d.plus_count > d.minus_count ? 'positive' : (d.minus_count > d.plus_count ? 'negative' : 'neutral')),
+      weight: ((d.plus_count || 0) + (d.minus_count || 0)) || 1
+    }));
+
+    // state aggregates → MVP visual rule (amplitude / density / brightness / spread)
+    const emo = layers.emotion;
+    const emoTotal = emo.length || 1;
+    const positivity = emo.length ? emo.filter(e => e.valence === 'positive').length / emoTotal : 0.5;
+    const turbulence = emo.length ? emo.filter(e => e.valence === 'negative').length / emoTotal : 0;
+    const activity = layers.practice.length + layers.event.length + emo.length + layers.insight.length;
+    const pracDays = new Set(layers.practice.map(p => String(p.t).slice(0, 10))).size;
+    const consistency = clamp01(pracDays / Math.min(days, 14));
+
+    const aggregates = {
+      positivity: +positivity.toFixed(3),
+      turbulence: +turbulence.toFixed(3),
+      activity,
+      consistency: +consistency.toFixed(3),
+      brightness: +clamp01(0.35 + 0.40 * positivity + 0.25 * consistency - 0.30 * turbulence).toFixed(3),
+      amplitude:  +clamp01(0.20 + Math.min(1, activity / 40)).toFixed(3),
+      density:    +clamp01(0.25 + 0.50 * turbulence + 0.30 * Math.min(1, activity / 60)).toFixed(3),
+      spread:     +clamp01(0.30 + 0.50 * positivity - 0.40 * turbulence + 0.20 * consistency).toFixed(3)
+    };
+
+    res.json({
+      ok: true,
+      range: { from: sinceIso, to: new Date().toISOString(), period },
+      layers,
+      aggregates,
+      totals: {
+        xp_total: cum,
+        practices: layers.practice.length,
+        emotions: layers.emotion.length,
+        events: layers.event.length,
+        thoughts: layers.thought.length,
+        sensations: layers.sensation.length,
+        insights: layers.insight.length
+      }
+    });
+  } catch (err) { console.error('GET me/evolution:', err); res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/admin/journeys — list all users with progress summary (admin only)
 app.get('/api/admin/journeys', requireAuth, async (req, res) => {
   try {
