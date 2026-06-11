@@ -570,6 +570,7 @@
     <button class="dash-tab active" data-tab="overview" data-i18n="a.tabs.profile">Профиль</button>
     <button class="dash-tab" data-tab="protocol" data-i18n="a.tabs.protocol">Протокол</button>
     <button class="dash-tab" data-tab="courses" data-i18n="a.tabs.courses">Курсы</button>
+    <button class="dash-tab" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</button>
     <button class="dash-tab" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></button>
     <button class="dash-tab" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</button>
     <button class="dash-tab" data-tab="pointab" data-i18n="a.tabs.pointab">Точка А → B</button>
@@ -814,6 +815,11 @@
         <p id="student-courses-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.courses.empty">Пока нет курсов, доступных вам. Зайдите позже или приобретите программу.</p>
       </div>
     </div>
+  </div>
+
+  <!-- TAB: Путь развития — Mycelium Stage 2 (Personal Evolution Path) -->
+  <div class="tab-panel" id="tab-evolution">
+    <div id="evo-path"></div>
   </div>
 
   <!-- TAB: DOMunity — community layer -->
@@ -4026,6 +4032,11 @@ function switchTab(id){
   if(id==='tools'){
     var activeMode = document.querySelector('#tools-mode-nm.active') ? 'nm' : document.querySelector('#tools-mode-cal.active') ? 'cal' : 'diary';
     setToolsMode(activeMode);
+  }
+  // Mycelium Stage 2: mount/refresh the Personal Evolution Path when its tab
+  // becomes visible (SVG needs real container dimensions, like the NM canvas).
+  if(id==='evolution'){
+    setTimeout(function(){ try { if(window.mountEvolutionPath) mountEvolutionPath(document.getElementById('evo-path')); } catch(e){ console.warn('evo mount:', e); } }, 50);
   }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
@@ -12567,6 +12578,7 @@ window.pbMove = pbMove;
 
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/course-path-view.js"></script>
+<script src="assets/js/evolution-path.js"></script>
 <script>
   // Initialize i18n on page load
   document.addEventListener('DOMContentLoaded', function() {
