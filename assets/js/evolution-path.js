@@ -36,10 +36,11 @@
   // vertical placement of each scatter layer inside the tunnel field (0=top..1=bottom)
   var LAYER_YFRAC = { insight: 0.16, thought: 0.32, emotion: 0.46, practice: 0.50, sensation: 0.64, event: 0.80 };
 
+  // D п.17/18: «Персонаж» (field) mode removed; its stat-card moved into the
+  // detailed «Путь развития» view (formerly «Тоннель»).
   var MODES = [
-    { key: 'tunnel', label: { ru: 'Тоннель',  en: 'Tunnel',    es: 'Túnel' } },
-    { key: 'layers', label: { ru: 'Слои',     en: 'Layers',    es: 'Capas' } },
-    { key: 'field',  label: { ru: 'Персонаж', en: 'Character', es: 'Personaje' } }
+    { key: 'tunnel', label: { ru: 'Путь развития', en: 'Evolution path', es: 'Camino' } },
+    { key: 'layers', label: { ru: 'Слои',          en: 'Layers',        es: 'Capas' } }
   ];
   var PERIODS = [
     { key: 'week',    label: { ru: 'Неделя', en: 'Week',  es: 'Semana' } },
@@ -57,6 +58,7 @@
     fail:    { ru: 'Не удалось загрузить путь развития.', en: 'Could not load the evolution path.', es: 'No se pudo cargar el camino.' },
     now:     { ru: 'сейчас', en: 'now', es: 'ahora' },
     level:   { ru: 'Уровень', en: 'Level', es: 'Nivel' },
+    module:  { ru: 'Модуль', en: 'Module', es: 'Módulo' },
     layersTitle: { ru: 'Слои', en: 'Layers', es: 'Capas' },
     openProfile: { ru: 'Открыть профиль', en: 'Open profile', es: 'Abrir perfil' },
     demoBadge: { ru: 'демо', en: 'demo', es: 'demo' }
@@ -260,10 +262,19 @@
     g.insertBefore(lg, g.firstChild || null);
   }
   function filament(a, b, stroke, op, w) {
+    var midX = (a.x + b.x) / 2;
     var midY = (a.y + b.y) / 2 - Math.min(46, Math.abs(b.x - a.x) * 0.22);
-    var d = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
-            ' Q' + ((a.x + b.x) / 2).toFixed(1) + ' ' + midY.toFixed(1) +
-            ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+    var d;
+    // D п.22: smooth Catmull-Rom curve through [a, lifted-mid, b] via d3-shape
+    // when available; degrade to a quadratic bézier otherwise.
+    if (window.d3 && window.d3.line && window.d3.curveCatmullRom) {
+      d = window.d3.line().curve(window.d3.curveCatmullRom.alpha(0.7))(
+        [[a.x, a.y], [midX, midY], [b.x, b.y]]);
+    } else {
+      d = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+          ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) +
+          ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+    }
     return el('path', { d: d, fill: 'none', stroke: stroke, 'stroke-width': w || '0.8', opacity: String(op) });
   }
   // decorative background mycelium — long faint organic curves spanning the field
@@ -414,7 +425,10 @@
       if (i > 0) g.appendChild(el('line', { x1: sx0, y1: yTop, x2: sx0, y2: H - 30,
         stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
       var t = el('text', { x: mid.toFixed(1), y: (yTop - 14).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mod-num' });
-      t.textContent = (st.modules && st.modules.length ? (i + 1) + ' · ' : '') + truncate(s.label, 16);
+      // D п.20: real names when present; «Модуль N» fallback for empty/placeholder.
+      var hasMods = st.modules && st.modules.length;
+      var nm = truncate(s.label, 16);
+      t.textContent = hasMods ? (nm ? ((i + 1) + ' · ' + nm) : (L(STR.module, lang) + ' ' + (i + 1))) : nm;
       g.appendChild(t);
     });
   }
@@ -482,20 +496,36 @@
       }
     }
 
-    // nodes — scattered across the whole field
-    var nodeLayer = el('g');
-    events.forEach(function (e, i) {
-      var st2 = valStyle(e.valence);
-      var px = xOf(e.t);
+    // nodes — scattered across the whole field. D п.23: a short d3-force pass
+    // spreads them on X=time / Y=layer-band with collision, so events never pile
+    // into a single column when timestamps cluster. Practices ride the spine.
+    var sim = events.map(function (e, i) {
       var isInsight = e.layer === 'insight';
       var onSpine = e.layer === 'practice';
-      var yy = onSpine ? cy : yOfLayer(e.layer, i);
       var r = isInsight ? 3.6 : (onSpine ? 3.8 : (2.2 + Math.min(2.6, Math.log(1 + e.weight))));
-      var vis = el('circle', { cx: px.toFixed(1), cy: yy.toFixed(1), r: r.toFixed(1),
-        fill: isInsight ? 'var(--myc-cyan)' : (onSpine ? 'var(--myc-bg-2)' : st2.c),
-        stroke: onSpine ? 'var(--myc-line-primary)' : 'none', 'stroke-width': onSpine ? '1.4' : '0',
-        opacity: isInsight ? 0.95 : st2.o });
-      if (isInsight || onSpine || e.valence === 'positive') vis.setAttribute('filter', 'url(#evoGlow)');
+      var tx = xOf(e.t);
+      var ty = onSpine ? cy : yOfLayer(e.layer, i);
+      return { e: e, i: i, isInsight: isInsight, onSpine: onSpine, r: r,
+               tx: tx, ty: ty, x: tx + (jit(i) - 0.5) * 6, y: ty };
+    });
+    if (window.d3 && window.d3.forceSimulation) {
+      var fsim = window.d3.forceSimulation(sim)
+        .force('x', window.d3.forceX(function (d) { return d.tx; }).strength(0.92)) // hug true time
+        .force('y', window.d3.forceY(function (d) { return d.ty; }).strength(function (d) { return d.onSpine ? 0.9 : 0.16; }))
+        .force('collide', window.d3.forceCollide(function (d) { return d.r + 1.6; }).iterations(2))
+        .stop();
+      for (var ti = 0; ti < 150; ti++) fsim.tick();
+    }
+    var nodeLayer = el('g');
+    sim.forEach(function (d) {
+      var e = d.e, st2 = valStyle(e.valence);
+      var px = Math.max(x0, Math.min(x1, d.x));
+      var yy = d.onSpine ? cy : Math.max(fieldTop + 4, Math.min(fieldBot - 4, d.y));
+      var vis = el('circle', { cx: px.toFixed(1), cy: yy.toFixed(1), r: d.r.toFixed(1),
+        fill: d.isInsight ? 'var(--myc-cyan)' : (d.onSpine ? 'var(--myc-bg-2)' : st2.c),
+        stroke: d.onSpine ? 'var(--myc-line-primary)' : 'none', 'stroke-width': d.onSpine ? '1.4' : '0',
+        opacity: d.isInsight ? 0.95 : st2.o });
+      if (d.isInsight || d.onSpine || e.valence === 'positive') vis.setAttribute('filter', 'url(#evoGlow)');
       vis.appendChild(titleNode(e, lang));
       registerNode(e.id, px, parseFloat(yy.toFixed(1)));
       nodeLayer.appendChild(interactiveNode(vis, e, container, lang));
@@ -636,6 +666,7 @@
     var apiBase = opts.apiBase || window.AUTH_API || '';
     var token = opts.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('na_token') : '');
     var st = container.__evo || { mode: opts.mode || 'tunnel', period: opts.period || 'month', cursor: 1, hidden: {} };
+    if (st.mode === 'field') st.mode = 'tunnel'; // D п.17: «Персонаж» mode retired
     container.__evo = st;
 
     container.classList.add('myc-root');
@@ -692,9 +723,18 @@
       return jget('/api/courses/' + encodeURIComponent(slug)).then(function (cd) {
         var blocks = (cd && cd.blocks) || [];
         var lang = (typeof window.getLang === 'function') ? window.getLang() : 'ru';
+        // D п.20: resolve the section title across languages and treat the
+        // creation placeholders ('Новый раздел'/'Новый курс'/empty) as "no name"
+        // so the header falls back to «Модуль N» instead of repeating the stub.
+        var PLACEHOLDERS = { 'новый раздел': 1, 'новый курс': 1, 'new section': 1, 'new module': 1, '': 1 };
         var mods = blocks.filter(function (b) { return b.block_type === 'section' || b.block_type === 'module'; })
-          .map(function (b) { return b['title_' + lang] || b.title_ru || b.title_en || b.title_es || ''; })
-          .filter(Boolean);
+          .sort(function (a, b) { return (a.order_idx || 0) - (b.order_idx || 0); })
+          .map(function (b) {
+            var nm = (b['title_' + lang] || b.title_ru || b.title_en || b.title_es || '').trim();
+            return PLACEHOLDERS[nm.toLowerCase()] ? '' : nm; // '' → drawn as «Модуль N»
+          });
+        // keep the array length (so module count/positions stay real) but only
+        // return it when at least one section exists.
         return mods.length ? mods : null;
       });
     }).catch(function () { return null; });
@@ -836,11 +876,12 @@
     if (st.mode === 'layers') {
       renderLayers(svg, W, data, lang, container, st);
       addLayerToggles(container, canvas, st, lang);
-    } else if (st.mode === 'field') {
-      renderFieldMode(container, canvas, svg, W, data, lang, st);
     } else {
       renderTunnel(svg, W, data, container, lang, st);
       addUserPanel(canvas, st, lang);
+      // D п.17: stat-card (Уровень / Рост XP / Эмоция / Состояние / Активность)
+      // relocated here from the removed «Персонаж» mode.
+      addCharacterStats(canvas, st, data, data.aggregates || {}, lang);
       addLayerToggles(container, canvas, st, lang);
     }
     if (st.isDemo) addDemoBadge(canvas, lang);
