@@ -39,6 +39,22 @@
     return n;
   }
   function spineY(x, cy) { return cy + SPINE_AMP * Math.sin(x * SPINE_K); }
+  /* shape-aware node body: circle | square (practice) | diamond (tool_task) — C п.15 */
+  function shapeNode(shape, cx, cy, r, attrs) {
+    var n;
+    if (shape === 'square') {
+      var s = r * 0.92;
+      n = el('rect', { x: cx - s, y: cy - s, width: s * 2, height: s * 2, rx: 1.6, ry: 1.6 });
+    } else if (shape === 'diamond') {
+      var d = r * 1.18;
+      n = el('path', { d: 'M' + cx + ' ' + (cy - d) + ' L' + (cx + d) + ' ' + cy +
+        ' L' + cx + ' ' + (cy + d) + ' L' + (cx - d) + ' ' + cy + ' Z' });
+    } else {
+      n = el('circle', { cx: cx, cy: cy, r: r });
+    }
+    if (attrs) for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
   function pick(o, base, lang) {
     return (o && (o[base + '_' + lang] || o[base + '_ru'] || o[base + '_en'] || o[base + '_es'])) || '';
   }
@@ -49,7 +65,7 @@
     text: 'Текст', video: 'Видео', image: 'Изображение',
     link: 'Ссылка', sensation_prompt: 'Запрос ощущений',
     question_branch: 'Ветвление', sound_cue: 'Сигнал', break: 'Пауза',
-    student_audio: 'Голос', student_text: 'Ответ'
+    student_audio: 'Голос', student_text: 'Ответ', tool_task: 'Задание из инструмента'
   };
   var STATUS_LABEL = { done: 'Пройдено', current: 'Текущий шаг', open: 'Доступно', locked: 'Закрыто' };
   var HERE_LABEL = { ru: 'Вы здесь', en: 'You are here', es: 'Aquí estás' };
@@ -71,9 +87,14 @@
       var secret = !!(b.payload && (b.payload.secret || b.payload.hidden));
       var locked = (hasLock || secret) && !done;
       var status = done ? 'done' : (i === curIdx ? 'current' : (locked ? 'locked' : 'open'));
+      // shape: practice/audio → square, tool_task → diamond, else circle (C, п.15)
+      var bt = b.block_type;
+      var shape = (bt === 'practice' || bt === 'audio') ? 'square'
+                : (bt === 'tool_task') ? 'diamond'
+                : 'circle';
       nodes.push({
         i: i, block: b, isModule: isModule, secret: locked,
-        status: status,
+        status: status, shape: shape,
         points: parseInt(b.points, 10) || 0,
         title: pick(b, 'title', _LANG) || (TYPE_LABEL[b.block_type] || b.block_type)
       });
@@ -86,9 +107,15 @@
   function render(container, data, opts) {
     _LANG = opts.lang || 'ru';
     var course = data.course || {};
-    var blocks = (data.blocks || []).slice().sort(function (a, b) {
-      return (a.order_idx || 0) - (b.order_idx || 0);
-    });
+    // Use the caller-provided reading order verbatim. The player already
+    // linearizes (section → children) via cpLinearizeBlocks, so node index i
+    // matches coursePlayer.blocks[i]. Only when raw/un-linearized blocks come in
+    // (fetch-by-slug path) do we linearize here so node↔block indices stay aligned.
+    var raw = (data.blocks || []).slice();
+    var hasParents = raw.some(function (b) { return b.parent_block_id != null; });
+    var blocks = (hasParents && typeof window.cpLinearizeBlocks === 'function')
+      ? window.cpLinearizeBlocks(raw)
+      : raw;
     var progress = {};
     (data.progress || []).forEach(function (p) { progress[p.block_id] = p; });
 
@@ -105,6 +132,9 @@
 
     var model = classify(blocks, progress, opts.currentIdx);
     var nodes = model.nodes;
+    // Selected node = the one the user clicked / is viewing in the player (distinct
+    // from "current" progress position, which carries the "Вы здесь" badge). C п.11.
+    var selIdx = (typeof opts.selectedIdx === 'number') ? opts.selectedIdx : -1;
 
     /* — layout: assign x along the spine — */
     var x = PAD_X;
@@ -292,7 +322,16 @@
         g.appendChild(halo);
       }
 
-      var core = el('circle', { 'class': 'myc-node-core', cx: cx, cy: ny, r: r,
+      /* selected-node highlight ring (distinct from "current" — C п.11) */
+      if (n.i === selIdx && n.status !== 'locked') {
+        var selR = r + 6;
+        g.appendChild(shapeNode(n.shape, cx, ny, selR, {
+          'class': 'myc-node-selected', fill: 'none',
+          stroke: 'var(--course-accent, var(--myc-green))', 'stroke-width': '1.6',
+          opacity: '0.95', 'stroke-dasharray': '3 3' }));
+      }
+
+      var core = shapeNode(n.shape, cx, ny, r, { 'class': 'myc-node-core',
         fill: fill, stroke: stroke, 'stroke-width': n.isModule ? '2' : '1.5', opacity: coreOpacity });
       if (glow) core.setAttribute('filter', glow);
       g.appendChild(core);
