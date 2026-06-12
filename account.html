@@ -2315,6 +2315,38 @@
 if (typeof window.t !== 'function') { window.t = function(k,d){ return d||k; }; }
 if (typeof window.getLang !== 'function') { window.getLang = function(){ return 'ru'; }; }
 
+// ── Course title resolver ──────────────────────────────────────────────────
+// Bug fix (🅰️): a course created in EN gets name_en filled but name_ru defaults
+// to the placeholder 'Новый курс'. The old resolver `c['name_'+uiLang]||c.name_ru`
+// therefore showed 'Новый курс' in a RU interface even for an English course.
+// Resolve by the COURSE's own language first (declared in c.languages[]), treat
+// the placeholder + empty strings as "no name", and only then fall back to UI lang.
+window.COURSE_NAME_PLACEHOLDER = 'Новый курс';
+window.courseTitle = function(course, uiLang){
+  if (!course) return '(без названия)';
+  uiLang = uiLang || (typeof getLang === 'function' ? getLang() : 'ru');
+  var PH = window.COURSE_NAME_PLACEHOLDER;
+  function nm(l){
+    if (!l) return '';
+    var v = course['name_' + l];
+    v = (v == null ? '' : String(v)).trim();
+    return (v && v !== PH) ? v : '';
+  }
+  var langs = Array.isArray(course.languages) ? course.languages : [];
+  var clang = course.lang || langs[0]; // the course's own primary language
+  return nm(clang) || nm(uiLang) || nm('ru') || nm('en') || nm('es')
+      || course.name_ru || course.name_en || course.name_es
+      || course.title || course.slug || '(без названия)';
+};
+
+// Shared admin-role check (used by Evolution Path demo seed, etc.)
+window.naIsAdmin = function(u){
+  u = u || (typeof currentUser !== 'undefined' ? currentUser : null);
+  if (!u) return false;
+  return u.role === 'founder' || u.role === 'specialist' || u.role === 'admin_basic'
+      || u.serverRole === 'superadmin';
+};
+
 // ══════════════════════════════════════════
 // AUTH SYSTEM (JWT + API)
 // ══════════════════════════════════════════
@@ -9462,7 +9494,7 @@ function renderCoursesList(){
     return;
   }
   box.innerHTML = courseState.courses.map(function(c){
-    var nm = c['name_'+lang] || c.name_ru || c.name_en || c.slug;
+    var nm = courseTitle(c, lang);
     var active = (courseState.currentId === c.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
     var pub = c.is_published ? '<span style="color:var(--accent-green);font-size:9px;margin-left:0.3rem;">●&nbsp;PUB</span>' : '<span style="color:var(--text-dim);font-size:9px;margin-left:0.3rem;">○ DRAFT</span>';
     return '<div onclick="courseSelect(' + c.id + ')" style="cursor:pointer;padding:0.55rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;' + active + '">'
@@ -9608,7 +9640,7 @@ function coursePreviewAsStudent(){
   coursePlayer.history = [];
   coursePlayer.previewMode = true; // navigate locally; never POST completion
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
-  var nm = courseState.currentCourse['name_'+lang] || courseState.currentCourse.name_ru || courseState.currentCourse.slug;
+  var nm = courseTitle(courseState.currentCourse, lang);
   document.getElementById('cp-course-name').textContent = '[ПРЕВЬЮ] ' + nm;
   document.getElementById('coursePlayerModal').style.display = 'block';
   cpRenderBlock();
@@ -10214,7 +10246,7 @@ function loadStudentCourses(){
       if (!courses.length) { box.innerHTML = ''; if (empty) empty.style.display = ''; return; }
       if (empty) empty.style.display = 'none';
       box.innerHTML = courses.map(function(c){
-        var nm = c['name_'+lang] || c.name_ru || c.name_en || c.slug;
+        var nm = courseTitle(c, lang);
         var desc = c['description_'+lang] || c.description_ru || c.description_en || '';
         var cover = c.cover_url ? '<div style="height:120px;background:#000 url(\''+c.cover_url+'\') center/cover no-repeat;border-radius:10px;margin-bottom:0.75rem;"></div>' : '';
         // Admin override: backend returns every course (incl. drafts) for admin roles.
@@ -10251,7 +10283,7 @@ function cpOpenCourse(slug){
       coursePlayer.idx = firstIdx < 0 ? 0 : firstIdx;
       coursePlayer.history = [];
       var lang = (typeof getLang === 'function') ? getLang() : 'ru';
-      document.getElementById('cp-course-name').textContent = d.course['name_'+lang] || d.course.name_ru || d.course.name_en || d.course.slug;
+      document.getElementById('cp-course-name').textContent = courseTitle(d.course, lang);
       document.getElementById('coursePlayerModal').style.display = 'block';
       cpRenderBlock();
       cpMountPathView(); // Mycelium Stage 1: render the course light-map
@@ -11300,7 +11332,7 @@ function openPathMapDetail(uid){
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:10035;padding:2rem 1rem;overflow-y:auto;';
     var coursesHtml = (d.courses||[]).map(function(c){
       var pct = c.total_blocks > 0 ? Math.round((c.done_blocks/c.total_blocks)*100) : 0;
-      var nm = c['name_'+lang] || c.name_ru || c.name_en || c.slug;
+      var nm = courseTitle(c, lang);
       return '<div style="display:flex;align-items:center;gap:0.5rem;font-size:12px;margin-bottom:0.4rem;">'
         + '<div style="flex:0 0 200px;">' + nm + '</div>'
         + '<div style="flex:1;height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">'

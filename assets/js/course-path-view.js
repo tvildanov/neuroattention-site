@@ -52,6 +52,7 @@
     student_audio: 'Голос', student_text: 'Ответ'
   };
   var STATUS_LABEL = { done: 'Пройдено', current: 'Текущий шаг', open: 'Доступно', locked: 'Закрыто' };
+  var HERE_LABEL = { ru: 'Вы здесь', en: 'You are here', es: 'Aquí estás' };
 
   /* — classify a raw block into our node model — */
   function classify(blocks, progress, currentIdx) {
@@ -116,15 +117,47 @@
     nodes.forEach(function (n) { n.y = spineY(n.x, cy); });
 
     /* — viewport + svg — */
+    /* B1: a vertically-resizable shell wraps the scroll viewport. The SVG is
+       rescaled to fill whatever height the user drags to (content scales, circles
+       stay round); double-clicking the corner handle toggles a fullscreen mode. */
+    var shell = document.createElement('div');
+    shell.className = 'myc-resize-shell';
+    shell.style.height = (opts.height || H) + 'px';
+    container.appendChild(shell);
+
     var viewport = document.createElement('div');
     viewport.className = 'myc-viewport';
-    viewport.style.height = H + 'px';
-    container.appendChild(viewport);
+    viewport.style.height = '100%';
+    viewport.style.overflowY = 'auto';
+    shell.appendChild(viewport);
 
-    var zoom = 1;
+    var zoom = 1, fitScale = 1;
     var svg = el('svg', { 'class': 'myc-svg', viewBox: '0 0 ' + contentW + ' ' + H,
       width: contentW, height: H, preserveAspectRatio: 'xMinYMid meet' });
     viewport.appendChild(svg);
+
+    function applySize() {
+      var shellH = shell.clientHeight || H;
+      fitScale = shellH / H;
+      svg.setAttribute('width', Math.max(1, Math.round(contentW * fitScale * zoom)));
+      svg.setAttribute('height', Math.max(1, Math.round(H * fitScale * zoom)));
+    }
+    if (typeof ResizeObserver === 'function') {
+      try { new ResizeObserver(applySize).observe(shell); } catch (e) {}
+    }
+
+    /* corner handle: visual affordance + dbl-click fullscreen */
+    var handle = document.createElement('div');
+    handle.className = 'myc-resize-handle';
+    handle.title = 'Потяните, чтобы изменить размер · двойной клик — на весь экран';
+    handle.innerHTML = '<svg viewBox="0 0 12 12"><path d="M11 1 L1 11 M11 5 L5 11 M11 9 L9 11" ' +
+      'stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>';
+    handle.addEventListener('dblclick', function (e) {
+      e.preventDefault();
+      shell.classList.toggle('is-fullscreen');
+      requestAnimationFrame(applySize);
+    });
+    shell.appendChild(handle);
 
     /* — defs: glow filters + gradients — */
     var defs = el('defs');
@@ -273,6 +306,11 @@
         g.appendChild(el('circle', { cx: cx, cy: ny, r: 2, fill: 'var(--myc-green)' }));
       }
 
+      /* B4: invisible enlarged hit target (r=24) so hover-glow + clicks register
+         within ~24px of the node centre, not just on the tiny visible core */
+      g.appendChild(el('circle', { 'class': 'myc-hit', cx: cx, cy: ny, r: 24,
+        fill: 'transparent', 'pointer-events': 'all' }));
+
       var clickable = (n.status !== 'locked') && typeof opts.onNavigate === 'function';
       if (clickable) {
         g.classList.add('is-clickable');
@@ -285,6 +323,30 @@
 
       nodeLayer.appendChild(g);
     });
+
+    /* — B3: "Вы здесь" badge over the current node only — */
+    var curNode = nodes[model.curIdx];
+    if (curNode && curNode.status !== 'locked' && !curNode.secret) {
+      var hLabel = HERE_LABEL[_LANG] || HERE_LABEL.ru;
+      var hr = curNode.isModule ? 11 : 6.5;
+      var bw = hLabel.length * 6.2 + 16, bh = 16;
+      // auto-offset so the badge never spills past the field edges
+      var bx = Math.max(startX, Math.min(endX, curNode.x));
+      bx = Math.max(bw / 2 + 4, Math.min(contentW - bw / 2 - 4, bx));
+      var bgTop = curNode.y - hr - 12 - bh;
+      var badge = el('g', { 'class': 'myc-here', opacity: '0' });
+      badge.appendChild(el('line', { 'class': 'myc-here-pin',
+        x1: curNode.x, y1: curNode.y - hr - 2, x2: bx, y2: bgTop + bh }));
+      badge.appendChild(el('rect', { 'class': 'myc-here-bg',
+        x: (bx - bw / 2).toFixed(1), y: bgTop.toFixed(1), width: bw.toFixed(1), height: bh,
+        rx: 8, ry: 8 }));
+      var ht = el('text', { 'class': 'myc-here-badge', x: bx.toFixed(1),
+        y: (bgTop + bh / 2 + 3.2).toFixed(1), 'text-anchor': 'middle' });
+      ht.textContent = hLabel;
+      badge.appendChild(ht);
+      badge.style.animation = 'myc-fade-in 1.2s ease 0.3s forwards';
+      nodeLayer.appendChild(badge);
+    }
 
     /* — chrome: legend + hint + hover card — */
     var legend = document.createElement('div');
@@ -328,12 +390,11 @@
     viewport.addEventListener('wheel', function (e) {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        var before = (viewport.scrollLeft + e.offsetX) / (contentW * zoom);
+        var unit = contentW * fitScale * zoom;
+        var before = (viewport.scrollLeft + e.offsetX) / unit;
         zoom = Math.max(0.6, Math.min(2.6, zoom * (e.deltaY < 0 ? 1.12 : 0.89)));
-        svg.setAttribute('width', contentW * zoom);
-        svg.setAttribute('height', H * zoom);
-        viewport.style.height = (H * zoom > H ? H : H * zoom) + 'px';
-        viewport.scrollLeft = before * contentW * zoom - e.offsetX;
+        applySize();
+        viewport.scrollLeft = before * contentW * fitScale * zoom - e.offsetX;
         hideCard();
       } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         viewport.scrollLeft += e.deltaY;
@@ -354,7 +415,8 @@
       panning = false; viewport.classList.remove('is-panning');
     });
 
-    /* center on the current step on first paint */
+    /* size the SVG to the shell, then center on the current step on first paint */
+    applySize();
     var cur = nodes[model.curIdx];
     if (cur) {
       requestAnimationFrame(function () {

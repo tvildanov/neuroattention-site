@@ -201,3 +201,68 @@
 .myc-stat { display: flex; flex-direction: column; gap: 2px; }
 .myc-stat b { font-size: 15px; color: var(--myc-text); font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .myc-stat span { font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--myc-text-mono); }
+
+/* ============================================================================
+   🅱️ CoursePathView polish — resize, "you are here", course-accent theming
+   (B1–B4). All additive + namespaced; no global overrides.
+   ============================================================================ */
+
+/* — B1: resizable map shell — */
+.myc-resize-shell {
+  position: relative;
+  resize: vertical;
+  overflow: hidden;
+  min-height: 200px;
+  max-height: 90vh;
+  border-radius: 14px;
+}
+.myc-resize-shell.is-fullscreen {
+  position: fixed; inset: 3vh 3vw; z-index: 10050;
+  max-height: none; height: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+}
+/* custom grab handle in the bottom-right corner */
+.myc-resize-handle {
+  position: absolute; right: 4px; bottom: 4px; z-index: 16;
+  width: 16px; height: 16px; cursor: nwse-resize;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  color: var(--myc-text-mono); opacity: 0.6; user-select: none;
+  transition: opacity .2s, color .2s;
+}
+.myc-resize-handle:hover { opacity: 1; color: var(--myc-cyan); }
+.myc-resize-handle svg { width: 12px; height: 12px; display: block; }
+
+/* — B3: "you are here" badge over the current node — */
+.myc-here-badge {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+  fill: var(--myc-cyan);
+}
+.myc-here-bg { fill: rgba(5,9,14,0.85); stroke: var(--myc-cyan); stroke-width: 1; }
+.myc-here-pin { stroke: var(--myc-cyan); stroke-width: 1; opacity: .5; }
+
+/* invisible enlarged hit target keeps the node easy to click/hover (B4) */
+.myc-hit { cursor: pointer; }
+
+/* — B2: course-accent theming inside the course player only — */
+#coursePlayerModal {
+  --course-accent: var(--myc-green-deep, #56F2A6);
+  --course-accent-2: var(--myc-green, #8DFFC8);
+  --course-accent-soft: rgba(86,242,166,0.14);
+}
+#coursePlayerModal .btn-solid {
+  background: var(--course-accent);
+  border-color: var(--course-accent);
+  color: #04130c;
+}
+#coursePlayerModal .btn-solid:hover { background: var(--course-accent-2); border-color: var(--course-accent-2); }
+#coursePlayerModal #cp-progress-text { color: var(--course-accent-2); }
+#coursePlayerModal #cp-joint-panel {
+  background: var(--course-accent-soft) !important;
+  border-color: rgba(86,242,166,0.25) !important;
+}
+#coursePlayerModal #cp-joint-panel h4 { color: var(--course-accent-2) !important; }
+/* progress-bar fills + accent chips inside the player → course green */
+#coursePlayerModal .player-bar-fill,
+#coursePlayerModal .cp-progress-fill { background: var(--course-accent) !important; }
+#coursePlayerModal [style*="--accent-cyan"] { }
