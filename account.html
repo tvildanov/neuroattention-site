@@ -316,6 +316,34 @@
 #rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 .rpg-modal-overlay { position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px); }
 .rpg-modal { max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px); }
+/* ── Course player fullscreen overlay (C п.7/8/16) ────────────────────────── */
+#coursePlayerModal.cp-fullscreen{ position:fixed; inset:0; z-index:10010;
+  background:rgba(8,8,14,0.97); backdrop-filter:blur(10px);
+  display:flex; --course-accent:#56F2A6; }
+#coursePlayerModal .cp-shell{ display:flex; flex-direction:column; width:100%; height:100%; }
+#coursePlayerModal .cp-topstrip{ flex:0 0 auto; padding:0.75rem 1.1rem 0.6rem;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(180deg, rgba(12,16,20,0.6), transparent); }
+#coursePlayerModal .cp-header{ display:flex; align-items:center; gap:0.75rem;
+  max-width:1060px; margin:0 auto 0.55rem; }
+/* the path strip: narrow band, ~180px, never the whole screen */
+#coursePlayerModal #cp-path-view{ max-width:1060px; margin:0 auto; height:180px; }
+#coursePlayerModal #cp-path-view .myc-resize-shell{ height:180px !important; }
+#coursePlayerModal .cp-content{ flex:1 1 auto; overflow-y:auto; padding:1.25rem 1.1rem 2rem; }
+#coursePlayerModal .cp-content #cp-grid{ max-width:1060px; margin:0 auto; }
+/* secondary chrome tinted to the course accent (cyan reserved for current node) */
+#coursePlayerModal .cp-accent-btn{ border-color:var(--course-accent) !important;
+  color:var(--course-accent) !important; }
+#coursePlayerModal .btn-solid.cp-accent-btn{ background:color-mix(in srgb, var(--course-accent) 18%, transparent) !important; }
+.cp-restore-pill{ position:fixed; left:16px; bottom:16px; z-index:10011;
+  background:rgba(16,20,26,0.95); color:var(--text-primary,#fff);
+  border:1px solid var(--course-accent,#56F2A6); border-radius:20px;
+  padding:0.5rem 1rem; font-size:12px; cursor:pointer; font-family:inherit;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+@media (max-width:720px){
+  #coursePlayerModal .cp-content #cp-grid{ grid-template-columns:1fr !important; }
+  #coursePlayerModal #cp-path-view{ height:150px; }
+}
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
 <!-- d3 modules (R5): used by Evolution Path filaments (d3-shape) + node layout (d3-force) -->
@@ -931,21 +959,27 @@
     </div>
   </div>
 
-  <!-- Course player modal -->
-  <div id="coursePlayerModal" style="display:none;position:fixed;inset:0;background:rgba(8,8,14,0.97);z-index:10010;overflow-y:auto;padding:1.5rem 1rem;">
-    <div style="max-width:760px;margin:0 auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div>
-          <h2 id="cp-course-name" style="margin:0;font-size:18px;color:var(--text-primary);">—</h2>
-          <p id="cp-progress-text" style="margin:0.2rem 0 0;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">—</p>
+  <!-- Course player — fullscreen overlay (C п.7/8): path strip on top, content below -->
+  <div id="coursePlayerModal" style="display:none;">
+    <div class="cp-shell">
+      <!-- top strip: header chrome + course path view -->
+      <div class="cp-topstrip">
+        <div class="cp-header">
+          <div style="min-width:0;">
+            <h2 id="cp-course-name" style="margin:0;font-size:16px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</h2>
+            <p id="cp-progress-text" style="margin:0.15rem 0 0;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">—</p>
+          </div>
+          <div style="display:flex;gap:0.4rem;margin-left:auto;align-items:center;">
+            <button class="btn btn-ghost cp-accent-btn" onclick="cpInvitePeer()" style="font-size:12px;padding:0.4rem 0.7rem;" title="Пригласить на совместную практику" data-i18n="a.courses.btn_invite">🤝 Пригласить</button>
+            <button class="btn btn-ghost" onclick="cpMinimize()" style="font-size:14px;padding:0.4rem 0.7rem;" title="Свернуть">–</button>
+            <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;padding:0.4rem 0.7rem;" title="Закрыть (Esc)">✕</button>
+          </div>
         </div>
-        <div style="display:flex;gap:0.5rem;">
-          <button class="btn btn-ghost" onclick="cpInvitePeer()" style="font-size:12px;padding:0.4rem 0.7rem;" title="Пригласить на совместную практику" data-i18n="a.courses.btn_invite">🤝 Пригласить</button>
-          <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;">✕ Закрыть</button>
-        </div>
+        <!-- Mycelium Stage 1: light-map of the course path -->
+        <div id="cp-path-view"></div>
       </div>
-      <!-- Mycelium Stage 1: light-map of the course path -->
-      <div id="cp-path-view" style="margin-bottom:1rem;"></div>
+      <!-- bottom: scrollable practice content -->
+      <div class="cp-content">
       <div style="display:grid;grid-template-columns:1fr 280px;gap:1rem;" id="cp-grid">
         <div id="cp-block-area" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;min-height:280px;"></div>
         <div id="cp-joint-panel" style="display:none;background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.15);border-radius:14px;padding:1rem;">
@@ -963,12 +997,13 @@
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:1rem;">
+      <div class="cp-nav" style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:1rem;max-width:1060px;margin-left:auto;margin-right:auto;">
         <button class="btn btn-ghost" onclick="cpPrev()" id="cp-prev-btn" style="font-size:12px;padding:0.5rem 1rem;" data-i18n="a.courses.btn_prev">← Назад</button>
-        <button class="btn btn-solid" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
+        <button class="btn btn-solid cp-accent-btn" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
       </div>
-    </div>
-  </div>
+      </div><!-- /cp-content -->
+    </div><!-- /cp-shell -->
+  </div><!-- /coursePlayerModal -->
 
   <!-- TAB: Инструменты (was Calendar + NeuroMap + Diary) -->
   <div class="tab-panel" id="tab-tools">
@@ -9596,13 +9631,16 @@ function coursePreviewAsStudent(){
   coursePlayer.blocks = cpLinearizeBlocks(courseState.currentBlocks || []);
   coursePlayer.progress = {};
   coursePlayer.idx = 0;
+  coursePlayer.currentIdx = 0;
   coursePlayer.history = [];
   coursePlayer.previewMode = true; // navigate locally; never POST completion
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var nm = courseTitle(courseState.currentCourse, lang);
   document.getElementById('cp-course-name').textContent = '[ПРЕВЬЮ] ' + nm;
-  document.getElementById('coursePlayerModal').style.display = 'block';
+  cpApplyAccent(courseState.currentCourse);
+  cpOpenFullscreen();
   cpRenderBlock();
+  cpMountPathView();
 }
 window.coursePreviewAsStudent = coursePreviewAsStudent;
 
@@ -10189,7 +10227,14 @@ window.cbBranchSetNext = cbBranchSetNext;
 // ══════════════════════════════════════════
 // Pack 24 phase 3: Student-side Course Player
 // ══════════════════════════════════════════
-var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, history: [], blockResponse: null, previewMode: false };
+// idx = block currently *viewed* (selected) in the content area;
+// currentIdx = actual progress pointer (first incomplete) — carries "Вы здесь". C п.11
+var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, currentIdx: 0, history: [], blockResponse: null, previewMode: false };
+// Recompute the progress pointer = index of the first not-yet-completed block.
+function cpRecomputeCurrent(){
+  var fi = coursePlayer.blocks.findIndex(function(b){ return !coursePlayer.progress[b.id]; });
+  coursePlayer.currentIdx = fi < 0 ? coursePlayer.blocks.length - 1 : fi;
+}
 
 function loadStudentCourses(){
   var token = localStorage.getItem('na_token'); if (!token) return;
@@ -10240,10 +10285,12 @@ function cpOpenCourse(slug){
       // Find first uncompleted block, else start from 0
       var firstIdx = coursePlayer.blocks.findIndex(function(b){ return !coursePlayer.progress[b.id]; });
       coursePlayer.idx = firstIdx < 0 ? 0 : firstIdx;
+      coursePlayer.currentIdx = coursePlayer.idx;
       coursePlayer.history = [];
       var lang = (typeof getLang === 'function') ? getLang() : 'ru';
       document.getElementById('cp-course-name').textContent = courseTitle(d.course, lang);
-      document.getElementById('coursePlayerModal').style.display = 'block';
+      cpApplyAccent(d.course);
+      cpOpenFullscreen();
       cpRenderBlock();
       cpMountPathView(); // Mycelium Stage 1: render the course light-map
     })
@@ -10266,9 +10313,11 @@ function cpMountPathView(){
       progress: progressArr
     }, {
       lang: lang,
-      currentIdx: coursePlayer.idx,
-      onNavigate: function(i){
-        // Jump the player to the chosen step, then refresh the map focus.
+      currentIdx: coursePlayer.currentIdx,   // badge "Вы здесь" sits on actual progress
+      selectedIdx: coursePlayer.idx,         // ring sits on the viewed/clicked node
+      onNavigate: function(i, block){
+        // Click on a node → open that practice/task in the player below (C п.12),
+        // mark it "selected" — but do NOT move the progress pointer.
         if (i === coursePlayer.idx) return;
         coursePlayer.history.push(coursePlayer.idx);
         coursePlayer.idx = i;
@@ -10279,8 +10328,33 @@ function cpMountPathView(){
   } catch(e){ console.warn('cpMountPathView:', e); }
 }
 window.cpMountPathView = cpMountPathView;
+
+// C п.7/8/16: open the player as a body-scroll-locked fullscreen overlay and
+// theme its secondary chrome with the course's green accent.
+function cpApplyAccent(course){
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  var accent = (course && (course.accent_color || (course.payload && course.payload.accent_color))) || '#56F2A6';
+  modal.style.setProperty('--course-accent', accent);
+}
+function cpOpenFullscreen(){
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  modal.classList.add('cp-fullscreen');
+  modal.style.display = 'flex';
+  if (!document.body.dataset.cpPrevOverflow){
+    document.body.dataset.cpPrevOverflow = document.body.style.overflow || '';
+  }
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', cpEscHandler);
+}
+function cpEscHandler(e){ if (e.key === 'Escape') cpClose(); }
 function cpClose(){
-  document.getElementById('coursePlayerModal').style.display='none';
+  var modal = document.getElementById('coursePlayerModal');
+  if (modal){ modal.style.display='none'; modal.classList.remove('cp-fullscreen','cp-minimized'); }
+  document.removeEventListener('keydown', cpEscHandler);
+  document.body.style.overflow = document.body.dataset.cpPrevOverflow || '';
+  delete document.body.dataset.cpPrevOverflow;
   coursePlayer.course = null;
   coursePlayer.previewMode = false;
   if (cpJoint.pollTimer) { clearInterval(cpJoint.pollTimer); cpJoint.pollTimer = null; }
@@ -10288,6 +10362,30 @@ function cpClose(){
   var jp = document.getElementById('cp-joint-panel'); if (jp) jp.style.display='none';
 }
 window.cpClose = cpClose;
+// Minimize — hide the overlay but keep player state; a restore pill brings it back.
+function cpMinimize(){
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  document.body.style.overflow = document.body.dataset.cpPrevOverflow || '';
+  var pill = document.getElementById('cp-restore-pill');
+  if (!pill){
+    pill = document.createElement('button');
+    pill.id = 'cp-restore-pill';
+    pill.className = 'cp-restore-pill';
+    pill.onclick = cpRestore;
+    document.body.appendChild(pill);
+  }
+  var nm = (document.getElementById('cp-course-name')||{}).textContent || 'Курс';
+  pill.innerHTML = '▢ ' + nm;
+  pill.style.display = '';
+}
+function cpRestore(){
+  var modal = document.getElementById('coursePlayerModal');
+  if (modal){ modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+  var pill = document.getElementById('cp-restore-pill'); if (pill) pill.style.display='none';
+}
+window.cpMinimize = cpMinimize; window.cpRestore = cpRestore;
 
 function cpRenderBlock(){
   var area = document.getElementById('cp-block-area');
@@ -10558,7 +10656,9 @@ function cpNext(){
   if (coursePlayer.previewMode || block.block_type === 'section') {
     coursePlayer.history.push(coursePlayer.idx);
     coursePlayer.idx = coursePlayer.idx + 1; // step into section's first child / next item
+    if (coursePlayer.idx > coursePlayer.currentIdx) coursePlayer.currentIdx = coursePlayer.idx;
     cpRenderBlock();
+    cpMountPathView();
     return;
   }
   // Capture text/textarea response if present
@@ -10600,13 +10700,21 @@ function _cpFinalize(block, response){
   .then(function(d){
     coursePlayer.progress[block.id] = { block_id: block.id, response: response, points_earned: d.points_earned };
     coursePlayer.history.push(coursePlayer.idx);
-    if (d.next_block_id) {
+    // C п.13/14: walk the linear array by default; only honour the server's
+    // next_block_id when the block is a real branch (question_branch). This stops
+    // the 2.1→2.1 stutter caused by trusting per-parent next pointers everywhere.
+    var linearNext = coursePlayer.idx + 1;
+    if (block.block_type === 'question_branch' && d.next_block_id) {
       var nextIdx = coursePlayer.blocks.findIndex(function(b){ return b.id === d.next_block_id; });
-      coursePlayer.idx = nextIdx >= 0 ? nextIdx : coursePlayer.idx + 1;
+      coursePlayer.idx = nextIdx >= 0 ? nextIdx : linearNext;
+    } else if (linearNext < coursePlayer.blocks.length) {
+      coursePlayer.idx = linearNext;
     } else {
       coursePlayer.idx = coursePlayer.blocks.length; // mark course done
     }
+    cpRecomputeCurrent();           // advance the "Вы здесь" pointer past what's done
     cpRenderBlock();
+    cpMountPathView();
   })
   .catch(function(e){ alert(e.message); });
 }
@@ -10616,6 +10724,7 @@ function cpPrev(){
   if (!coursePlayer.history.length) return;
   coursePlayer.idx = coursePlayer.history.pop();
   cpRenderBlock();
+  cpMountPathView();
 }
 window.cpPrev = cpPrev;
 
@@ -12701,7 +12810,10 @@ window.pbMove = pbMove;
         // Re-render the course player / preview if it's open — its block body is
         // built dynamically (not static data-i18n), so it needs a manual refresh.
         var cpModal = document.getElementById('coursePlayerModal');
-        if (cpModal && cpModal.style.display !== 'none' && coursePlayer && coursePlayer.course && typeof cpRenderBlock === 'function') cpRenderBlock();
+        if (cpModal && cpModal.style.display !== 'none' && coursePlayer && coursePlayer.course && typeof cpRenderBlock === 'function') {
+          cpRenderBlock();
+          if (typeof cpMountPathView === 'function') cpMountPathView(); // C п.21: relabel path on lang switch
+        }
       } catch(e){ console.warn('RPG re-render on lang change failed:', e); }
       return ret;
     };
