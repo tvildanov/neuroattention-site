@@ -3799,11 +3799,78 @@ function renderUserDetail(data){
     h+='</tbody></table></div>';
   }
 
+  // ── Card 8 (🅴): manual practice/block completion ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 12;">';
+  h+='<h3 style="margin:0 0 0.5rem;font-size:14px;">Прохождение практик — отметить вручную</h3>';
+  h+='<p style="margin:0 0 0.75rem;font-size:12px;color:var(--text-muted);">Выбери курс, отметь пройденные блоки. Можно задать дату задним числом и заметку. Начисляет XP и отражается в Пути развития.</p>';
+  h+='<select id="admin-completion-course" onchange="adminLoadCompletions(\''+u.id+'\', this.value)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.45rem 0.7rem;font-size:13px;min-width:240px;"><option value="">— выбери курс —</option></select>';
+  h+='<div id="admin-completion-grid" style="margin-top:1rem;"></div>';
+  h+='</div>';
+
   h+='</div>'; // close dash-grid
 
   content.innerHTML=h;
   content.style.opacity='1';
+  adminInitCompletion(u.id); // populate the course selector for the completion card
 }
+
+// ── 🅴 Admin manual block-completion UI ──────────────────────────────────────
+function adminInitCompletion(userId){
+  var sel = document.getElementById('admin-completion-course'); if (!sel) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  domApi('/api/courses?lang=' + encodeURIComponent(lang)).then(function(d){
+    (d.courses||[]).forEach(function(c){
+      var o = document.createElement('option');
+      o.value = c.id || c.slug; // GET completions keys by numeric course id
+      o.textContent = (typeof courseTitle==='function' ? courseTitle(c, lang) : (c.name_ru||c.slug));
+      sel.appendChild(o);
+    });
+  }).catch(function(e){ console.warn('adminInitCompletion:', e); });
+}
+function adminLoadCompletions(userId, courseId){
+  var grid = document.getElementById('admin-completion-grid'); if (!grid) return;
+  if (!courseId) { grid.innerHTML = ''; return; }
+  grid.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:0.5rem 0;">Загрузка…</div>';
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  domApi('/api/admin/users/' + userId + '/courses/' + courseId + '/completions').then(function(d){
+    var done = {}; (d.progress||[]).forEach(function(p){ done[p.block_id] = p; });
+    var blocks = (d.blocks||[]).filter(function(b){ return b.block_type !== 'section'; });
+    if (!blocks.length) { grid.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">В курсе нет блоков.</div>'; return; }
+    var rows = blocks.map(function(b){
+      var p = done[b.id];
+      var checked = p ? 'checked' : '';
+      var title = b['title_'+lang] || b.title_ru || b.title_en || b.title_es || b.block_type;
+      var when = p && p.completed_at ? new Date(p.completed_at).toISOString().slice(0,16) : '';
+      var note = (p && p.response && p.response.note) ? String(p.response.note).replace(/"/g,'&quot;') : '';
+      return '<tr data-block="'+b.id+'">'
+        + '<td style="text-align:center;"><input type="checkbox" '+checked+' onchange="adminToggleCompletion(\''+userId+'\','+b.id+',this)" style="accent-color:var(--accent-green,#6ee7a8);"></td>'
+        + '<td style="font-size:13px;color:var(--text-primary);">'+title+' <span style="color:var(--text-dim);font-size:10px;">· '+b.block_type+(b.points?(' · '+b.points+' XP'):'')+'</span></td>'
+        + '<td><input type="datetime-local" class="ac-date" value="'+when+'" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.25rem 0.4rem;font-size:11px;"></td>'
+        + '<td><input type="text" class="ac-note" value="'+note+'" placeholder="заметка" style="width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.25rem 0.5rem;font-size:11px;"></td>'
+        + '</tr>';
+    }).join('');
+    grid.innerHTML = '<table class="admin-table" style="width:100%;"><thead><tr><th style="width:40px;">✓</th><th>Блок</th><th style="width:180px;">Когда (задним числом)</th><th>Заметка</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      + '<div id="admin-completion-status" style="font-size:12px;color:var(--text-muted);margin-top:0.5rem;"></div>';
+  }).catch(function(e){ grid.innerHTML = '<div style="color:var(--accent-rose);font-size:12px;">Ошибка: '+e.message+'</div>'; });
+}
+function adminToggleCompletion(userId, blockId, cb){
+  var tr = cb.closest('tr');
+  var dateEl = tr.querySelector('.ac-date');
+  var noteEl = tr.querySelector('.ac-note');
+  var status = document.getElementById('admin-completion-status');
+  var body = { completed: cb.checked };
+  if (cb.checked) {
+    if (dateEl && dateEl.value) body.completed_at = new Date(dateEl.value).toISOString();
+    if (noteEl && noteEl.value) body.note = noteEl.value;
+  }
+  if (status) status.textContent = 'Сохранение…';
+  domApi('/api/admin/users/' + userId + '/blocks/' + blockId + '/completion', { method:'POST', body: body })
+    .then(function(r){ if (status) status.textContent = cb.checked ? ('✓ Отмечено пройденным' + (r.points_earned?(' (+'+r.points_earned+' XP)'):'')) : '✓ Отметка снята'; })
+    .catch(function(e){ if (status) status.textContent = 'Ошибка: ' + e.message; cb.checked = !cb.checked; });
+}
+window.adminInitCompletion = adminInitCompletion;
+window.adminLoadCompletions = adminLoadCompletions;
+window.adminToggleCompletion = adminToggleCompletion;
 
 // View-As mode
 function viewUserAs(userId){
