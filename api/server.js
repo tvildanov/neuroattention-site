@@ -1049,6 +1049,17 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS parent_block_id INTEGER REFERENCES course_blocks(id) ON DELETE CASCADE`;
     await sql`CREATE INDEX IF NOT EXISTS idx_course_blocks_parent ON course_blocks(parent_block_id)`;
 
+    // 🅱 tool_task blocks: a course step that embeds one of the instruments
+    // (sensation map / point A→B / diary / neuromap-emotion|event|thought).
+    // tool_kind selects the instrument; tool_config carries per-task parameters.
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_kind TEXT`;
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_config JSONB DEFAULT '{}'::jsonb`;
+    // Migrate legacy sensation-request blocks (feeling_request / sensation_prompt)
+    // into the unified tool_task model. Idempotent — only touches untouched rows.
+    await sql`UPDATE course_blocks
+      SET block_type = 'tool_task', tool_kind = 'sensation_map'
+      WHERE block_type IN ('feeling_request', 'sensation_prompt') AND tool_kind IS NULL`;
+
     // Pack 30: Teams (small groups within the community, owner-configurable broadcasts)
     await sql`CREATE TABLE IF NOT EXISTS teams (
       id SERIAL PRIMARY KEY,
@@ -4507,7 +4518,7 @@ app.post('/api/admin/courses/:id/blocks', requireAuth, async (req, res) => {
   try {
     if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
     const courseId = parseInt(req.params.id, 10);
-    const { block_type, title_ru, title_en, title_es, payload, points, parent_block_id } = req.body || {};
+    const { block_type, title_ru, title_en, title_es, payload, points, parent_block_id, tool_kind, tool_config } = req.body || {};
     if (!block_type) return res.status(400).json({ error: 'block_type required' });
     // order_idx scope: next-after-max within the SAME parent_block_id (or top-level if null)
     const parent = parent_block_id ? parseInt(parent_block_id, 10) : null;
@@ -4516,9 +4527,10 @@ app.post('/api/admin/courses/:id/blocks', requireAuth, async (req, res) => {
       : await sql`SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM course_blocks WHERE course_id = ${courseId} AND parent_block_id IS NULL`;
     const nextIdx = (maxRows[0]?.max_idx ?? -1) + 1;
     const [row] = await sql`
-      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id)
+      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id, tool_kind, tool_config)
       VALUES (${courseId}, ${nextIdx}, ${block_type}, ${title_ru||''}, ${title_en||''}, ${title_es||''},
-              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0}, ${parent})
+              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0}, ${parent},
+              ${tool_kind || null}, ${JSON.stringify(tool_config || {})}::jsonb)
       RETURNING *
     `;
     res.status(201).json({ block: row });
@@ -4543,6 +4555,8 @@ app.patch('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) =
         payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
         points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
         unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition),
+        tool_kind = COALESCE(${b.tool_kind !== undefined ? b.tool_kind : null}, tool_kind),
+        tool_config = COALESCE(${b.tool_config !== undefined ? JSON.stringify(b.tool_config) : null}::jsonb, tool_config),
         parent_block_id = ${newParent}
         WHERE id = ${bid} RETURNING *`;
     } else {
@@ -4553,7 +4567,9 @@ app.patch('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) =
         title_es = COALESCE(${b.title_es}, title_es),
         payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
         points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
-        unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition)
+        unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition),
+        tool_kind = COALESCE(${b.tool_kind !== undefined ? b.tool_kind : null}, tool_kind),
+        tool_config = COALESCE(${b.tool_config !== undefined ? JSON.stringify(b.tool_config) : null}::jsonb, tool_config)
         WHERE id = ${bid} RETURNING *`;
     }
     if (!updated) return res.status(404).json({ error: 'Not found' });
@@ -4795,6 +4811,33 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
                 })}::jsonb, now())`;
     } catch (jeErr) { console.warn('journey log:', jeErr.message); }
 
+    // 🅱 tool_task: persist the instrument result onto the unified timeline so it
+    // surfaces in the right Evolution Path layer (and the path map) exactly like a
+    // standalone instrument entry. Mapping kind → {journey kind, layer}.
+    if (block.block_type === 'tool_task' && block.tool_kind) {
+      const TOOL_JOURNEY = {
+        sensation_map:    { kind: 'sensation', layer: 'sensation' },
+        point_ab:         { kind: 'event',     layer: 'event' },
+        diary:            { kind: 'insight',   layer: 'insight' },
+        neuromap_emotion: { kind: 'emotion',   layer: 'emotion' },
+        neuromap_event:   { kind: 'event',     layer: 'event' },
+        neuromap_thought: { kind: 'thought',   layer: 'thought' }
+      };
+      const map = TOOL_JOURNEY[block.tool_kind];
+      if (map) {
+        try {
+          await logJourney(userId, map.kind, map.layer, {
+            source: 'course_tool_task', tool_kind: block.tool_kind,
+            course_id: courseId, block_id: blockId,
+            label: (response && (response.label || response.text)) || block.title_ru || '',
+            valence: (response && response.valence) || 'neutral',
+            comment: (response && (response.comment || response.text)) || '',
+            response: response || {}
+          }, null);
+        } catch (ttErr) { console.warn('tool_task journey:', ttErr.message); }
+      }
+    }
+
     const teamPayload = {
       user_id: userId,
       course_id: courseId,
@@ -4996,6 +5039,28 @@ app.post('/api/teams/:id/announce', requireAuth, async (req, res) => {
         AND NOT ('team_announcement' = ANY(COALESCE(u.notif_mute, '{}'::text[])))`;
     res.json({ ok: true });
   } catch (err) { console.error('team announce:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/teams/:id/leader — transfer leadership (🅵 п.29). Only the current
+// owner may transfer; the new leader must already be a member. Enforces a single
+// leader: the old owner becomes a normal member, the target becomes owner.
+app.patch('/api/teams/:id/leader', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const newLeader = req.body && req.body.user_id;
+    if (!newLeader) return res.status(400).json({ error: 'user_id required' });
+    const [t] = await sql`SELECT owner_user_id FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Team not found' });
+    if (String(t.owner_user_id) !== String(me)) return res.status(403).json({ error: 'Only the current leader can transfer leadership' });
+    const [mem] = await sql`SELECT 1 FROM team_members WHERE team_id = ${tid} AND user_id = ${newLeader}`;
+    if (!mem) return res.status(400).json({ error: 'New leader must be a team member' });
+    await sql`UPDATE teams SET owner_user_id = ${newLeader}, updated_at = now() WHERE id = ${tid}`;
+    // reflect roles in team_members (single owner)
+    await sql`UPDATE team_members SET role = 'member' WHERE team_id = ${tid} AND role = 'owner'`;
+    await sql`UPDATE team_members SET role = 'owner' WHERE team_id = ${tid} AND user_id = ${newLeader}`;
+    res.json({ ok: true, owner_user_id: newLeader });
+  } catch (err) { console.error('team leader transfer:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── Pack 29: User journey + admin path-map grid ──
@@ -5371,6 +5436,77 @@ app.post('/api/admin/users/:id/xp', requireAuth, async (req, res) => {
     await notifyUser(targetId, 'achievement', { slug, title: ach.title_ru, emoji: '⭐', xp: amount });
     res.json({ ok: true, granted_xp: amount, achievement_id: ach.id });
   } catch (err) { console.error('grant xp:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── 🅴 Admin: mark course-block completion for any user (or self) ────────────
+// Resolve ':userId' — the literal 'me' (or the caller's own id) maps to the admin.
+function resolveTargetUser(req) {
+  const callerId = req.user.sub || req.user.id;
+  const raw = req.params.userId;
+  return (raw === 'me' || raw === callerId) ? callerId : raw;
+}
+
+// GET /api/admin/users/:userId/courses/:courseId/completions — the user's
+// per-block completion state for a course (admin only). Powers the checkbox grid.
+app.get('/api/admin/users/:userId/courses/:courseId/completions', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const targetId = resolveTargetUser(req);
+    const courseId = parseInt(req.params.courseId, 10);
+    const blocks = await sql`SELECT id, order_idx, block_type, title_ru, title_en, title_es, points, parent_block_id, tool_kind
+                             FROM course_blocks WHERE course_id = ${courseId} ORDER BY order_idx ASC, id ASC`;
+    const progress = await sql`SELECT block_id, points_earned, completed_at, response
+                               FROM course_block_progress WHERE user_id = ${targetId} AND course_id = ${courseId}`;
+    res.json({ blocks, progress });
+  } catch (err) { console.error('GET completions:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/users/:userId/blocks/:blockId/completion — set/clear completion.
+// body { completed: bool, completed_at?: iso, note?: string }. Awards XP + logs a
+// back-dated journey event so it surfaces in Evolution Path + the Path Map.
+app.post('/api/admin/users/:userId/blocks/:blockId/completion', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const targetId = resolveTargetUser(req);
+    const blockId = parseInt(req.params.blockId, 10);
+    const { completed, completed_at, note } = req.body || {};
+    const [block] = await sql`SELECT * FROM course_blocks WHERE id = ${blockId}`;
+    if (!block) return res.status(404).json({ error: 'Block not found' });
+    const courseId = block.course_id;
+    const points = parseInt(block.points, 10) || 0;
+
+    if (completed === false) {
+      await sql`DELETE FROM course_block_progress WHERE user_id = ${targetId} AND block_id = ${blockId}`;
+      return res.json({ ok: true, completed: false, block_id: blockId });
+    }
+
+    // Validate/normalise an optional back-date; default to now().
+    let whenIso = null;
+    if (completed_at) { const d = new Date(completed_at); if (!isNaN(d.getTime())) whenIso = d.toISOString(); }
+    const resp = { admin_marked: true, marked_by: req.user.sub || req.user.id, note: note || '' };
+
+    if (whenIso) {
+      await sql`INSERT INTO course_block_progress (user_id, course_id, block_id, response, points_earned, completed_at)
+                VALUES (${targetId}, ${courseId}, ${blockId}, ${JSON.stringify(resp)}::jsonb, ${points}, ${whenIso})
+                ON CONFLICT (user_id, block_id) DO UPDATE
+                  SET response = EXCLUDED.response, points_earned = EXCLUDED.points_earned, completed_at = EXCLUDED.completed_at`;
+    } else {
+      await sql`INSERT INTO course_block_progress (user_id, course_id, block_id, response, points_earned)
+                VALUES (${targetId}, ${courseId}, ${blockId}, ${JSON.stringify(resp)}::jsonb, ${points})
+                ON CONFLICT (user_id, block_id) DO UPDATE
+                  SET response = EXCLUDED.response, points_earned = EXCLUDED.points_earned, completed_at = now()`;
+    }
+
+    // Journey event (back-dated) so XP + the timeline reflect the admin mark.
+    try {
+      await logJourney(targetId, 'block_done', 'practice', {
+        course_id: courseId, block_id: blockId, block_type: block.block_type,
+        points: points, admin_marked: true, note: note || ''
+      }, whenIso);
+    } catch (jeErr) { console.warn('admin completion journey:', jeErr.message); }
+
+    res.json({ ok: true, completed: true, block_id: blockId, points_earned: points, completed_at: whenIso });
+  } catch (err) { console.error('POST completion:', err); res.status(500).json({ error: err.message }); }
 });
 
 // Helper: insert a notification but respect the recipient's per-kind mute list.

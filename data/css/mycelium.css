@@ -49,7 +49,14 @@
   overflow: hidden;
   color: var(--myc-text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* C п.9: the path must never text-select (red highlight) when clicking nodes */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
+/* C п.11: selected-node ring softly pulses so it reads apart from "current" */
+.myc-node-selected { animation: myc-sel-pulse 2.2s ease-in-out infinite; }
+@keyframes myc-sel-pulse { 0%,100%{opacity:0.55;} 50%{opacity:1;} }
 
 /* horizontal scroll viewport */
 .myc-viewport {

@@ -316,8 +316,45 @@
 #rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 .rpg-modal-overlay { position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px); }
 .rpg-modal { max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px); }
+/* ── Course player fullscreen overlay (C п.7/8/16) ────────────────────────── */
+#coursePlayerModal.cp-fullscreen{ position:fixed; inset:0; z-index:10010;
+  background:rgba(8,8,14,0.97); backdrop-filter:blur(10px);
+  display:flex; --course-accent:#56F2A6; }
+#coursePlayerModal .cp-shell{ display:flex; flex-direction:column; width:100%; height:100%; }
+#coursePlayerModal .cp-topstrip{ flex:0 0 auto; padding:0.75rem 1.1rem 0.6rem;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  background:linear-gradient(180deg, rgba(12,16,20,0.6), transparent); }
+#coursePlayerModal .cp-header{ display:flex; align-items:center; gap:0.75rem;
+  max-width:1060px; margin:0 auto 0.55rem; }
+/* the path strip: narrow band, ~180px, never the whole screen */
+#coursePlayerModal #cp-path-view{ max-width:1060px; margin:0 auto; height:180px; }
+#coursePlayerModal #cp-path-view .myc-resize-shell{ height:180px !important; }
+#coursePlayerModal .cp-content{ flex:1 1 auto; overflow-y:auto; padding:1.25rem 1.1rem 2rem; }
+#coursePlayerModal .cp-content #cp-grid{ max-width:1060px; margin:0 auto; }
+/* secondary chrome tinted to the course accent (cyan reserved for current node) */
+#coursePlayerModal .cp-accent-btn{ border-color:var(--course-accent) !important;
+  color:var(--course-accent) !important; }
+#coursePlayerModal .btn-solid.cp-accent-btn{ background:color-mix(in srgb, var(--course-accent) 18%, transparent) !important; }
+.cp-restore-pill{ position:fixed; left:16px; bottom:16px; z-index:10011;
+  background:rgba(16,20,26,0.95); color:var(--text-primary,#fff);
+  border:1px solid var(--course-accent,#56F2A6); border-radius:20px;
+  padding:0.5rem 1rem; font-size:12px; cursor:pointer; font-family:inherit;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+@media (max-width:720px){
+  #coursePlayerModal .cp-content #cp-grid{ grid-template-columns:1fr !important; }
+  #coursePlayerModal #cp-path-view{ height:150px; }
+}
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
+<!-- d3 modules (R5): Evolution Path filaments (d3-shape) + node layout (d3-force).
+     Dependencies must load first: d3-path (shape), d3-timer/dispatch/quadtree (force). -->
+<script src="https://cdn.jsdelivr.net/npm/d3-selection@3.0.0/dist/d3-selection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-path@3.1.0/dist/d3-path.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-shape@3.2.0/dist/d3-shape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-timer@3.0.1/dist/d3-timer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-dispatch@3.0.1/dist/d3-dispatch.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-quadtree@3.0.1/dist/d3-quadtree.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-force@3.0.0/dist/d3-force.min.js"></script>
 </head>
 <body>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -568,12 +605,10 @@
   <!-- Tabs -->
   <div class="dash-tabs">
     <button class="dash-tab active" data-tab="overview" data-i18n="a.tabs.profile">Профиль</button>
-    <button class="dash-tab" data-tab="protocol" data-i18n="a.tabs.protocol">Протокол</button>
     <button class="dash-tab" data-tab="courses" data-i18n="a.tabs.courses">Курсы</button>
     <button class="dash-tab" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</button>
     <button class="dash-tab" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></button>
     <button class="dash-tab" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</button>
-    <button class="dash-tab" data-tab="pointab" data-i18n="a.tabs.pointab">Точка А → B</button>
     <button class="dash-tab" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</button>
     <button class="dash-tab" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</button>
   </div>
@@ -711,108 +746,38 @@
   </div>
 
   <!-- TAB: Program (modules) -->
-  <div class="tab-panel" id="tab-protocol">
-    <!-- Sub-tabs: Программа / Практики -->
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
-      <button class="dash-tab active" id="proto-mode-prog" onclick="setProtoMode('prog')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.protocol.program">Программа</button>
-      <button class="dash-tab" id="proto-mode-pract" onclick="setProtoMode('pract')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.protocol.practices">Практики</button>
-    </div>
-    <div id="proto-prog-content">
-    <!-- Program progress content (was tab-program) -->
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated span-8">
-        <h3 data-i18n="a.protocol.modules_title">Модули программы — Guided Program</h3>
-        <div class="module-item" data-module-id="block-1">
-          <div class="module-status done">✓</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block1_name">Блок 1 · Вход в практику</p>
-            <p class="meta" data-i18n="a.protocol.block1_meta">нед 1–2 · 4 практики · завершён</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-2">
-          <div class="module-status done">✓</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block2_name">Блок 2 · Фокус и удержание внимания</p>
-            <p class="meta" data-i18n="a.protocol.block2_meta">нед 3–4 · 4 практики · завершён</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-3">
-          <div class="module-status current">▶</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block3_name">Блок 3 · Гибкость и переключение</p>
-            <p class="meta" data-i18n="a.protocol.block3_meta">нед 5–6 · 3 из 4 практик</p>
-          </div>
-          <div class="module-action">
-            <button class="btn btn-solid" style="font-size:11px;padding:0.35rem 0.75rem;" onclick="switchTab('protocol');setProtoMode('pract')" data-i18n="a.protocol.btn_continue">Продолжить</button>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-4">
-          <div class="module-status locked">4</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block4_name">Блок 4 · Множественное внимание</p>
-            <p class="meta" data-i18n="a.protocol.block4_meta">нед 7–8 · 4 практики</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-5">
-          <div class="module-status locked">5</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block5_name">Блок 5 · Объёмное восприятие тела</p>
-            <p class="meta" data-i18n="a.protocol.block5_meta">нед 9–10 · 3 практики</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-6">
-          <div class="module-status locked">6</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block6_name">Блок 6 · Интероцепция и саморегуляция</p>
-            <p class="meta" data-i18n="a.protocol.block6_meta">нед 11–12 · 2 практики + интеграция</p>
-          </div>
-        </div>
-      </div>
-      <div class="dash-card glass-card-elevated span-4">
-        <h3 data-i18n="a.protocol.progress_title">Прогресс</h3>
-        <p class="dash-metric" style="font-size:2rem;">11<span style="font-size:1rem;color:var(--text-muted);">/21</span></p>
-        <p class="dash-label" data-i18n="a.protocol.practices_completed">Практик выполнено</p>
-        <div class="progress-track" style="margin-top:0.75rem;"><div class="progress-fill" style="width:52%"></div></div>
-        <div style="margin-top:1.5rem;">
-          <p class="dash-label" style="margin-bottom:0.4rem;" data-i18n="a.protocol.theory_modules">Теоретические модули</p>
-          <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">5 / 8</p>
-          <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:62%"></div></div>
-        </div>
-        <div style="margin-top:1.5rem;">
-          <p class="dash-label" style="margin-bottom:0.4rem;" data-i18n="a.protocol.homework">Домашние задания</p>
-          <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">8 / 12</p>
-          <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:66%"></div></div>
-        </div>
-      </div>
-    </div>
-    </div><!-- /proto-prog-content -->
 
-    <div id="proto-pract-content" style="display:none;">
-    <!-- Practices content — loaded dynamically from API -->
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <div id="practices-loading" style="text-align:center;padding:2rem 0;">
-          <p style="font-size:13px;color:var(--text-muted);" data-i18n="a.protocol.loading_practices">Загрузка практик...</p>
-        </div>
-        <div id="practices-list"></div>
-        <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
-          <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
-          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.protocol.practices_not_loaded">Практики пока не загружены</p>
-          <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.protocol.practices_admin_msg">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
-        </div>
-      </div>
-    </div>
-    </div><!-- /proto-pract-content -->
-  </div><!-- /tab-protocol -->
-
-  <!-- TAB: Курсы — student-side course list -->
+  <!-- TAB: Курсы — student-side course list + practices (protocol merged here in A) -->
   <div class="tab-panel" id="tab-courses">
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <h3 style="margin:0 0 0.4rem;font-size:16px;" data-i18n="a.courses.title">Мои курсы</h3>
-        <p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);" data-i18n="a.courses.subtitle">Курсы, доступные вам по приобретённой программе.</p>
-        <div id="student-courses-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;"></div>
-        <p id="student-courses-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.courses.empty">Пока нет курсов, доступных вам. Зайдите позже или приобретите программу.</p>
+    <!-- Sub-tabs: Мои курсы / Практики -->
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <button class="dash-tab active" id="courses-mode-courses" onclick="setCoursesMode('courses')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.courses.title">Мои курсы</button>
+      <button class="dash-tab" id="courses-mode-pract" onclick="setCoursesMode('pract')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.protocol.practices">Практики</button>
+    </div>
+    <div id="courses-courses-content">
+      <div class="dash-grid">
+        <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+          <h3 style="margin:0 0 0.4rem;font-size:16px;" data-i18n="a.courses.title">Мои курсы</h3>
+          <p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);" data-i18n="a.courses.subtitle">Курсы, доступные вам по приобретённой программе.</p>
+          <div id="student-courses-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;"></div>
+          <p id="student-courses-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.courses.empty">Пока нет курсов, доступных вам. Зайдите позже или приобретите программу.</p>
+        </div>
+      </div>
+    </div>
+    <!-- Practices content — moved from removed Протокол tab (A) -->
+    <div id="courses-pract-content" style="display:none;">
+      <div class="dash-grid">
+        <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+          <div id="practices-loading" style="text-align:center;padding:2rem 0;">
+            <p style="font-size:13px;color:var(--text-muted);" data-i18n="a.protocol.loading_practices">Загрузка практик...</p>
+          </div>
+          <div id="practices-list"></div>
+          <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
+            <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
+            <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.protocol.practices_not_loaded">Практики пока не загружены</p>
+            <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.protocol.practices_admin_msg">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -999,21 +964,27 @@
     </div>
   </div>
 
-  <!-- Course player modal -->
-  <div id="coursePlayerModal" style="display:none;position:fixed;inset:0;background:rgba(8,8,14,0.97);z-index:10010;overflow-y:auto;padding:1.5rem 1rem;">
-    <div style="max-width:760px;margin:0 auto;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div>
-          <h2 id="cp-course-name" style="margin:0;font-size:18px;color:var(--text-primary);">—</h2>
-          <p id="cp-progress-text" style="margin:0.2rem 0 0;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">—</p>
+  <!-- Course player — fullscreen overlay (C п.7/8): path strip on top, content below -->
+  <div id="coursePlayerModal" style="display:none;">
+    <div class="cp-shell">
+      <!-- top strip: header chrome + course path view -->
+      <div class="cp-topstrip">
+        <div class="cp-header">
+          <div style="min-width:0;">
+            <h2 id="cp-course-name" style="margin:0;font-size:16px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</h2>
+            <p id="cp-progress-text" style="margin:0.15rem 0 0;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">—</p>
+          </div>
+          <div style="display:flex;gap:0.4rem;margin-left:auto;align-items:center;">
+            <button class="btn btn-ghost cp-accent-btn" onclick="cpInvitePeer()" style="font-size:12px;padding:0.4rem 0.7rem;" title="Пригласить на совместную практику" data-i18n="a.courses.btn_invite">🤝 Пригласить</button>
+            <button class="btn btn-ghost" onclick="cpMinimize()" style="font-size:14px;padding:0.4rem 0.7rem;" title="Свернуть">–</button>
+            <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;padding:0.4rem 0.7rem;" title="Закрыть (Esc)">✕</button>
+          </div>
         </div>
-        <div style="display:flex;gap:0.5rem;">
-          <button class="btn btn-ghost" onclick="cpInvitePeer()" style="font-size:12px;padding:0.4rem 0.7rem;" title="Пригласить на совместную практику" data-i18n="a.courses.btn_invite">🤝 Пригласить</button>
-          <button class="btn btn-ghost" onclick="cpClose()" style="font-size:14px;">✕ Закрыть</button>
-        </div>
+        <!-- Mycelium Stage 1: light-map of the course path -->
+        <div id="cp-path-view"></div>
       </div>
-      <!-- Mycelium Stage 1: light-map of the course path -->
-      <div id="cp-path-view" style="margin-bottom:1rem;"></div>
+      <!-- bottom: scrollable practice content -->
+      <div class="cp-content">
       <div style="display:grid;grid-template-columns:1fr 280px;gap:1rem;" id="cp-grid">
         <div id="cp-block-area" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.5rem;min-height:280px;"></div>
         <div id="cp-joint-panel" style="display:none;background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.15);border-radius:14px;padding:1rem;">
@@ -1031,12 +1002,13 @@
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:1rem;">
+      <div class="cp-nav" style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:1rem;max-width:1060px;margin-left:auto;margin-right:auto;">
         <button class="btn btn-ghost" onclick="cpPrev()" id="cp-prev-btn" style="font-size:12px;padding:0.5rem 1rem;" data-i18n="a.courses.btn_prev">← Назад</button>
-        <button class="btn btn-solid" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
+        <button class="btn btn-solid cp-accent-btn" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
       </div>
-    </div>
-  </div>
+      </div><!-- /cp-content -->
+    </div><!-- /cp-shell -->
+  </div><!-- /coursePlayerModal -->
 
   <!-- TAB: Инструменты (was Calendar + NeuroMap + Diary) -->
   <div class="tab-panel" id="tab-tools">
@@ -1046,6 +1018,8 @@
       <!-- Calendar sub-tab removed (17.3) — DB table kept for future migration -->
       <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
       <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
+      <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
+      <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ Раскрыть</button>
     </div>
 
     <!-- ── Pack 20.8: Sensation Map standalone (in Tools) ── -->
@@ -1763,7 +1737,7 @@
           <h3 data-i18n="a.admin.tools_title">Инструменты и практики</h3>
           <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.admin.tools_desc">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
-            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('protocol');setProtoMode('pract')">
+            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('courses');setCoursesMode('pract')">
               <h4 data-i18n="a.admin.audio_practices">Аудиопрактики</h4>
               <p>Все блоки и практики доступны</p>
             </div>
@@ -2237,7 +2211,7 @@
             <button class="btn btn-ghost" onclick="courseAddBlock('audio')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Аудио"><span>+ Аудио</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('image')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Фото"><span>+ Фото</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('link')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Ссылка"><span>+ Ссылка</span></button>
-            <button class="btn btn-ghost" onclick="courseAddBlock('sensation_prompt')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Запрос ощущений"><span>+ Запрос ощущений</span></button>
+            <button class="btn btn-ghost" onclick="courseAddToolTask()" style="font-size:12px;padding:0.4rem 0.7rem;border-color:var(--accent-cyan);" title="Задание из инструмента (Карта ощущений / Точка А→B / Дневник / Нейромап)"><span>+ Задание из инструмента</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('break')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Перерыв"><span>+ Перерыв</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('student_audio')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Аудио от ученика"><span>+ Аудио ответ</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('student_text')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Текст от ученика"><span>+ Текст ответ</span></button>
@@ -3826,11 +3800,78 @@ function renderUserDetail(data){
     h+='</tbody></table></div>';
   }
 
+  // ── Card 8 (🅴): manual practice/block completion ──
+  h+='<div class="dash-card glass-card-elevated" style="grid-column:span 12;">';
+  h+='<h3 style="margin:0 0 0.5rem;font-size:14px;">Прохождение практик — отметить вручную</h3>';
+  h+='<p style="margin:0 0 0.75rem;font-size:12px;color:var(--text-muted);">Выбери курс, отметь пройденные блоки. Можно задать дату задним числом и заметку. Начисляет XP и отражается в Пути развития.</p>';
+  h+='<select id="admin-completion-course" onchange="adminLoadCompletions(\''+u.id+'\', this.value)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.45rem 0.7rem;font-size:13px;min-width:240px;"><option value="">— выбери курс —</option></select>';
+  h+='<div id="admin-completion-grid" style="margin-top:1rem;"></div>';
+  h+='</div>';
+
   h+='</div>'; // close dash-grid
 
   content.innerHTML=h;
   content.style.opacity='1';
+  adminInitCompletion(u.id); // populate the course selector for the completion card
 }
+
+// ── 🅴 Admin manual block-completion UI ──────────────────────────────────────
+function adminInitCompletion(userId){
+  var sel = document.getElementById('admin-completion-course'); if (!sel) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  domApi('/api/courses?lang=' + encodeURIComponent(lang)).then(function(d){
+    (d.courses||[]).forEach(function(c){
+      var o = document.createElement('option');
+      o.value = c.id || c.slug; // GET completions keys by numeric course id
+      o.textContent = (typeof courseTitle==='function' ? courseTitle(c, lang) : (c.name_ru||c.slug));
+      sel.appendChild(o);
+    });
+  }).catch(function(e){ console.warn('adminInitCompletion:', e); });
+}
+function adminLoadCompletions(userId, courseId){
+  var grid = document.getElementById('admin-completion-grid'); if (!grid) return;
+  if (!courseId) { grid.innerHTML = ''; return; }
+  grid.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:0.5rem 0;">Загрузка…</div>';
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  domApi('/api/admin/users/' + userId + '/courses/' + courseId + '/completions').then(function(d){
+    var done = {}; (d.progress||[]).forEach(function(p){ done[p.block_id] = p; });
+    var blocks = (d.blocks||[]).filter(function(b){ return b.block_type !== 'section'; });
+    if (!blocks.length) { grid.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">В курсе нет блоков.</div>'; return; }
+    var rows = blocks.map(function(b){
+      var p = done[b.id];
+      var checked = p ? 'checked' : '';
+      var title = b['title_'+lang] || b.title_ru || b.title_en || b.title_es || b.block_type;
+      var when = p && p.completed_at ? new Date(p.completed_at).toISOString().slice(0,16) : '';
+      var note = (p && p.response && p.response.note) ? String(p.response.note).replace(/"/g,'&quot;') : '';
+      return '<tr data-block="'+b.id+'">'
+        + '<td style="text-align:center;"><input type="checkbox" '+checked+' onchange="adminToggleCompletion(\''+userId+'\','+b.id+',this)" style="accent-color:var(--accent-green,#6ee7a8);"></td>'
+        + '<td style="font-size:13px;color:var(--text-primary);">'+title+' <span style="color:var(--text-dim);font-size:10px;">· '+b.block_type+(b.points?(' · '+b.points+' XP'):'')+'</span></td>'
+        + '<td><input type="datetime-local" class="ac-date" value="'+when+'" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.25rem 0.4rem;font-size:11px;"></td>'
+        + '<td><input type="text" class="ac-note" value="'+note+'" placeholder="заметка" style="width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.25rem 0.5rem;font-size:11px;"></td>'
+        + '</tr>';
+    }).join('');
+    grid.innerHTML = '<table class="admin-table" style="width:100%;"><thead><tr><th style="width:40px;">✓</th><th>Блок</th><th style="width:180px;">Когда (задним числом)</th><th>Заметка</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      + '<div id="admin-completion-status" style="font-size:12px;color:var(--text-muted);margin-top:0.5rem;"></div>';
+  }).catch(function(e){ grid.innerHTML = '<div style="color:var(--accent-rose);font-size:12px;">Ошибка: '+e.message+'</div>'; });
+}
+function adminToggleCompletion(userId, blockId, cb){
+  var tr = cb.closest('tr');
+  var dateEl = tr.querySelector('.ac-date');
+  var noteEl = tr.querySelector('.ac-note');
+  var status = document.getElementById('admin-completion-status');
+  var body = { completed: cb.checked };
+  if (cb.checked) {
+    if (dateEl && dateEl.value) body.completed_at = new Date(dateEl.value).toISOString();
+    if (noteEl && noteEl.value) body.note = noteEl.value;
+  }
+  if (status) status.textContent = 'Сохранение…';
+  domApi('/api/admin/users/' + userId + '/blocks/' + blockId + '/completion', { method:'POST', body: body })
+    .then(function(r){ if (status) status.textContent = cb.checked ? ('✓ Отмечено пройденным' + (r.points_earned?(' (+'+r.points_earned+' XP)'):'')) : '✓ Отметка снята'; })
+    .catch(function(e){ if (status) status.textContent = 'Ошибка: ' + e.message; cb.checked = !cb.checked; });
+}
+window.adminInitCompletion = adminInitCompletion;
+window.adminLoadCompletions = adminLoadCompletions;
+window.adminToggleCompletion = adminToggleCompletion;
 
 // View-As mode
 function viewUserAs(userId){
@@ -4122,6 +4163,7 @@ window.evoOpenSource = function(ev){
     if(kind === 'xp_gain' || kind === 'achievement' || ev.layer === 'xp'){ switchTab('profile'); }
     else if(src.indexOf('neuromap') === 0 || kind === 'emotion' || kind === 'event' || kind === 'thought'){ switchTab('tools'); setToolsMode('nm'); }
     else if(src === 'sensation' || kind === 'sensation'){ switchTab('tools'); setToolsMode('sensation'); }
+    else if(src === 'point_ab' || src === 'pointab' || kind === 'point_ab'){ switchTab('tools'); setToolsMode('pointab'); }
     else if(src.indexOf('diary') === 0 || kind === 'insight'){ switchTab('tools'); setToolsMode('diary'); }
     else if(src === 'calendar'){ switchTab('tools'); setToolsMode('cal'); }
     else if(src === 'practice' || src === 'course_block' || kind === 'practice' || kind === 'block_done'){ switchTab('courses'); }
@@ -4151,6 +4193,18 @@ document.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
     nmPanel.removeAttribute('id');
     nmPanel.id = 'tools-nm-content';
     nmPanel.style.display = ''; // show by default (NeuroMap is first sub-tab)
+  }
+})();
+// A: relocate "Точка А → B" panel into Инструменты as a sub-tab (was a top-level tab).
+(function(){
+  var abPanel = document.getElementById('tab-pointab');
+  var toolsPanel = document.getElementById('tab-tools');
+  if(abPanel && toolsPanel){
+    toolsPanel.appendChild(abPanel);
+    abPanel.classList.remove('tab-panel');
+    abPanel.removeAttribute('id');
+    abPanel.id = 'tools-pointab-content';
+    abPanel.style.display = 'none'; // hidden until its sub-tab is selected
   }
 })();
 
@@ -4608,25 +4662,27 @@ var currentMinusCount = 0;
 var selectedDiaryDay = null;
 
 // Mode toggle
-function setProtoMode(mode){
-  var prog = document.getElementById('proto-prog-content');
-  var pract = document.getElementById('proto-pract-content');
-  var btnProg = document.getElementById('proto-mode-prog');
-  var btnPract = document.getElementById('proto-mode-pract');
-  if(mode==='prog'){
-    if(prog) prog.style.display='';
-    if(pract) pract.style.display='none';
-    if(btnProg){ btnProg.classList.add('active'); btnProg.style.borderBottomColor='var(--accent-cyan)'; }
-    if(btnPract){ btnPract.classList.remove('active'); btnPract.style.borderBottomColor='transparent'; }
-  } else {
-    if(prog) prog.style.display='none';
-    if(pract) pract.style.display='';
-    if(btnProg){ btnProg.classList.remove('active'); btnProg.style.borderBottomColor='transparent'; }
+// Courses sub-tab switcher (A: practices merged from removed Протокол tab).
+function setCoursesMode(mode){
+  var coursesC = document.getElementById('courses-courses-content');
+  var practC = document.getElementById('courses-pract-content');
+  var btnCourses = document.getElementById('courses-mode-courses');
+  var btnPract = document.getElementById('courses-mode-pract');
+  if(mode==='pract'){
+    if(coursesC) coursesC.style.display='none';
+    if(practC) practC.style.display='';
+    if(btnCourses){ btnCourses.classList.remove('active'); btnCourses.style.borderBottomColor='transparent'; }
     if(btnPract){ btnPract.classList.add('active'); btnPract.style.borderBottomColor='var(--accent-cyan)'; }
-    // Load practices from API on first switch
     if(!window._practicesLoaded) loadFrontendPractices();
+  } else {
+    if(coursesC) coursesC.style.display='';
+    if(practC) practC.style.display='none';
+    if(btnCourses){ btnCourses.classList.add('active'); btnCourses.style.borderBottomColor='var(--accent-cyan)'; }
+    if(btnPract){ btnPract.classList.remove('active'); btnPract.style.borderBottomColor='transparent'; }
   }
 }
+// Legacy alias — old code/links may still call setProtoMode('pract').
+function setProtoMode(mode){ setCoursesMode(mode==='pract' ? 'pract' : 'courses'); }
 function setToolsMode(mode){
   var nmContent = document.getElementById('tools-nm-content');
   var calDiaryWrap = document.getElementById('tools-cal-diary-wrap');
@@ -4636,13 +4692,16 @@ function setToolsMode(mode){
   var btnDiary = document.getElementById('tools-mode-diary');
   var btnSensation = document.getElementById('tools-mode-sensation');
   var sensationWrap = document.getElementById('tools-sensation-wrap');
+  var btnPointab = document.getElementById('tools-mode-pointab');
+  var pointabContent = document.getElementById('tools-pointab-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
   if(calPanel) calPanel.style.display='none'; // Calendar tab removed (17.3)
   if(sensationWrap) sensationWrap.style.display='none';
+  if(pointabContent) pointabContent.style.display='none';
   if(mode==='nm'){
     if(btnNm){ btnNm.classList.add('active'); btnNm.style.borderBottomColor='var(--accent-cyan)'; }
     if(nmContent) nmContent.style.display='';
@@ -4662,7 +4721,49 @@ function setToolsMode(mode){
     if(sensationWrap) sensationWrap.style.display='';
     if (typeof loadSensationMap === 'function') loadSensationMap();
   }
+  if(mode==='pointab'){
+    if(btnPointab){ btnPointab.classList.add('active'); btnPointab.style.borderBottomColor='var(--accent-cyan)'; }
+    if(pointabContent) pointabContent.style.display='';
+    // Refresh saved A→B map state when the sub-tab opens.
+    try { if (typeof abLoadFromServer === 'function') abLoadFromServer(); } catch(e){}
+  }
 }
+// Open the active Инструменты sub-tool in a shared fullscreen overlay (R1/R3).
+// Uses DOM relocation (move the live container in, restore it on close) so all
+// existing handlers/IDs keep working — no duplication.
+function toolsExpandActive(){
+  if (typeof window.mountFullscreenOverlay !== 'function') return;
+  var map = {
+    nm:       { id: 'tools-nm-content',     title: 'NeuroMap' },
+    sensation:{ id: 'tools-sensation-wrap', title: 'Карта ощущений' },
+    pointab:  { id: 'tools-pointab-content',title: 'Точка А → B' },
+    diary:    { id: 'tools-cal-diary-wrap', title: 'Дневник' }
+  };
+  var active = document.querySelector('#tools-mode-nm.active') ? 'nm'
+             : document.querySelector('#tools-mode-sensation.active') ? 'sensation'
+             : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
+             : 'diary';
+  var info = map[active]; if (!info) return;
+  var src = document.getElementById(info.id); if (!src) return;
+  var placeholder = document.createComment('na-expand-' + info.id);
+  src.parentNode.insertBefore(placeholder, src);
+  var prevDisplay = src.style.display;
+  window.mountFullscreenOverlay(function(body){
+    body.style.padding = '20px 24px';
+    src.style.display = '';
+    body.appendChild(src);
+    if (active === 'nm' && typeof buildNmGraph === 'function') setTimeout(function(){ try{ buildNmGraph(); }catch(e){} }, 90);
+  }, {
+    title: info.title, accent: '#39d3c3',
+    onClose: function(){
+      if (placeholder.parentNode){ placeholder.parentNode.insertBefore(src, placeholder); placeholder.parentNode.removeChild(placeholder); }
+      src.style.display = prevDisplay;
+      if (active === 'nm' && typeof buildNmGraph === 'function') setTimeout(function(){ try{ buildNmGraph(); }catch(e){} }, 90);
+    }
+  });
+}
+window.toolsExpandActive = toolsExpandActive;
+
 function setCalMode(mode){
   // Legacy wrapper — now delegates to setToolsMode
   if(mode==='cal') setToolsMode('cal');
@@ -8403,7 +8504,7 @@ function seekPractice(e, practId) {
 // Reload practices when language changes
 document.addEventListener('langchange', function() {
   _practicesLoaded = false;
-  var pract = document.getElementById('proto-pract-content');
+  var pract = document.getElementById('courses-pract-content');
   if (pract && pract.style.display !== 'none') loadFrontendPractices();
 });
 
@@ -9639,13 +9740,16 @@ function coursePreviewAsStudent(){
   coursePlayer.blocks = cpLinearizeBlocks(courseState.currentBlocks || []);
   coursePlayer.progress = {};
   coursePlayer.idx = 0;
+  coursePlayer.currentIdx = 0;
   coursePlayer.history = [];
   coursePlayer.previewMode = true; // navigate locally; never POST completion
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var nm = courseTitle(courseState.currentCourse, lang);
   document.getElementById('cp-course-name').textContent = '[ПРЕВЬЮ] ' + nm;
-  document.getElementById('coursePlayerModal').style.display = 'block';
+  cpApplyAccent(courseState.currentCourse);
+  cpOpenFullscreen();
   cpRenderBlock();
+  cpMountPathView();
 }
 window.coursePreviewAsStudent = coursePreviewAsStudent;
 
@@ -9686,7 +9790,7 @@ function _cpTypeLabel(t){
     section:'Раздел', practice:'Практика', text:'Текст', video:'Видео', audio:'Аудио',
     image:'Изображение', link:'Ссылка', sensation_prompt:'Вопрос об ощущениях', break:'Перерыв',
     student_audio:'Аудио-ответ', student_text:'Текстовый ответ', question_branch:'Вопрос с ветвлением',
-    sound_cue:'Звуковой сигнал'
+    sound_cue:'Звуковой сигнал', tool_task:'Задание из инструмента'
   };
   return map[t] || t || '(без названия)';
 }
@@ -9748,7 +9852,47 @@ function courseSetStatus(msg, ok){
   s.style.color = ok ? '#0e9' : 'var(--text-muted)';
 }
 
-function courseAddBlock(blockType, parentBlockId){
+// 🅱 shared tool_task metadata: kind → instrument + labels (reused by builder,
+// path-view label and player embed).
+window.TOOL_TASK_META = {
+  sensation_map:    { tool: 'sensation', title_ru: 'Задание · Карта ощущений', icon: '🗺', label_ru: 'Карта ощущений' },
+  point_ab:         { tool: 'pointab',   title_ru: 'Задание · Точка А → B',   icon: '🅰', label_ru: 'Точка А → B' },
+  diary:            { tool: 'diary',     title_ru: 'Задание · Дневник нейроресурса', icon: '📓', label_ru: 'Дневник нейроресурса' },
+  neuromap_emotion: { tool: 'neuromap',  nm: 'emotion', title_ru: 'Задание · Нейромап (эмоция)', icon: '💗', label_ru: 'Нейромап · эмоция' },
+  neuromap_event:   { tool: 'neuromap',  nm: 'event',   title_ru: 'Задание · Нейромап (событие)', icon: '📍', label_ru: 'Нейромап · событие' },
+  neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' }
+};
+
+// Picker: "Добавить задание из инструмента" → choose which instrument (🅱 п.3).
+function courseAddToolTask(parentBlockId){
+  if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
+  var ov = document.createElement('div');
+  ov.className = 'rpg-modal-overlay';
+  ov.style.zIndex = '10050';
+  var kinds = Object.keys(window.TOOL_TASK_META);
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:360px;">' +
+    '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">Задание из инструмента</h3>' +
+    '<p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);">Ученик выполнит инструмент прямо в плеере курса.</p>' +
+    '<div style="display:flex;flex-direction:column;gap:0.4rem;">' +
+      kinds.map(function(k){ var m = window.TOOL_TASK_META[k];
+        return '<button class="btn btn-ghost tt-pick" data-kind="' + k + '" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">' +
+          m.icon + '&nbsp; ' + m.label_ru + '</button>'; }).join('') +
+    '</div>' +
+    '<button class="btn btn-ghost" id="tt-cancel" style="margin-top:0.9rem;font-size:12px;">Отмена</button></div>';
+  document.body.appendChild(ov);
+  function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
+  ov.querySelector('#tt-cancel').addEventListener('click', close);
+  ov.querySelectorAll('.tt-pick').forEach(function(b){
+    b.addEventListener('click', function(){
+      courseAddBlock('tool_task', parentBlockId, b.getAttribute('data-kind'));
+      close();
+    });
+  });
+}
+window.courseAddToolTask = courseAddToolTask;
+
+function courseAddBlock(blockType, parentBlockId, toolKind){
   if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
   // Default payload shape for each block_type
   var payloadDefaults = {
@@ -9764,7 +9908,8 @@ function courseAddBlock(blockType, parentBlockId){
     student_audio: { prompt_ru: '', prompt_en: '', prompt_es: '', max_duration_seconds: 120 },
     student_text: { prompt_ru: '', prompt_en: '', prompt_es: '' },
     question_branch: { question_ru: '', question_en: '', question_es: '', options: [] },
-    sound_cue: { audio_url: '', label: '' }
+    sound_cue: { audio_url: '', label: '' },
+    tool_task: { instruction_ru: '', instruction_en: '', instruction_es: '' }
   };
   var body = {
     block_type: blockType,
@@ -9772,6 +9917,13 @@ function courseAddBlock(blockType, parentBlockId){
     payload: payloadDefaults[blockType] || {},
     points: 0
   };
+  // 🅱 tool_task: a course step embedding an instrument. toolKind picks which one.
+  if (blockType === 'tool_task' && toolKind) {
+    body.tool_kind = toolKind;
+    body.tool_config = {};
+    body.title_ru = (window.TOOL_TASK_META[toolKind] && window.TOOL_TASK_META[toolKind].title_ru) || 'Задание из инструмента';
+    body.points = 5;
+  }
   if (parentBlockId) body.parent_block_id = parentBlockId;
   courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', {
     method: 'POST',
@@ -9837,10 +9989,11 @@ function _cbTypeMeta(t){
     practice: '🎧 Практика', text: '📝 Текст', video: '🎬 Видео', audio: '🔊 Аудио',
     image: '🖼 Фото', link: '🔗 Ссылка', sensation_prompt: '✨ Запрос ощущений',
     break: '⏸ Перерыв', student_audio: '🎙 Аудио ответ', student_text: '✍️ Текст ответ',
-    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал'
+    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал', tool_task: '🛠 Задание из инструмента'
   };
   var color = t === 'sound_cue' ? 'var(--accent-amber)'
             : t === 'question_branch' ? 'var(--accent-violet)'
+            : t === 'tool_task' ? 'var(--accent-cyan)'
             : t === 'section' ? '#fc0' : 'var(--accent-cyan)';
   return { label: labels[t] || t, color: color };
 }
@@ -9870,13 +10023,17 @@ function _renderSectionMiniToolbar(sectionId){
   var types = [
     ['practice','+ Практика'], ['text','+ Текст'], ['video','+ Видео'],
     ['audio','+ Аудио'], ['image','+ Фото'], ['link','+ Ссылка'],
-    ['sensation_prompt','+ Ощущения'], ['break','+ Перерыв'],
+    ['__tool_task','+ Задание из инструмента'], ['break','+ Перерыв'],
     ['student_audio','+ Аудио ответ'], ['student_text','+ Текст ответ'],
     ['question_branch','+ Ветвление'], ['sound_cue','+ Сигнал']
   ];
   return '<div style="display:flex;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;margin-left:1rem;">'
     + types.map(function(p){
-        return '<button class="btn btn-ghost" onclick="courseAddBlock(\'' + p[0] + '\',' + sectionId + ')" style="font-size:10px;padding:0.2rem 0.5rem;">' + p[1] + '</button>';
+        var onclick = p[0] === '__tool_task'
+          ? 'courseAddToolTask(' + sectionId + ')'
+          : 'courseAddBlock(\'' + p[0] + '\',' + sectionId + ')';
+        var extra = p[0] === '__tool_task' ? 'border-color:var(--accent-cyan);' : '';
+        return '<button class="btn btn-ghost" onclick="' + onclick + '" style="font-size:10px;padding:0.2rem 0.5rem;' + extra + '">' + p[1] + '</button>';
       }).join('')
     + '</div>';
 }
@@ -10183,6 +10340,13 @@ function renderCourseBlockPayload(b, allowedLangs){
     case 'sound_cue':
       inner = payInput('audio_url', 'URL звукового сигнала (MP3)', 'text', 'audio') + payInput('label', 'Метка (для отладки)');
       break;
+    case 'tool_task':
+      var ttMeta = (window.TOOL_TASK_META && window.TOOL_TASK_META[b.tool_kind]) || { icon:'🛠', label_ru:'инструмент' };
+      inner = '<div style="font-size:11px;color:var(--accent-cyan);margin-bottom:0.4rem;">' + ttMeta.icon + ' Инструмент: <b>' + ttMeta.label_ru + '</b></div>'
+            + (L('ru')?payInput('instruction_ru', 'Инструкция ученику (RU)', 'textarea'):'')
+            + (L('en')?payInput('instruction_en', 'Instruction (EN)', 'textarea'):'')
+            + (L('es')?payInput('instruction_es', 'Instrucción (ES)', 'textarea'):'');
+      break;
     default:
       inner = '<p style="font-size:11px;color:var(--text-muted);">Редактор для типа «' + b.block_type + '» в разработке.</p>';
   }
@@ -10232,7 +10396,14 @@ window.cbBranchSetNext = cbBranchSetNext;
 // ══════════════════════════════════════════
 // Pack 24 phase 3: Student-side Course Player
 // ══════════════════════════════════════════
-var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, history: [], blockResponse: null, previewMode: false };
+// idx = block currently *viewed* (selected) in the content area;
+// currentIdx = actual progress pointer (first incomplete) — carries "Вы здесь". C п.11
+var coursePlayer = { course: null, blocks: [], progress: {}, idx: 0, currentIdx: 0, history: [], blockResponse: null, previewMode: false };
+// Recompute the progress pointer = index of the first not-yet-completed block.
+function cpRecomputeCurrent(){
+  var fi = coursePlayer.blocks.findIndex(function(b){ return !coursePlayer.progress[b.id]; });
+  coursePlayer.currentIdx = fi < 0 ? coursePlayer.blocks.length - 1 : fi;
+}
 
 function loadStudentCourses(){
   var token = localStorage.getItem('na_token'); if (!token) return;
@@ -10283,10 +10454,12 @@ function cpOpenCourse(slug){
       // Find first uncompleted block, else start from 0
       var firstIdx = coursePlayer.blocks.findIndex(function(b){ return !coursePlayer.progress[b.id]; });
       coursePlayer.idx = firstIdx < 0 ? 0 : firstIdx;
+      coursePlayer.currentIdx = coursePlayer.idx;
       coursePlayer.history = [];
       var lang = (typeof getLang === 'function') ? getLang() : 'ru';
       document.getElementById('cp-course-name').textContent = courseTitle(d.course, lang);
-      document.getElementById('coursePlayerModal').style.display = 'block';
+      cpApplyAccent(d.course);
+      cpOpenFullscreen();
       cpRenderBlock();
       cpMountPathView(); // Mycelium Stage 1: render the course light-map
     })
@@ -10309,9 +10482,11 @@ function cpMountPathView(){
       progress: progressArr
     }, {
       lang: lang,
-      currentIdx: coursePlayer.idx,
-      onNavigate: function(i){
-        // Jump the player to the chosen step, then refresh the map focus.
+      currentIdx: coursePlayer.currentIdx,   // badge "Вы здесь" sits on actual progress
+      selectedIdx: coursePlayer.idx,         // ring sits on the viewed/clicked node
+      onNavigate: function(i, block){
+        // Click on a node → open that practice/task in the player below (C п.12),
+        // mark it "selected" — but do NOT move the progress pointer.
         if (i === coursePlayer.idx) return;
         coursePlayer.history.push(coursePlayer.idx);
         coursePlayer.idx = i;
@@ -10322,8 +10497,33 @@ function cpMountPathView(){
   } catch(e){ console.warn('cpMountPathView:', e); }
 }
 window.cpMountPathView = cpMountPathView;
+
+// C п.7/8/16: open the player as a body-scroll-locked fullscreen overlay and
+// theme its secondary chrome with the course's green accent.
+function cpApplyAccent(course){
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  var accent = (course && (course.accent_color || (course.payload && course.payload.accent_color))) || '#56F2A6';
+  modal.style.setProperty('--course-accent', accent);
+}
+function cpOpenFullscreen(){
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  modal.classList.add('cp-fullscreen');
+  modal.style.display = 'flex';
+  if (!document.body.dataset.cpPrevOverflow){
+    document.body.dataset.cpPrevOverflow = document.body.style.overflow || '';
+  }
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', cpEscHandler);
+}
+function cpEscHandler(e){ if (e.key === 'Escape') cpClose(); }
 function cpClose(){
-  document.getElementById('coursePlayerModal').style.display='none';
+  var modal = document.getElementById('coursePlayerModal');
+  if (modal){ modal.style.display='none'; modal.classList.remove('cp-fullscreen','cp-minimized'); }
+  document.removeEventListener('keydown', cpEscHandler);
+  document.body.style.overflow = document.body.dataset.cpPrevOverflow || '';
+  delete document.body.dataset.cpPrevOverflow;
   coursePlayer.course = null;
   coursePlayer.previewMode = false;
   if (cpJoint.pollTimer) { clearInterval(cpJoint.pollTimer); cpJoint.pollTimer = null; }
@@ -10331,6 +10531,30 @@ function cpClose(){
   var jp = document.getElementById('cp-joint-panel'); if (jp) jp.style.display='none';
 }
 window.cpClose = cpClose;
+// Minimize — hide the overlay but keep player state; a restore pill brings it back.
+function cpMinimize(){
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  document.body.style.overflow = document.body.dataset.cpPrevOverflow || '';
+  var pill = document.getElementById('cp-restore-pill');
+  if (!pill){
+    pill = document.createElement('button');
+    pill.id = 'cp-restore-pill';
+    pill.className = 'cp-restore-pill';
+    pill.onclick = cpRestore;
+    document.body.appendChild(pill);
+  }
+  var nm = (document.getElementById('cp-course-name')||{}).textContent || 'Курс';
+  pill.innerHTML = '▢ ' + nm;
+  pill.style.display = '';
+}
+function cpRestore(){
+  var modal = document.getElementById('coursePlayerModal');
+  if (modal){ modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+  var pill = document.getElementById('cp-restore-pill'); if (pill) pill.style.display='none';
+}
+window.cpMinimize = cpMinimize; window.cpRestore = cpRestore;
 
 function cpRenderBlock(){
   var area = document.getElementById('cp-block-area');
@@ -10446,12 +10670,50 @@ function cpRenderBlock(){
     case 'sound_cue':
       body = '<div style="text-align:center;padding:1.5rem 1rem;"><p style="font-size:14px;color:var(--text-muted);">🔔 Звуковой сигнал</p><audio autoplay controls style="margin-top:1rem;"><source src="'+(p.audio_url||'')+'"></audio></div>';
       break;
+    case 'tool_task':
+      body = cpRenderToolTask(block, p, lang);
+      break;
     default:
       body = '<p style="color:var(--text-muted);">Тип блока «'+block.block_type+'» пока не отображается.</p>';
   }
   area.innerHTML = titleHtml + body;
 }
 window.cpRenderBlock = cpRenderBlock;
+
+// 🅱 п.5: render a tool_task block as an inline instrument embed inside the player.
+// The student performs the instrument right here; cpNext persists the response to
+// course_block_progress AND the server logs it to the matching Evolution layer.
+function cpRenderToolTask(block, p, lang){
+  var kind = block.tool_kind || 'sensation_map';
+  var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || { icon:'🛠', label_ru:'Инструмент' };
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var emotionLike = (kind === 'neuromap_emotion' || kind === 'sensation_map' || kind === 'diary');
+  var ph = kind === 'point_ab' ? 'Опиши, где ты сейчас (точка А) и куда хочешь прийти (точка B)…'
+         : kind === 'diary' ? 'Запиши, что заметил(а) — мысли, состояние, наблюдение…'
+         : kind === 'neuromap_event' ? 'Опиши событие…'
+         : kind === 'neuromap_thought' ? 'Запиши мысль…'
+         : kind === 'neuromap_emotion' ? 'Назови эмоцию и опиши её…'
+         : 'Опиши свои ощущения и где ты их чувствуешь…';
+  var h = '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;margin-bottom:0.9rem;">'
+        + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">'
+        +   meta.icon + ' Задание · ' + meta.label_ru + '</div>'
+        + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;">' + instr.replace(/</g,'&lt;') + '</div>'
+                 : '<div style="font-size:13px;color:var(--text-muted);">Выполни инструмент и опиши результат — он сохранится в твоём ' + meta.label_ru + ' и на пути развития.</div>')
+        + '</div>'
+        + '<textarea id="cp-response" rows="5" placeholder="' + ph + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+  // emotion / sensation / diary get a valence picker so the event lands with tone
+  if (emotionLike) {
+    h += '<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.6rem;font-size:12px;color:var(--text-muted);">'
+       + '<span>Тон:</span>'
+       + '<select id="cp-tool-valence" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.3rem 0.5rem;font-size:12px;">'
+       +   '<option value="neutral">нейтральный</option>'
+       +   '<option value="positive">позитивный</option>'
+       +   '<option value="negative">напряжённый</option>'
+       + '</select></div>';
+  }
+  return h;
+}
+window.cpRenderToolTask = cpRenderToolTask;
 
 function cpPickBranch(answerLabel){
   coursePlayer.blockResponse = { answer: answerLabel };
@@ -10601,13 +10863,24 @@ function cpNext(){
   if (coursePlayer.previewMode || block.block_type === 'section') {
     coursePlayer.history.push(coursePlayer.idx);
     coursePlayer.idx = coursePlayer.idx + 1; // step into section's first child / next item
+    if (coursePlayer.idx > coursePlayer.currentIdx) coursePlayer.currentIdx = coursePlayer.idx;
     cpRenderBlock();
+    cpMountPathView();
     return;
   }
   // Capture text/textarea response if present
   var respEl = document.getElementById('cp-response');
   var response = coursePlayer.blockResponse;
   if (!response && respEl) response = { text: respEl.value };
+  // 🅱 tool_task: enrich the response with valence + a label so the server logs a
+  // properly-toned Evolution event for this instrument result.
+  if (block.block_type === 'tool_task') {
+    response = response || {};
+    var valEl = document.getElementById('cp-tool-valence');
+    if (valEl) response.valence = valEl.value;
+    response.label = (response.text || '').slice(0, 80);
+    response.tool_kind = block.tool_kind;
+  }
   var token = localStorage.getItem('na_token'); if (!token) return;
 
   // If a voice recording is queued for this block, upload it first via the
@@ -10643,13 +10916,21 @@ function _cpFinalize(block, response){
   .then(function(d){
     coursePlayer.progress[block.id] = { block_id: block.id, response: response, points_earned: d.points_earned };
     coursePlayer.history.push(coursePlayer.idx);
-    if (d.next_block_id) {
+    // C п.13/14: walk the linear array by default; only honour the server's
+    // next_block_id when the block is a real branch (question_branch). This stops
+    // the 2.1→2.1 stutter caused by trusting per-parent next pointers everywhere.
+    var linearNext = coursePlayer.idx + 1;
+    if (block.block_type === 'question_branch' && d.next_block_id) {
       var nextIdx = coursePlayer.blocks.findIndex(function(b){ return b.id === d.next_block_id; });
-      coursePlayer.idx = nextIdx >= 0 ? nextIdx : coursePlayer.idx + 1;
+      coursePlayer.idx = nextIdx >= 0 ? nextIdx : linearNext;
+    } else if (linearNext < coursePlayer.blocks.length) {
+      coursePlayer.idx = linearNext;
     } else {
       coursePlayer.idx = coursePlayer.blocks.length; // mark course done
     }
+    cpRecomputeCurrent();           // advance the "Вы здесь" pointer past what's done
     cpRenderBlock();
+    cpMountPathView();
   })
   .catch(function(e){ alert(e.message); });
 }
@@ -10659,6 +10940,7 @@ function cpPrev(){
   if (!coursePlayer.history.length) return;
   coursePlayer.idx = coursePlayer.history.pop();
   cpRenderBlock();
+  cpMountPathView();
 }
 window.cpPrev = cpPrev;
 
@@ -11415,13 +11697,51 @@ function renderTeamsList(){
       + '</div>';
   }).join('');
 }
+// 🅵 п.29: proper team-create form (name / description / broadcast kinds /
+// members by email). Any user can create; creator becomes the leader (owner).
 function domTeamCreatePrompt(){
-  var name = prompt('Название команды:');
-  if (!name || !name.trim()) return;
-  domApi('/api/teams', { method:'POST', body: { name: name.trim() } })
-    .then(function(d){ domLoadTeams(); setTimeout(function(){ domTeamOpen(d.team.id); }, 200); })
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10020;padding:2rem 1rem;overflow-y:auto;';
+  var defaultOn = ['block_done','course_done','achievement_earned'];
+  var kindRows = BROADCAST_KINDS.map(function(k){
+    var on = defaultOn.indexOf(k.key) !== -1;
+    return '<label style="display:flex;align-items:center;gap:0.4rem;font-size:12px;color:var(--text-secondary);margin-bottom:0.25rem;cursor:pointer;">'
+      + '<input type="checkbox" class="newteam-kind-cb" value="' + k.key + '" ' + (on?'checked':'') + ' style="accent-color:var(--accent-cyan);">'
+      + k.label + '</label>';
+  }).join('');
+  modal.innerHTML = '<div style="max-width:520px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">Создать команду</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Название</label>'
+    + '<input id="newteam-name" type="text" placeholder="Например: Утренний круг" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;">'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Описание (по желанию)</label>'
+    + '<textarea id="newteam-desc" rows="2" placeholder="О чём эта команда…" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;resize:vertical;"></textarea>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:0.3rem;">Лидер: <b style="color:var(--text-primary);">вы</b> (можно передать позже)</div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Участники (email через запятую, по желанию)</label>'
+    + '<textarea id="newteam-members" rows="2" placeholder="anna@mail.com, ivan@mail.com" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:12px;margin-bottom:0.75rem;box-sizing:border-box;resize:vertical;"></textarea>'
+    + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">Уведомления команды</div>'
+    + '<div style="padding:0.5rem 0.7rem;background:rgba(0,229,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;margin-bottom:0.9rem;">' + kindRows + '</div>'
+    + '<button class="btn btn-solid" onclick="domTeamSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">Создать команду</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+function domTeamSubmit(){
+  var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
+  var name = (document.getElementById('newteam-name').value||'').trim();
+  if (!name) { alert('Название обязательно'); return; }
+  var desc = (document.getElementById('newteam-desc').value||'').trim();
+  var kinds = Array.from(document.querySelectorAll('.newteam-kind-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
+  var emails = (document.getElementById('newteam-members').value||'').split(/[,\n;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  domApi('/api/teams', { method:'POST', body: { name: name, description: desc, broadcast_kinds: kinds } })
+    .then(function(d){
+      var tid = d.team.id;
+      // add members sequentially (best-effort); ignore individual failures
+      var chain = Promise.resolve();
+      emails.forEach(function(em){ chain = chain.then(function(){ return domApi('/api/teams/' + tid + '/members', { method:'POST', body: { email: em } }).catch(function(){}); }); });
+      return chain.then(function(){ modal.remove(); domLoadTeams(); setTimeout(function(){ domTeamOpen(tid); }, 200); });
+    })
     .catch(function(e){ alert(e.message); });
 }
+window.domTeamSubmit = domTeamSubmit;
 function domTeamOpen(tid){
   domTeams.activeId = tid;
   renderTeamsList();
@@ -11464,6 +11784,15 @@ function domTeamOpen(tid){
           +   '<button class="btn btn-ghost" onclick="domTeamAddMember(' + tid + ')" style="font-size:11px;padding:0.3rem 0.7rem;">+ Добавить</button>'
           + '</div>'
           : '')
+      // 🅵 п.29: leadership transfer (single leader; pick any non-owner member)
+      + (iAmOwner && members.filter(function(m){ return m.role !== 'owner'; }).length
+          ? '<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:1rem;">'
+          +   '<select id="team-leader-sel" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">'
+          +     members.filter(function(m){ return m.role !== 'owner'; }).map(function(m){ return '<option value="' + m.id + '">' + (m.display_name||m.email) + '</option>'; }).join('')
+          +   '</select>'
+          +   '<button class="btn btn-ghost" onclick="domTeamTransferLeader(' + tid + ')" style="font-size:11px;padding:0.3rem 0.7rem;color:#fc0;">👑 Передать лидерство</button>'
+          + '</div>'
+          : '')
       + (iAmOwner
           ? '<div style="display:flex;flex-direction:column;gap:0.4rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.75rem;">'
           +   '<h4 style="margin:0;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Объявление в команду</h4>'
@@ -11492,6 +11821,14 @@ function domTeamRemoveMember(tid, uid){
   domApi('/api/teams/' + tid + '/members/' + uid, { method:'DELETE' })
     .then(function(){ domTeamOpen(tid); });
 }
+function domTeamTransferLeader(tid){
+  var sel = document.getElementById('team-leader-sel'); if (!sel || !sel.value) return;
+  if (!confirm('Передать лидерство этому участнику? Вы станете обычным участником.')) return;
+  domApi('/api/teams/' + tid + '/leader', { method:'PATCH', body: { user_id: sel.value } })
+    .then(function(){ domToast('✓ Лидерство передано'); domTeamOpen(tid); domLoadTeams(); })
+    .catch(function(e){ alert(e.message); });
+}
+window.domTeamTransferLeader = domTeamTransferLeader;
 function domTeamAnnounce(tid){
   var body = document.getElementById('team-ann').value;
   if (!body || !body.trim()) return;
@@ -11815,7 +12152,12 @@ function domLoadGroups(){
     domGroups.rooms = d.rooms || [];
     var box = document.getElementById('dom-groups-list');
     if (!box) return;
-    if (!domGroups.rooms.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Пока нет комнат.</p>'; return; }
+    if (!domGroups.rooms.length) {
+      var isAdmin = currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin');
+      box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);line-height:1.5;">Пока нет групп.' +
+        (isAdmin ? ' Создайте первую кнопкой «+ Создать комнату» выше.' : ' Админ может создать группу первым.') + '</p>';
+      return;
+    }
     box.innerHTML = domGroups.rooms.map(function(r){
       var active = (domGroups.activeId === r.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
       return '<div onclick="domGroupOpen(' + r.id + ',\''+r.name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
@@ -12716,6 +13058,7 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/i18n.js"></script>
+<script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
 <script src="assets/js/evolution-path.js"></script>
 <script>
@@ -12743,7 +13086,17 @@ window.pbMove = pbMove;
         // Re-render the course player / preview if it's open — its block body is
         // built dynamically (not static data-i18n), so it needs a manual refresh.
         var cpModal = document.getElementById('coursePlayerModal');
-        if (cpModal && cpModal.style.display !== 'none' && coursePlayer && coursePlayer.course && typeof cpRenderBlock === 'function') cpRenderBlock();
+        if (cpModal && cpModal.style.display !== 'none' && coursePlayer && coursePlayer.course && typeof cpRenderBlock === 'function') {
+          cpRenderBlock();
+          if (typeof cpMountPathView === 'function') cpMountPathView(); // C п.21: relabel path on lang switch
+        }
+        // D п.21: re-render Evolution Path on language switch when its tab is open
+        // (chrome labels, module headers and the stat-card are not static i18n).
+        var evoPanel = document.getElementById('tab-evolution');
+        var evoBox = document.getElementById('evo-path');
+        if (evoPanel && evoPanel.classList.contains('active') && evoBox && typeof window.mountEvolutionPath === 'function') {
+          window.mountEvolutionPath(evoBox); // state (mode/period/hidden) persists via __evo
+        }
       } catch(e){ console.warn('RPG re-render on lang change failed:', e); }
       return ret;
     };
