@@ -10116,8 +10116,12 @@ function loadStudentCourses(){
         var nm = c['name_'+lang] || c.name_ru || c.name_en || c.slug;
         var desc = c['description_'+lang] || c.description_ru || c.description_en || '';
         var cover = c.cover_url ? '<div style="height:120px;background:#000 url(\''+c.cover_url+'\') center/cover no-repeat;border-radius:10px;margin-bottom:0.75rem;"></div>' : '';
+        // Admin override: backend returns every course (incl. drafts) for admin roles.
+        // Show a badge so it's clear access is via admin rights, and flag unpublished drafts.
+        var adminBadge = c._admin_override ? '<span style="display:inline-block;font-size:9px;font-family:JetBrains Mono,monospace;color:var(--accent-green,#6ee7a8);border:1px solid var(--accent-green,#6ee7a8);border-radius:6px;padding:1px 5px;margin-bottom:0.5rem;">ADMIN' + (c.is_published === false ? ' · DRAFT' : '') + '</span><br>' : '';
         return '<div class="lab-card in-view" onclick="cpOpenCourse(\''+c.slug+'\')" style="cursor:pointer;">'
              + cover
+             + adminBadge
              + '<h3 style="font-size:14px;margin:0 0 0.4rem;color:var(--text-primary);">' + nm + '</h3>'
              + (desc ? '<p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:0;">' + desc + '</p>' : '')
              + '<p style="font-size:10px;color:var(--text-dim);margin:0.6rem 0 0;font-family:JetBrains Mono,monospace;">' + (c.block_count||0) + ' блоков</p>'
