@@ -11660,13 +11660,51 @@ function renderTeamsList(){
       + '</div>';
   }).join('');
 }
+// 🅵 п.29: proper team-create form (name / description / broadcast kinds /
+// members by email). Any user can create; creator becomes the leader (owner).
 function domTeamCreatePrompt(){
-  var name = prompt('Название команды:');
-  if (!name || !name.trim()) return;
-  domApi('/api/teams', { method:'POST', body: { name: name.trim() } })
-    .then(function(d){ domLoadTeams(); setTimeout(function(){ domTeamOpen(d.team.id); }, 200); })
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10020;padding:2rem 1rem;overflow-y:auto;';
+  var defaultOn = ['block_done','course_done','achievement_earned'];
+  var kindRows = BROADCAST_KINDS.map(function(k){
+    var on = defaultOn.indexOf(k.key) !== -1;
+    return '<label style="display:flex;align-items:center;gap:0.4rem;font-size:12px;color:var(--text-secondary);margin-bottom:0.25rem;cursor:pointer;">'
+      + '<input type="checkbox" class="newteam-kind-cb" value="' + k.key + '" ' + (on?'checked':'') + ' style="accent-color:var(--accent-cyan);">'
+      + k.label + '</label>';
+  }).join('');
+  modal.innerHTML = '<div style="max-width:520px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">Создать команду</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Название</label>'
+    + '<input id="newteam-name" type="text" placeholder="Например: Утренний круг" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;">'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Описание (по желанию)</label>'
+    + '<textarea id="newteam-desc" rows="2" placeholder="О чём эта команда…" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;resize:vertical;"></textarea>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:0.3rem;">Лидер: <b style="color:var(--text-primary);">вы</b> (можно передать позже)</div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Участники (email через запятую, по желанию)</label>'
+    + '<textarea id="newteam-members" rows="2" placeholder="anna@mail.com, ivan@mail.com" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:12px;margin-bottom:0.75rem;box-sizing:border-box;resize:vertical;"></textarea>'
+    + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">Уведомления команды</div>'
+    + '<div style="padding:0.5rem 0.7rem;background:rgba(0,229,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;margin-bottom:0.9rem;">' + kindRows + '</div>'
+    + '<button class="btn btn-solid" onclick="domTeamSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">Создать команду</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+function domTeamSubmit(){
+  var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
+  var name = (document.getElementById('newteam-name').value||'').trim();
+  if (!name) { alert('Название обязательно'); return; }
+  var desc = (document.getElementById('newteam-desc').value||'').trim();
+  var kinds = Array.from(document.querySelectorAll('.newteam-kind-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
+  var emails = (document.getElementById('newteam-members').value||'').split(/[,\n;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  domApi('/api/teams', { method:'POST', body: { name: name, description: desc, broadcast_kinds: kinds } })
+    .then(function(d){
+      var tid = d.team.id;
+      // add members sequentially (best-effort); ignore individual failures
+      var chain = Promise.resolve();
+      emails.forEach(function(em){ chain = chain.then(function(){ return domApi('/api/teams/' + tid + '/members', { method:'POST', body: { email: em } }).catch(function(){}); }); });
+      return chain.then(function(){ modal.remove(); domLoadTeams(); setTimeout(function(){ domTeamOpen(tid); }, 200); });
+    })
     .catch(function(e){ alert(e.message); });
 }
+window.domTeamSubmit = domTeamSubmit;
 function domTeamOpen(tid){
   domTeams.activeId = tid;
   renderTeamsList();
@@ -11709,6 +11747,15 @@ function domTeamOpen(tid){
           +   '<button class="btn btn-ghost" onclick="domTeamAddMember(' + tid + ')" style="font-size:11px;padding:0.3rem 0.7rem;">+ Добавить</button>'
           + '</div>'
           : '')
+      // 🅵 п.29: leadership transfer (single leader; pick any non-owner member)
+      + (iAmOwner && members.filter(function(m){ return m.role !== 'owner'; }).length
+          ? '<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:1rem;">'
+          +   '<select id="team-leader-sel" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">'
+          +     members.filter(function(m){ return m.role !== 'owner'; }).map(function(m){ return '<option value="' + m.id + '">' + (m.display_name||m.email) + '</option>'; }).join('')
+          +   '</select>'
+          +   '<button class="btn btn-ghost" onclick="domTeamTransferLeader(' + tid + ')" style="font-size:11px;padding:0.3rem 0.7rem;color:#fc0;">👑 Передать лидерство</button>'
+          + '</div>'
+          : '')
       + (iAmOwner
           ? '<div style="display:flex;flex-direction:column;gap:0.4rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.75rem;">'
           +   '<h4 style="margin:0;font-size:12px;color:var(--text-muted);text-transform:uppercase;">Объявление в команду</h4>'
@@ -11737,6 +11784,14 @@ function domTeamRemoveMember(tid, uid){
   domApi('/api/teams/' + tid + '/members/' + uid, { method:'DELETE' })
     .then(function(){ domTeamOpen(tid); });
 }
+function domTeamTransferLeader(tid){
+  var sel = document.getElementById('team-leader-sel'); if (!sel || !sel.value) return;
+  if (!confirm('Передать лидерство этому участнику? Вы станете обычным участником.')) return;
+  domApi('/api/teams/' + tid + '/leader', { method:'PATCH', body: { user_id: sel.value } })
+    .then(function(){ domToast('✓ Лидерство передано'); domTeamOpen(tid); domLoadTeams(); })
+    .catch(function(e){ alert(e.message); });
+}
+window.domTeamTransferLeader = domTeamTransferLeader;
 function domTeamAnnounce(tid){
   var body = document.getElementById('team-ann').value;
   if (!body || !body.trim()) return;
@@ -12060,7 +12115,12 @@ function domLoadGroups(){
     domGroups.rooms = d.rooms || [];
     var box = document.getElementById('dom-groups-list');
     if (!box) return;
-    if (!domGroups.rooms.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Пока нет комнат.</p>'; return; }
+    if (!domGroups.rooms.length) {
+      var isAdmin = currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin');
+      box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);line-height:1.5;">Пока нет групп.' +
+        (isAdmin ? ' Создайте первую кнопкой «+ Создать комнату» выше.' : ' Админ может создать группу первым.') + '</p>';
+      return;
+    }
     box.innerHTML = domGroups.rooms.map(function(r){
       var active = (domGroups.activeId === r.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
       return '<div onclick="domGroupOpen(' + r.id + ',\''+r.name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'

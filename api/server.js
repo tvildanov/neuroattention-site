@@ -5041,6 +5041,28 @@ app.post('/api/teams/:id/announce', requireAuth, async (req, res) => {
   } catch (err) { console.error('team announce:', err); res.status(500).json({ error: err.message }); }
 });
 
+// PATCH /api/teams/:id/leader — transfer leadership (🅵 п.29). Only the current
+// owner may transfer; the new leader must already be a member. Enforces a single
+// leader: the old owner becomes a normal member, the target becomes owner.
+app.patch('/api/teams/:id/leader', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const newLeader = req.body && req.body.user_id;
+    if (!newLeader) return res.status(400).json({ error: 'user_id required' });
+    const [t] = await sql`SELECT owner_user_id FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Team not found' });
+    if (String(t.owner_user_id) !== String(me)) return res.status(403).json({ error: 'Only the current leader can transfer leadership' });
+    const [mem] = await sql`SELECT 1 FROM team_members WHERE team_id = ${tid} AND user_id = ${newLeader}`;
+    if (!mem) return res.status(400).json({ error: 'New leader must be a team member' });
+    await sql`UPDATE teams SET owner_user_id = ${newLeader}, updated_at = now() WHERE id = ${tid}`;
+    // reflect roles in team_members (single owner)
+    await sql`UPDATE team_members SET role = 'member' WHERE team_id = ${tid} AND role = 'owner'`;
+    await sql`UPDATE team_members SET role = 'owner' WHERE team_id = ${tid} AND user_id = ${newLeader}`;
+    res.json({ ok: true, owner_user_id: newLeader });
+  } catch (err) { console.error('team leader transfer:', err); res.status(500).json({ error: err.message }); }
+});
+
 // ── Pack 29: User journey + admin path-map grid ──
 
 // GET /api/users/me/journey — full progress + XP for the calling user
