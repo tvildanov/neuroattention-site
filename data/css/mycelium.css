@@ -266,3 +266,124 @@
 #coursePlayerModal .player-bar-fill,
 #coursePlayerModal .cp-progress-fill { background: var(--course-accent) !important; }
 #coursePlayerModal [style*="--accent-cyan"] { }
+
+/* ============================================================================
+   🅲️ Evolution Path rework — field overlays, detail card, panels, toggles
+   ============================================================================ */
+.evo-node:hover .myc-node-core,
+.evo-node:focus { outline: none; }
+.evo-node circle:not(.evo-hit) { transition: transform .25s cubic-bezier(.2,.7,.2,1); transform-box: fill-box; transform-origin: center; }
+.evo-node:hover circle:not(.evo-hit) { transform: scale(1.5); }
+.evo-hit { cursor: pointer; }
+
+/* svg text labels */
+.evo-mod-num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px;
+  letter-spacing: .03em; fill: var(--myc-text-dim);
+}
+.evo-axis-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 9px;
+  letter-spacing: .02em; fill: var(--myc-text-mono);
+}
+
+/* — event detail card (🅲️ C5) — */
+.evo-detail-card {
+  position: absolute; z-index: 30; right: 14px; top: 56px; width: 290px; max-width: 70%;
+  background: rgba(7,11,18,0.94); border: 1px solid var(--myc-line-secondary);
+  border-radius: 12px; padding: 13px 14px 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px); color: var(--myc-text); font-size: 13px; line-height: 1.45;
+  animation: myc-fade-in .2s ease forwards;
+}
+.evo-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.evo-card-head b { font-size: 14px; line-height: 1.25; }
+.evo-card-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; display: inline-block; }
+.evo-card-row { display: flex; justify-content: space-between; gap: 10px; margin: 3px 0; font-size: 12px; }
+.evo-card-row > span:first-child { color: var(--myc-text-dim); }
+.evo-card-v { text-align: right; color: var(--myc-text); }
+.evo-card-note { margin: 7px 0; color: var(--myc-text); font-style: italic; opacity: .9; }
+.evo-card-rel-title { margin: 9px 0 5px; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--myc-text-mono); }
+.evo-card-rel { display: flex; flex-wrap: wrap; gap: 5px; }
+.evo-rel {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--myc-line-muted);
+  border-radius: 7px; padding: 3px 7px; font-size: 11px; color: var(--myc-text-dim);
+  font-family: inherit;
+}
+.evo-rel:hover { color: var(--myc-text); border-color: var(--myc-line-secondary); }
+.evo-card-actions { display: flex; gap: 8px; margin-top: 11px; }
+.evo-open {
+  flex: 1; background: var(--myc-green-deep); color: #04130c; border: none;
+  border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.evo-open:hover { background: var(--myc-green); }
+.evo-close {
+  flex: 0 0 auto; background: transparent; color: var(--myc-text-dim);
+  border: 1px solid var(--myc-line-muted); border-radius: 8px; padding: 7px 10px;
+  font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.evo-close:hover { color: var(--myc-text); }
+
+/* — avatars — */
+.evo-avatar { border-radius: 50%; object-fit: cover; border: 1px solid var(--myc-line-secondary); display: block; }
+.evo-avatar-ph {
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, rgba(141,255,200,0.18), rgba(7,11,18,0.9));
+  color: var(--myc-green); font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* — left mini user panel (tunnel) — */
+.evo-user-panel {
+  position: absolute; left: 12px; top: 50px; z-index: 18; width: 144px;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  background: rgba(5,9,14,0.55); border: 1px solid var(--myc-line-muted);
+  border-radius: 12px; padding: 12px; backdrop-filter: blur(4px);
+}
+.evo-user-name { font-size: 13px; font-weight: 600; color: var(--myc-text); margin-bottom: 2px; word-break: break-word; }
+.evo-user-lvl { font-size: 11px; color: var(--myc-green); }
+.evo-user-xp { font-size: 10px; color: var(--myc-text-mono); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+/* — right layer toggles — */
+.evo-layer-toggles {
+  position: absolute; right: 12px; top: 50px; z-index: 18; width: 132px;
+  background: rgba(5,9,14,0.55); border: 1px solid var(--myc-line-muted);
+  border-radius: 12px; padding: 10px 12px; backdrop-filter: blur(4px);
+}
+.evo-lt-title { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--myc-text-mono); margin-bottom: 7px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.evo-lt-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--myc-text-dim); padding: 2px 0; cursor: pointer; }
+.evo-lt-row input { accent-color: var(--myc-green-deep); cursor: pointer; }
+.evo-lt-row:hover { color: var(--myc-text); }
+
+/* — character view panels — */
+.evo-char-panel {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%); z-index: 18; width: 180px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+}
+.evo-char-name { font-size: 16px; font-weight: 600; color: var(--myc-text); }
+.evo-char-sub { font-size: 12px; color: var(--myc-green); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.evo-char-profile {
+  margin-top: 4px; background: transparent; color: var(--myc-cyan); cursor: pointer;
+  border: 1px solid var(--myc-cyan-deep); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-family: inherit;
+}
+.evo-char-profile:hover { background: rgba(168,247,255,0.08); }
+.evo-char-stats {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 18; width: 190px;
+  background: rgba(5,9,14,0.6); border: 1px solid var(--myc-line-muted);
+  border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(4px);
+}
+.evo-cs-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin: 6px 0; font-size: 11px; }
+.evo-cs-row > span { color: var(--myc-text-dim); }
+.evo-cs-row b { color: var(--myc-text); font-weight: 600; font-size: 12px; text-align: right; }
+
+/* — demo badge — */
+.evo-demo-badge {
+  position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); z-index: 19;
+  font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--myc-text-mono);
+  font-family: 'JetBrains Mono', ui-monospace, monospace; pointer-events: none;
+  border: 1px solid var(--myc-line-muted); border-radius: 20px; padding: 2px 10px; background: rgba(5,9,14,0.6);
+}
+
+/* mobile: panels collapse to keep the field usable */
+@media (max-width: 720px) {
+  .evo-user-panel, .evo-layer-toggles { position: static; width: auto; display: inline-flex; margin: 6px 6px 0 0; }
+  .evo-char-panel, .evo-char-stats { position: static; transform: none; width: auto; margin: 8px 0; }
+}

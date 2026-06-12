@@ -326,17 +326,19 @@
 
     /* — B3: "Вы здесь" badge over the current node only — */
     var curNode = nodes[model.curIdx];
-    if (curNode && curNode.status !== 'locked' && !curNode.secret) {
+    if (curNode && curNode.status === 'current') {
       var hLabel = HERE_LABEL[_LANG] || HERE_LABEL.ru;
       var hr = curNode.isModule ? 11 : 6.5;
+      // anchor on the node's *drawn* position (secret nodes sit on an offset branch)
+      var anchorX = curNode.secret ? (curNode.x - 26) : curNode.x;
+      var anchorY = curNode.secret ? (curNode.y + ((curNode.i % 2 === 0) ? -1 : 1) * 64) : curNode.y;
       var bw = hLabel.length * 6.2 + 16, bh = 16;
       // auto-offset so the badge never spills past the field edges
-      var bx = Math.max(startX, Math.min(endX, curNode.x));
-      bx = Math.max(bw / 2 + 4, Math.min(contentW - bw / 2 - 4, bx));
-      var bgTop = curNode.y - hr - 12 - bh;
+      var bx = Math.max(bw / 2 + 4, Math.min(contentW - bw / 2 - 4, anchorX));
+      var bgTop = anchorY - hr - 12 - bh;
       var badge = el('g', { 'class': 'myc-here', opacity: '0' });
       badge.appendChild(el('line', { 'class': 'myc-here-pin',
-        x1: curNode.x, y1: curNode.y - hr - 2, x2: bx, y2: bgTop + bh }));
+        x1: anchorX, y1: anchorY - hr - 2, x2: bx, y2: bgTop + bh }));
       badge.appendChild(el('rect', { 'class': 'myc-here-bg',
         x: (bx - bw / 2).toFixed(1), y: bgTop.toFixed(1), width: bw.toFixed(1), height: bh,
         rx: 8, ry: 8 }));
