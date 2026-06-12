@@ -4117,12 +4117,14 @@ function backToAdmin(){
 window.evoOpenSource = function(ev){
   if(!ev) return;
   var src = (ev.source||'') + '';
+  var kind = (ev.kind||'') + '';
   try {
-    if(src.indexOf('neuromap') === 0){ switchTab('tools'); setToolsMode('nm'); }
-    else if(src === 'sensation'){ switchTab('tools'); setToolsMode('sensation'); }
-    else if(src.indexOf('diary') === 0 || ev.kind === 'insight'){ switchTab('tools'); setToolsMode('diary'); }
+    if(kind === 'xp_gain' || kind === 'achievement' || ev.layer === 'xp'){ switchTab('profile'); }
+    else if(src.indexOf('neuromap') === 0 || kind === 'emotion' || kind === 'event' || kind === 'thought'){ switchTab('tools'); setToolsMode('nm'); }
+    else if(src === 'sensation' || kind === 'sensation'){ switchTab('tools'); setToolsMode('sensation'); }
+    else if(src.indexOf('diary') === 0 || kind === 'insight'){ switchTab('tools'); setToolsMode('diary'); }
     else if(src === 'calendar'){ switchTab('tools'); setToolsMode('cal'); }
-    else if(src === 'practice' || ev.kind === 'practice' || ev.kind === 'block_done'){ switchTab('courses'); }
+    else if(src === 'practice' || src === 'course_block' || kind === 'practice' || kind === 'block_done'){ switchTab('courses'); }
     else { switchTab('tools'); setToolsMode('nm'); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch(e){ console.warn('evoOpenSource:', e); }
