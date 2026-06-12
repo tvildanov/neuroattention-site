@@ -116,13 +116,143 @@
   }
 
   /* ── data helpers ───────────────────────────────────────────────────────── */
+  // Prefer the flat, fully-detailed event stream from the reader (id/payload/
+  // links/source). Fall back to the old per-layer shape for older API payloads.
   function allEvents(data) {
+    if (Array.isArray(data.events) && data.events.length) {
+      return data.events.map(function (e) {
+        return { id: e.id, layer: e.layer, t: tms(e.t || e.occurred_at), occurred_at: e.occurred_at,
+                 label: e.label, valence: e.valence, weight: e.weight || 1, kind: e.kind,
+                 source: e.source, payload: e.payload || {}, links: e.links || [] };
+      }).sort(function (a, b) { return a.t - b.t; });
+    }
     var out = [];
     LAYERS.forEach(function (ly) {
       if (ly.key === 'xp_gain') return;
-      (data.layers[ly.key] || []).forEach(function (e) { out.push({ layer: ly.key, t: tms(e.t), label: e.label, valence: e.valence, weight: e.weight || 1 }); });
+      (data.layers[ly.key] || []).forEach(function (e) {
+        out.push({ id: e.id, layer: ly.key, t: tms(e.t), occurred_at: e.occurred_at, label: e.label,
+                   valence: e.valence, weight: e.weight || 1, kind: e.kind || ly.key,
+                   source: e.source, payload: e.payload || {}, links: e.links || [] });
+      });
     });
     return out.sort(function (a, b) { return a.t - b.t; });
+  }
+
+  // ── interaction state: node position registry (id → {x,y}) for link drawing,
+  //    rebuilt on every paint ──
+  var POS = {};
+  function registerNode(id, x, y) { if (id != null) POS[String(id)] = { x: x, y: y }; }
+
+  // Attach a click handler that opens the detail card for this event.
+  function makeInteractive(node, ev, container, lang) {
+    node.style.cursor = 'pointer';
+    node.setAttribute('tabindex', '0');
+    node.addEventListener('click', function (domEv) {
+      domEv.stopPropagation();
+      showDetailCard(container, ev, lang);
+    });
+  }
+
+  // Draw thin lines between linked events (journey_links) using the position
+  // registry built during node render. Appended UNDER nodes so dots stay on top.
+  function drawJourneyLinks(g, data) {
+    var links = (data && data.links) || [];
+    if (!links.length) return;
+    var lg = el('g', { 'class': 'evo-links' });
+    links.forEach(function (lk) {
+      var a = POS[String(lk.a)], b = POS[String(lk.b)];
+      if (!a || !b) return;
+      var midY = (a.y + b.y) / 2 - Math.min(40, Math.abs(b.x - a.x) * 0.18);
+      var d = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+              ' Q' + ((a.x + b.x) / 2).toFixed(1) + ' ' + midY.toFixed(1) +
+              ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+      var stroke = lk.kind === 'correlation' ? 'var(--myc-cyan, #8ff)' : 'var(--myc-line-secondary, #9aa)';
+      lg.appendChild(el('path', { d: d, fill: 'none', stroke: stroke, 'stroke-width': '0.8',
+        'stroke-dasharray': lk.kind === 'correlation' ? '2 3' : '0', opacity: '0.45' }));
+    });
+    g.insertBefore(lg, g.firstChild || null); // under the nodes
+  }
+
+  var LAYER_LABEL = {};
+  LAYERS.forEach(function (l) { LAYER_LABEL[l.key] = l.label; });
+
+  function fmtDate(t, lang) {
+    var d = new Date(t); if (isNaN(d)) return '';
+    try { return d.toLocaleString(lang === 'ru' ? 'ru-RU' : (lang === 'es' ? 'es-ES' : 'en-US'),
+      { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return d.toISOString().slice(0, 16).replace('T', ' '); }
+  }
+
+  var CARD_STR = {
+    source:  { ru: 'Источник', en: 'Source', es: 'Fuente' },
+    links:   { ru: 'Связи', en: 'Links', es: 'Enlaces' },
+    open:    { ru: 'Открыть в источнике', en: 'Open in source', es: 'Abrir en la fuente' },
+    close:   { ru: 'Закрыть', en: 'Close', es: 'Cerrar' },
+    intensity:{ ru: 'Интенсивность', en: 'Intensity', es: 'Intensidad' },
+    comment: { ru: 'Заметка', en: 'Note', es: 'Nota' },
+    where:   { ru: 'Где', en: 'Where', es: 'Dónde' }
+  };
+  var SRC_LABEL = {
+    neuromap: { ru: 'Нейромап', en: 'NeuroMap', es: 'NeuroMapa' },
+    neuromap_legacy: { ru: 'Нейромап', en: 'NeuroMap', es: 'NeuroMapa' },
+    sensation: { ru: 'Карта ощущений', en: 'Sensation map', es: 'Mapa de sensaciones' },
+    practice: { ru: 'Практика', en: 'Practice', es: 'Práctica' },
+    diary: { ru: 'Дневник нейроресурса', en: 'Neuro-resource diary', es: 'Diario' },
+    diary_legacy: { ru: 'Дневник нейроресурса', en: 'Neuro-resource diary', es: 'Diario' },
+    calendar: { ru: 'Календарь', en: 'Calendar', es: 'Calendario' },
+    course_block: { ru: 'Курс', en: 'Course', es: 'Curso' }
+  };
+
+  // Build & show a floating detail card for one event.
+  function showDetailCard(container, ev, lang) {
+    closeDetailCard(container);
+    var card = document.createElement('div');
+    card.className = 'evo-detail-card';
+    card.setAttribute('role', 'dialog');
+    card.style.cssText = 'position:absolute;z-index:30;right:14px;top:14px;max-width:300px;' +
+      'background:var(--myc-bg-2,#10141c);border:1px solid var(--myc-line-muted,rgba(255,255,255,0.14));' +
+      'border-radius:12px;padding:14px 14px 12px;box-shadow:0 8px 30px rgba(0,0,0,0.45);' +
+      'font-size:13px;line-height:1.45;color:var(--text,#e7e7ee);backdrop-filter:blur(6px);';
+
+    var p = ev.payload || {};
+    var layerLabel = L(LAYER_LABEL[ev.layer] || { ru: ev.layer }, lang);
+    var srcLabel = L(SRC_LABEL[ev.source] || SRC_LABEL[(p && p.source)] || { ru: ev.source || '' }, lang);
+    var rows = [];
+    rows.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+      '<span style="width:9px;height:9px;border-radius:50%;background:' + valStyle(ev.valence).c + ';flex:0 0 auto;"></span>' +
+      '<b style="font-size:14px;">' + escapeHtml(ev.label || ev.kind || '') + '</b></div>');
+    rows.push('<div style="color:var(--text-dim,#9aa);font-size:11px;margin-bottom:8px;">' +
+      escapeHtml(layerLabel) + ' · ' + escapeHtml(fmtDate(ev.t, lang)) + '</div>');
+    if (srcLabel) rows.push(kv(L(CARD_STR.source, lang), srcLabel));
+    if (p.intensity) rows.push(kv(L(CARD_STR.intensity, lang), String(p.intensity)));
+    if (p.body_locations && p.body_locations.length) rows.push(kv(L(CARD_STR.where, lang), escapeHtml(p.body_locations.join(', '))));
+    if (p.comment) rows.push(kv(L(CARD_STR.comment, lang), escapeHtml(p.comment)));
+    if (p.text && ev.kind === 'insight') rows.push('<div style="margin:6px 0;color:var(--text,#ddd);">' + escapeHtml(String(p.text)) + '</div>');
+    if (ev.links && ev.links.length) rows.push(kv(L(CARD_STR.links, lang), String(ev.links.length)));
+
+    var canOpen = ev.source && (ev.source.indexOf('neuromap') === 0 || ev.source === 'sensation' || ev.source === 'practice' || ev.source === 'diary' || ev.source.indexOf('diary') === 0);
+    var actions = '<div style="display:flex;gap:8px;margin-top:10px;">';
+    if (canOpen) actions += '<button class="evo-open" style="flex:1;background:var(--myc-green,#2ea);color:#04130c;border:none;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer;">' + L(CARD_STR.open, lang) + '</button>';
+    actions += '<button class="evo-close" style="flex:0 0 auto;background:transparent;color:var(--text-dim,#9aa);border:1px solid var(--myc-line-muted,rgba(255,255,255,0.14));border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;">' + L(CARD_STR.close, lang) + '</button>';
+    actions += '</div>';
+
+    card.innerHTML = rows.join('') + actions;
+    container.querySelector('.myc-evo-canvas').appendChild(card);
+    var oc = card.querySelector('.evo-close'); if (oc) oc.addEventListener('click', function () { closeDetailCard(container); });
+    var op = card.querySelector('.evo-open'); if (op) op.addEventListener('click', function () { openInSource(ev); });
+  }
+  function kv(k, v) {
+    return '<div style="display:flex;justify-content:space-between;gap:10px;margin:3px 0;">' +
+      '<span style="color:var(--text-dim,#9aa);">' + escapeHtml(k) + '</span><span style="text-align:right;">' + v + '</span></div>';
+  }
+  function closeDetailCard(container) {
+    var ex = container.querySelector('.evo-detail-card'); if (ex) ex.remove();
+  }
+  // Hand off to the host page (account.html). It knows how to switch tabs and
+  // focus a node; we just provide the event. Fallback: log to console.
+  function openInSource(ev) {
+    if (typeof window.evoOpenSource === 'function') { try { window.evoOpenSource(ev); return; } catch (e) {} }
+    console.info('[EvolutionPath] open source for', ev);
   }
   function domain(data) {
     var from = tms(data.range.from), to = tms(data.range.to);
@@ -144,7 +274,7 @@
   }
 
   /* ── view: TUNNEL ───────────────────────────────────────────────────────── */
-  function renderTunnel(svg, W, data) {
+  function renderTunnel(svg, W, data, container, lang) {
     var ag = data.aggregates, dom = domain(data);
     var cy = H / 2, padX = 40;
     var xOf = function (t) { return padX + (tms(t) - dom.from) / dom.span * (W - padX * 2); };
@@ -181,26 +311,43 @@
     // central spine (course)
     g.appendChild(el('line', { x1: padX, y1: cy, x2: W - padX, y2: cy, stroke: 'var(--myc-line-primary)', 'stroke-width': '2', 'stroke-linecap': 'round', filter: 'url(#evoGlow)' }));
 
-    // practices = nodes on the spine
+    // practices = nodes on the spine (clickable)
     (data.layers.practice || []).forEach(function (p, i) {
-      g.appendChild(el('circle', { cx: xOf(p.t), cy: cy, r: 3.4, fill: 'var(--myc-bg-2)', stroke: 'var(--myc-line-primary)', 'stroke-width': '1.4', filter: 'url(#evoGlow)' }));
-    });
-
-    // life data scattered within the field band
-    var fieldEvents = allEvents(data).filter(function (e) { return e.layer !== 'practice'; });
-    fieldEvents.forEach(function (e, i) {
-      var st = valStyle(e.valence);
-      var yy = cy + (jit(i) - 0.5) * 2 * half * 0.92;
-      var isInsight = e.layer === 'insight';
-      var r = isInsight ? 3.2 : (1.6 + Math.min(2.4, Math.log(1 + e.weight)));
-      var node = el('circle', { cx: xOf(e.t), cy: yy.toFixed(1), r: r.toFixed(1),
-        fill: isInsight ? 'var(--myc-cyan)' : st.c, opacity: isInsight ? 0.95 : st.o });
-      if (isInsight || e.valence === 'positive') node.setAttribute('filter', 'url(#evoGlow)');
-      node.appendChild(titleNode(e));
+      var px = xOf(p.t);
+      var node = el('circle', { cx: px, cy: cy, r: 3.8, fill: 'var(--myc-bg-2)', stroke: 'var(--myc-line-primary)', 'stroke-width': '1.4', filter: 'url(#evoGlow)' });
+      node.appendChild(titleNode(p));
+      registerNode(p.id, px, cy);
+      makeInteractive(node, normEvent(p, 'practice'), container, lang);
       g.appendChild(node);
     });
 
+    // life data scattered within the field band (clickable)
+    var fieldEvents = allEvents(data).filter(function (e) { return e.layer !== 'practice'; });
+    fieldEvents.forEach(function (e, i) {
+      var st = valStyle(e.valence);
+      var px = xOf(e.t);
+      var yy = cy + (jit(i) - 0.5) * 2 * half * 0.92;
+      var isInsight = e.layer === 'insight';
+      var r = isInsight ? 3.4 : (2.0 + Math.min(2.4, Math.log(1 + e.weight)));
+      var node = el('circle', { cx: px, cy: yy.toFixed(1), r: r.toFixed(1),
+        fill: isInsight ? 'var(--myc-cyan)' : st.c, opacity: isInsight ? 0.95 : st.o });
+      if (isInsight || e.valence === 'positive') node.setAttribute('filter', 'url(#evoGlow)');
+      node.appendChild(titleNode(e));
+      registerNode(e.id, px, parseFloat(yy.toFixed(1)));
+      makeInteractive(node, e, container, lang);
+      g.appendChild(node);
+    });
+
+    drawJourneyLinks(g, data);
     svg.appendChild(g);
+  }
+
+  // Normalize a layer item (which may be a practice row) into the event shape the
+  // detail card expects.
+  function normEvent(p, layer) {
+    return { id: p.id, layer: p.layer || layer, t: tms(p.t || p.occurred_at), occurred_at: p.occurred_at,
+             label: p.label, valence: p.valence || 'neutral', weight: p.weight || 1, kind: p.kind || layer,
+             source: p.source, payload: p.payload || {}, links: p.links || [] };
   }
 
   function titleNode(e) {
@@ -210,7 +357,7 @@
   }
 
   /* ── view: LAYERS ───────────────────────────────────────────────────────── */
-  function renderLayers(svg, W, data, lang) {
+  function renderLayers(svg, W, data, lang, container) {
     var dom = domain(data), padL = 78, padR = 24;
     var xOf = function (t) { return padL + (tms(t) - dom.from) / dom.span * (W - padL - padR); };
     var laneH = H / LAYERS.length;
@@ -238,13 +385,17 @@
       }
       (data.layers[ly.key] || []).forEach(function (e) {
         var st = ly.key === 'insight' ? { c: 'var(--myc-cyan)', o: 0.95 } : valStyle(e.valence);
-        var r = (ly.key === 'practice') ? 2.8 : (1.8 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
-        var node = el('circle', { cx: xOf(e.t), cy: cyL, r: r.toFixed(1), fill: st.c, opacity: st.o });
+        var r = (ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
+        var px = xOf(e.t);
+        var node = el('circle', { cx: px, cy: cyL, r: r.toFixed(1), fill: st.c, opacity: st.o });
         if (st.c.indexOf('green') > -1 || st.c.indexOf('cyan') > -1) node.setAttribute('filter', 'url(#evoGlow)');
         node.appendChild(titleNode({ label: e.label, layer: ly.key, valence: e.valence }));
+        registerNode(e.id, px, cyL);
+        makeInteractive(node, normEvent(e, ly.key), container, lang);
         g.appendChild(node);
       });
     });
+    drawJourneyLinks(g, data);
     svg.appendChild(g);
   }
 
@@ -371,6 +522,7 @@
   function paint(container, st, lang) {
     var canvas = container.querySelector('.myc-evo-canvas');
     canvas.innerHTML = '';
+    POS = {}; // reset node-position registry for fresh link drawing
     var data = st.data;
     var totalEvents = Object.keys(data.totals || {}).reduce(function (s, k) { return k === 'xp_total' ? s : s + (data.totals[k] || 0); }, 0);
     if (!totalEvents) {
@@ -382,11 +534,11 @@
     canvas.appendChild(svg);
 
     if (st.mode === 'layers') {
-      renderLayers(svg, W, data, lang);
+      renderLayers(svg, W, data, lang, container);
     } else if (st.mode === 'field') {
       renderFieldMode(container, canvas, svg, W, data, lang, st);
     } else {
-      renderTunnel(svg, W, data);
+      renderTunnel(svg, W, data, container, lang);
     }
 
     if (st.mode !== 'field') canvas.appendChild(statsRow(data.aggregates, lang));

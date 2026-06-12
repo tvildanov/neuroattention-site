@@ -1718,7 +1718,10 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
 
     const userId = req.user.id;
     const nodeIds = [];
+    const validItems = []; // chain items that produced a node, aligned 1:1 with nodeIds
     const seenNodes = new Set(); // deduplicate: only increment count once per unique node per call
+    // Optional backdating: caller may pass occurred_at (ISO) to log this chain in the past.
+    const occurredAt = req.body && req.body.occurred_at ? req.body.occurred_at : null;
 
     // 1. Upsert each node (deduplicate within single call)
     for (const item of chain) {
@@ -1761,6 +1764,29 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
         `;
       }
       nodeIds.push(rows[0].id);
+      validItems.push(item);
+    }
+
+    // 1b. Journey log (Pack 31.5): one journey_event per chain node so the
+    // Evolution Path timeline gets a real, time-accurate, clickable point for
+    // every emotion / thought / sensation / event the user just added. Links
+    // between consecutive nodes are mirrored into journey_links.
+    const journeyIds = [];
+    for (let i = 0; i < validItems.length; i++) {
+      const it = validItems[i];
+      const { kind, layer } = nmTypeToJourney(it.type);
+      const jid = await logJourney(userId, kind, layer, {
+        label: it.label,
+        valence: it.valence || 'neutral',
+        nm_node_id: nodeIds[i],
+        nm_type: it.type,
+        source: 'neuromap',
+        coords: (it.metadata && it.metadata.coords) || null
+      }, occurredAt);
+      journeyIds.push(jid);
+    }
+    for (let i = 0; i < journeyIds.length - 1; i++) {
+      await linkJourney(journeyIds[i], journeyIds[i + 1], 'sequence', 1.0);
     }
 
     // 2. Create links between consecutive nodes in the chain
@@ -1780,7 +1806,7 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
       linkResults.push({ from: fromId, to: toId, count: rows[0].count });
     }
 
-    res.json({ ok: true, node_ids: nodeIds, links: linkResults });
+    res.json({ ok: true, node_ids: nodeIds, journey_ids: journeyIds, links: linkResults });
   } catch (err) {
     console.error('POST /api/neuromap/v2/append:', err);
     res.status(500).json({ error: 'Internal error' });
@@ -1996,7 +2022,18 @@ app.post('/api/diary/save', requireAuth, async (req, res) => {
       VALUES (${req.user.id}, ${date_key}, ${text}, ${comment || ''}, ${plus_count || 0}, ${minus_count || 0}, ${time || ''})
       RETURNING id, date_key, created_at
     `;
-    res.json({ ok: true, id: rows[0].id, date_key: rows[0].date_key });
+    // Journey log (Pack 31.5): a diary note becomes an insight point on the
+    // Evolution Path. occurred_at honours the user-chosen date_key (+ time) so a
+    // back-dated entry lands on the right day, not "now".
+    const occAt = date_key ? (date_key + (time && /^\d{2}:\d{2}/.test(time) ? 'T' + time : 'T12:00')) : null;
+    const valence = (plus_count || 0) > (minus_count || 0) ? 'positive'
+                  : ((minus_count || 0) > (plus_count || 0) ? 'negative' : 'neutral');
+    const jid = await logJourney(req.user.id, 'insight', 'insight', {
+      text: String(text).slice(0, 280), comment: comment || '',
+      plus_count: plus_count || 0, minus_count: minus_count || 0,
+      valence, date_key, diary_id: rows[0].id, source: 'diary'
+    }, occAt);
+    res.json({ ok: true, id: rows[0].id, date_key: rows[0].date_key, journey_id: jid });
   } catch (err) {
     console.error('POST /api/diary/save:', err);
     res.status(500).json({ error: 'Internal error' });
@@ -3529,9 +3566,58 @@ async function callerIsAdmin(req) {
 }
 
 // XP helper — adds xp event, updates totals, recomputes level
+// ── Pack 31.5: Journey event log helpers (Evolution Path real-data wiring) ──
+// Every meaningful user action in any instrument should leave a journey_event so
+// the Evolution Path reader can render a real, clickable, time-accurate timeline.
+// Fault-tolerant by design: a failure here must NEVER break the instrument write
+// that called it — we log a warning and return null.
+async function logJourney(userId, kind, layer, payload, occurredAt) {
+  try {
+    if (!userId || !kind) return null;
+    let whenIso = null;
+    if (occurredAt) {
+      const d = new Date(occurredAt);
+      if (!isNaN(d.getTime())) whenIso = d.toISOString();
+    }
+    const body = JSON.stringify(payload || {});
+    const rows = whenIso
+      ? await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at)
+                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, ${whenIso}) RETURNING id`
+      : await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at)
+                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, now()) RETURNING id`;
+    return rows[0] ? rows[0].id : null;
+  } catch (e) { console.warn('logJourney(' + kind + '):', e.message); return null; }
+}
+
+// Link two journey events (e.g. a sensation bound to the emotion it accompanied,
+// or consecutive nodes in a neuromap chain). journey_links has no uniqueness, so
+// callers should avoid obvious duplicates; cheap correlations are acceptable.
+async function linkJourney(eventA, eventB, kind, weight) {
+  try {
+    if (!eventA || !eventB || String(eventA) === String(eventB)) return;
+    await sql`INSERT INTO journey_links (event_a, event_b, kind, weight)
+              VALUES (${eventA}, ${eventB}, ${kind || 'sequence'}, ${weight || 1.0})`;
+  } catch (e) { console.warn('linkJourney:', e.message); }
+}
+
+// Map a neuromap node type → { kind, layer } for the journey log / Evolution Path.
+function nmTypeToJourney(type) {
+  switch (type) {
+    case 'emotion':  return { kind: 'emotion',   layer: 'emotion' };
+    case 'thought':  return { kind: 'thought',   layer: 'thought' };
+    case 'area':     return { kind: 'sensation', layer: 'sensation' };
+    case 'cause':    return { kind: 'event',     layer: 'event' };
+    case 'event':    return { kind: 'event',     layer: 'event' };
+    case 'practice': return { kind: 'practice',  layer: 'practice' };
+    default:         return { kind: 'event',     layer: 'event' };
+  }
+}
+
 async function awardXP(userId, amount, source, refId) {
   if (!userId || !amount) return null;
   await sql`INSERT INTO xp_events (user_id, amount, source, source_ref_id) VALUES (${userId}, ${amount}, ${source}, ${refId || null})`;
+  // Journey log: every XP award is a point on the xp_gain layer of Evolution Path.
+  await logJourney(userId, 'xp_gain', 'xp', { points: amount, reason: source || 'xp', ref_id: refId || null });
   const [t] = await sql`SELECT COALESCE(SUM(amount),0)::int AS total FROM xp_events WHERE user_id = ${userId}`;
   const total = parseInt(t.total) || 0;
   // quadratic levels: Lvl N requires total >= N*N*100. Level = floor(sqrt(total/100)) + 1, cap 50.
@@ -3683,8 +3769,36 @@ app.post('/api/practices/:id/blocks/:blockId/complete', requireAuth, async (req,
       INSERT INTO practice_block_completion (user_id, block_id, practice_id, duration_seconds, payload_response)
       VALUES (${userId}, ${blockId}, ${practiceId}, ${duration_seconds || null}, ${payload_response ? JSON.stringify(payload_response) : null})
     `;
-    // Award XP
+    // Award XP (also logs an xp_gain journey event inside awardXP)
     const xp = await awardXP(userId, blk.xp_reward || 25, 'block_completion', blockId);
+
+    // Journey log + Step 5: a completed practice becomes (a) a practice point on
+    // the Evolution Path and (b) a real "event" node on the user's NeuroMap, so
+    // sensations/emotions can later be bound to it as context.
+    try {
+      const [pr] = await sql`SELECT slug, name FROM practices WHERE id = ${practiceId}`;
+      const prName = (pr && pr.name) || (blk.title_ru) || 'Практика';
+      const journeyId = await logJourney(userId, 'practice', 'practice', {
+        practice_id: practiceId, practice_slug: pr && pr.slug || null, practice_name: prName,
+        block_id: blockId, duration: duration_seconds || null,
+        completion_at: new Date().toISOString(), source: 'practice'
+      }, null);
+      // NeuroMap node: type 'event' so it shows on the personal map and is a
+      // valid context-binding target for the sensation map.
+      const evLabel = 'Практика: ' + prName;
+      const normEv = normalizeLabel(evLabel);
+      const nmRows = await sql`
+        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+        VALUES (${userId}, 'event', ${evLabel}, ${normEv}, 'positive', 1, now(),
+                ${JSON.stringify({ practice_id: practiceId, source: 'practice', journey_id: journeyId })}::jsonb)
+        ON CONFLICT (user_id, type, normalized_label, valence)
+        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = now()
+        RETURNING id`;
+      if (journeyId && nmRows[0]) {
+        await sql`UPDATE journey_events SET payload = payload || ${JSON.stringify({ nm_node_id: nmRows[0].id })}::jsonb WHERE id = ${journeyId}`;
+      }
+    } catch (jpErr) { console.warn('practice journey/nm log:', jpErr.message); }
+
     res.json({ ok: true, xp });
   } catch (err) {
     console.error('POST .../blocks/:blockId/complete:', err);
@@ -3697,20 +3811,107 @@ app.post('/api/practices/:id/blocks/:blockId/complete', requireAuth, async (req,
 app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
-    const { sensations = [], body_locations = [], comment, practice_block_id } = req.body || {};
+    const { sensations = [], body_locations = [], comment, practice_block_id,
+            intensity, occurred_at, link_to } = req.body || {};
     if (!Array.isArray(sensations) || !Array.isArray(body_locations)) {
       return res.status(400).json({ error: 'sensations and body_locations must be arrays' });
     }
     // Resolve labels
     const sensRows = sensations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'sensation' AND slug = ANY(${sensations}::text[])` : [];
     const locRows = body_locations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'body_location' AND slug = ANY(${body_locations}::text[])` : [];
-    // For now, just record entries to neuro_resource_diary as freeform; full graph wiring will come with sensation_entry frontend
-    const dateKey = new Date().toISOString().slice(0, 10);
-    const text = `Practice sensation: ${sensRows.map(s => s.label_ru).join(', ')} @ ${locRows.map(l => l.label_ru).join(', ')}${comment ? ' — ' + comment : ''}`;
+
+    // occurred_at supports back-dating; default to now. date_key follows it.
+    let when = occurred_at ? new Date(occurred_at) : new Date();
+    if (isNaN(when.getTime())) when = new Date();
+    const dateKey = when.toISOString().slice(0, 10);
+
+    // Keep the freeform diary record (backward compat with existing recent-list UI)
+    const text = `Sensation: ${sensRows.map(s => s.label_ru).join(', ')} @ ${locRows.map(l => l.label_ru).join(', ')}${comment ? ' — ' + comment : ''}`;
     await sql`INSERT INTO neuro_resource_diary (user_id, date_key, text, comment) VALUES (${userId}, ${dateKey}, ${text}, ${comment || ''})`;
-    res.json({ ok: true, sensations: sensRows.length, locations: locRows.length });
+
+    // NeuroMap nodes: body locations as 'area' nodes so they appear on the map.
+    const nmNodeIds = [];
+    for (const loc of locRows) {
+      const norm = normalizeLabel(loc.label_ru);
+      const r = await sql`
+        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+        VALUES (${userId}, 'area', ${loc.label_ru}, ${norm}, 'neutral', 1, ${when.toISOString()},
+                ${JSON.stringify({ source: 'sensation', slug: loc.slug })}::jsonb)
+        ON CONFLICT (user_id, type, normalized_label, valence)
+        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()}
+        RETURNING id`;
+      if (r[0]) nmNodeIds.push(r[0].id);
+    }
+
+    // Journey log: a single sensation event carrying all chosen sensations +
+    // locations + intensity + the context it was bound to (link_to).
+    const linkTo = Array.isArray(link_to) ? link_to.filter(Boolean) : [];
+    const sensationEventId = await logJourney(userId, 'sensation', 'sensation', {
+      sensation_ids: sensRows.map(s => s.slug),
+      sensation_labels: sensRows.map(s => s.label_ru),
+      body_locations: locRows.map(l => l.label_ru),
+      body_location_slugs: locRows.map(l => l.slug),
+      intensity: (typeof intensity === 'number' ? intensity : (parseInt(intensity, 10) || null)),
+      comment: comment || '',
+      nm_node_ids: nmNodeIds,
+      context: { linked_to: linkTo },
+      source: 'sensation'
+    }, when.toISOString());
+
+    // Context binding: connect this sensation to the emotions/events/thoughts/
+    // practices the user picked, in both the journey graph and (where possible)
+    // the NeuroMap graph (thin ⚭ links between the area node and the target node).
+    let linkedCount = 0;
+    if (sensationEventId && linkTo.length) {
+      const targets = await sql`SELECT id, payload FROM journey_events
+                                WHERE user_id = ${userId} AND id = ANY(${linkTo}::bigint[])`;
+      for (const tgt of targets) {
+        await linkJourney(sensationEventId, tgt.id, 'correlation', 1.0);
+        linkedCount++;
+        // Mirror onto the NeuroMap graph if both sides have nm nodes
+        const tgtNmId = tgt.payload && tgt.payload.nm_node_id;
+        if (tgtNmId) {
+          for (const areaId of nmNodeIds) {
+            await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+                      VALUES (${userId}, ${areaId}, ${tgtNmId}, 1, ${when.toISOString()})
+                      ON CONFLICT (user_id, from_node_id, to_node_id)
+                      DO UPDATE SET count = nm_links.count + 1, last_seen_at = ${when.toISOString()}`;
+          }
+        }
+      }
+    }
+
+    res.json({ ok: true, sensations: sensRows.length, locations: locRows.length,
+               journey_id: sensationEventId, linked: linkedCount });
   } catch (err) {
     console.error('POST /api/neuromap/sensation:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/neuromap/context-candidates — recent emotions/events/thoughts/practices
+// the user can bind a sensation to. Powers the "Связать с контекстом" step in the
+// sensation map UI. ?days=7 (default), ?limit=40.
+app.get('/api/neuromap/context-candidates', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const days = Math.min(366, Math.max(1, parseInt(req.query.days, 10) || 7));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 40));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await sql`
+      SELECT id, kind, layer, payload, occurred_at FROM journey_events
+      WHERE user_id = ${userId}
+        AND kind IN ('emotion','event','thought','practice')
+        AND occurred_at >= ${since}
+      ORDER BY occurred_at DESC LIMIT ${limit}`;
+    const items = rows.map(r => ({
+      id: String(r.id), kind: r.kind, layer: r.layer, occurred_at: r.occurred_at,
+      label: (r.payload && (r.payload.label || r.payload.practice_name || r.payload.title)) || r.kind,
+      valence: (r.payload && r.payload.valence) || 'neutral'
+    }));
+    res.json({ ok: true, items });
+  } catch (err) {
+    console.error('GET /api/neuromap/context-candidates:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -4813,71 +5014,155 @@ app.get('/api/users/me/journey', requireAuth, async (req, res) => {
 });
 
 // GET /api/users/me/evolution — Mycelium Stage 2 (Personal Evolution Path).
-// Read-only aggregation of the user's journey across layers, over a period.
-// Sources: journey_events (Pack 31) + course_block_progress for practice/xp,
-// nm_nodes for emotion/thought/sensation/event-trigger, calendar_events for
-// life events, neuro_resource_diary for insights. No writes, no schema change.
-// Every source query is fault-tolerant — a missing table yields an empty layer
-// rather than a 500, so the view degrades gracefully on sparse data.
+// Event-centric, read-only aggregation of the user's journey.
+//
+// PRIMARY source is journey_events (Pack 31.5): every emotion / event / thought /
+// sensation / practice / insight / xp_gain the user logs in ANY instrument lands
+// here as a real, time-accurate row with a stable id + payload. Each returned
+// item carries { id, kind, layer, occurred_at, t, label, valence, weight,
+// source, payload, links } so the frontend can render a clickable detail card
+// and draw the journey_links between related events.
+//
+// LEGACY fallbacks (nm_nodes aggregate, calendar_events, neuro_resource_diary,
+// course_block_progress) fill a layer ONLY when journey_events has nothing for
+// it — so pre-Pack-31.5 data still shows, but is never double-counted.
+//
+// Filtering: ?from=<ISO>&to=<ISO> takes precedence; otherwise ?period=
+// day|week|month|3months|year|all. Every query is fault-tolerant.
 app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const period = ['day','week','month','3months','year','all'].includes(String(req.query.period||'').toLowerCase())
       ? String(req.query.period).toLowerCase() : 'month';
     const days = { day:1, week:7, month:30, '3months':90, year:365, all:36500 }[period];
-    const since = new Date(Date.now() - days*24*60*60*1000);
-    const sinceIso = since.toISOString();
+
+    // from/to override period when valid
+    let fromD = new Date(Date.now() - days*24*60*60*1000);
+    let toD = new Date();
+    if (req.query.from) { const d = new Date(req.query.from); if (!isNaN(d.getTime())) fromD = d; }
+    if (req.query.to)   { const d = new Date(req.query.to);   if (!isNaN(d.getTime())) toD = d; }
+    if (toD <= fromD) toD = new Date(fromD.getTime() + 1000);
+    const fromIso = fromD.toISOString(), toIso = toD.toISOString();
+    const spanDays = Math.max(1, (toD - fromD) / (24*60*60*1000));
+
     const safe = (p) => p.then(r => r).catch(() => []);
     const clamp01 = (n) => Math.max(0, Math.min(1, n));
 
     const [je, cbp, nm, cal, diary] = await Promise.all([
-      safe(sql`SELECT kind, layer, payload, occurred_at FROM journey_events
-               WHERE user_id = ${me} AND occurred_at >= ${sinceIso} ORDER BY occurred_at ASC`),
+      safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+               WHERE user_id = ${me} AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
+               ORDER BY occurred_at ASC`),
       safe(sql`SELECT cbp.points_earned, cbp.completed_at, cb.block_type
                FROM course_block_progress cbp LEFT JOIN course_blocks cb ON cb.id = cbp.block_id
-               WHERE cbp.user_id = ${me} AND cbp.completed_at >= ${sinceIso} ORDER BY cbp.completed_at ASC`),
-      safe(sql`SELECT type, label, valence, count, last_seen_at FROM nm_nodes
-               WHERE user_id = ${me} AND last_seen_at >= ${sinceIso} ORDER BY last_seen_at ASC`),
-      safe(sql`SELECT title, event_type, date_key, done, done_at, created_at FROM calendar_events
-               WHERE user_id = ${me} AND created_at >= ${sinceIso} ORDER BY created_at ASC`),
-      safe(sql`SELECT text, comment, plus_count, minus_count, date_key, created_at FROM neuro_resource_diary
-               WHERE user_id = ${me} AND created_at >= ${sinceIso} ORDER BY created_at ASC`)
+               WHERE cbp.user_id = ${me} AND cbp.completed_at >= ${fromIso} AND cbp.completed_at <= ${toIso}
+               ORDER BY cbp.completed_at ASC`),
+      safe(sql`SELECT id, type, label, valence, count, last_seen_at FROM nm_nodes
+               WHERE user_id = ${me} AND last_seen_at >= ${fromIso} AND last_seen_at <= ${toIso}
+               ORDER BY last_seen_at ASC`),
+      safe(sql`SELECT id, title, event_type, date_key, done, done_at, created_at FROM calendar_events
+               WHERE user_id = ${me} AND created_at >= ${fromIso} AND created_at <= ${toIso}
+               ORDER BY created_at ASC`),
+      safe(sql`SELECT id, text, comment, plus_count, minus_count, date_key, created_at FROM neuro_resource_diary
+               WHERE user_id = ${me} AND created_at >= ${fromIso} AND created_at <= ${toIso}
+               ORDER BY created_at ASC`)
     ]);
+
+    // journey_links among the in-range events → per-event link list + flat list
+    const idSet = new Set(je.map(e => String(e.id)));
+    let rawLinks = [];
+    if (je.length) {
+      const ids = je.map(e => e.id);
+      rawLinks = await safe(sql`SELECT event_a, event_b, kind, weight FROM journey_links
+                                WHERE event_a = ANY(${ids}::bigint[]) OR event_b = ANY(${ids}::bigint[])`);
+    }
+    const linksByEvent = {};
+    const flatLinks = [];
+    rawLinks.forEach(l => {
+      const a = String(l.event_a), b = String(l.event_b);
+      if (!idSet.has(a) || !idSet.has(b)) return; // only links fully inside the window
+      flatLinks.push({ a, b, kind: l.kind, weight: l.weight });
+      (linksByEvent[a] = linksByEvent[a] || []).push({ to: b, kind: l.kind, weight: l.weight });
+      (linksByEvent[b] = linksByEvent[b] || []).push({ to: a, kind: l.kind, weight: l.weight });
+    });
 
     const layers = { practice:[], emotion:[], event:[], thought:[], sensation:[], insight:[], xp_gain:[] };
 
-    // practice — prefer Pack 31 journey log; fall back to raw block progress
-    const jeBlock = je.filter(e => e.kind === 'block_done');
-    if (jeBlock.length) {
-      jeBlock.forEach(e => layers.practice.push({ t: e.occurred_at, label: (e.payload && e.payload.block_type) || 'practice', weight: (e.payload && e.payload.points) || 1 }));
-    } else {
-      cbp.forEach(r => layers.practice.push({ t: r.completed_at, label: r.block_type || 'practice', weight: r.points_earned || 1 }));
+    // Derive a human label for a journey event from its payload + kind.
+    function jeLabel(e) {
+      const p = e.payload || {};
+      if (e.kind === 'sensation') {
+        const s = (p.sensation_labels || []).join(', ');
+        const loc = (p.body_locations || []).join(', ');
+        return (s || 'ощущение') + (loc ? ' @ ' + loc : '');
+      }
+      if (e.kind === 'practice') return p.practice_name || ('Практика: ' + (p.block_type || ''));
+      if (e.kind === 'insight') return String(p.text || 'инсайт').slice(0, 90);
+      if (e.kind === 'xp_gain') return '+' + (p.points || 0) + ' XP';
+      if (e.kind === 'achievement') return p.title || 'достижение';
+      return p.label || p.title || e.kind;
+    }
+    function jeItem(e) {
+      const p = e.payload || {};
+      return {
+        id: String(e.id), kind: e.kind, layer: e.layer, source: p.source || e.kind,
+        occurred_at: e.occurred_at, t: e.occurred_at,
+        label: jeLabel(e), valence: p.valence || 'neutral',
+        weight: p.weight || p.count || p.points || p.intensity || 1,
+        payload: p, links: linksByEvent[String(e.id)] || []
+      };
     }
 
-    // xp_gain — cumulative timeline from block points + achievement rewards
+    // Route journey events into layers by their `layer` field.
+    const haveJE = { practice:false, emotion:false, event:false, thought:false, sensation:false, insight:false };
+    je.forEach(e => {
+      const layer = e.layer || nmTypeToJourney('').layer;
+      if (e.kind === 'xp_gain' || e.layer === 'xp') return;            // xp handled below
+      if (e.kind === 'achievement') { layers.practice.push(jeItem(e)); haveJE.practice = true; return; }
+      if (e.kind === 'block_done')  { layers.practice.push(jeItem(e)); haveJE.practice = true; return; }
+      if (layers[layer]) { layers[layer].push(jeItem(e)); haveJE[layer] = true; }
+    });
+
+    // xp_gain — cumulative timeline. Prefer journey xp_gain/achievement events;
+    // fall back to raw block points when the journey log has no xp yet.
     const xpItems = [];
-    cbp.forEach(r => xpItems.push({ t: r.completed_at, amount: r.points_earned || 0 }));
-    je.filter(e => e.kind === 'achievement').forEach(e => xpItems.push({ t: e.occurred_at, amount: (e.payload && e.payload.xp) || 0 }));
+    const jeXp = je.filter(e => e.kind === 'xp_gain' || e.layer === 'xp');
+    const jeAch = je.filter(e => e.kind === 'achievement');
+    if (jeXp.length) {
+      jeXp.forEach(e => xpItems.push({ t: e.occurred_at, amount: (e.payload && e.payload.points) || 0 }));
+    } else {
+      cbp.forEach(r => xpItems.push({ t: r.completed_at, amount: r.points_earned || 0 }));
+      jeAch.forEach(e => xpItems.push({ t: e.occurred_at, amount: (e.payload && e.payload.xp) || 0 }));
+    }
     xpItems.sort((a, b) => new Date(a.t) - new Date(b.t));
     let cum = 0;
     xpItems.forEach(x => { cum += x.amount; layers.xp_gain.push({ t: x.t, amount: x.amount, cumulative: cum }); });
 
-    // neuromap nodes → emotion / thought / sensation(area) / event(cause)
+    // ── Legacy fallbacks (only when a layer has no journey events) ──
+    if (!haveJE.practice) {
+      cbp.forEach(r => layers.practice.push({ id: 'cbp_' + (r.block_id||r.completed_at), kind:'block_done', layer:'practice', source:'course_block', t: r.completed_at, occurred_at: r.completed_at, label: r.block_type || 'practice', valence:'neutral', weight: r.points_earned || 1, payload: r, links: [] }));
+    }
     nm.forEach(n => {
-      const item = { t: n.last_seen_at, label: n.label, valence: n.valence, weight: n.count || 1 };
-      if (n.type === 'emotion') layers.emotion.push(item);
-      else if (n.type === 'thought') layers.thought.push(item);
-      else if (n.type === 'area') layers.sensation.push(item);
-      else if (n.type === 'cause') layers.event.push(item);
+      const map = { emotion:'emotion', thought:'thought', area:'sensation', cause:'event', event:'event' };
+      const lyr = map[n.type]; if (!lyr) return;
+      if (haveJE[lyr]) return; // journey already covers this layer
+      layers[lyr].push({ id: 'nm_' + n.id, kind: lyr, layer: lyr, source:'neuromap_legacy', t: n.last_seen_at, occurred_at: n.last_seen_at, label: n.label, valence: n.valence, weight: n.count || 1, payload: { label: n.label, valence: n.valence, legacy: true }, links: [] });
     });
+    // calendar — separate instrument, always include (not mirrored to journey)
+    cal.forEach(c => layers.event.push({ id: 'cal_' + c.id, kind:'event', layer:'event', source:'calendar', t: c.created_at, occurred_at: c.created_at, label: c.title, valence:'neutral', weight: 1, payload: { title: c.title, event_type: c.event_type, date_key: c.date_key }, links: [] }));
+    if (!haveJE.insight) {
+      diary.forEach(d => layers.insight.push({ id: 'diary_' + d.id, kind:'insight', layer:'insight', source:'diary_legacy', t: d.created_at, occurred_at: d.created_at, label: String(d.text || '').slice(0, 90), valence: (d.plus_count > d.minus_count ? 'positive' : (d.minus_count > d.plus_count ? 'negative' : 'neutral')), weight: ((d.plus_count || 0) + (d.minus_count || 0)) || 1, payload: { text: d.text, comment: d.comment }, links: [] }));
+    }
 
-    // calendar → life events; diary → insights
-    cal.forEach(c => layers.event.push({ t: c.created_at, label: c.title, valence: 'neutral', weight: 1, kind: c.event_type || '' }));
-    diary.forEach(d => layers.insight.push({
-      t: d.created_at, label: String(d.text || '').slice(0, 90),
-      valence: (d.plus_count > d.minus_count ? 'positive' : (d.minus_count > d.plus_count ? 'negative' : 'neutral')),
-      weight: ((d.plus_count || 0) + (d.minus_count || 0)) || 1
-    }));
+    // Keep every layer chronological
+    Object.keys(layers).forEach(k => layers[k].sort((a, b) => new Date(a.t) - new Date(b.t)));
+
+    // Flat chronological event stream (everything except the xp curve) — used by
+    // the tunnel/field views and the click-to-detail logic on the frontend.
+    const events = [];
+    ['practice','emotion','event','thought','sensation','insight'].forEach(k => {
+      layers[k].forEach(it => events.push(Object.assign({ layer: k }, it)));
+    });
+    events.sort((a, b) => new Date(a.t) - new Date(b.t));
 
     // state aggregates → MVP visual rule (amplitude / density / brightness / spread)
     const emo = layers.emotion;
@@ -4886,7 +5171,7 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     const turbulence = emo.length ? emo.filter(e => e.valence === 'negative').length / emoTotal : 0;
     const activity = layers.practice.length + layers.event.length + emo.length + layers.insight.length;
     const pracDays = new Set(layers.practice.map(p => String(p.t).slice(0, 10))).size;
-    const consistency = clamp01(pracDays / Math.min(days, 14));
+    const consistency = clamp01(pracDays / Math.min(spanDays, 14));
 
     const aggregates = {
       positivity: +positivity.toFixed(3),
@@ -4901,8 +5186,10 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
 
     res.json({
       ok: true,
-      range: { from: sinceIso, to: new Date().toISOString(), period },
+      range: { from: fromIso, to: toIso, period },
       layers,
+      events,
+      links: flatLinks,
       aggregates,
       totals: {
         xp_total: cum,
@@ -4915,6 +5202,69 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
       }
     });
   } catch (err) { console.error('GET me/evolution:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/users/me/evolution/backfill — one-time, idempotent seeding of the
+// journey_events log from data the user created BEFORE Pack 31.5 hooks existed
+// (NeuroMap nodes, sensation/diary entries). Without this, history added earlier
+// stays invisible on the Evolution Path until the user re-enters it. Safe to run
+// repeatedly: it only inserts journey_events that don't already exist (matched by
+// nm_node_id / diary_id / block_id in payload).
+app.post('/api/users/me/evolution/backfill', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const existing = await sql`SELECT kind, payload FROM journey_events WHERE user_id = ${me}`;
+    const haveNm = new Set(), haveDiary = new Set(), haveBlock = new Set();
+    existing.forEach(e => {
+      const p = e.payload || {};
+      if (p.nm_node_id != null) haveNm.add(String(p.nm_node_id));
+      if (p.diary_id != null) haveDiary.add(String(p.diary_id));
+      if (e.kind === 'block_done' && p.block_id != null) haveBlock.add(String(p.block_id));
+    });
+
+    let nmCount = 0, diaryCount = 0, blockCount = 0;
+
+    // NeuroMap nodes → one event each at last_seen_at (best available timestamp)
+    const nodes = await sql`SELECT id, type, label, valence, last_seen_at, metadata FROM nm_nodes WHERE user_id = ${me}`;
+    for (const n of nodes) {
+      if (haveNm.has(String(n.id))) continue;
+      const { kind, layer } = nmTypeToJourney(n.type);
+      await logJourney(me, kind, layer, {
+        label: n.label, valence: n.valence, nm_node_id: n.id, nm_type: n.type,
+        source: 'backfill_neuromap'
+      }, n.last_seen_at);
+      nmCount++;
+    }
+
+    // Diary → insight events at their date_key
+    const diary = await sql`SELECT id, text, comment, plus_count, minus_count, date_key, time, created_at FROM neuro_resource_diary WHERE user_id = ${me}`;
+    for (const d of diary) {
+      if (haveDiary.has(String(d.id))) continue;
+      const occAt = d.date_key ? (d.date_key + (d.time && /^\d{2}:\d{2}/.test(d.time) ? 'T' + d.time : 'T12:00')) : d.created_at;
+      const valence = (d.plus_count || 0) > (d.minus_count || 0) ? 'positive'
+                    : ((d.minus_count || 0) > (d.plus_count || 0) ? 'negative' : 'neutral');
+      await logJourney(me, 'insight', 'insight', {
+        text: String(d.text || '').slice(0, 280), comment: d.comment || '',
+        plus_count: d.plus_count || 0, minus_count: d.minus_count || 0,
+        valence, date_key: d.date_key, diary_id: d.id, source: 'backfill_diary'
+      }, occAt);
+      diaryCount++;
+    }
+
+    // Course block completions → block_done events
+    let blocks = [];
+    try { blocks = await sql`SELECT block_id, course_id, points_earned, completed_at FROM course_block_progress WHERE user_id = ${me}`; } catch (e) { blocks = []; }
+    for (const b of blocks) {
+      if (haveBlock.has(String(b.block_id))) continue;
+      await logJourney(me, 'block_done', 'practice', {
+        course_id: b.course_id, block_id: b.block_id, points: b.points_earned || 1,
+        source: 'backfill_course'
+      }, b.completed_at);
+      blockCount++;
+    }
+
+    res.json({ ok: true, backfilled: { neuromap: nmCount, diary: diaryCount, blocks: blockCount } });
+  } catch (err) { console.error('POST evolution/backfill:', err); res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/admin/journeys — list all users with progress summary (admin only)
