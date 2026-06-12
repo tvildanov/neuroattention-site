@@ -1049,6 +1049,17 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS parent_block_id INTEGER REFERENCES course_blocks(id) ON DELETE CASCADE`;
     await sql`CREATE INDEX IF NOT EXISTS idx_course_blocks_parent ON course_blocks(parent_block_id)`;
 
+    // 🅱 tool_task blocks: a course step that embeds one of the instruments
+    // (sensation map / point A→B / diary / neuromap-emotion|event|thought).
+    // tool_kind selects the instrument; tool_config carries per-task parameters.
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_kind TEXT`;
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_config JSONB DEFAULT '{}'::jsonb`;
+    // Migrate legacy sensation-request blocks (feeling_request / sensation_prompt)
+    // into the unified tool_task model. Idempotent — only touches untouched rows.
+    await sql`UPDATE course_blocks
+      SET block_type = 'tool_task', tool_kind = 'sensation_map'
+      WHERE block_type IN ('feeling_request', 'sensation_prompt') AND tool_kind IS NULL`;
+
     // Pack 30: Teams (small groups within the community, owner-configurable broadcasts)
     await sql`CREATE TABLE IF NOT EXISTS teams (
       id SERIAL PRIMARY KEY,
@@ -4507,7 +4518,7 @@ app.post('/api/admin/courses/:id/blocks', requireAuth, async (req, res) => {
   try {
     if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
     const courseId = parseInt(req.params.id, 10);
-    const { block_type, title_ru, title_en, title_es, payload, points, parent_block_id } = req.body || {};
+    const { block_type, title_ru, title_en, title_es, payload, points, parent_block_id, tool_kind, tool_config } = req.body || {};
     if (!block_type) return res.status(400).json({ error: 'block_type required' });
     // order_idx scope: next-after-max within the SAME parent_block_id (or top-level if null)
     const parent = parent_block_id ? parseInt(parent_block_id, 10) : null;
@@ -4516,9 +4527,10 @@ app.post('/api/admin/courses/:id/blocks', requireAuth, async (req, res) => {
       : await sql`SELECT COALESCE(MAX(order_idx), -1) AS max_idx FROM course_blocks WHERE course_id = ${courseId} AND parent_block_id IS NULL`;
     const nextIdx = (maxRows[0]?.max_idx ?? -1) + 1;
     const [row] = await sql`
-      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id)
+      INSERT INTO course_blocks (course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id, tool_kind, tool_config)
       VALUES (${courseId}, ${nextIdx}, ${block_type}, ${title_ru||''}, ${title_en||''}, ${title_es||''},
-              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0}, ${parent})
+              ${JSON.stringify(payload || {})}::jsonb, ${parseInt(points, 10) || 0}, ${parent},
+              ${tool_kind || null}, ${JSON.stringify(tool_config || {})}::jsonb)
       RETURNING *
     `;
     res.status(201).json({ block: row });
@@ -4543,6 +4555,8 @@ app.patch('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) =
         payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
         points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
         unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition),
+        tool_kind = COALESCE(${b.tool_kind !== undefined ? b.tool_kind : null}, tool_kind),
+        tool_config = COALESCE(${b.tool_config !== undefined ? JSON.stringify(b.tool_config) : null}::jsonb, tool_config),
         parent_block_id = ${newParent}
         WHERE id = ${bid} RETURNING *`;
     } else {
@@ -4553,7 +4567,9 @@ app.patch('/api/admin/courses/:cid/blocks/:bid', requireAuth, async (req, res) =
         title_es = COALESCE(${b.title_es}, title_es),
         payload = COALESCE(${b.payload !== undefined ? JSON.stringify(b.payload) : null}::jsonb, payload),
         points = COALESCE(${b.points !== undefined ? parseInt(b.points, 10) : null}, points),
-        unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition)
+        unlock_condition = COALESCE(${b.unlock_condition !== undefined ? JSON.stringify(b.unlock_condition) : null}::jsonb, unlock_condition),
+        tool_kind = COALESCE(${b.tool_kind !== undefined ? b.tool_kind : null}, tool_kind),
+        tool_config = COALESCE(${b.tool_config !== undefined ? JSON.stringify(b.tool_config) : null}::jsonb, tool_config)
         WHERE id = ${bid} RETURNING *`;
     }
     if (!updated) return res.status(404).json({ error: 'Not found' });
@@ -4794,6 +4810,33 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
                   block_type: block.block_type, points: points
                 })}::jsonb, now())`;
     } catch (jeErr) { console.warn('journey log:', jeErr.message); }
+
+    // 🅱 tool_task: persist the instrument result onto the unified timeline so it
+    // surfaces in the right Evolution Path layer (and the path map) exactly like a
+    // standalone instrument entry. Mapping kind → {journey kind, layer}.
+    if (block.block_type === 'tool_task' && block.tool_kind) {
+      const TOOL_JOURNEY = {
+        sensation_map:    { kind: 'sensation', layer: 'sensation' },
+        point_ab:         { kind: 'event',     layer: 'event' },
+        diary:            { kind: 'insight',   layer: 'insight' },
+        neuromap_emotion: { kind: 'emotion',   layer: 'emotion' },
+        neuromap_event:   { kind: 'event',     layer: 'event' },
+        neuromap_thought: { kind: 'thought',   layer: 'thought' }
+      };
+      const map = TOOL_JOURNEY[block.tool_kind];
+      if (map) {
+        try {
+          await logJourney(userId, map.kind, map.layer, {
+            source: 'course_tool_task', tool_kind: block.tool_kind,
+            course_id: courseId, block_id: blockId,
+            label: (response && (response.label || response.text)) || block.title_ru || '',
+            valence: (response && response.valence) || 'neutral',
+            comment: (response && (response.comment || response.text)) || '',
+            response: response || {}
+          }, null);
+        } catch (ttErr) { console.warn('tool_task journey:', ttErr.message); }
+      }
+    }
 
     const teamPayload = {
       user_id: userId,
