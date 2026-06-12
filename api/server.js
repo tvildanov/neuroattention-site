@@ -5416,6 +5416,77 @@ app.post('/api/admin/users/:id/xp', requireAuth, async (req, res) => {
   } catch (err) { console.error('grant xp:', err); res.status(500).json({ error: err.message }); }
 });
 
+// ── 🅴 Admin: mark course-block completion for any user (or self) ────────────
+// Resolve ':userId' — the literal 'me' (or the caller's own id) maps to the admin.
+function resolveTargetUser(req) {
+  const callerId = req.user.sub || req.user.id;
+  const raw = req.params.userId;
+  return (raw === 'me' || raw === callerId) ? callerId : raw;
+}
+
+// GET /api/admin/users/:userId/courses/:courseId/completions — the user's
+// per-block completion state for a course (admin only). Powers the checkbox grid.
+app.get('/api/admin/users/:userId/courses/:courseId/completions', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const targetId = resolveTargetUser(req);
+    const courseId = parseInt(req.params.courseId, 10);
+    const blocks = await sql`SELECT id, order_idx, block_type, title_ru, title_en, title_es, points, parent_block_id, tool_kind
+                             FROM course_blocks WHERE course_id = ${courseId} ORDER BY order_idx ASC, id ASC`;
+    const progress = await sql`SELECT block_id, points_earned, completed_at, response
+                               FROM course_block_progress WHERE user_id = ${targetId} AND course_id = ${courseId}`;
+    res.json({ blocks, progress });
+  } catch (err) { console.error('GET completions:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/users/:userId/blocks/:blockId/completion — set/clear completion.
+// body { completed: bool, completed_at?: iso, note?: string }. Awards XP + logs a
+// back-dated journey event so it surfaces in Evolution Path + the Path Map.
+app.post('/api/admin/users/:userId/blocks/:blockId/completion', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const targetId = resolveTargetUser(req);
+    const blockId = parseInt(req.params.blockId, 10);
+    const { completed, completed_at, note } = req.body || {};
+    const [block] = await sql`SELECT * FROM course_blocks WHERE id = ${blockId}`;
+    if (!block) return res.status(404).json({ error: 'Block not found' });
+    const courseId = block.course_id;
+    const points = parseInt(block.points, 10) || 0;
+
+    if (completed === false) {
+      await sql`DELETE FROM course_block_progress WHERE user_id = ${targetId} AND block_id = ${blockId}`;
+      return res.json({ ok: true, completed: false, block_id: blockId });
+    }
+
+    // Validate/normalise an optional back-date; default to now().
+    let whenIso = null;
+    if (completed_at) { const d = new Date(completed_at); if (!isNaN(d.getTime())) whenIso = d.toISOString(); }
+    const resp = { admin_marked: true, marked_by: req.user.sub || req.user.id, note: note || '' };
+
+    if (whenIso) {
+      await sql`INSERT INTO course_block_progress (user_id, course_id, block_id, response, points_earned, completed_at)
+                VALUES (${targetId}, ${courseId}, ${blockId}, ${JSON.stringify(resp)}::jsonb, ${points}, ${whenIso})
+                ON CONFLICT (user_id, block_id) DO UPDATE
+                  SET response = EXCLUDED.response, points_earned = EXCLUDED.points_earned, completed_at = EXCLUDED.completed_at`;
+    } else {
+      await sql`INSERT INTO course_block_progress (user_id, course_id, block_id, response, points_earned)
+                VALUES (${targetId}, ${courseId}, ${blockId}, ${JSON.stringify(resp)}::jsonb, ${points})
+                ON CONFLICT (user_id, block_id) DO UPDATE
+                  SET response = EXCLUDED.response, points_earned = EXCLUDED.points_earned, completed_at = now()`;
+    }
+
+    // Journey event (back-dated) so XP + the timeline reflect the admin mark.
+    try {
+      await logJourney(targetId, 'block_done', 'practice', {
+        course_id: courseId, block_id: blockId, block_type: block.block_type,
+        points: points, admin_marked: true, note: note || ''
+      }, whenIso);
+    } catch (jeErr) { console.warn('admin completion journey:', jeErr.message); }
+
+    res.json({ ok: true, completed: true, block_id: blockId, points_earned: points, completed_at: whenIso });
+  } catch (err) { console.error('POST completion:', err); res.status(500).json({ error: err.message }); }
+});
+
 // Helper: insert a notification but respect the recipient's per-kind mute list.
 // Returns true if inserted, false if user has muted this kind.
 async function notifyUser(userId, kind, payload) {
