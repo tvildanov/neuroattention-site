@@ -568,12 +568,10 @@
   <!-- Tabs -->
   <div class="dash-tabs">
     <button class="dash-tab active" data-tab="overview" data-i18n="a.tabs.profile">Профиль</button>
-    <button class="dash-tab" data-tab="protocol" data-i18n="a.tabs.protocol">Протокол</button>
     <button class="dash-tab" data-tab="courses" data-i18n="a.tabs.courses">Курсы</button>
     <button class="dash-tab" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</button>
     <button class="dash-tab" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></button>
     <button class="dash-tab" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</button>
-    <button class="dash-tab" data-tab="pointab" data-i18n="a.tabs.pointab">Точка А → B</button>
     <button class="dash-tab" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</button>
     <button class="dash-tab" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</button>
   </div>
@@ -711,108 +709,38 @@
   </div>
 
   <!-- TAB: Program (modules) -->
-  <div class="tab-panel" id="tab-protocol">
-    <!-- Sub-tabs: Программа / Практики -->
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
-      <button class="dash-tab active" id="proto-mode-prog" onclick="setProtoMode('prog')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.protocol.program">Программа</button>
-      <button class="dash-tab" id="proto-mode-pract" onclick="setProtoMode('pract')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.protocol.practices">Практики</button>
-    </div>
-    <div id="proto-prog-content">
-    <!-- Program progress content (was tab-program) -->
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated span-8">
-        <h3 data-i18n="a.protocol.modules_title">Модули программы — Guided Program</h3>
-        <div class="module-item" data-module-id="block-1">
-          <div class="module-status done">✓</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block1_name">Блок 1 · Вход в практику</p>
-            <p class="meta" data-i18n="a.protocol.block1_meta">нед 1–2 · 4 практики · завершён</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-2">
-          <div class="module-status done">✓</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block2_name">Блок 2 · Фокус и удержание внимания</p>
-            <p class="meta" data-i18n="a.protocol.block2_meta">нед 3–4 · 4 практики · завершён</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-3">
-          <div class="module-status current">▶</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block3_name">Блок 3 · Гибкость и переключение</p>
-            <p class="meta" data-i18n="a.protocol.block3_meta">нед 5–6 · 3 из 4 практик</p>
-          </div>
-          <div class="module-action">
-            <button class="btn btn-solid" style="font-size:11px;padding:0.35rem 0.75rem;" onclick="switchTab('protocol');setProtoMode('pract')" data-i18n="a.protocol.btn_continue">Продолжить</button>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-4">
-          <div class="module-status locked">4</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block4_name">Блок 4 · Множественное внимание</p>
-            <p class="meta" data-i18n="a.protocol.block4_meta">нед 7–8 · 4 практики</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-5">
-          <div class="module-status locked">5</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block5_name">Блок 5 · Объёмное восприятие тела</p>
-            <p class="meta" data-i18n="a.protocol.block5_meta">нед 9–10 · 3 практики</p>
-          </div>
-        </div>
-        <div class="module-item" data-module-id="block-6">
-          <div class="module-status locked">6</div>
-          <div class="module-info">
-            <p class="name" data-i18n="a.protocol.block6_name">Блок 6 · Интероцепция и саморегуляция</p>
-            <p class="meta" data-i18n="a.protocol.block6_meta">нед 11–12 · 2 практики + интеграция</p>
-          </div>
-        </div>
-      </div>
-      <div class="dash-card glass-card-elevated span-4">
-        <h3 data-i18n="a.protocol.progress_title">Прогресс</h3>
-        <p class="dash-metric" style="font-size:2rem;">11<span style="font-size:1rem;color:var(--text-muted);">/21</span></p>
-        <p class="dash-label" data-i18n="a.protocol.practices_completed">Практик выполнено</p>
-        <div class="progress-track" style="margin-top:0.75rem;"><div class="progress-fill" style="width:52%"></div></div>
-        <div style="margin-top:1.5rem;">
-          <p class="dash-label" style="margin-bottom:0.4rem;" data-i18n="a.protocol.theory_modules">Теоретические модули</p>
-          <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">5 / 8</p>
-          <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:62%"></div></div>
-        </div>
-        <div style="margin-top:1.5rem;">
-          <p class="dash-label" style="margin-bottom:0.4rem;" data-i18n="a.protocol.homework">Домашние задания</p>
-          <p style="font-size:1.2rem;color:var(--text-primary);font-weight:600;margin:0;">8 / 12</p>
-          <div class="progress-track" style="margin-top:0.5rem;"><div class="progress-fill" style="width:66%"></div></div>
-        </div>
-      </div>
-    </div>
-    </div><!-- /proto-prog-content -->
 
-    <div id="proto-pract-content" style="display:none;">
-    <!-- Practices content — loaded dynamically from API -->
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <div id="practices-loading" style="text-align:center;padding:2rem 0;">
-          <p style="font-size:13px;color:var(--text-muted);" data-i18n="a.protocol.loading_practices">Загрузка практик...</p>
-        </div>
-        <div id="practices-list"></div>
-        <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
-          <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
-          <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.protocol.practices_not_loaded">Практики пока не загружены</p>
-          <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.protocol.practices_admin_msg">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
-        </div>
-      </div>
-    </div>
-    </div><!-- /proto-pract-content -->
-  </div><!-- /tab-protocol -->
-
-  <!-- TAB: Курсы — student-side course list -->
+  <!-- TAB: Курсы — student-side course list + practices (protocol merged here in A) -->
   <div class="tab-panel" id="tab-courses">
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <h3 style="margin:0 0 0.4rem;font-size:16px;" data-i18n="a.courses.title">Мои курсы</h3>
-        <p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);" data-i18n="a.courses.subtitle">Курсы, доступные вам по приобретённой программе.</p>
-        <div id="student-courses-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;"></div>
-        <p id="student-courses-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.courses.empty">Пока нет курсов, доступных вам. Зайдите позже или приобретите программу.</p>
+    <!-- Sub-tabs: Мои курсы / Практики -->
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <button class="dash-tab active" id="courses-mode-courses" onclick="setCoursesMode('courses')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.courses.title">Мои курсы</button>
+      <button class="dash-tab" id="courses-mode-pract" onclick="setCoursesMode('pract')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.protocol.practices">Практики</button>
+    </div>
+    <div id="courses-courses-content">
+      <div class="dash-grid">
+        <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+          <h3 style="margin:0 0 0.4rem;font-size:16px;" data-i18n="a.courses.title">Мои курсы</h3>
+          <p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);" data-i18n="a.courses.subtitle">Курсы, доступные вам по приобретённой программе.</p>
+          <div id="student-courses-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;"></div>
+          <p id="student-courses-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.courses.empty">Пока нет курсов, доступных вам. Зайдите позже или приобретите программу.</p>
+        </div>
+      </div>
+    </div>
+    <!-- Practices content — moved from removed Протокол tab (A) -->
+    <div id="courses-pract-content" style="display:none;">
+      <div class="dash-grid">
+        <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+          <div id="practices-loading" style="text-align:center;padding:2rem 0;">
+            <p style="font-size:13px;color:var(--text-muted);" data-i18n="a.protocol.loading_practices">Загрузка практик...</p>
+          </div>
+          <div id="practices-list"></div>
+          <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
+            <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
+            <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.protocol.practices_not_loaded">Практики пока не загружены</p>
+            <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.protocol.practices_admin_msg">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1046,6 +974,7 @@
       <!-- Calendar sub-tab removed (17.3) — DB table kept for future migration -->
       <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
       <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
+      <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
     </div>
 
     <!-- ── Pack 20.8: Sensation Map standalone (in Tools) ── -->
@@ -1763,7 +1692,7 @@
           <h3 data-i18n="a.admin.tools_title">Инструменты и практики</h3>
           <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.admin.tools_desc">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
-            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('protocol');setProtoMode('pract')">
+            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('courses');setCoursesMode('pract')">
               <h4 data-i18n="a.admin.audio_practices">Аудиопрактики</h4>
               <p>Все блоки и практики доступны</p>
             </div>
@@ -4122,6 +4051,7 @@ window.evoOpenSource = function(ev){
     if(kind === 'xp_gain' || kind === 'achievement' || ev.layer === 'xp'){ switchTab('profile'); }
     else if(src.indexOf('neuromap') === 0 || kind === 'emotion' || kind === 'event' || kind === 'thought'){ switchTab('tools'); setToolsMode('nm'); }
     else if(src === 'sensation' || kind === 'sensation'){ switchTab('tools'); setToolsMode('sensation'); }
+    else if(src === 'point_ab' || src === 'pointab' || kind === 'point_ab'){ switchTab('tools'); setToolsMode('pointab'); }
     else if(src.indexOf('diary') === 0 || kind === 'insight'){ switchTab('tools'); setToolsMode('diary'); }
     else if(src === 'calendar'){ switchTab('tools'); setToolsMode('cal'); }
     else if(src === 'practice' || src === 'course_block' || kind === 'practice' || kind === 'block_done'){ switchTab('courses'); }
@@ -4151,6 +4081,18 @@ document.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
     nmPanel.removeAttribute('id');
     nmPanel.id = 'tools-nm-content';
     nmPanel.style.display = ''; // show by default (NeuroMap is first sub-tab)
+  }
+})();
+// A: relocate "Точка А → B" panel into Инструменты as a sub-tab (was a top-level tab).
+(function(){
+  var abPanel = document.getElementById('tab-pointab');
+  var toolsPanel = document.getElementById('tab-tools');
+  if(abPanel && toolsPanel){
+    toolsPanel.appendChild(abPanel);
+    abPanel.classList.remove('tab-panel');
+    abPanel.removeAttribute('id');
+    abPanel.id = 'tools-pointab-content';
+    abPanel.style.display = 'none'; // hidden until its sub-tab is selected
   }
 })();
 
@@ -4608,25 +4550,27 @@ var currentMinusCount = 0;
 var selectedDiaryDay = null;
 
 // Mode toggle
-function setProtoMode(mode){
-  var prog = document.getElementById('proto-prog-content');
-  var pract = document.getElementById('proto-pract-content');
-  var btnProg = document.getElementById('proto-mode-prog');
-  var btnPract = document.getElementById('proto-mode-pract');
-  if(mode==='prog'){
-    if(prog) prog.style.display='';
-    if(pract) pract.style.display='none';
-    if(btnProg){ btnProg.classList.add('active'); btnProg.style.borderBottomColor='var(--accent-cyan)'; }
-    if(btnPract){ btnPract.classList.remove('active'); btnPract.style.borderBottomColor='transparent'; }
-  } else {
-    if(prog) prog.style.display='none';
-    if(pract) pract.style.display='';
-    if(btnProg){ btnProg.classList.remove('active'); btnProg.style.borderBottomColor='transparent'; }
+// Courses sub-tab switcher (A: practices merged from removed Протокол tab).
+function setCoursesMode(mode){
+  var coursesC = document.getElementById('courses-courses-content');
+  var practC = document.getElementById('courses-pract-content');
+  var btnCourses = document.getElementById('courses-mode-courses');
+  var btnPract = document.getElementById('courses-mode-pract');
+  if(mode==='pract'){
+    if(coursesC) coursesC.style.display='none';
+    if(practC) practC.style.display='';
+    if(btnCourses){ btnCourses.classList.remove('active'); btnCourses.style.borderBottomColor='transparent'; }
     if(btnPract){ btnPract.classList.add('active'); btnPract.style.borderBottomColor='var(--accent-cyan)'; }
-    // Load practices from API on first switch
     if(!window._practicesLoaded) loadFrontendPractices();
+  } else {
+    if(coursesC) coursesC.style.display='';
+    if(practC) practC.style.display='none';
+    if(btnCourses){ btnCourses.classList.add('active'); btnCourses.style.borderBottomColor='var(--accent-cyan)'; }
+    if(btnPract){ btnPract.classList.remove('active'); btnPract.style.borderBottomColor='transparent'; }
   }
 }
+// Legacy alias — old code/links may still call setProtoMode('pract').
+function setProtoMode(mode){ setCoursesMode(mode==='pract' ? 'pract' : 'courses'); }
 function setToolsMode(mode){
   var nmContent = document.getElementById('tools-nm-content');
   var calDiaryWrap = document.getElementById('tools-cal-diary-wrap');
@@ -4636,13 +4580,16 @@ function setToolsMode(mode){
   var btnDiary = document.getElementById('tools-mode-diary');
   var btnSensation = document.getElementById('tools-mode-sensation');
   var sensationWrap = document.getElementById('tools-sensation-wrap');
+  var btnPointab = document.getElementById('tools-mode-pointab');
+  var pointabContent = document.getElementById('tools-pointab-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
   if(calPanel) calPanel.style.display='none'; // Calendar tab removed (17.3)
   if(sensationWrap) sensationWrap.style.display='none';
+  if(pointabContent) pointabContent.style.display='none';
   if(mode==='nm'){
     if(btnNm){ btnNm.classList.add('active'); btnNm.style.borderBottomColor='var(--accent-cyan)'; }
     if(nmContent) nmContent.style.display='';
@@ -4661,6 +4608,12 @@ function setToolsMode(mode){
     if(btnSensation){ btnSensation.classList.add('active'); btnSensation.style.borderBottomColor='var(--accent-cyan)'; }
     if(sensationWrap) sensationWrap.style.display='';
     if (typeof loadSensationMap === 'function') loadSensationMap();
+  }
+  if(mode==='pointab'){
+    if(btnPointab){ btnPointab.classList.add('active'); btnPointab.style.borderBottomColor='var(--accent-cyan)'; }
+    if(pointabContent) pointabContent.style.display='';
+    // Refresh saved A→B map state when the sub-tab opens.
+    try { if (typeof abLoadFromServer === 'function') abLoadFromServer(); } catch(e){}
   }
 }
 function setCalMode(mode){
@@ -8403,7 +8356,7 @@ function seekPractice(e, practId) {
 // Reload practices when language changes
 document.addEventListener('langchange', function() {
   _practicesLoaded = false;
-  var pract = document.getElementById('proto-pract-content');
+  var pract = document.getElementById('courses-pract-content');
   if (pract && pract.style.display !== 'none') loadFrontendPractices();
 });
 
