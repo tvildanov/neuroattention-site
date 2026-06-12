@@ -318,6 +318,10 @@
 .rpg-modal { max-width:480px;width:90%;padding:2rem;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(10,12,16,0.95);backdrop-filter:blur(20px); }
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
+<!-- d3 modules (R5): used by Evolution Path filaments (d3-shape) + node layout (d3-force) -->
+<script src="https://cdn.jsdelivr.net/npm/d3-selection@3.0.0/dist/d3-selection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-shape@3.2.0/dist/d3-shape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-force@3.0.0/dist/d3-force.min.js"></script>
 </head>
 <body>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -12669,6 +12673,7 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/i18n.js"></script>
+<script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
 <script src="assets/js/evolution-path.js"></script>
 <script>
