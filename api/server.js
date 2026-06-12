@@ -4469,6 +4469,21 @@ async function getUserAccessTags(userId) {
 app.get('/api/courses', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
+    // Admin override: superadmin/founder/admin see EVERY course — published AND
+    // drafts — with access-tag and language gating bypassed entirely. Each course
+    // is flagged `_admin_override: true` so the UI may show an "admin access" badge.
+    const [me] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+    if (me && ['superadmin', 'founder', 'admin'].includes(me.role)) {
+      const all = await sql`
+        SELECT id, slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
+               cover_url, program_access, languages, is_published,
+               (SELECT COUNT(*) FROM course_blocks WHERE course_id = courses.id) AS block_count
+        FROM courses
+        ORDER BY order_idx ASC, id DESC
+      `;
+      const courses = all.map(c => ({ ...c, _admin_override: true }));
+      return res.json({ courses, access: ['self','guided','group','rehab'], filtered_lang: null, admin_override: true });
+    }
     const access = await getUserAccessTags(userId);
     // Language gate: if ?lang= is passed (current site language), show only
     // courses with that lang in their `languages` array, or with no langs set
@@ -4494,17 +4509,27 @@ app.get('/api/courses/:slug', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
     const access = await getUserAccessTags(userId);
-    const [course] = await sql`SELECT * FROM courses WHERE slug = ${req.params.slug} AND is_published = true`;
+    const [me] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+    const isAdmin = me && ['superadmin', 'founder', 'admin'].includes(me.role);
+    // Admin override: load the course even if it's a draft (is_published = false)
+    // and skip the access-tag + language gates below.
+    const [course] = isAdmin
+      ? await sql`SELECT * FROM courses WHERE slug = ${req.params.slug}`
+      : await sql`SELECT * FROM courses WHERE slug = ${req.params.slug} AND is_published = true`;
     if (!course) return res.status(404).json({ error: 'Course not found' });
-    // Access check
-    const courseAccess = course.program_access || [];
-    const hasAccess = courseAccess.length === 0 || courseAccess.some(t => access.includes(t));
-    if (!hasAccess) return res.status(403).json({ error: 'No access to this course' });
-    // Language check (advisory — block at the listing level but allow direct link
-    // if user explicitly navigates to a course for another lang)
-    const langPref = ['ru','en','es'].includes(String(req.query.lang||'').toLowerCase()) ? String(req.query.lang).toLowerCase() : null;
-    if (langPref && Array.isArray(course.languages) && course.languages.length > 0 && !course.languages.includes(langPref)) {
-      return res.status(404).json({ error: 'Course not available in this language' });
+    if (isAdmin) {
+      course._admin_override = true;
+    } else {
+      // Access check
+      const courseAccess = course.program_access || [];
+      const hasAccess = courseAccess.length === 0 || courseAccess.some(t => access.includes(t));
+      if (!hasAccess) return res.status(403).json({ error: 'No access to this course' });
+      // Language check (advisory — block at the listing level but allow direct link
+      // if user explicitly navigates to a course for another lang)
+      const langPref = ['ru','en','es'].includes(String(req.query.lang||'').toLowerCase()) ? String(req.query.lang).toLowerCase() : null;
+      if (langPref && Array.isArray(course.languages) && course.languages.length > 0 && !course.languages.includes(langPref)) {
+        return res.status(404).json({ error: 'Course not available in this language' });
+      }
     }
     const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id, unlock_condition
                               FROM course_blocks WHERE course_id = ${course.id} ORDER BY order_idx ASC`;
