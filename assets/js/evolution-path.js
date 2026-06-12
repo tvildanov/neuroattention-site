@@ -829,13 +829,37 @@
       }).join('') + '</div>';
     }
     // 🅲️ C7: drop the technical subtitle; keep a short human one
+    var expandBtn = (!st._isOverlay && typeof window.mountFullscreenOverlay === 'function')
+      ? '<button class="myc-evo-expand" title="Раскрыть на весь экран" style="margin-left:0.5rem;background:rgba(20,24,30,0.7);border:1px solid rgba(255,255,255,0.12);color:var(--myc-text,#cdd);border-radius:8px;height:30px;padding:0 0.7rem;font-size:12px;cursor:pointer;">⤢ Раскрыть</button>'
+      : '';
     return '<div class="myc-evo-head">' +
       '<div><h3 class="myc-evo-title">' + L(STR.title, lang) + '</h3>' +
       '<p class="myc-evo-sub">' + L(STR.sub, lang) + '</p></div>' +
-      '<div class="myc-controls">' + seg(MODES, st.mode, 'mode') + seg(PERIODS, st.period, 'period') + '</div></div>';
+      '<div class="myc-controls">' + seg(MODES, st.mode, 'mode') + seg(PERIODS, st.period, 'period') + expandBtn + '</div></div>';
+  }
+
+  // Open the path in a shared fullscreen overlay, reusing already-fetched data.
+  function openEvolutionOverlay(parentSt, lang) {
+    if (typeof window.mountFullscreenOverlay !== 'function') return;
+    var ost = { mode: parentSt.mode, period: parentSt.period, cursor: parentSt.cursor,
+                hidden: Object.assign({}, parentSt.hidden || {}), user: parentSt.user,
+                modules: parentSt.modules, data: parentSt.data, isDemo: parentSt.isDemo, _isOverlay: true };
+    window.mountFullscreenOverlay(function (body) {
+      body.classList.add('myc-root');
+      body.style.padding = '20px 24px';
+      var container = document.createElement('div');
+      container.__evo = ost;
+      body.appendChild(container);
+      container.innerHTML = buildChrome(ost, lang) +
+        '<div class="myc-evo-canvas" style="position:relative;min-height:' + H + 'px;"></div>';
+      wireChrome(container, ost, lang, function () { mountEvolutionPath(container, { lang: lang }); });
+      requestAnimationFrame(function () { if (ost.data) paint(container, ost, lang); });
+    }, { title: L(STR.title, lang), accent: '#56F2A6' });
   }
 
   function wireChrome(container, st, lang, rerender) {
+    var exp = container.querySelector('.myc-evo-expand');
+    if (exp) exp.addEventListener('click', function () { openEvolutionOverlay(st, lang); });
     container.querySelectorAll('.myc-seg').forEach(function (segEl) {
       var kind = segEl.getAttribute('data-seg');
       segEl.querySelectorAll('button').forEach(function (b) {

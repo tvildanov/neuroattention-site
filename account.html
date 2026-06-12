@@ -1019,6 +1019,7 @@
       <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
       <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
       <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
+      <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ Раскрыть</button>
     </div>
 
     <!-- ── Pack 20.8: Sensation Map standalone (in Tools) ── -->
@@ -4727,6 +4728,42 @@ function setToolsMode(mode){
     try { if (typeof abLoadFromServer === 'function') abLoadFromServer(); } catch(e){}
   }
 }
+// Open the active Инструменты sub-tool in a shared fullscreen overlay (R1/R3).
+// Uses DOM relocation (move the live container in, restore it on close) so all
+// existing handlers/IDs keep working — no duplication.
+function toolsExpandActive(){
+  if (typeof window.mountFullscreenOverlay !== 'function') return;
+  var map = {
+    nm:       { id: 'tools-nm-content',     title: 'NeuroMap' },
+    sensation:{ id: 'tools-sensation-wrap', title: 'Карта ощущений' },
+    pointab:  { id: 'tools-pointab-content',title: 'Точка А → B' },
+    diary:    { id: 'tools-cal-diary-wrap', title: 'Дневник' }
+  };
+  var active = document.querySelector('#tools-mode-nm.active') ? 'nm'
+             : document.querySelector('#tools-mode-sensation.active') ? 'sensation'
+             : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
+             : 'diary';
+  var info = map[active]; if (!info) return;
+  var src = document.getElementById(info.id); if (!src) return;
+  var placeholder = document.createComment('na-expand-' + info.id);
+  src.parentNode.insertBefore(placeholder, src);
+  var prevDisplay = src.style.display;
+  window.mountFullscreenOverlay(function(body){
+    body.style.padding = '20px 24px';
+    src.style.display = '';
+    body.appendChild(src);
+    if (active === 'nm' && typeof buildNmGraph === 'function') setTimeout(function(){ try{ buildNmGraph(); }catch(e){} }, 90);
+  }, {
+    title: info.title, accent: '#39d3c3',
+    onClose: function(){
+      if (placeholder.parentNode){ placeholder.parentNode.insertBefore(src, placeholder); placeholder.parentNode.removeChild(placeholder); }
+      src.style.display = prevDisplay;
+      if (active === 'nm' && typeof buildNmGraph === 'function') setTimeout(function(){ try{ buildNmGraph(); }catch(e){} }, 90);
+    }
+  });
+}
+window.toolsExpandActive = toolsExpandActive;
+
 function setCalMode(mode){
   // Legacy wrapper — now delegates to setToolsMode
   if(mode==='cal') setToolsMode('cal');
