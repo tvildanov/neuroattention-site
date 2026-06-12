@@ -2210,7 +2210,7 @@
             <button class="btn btn-ghost" onclick="courseAddBlock('audio')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Аудио"><span>+ Аудио</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('image')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Фото"><span>+ Фото</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('link')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Ссылка"><span>+ Ссылка</span></button>
-            <button class="btn btn-ghost" onclick="courseAddBlock('sensation_prompt')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Запрос ощущений"><span>+ Запрос ощущений</span></button>
+            <button class="btn btn-ghost" onclick="courseAddToolTask()" style="font-size:12px;padding:0.4rem 0.7rem;border-color:var(--accent-cyan);" title="Задание из инструмента (Карта ощущений / Точка А→B / Дневник / Нейромап)"><span>+ Задание из инструмента</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('break')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Перерыв"><span>+ Перерыв</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('student_audio')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Аудио от ученика"><span>+ Аудио ответ</span></button>
             <button class="btn btn-ghost" onclick="courseAddBlock('student_text')" style="font-size:12px;padding:0.4rem 0.7rem;" title="Текст от ученика"><span>+ Текст ответ</span></button>
@@ -9686,7 +9686,7 @@ function _cpTypeLabel(t){
     section:'Раздел', practice:'Практика', text:'Текст', video:'Видео', audio:'Аудио',
     image:'Изображение', link:'Ссылка', sensation_prompt:'Вопрос об ощущениях', break:'Перерыв',
     student_audio:'Аудио-ответ', student_text:'Текстовый ответ', question_branch:'Вопрос с ветвлением',
-    sound_cue:'Звуковой сигнал'
+    sound_cue:'Звуковой сигнал', tool_task:'Задание из инструмента'
   };
   return map[t] || t || '(без названия)';
 }
@@ -9748,7 +9748,47 @@ function courseSetStatus(msg, ok){
   s.style.color = ok ? '#0e9' : 'var(--text-muted)';
 }
 
-function courseAddBlock(blockType, parentBlockId){
+// 🅱 shared tool_task metadata: kind → instrument + labels (reused by builder,
+// path-view label and player embed).
+window.TOOL_TASK_META = {
+  sensation_map:    { tool: 'sensation', title_ru: 'Задание · Карта ощущений', icon: '🗺', label_ru: 'Карта ощущений' },
+  point_ab:         { tool: 'pointab',   title_ru: 'Задание · Точка А → B',   icon: '🅰', label_ru: 'Точка А → B' },
+  diary:            { tool: 'diary',     title_ru: 'Задание · Дневник нейроресурса', icon: '📓', label_ru: 'Дневник нейроресурса' },
+  neuromap_emotion: { tool: 'neuromap',  nm: 'emotion', title_ru: 'Задание · Нейромап (эмоция)', icon: '💗', label_ru: 'Нейромап · эмоция' },
+  neuromap_event:   { tool: 'neuromap',  nm: 'event',   title_ru: 'Задание · Нейромап (событие)', icon: '📍', label_ru: 'Нейромап · событие' },
+  neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' }
+};
+
+// Picker: "Добавить задание из инструмента" → choose which instrument (🅱 п.3).
+function courseAddToolTask(parentBlockId){
+  if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
+  var ov = document.createElement('div');
+  ov.className = 'rpg-modal-overlay';
+  ov.style.zIndex = '10050';
+  var kinds = Object.keys(window.TOOL_TASK_META);
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:360px;">' +
+    '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">Задание из инструмента</h3>' +
+    '<p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);">Ученик выполнит инструмент прямо в плеере курса.</p>' +
+    '<div style="display:flex;flex-direction:column;gap:0.4rem;">' +
+      kinds.map(function(k){ var m = window.TOOL_TASK_META[k];
+        return '<button class="btn btn-ghost tt-pick" data-kind="' + k + '" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">' +
+          m.icon + '&nbsp; ' + m.label_ru + '</button>'; }).join('') +
+    '</div>' +
+    '<button class="btn btn-ghost" id="tt-cancel" style="margin-top:0.9rem;font-size:12px;">Отмена</button></div>';
+  document.body.appendChild(ov);
+  function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
+  ov.querySelector('#tt-cancel').addEventListener('click', close);
+  ov.querySelectorAll('.tt-pick').forEach(function(b){
+    b.addEventListener('click', function(){
+      courseAddBlock('tool_task', parentBlockId, b.getAttribute('data-kind'));
+      close();
+    });
+  });
+}
+window.courseAddToolTask = courseAddToolTask;
+
+function courseAddBlock(blockType, parentBlockId, toolKind){
   if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
   // Default payload shape for each block_type
   var payloadDefaults = {
@@ -9764,7 +9804,8 @@ function courseAddBlock(blockType, parentBlockId){
     student_audio: { prompt_ru: '', prompt_en: '', prompt_es: '', max_duration_seconds: 120 },
     student_text: { prompt_ru: '', prompt_en: '', prompt_es: '' },
     question_branch: { question_ru: '', question_en: '', question_es: '', options: [] },
-    sound_cue: { audio_url: '', label: '' }
+    sound_cue: { audio_url: '', label: '' },
+    tool_task: { instruction_ru: '', instruction_en: '', instruction_es: '' }
   };
   var body = {
     block_type: blockType,
@@ -9772,6 +9813,13 @@ function courseAddBlock(blockType, parentBlockId){
     payload: payloadDefaults[blockType] || {},
     points: 0
   };
+  // 🅱 tool_task: a course step embedding an instrument. toolKind picks which one.
+  if (blockType === 'tool_task' && toolKind) {
+    body.tool_kind = toolKind;
+    body.tool_config = {};
+    body.title_ru = (window.TOOL_TASK_META[toolKind] && window.TOOL_TASK_META[toolKind].title_ru) || 'Задание из инструмента';
+    body.points = 5;
+  }
   if (parentBlockId) body.parent_block_id = parentBlockId;
   courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', {
     method: 'POST',
@@ -9837,10 +9885,11 @@ function _cbTypeMeta(t){
     practice: '🎧 Практика', text: '📝 Текст', video: '🎬 Видео', audio: '🔊 Аудио',
     image: '🖼 Фото', link: '🔗 Ссылка', sensation_prompt: '✨ Запрос ощущений',
     break: '⏸ Перерыв', student_audio: '🎙 Аудио ответ', student_text: '✍️ Текст ответ',
-    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал'
+    question_branch: '⤴ Ветвление', sound_cue: '🔔 Звуковой сигнал', tool_task: '🛠 Задание из инструмента'
   };
   var color = t === 'sound_cue' ? 'var(--accent-amber)'
             : t === 'question_branch' ? 'var(--accent-violet)'
+            : t === 'tool_task' ? 'var(--accent-cyan)'
             : t === 'section' ? '#fc0' : 'var(--accent-cyan)';
   return { label: labels[t] || t, color: color };
 }
@@ -9870,13 +9919,17 @@ function _renderSectionMiniToolbar(sectionId){
   var types = [
     ['practice','+ Практика'], ['text','+ Текст'], ['video','+ Видео'],
     ['audio','+ Аудио'], ['image','+ Фото'], ['link','+ Ссылка'],
-    ['sensation_prompt','+ Ощущения'], ['break','+ Перерыв'],
+    ['__tool_task','+ Задание из инструмента'], ['break','+ Перерыв'],
     ['student_audio','+ Аудио ответ'], ['student_text','+ Текст ответ'],
     ['question_branch','+ Ветвление'], ['sound_cue','+ Сигнал']
   ];
   return '<div style="display:flex;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;margin-left:1rem;">'
     + types.map(function(p){
-        return '<button class="btn btn-ghost" onclick="courseAddBlock(\'' + p[0] + '\',' + sectionId + ')" style="font-size:10px;padding:0.2rem 0.5rem;">' + p[1] + '</button>';
+        var onclick = p[0] === '__tool_task'
+          ? 'courseAddToolTask(' + sectionId + ')'
+          : 'courseAddBlock(\'' + p[0] + '\',' + sectionId + ')';
+        var extra = p[0] === '__tool_task' ? 'border-color:var(--accent-cyan);' : '';
+        return '<button class="btn btn-ghost" onclick="' + onclick + '" style="font-size:10px;padding:0.2rem 0.5rem;' + extra + '">' + p[1] + '</button>';
       }).join('')
     + '</div>';
 }
@@ -10182,6 +10235,13 @@ function renderCourseBlockPayload(b, allowedLangs){
       break;
     case 'sound_cue':
       inner = payInput('audio_url', 'URL звукового сигнала (MP3)', 'text', 'audio') + payInput('label', 'Метка (для отладки)');
+      break;
+    case 'tool_task':
+      var ttMeta = (window.TOOL_TASK_META && window.TOOL_TASK_META[b.tool_kind]) || { icon:'🛠', label_ru:'инструмент' };
+      inner = '<div style="font-size:11px;color:var(--accent-cyan);margin-bottom:0.4rem;">' + ttMeta.icon + ' Инструмент: <b>' + ttMeta.label_ru + '</b></div>'
+            + (L('ru')?payInput('instruction_ru', 'Инструкция ученику (RU)', 'textarea'):'')
+            + (L('en')?payInput('instruction_en', 'Instruction (EN)', 'textarea'):'')
+            + (L('es')?payInput('instruction_es', 'Instrucción (ES)', 'textarea'):'');
       break;
     default:
       inner = '<p style="font-size:11px;color:var(--text-muted);">Редактор для типа «' + b.block_type + '» в разработке.</p>';
@@ -10506,12 +10566,50 @@ function cpRenderBlock(){
     case 'sound_cue':
       body = '<div style="text-align:center;padding:1.5rem 1rem;"><p style="font-size:14px;color:var(--text-muted);">🔔 Звуковой сигнал</p><audio autoplay controls style="margin-top:1rem;"><source src="'+(p.audio_url||'')+'"></audio></div>';
       break;
+    case 'tool_task':
+      body = cpRenderToolTask(block, p, lang);
+      break;
     default:
       body = '<p style="color:var(--text-muted);">Тип блока «'+block.block_type+'» пока не отображается.</p>';
   }
   area.innerHTML = titleHtml + body;
 }
 window.cpRenderBlock = cpRenderBlock;
+
+// 🅱 п.5: render a tool_task block as an inline instrument embed inside the player.
+// The student performs the instrument right here; cpNext persists the response to
+// course_block_progress AND the server logs it to the matching Evolution layer.
+function cpRenderToolTask(block, p, lang){
+  var kind = block.tool_kind || 'sensation_map';
+  var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || { icon:'🛠', label_ru:'Инструмент' };
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var emotionLike = (kind === 'neuromap_emotion' || kind === 'sensation_map' || kind === 'diary');
+  var ph = kind === 'point_ab' ? 'Опиши, где ты сейчас (точка А) и куда хочешь прийти (точка B)…'
+         : kind === 'diary' ? 'Запиши, что заметил(а) — мысли, состояние, наблюдение…'
+         : kind === 'neuromap_event' ? 'Опиши событие…'
+         : kind === 'neuromap_thought' ? 'Запиши мысль…'
+         : kind === 'neuromap_emotion' ? 'Назови эмоцию и опиши её…'
+         : 'Опиши свои ощущения и где ты их чувствуешь…';
+  var h = '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;margin-bottom:0.9rem;">'
+        + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">'
+        +   meta.icon + ' Задание · ' + meta.label_ru + '</div>'
+        + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;">' + instr.replace(/</g,'&lt;') + '</div>'
+                 : '<div style="font-size:13px;color:var(--text-muted);">Выполни инструмент и опиши результат — он сохранится в твоём ' + meta.label_ru + ' и на пути развития.</div>')
+        + '</div>'
+        + '<textarea id="cp-response" rows="5" placeholder="' + ph + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+  // emotion / sensation / diary get a valence picker so the event lands with tone
+  if (emotionLike) {
+    h += '<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.6rem;font-size:12px;color:var(--text-muted);">'
+       + '<span>Тон:</span>'
+       + '<select id="cp-tool-valence" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.3rem 0.5rem;font-size:12px;">'
+       +   '<option value="neutral">нейтральный</option>'
+       +   '<option value="positive">позитивный</option>'
+       +   '<option value="negative">напряжённый</option>'
+       + '</select></div>';
+  }
+  return h;
+}
+window.cpRenderToolTask = cpRenderToolTask;
 
 function cpPickBranch(answerLabel){
   coursePlayer.blockResponse = { answer: answerLabel };
@@ -10670,6 +10768,15 @@ function cpNext(){
   var respEl = document.getElementById('cp-response');
   var response = coursePlayer.blockResponse;
   if (!response && respEl) response = { text: respEl.value };
+  // 🅱 tool_task: enrich the response with valence + a label so the server logs a
+  // properly-toned Evolution event for this instrument result.
+  if (block.block_type === 'tool_task') {
+    response = response || {};
+    var valEl = document.getElementById('cp-tool-valence');
+    if (valEl) response.valence = valEl.value;
+    response.label = (response.text || '').slice(0, 80);
+    response.tool_kind = block.tool_kind;
+  }
   var token = localStorage.getItem('na_token'); if (!token) return;
 
   // If a voice recording is queued for this block, upload it first via the
