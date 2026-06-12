@@ -346,9 +346,14 @@
 }
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
-<!-- d3 modules (R5): used by Evolution Path filaments (d3-shape) + node layout (d3-force) -->
+<!-- d3 modules (R5): Evolution Path filaments (d3-shape) + node layout (d3-force).
+     Dependencies must load first: d3-path (shape), d3-timer/dispatch/quadtree (force). -->
 <script src="https://cdn.jsdelivr.net/npm/d3-selection@3.0.0/dist/d3-selection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-path@3.1.0/dist/d3-path.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-shape@3.2.0/dist/d3-shape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-timer@3.0.1/dist/d3-timer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-dispatch@3.0.1/dist/d3-dispatch.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-quadtree@3.0.1/dist/d3-quadtree.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-force@3.0.0/dist/d3-force.min.js"></script>
 </head>
 <body>
@@ -12813,6 +12818,13 @@ window.pbMove = pbMove;
         if (cpModal && cpModal.style.display !== 'none' && coursePlayer && coursePlayer.course && typeof cpRenderBlock === 'function') {
           cpRenderBlock();
           if (typeof cpMountPathView === 'function') cpMountPathView(); // C п.21: relabel path on lang switch
+        }
+        // D п.21: re-render Evolution Path on language switch when its tab is open
+        // (chrome labels, module headers and the stat-card are not static i18n).
+        var evoPanel = document.getElementById('tab-evolution');
+        var evoBox = document.getElementById('evo-path');
+        if (evoPanel && evoPanel.classList.contains('active') && evoBox && typeof window.mountEvolutionPath === 'function') {
+          window.mountEvolutionPath(evoBox); // state (mode/period/hidden) persists via __evo
         }
       } catch(e){ console.warn('RPG re-render on lang change failed:', e); }
       return ret;
