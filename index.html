@@ -151,7 +151,7 @@
         За последние 30 лет технологический скачок радикально изменил нашу жизнь
       </h2>
       <p class="sub-muted" style="color:var(--text-muted);font-size:1.05rem;" data-i18n="problem.subtitle">
-        создав нагрузку, к которой человеческий организм не был подготовлен в ходе эволюции. Это привело к масштабным последствиям на всех уровнях.
+        Создав нагрузку, к которой человеческий организм не был подготовлен в ходе эволюции. Это привело к масштабным последствиям на всех уровнях.
       </p>
     </div>
 
@@ -308,7 +308,7 @@
 <section class="section">
   <div class="section-divider"></div>
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 380px;align-items:center;gap:4rem;">
+    <div style="display:grid;grid-template-columns:1fr;align-items:center;gap:4rem;">
       <div class="fade-left">
         <p class="eyebrow" data-i18n="method.eyebrow">Метод</p>
         <h2 class="heading-space h2-block" data-i18n="method.title">
@@ -369,17 +369,16 @@
           <p style="font-size:13px;line-height:1.7;color:var(--text-secondary);margin:0;">
             <svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <span data-i18n="method.rehab_text"><strong style="color:var(--text-primary);">Rehabilitation Program</strong> — восстановление когнитивных функций при нарушениях нервной системы.</span>
-            <a href="rehabilitation-application.html" style="color:var(--accent-violet);text-decoration:none;border-bottom:1px solid rgba(167,139,250,0.3);margin-left:4px;" data-i18n="method.rehab_link">Оставить заявку</a>
           </p>
+          <!-- CTA on its own line so the text and button never glue together
+               ("impairments.Submit an application") across RU/EN/ES. -->
+          <a href="rehabilitation-application.html" style="display:inline-block;margin-top:0.6rem;color:var(--accent-violet);text-decoration:none;border-bottom:1px solid rgba(167,139,250,0.3);" data-i18n="method.rehab_link">Оставить заявку</a>
         </div>
         <!-- /DRAFT -->
       </div>
 
-      <div class="fade-right">
-        <div class="media-box aspect-tall" style="width:100%;">
-          <img src="assets/images/prism.jpg" alt="Призма света" />
-        </div>
-      </div>
+      <!-- Removed the "Призма света" (prism/rainbow-on-black) image: it read as a
+           random rainbow glow stacked under the rehab text on mobile. -->
     </div>
   </div>
 </section>
@@ -687,6 +686,7 @@
 <script src="assets/redesign.js"></script>
 <script src="assets/js/media.js" defer></script>
 <script src="assets/js/i18n.js"></script>
+<script src="assets/js/typography.js" defer></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
