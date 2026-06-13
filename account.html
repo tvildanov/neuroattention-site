@@ -10535,6 +10535,7 @@ function cpOpenFullscreen(){
 }
 function cpEscHandler(e){ if (e.key === 'Escape') cpClose(); }
 function cpClose(){
+  if (typeof cpCancelAutoAdvance === 'function') cpCancelAutoAdvance();
   var modal = document.getElementById('coursePlayerModal');
   if (modal){ modal.style.display='none'; modal.classList.remove('cp-fullscreen','cp-minimized'); }
   document.removeEventListener('keydown', cpEscHandler);
@@ -10594,11 +10595,25 @@ function cpBlockTitle(block, uiLang){
 }
 
 function cpRenderBlock(){
+  cpCancelAutoAdvance();   // clear any pending auto-advance toast on (re)render
   var area = document.getElementById('cp-block-area');
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var block = coursePlayer.blocks[coursePlayer.idx];
+  // Auto-advance landed on a section header → step straight into its first child
+  // (a section is a playlist, not consumable content). — auto-advance #6
+  if (window._cpSkipSection) {
+    window._cpSkipSection = false;
+    if (block && block.block_type === 'section') {
+      var fc = coursePlayer.blocks.findIndex(function(b){ return b.parent_block_id === block.id; });
+      if (fc >= 0) { coursePlayer.idx = fc; block = coursePlayer.blocks[fc]; }
+    }
+  }
   if (!block) {
-    area.innerHTML = '<div style="text-align:center;padding:3rem 1rem;"><h3 style="font-size:18px;">🎉 Курс завершён!</h3><p style="color:var(--text-muted);">Спасибо за участие.</p></div>';
+    area.innerHTML = '<div style="text-align:center;padding:3rem 1rem;">'
+      + '<h3 style="font-size:18px;">🎉 Курс завершён!</h3>'
+      + '<p style="color:var(--text-muted);margin:0.5rem 0 1.25rem;">Спасибо за участие.</p>'
+      + '<button class="btn btn-solid" onclick="cpClose(); if(typeof switchTab===\'function\') switchTab(\'courses\');" style="font-size:13px;padding:0.6rem 1.25rem;">← Назад в Курсы</button>'
+      + '</div>';
     document.getElementById('cp-next-btn').style.display = 'none';
     document.getElementById('cp-prev-btn').style.display = coursePlayer.history.length ? '' : 'none';
     document.getElementById('cp-progress-text').textContent = coursePlayer.blocks.length + ' / ' + coursePlayer.blocks.length;
@@ -10726,8 +10741,67 @@ function cpRenderBlock(){
       body = '<p style="color:var(--text-muted);">Тип блока «'+block.block_type+'» пока не отображается.</p>';
   }
   area.innerHTML = titleHtml + body;
+
+  // ── auto-advance wiring for passive blocks ──
+  // Audio/video finishing, or "Прочитано" on a text block, schedules a short,
+  // cancellable hop to the next block. Input blocks (tool_task / student_* /
+  // sensation_prompt / question_branch) stay manual — Next records their answer.
+  (function(){
+    var bt = block.block_type;
+    if (bt === 'audio' || bt === 'practice' || bt === 'sound_cue') {
+      var au = area.querySelector('audio');
+      if (au) au.addEventListener('ended', cpScheduleAutoAdvance);
+    } else if (bt === 'video') {
+      var vd = area.querySelector('video');
+      if (vd) vd.addEventListener('ended', cpScheduleAutoAdvance);
+    } else if (bt === 'text') {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'margin-top:1.1rem;';
+      wrap.innerHTML = '<button id="cp-text-read" class="btn btn-solid" style="font-size:13px;padding:0.5rem 1.1rem;">Прочитано ✓</button>';
+      area.appendChild(wrap);
+      var rb = document.getElementById('cp-text-read');
+      if (rb) rb.addEventListener('click', function(){ rb.disabled = true; rb.style.opacity = '0.6'; cpScheduleAutoAdvance(); });
+    }
+  })();
 }
 window.cpRenderBlock = cpRenderBlock;
+
+// ── Auto-advance (#1 of the task) ───────────────────────────────────────────
+// A finished passive block schedules a cancellable 2s hop to the next block via a
+// toast ("Следующий блок через N сек… ✕ Отменить · Далее →").
+function cpCancelAutoAdvance(){
+  var aa = window._cpAutoAdv;
+  if (!aa) return;
+  clearTimeout(aa.to); clearInterval(aa.tick);
+  if (aa.el && aa.el.parentNode) aa.el.parentNode.removeChild(aa.el);
+  window._cpAutoAdv = null;
+}
+function cpScheduleAutoAdvance(){
+  if (coursePlayer.previewMode) return;          // never auto-advance in admin preview
+  cpCancelAutoAdvance();
+  var modal = document.getElementById('coursePlayerModal');
+  if (!modal) return;
+  var secs = 2;
+  var toast = document.createElement('div');
+  toast.id = 'cp-autoadvance-toast';
+  toast.style.cssText = 'position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:0.6rem;background:rgba(7,11,18,0.97);border:1px solid var(--accent-cyan,#00e5ff);border-radius:12px;padding:0.55rem 0.8rem;box-shadow:0 12px 34px rgba(0,0,0,0.55);font-size:13px;color:var(--text-primary);backdrop-filter:blur(8px);max-width:92%;';
+  toast.innerHTML = '<span>Следующий блок через <b id="cp-aa-count" style="font-family:JetBrains Mono,monospace;color:var(--accent-cyan,#00e5ff);">' + secs + '</b> сек…</span>'
+    + '<button id="cp-aa-cancel" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text-secondary);border-radius:8px;padding:0.3rem 0.65rem;font-size:12px;cursor:pointer;white-space:nowrap;">✕ Отменить</button>'
+    + '<button id="cp-aa-now" style="background:var(--accent-cyan,#00e5ff);border:none;color:#001016;border-radius:8px;padding:0.3rem 0.7rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Далее →</button>';
+  modal.appendChild(toast);
+  var remain = secs;
+  var tick = setInterval(function(){ remain--; var c = document.getElementById('cp-aa-count'); if (c) c.textContent = Math.max(0, remain); }, 1000);
+  var to = setTimeout(function(){ cpCancelAutoAdvance(); cpAutoNext(); }, secs * 1000);
+  window._cpAutoAdv = { to: to, tick: tick, el: toast };
+  var cb = document.getElementById('cp-aa-cancel'); if (cb) cb.addEventListener('click', cpCancelAutoAdvance);
+  var nb = document.getElementById('cp-aa-now'); if (nb) nb.addEventListener('click', function(){ cpCancelAutoAdvance(); cpAutoNext(); });
+}
+function cpAutoNext(){
+  window._cpSkipSection = true;   // if we land on a section header, enter its first child
+  cpNext();
+}
+window.cpScheduleAutoAdvance = cpScheduleAutoAdvance;
+window.cpCancelAutoAdvance = cpCancelAutoAdvance;
 
 // 🅱 п.5: render a tool_task block as an inline instrument embed inside the player.
 // The student performs the instrument right here; cpNext persists the response to
