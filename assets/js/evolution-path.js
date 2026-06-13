@@ -673,18 +673,36 @@
       var sy = syAt(X);
       var fill = cvLayerFill(e.layer, e.valence);
       var r = e.layer === 'insight' ? 4.2 : (e.layer === 'practice' ? 3.8 : (2.6 + Math.min(2.4, Math.log(1 + (e.weight || 1)))));
-      // ── branches v2: long horizontal ROOT — leaves the spine almost parallel,
-      // travels far in X (60–170px), only curving to its layer band near the tip. ──
+      // ── branches v3: LIGHTNING — always forward in time (right / +X). A jagged,
+      // strongly-horizontal main bolt (dx ≫ |dy|) from the spine to the node tip,
+      // plus a sharp sub-fork at 15–30° continuing forward, thickness fading with
+      // depth. white nerve-fibre base + thin coloured stripe. Never points back. ──
       var dyTip = (BRANCH_DY[e.layer] != null ? BRANCH_DY[e.layer] : 0) * half;
-      var dir = (jit(i) < 0.5) ? -1 : 1;
-      var driftX = (60 + Math.abs(dyTip) * 0.7 + jit(i + 3) * 60) * dir;
+      var driftX = 60 + Math.abs(dyTip) * 0.7 + jit(i + 3) * 70;   // always forward (+X)
       var cxp = X + driftX, ty = cy + dyTip + (jit(i) - 0.5) * half * 0.14;
-      var c1x = X + driftX * 0.55, c1y = sy + (ty - sy) * 0.05;    // nearly along the spine
-      var c2x = cxp - driftX * 0.10, c2y = ty - (ty - sy) * 0.08;
-      // #3 (branches): white nerve-fibre base + thin coloured stripe over it
-      ctx.beginPath(); ctx.moveTo(X, sy); ctx.bezierCurveTo(c1x, c1y, c2x, c2y, cxp, ty);
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2.4; ctx.globalAlpha = 0.5; ctx.stroke();
-      ctx.strokeStyle = fill; ctx.lineWidth = 1; ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1;
+      // main bolt: a few forward segments that zig-zag slightly in Y (monotonic in X)
+      var segN = 3 + Math.floor(jit(i + 7) * 3);                   // 3..5 segments
+      var mainPts = lightningPts(X, sy, cxp, ty, segN, i + 1);
+      strokePolyline(ctx, mainPts, 'rgba(255,255,255,0.6)', 2.4, 0.5);
+      strokePolyline(ctx, mainPts, fill, 1, 0.85);
+      // 1–2 forward sub-forks off interior vertices, sharp 15–30° angle, thinner
+      var forkN = jit(i + 11) < 0.5 ? 1 : 2;
+      for (var fk = 0; fk < forkN; fk++) {
+        var vi = 1 + Math.floor(jit(i + 13 + fk) * Math.max(1, mainPts.length - 2));
+        var base = mainPts[vi], prev = mainPts[vi - 1];
+        var bdx = base.x - prev.x, bdy = base.y - prev.y, blen = Math.hypot(bdx, bdy) || 1;
+        var ux = bdx / blen, uy = bdy / blen;                     // forward dir at vertex
+        var ang = (15 + jit(i + 17 + fk) * 15) * Math.PI / 180;   // 15–30°
+        var sgn = (jit(i + 19 + fk) < 0.5) ? -1 : 1;              // fork up or down
+        var ca = Math.cos(ang * sgn), sa = Math.sin(ang * sgn);
+        var fx = ux * ca - uy * sa, fy = ux * sa + uy * ca;       // rotate forward vector
+        if (fx < 0) { fx = -fx; }                                  // guarantee forward (+X)
+        var flen = (18 + jit(i + 23 + fk) * 34) * (1 - fk * 0.3);  // varied, shorter w/ depth
+        var fpts = lightningPts(base.x, base.y, base.x + fx * flen, base.y + fy * flen, 2, i + 31 + fk);
+        var w = 1.6 - fk * 0.5;                                    // thinner with depth
+        strokePolyline(ctx, fpts, 'rgba(255,255,255,0.45)', w, 0.4);
+        strokePolyline(ctx, fpts, fill, Math.max(0.5, w - 1.0), 0.7);
+      }
       // node — white core + coloured outline (+ glow when idle)
       var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
       drawNodeCv(ctx, e.layer, cxp, ty, r, fill, glow);
@@ -720,6 +738,25 @@
     }
     drawTimeAxisCv(ctx, view, lang, x0, x1, C);
     ctx.restore();
+  }
+
+  // jagged forward-biased polyline (lightning). X advances monotonically forward
+  // (the per-step Y jitter is bounded well under the X advance → never doubles back).
+  function lightningPts(x0, y0, x1, y1, segN, seed) {
+    var pts = [{ x: x0, y: y0 }], dx = x1 - x0, dy = y1 - y0;
+    for (var s = 1; s < segN; s++) {
+      var f = s / segN;
+      var jx = (jit(seed * 7 + s) - 0.5) * (dx / segN) * 0.5;   // |jx| < ½ the step → monotonic
+      var jy = (jit(seed * 13 + s) - 0.5) * Math.min(Math.abs(dx) * 0.18, 22);
+      pts.push({ x: x0 + dx * f + jx, y: y0 + dy * f + jy });
+    }
+    pts.push({ x: x1, y: y1 });
+    return pts;
+  }
+  function strokePolyline(ctx, pts, color, w, alpha) {
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (var k = 1; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y);
+    ctx.strokeStyle = color; ctx.lineWidth = w; ctx.globalAlpha = alpha; ctx.stroke(); ctx.globalAlpha = 1;
   }
 
   function drawNodeCv(ctx, layer, cx, cy, r, fill, glow) {
@@ -835,12 +872,16 @@
       if (e.ctrlKey || e.metaKey) { zoomBy(e.deltaY, rectL(e.clientX)); }
       else { S.cursorX = rectL(e.clientX); var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); panBy(-d); S.panVel = -d * 0.5; kick(); }
     }, { passive: false });
+    // mouse / pen go through pointer events; touch is owned by the touch handlers
+    // below (pointer events can't track two-finger pinch reliably).
     target.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') return;
       S.dragging = true; S.moved = false; S.lastX = e.clientX; S.panVel = 0;
       try { target.setPointerCapture(e.pointerId); } catch (er) {}
       target.style.cursor = 'grabbing';
     });
     target.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') return;
       S.cursorX = rectL(e.clientX);
       if (!S.dragging) return;
       var dx = e.clientX - S.lastX; S.lastX = e.clientX;
@@ -848,11 +889,56 @@
       panBy(dx); S.panVel = dx;
     });
     function up(e) {
+      if (e.pointerType === 'touch') return;
       if (!S.dragging) return; S.dragging = false; target.style.cursor = ''; kick();
       if (!S.moved) hitTest(rectL(e.clientX), rectT(e.clientY));
     }
     target.addEventListener('pointerup', up);
-    target.addEventListener('pointercancel', function () { S.dragging = false; target.style.cursor = ''; });
+    target.addEventListener('pointercancel', function (e) { if (e.pointerType === 'touch') return; S.dragging = false; target.style.cursor = ''; });
+
+    // ── touch: 1-finger pan, 2-finger pinch-zoom (anchored at the finger midpoint),
+    // tap → hitTest. Owns the touch path entirely so pinch produces real zoom. ──
+    var TG = { mode: null, lastMid: 0, startDist: 0, startPxPerDay: 0, moved: false };
+    function tRect() { var t = T(); return t ? t.cv.getBoundingClientRect() : { left: 0, top: 0 }; }
+    function tMid(tt) { var r = tRect(); return (tt[0].clientX + tt[1].clientX) / 2 - r.left; }
+    function tDist(tt) { return Math.hypot(tt[0].clientX - tt[1].clientX, tt[0].clientY - tt[1].clientY); }
+    target.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 2) {
+        e.preventDefault(); S.dragging = false; S.panVel = 0;
+        TG.mode = 'pinch'; TG.startDist = tDist(e.touches) || 1;
+        TG.startPxPerDay = S.st.view.pxPerDay; TG.lastMid = tMid(e.touches);
+      } else if (e.touches.length === 1) {
+        TG.mode = 'pan'; TG.lastMid = e.touches[0].clientX; TG.moved = false; S.panVel = 0;
+      }
+    }, { passive: false });
+    target.addEventListener('touchmove', function (e) {
+      if (TG.mode === 'pinch' && e.touches.length === 2) {
+        e.preventDefault();
+        var d = tDist(e.touches) || 1, mid = tMid(e.touches), v = S.st.view;
+        gestureOn();
+        var tUnder = v.originT + (mid - v.panX) / v.pxPerDay * DAY_MS;     // anchor world-time
+        v.pxPerDay = Math.max(MIN_PXPD, Math.min(MAX_PXPD, TG.startPxPerDay * (d / TG.startDist)));
+        v.panX = mid - (tUnder - v.originT) / DAY_MS * v.pxPerDay;          // keep it under the midpoint
+        v.panX += (mid - TG.lastMid); TG.lastMid = mid;                     // + two-finger pan
+        clampPan(); draw();
+      } else if (TG.mode === 'pan' && e.touches.length === 1) {
+        e.preventDefault();
+        var x = e.touches[0].clientX, dx = x - TG.lastMid; TG.lastMid = x;
+        S.cursorX = rectL(x);
+        if (Math.abs(dx) > 2) TG.moved = true;
+        panBy(dx); S.panVel = dx;
+      }
+    }, { passive: false });
+    function touchEnd(e) {
+      if (TG.mode === 'pan' && !TG.moved) {
+        var ct = (e.changedTouches && e.changedTouches[0]) || null, r = tRect();
+        if (ct) hitTest(ct.clientX - r.left, ct.clientY - r.top);
+      }
+      if (e.touches.length === 0) { TG.mode = null; kick(); }
+      else if (e.touches.length === 1) { TG.mode = 'pan'; TG.lastMid = e.touches[0].clientX; TG.moved = true; }
+    }
+    target.addEventListener('touchend', touchEnd, { passive: false });
+    target.addEventListener('touchcancel', function () { TG.mode = null; });
 
     function hitTest(lx, ly) {
       var nodes = S.st._nodes || [], best = null, bd = 1e9;
@@ -1182,7 +1268,15 @@
     });
 
     box.querySelector('.evo-mini-x').addEventListener('click', function () { closeMiniNeuromap(container); });
-    box.querySelector('.evo-mini-open').addEventListener('click', function () { closeMiniNeuromap(container); openInSource(center); });
+    // 5.3: open the FULL neuromap in a NEW TAB, deep-linked to this node + its chain,
+    // so the embedded path stays put. account.html reads ?focus / ?chain on load.
+    box.querySelector('.evo-mini-open').addEventListener('click', function () {
+      var chainIds = [center.id].concat(neighbours.map(function (n) { return n.id; }));
+      var url = '/account.html?tab=tools&subtab=neuromap' +
+                '&focus=' + encodeURIComponent(center.id) +
+                '&chain=' + encodeURIComponent(chainIds.join(','));
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
     // outside-click closes
     container.__miniNmOutside = function (e) { if (!box.contains(e.target) && !e.target.closest('.evo-node')) closeMiniNeuromap(container); };
     setTimeout(function () { document.addEventListener('mousedown', container.__miniNmOutside, true); }, 0);
