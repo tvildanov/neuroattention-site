@@ -441,6 +441,10 @@
    They snap back ~160ms after motion stops. */
 .evo-gesturing .evo-world * { filter: none !important; }
 .evo-world { will-change: transform; }
+/* v4: the tunnel is now a <canvas>. touch-action:none so a finger pans the
+   timeline instead of scrolling the page; cursor hints grab. */
+.myc-evo-canvas canvas.evo-2d { display: block; touch-action: none; cursor: grab; }
+.myc-evo-canvas canvas.evo-2d:active { cursor: grabbing; }
 
 @media (max-width: 720px) {
   /* #1: side panels stack below the chart instead of reserving horizontal field
