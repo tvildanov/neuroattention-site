@@ -1288,8 +1288,11 @@
       avatarMarkup(u, 44) +
       '<div class="evo-user-meta"><div class="evo-user-name">' + escapeHtml(u.name || '—') + '</div>' +
       '<div class="evo-user-lvl">' + L(STR.level, lang) + ' ' + (u.level || 1) + '</div>' +
-      '<div class="evo-user-xp">' + (u.xp || 0) + ' / ' + (u.xpNext || 100) + ' XP</div></div>';
+      '<div class="evo-user-xp">' + (u.xp || 0) + ' / ' + (u.xpNext || 100) + ' XP</div></div>' +
+      '<button class="evo-char-profile evo-user-profile">' + L(STR.openProfile, lang) + '</button>';
     canvas.appendChild(panel);
+    var pb = panel.querySelector('.evo-user-profile');
+    if (pb) pb.addEventListener('click', function () { if (typeof window.switchTab === 'function') window.switchTab('profile'); });
   }
   function addLayerToggles(container, canvas, st, lang) {
     st.hidden = st.hidden || {};
