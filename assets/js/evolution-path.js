@@ -573,7 +573,9 @@
 
     var viewport = el('g', { 'clip-path': 'url(#' + clipId + ')' });
     svg.appendChild(viewport);
-    var world = el('g', { 'class': 'evo-world myc-fade', transform: 'translate(' + view.panX.toFixed(1) + ',0)' });
+    // no myc-fade here: zoom/pan settle triggers a repaint, and a re-running
+    // fade-in would flash the whole field each time (3.1).
+    var world = el('g', { 'class': 'evo-world', transform: 'translate(' + view.panX.toFixed(1) + ',0)' });
     viewport.appendChild(world);
 
     // faint depth grid across the world (vertical day-ish ticks)
@@ -601,17 +603,17 @@
     // world-X of every visible event, for the pan haptic density probe (2.4)
     window.__evoEventsX = events.map(function (e) { return wx(e.t); });
 
-    // ── 2.7: auric halo — a soft, blurred emotional aura hugging the spine.
-    // Width grows with XP earned in the period; colour follows the prevailing
-    // emotion over time (green = positive, wine/red = heavy, cyan = calm), flowing
-    // between bands via a gradient. Always dimmer than the pure-white spine. ──
-    (function () {
+    // ── 3.4 / 2.7: auric XP halo — a soft, blurred aura hugging the spine. This IS
+    // the "XP / уровень" layer in the tunnel (the toggle shows/hides it). Width
+    // grows with XP earned in the period; colour follows the prevailing emotion over
+    // time (green = positive, wine/red = heavy, cyan = calm). Dimmer than the spine. ──
+    if (!hidden.xp_gain) (function () {
       var allEv = allEvents(data);
       var xp = data.layers.xp_gain || [];
       var xpTotal = xp.length ? (xp[xp.length - 1].cumulative || 0) : 0;
-      var haloW = 12 + Math.min(46, xpTotal / 28);
+      var haloW = 20 + Math.min(52, xpTotal / 22);   // visible even with little/no XP
       // colour buckets across the world by mean valence of emotions in each slice
-      var NB = 10, gradId = 'evoAura' + (st._isOverlay ? 'O' : 'E');
+      var NB = 12, gradId = 'evoAura' + (st._isOverlay ? 'O' : 'E');
       var grad = el('linearGradient', { id: gradId, gradientUnits: 'userSpaceOnUse',
         x1: wxOrigin.toFixed(1), y1: '0', x2: wxNow.toFixed(1), y2: '0' });
       for (var b = 0; b <= NB; b++) {
@@ -621,12 +623,12 @@
         var pos = slice.filter(function (e) { return e.valence === 'positive'; }).length;
         var neg = slice.filter(function (e) { return e.valence === 'negative'; }).length;
         var score = slice.length ? (pos - neg) / slice.length : 0;
-        grad.appendChild(el('stop', { offset: (100 * b / NB).toFixed(0) + '%', 'stop-color': valenceColor(score), 'stop-opacity': slice.length ? '0.30' : '0.12' }));
+        grad.appendChild(el('stop', { offset: (100 * b / NB).toFixed(0) + '%', 'stop-color': valenceColor(score), 'stop-opacity': slice.length ? '0.46' : '0.28' }));
       }
       defs.appendChild(grad);
       world.appendChild(el('path', { d: spinePath(wxOrigin, wxNow), fill: 'none',
         stroke: 'url(#' + gradId + ')', 'stroke-width': haloW.toFixed(1), 'stroke-linecap': 'round',
-        opacity: '0.85', filter: 'url(#evoHalo)' }));
+        opacity: '0.95', filter: 'url(#evoHalo)' }));
     })();
 
     // ── branches + nodes ──
@@ -684,11 +686,33 @@
     });
 
     // ── real journey_links as glowing mycelium chains (no filler) ──
+    // 3.3: each filament is clickable (with a fat invisible hit path so the thin
+    // line is easy to hit) → opens the mini-neuromap for the whole chain.
     var chains = el('g', { 'class': 'evo-chains' });
     (data.links || []).forEach(function (lk) {
       var a = POS[String(lk.a)], b = POS[String(lk.b)];
       if (!a || !b) return;
-      chains.appendChild(chainPath(a, b, lk.kind === 'correlation' ? 'var(--myc-cyan)' : 'rgba(255,255,255,0.5)', lk.kind === 'correlation' ? 0.4 : 0.22));
+      var color = lk.kind === 'correlation' ? 'var(--myc-cyan)' : 'rgba(255,255,255,0.5)';
+      var op = lk.kind === 'correlation' ? 0.4 : 0.22;
+      var d = chainD(a, b);
+      var grp = el('g', { 'class': 'evo-chain', tabindex: '0' });
+      grp.style.cursor = 'pointer';
+      grp.appendChild(el('path', { d: d, fill: 'none', stroke: 'transparent', 'stroke-width': '16', 'pointer-events': 'stroke' }));
+      grp.appendChild(el('path', { d: d, fill: 'none', stroke: color, 'stroke-width': '1', opacity: String(op), filter: 'url(#evoGlow)', 'pointer-events': 'none' }));
+      (function (linkObj) {
+        function openChain(domEv) {
+          if (domEv) domEv.stopPropagation();
+          if (window._evolNavLock) return;
+          window._evolNavLock = true;
+          try {
+            var ev = EVENT_INDEX[String(linkObj.a)] || EVENT_INDEX[String(linkObj.b)];
+            if (ev) openMiniNeuromap(container, ev, lang, st);
+          } finally { setTimeout(function () { window._evolNavLock = false; }, 120); }
+        }
+        grp.addEventListener('click', openChain);
+        grp.addEventListener('keydown', function (k) { if (k.key === 'Enter' || k.key === ' ') openChain(k); });
+      })(lk);
+      chains.appendChild(grp);
     });
 
     world.appendChild(branchG);
@@ -703,16 +727,13 @@
     wirePanZoom(svg, world, st, container, lang, x0, x1);
   }
 
-  // smooth Bezier chain between two node tips
-  function chainPath(a, b, stroke, op) {
+  // smooth Bezier chain path string between two node tips
+  function chainD(a, b) {
     var midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2 - Math.min(50, Math.abs(b.x - a.x) * 0.25 + 14);
-    var d;
     if (window.d3 && window.d3.line && window.d3.curveCatmullRom) {
-      d = window.d3.line().curve(window.d3.curveCatmullRom.alpha(0.7))([[a.x, a.y], [midX, midY], [b.x, b.y]]);
-    } else {
-      d = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+      return window.d3.line().curve(window.d3.curveCatmullRom.alpha(0.7))([[a.x, a.y], [midX, midY], [b.x, b.y]]);
     }
-    return el('path', { d: d, fill: 'none', stroke: stroke, 'stroke-width': '1', opacity: String(op), filter: 'url(#evoGlow)' });
+    return 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
   }
 
   // date ticks along the bottom, in world coords
@@ -720,17 +741,19 @@
   // (month → week → day → hours → 30/15-min) so labels stay ~100px apart. Sub-hour
   // ticks render as faint grid only; the smallest LABELLED unit is the hour. Ticks
   // are drawn only across the visible window (+1 screen margin) for perf at deep zoom.
-  var AXIS_STEPS = [ // milliseconds, large → small
-    30 * DAY_MS, 14 * DAY_MS, 7 * DAY_MS, 3 * DAY_MS, DAY_MS,
-    12 * HOUR_MS, 6 * HOUR_MS, 3 * HOUR_MS, HOUR_MS, 30 * MIN_MS, 15 * MIN_MS, 5 * MIN_MS
+  var AXIS_STEPS = [ // milliseconds, small → large
+    15 * MIN_MS, 30 * MIN_MS, HOUR_MS, 3 * HOUR_MS, 6 * HOUR_MS, 12 * HOUR_MS,
+    DAY_MS, 2 * DAY_MS, 5 * DAY_MS, 7 * DAY_MS, 14 * DAY_MS, 30 * DAY_MS, 60 * DAY_MS, 90 * DAY_MS
   ];
-  function pickAxisStep(pxPerDay) {
-    // smallest step whose on-screen spacing is still ≥ ~78px (densest readable)
-    for (var i = AXIS_STEPS.length - 1; i >= 0; i--) {
-      var px = AXIS_STEPS[i] / DAY_MS * pxPerDay;
-      if (px >= 78) return AXIS_STEPS[i];
+  // 3.2: choose the tick interval from the VISIBLE TIME SPAN (not the densest that
+  // fits a pixel budget — that wrongly showed hours on the week view). Aim for
+  // ≤ ~13 ticks across the window: week→days, month→~5-day, year→months, day→hours,
+  // deep zoom→30-min. (smallest step that keeps the tick count reasonable)
+  function pickAxisStep(visibleSpanMs) {
+    for (var i = 0; i < AXIS_STEPS.length; i++) {
+      if (visibleSpanMs / AXIS_STEPS[i] <= 13) return AXIS_STEPS[i];
     }
-    return AXIS_STEPS[0];
+    return AXIS_STEPS[AXIS_STEPS.length - 1];
   }
   function fmtTick(t, step, lang) {
     var d = new Date(t); if (isNaN(d)) return '';
@@ -743,7 +766,8 @@
   }
   function drawWorldTimeAxis(g, view, lang, x0, x1) {
     var y = H - 16;
-    var step = pickAxisStep(view.pxPerDay);
+    var visibleSpan = (x1 - x0) / view.pxPerDay * DAY_MS;    // time visible on screen now
+    var step = pickAxisStep(visibleSpan);
     var labelStep = Math.max(step, HOUR_MS);                 // never label below the hour
     // visible time window (world is translated by panX)
     var visStartX = (x0 - view.panX), visEndX = (x1 - view.panX);
@@ -778,9 +802,10 @@
   function wirePanZoom(svg, world, st, container, lang, x0, x1) {
     // attach gestures to the canvas (the path area), not the whole chrome/panels.
     var target = container.querySelector('.myc-evo-canvas') || container;
-    if (target._evoPZ) { var s = target._evoPZ; s.x0 = x0; s.x1 = x1; s.lang = lang; s.st = st; return; }
-    var S = { x0: x0, x1: x1, lang: lang, st: st, panVel: 0, zoomVel: 0, cursorX: null,
-              raf: null, needPaint: false, dragging: false, lastClientX: 0, hapticAcc: 0 };
+    if (target._evoPZ) { var s = target._evoPZ; s.x0 = x0; s.x1 = x1; s.lang = lang; s.st = st; s.renderedPPD = st.view.pxPerDay; s.targetPPD = st.view.pxPerDay; s.liveScale = 1; applyWorldTransform2(s); return; }
+    var S = { x0: x0, x1: x1, lang: lang, st: st, panVel: 0, cursorX: null, raf: null,
+              dragging: false, lastClientX: 0, hapticAcc: 0,
+              renderedPPD: st.view.pxPerDay, targetPPD: st.view.pxPerDay, liveScale: 1, zoomIdle: null };
     target._evoPZ = S;
 
     function curWorld() { return container.querySelector('.evo-world'); }
@@ -791,28 +816,37 @@
       return (sv.viewBox && sv.viewBox.baseVal && sv.viewBox.baseVal.width && r.width) ? (sv.viewBox.baseVal.width / r.width) : 1;
     }
     function localX(clientX) { var sv = curSvg(); if (!sv) return clientX; return (clientX - sv.getBoundingClientRect().left) * svgScale(); }
-    function clampPan(v) {
+    function clampPanFor(ppd) {
       var view = S.st.view;
-      var minPan = (S.x1 - 40) - (view.nowT - view.originT) / DAY_MS * view.pxPerDay - (S.x1 - S.x0);
+      var minPan = (S.x1 - 40) - (view.nowT - view.originT) / DAY_MS * ppd - (S.x1 - S.x0);
       var maxPan = S.x0 + (S.x1 - S.x0) * 0.5;
       view.panX = Math.max(minPan, Math.min(maxPan, view.panX));
     }
-    function applyTransform() { var w = curWorld(); if (w) w.setAttribute('transform', 'translate(' + S.st.view.panX.toFixed(2) + ',0)'); }
+    // 3.1: GPU-composited transform — translate3d for pan, scaleX(liveScale) for the
+    // mid-zoom preview. NO SVG path recompute during a gesture; transitions off so
+    // they never fight the rAF/wheel updates.
+    function applyWorldTransform() { applyWorldTransform2(S); }
+    function applyWorldTransform2(s) {
+      var w = container.querySelector('.evo-world'); if (!w) return;
+      var sx = s.liveScale || 1;
+      w.style.transition = 'none';
+      w.style.willChange = 'transform';
+      w.style.transformOrigin = '0 0';
+      w.style.transform = 'translate3d(' + s.st.view.panX.toFixed(2) + 'px,0,0)' + (Math.abs(sx - 1) > 1e-4 ? ' scaleX(' + sx.toFixed(5) + ')' : '');
+    }
 
     // soft haptic tick while moving — denser at higher zoom & over node clusters
     function haptic(dxAbs) {
       if (!navigator.vibrate) return;
       var view = S.st.view;
-      // notch spacing shrinks as we zoom in (more detail = more ticks)
       var notch = Math.max(6, 1400 / Math.max(1, view.pxPerDay) * 2);
       S.hapticAcc += dxAbs;
       if (S.hapticAcc < notch) return;
       S.hapticAcc = 0;
-      // node density under cursor → stronger pulse over clusters
       var dur = 4;
       try {
         if (S.cursorX != null && Array.isArray(window.__evoEventsX)) {
-          var worldX = S.cursorX - view.panX, win = 18;
+          var worldX = (S.cursorX - view.panX) / (S.liveScale || 1), win = 18;
           var n = 0; for (var i = 0; i < window.__evoEventsX.length; i++) { if (Math.abs(window.__evoEventsX[i] - worldX) < win) n++; if (n > 6) break; }
           dur = 3 + Math.min(14, n * 3);
         }
@@ -820,37 +854,50 @@
       try { navigator.vibrate(dur); } catch (e) {}
     }
 
-    function zoomBy(deltaY, atX) {
-      // exponential, smoother than a fixed step; accumulate into velocity
-      S.cursorX = atX;
-      S.zoomVel += deltaY;
-      kick();
+    function effPPD() { return (Math.abs((S.liveScale || 1) - 1) > 1e-4) ? S.targetPPD : S.st.view.pxPerDay; }
+    // after panning stops, refresh axis/grid for the newly-revealed region (one
+    // repaint, debounced — the pan itself stays transform-only / lag-free).
+    function schedulePanRepaint() {
+      if (S.panIdle) clearTimeout(S.panIdle);
+      S.panIdle = setTimeout(function () { S.panIdle = null; if (!S.dragging) { paint(container, S.st, S.lang); applyWorldTransform(); } }, 200);
     }
-    function panBy(dx) { S.st.view.panX += dx; clampPan(); applyTransform(); haptic(Math.abs(dx)); }
+    function panBy(dx) { S.st.view.panX += dx; clampPanFor(effPPD()); applyWorldTransform(); haptic(Math.abs(dx)); schedulePanRepaint(); }
+
+    // ── zoom: live CSS scale (instant, GPU) + ONE crisp repaint when the gesture
+    // goes idle (~110ms). No per-frame SVG rebuild → no "тык-тык-тык". ──
+    function zoomWheel(deltaY, atX) {
+      S.cursorX = atX;
+      var view = S.st.view;
+      var sx0 = S.liveScale || 1;
+      var renderedWorldXUnder = (atX - view.panX) / sx0;                 // world-x (rendered scale) under cursor
+      S.targetPPD = Math.max(MIN_PXPD, Math.min(MAX_PXPD, (S.targetPPD || view.pxPerDay) * Math.pow(1.0015, -deltaY)));
+      var sx = S.targetPPD / S.renderedPPD;
+      S.liveScale = sx;
+      view.panX = atX - sx * renderedWorldXUnder;                        // pin time-under-cursor
+      clampPanFor(S.targetPPD);
+      applyWorldTransform();
+      if (S.zoomIdle) clearTimeout(S.zoomIdle);
+      S.zoomIdle = setTimeout(commitZoom, 110);
+    }
+    function commitZoom() {
+      S.zoomIdle = null;
+      var view = S.st.view;
+      view.pxPerDay = S.targetPPD;     // panX already maps correctly at the new scale w/ liveScale=1
+      S.renderedPPD = S.targetPPD;
+      S.liveScale = 1;
+      clampPanFor(view.pxPerDay);
+      paint(container, S.st, S.lang);  // single crisp rebuild
+      applyWorldTransform();
+    }
 
     function loop() {
       S.raf = null;
-      var view = S.st.view, active = false;
-      // ── zoom integration (time under cursor stays fixed) ──
-      if (Math.abs(S.zoomVel) > 0.05) {
-        var step = S.zoomVel * 0.25;                 // ease in
-        var atX = (S.cursorX != null) ? S.cursorX : (S.x0 + S.x1) / 2;
-        var tUnder = view.originT + (atX - view.panX) / view.pxPerDay * DAY_MS;
-        var factor = Math.pow(1.0015, -step);        // up = zoom in
-        view.pxPerDay = Math.max(MIN_PXPD, Math.min(MAX_PXPD, view.pxPerDay * factor));
-        view.panX = atX - (tUnder - view.originT) / DAY_MS * view.pxPerDay;
-        clampPan();
-        S.zoomVel *= 0.82;                            // decay → glides to a stop
-        S.needPaint = true; active = true;
-      } else { S.zoomVel = 0; }
-      // ── pan momentum (after a flick) ──
-      if (!S.dragging && Math.abs(S.panVel) > 0.35) {
-        view.panX += S.panVel; clampPan(); applyTransform(); haptic(Math.abs(S.panVel));
-        S.panVel *= 0.92; active = true;
-      } else if (!S.dragging) { S.panVel = 0; }
-      // geometry only changes on zoom → coalesced single repaint per frame
-      if (S.needPaint) { S.needPaint = false; paint(container, S.st, S.lang); }
-      if (active) S.raf = requestAnimationFrame(loop);
+      // pan momentum only (translate-only, no repaint) → buttery glide
+      if (!S.dragging && Math.abs(S.panVel) > 0.3) {
+        S.st.view.panX += S.panVel; clampPanFor(effPPD()); applyWorldTransform(); haptic(Math.abs(S.panVel));
+        S.panVel *= 0.92;
+        S.raf = requestAnimationFrame(loop);
+      } else { S.panVel = 0; }
     }
     function kick() { if (!S.raf) S.raf = requestAnimationFrame(loop); }
 
@@ -858,19 +905,19 @@
     target.addEventListener('wheel', function (e) {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
-        zoomBy(e.deltaY, localX(e.clientX));
+        zoomWheel(e.deltaY, localX(e.clientX));
       } else {
         S.cursorX = localX(e.clientX);
         var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY);
         panBy(-d);
-        S.panVel = -d * 0.5;                          // a little glide after the stream stops
+        S.panVel = -d * 0.5;       // a little glide after the stream stops
         kick();
       }
     }, { passive: false });
 
     // pointer drag pan (mouse + touch) with release momentum
     target.addEventListener('pointerdown', function (e) {
-      if (e.target.closest && e.target.closest('.evo-node')) return;
+      if (e.target.closest && (e.target.closest('.evo-node') || e.target.closest('.evo-chain'))) return;
       S.dragging = true; S.lastClientX = e.clientX; S.panVel = 0;
       try { target.setPointerCapture(e.pointerId); } catch (er) {}
       target.style.cursor = 'grabbing';
@@ -881,7 +928,7 @@
       var dx = (e.clientX - S.lastClientX) * svgScale();
       S.lastClientX = e.clientX;
       panBy(dx);
-      S.panVel = dx;                                  // last delta seeds the flick momentum
+      S.panVel = dx;
     });
     function endDrag() { if (!S.dragging) return; S.dragging = false; target.style.cursor = ''; kick(); }
     target.addEventListener('pointerup', endDrag);
