@@ -551,198 +551,322 @@
     return st.view;
   }
 
-  function renderTunnel(svg, W, data, container, lang, st) {
-    // #1: on phones the desktop side-paddings (168 + 150) left only a ~57px field
-    // → the "narrow vertical strip". Shrink them so the field uses the full width;
-    // the side panels become a compact stacked overlay (see mycelium.css mobile).
+  /* ── v4: CANVAS tunnel renderer ────────────────────────────────────────────
+     The SVG version translated one enormous <g> (the spine alone had ~1 point /
+     10 world-px → 100k+ points at deep zoom) and the browser re-rasterised that
+     giant filtered layer every pan frame → the stutter. Canvas redraws ONLY the
+     visible viewport each frame (spine capped to ~150 points regardless of zoom,
+     off-screen nodes skipped) — inherently 60fps. SVG stays only for the
+     mini-neuromap overlay + the chrome. */
+
+  var CV_COLORS = null;
+  function cvColors() {
+    if (CV_COLORS) return CV_COLORS;
+    var cs = getComputedStyle(document.documentElement);
+    var g = function (n, fb) { var v = (cs.getPropertyValue(n) || '').trim(); return v || fb; };
+    CV_COLORS = { cyan: g('--myc-cyan', '#5ee0ff'), green: g('--myc-green', '#56F2A6'),
+      lineSecondary: 'rgba(255,255,255,0.45)', lineFaint: 'rgba(255,255,255,0.06)',
+      lineMuted: 'rgba(255,255,255,0.16)', textDim: g('--myc-text-dim', '#8c98a6'),
+      textMono: g('--myc-text-mono', '#5b6b7a') };
+    return CV_COLORS;
+  }
+  function cvLayerFill(layer, valence) {
+    var C = cvColors();
+    if (layer === 'emotion') return valence === 'positive' ? C.green : (valence === 'negative' ? 'rgb(220,90,90)' : C.lineSecondary);
+    if (layer === 'insight') return C.cyan;
+    if (layer === 'practice') return '#8DFFC8';
+    if (layer === 'thought') return 'rgb(200,180,240)';
+    if (layer === 'sensation') return 'rgb(140,180,255)';
+    if (layer === 'event') return 'rgb(100,220,180)';
+    return C.lineSecondary;
+  }
+  function rgbaFromRgb(rgb, a) { var m = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/); return m ? 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')' : rgb; }
+
+  function renderTunnel(W, data, container, lang, st) {
+    var host = container.querySelector('.myc-evo-canvas');
+    var oldSvg = host.querySelector('svg'); if (oldSvg) oldSvg.remove();
+    var cv = host.querySelector('canvas.evo-2d');
+    if (!cv) { cv = document.createElement('canvas'); cv.className = 'evo-2d'; cv.style.cssText = 'display:block;width:100%;'; host.insertBefore(cv, host.firstChild); }
+    var dpr = Math.min(2, window.devicePixelRatio || 1);   // retina, but never >2 (no double-render)
     var isMobile = W <= 560;
     var padL = isMobile ? 14 : 168, padR = isMobile ? 14 : 150, padTop = isMobile ? 64 : 50, padBot = 34;
-    var x0 = padL, x1 = W - padR;
-    var fieldTop = padTop, fieldBot = H - padBot, fieldH = fieldBot - fieldTop, cy = (fieldTop + fieldBot) / 2;
-    var half = fieldH / 2 - 10;
+    var x0 = padL, x1 = W - padR, fieldTop = padTop, fieldBot = H - padBot, cy = (fieldTop + fieldBot) / 2, half = (fieldBot - fieldTop) / 2 - 10;
     var view = ensureView(st, data, x0, x1);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     var hidden = st.hidden || {};
-
-    // world X for a time (before pan). The world <g> is translated by panX.
-    var wx = function (t) { return (tms(t) - view.originT) / DAY_MS * view.pxPerDay; };
-    var spineY = function (worldX) { return cy + 4 * Math.sin(worldX * 0.012); };
-    var tipY = function (layer, i) {
-      var dy = (BRANCH_DY[layer] != null ? BRANCH_DY[layer] : 0) * half;
-      return cy + dy + (jit(i) - 0.5) * half * 0.20;
-    };
-
-    var wxOrigin = wx(view.originT), wxNow = wx(view.nowT);
-
-    // clip so panned content never spills over the side panels
-    var clipId = 'evoClip' + (st._isOverlay ? 'O' : 'E');
-    var defs = svg.querySelector('defs') || svg.insertBefore(el('defs'), svg.firstChild);
-    var clip = el('clipPath', { id: clipId });
-    clip.appendChild(el('rect', { x: x0 - 6, y: 0, width: (x1 - x0) + 12, height: H }));
-    defs.appendChild(clip);
-
-    var viewport = el('g', { 'clip-path': 'url(#' + clipId + ')' });
-    svg.appendChild(viewport);
-    // no myc-fade here: zoom/pan settle triggers a repaint, and a re-running
-    // fade-in would flash the whole field each time (3.1).
-    var world = el('g', { 'class': 'evo-world', transform: 'translate(' + view.panX.toFixed(1) + ',0)' });
-    viewport.appendChild(world);
-
-    // faint depth grid across the world (vertical day-ish ticks)
-    var grid = el('g', { opacity: '0.5' });
-    var gridStep = Math.max(60, view.pxPerDay * 2);
-    for (var gx = wxOrigin; gx <= wxNow + gridStep; gx += gridStep)
-      grid.appendChild(el('line', { x1: gx.toFixed(1), y1: fieldTop, x2: gx.toFixed(1), y2: fieldBot, stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
-    world.appendChild(grid);
-
-    // module headers across the world (spread over the full time range)
-    drawModuleHeaders(world, st, { from: view.originT, to: view.nowT, span: (view.nowT - view.originT) }, lang, wxOrigin, wxNow, fieldTop);
-
-    // ── the spine: base + bright "lived" tract + soft glow, breathing slightly ──
-    function spinePath(a, b) {
-      var d = '', f = true;
-      for (var px = a; px <= b; px += 10) { d += (f ? 'M' : 'L') + px.toFixed(1) + ' ' + spineY(px).toFixed(1); f = false; }
-      d += 'L' + b.toFixed(1) + ' ' + spineY(b).toFixed(1);
-      return d;
-    }
-    world.appendChild(el('path', { d: spinePath(wxOrigin, wxNow), fill: 'none', stroke: 'var(--myc-line-secondary)', 'stroke-width': '1.4', 'stroke-linecap': 'round', opacity: '0.45' }));
-    world.appendChild(el('path', { d: spinePath(wxOrigin, wxNow), fill: 'none', stroke: 'rgba(255,255,255,0.88)', 'stroke-width': '2', 'stroke-linecap': 'round', filter: 'url(#evoGlow)' }));
-
     var events = allEvents(data).filter(function (e) { return !hidden[e.layer]; });
     indexEvents(events);
-    // world-X of every visible event, for the pan haptic density probe (2.4)
-    window.__evoEventsX = events.map(function (e) { return wx(e.t); });
+    window.__evoEventsX = events.map(function (e) { return (tms(e.t) - view.originT) / DAY_MS * view.pxPerDay; });
+    st._tunnel = { cv: cv, ctx: cv.getContext('2d'), dpr: dpr, W: W, x0: x0, x1: x1,
+      fieldTop: fieldTop, fieldBot: fieldBot, cy: cy, half: half, isMobile: isMobile,
+      lang: lang, data: data, events: events, container: container };
+    drawTunnel(st);
+    wireCanvasPanZoom(container, st, lang);
+  }
 
-    // ── 3.4 / 2.7: auric XP halo — a soft, blurred aura hugging the spine. This IS
-    // the "XP / уровень" layer in the tunnel (the toggle shows/hides it). Width
-    // grows with XP earned in the period; colour follows the prevailing emotion over
-    // time (green = positive, wine/red = heavy, cyan = calm). Dimmer than the spine. ──
-    if (!hidden.xp_gain) (function () {
-      var allEv = allEvents(data);
-      var xp = data.layers.xp_gain || [];
-      var xpTotal = xp.length ? (xp[xp.length - 1].cumulative || 0) : 0;
-      var haloW = 20 + Math.min(52, xpTotal / 22);   // visible even with little/no XP
-      // colour buckets across the world by mean valence of emotions in each slice
-      var NB = 12, gradId = 'evoAura' + (st._isOverlay ? 'O' : 'E');
-      var grad = el('linearGradient', { id: gradId, gradientUnits: 'userSpaceOnUse',
-        x1: wxOrigin.toFixed(1), y1: '0', x2: wxNow.toFixed(1), y2: '0' });
-      for (var b = 0; b <= NB; b++) {
-        var t0 = view.originT + (view.nowT - view.originT) * (b / NB);
-        var win = (view.nowT - view.originT) / NB;
-        var slice = allEv.filter(function (e) { return e.layer === 'emotion' && Math.abs(e.t - t0) <= win; });
-        var pos = slice.filter(function (e) { return e.valence === 'positive'; }).length;
-        var neg = slice.filter(function (e) { return e.valence === 'negative'; }).length;
-        var score = slice.length ? (pos - neg) / slice.length : 0;
-        grad.appendChild(el('stop', { offset: (100 * b / NB).toFixed(0) + '%', 'stop-color': valenceColor(score), 'stop-opacity': slice.length ? '0.46' : '0.28' }));
+  function drawTunnel(st) {
+    var T = st._tunnel; if (!T) return;
+    var ctx = T.ctx, view = st.view, C = cvColors(), gesturing = !!st._gesturing, hidden = st.hidden || {}, lang = T.lang;
+    var x0 = T.x0, x1 = T.x1, cy = T.cy, half = T.half;
+    ctx.setTransform(T.dpr, 0, 0, T.dpr, 0, 0);
+    ctx.clearRect(0, 0, T.W, H);
+    ctx.save(); ctx.beginPath(); ctx.rect(x0 - 6, 0, (x1 - x0) + 12, H); ctx.clip();
+    ctx.lineCap = 'round';
+
+    var sx = function (t) { return (tms(t) - view.originT) / DAY_MS * view.pxPerDay + view.panX; };
+    var syAt = function (scrX) { return cy + 4 * Math.sin((scrX - view.panX) * 0.012); };
+    var sOrigin = sx(view.originT), sNow = sx(view.nowT);
+    var a = Math.max(x0 - 20, sOrigin), b = Math.min(x1 + 20, sNow);
+
+    // grid (visible only)
+    ctx.strokeStyle = C.lineFaint; ctx.lineWidth = 1;
+    var gp = Math.max(60, view.pxPerDay * 2);
+    var firstG = sOrigin + Math.ceil((x0 - sOrigin) / gp) * gp;
+    for (var gx = firstG; gx <= x1; gx += gp) { ctx.beginPath(); ctx.moveTo(gx, T.fieldTop); ctx.lineTo(gx, T.fieldBot); ctx.stroke(); }
+
+    // #2: dim veil over the empty pre-activity stretch (registration → first event)
+    var firstEvX = T.events.length ? sx(T.events[0].t) : sNow;
+    if (firstEvX > x0 + 8) {
+      var fade = ctx.createLinearGradient(x0, 0, Math.min(firstEvX, x1), 0);
+      fade.addColorStop(0, 'rgba(3,6,10,0.5)'); fade.addColorStop(1, 'rgba(3,6,10,0)');
+      ctx.fillStyle = fade; ctx.fillRect(x0, 0, Math.min(firstEvX, x1) - x0, H);
+    }
+
+    // halo (the XP layer) — gradient band, skipped mid-gesture (shadowBlur is dear)
+    if (!hidden.xp_gain && !gesturing && b > a) drawHaloCv(ctx, st, sx, syAt, a, b, T);
+
+    // spine: dim base + bright lived tract, breathing — capped point count
+    if (b > a) {
+      var step = Math.max(6, (b - a) / 180);
+      ctx.beginPath();
+      for (var p = a; p <= b; p += step) { var y = syAt(p); if (p === a) ctx.moveTo(p, y); else ctx.lineTo(p, y); }
+      ctx.lineTo(b, syAt(b));
+      ctx.strokeStyle = C.lineSecondary; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.45; ctx.stroke(); ctx.globalAlpha = 1;
+      if (!gesturing) { ctx.save(); ctx.shadowColor = 'rgba(255,255,255,0.6)'; ctx.shadowBlur = 6; }
+      ctx.beginPath();
+      for (var p2 = a; p2 <= b; p2 += step) { var y2 = syAt(p2); if (p2 === a) ctx.moveTo(p2, y2); else ctx.lineTo(p2, y2); }
+      ctx.lineTo(b, syAt(b));
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+      if (!gesturing) ctx.restore();
+    }
+
+    // #2: "начало" marker at the registration point
+    if (sOrigin >= x0 - 30 && sOrigin <= x1) {
+      var oy = syAt(sOrigin);
+      ctx.beginPath(); ctx.arc(sOrigin, oy, 3.2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(sOrigin, oy, 7, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+      if (!gesturing) {
+        ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = C.textMono;
+        var reg = st.user && st.user.createdAt ? new Date(st.user.createdAt) : null;
+        var lab = (lang === 'en' ? 'start' : lang === 'es' ? 'inicio' : 'начало') + (reg && !isNaN(reg) ? ' · ' + fmtTick(reg.getTime(), DAY_MS, lang) : '');
+        ctx.fillText(lab, sOrigin + 10, oy - 10);
       }
-      defs.appendChild(grad);
-      world.appendChild(el('path', { d: spinePath(wxOrigin, wxNow), fill: 'none',
-        stroke: 'url(#' + gradId + ')', 'stroke-width': haloW.toFixed(1), 'stroke-linecap': 'round',
-        opacity: '0.95', filter: 'url(#evoHalo)' }));
-    })();
+    }
 
-    // ── branches + nodes ──
-    POS = {};
-    // label visibility threshold scales with zoom: tighter zoom → more labels
+    // ── branches + nodes (visible only) ──
+    st._nodes = [];
     var labelEvery = view.pxPerDay > 60 ? 1 : (view.pxPerDay > 26 ? 3 : 7);
-    var branchG = el('g', { 'class': 'evo-branches' });
-    var nodeLayer = el('g', { 'class': 'evo-nodes' });
-    // #3: virtualize when there are many events — only build nodes/branches within
-    // ±3 screens of the current viewport (the pan-idle repaint re-fills as you move).
-    var virtualize = events.length > 200;
-    var visLo = (x0 - view.panX) - 3 * (x1 - x0), visHi = (x1 - view.panX) + 3 * (x1 - x0);
-    events.forEach(function (e, i) {
-      var X = wx(e.t);
-      if (virtualize && (X < visLo || X > visHi)) { registerNode(e.id, X, cy); return; }
-      var sy = spineY(X);
-      var fill = layerFill(e.layer, e.valence);
+    T.events.forEach(function (e, i) {
+      var X = sx(e.t);
+      if (X < x0 - 90 || X > x1 + 90) return;            // virtualize off-screen
+      var sy = syAt(X);
+      var fill = cvLayerFill(e.layer, e.valence);
       var r = e.layer === 'insight' ? 4.2 : (e.layer === 'practice' ? 3.8 : (2.6 + Math.min(2.4, Math.log(1 + (e.weight || 1)))));
-      // ── 2.5: the branch grows ALONG the spine (in the direction of time) before
-      // rising to its layer band — like a root, not a perpendicular spike. The tip
-      // drifts forward in X; a cubic Bézier leaves the spine almost horizontally. ──
+      // ── branches v2: long horizontal ROOT — leaves the spine almost parallel,
+      // travels far in X (60–170px), only curving to its layer band near the tip. ──
       var dyTip = (BRANCH_DY[e.layer] != null ? BRANCH_DY[e.layer] : 0) * half;
-      var drift = (12 + Math.abs(dyTip) * 0.35) * (dyTip < 0 ? 1 : 1) + (jit(i) - 0.5) * 8; // forward along time
-      var cxp = X + drift;
-      var ty = cy + dyTip + (jit(i) - 0.5) * half * 0.16;
-      var bd = 'M' + X.toFixed(1) + ' ' + sy.toFixed(1) +
-               ' C' + (X + drift * 0.66).toFixed(1) + ' ' + (sy + (ty - sy) * 0.12).toFixed(1) +   // leave nearly along the spine
-               ' ' + (cxp - drift * 0.18).toFixed(1) + ' ' + ty.toFixed(1) +
-               ' ' + cxp.toFixed(1) + ' ' + ty.toFixed(1);
-      // ── 2.6: white "nerve fibre" base + thin coloured stripe over it ──
-      branchG.appendChild(el('path', { d: bd, fill: 'none', stroke: 'rgba(255,255,255,0.55)', 'stroke-width': '1.5', opacity: '0.5', 'stroke-linecap': 'round' }));
-      branchG.appendChild(el('path', { d: bd, fill: 'none', stroke: fill, 'stroke-width': '0.8', opacity: '0.8', 'stroke-linecap': 'round' }));
-      // node at the tip — white core + coloured outline/glow (matches CoursePathView)
-      var glow = e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive';
-      var shape = nodeShape(e.layer, cxp, ty, r);
-      shape.setAttribute('fill', e.layer === 'insight' ? fill : 'rgba(255,255,255,0.92)');
-      shape.setAttribute('stroke', fill);
-      shape.setAttribute('stroke-width', '1.4');
-      shape.setAttribute('opacity', String(e.layer === 'emotion' ? Math.max(0.7, valStyle(e.valence).o) : 0.96));
-      if (glow) shape.setAttribute('filter', 'url(#evoGlow)');
-      shape.appendChild(titleNode(e, lang));
-      registerNode(e.id, cxp, ty);
-      // label on bright/zoomed nodes
-      // #1: on mobile, labels can't fit — show them only when zoomed in close
-      // (otherwise they stack into an unreadable column); tapping a node reveals it.
-      var showLabel = isMobile
-        ? (view.pxPerDay > 90 && (i % labelEvery === 0))
-        : ((e.layer === 'insight') || (i % labelEvery === 0) || (view.pxPerDay > 60));
-      var wrap = el('g', { 'class': 'evo-node', tabindex: '0' });
-      wrap.style.cursor = 'pointer';
-      wrap.appendChild(el('circle', { 'class': 'evo-hit', cx: cxp.toFixed(1), cy: ty.toFixed(1), r: 16, fill: 'transparent', 'pointer-events': 'all' }));
-      wrap.appendChild(shape);
-      if (showLabel) {
-        var lbl = el('text', { x: cxp.toFixed(1), y: (ty - r - 5).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-node-label' });
-        lbl.textContent = truncate(prettyTitle(e, lang), 18);
-        wrap.appendChild(lbl);
+      var dir = (jit(i) < 0.5) ? -1 : 1;
+      var driftX = (60 + Math.abs(dyTip) * 0.7 + jit(i + 3) * 60) * dir;
+      var cxp = X + driftX, ty = cy + dyTip + (jit(i) - 0.5) * half * 0.14;
+      var c1x = X + driftX * 0.55, c1y = sy + (ty - sy) * 0.05;    // nearly along the spine
+      var c2x = cxp - driftX * 0.10, c2y = ty - (ty - sy) * 0.08;
+      // #3 (branches): white nerve-fibre base + thin coloured stripe over it
+      ctx.beginPath(); ctx.moveTo(X, sy); ctx.bezierCurveTo(c1x, c1y, c2x, c2y, cxp, ty);
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2.4; ctx.globalAlpha = 0.5; ctx.stroke();
+      ctx.strokeStyle = fill; ctx.lineWidth = 1; ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1;
+      // node — white core + coloured outline (+ glow when idle)
+      var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
+      drawNodeCv(ctx, e.layer, cxp, ty, r, fill, glow);
+      st._nodes.push({ x: cxp, y: ty, r: r, e: e });
+      // label
+      var showLabel = T.isMobile ? (view.pxPerDay > 90 && i % labelEvery === 0)
+                                  : ((e.layer === 'insight') || (i % labelEvery === 0) || (view.pxPerDay > 60));
+      if (showLabel && !gesturing) {
+        ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+        ctx.lineWidth = 2.6; ctx.strokeStyle = 'rgba(6,9,14,0.85)'; ctx.fillStyle = C.textDim;
+        var txt = truncate(prettyTitle(e, lang), 18);
+        ctx.strokeText(txt, cxp, ty - r - 5); ctx.fillText(txt, cxp, ty - r - 5);
       }
-      (function (ev) {
-        function open(domEv) { if (domEv) domEv.stopPropagation(); if (window._evolNavLock) return; window._evolNavLock = true; try { openMiniNeuromap(container, ev, lang, st); } finally { setTimeout(function () { window._evolNavLock = false; }, 120); } }
-        wrap.addEventListener('click', open);
-        wrap.addEventListener('keydown', function (k) { if (k.key === 'Enter' || k.key === ' ') open(k); });
-      })(e);
-      nodeLayer.appendChild(wrap);
     });
 
-    // ── real journey_links as glowing mycelium chains (no filler) ──
-    // 3.3: each filament is clickable (with a fat invisible hit path so the thin
-    // line is easy to hit) → opens the mini-neuromap for the whole chain.
-    var chains = el('g', { 'class': 'evo-chains' });
-    (data.links || []).forEach(function (lk) {
-      var a = POS[String(lk.a)], b = POS[String(lk.b)];
-      if (!a || !b) return;
-      var color = lk.kind === 'correlation' ? 'var(--myc-cyan)' : 'rgba(255,255,255,0.5)';
-      var op = lk.kind === 'correlation' ? 0.4 : 0.22;
-      var d = chainD(a, b);
-      var grp = el('g', { 'class': 'evo-chain', tabindex: '0' });
-      grp.style.cursor = 'pointer';
-      grp.appendChild(el('path', { d: d, fill: 'none', stroke: 'transparent', 'stroke-width': '16', 'pointer-events': 'stroke' }));
-      grp.appendChild(el('path', { d: d, fill: 'none', stroke: color, 'stroke-width': '1', opacity: String(op), filter: 'url(#evoGlow)', 'pointer-events': 'none' }));
-      (function (linkObj) {
-        function openChain(domEv) {
-          if (domEv) domEv.stopPropagation();
-          if (window._evolNavLock) return;
-          window._evolNavLock = true;
-          try {
-            var ev = EVENT_INDEX[String(linkObj.a)] || EVENT_INDEX[String(linkObj.b)];
-            if (ev) openMiniNeuromap(container, ev, lang, st);
-          } finally { setTimeout(function () { window._evolNavLock = false; }, 120); }
-        }
-        grp.addEventListener('click', openChain);
-        grp.addEventListener('keydown', function (k) { if (k.key === 'Enter' || k.key === ' ') openChain(k); });
-      })(lk);
-      chains.appendChild(grp);
+    // chains (visible) — quadratic between node tips
+    var posOf = {}; st._nodes.forEach(function (n) { posOf[String(n.e.id)] = n; });
+    (T.data.links || []).forEach(function (lk) {
+      var na = posOf[String(lk.a)], nb = posOf[String(lk.b)]; if (!na || !nb) return;
+      var mx = (na.x + nb.x) / 2, my = (na.y + nb.y) / 2 - Math.min(50, Math.abs(nb.x - na.x) * 0.25 + 14);
+      ctx.beginPath(); ctx.moveTo(na.x, na.y); ctx.quadraticCurveTo(mx, my, nb.x, nb.y);
+      ctx.strokeStyle = lk.kind === 'correlation' ? C.cyan : 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1; ctx.globalAlpha = lk.kind === 'correlation' ? 0.4 : 0.22; ctx.stroke(); ctx.globalAlpha = 1;
     });
 
-    world.appendChild(branchG);
-    world.appendChild(chains);
-    world.appendChild(nodeLayer);
+    // module headers (top), now marker, time axis (bottom)
+    drawModuleHeadersCv(ctx, st, sx, x0, x1, T.fieldTop, C, lang, gesturing);
+    if (sNow >= x0 && sNow <= x1 + 4) {
+      var ny = syAt(sNow);
+      if (!gesturing) { ctx.save(); ctx.shadowColor = C.cyan; ctx.shadowBlur = 8; }
+      ctx.beginPath(); ctx.arc(sNow, ny, 4, 0, Math.PI * 2); ctx.fillStyle = C.cyan; ctx.fill();
+      if (!gesturing) ctx.restore();
+    }
+    drawTimeAxisCv(ctx, view, lang, x0, x1, C);
+    ctx.restore();
+  }
 
-    // ── "now" terminator + time axis (inside world so they pan) ──
-    nowMarker(world, wxNow, spineY(wxNow));
-    drawWorldTimeAxis(world, view, lang, x0, x1);
+  function drawNodeCv(ctx, layer, cx, cy, r, fill, glow) {
+    if (glow) { ctx.save(); ctx.shadowColor = fill; ctx.shadowBlur = 8; }
+    ctx.beginPath();
+    if (layer === 'practice') { ctx.rect(cx - r, cy - r, r * 2, r * 2); }
+    else if (layer === 'insight') {
+      var R = r * 1.5, rr = r * 0.55;
+      for (var k = 0; k < 8; k++) { var ang = Math.PI * k / 4 - Math.PI / 2, rad = (k % 2 === 0) ? R : rr; var px = cx + Math.cos(ang) * rad, py = cy + Math.sin(ang) * rad; if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+      ctx.closePath();
+    } else { ctx.arc(cx, cy, r, 0, Math.PI * 2); }
+    ctx.fillStyle = (layer === 'insight') ? fill : 'rgba(255,255,255,0.92)'; ctx.fill();
+    ctx.lineWidth = 1.4; ctx.strokeStyle = fill; ctx.stroke();
+    if (glow) ctx.restore();
+  }
 
-    // ── pan / zoom interaction (attached to the svg) ──
-    wirePanZoom(svg, world, st, container, lang, x0, x1);
+  function drawHaloCv(ctx, st, sx, syAt, a, b, T) {
+    var view = st.view, data = T.data;
+    var tA = view.originT + (a - view.panX) / view.pxPerDay * DAY_MS;
+    var tB = view.originT + (b - view.panX) / view.pxPerDay * DAY_MS;
+    var allEv = allEvents(data), NB = 10;
+    var grad = ctx.createLinearGradient(a, 0, b, 0);
+    for (var k = 0; k <= NB; k++) {
+      var t0 = tA + (tB - tA) * (k / NB), win = Math.abs((tB - tA) / NB) || DAY_MS;
+      var slice = allEv.filter(function (e) { return e.layer === 'emotion' && Math.abs(e.t - t0) <= win; });
+      var pos = slice.filter(function (e) { return e.valence === 'positive'; }).length;
+      var neg = slice.filter(function (e) { return e.valence === 'negative'; }).length;
+      var score = slice.length ? (pos - neg) / slice.length : 0;
+      grad.addColorStop(Math.min(1, Math.max(0, k / NB)), rgbaFromRgb(valenceColor(score), slice.length ? 0.42 : 0.24));
+    }
+    var xp = data.layers.xp_gain || [], xpTotal = xp.length ? (xp[xp.length - 1].cumulative || 0) : 0;
+    var haloW = 20 + Math.min(52, xpTotal / 22), step = Math.max(8, (b - a) / 120);
+    ctx.save(); ctx.shadowColor = 'rgba(120,200,180,0.45)'; ctx.shadowBlur = 22;
+    ctx.beginPath();
+    for (var p = a; p <= b; p += step) { var y = syAt(p); if (p === a) ctx.moveTo(p, y); else ctx.lineTo(p, y); }
+    ctx.strokeStyle = grad; ctx.lineWidth = haloW; ctx.globalAlpha = 0.85; ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
+  }
+
+  function drawModuleHeadersCv(ctx, st, sx, x0, x1, yTop, C, lang, gesturing) {
+    if (gesturing) return;
+    var view = st.view;
+    var secs = moduleSections(st, { from: view.originT, to: view.nowT, span: (view.nowT - view.originT) }, lang);
+    var hasMods = st.modules && st.modules.length;
+    ctx.font = '10px JetBrains Mono, ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = C.textDim;
+    var sLeft = sx(view.originT), sRight = sx(view.nowT), span = sRight - sLeft;
+    var slotPx = secs.length ? span / secs.length : span;
+    var step = Math.max(1, Math.ceil(128 / Math.max(1, slotPx)));
+    secs.forEach(function (s, i) {
+      if (!((i % step === 0) || i === secs.length - 1)) return;
+      var mid = sLeft + span * (s.frac0 + s.frac1) / 2;
+      if (mid < x0 - 40 || mid > x1 + 40) return;
+      var nm = truncate(s.label, 16);
+      ctx.fillText(hasMods ? (nm ? ((i + 1) + ' · ' + nm) : ((lang === 'en' ? 'Module ' : lang === 'es' ? 'Módulo ' : 'Модуль ') + (i + 1))) : nm, mid, yTop - 14);
+    });
+  }
+
+  function drawTimeAxisCv(ctx, view, lang, x0, x1, C) {
+    var y = H - 16;
+    var visibleSpan = (x1 - x0) / view.pxPerDay * DAY_MS;
+    var step = pickAxisStep(visibleSpan), labelStep = Math.max(step, HOUR_MS);
+    var tStart = view.originT + (x0 - view.panX) / view.pxPerDay * DAY_MS;
+    var tEnd = view.originT + (x1 - view.panX) / view.pxPerDay * DAY_MS;
+    tStart = Math.max(tStart, view.originT); tEnd = Math.min(tEnd, view.nowT + step);
+    var first = Math.ceil(tStart / step) * step, count = 0;
+    ctx.font = '9px JetBrains Mono, ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = C.textMono;
+    for (var t = first; t <= tEnd && count < 200; t += step, count++) {
+      var X = (t - view.originT) / DAY_MS * view.pxPerDay + view.panX;
+      if (X < x0 - 2 || X > x1 + 2) continue;
+      var isLabel = (step >= labelStep) || (t % labelStep < step);
+      ctx.strokeStyle = isLabel ? C.lineMuted : C.lineFaint; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X, y - (isLabel ? 11 : 7)); ctx.lineTo(X, y - 5); ctx.stroke();
+      if (isLabel) ctx.fillText(fmtTick(t, labelStep, lang), X, y);
+    }
+  }
+
+  // ── canvas pan/zoom: just update the view and redraw the (cheap) visible slice ──
+  function wireCanvasPanZoom(container, st, lang) {
+    var target = container.querySelector('.myc-evo-canvas') || container;
+    if (target._evoCZ) { var s = target._evoCZ; s.st = st; s.lang = lang; return; }
+    var S = { st: st, lang: lang, panVel: 0, raf: null, dragging: false, lastX: 0, moved: false, cursorX: null, hapticAcc: 0, gestIdle: null };
+    target._evoCZ = S;
+    function T() { return S.st._tunnel; }
+    function rectL(clientX) { var t = T(); if (!t) return clientX; return clientX - t.cv.getBoundingClientRect().left; }
+    function rectT(clientY) { var t = T(); if (!t) return clientY; return clientY - t.cv.getBoundingClientRect().top; }
+    function bounds() { var t = T(); return { x0: t ? t.x0 : 0, x1: t ? t.x1 : 0 }; }
+    function clampPan() {
+      var v = S.st.view, bb = bounds();
+      var minPan = (bb.x1 - 40) - (v.nowT - v.originT) / DAY_MS * v.pxPerDay - (bb.x1 - bb.x0);
+      var maxPan = bb.x0 + (bb.x1 - bb.x0) * 0.5;
+      v.panX = Math.max(minPan, Math.min(maxPan, v.panX));
+    }
+    function draw() { drawTunnel(S.st); }
+    function gestureOn() { S.st._gesturing = true; if (S.gestIdle) clearTimeout(S.gestIdle); S.gestIdle = setTimeout(function () { S.st._gesturing = false; draw(); }, 150); }
+    function haptic(dxAbs) {
+      if (!navigator.vibrate) return; var v = S.st.view;
+      var notch = Math.max(6, 1400 / Math.max(1, v.pxPerDay) * 2);
+      S.hapticAcc += dxAbs; if (S.hapticAcc < notch) return; S.hapticAcc = 0;
+      var dur = 4; try { if (S.cursorX != null && Array.isArray(window.__evoEventsX)) { var wxC = S.cursorX - v.panX, n = 0; for (var i = 0; i < window.__evoEventsX.length; i++) { if (Math.abs(window.__evoEventsX[i] - wxC) < 18) n++; if (n > 6) break; } dur = 3 + Math.min(14, n * 3); } } catch (e) {} try { navigator.vibrate(dur); } catch (e) {}
+    }
+    function panBy(dx) { gestureOn(); S.st.view.panX += dx; clampPan(); haptic(Math.abs(dx)); draw(); }
+    function zoomBy(deltaY, atX) {
+      gestureOn(); var v = S.st.view;
+      var tUnder = v.originT + (atX - v.panX) / v.pxPerDay * DAY_MS;
+      v.pxPerDay = Math.max(MIN_PXPD, Math.min(MAX_PXPD, v.pxPerDay * Math.pow(1.0015, -deltaY)));
+      v.panX = atX - (tUnder - v.originT) / DAY_MS * v.pxPerDay;
+      clampPan(); draw();
+    }
+    function loop() { S.raf = null; if (!S.dragging && Math.abs(S.panVel) > 0.3) { gestureOn(); S.st.view.panX += S.panVel; clampPan(); haptic(Math.abs(S.panVel)); draw(); S.panVel *= 0.92; S.raf = requestAnimationFrame(loop); } else S.panVel = 0; }
+    function kick() { if (!S.raf) S.raf = requestAnimationFrame(loop); }
+
+    target.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) { zoomBy(e.deltaY, rectL(e.clientX)); }
+      else { S.cursorX = rectL(e.clientX); var d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); panBy(-d); S.panVel = -d * 0.5; kick(); }
+    }, { passive: false });
+    target.addEventListener('pointerdown', function (e) {
+      S.dragging = true; S.moved = false; S.lastX = e.clientX; S.panVel = 0;
+      try { target.setPointerCapture(e.pointerId); } catch (er) {}
+      target.style.cursor = 'grabbing';
+    });
+    target.addEventListener('pointermove', function (e) {
+      S.cursorX = rectL(e.clientX);
+      if (!S.dragging) return;
+      var dx = e.clientX - S.lastX; S.lastX = e.clientX;
+      if (Math.abs(dx) > 2) S.moved = true;
+      panBy(dx); S.panVel = dx;
+    });
+    function up(e) {
+      if (!S.dragging) return; S.dragging = false; target.style.cursor = ''; kick();
+      if (!S.moved) hitTest(rectL(e.clientX), rectT(e.clientY));
+    }
+    target.addEventListener('pointerup', up);
+    target.addEventListener('pointercancel', function () { S.dragging = false; target.style.cursor = ''; });
+
+    function hitTest(lx, ly) {
+      var nodes = S.st._nodes || [], best = null, bd = 1e9;
+      for (var i = 0; i < nodes.length; i++) { var n = nodes[i], d = Math.hypot(n.x - lx, n.y - ly); if (d < n.r + 14 && d < bd) { bd = d; best = n; } }
+      if (best) { openMiniNeuromap(S.st._tunnel.container, best.e, S.lang, S.st); return; }
+      // chain hit-test: sample each visible link's quadratic and check proximity
+      var posOf = {}; nodes.forEach(function (n) { posOf[String(n.e.id)] = n; });
+      var links = (S.st._tunnel.data.links || []);
+      for (var j = 0; j < links.length; j++) {
+        var lk = links[j], na = posOf[String(lk.a)], nb = posOf[String(lk.b)]; if (!na || !nb) continue;
+        var mx = (na.x + nb.x) / 2, my = (na.y + nb.y) / 2 - Math.min(50, Math.abs(nb.x - na.x) * 0.25 + 14);
+        for (var u = 0; u <= 1.0001; u += 0.1) { var qx = (1 - u) * (1 - u) * na.x + 2 * (1 - u) * u * mx + u * u * nb.x, qy = (1 - u) * (1 - u) * na.y + 2 * (1 - u) * u * my + u * u * nb.y; if (Math.hypot(qx - lx, qy - ly) < 12) { var ev = EVENT_INDEX[String(lk.a)] || EVENT_INDEX[String(lk.b)]; if (ev) { openMiniNeuromap(S.st._tunnel.container, ev, S.lang, S.st); } return; } }
+      }
+    }
   }
 
   // smooth Bezier chain path string between two node tips
@@ -1474,14 +1598,14 @@
     canvas.style.minHeight = H + 'px';
     var W = measureW(canvas, container);
     st._w = W;
-    var svg = newSvg(W);
-    canvas.appendChild(svg);
 
     if (st.mode === 'layers') {
+      var svg = newSvg(W);
+      canvas.appendChild(svg);
       renderLayers(svg, W, data, lang, container, st);
       addLayerToggles(container, canvas, st, lang);
     } else {
-      renderTunnel(svg, W, data, container, lang, st);
+      renderTunnel(W, data, container, lang, st);   // canvas — manages its own <canvas>
       addUserPanel(canvas, st, lang);
       // D п.17: stat-card (Уровень / Рост XP / Эмоция / Состояние / Активность)
       // relocated here from the removed «Персонаж» mode.
