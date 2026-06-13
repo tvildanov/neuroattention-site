@@ -914,6 +914,11 @@ body.method-flashlight {
     flex-shrink: 1;
     overflow: hidden;
   }
+  /* drop the decorative "Lab" suffix on mobile so it never clips/overlaps the
+     language switcher — "NeuroAttention" alone reads cleanly */
+  .nav-logo .lab {
+    display: none !important;
+  }
   .nav-right {
     gap: 0.4rem !important;
     flex-shrink: 0;
