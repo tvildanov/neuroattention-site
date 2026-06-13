@@ -151,7 +151,7 @@
         За последние 30 лет технологический скачок радикально изменил нашу жизнь
       </h2>
       <p class="sub-muted" style="color:var(--text-muted);font-size:1.05rem;" data-i18n="problem.subtitle">
-        создав нагрузку, к которой человеческий организм не был подготовлен в ходе эволюции. Это привело к масштабным последствиям на всех уровнях.
+        Создав нагрузку, к которой человеческий организм не был подготовлен в ходе эволюции. Это привело к масштабным последствиям на всех уровнях.
       </p>
     </div>
 
@@ -162,7 +162,10 @@
         </div>
         <div class="card-row">
           <div class="icon-box glass-icon">
-            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+            <!-- Broken ring (○): a ring = system integrity, the gap = its disruption
+                 — the right symbol for anxiety / burnout / addiction / attention &
+                 sleep disorders. Replaces the former heart icon. -->
+            <svg class="icon md" style="color:var(--accent-cyan)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M16.4 4.7 A 8.5 8.5 0 1 1 7.6 4.7"/></svg>
           </div>
           <h3 class="heading-space" style="font-size:1.125rem;color:var(--text-primary);" data-i18n="problem.individual.title">Индивидуальные последствия</h3>
         </div>
@@ -272,7 +275,7 @@
 
     <div class="grid grid-2 max-w-5xl" style="align-items:center;gap:3rem;">
       <div class="fade-left" style="display:flex;justify-content:center;">
-        <div class="media-box aspect-sq" style="width:22rem;max-width:100%;border-radius:999px;">
+        <div class="media-box aspect-sq" style="width:min(26rem,90vw);max-width:100%;border-radius:999px;">
           <video autoplay loop muted playsinline><source src="assets/media/drop-ripple.mp4" type="video/mp4" /></video>
         </div>
       </div>
@@ -305,7 +308,7 @@
 <section class="section">
   <div class="section-divider"></div>
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 380px;align-items:center;gap:4rem;">
+    <div style="display:grid;grid-template-columns:1fr;align-items:center;gap:4rem;">
       <div class="fade-left">
         <p class="eyebrow" data-i18n="method.eyebrow">Метод</p>
         <h2 class="heading-space h2-block" data-i18n="method.title">
@@ -366,17 +369,16 @@
           <p style="font-size:13px;line-height:1.7;color:var(--text-secondary);margin:0;">
             <svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <span data-i18n="method.rehab_text"><strong style="color:var(--text-primary);">Rehabilitation Program</strong> — восстановление когнитивных функций при нарушениях нервной системы.</span>
-            <a href="rehabilitation-application.html" style="color:var(--accent-violet);text-decoration:none;border-bottom:1px solid rgba(167,139,250,0.3);margin-left:4px;" data-i18n="method.rehab_link">Оставить заявку</a>
           </p>
+          <!-- CTA on its own line so the text and button never glue together
+               ("impairments.Submit an application") across RU/EN/ES. -->
+          <a href="rehabilitation-application.html" style="display:inline-block;margin-top:0.6rem;color:var(--accent-violet);text-decoration:none;border-bottom:1px solid rgba(167,139,250,0.3);" data-i18n="method.rehab_link">Оставить заявку</a>
         </div>
         <!-- /DRAFT -->
       </div>
 
-      <div class="fade-right">
-        <div class="media-box aspect-tall" style="width:100%;">
-          <img src="assets/images/prism.jpg" alt="Призма света" />
-        </div>
-      </div>
+      <!-- Removed the "Призма света" (prism/rainbow-on-black) image: it read as a
+           random rainbow glow stacked under the rehab text on mobile. -->
     </div>
   </div>
 </section>
@@ -457,7 +459,7 @@
   <div class="container">
     <div class="max-w-3xl fade-up">
       <p class="eyebrow" data-i18n="dom.eyebrow">Сообщество</p>
-      <div class="planet-inline" style="width:280px;height:280px;margin:1.5rem 0;">
+      <div class="planet-inline" style="width:min(440px,82vw);aspect-ratio:1/1;height:auto;margin:1.5rem 0;">
         <video autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"><source src="assets/media/planet.mp4" type="video/mp4" /></video>
       </div>
       <p class="heading-space" style="font-size:1.35rem;line-height:1.35;color:var(--text-secondary);margin-bottom:0.75rem;" data-i18n="dom.intro">
@@ -562,7 +564,7 @@
         <p class="eyebrow" data-i18n="eco.eyebrow">Экосистема</p>
       </div>
 
-      <div class="grid grid-5 mb-12 fade-up" style="grid-template-columns:repeat(5,1fr);">
+      <div class="grid grid-5 mb-12 fade-up">
         <a href="method.html" class="pillar glass-card-elevated card-hover">
           <div class="icon-box lg glass-icon">
             <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04ZM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></svg>
@@ -682,7 +684,9 @@
 
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
+<script src="assets/js/media.js" defer></script>
 <script src="assets/js/i18n.js"></script>
+<script src="assets/js/typography.js" defer></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>
