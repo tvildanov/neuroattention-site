@@ -36,19 +36,39 @@ async function fetchLatest() {
     }
   } catch (e) { console.warn('[ext/noaa] xray:', e.message); }
 
-  // ── Planetary Kp index (earth) ──
+  // ── Planetary Kp index + Ap (earth) ──
   try {
     const kpRaw = await getJson('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
-    const rows = kpRaw.slice(1);
-    const last = rows[rows.length - 1]; // [time_tag, Kp, a_running, station_count]
-    if (last) {
-      const kp = parseFloat(last[1]);
+    // NOAA now serves an array of OBJECTS {time_tag, Kp, a_running, station_count}
+    // with no header row; the legacy shape was an array-of-arrays WITH a header.
+    // Support both — the old `slice(1)` + index access produced NaN on the new
+    // shape, which is why Planetary Kp was rendering as a dash. — fix
+    let rows = kpRaw;
+    if (Array.isArray(rows[0])) rows = rows.slice(1);             // legacy header row
+    const last = rows[rows.length - 1];
+    const kp = last ? (Array.isArray(last) ? parseFloat(last[1]) : parseFloat(last.Kp)) : NaN;
+    const tt = last ? (Array.isArray(last) ? last[0] : last.time_tag) : null;
+    const ap = last ? (Array.isArray(last) ? parseFloat(last[2]) : last.a_running) : null;
+    if (isFinite(kp) && tt) {
       out.push({ layer: 'earth', source: 'NOAA SWPC', source_url: 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json',
         event_type: 'kp_index', title: 'Planetary Kp: ' + kp, description: gScale(kp),
-        timestamp: isoUtc(last[0]), severity: 'Kp' + kp, location_scope: 'global',
-        dedup_key: 'noaa:kp:' + last[0], raw_payload: { time: last[0], kp: kp } });
+        timestamp: isoUtc(tt), severity: 'Kp' + kp, location_scope: 'global',
+        dedup_key: 'noaa:kp:' + tt, raw_payload: { time: tt, kp: kp, ap: ap } });
     }
   } catch (e) { console.warn('[ext/noaa] kp:', e.message); }
+
+  // ── F10.7 cm solar radio flux (sun) — a standard solar-activity proxy ──
+  try {
+    const f = await getJson('https://services.swpc.noaa.gov/json/f107_cm_flux.json');
+    const last = Array.isArray(f) ? f[f.length - 1] : null;
+    if (last && last.flux != null) {
+      out.push({ layer: 'sun', source: 'NOAA SWPC', source_url: 'https://services.swpc.noaa.gov/json/f107_cm_flux.json',
+        event_type: 'f107_flux', title: 'F10.7 solar flux: ' + last.flux + ' sfu',
+        description: '10.7 cm radio flux — a proxy for overall solar activity.', timestamp: isoUtc(last.time_tag),
+        severity: last.flux + ' sfu', location_scope: 'global',
+        dedup_key: 'noaa:f107:' + String(last.time_tag).slice(0, 10), raw_payload: last });
+    }
+  } catch (e) { console.warn('[ext/noaa] f107:', e.message); }
 
   // ── Solar wind plasma (sun) ──
   try {
@@ -67,7 +87,7 @@ async function fetchLatest() {
   // ── Active alerts/warnings (sun or earth by content) ──
   try {
     const alerts = await getJson('https://services.swpc.noaa.gov/products/alerts.json');
-    alerts.slice(0, 40).forEach(function (a) {
+    alerts.slice(0, 10).forEach(function (a) {
       const msg = String(a.message || '').replace(/\s+/g, ' ').trim();
       if (!msg) return;
       const layer = /geomagnetic|planetary k|kp |storm/i.test(msg) ? 'earth' : 'sun';

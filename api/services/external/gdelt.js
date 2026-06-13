@@ -13,7 +13,11 @@ function gdeltDate(s) {
 
 async function fetchLatest() {
   const out = [];
-  var query = '(theme:WAR OR theme:CONFLICT OR theme:NATURAL_DISASTER OR theme:CRISISLEX_CRISISLEXREC OR theme:ELECTION) sourcelang:eng';
+  // Broadened set of high-impact themes (conflict / disaster / election /
+  // economic / health) so the layer isn't empty on quiet conflict days.
+  var query = '(theme:WAR OR theme:CONFLICT OR theme:ARMEDCONFLICT OR theme:NATURAL_DISASTER ' +
+    'OR theme:DISASTER OR theme:CRISISLEX_CRISISLEXREC OR theme:ELECTION OR theme:ECON_BANKRUPTCY ' +
+    'OR theme:ECON_STOCKMARKET OR theme:PANDEMIC OR theme:HEALTH_PANDEMIC) sourcelang:eng';
   var url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' + encodeURIComponent(query) +
     '&mode=artlist&maxrecords=25&sort=hybridrel&format=json&timespan=2d';
   try {
