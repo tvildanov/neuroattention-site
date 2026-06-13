@@ -1000,6 +1000,7 @@
       <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
       <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
       <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
+      <button class="dash-tab dash-subtab" id="tools-mode-external" onclick="setToolsMode('external')" style="border:none;border-bottom:2px solid transparent;">External Field</button>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ Раскрыть</button>
     </div>
 
@@ -1186,6 +1187,8 @@
         </div>
       </div>
     </div>
+    <!-- External Field tool — objective environmental signals -->
+    <div id="tools-external-content" style="display:none;"></div>
   </div>
 
   <!-- TAB: NeuroMap -->
@@ -4701,14 +4704,26 @@ function setToolsMode(mode){
   var sensationWrap = document.getElementById('tools-sensation-wrap');
   var btnPointab = document.getElementById('tools-mode-pointab');
   var pointabContent = document.getElementById('tools-pointab-content');
+  var btnExternal = document.getElementById('tools-mode-external');
+  var externalContent = document.getElementById('tools-external-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation,btnPointab].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
   if(calPanel) calPanel.style.display='none'; // Calendar tab removed (17.3)
   if(sensationWrap) sensationWrap.style.display='none';
   if(pointabContent) pointabContent.style.display='none';
+  if(externalContent) externalContent.style.display='none';
+  if(mode==='external'){
+    if(btnExternal){ btnExternal.classList.add('active'); btnExternal.style.borderBottomColor='var(--accent-cyan)'; }
+    if(externalContent){ externalContent.style.display='';
+      if(!externalContent.dataset.mounted && typeof window.mountExternalField==='function'){
+        externalContent.dataset.mounted='1';
+        try { window.mountExternalField(externalContent); } catch(e){ console.warn('External Field mount:', e); }
+      }
+    }
+  }
   if(mode==='nm'){
     if(btnNm){ btnNm.classList.add('active'); btnNm.style.borderBottomColor='var(--accent-cyan)'; }
     if(nmContent) nmContent.style.display='';
@@ -13219,6 +13234,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
 <script src="assets/js/evolution-path.js"></script>
+<script src="assets/js/external-field.js"></script>
 <script>
   // Initialize i18n on page load
   document.addEventListener('DOMContentLoaded', function() {
