@@ -132,8 +132,10 @@
     // #3: a node click re-mounts this view. Capture the prior horizontal scroll so
     // we can restore it instead of snapping back to the current-progress node.
     // Auto-center only happens on the FIRST mount (or via the "↺ К прогрессу" btn).
-    var prevVp = container.querySelector('.myc-viewport');
-    var prevScroll = prevVp ? prevVp.scrollLeft : null;
+    // The public mountCoursePathView() wipes the container with a loading state
+    // before we get here, so the old viewport is already gone — read the scroll it
+    // stashed on the container instead of querying the (now absent) viewport.
+    var prevScroll = (typeof container.__mycPrevScroll === 'number') ? container.__mycPrevScroll : null;
     var isFirstMount = !container.__mycMounted;
     container.__mycMounted = true;
 
@@ -486,10 +488,14 @@
       if (smooth && viewport.scrollTo) viewport.scrollTo({ left: target, behavior: 'smooth' });
       else viewport.scrollLeft = target;
     }
-    requestAnimationFrame(function () {
+    function restoreScroll() {
       if (isFirstMount || prevScroll == null) scrollToCurrent(false);
       else viewport.scrollLeft = prevScroll; // re-mount: stay where the user was
-    });
+    }
+    // Apply synchronously (reading scrollLeft forces the reflow we need) AND again
+    // on the next frame, so it's robust whether or not rAF is throttled. — #3
+    restoreScroll();
+    requestAnimationFrame(restoreScroll);
 
     /* "↺ К прогрессу" — re-center on the current node on demand. Lives in the
        top-right corner of the path strip; only shown when there IS a current node. */
@@ -499,7 +505,7 @@
       backBtn.type = 'button';
       backBtn.textContent = (_LANG === 'en') ? '↺ My progress' : (_LANG === 'es') ? '↺ Mi progreso' : '↺ К прогрессу';
       backBtn.setAttribute('title', 'К моему текущему шагу');
-      backBtn.style.cssText = 'position:absolute;top:8px;right:10px;z-index:20;' +
+      backBtn.style.cssText = 'position:absolute;bottom:10px;right:10px;z-index:20;' +
         'font-size:11px;line-height:1;padding:6px 10px;border-radius:8px;cursor:pointer;' +
         'color:var(--myc-cyan,#39d3c3);background:rgba(5,9,14,0.7);' +
         'border:1px solid var(--myc-line-muted,rgba(255,255,255,0.14));' +
@@ -523,6 +529,12 @@
     var apiBase = opts.apiBase || window.AUTH_API || '';
     var lang = opts.lang || (typeof window.getLang === 'function' ? window.getLang() : 'ru');
     opts.lang = lang;
+
+    // #3: stash the current horizontal scroll BEFORE we wipe the container with
+    // the loading state, so render() can restore it (a node click re-mounts us and
+    // must not snap back to the progress node).
+    var existingVp = container.querySelector('.myc-viewport');
+    container.__mycPrevScroll = existingVp ? existingVp.scrollLeft : null;
 
     // loading state
     container.classList.add('myc-root');
