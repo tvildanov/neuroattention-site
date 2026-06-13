@@ -1627,17 +1627,25 @@
     </div>
   </div>
 
-  <!-- Admin tabs -->
+  <!-- Admin tabs. The four people-facing tabs (Пользователи / Заявки Rehab /
+       Покупки / Статистика) are consolidated under one «Люди» tab with a sub-tab
+       bar below; the original panels are reused untouched. -->
   <div class="dash-tabs" id="admin-tabs">
-    <button class="dash-tab active" data-tab="admin-stats" data-i18n="a.admin.stats">Статистика</button>
-    <button class="dash-tab" data-tab="admin-users" data-i18n="a.admin.users">Пользователи</button>
+    <button class="dash-tab active" data-tab="admin-people" id="admin-people-tab" data-i18n="a.admin.people">Люди</button>
     <button class="dash-tab" data-tab="admin-tools" data-i18n="a.admin.tools">Инструменты</button>
-    <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-practices" id="admin-practices-tab" style="display:none;" data-i18n="a.admin.practices_tab">Практики</button>
     <button class="dash-tab" data-tab="admin-vocab" id="admin-vocab-tab" style="display:none;" data-i18n="a.admin.vocab_tab">Словарь</button>
-    <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
     <button class="dash-tab" data-tab="admin-diagnostic" id="admin-diag-tab" style="display:none;" data-i18n="a.admin.diag_tab">Диагностика</button>
     <button class="dash-tab" data-tab="admin-courses" id="admin-courses-tab" style="display:none;" data-i18n="a.admin.courses_tab">Конструктор курсов</button>
+  </div>
+  <!-- «Люди» sub-tabs — shown only while a people panel is active. The ids
+       admin-rehab-tab / admin-purchases-tab and the data-tab values are kept so
+       the existing role-gating (which targets them) works unchanged. -->
+  <div class="dash-tabs" id="admin-people-subtabs" style="display:none;margin-top:-1rem;margin-bottom:1.5rem;">
+    <button class="dash-tab active" data-tab="admin-users" data-i18n="a.admin.users">Пользователи</button>
+    <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
+    <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
+    <button class="dash-tab" data-tab="admin-stats" data-i18n="a.admin.stats">Статистика</button>
   </div>
 
   <!-- TAB: Stats -->
@@ -3172,13 +3180,18 @@ function setupAdminDashboard(user){
   else if(isSpec) badge.style.borderColor='rgba(120,255,160,0.3)';
   else badge.style.borderColor='rgba(255,255,255,0.1)';
 
-  // Stats tab — visible to founder and specialist
-  var statsTab=document.querySelector('[data-tab="admin-stats"]');
-  statsTab.style.display=(isFounder||isSpec)?'':'none';
+  // «Люди» top tab — visible to founder and specialist (groups Users / Rehab /
+  // Purchases / Stats; the original role-gating below still targets the sub-tabs).
+  var peopleTab=document.getElementById('admin-people-tab');
+  if(peopleTab) peopleTab.style.display=(isFounder||isSpec)?'':'none';
 
-  // Users tab — visible to founder and specialist
+  // Stats sub-tab — visible to founder and specialist
+  var statsTab=document.querySelector('[data-tab="admin-stats"]');
+  if(statsTab) statsTab.style.display=(isFounder||isSpec)?'':'none';
+
+  // Users sub-tab — visible to founder and specialist
   var usersTab=document.querySelector('[data-tab="admin-users"]');
-  usersTab.style.display=(isFounder||isSpec)?'':'none';
+  if(usersTab) usersTab.style.display=(isFounder||isSpec)?'':'none';
 
   // Tools tab
   var toolsUnlocked=document.getElementById('admin-tools-unlocked');
@@ -3196,7 +3209,7 @@ function setupAdminDashboard(user){
     switchAdminTab('admin-tools');
     document.getElementById('admin-restricted-msg').style.display='block';
   } else {
-    switchAdminTab('admin-stats');
+    switchAdminTab('admin-people');   // opens «Люди» → Пользователи by default
     document.getElementById('admin-restricted-msg').style.display='none';
   }
 
@@ -3358,9 +3371,29 @@ function rebuildGraph(){
     });
 }
 
+// The four people panels share one top «Люди» tab + a sub-tab bar.
+var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-purchases','admin-stats'];
 function switchAdminTab(id){
-  document.querySelectorAll('#admin-dashboard .dash-tab[data-tab]').forEach(function(t){t.classList.toggle('active',t.dataset.tab===id);});
+  // «Люди» group entry → resolve to the last/first visible people sub.
+  if(id==='admin-people'){
+    id = (window._lastPeopleSub && document.getElementById('tab-'+window._lastPeopleSub)) ? window._lastPeopleSub : 'admin-users';
+    var chosen = document.querySelector('#admin-people-subtabs [data-tab="'+id+'"]');
+    if(chosen && chosen.style.display==='none') id='admin-stats'; // fall back to an always-visible sub
+  }
+  var isPeople = ADMIN_PEOPLE_SUBS.indexOf(id)>=0;
+  if(isPeople) window._lastPeopleSub = id;
+  // panels
   document.querySelectorAll('#admin-dashboard .tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-'+id);});
+  // top tabs — the «Люди» button is active for any people sub
+  document.querySelectorAll('#admin-tabs .dash-tab[data-tab]').forEach(function(t){
+    t.classList.toggle('active', isPeople ? t.dataset.tab==='admin-people' : t.dataset.tab===id);
+  });
+  // people sub-tab bar — visible only while a people panel is active
+  var subBar=document.getElementById('admin-people-subtabs');
+  if(subBar){
+    subBar.style.display = isPeople ? '' : 'none';
+    subBar.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
+  }
 }
 
 // Hook admin tabs
