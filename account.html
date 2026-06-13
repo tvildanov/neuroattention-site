@@ -10468,6 +10468,19 @@ function cpMountPathView(){
 }
 window.cpMountPathView = cpMountPathView;
 
+// #6: jump the player to a specific linear block index (used by the section
+// playlist rows). Records history so Prev works, but never moves the progress
+// pointer (currentIdx) — that only advances on real completion via cpNext.
+function cpGoToBlock(idx){
+  if (typeof idx !== 'number' || idx < 0 || idx >= (coursePlayer.blocks||[]).length) return;
+  if (idx === coursePlayer.idx) return;
+  coursePlayer.history.push(coursePlayer.idx);
+  coursePlayer.idx = idx;
+  cpRenderBlock();
+  cpMountPathView();
+}
+window.cpGoToBlock = cpGoToBlock;
+
 // C п.7/8/16: open the player as a body-scroll-locked fullscreen overlay and
 // theme its secondary chrome with the course's green accent.
 function cpApplyAccent(course){
@@ -10568,23 +10581,35 @@ function cpRenderBlock(){
   var body = '';
   switch (block.block_type) {
     case 'section':
-      // A section is a grouping header, not content. Show its title (already in
-      // titleHtml) + optional description, and a preview of the lessons inside.
+      // #6: a section is one "process" — a playlist of its children. Show the
+      // section header + description, then a clickable list of every child. Click
+      // any child to play it; the current item is highlighted, done items ticked.
       var secDesc = p['description_'+lang] || p.description_ru || p['body_'+lang] || p.body_ru || '';
+      // Children in linear (player) order, so the playlist matches Next/Prev.
       var kids = (coursePlayer.blocks || []).filter(function(x){ return x.parent_block_id === block.id; });
       var kidsList = kids.map(function(k, ki){
+        var kIdx = coursePlayer.blocks.indexOf(k);
         var kt = cpBlockTitle(k, lang) || _cpTypeLabel(k.block_type);
-        return '<li style="padding:0.45rem 0.7rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;display:flex;align-items:center;gap:0.5rem;">'
-             + '<span style="font-size:11px;color:var(--text-dim);font-family:JetBrains Mono,monospace;min-width:1.4em;">' + (ki+1) + '.</span>'
-             + '<span style="font-size:13px;color:var(--text-primary);">' + kt + '</span>'
-             + '<span style="margin-left:auto;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">' + k.block_type + '</span>'
+        var isDone = !!(coursePlayer.progress && coursePlayer.progress[k.id]);
+        var isCur = (kIdx === coursePlayer.currentIdx);
+        var marker = isDone ? '✓' : (isCur ? '▶' : (ki+1)+'.');
+        var mColor = isDone ? 'var(--accent-green,#56F2A6)' : (isCur ? 'var(--course-accent,var(--accent-cyan))' : 'var(--text-dim)');
+        var rowBg = isCur ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.03)';
+        var rowBorder = isCur ? 'var(--course-accent,var(--accent-cyan))' : 'rgba(255,255,255,0.06)';
+        return '<li role="button" tabindex="0" data-cp-goto="' + kIdx + '" onclick="cpGoToBlock(' + kIdx + ')" '
+             + 'style="cursor:pointer;padding:0.5rem 0.7rem;background:' + rowBg + ';border:1px solid ' + rowBorder + ';border-radius:8px;display:flex;align-items:center;gap:0.5rem;transition:background 0.15s;" '
+             + 'onmouseover="this.style.background=\'rgba(0,229,255,0.06)\'" onmouseout="this.style.background=\'' + rowBg + '\'">'
+             + '<span style="font-size:12px;color:' + mColor + ';font-family:JetBrains Mono,monospace;min-width:1.4em;text-align:center;">' + marker + '</span>'
+             + '<span style="font-size:13px;color:var(--text-primary);flex:1;">' + kt + '</span>'
+             + '<span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">' + _cpTypeLabel(k.block_type) + '</span>'
+             + '<span style="font-size:13px;color:var(--course-accent,var(--accent-cyan));">▶</span>'
              + '</li>';
       }).join('');
       body = '<div style="border-left:3px solid #fc0;padding-left:0.9rem;">'
-           + '<div style="font-size:10px;color:#fc0;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">📦 Раздел</div>'
+           + '<div style="font-size:10px;color:#fc0;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">📦 Раздел · плейлист</div>'
            + (secDesc ? '<div style="font-size:14px;line-height:1.7;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.75rem;">' + secDesc + '</div>' : '')
            + (kids.length
-               ? '<div style="font-size:11px;color:var(--text-muted);margin:0.5rem 0 0.4rem;">В этом разделе ' + kids.length + ' ' + _cpPlural(kids.length, ['элемент','элемента','элементов']) + ':</div>'
+               ? '<div style="font-size:11px;color:var(--text-muted);margin:0.5rem 0 0.4rem;">В этом разделе ' + kids.length + ' ' + _cpPlural(kids.length, ['элемент','элемента','элементов']) + ' — нажмите, чтобы открыть:</div>'
                  + '<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.35rem;">' + kidsList + '</ul>'
                : '<div style="font-size:13px;color:var(--text-dim);font-style:italic;">Раздел пока пуст.</div>')
            + '</div>';

@@ -55,8 +55,18 @@
     if (attrs) for (var k in attrs) n.setAttribute(k, attrs[k]);
     return n;
   }
+  // Placeholder titles the constructor auto-assigns to empty blocks — treat as
+  // blank so a foreign-language section doesn't show its empty ru placeholder. #2
+  var TITLE_PLACEHOLDERS = ['Новый раздел', 'Новый блок', 'Новый курс'];
   function pick(o, base, lang) {
-    return (o && (o[base + '_' + lang] || o[base + '_ru'] || o[base + '_en'] || o[base + '_es'])) || '';
+    if (!o) return '';
+    var langs = [lang, 'ru', 'en', 'es'];
+    for (var i = 0; i < langs.length; i++) {
+      var v = o[base + '_' + langs[i]];
+      v = (v == null ? '' : String(v)).trim();
+      if (v && TITLE_PLACEHOLDERS.indexOf(v) === -1) return v;
+    }
+    return '';
   }
 
   var TYPE_LABEL = {
@@ -118,6 +128,14 @@
       : raw;
     var progress = {};
     (data.progress || []).forEach(function (p) { progress[p.block_id] = p; });
+
+    // #3: a node click re-mounts this view. Capture the prior horizontal scroll so
+    // we can restore it instead of snapping back to the current-progress node.
+    // Auto-center only happens on the FIRST mount (or via the "↺ К прогрессу" btn).
+    var prevVp = container.querySelector('.myc-viewport');
+    var prevScroll = prevVp ? prevVp.scrollLeft : null;
+    var isFirstMount = !container.__mycMounted;
+    container.__mycMounted = true;
 
     container.innerHTML = '';
     container.classList.add('myc-root');
@@ -456,13 +474,40 @@
       panning = false; viewport.classList.remove('is-panning');
     });
 
-    /* size the SVG to the shell, then center on the current step on first paint */
+    /* size the SVG to the shell, then center on the current step on FIRST paint
+       only. On re-mount (after a node click) we preserve the prior scroll so the
+       path doesn't jump back to the user's progress node. — #3 */
     applySize();
     var cur = nodes[model.curIdx];
+    function scrollToCurrent(smooth) {
+      if (!cur) return;
+      var scale = (svg.clientWidth || contentW) / contentW;
+      var target = Math.max(0, cur.x * scale - viewport.clientWidth / 2);
+      if (smooth && viewport.scrollTo) viewport.scrollTo({ left: target, behavior: 'smooth' });
+      else viewport.scrollLeft = target;
+    }
+    requestAnimationFrame(function () {
+      if (isFirstMount || prevScroll == null) scrollToCurrent(false);
+      else viewport.scrollLeft = prevScroll; // re-mount: stay where the user was
+    });
+
+    /* "↺ К прогрессу" — re-center on the current node on demand. Lives in the
+       top-right corner of the path strip; only shown when there IS a current node. */
     if (cur) {
-      requestAnimationFrame(function () {
-        viewport.scrollLeft = Math.max(0, cur.x - viewport.clientWidth / 2);
+      var backBtn = document.createElement('button');
+      backBtn.className = 'myc-back-current';
+      backBtn.type = 'button';
+      backBtn.textContent = (_LANG === 'en') ? '↺ My progress' : (_LANG === 'es') ? '↺ Mi progreso' : '↺ К прогрессу';
+      backBtn.setAttribute('title', 'К моему текущему шагу');
+      backBtn.style.cssText = 'position:absolute;top:8px;right:10px;z-index:20;' +
+        'font-size:11px;line-height:1;padding:6px 10px;border-radius:8px;cursor:pointer;' +
+        'color:var(--myc-cyan,#39d3c3);background:rgba(5,9,14,0.7);' +
+        'border:1px solid var(--myc-line-muted,rgba(255,255,255,0.14));' +
+        'backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);font-family:inherit;';
+      backBtn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); scrollToCurrent(true);
       });
+      container.appendChild(backBtn);
     }
   }
 
