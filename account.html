@@ -7267,9 +7267,38 @@ function buildNmGraph(){
     }
   });
 
+  // 5.3: apply any pending deep-link highlight (focus node + chain) BEFORE the
+  // simulation starts, so the focus node is pinned to centre and the chain glows.
+  applyNmDeepLink(canvas);
+
   // Run simulation with lower alpha if we have preserved positions
   var hasOld=Object.keys(nmPrevPositions).length>0;
   nmSimulate(canvas, hasOld ? 0.15 : 0.3);
+}
+
+// 5.3: NeuroMap deep-link — when opened via ?focus=&chain= (a new tab from the
+// embedded Evolution-Path mini-map), emphasise the focus node + its chain and
+// centre the focus. Matching is best-effort (by node id / dbId / label); if
+// nothing matches we simply land on the NeuroMap. One-shot: cleared after use.
+window.__nmDeepLink = null;
+function applyNmDeepLink(canvas){
+  var dl = window.__nmDeepLink;
+  if(!dl || !nmNodes || !nmNodes.length) return;
+  var set = {}; (dl.chain || []).forEach(function(c){ set[String(c)] = 1; });
+  if(dl.focus != null) set[String(dl.focus)] = 1;
+  var norm = function(s){ return String(s == null ? '' : s).toLowerCase().trim(); };
+  var focusN = null, any = false;
+  nmNodes.forEach(function(n){ n._hl = false; n._hlFocus = false; });
+  nmNodes.forEach(function(n){
+    var match = set[String(n.id)] || (n.dbId != null && set[String(n.dbId)]) ||
+                set[norm(n.label)] || (n.label && set[norm(n.label)]);
+    if(match){ n._hl = true; any = true; if(norm(dl.focus) && (String(n.id)===String(dl.focus) || String(n.dbId)===String(dl.focus) || norm(n.label)===norm(dl.focus))){ n._hlFocus = true; focusN = n; } }
+  });
+  if(any){
+    var f = focusN || nmNodes.find(function(n){ return n._hl; });
+    if(f && canvas){ f.fx = canvas.width/2; f.fy = canvas.height/2; f.x = f.fx; f.y = f.fy; if(!f._hlFocus){ f._hlFocus = true; } }
+  }
+  window.__nmDeepLink = null; // one-shot
 }
 
 function nmTriggerAnalysis(){
@@ -7409,6 +7438,14 @@ function nmSimulate(canvas, initAlpha){
       // Node body
       ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
+      // Deep-link highlight (5.3): pulsing cyan ring around the focus node + its chain
+      if(n._hl){
+        var hp=0.45+0.35*Math.sin(animT*3);
+        ctx.save();
+        ctx.beginPath();ctx.arc(n.x,n.y,drawR+(n._hlFocus?9:6)+2*Math.sin(animT*3),0,Math.PI*2);
+        ctx.strokeStyle='rgba(94,224,255,'+hp+')';ctx.lineWidth=n._hlFocus?3:2;ctx.stroke();
+        ctx.restore();
+      }
       // Label: show for top-N or all depending on mode
       var _miniShowLabel = (nmLabelsMode==='all') || (nmLabelsMode==='top' && nmMiniTopNIds && nmMiniTopNIds[n.id]);
       if(_miniShowLabel){
@@ -13236,6 +13273,35 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js"></script>
 <script src="assets/js/external-field.js"></script>
 <script>
+  // 5.3: deep-link into Tools → NeuroMap, focused on a node + chain. Opened in a
+  // NEW TAB from the embedded Evolution-Path mini-map
+  // (?tab=tools&subtab=neuromap&focus=&chain=). We wait for the client dashboard
+  // to become visible (auth completes async), then switch tab/subtab and stash
+  // the highlight for buildNmGraph → applyNmDeepLink to consume.
+  (function(){
+    var q;
+    try { q = new URLSearchParams(window.location.search); } catch(e){ return; }
+    if(q.get('tab') !== 'tools') return;
+    var subtab = q.get('subtab') || '';
+    if(subtab !== 'neuromap' && subtab !== 'nm') return;
+    var focus = q.get('focus');
+    var chain = (q.get('chain') || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    if(focus == null && !chain.length) return;
+    window.__nmDeepLink = { focus: focus, chain: chain };
+    var tries = 0;
+    var timer = setInterval(function(){
+      tries++;
+      var dash = document.getElementById('client-dashboard');
+      var ready = dash && dash.style.display !== 'none' && typeof switchTab === 'function' && typeof setToolsMode === 'function';
+      if(ready){
+        clearInterval(timer);
+        try { switchTab('tools'); setToolsMode('nm'); } catch(e){ console.warn('nm deep-link:', e); }
+      } else if(tries > 80){ // ~20s safety cap
+        clearInterval(timer);
+      }
+    }, 250);
+  })();
+
   // Initialize i18n on page load
   document.addEventListener('DOMContentLoaded', function() {
     setLang(getLang());
