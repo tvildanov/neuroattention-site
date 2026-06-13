@@ -285,6 +285,51 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_kind TEXT`;
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_config JSONB DEFAULT '{}'::jsonb`;
 
+    // ── External Field tool (objective environmental signals) ──
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lon DOUBLE PRECISION`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_city TEXT`;
+    await sql`CREATE TABLE IF NOT EXISTS external_signal_events (
+      id BIGSERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      layer TEXT NOT NULL CHECK (layer IN ('sun','moon','earth','weather','cosmos','social','experimental')),
+      source TEXT NOT NULL,
+      source_url TEXT,
+      event_type TEXT,
+      title TEXT,
+      description TEXT,
+      timestamp TIMESTAMPTZ NOT NULL,
+      start_time TIMESTAMPTZ,
+      end_time TIMESTAMPTZ,
+      severity TEXT,
+      location_scope TEXT CHECK (location_scope IN ('global','local','regional')),
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      dedup_key TEXT,
+      raw_payload JSONB,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_ese_user_time ON external_signal_events (user_id, timestamp DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_ese_layer_time ON external_signal_events (layer, timestamp DESC)`;
+    // dedup_key makes the poller idempotent (same external event never doubles)
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_ese_dedup ON external_signal_events (dedup_key) WHERE dedup_key IS NOT NULL`;
+    await sql`CREATE TABLE IF NOT EXISTS external_field_subscriptions (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE TABLE IF NOT EXISTS external_field_notifications (
+      id BIGSERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      event_id BIGINT REFERENCES external_signal_events(id) ON DELETE CASCADE,
+      layer TEXT NOT NULL,
+      title TEXT,
+      body TEXT,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_efn_user ON external_field_notifications (user_id, created_at DESC)`;
+
     // Migration 003: Add role column
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`;
     await sql`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`;
@@ -1241,7 +1286,8 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
-      SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url
+      SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
+             location_lat, location_lon, location_city
       FROM users WHERE id = ${req.user.id}
     `;
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
@@ -6802,6 +6848,155 @@ app.patch('/api/admin/users/:id/role', requireAuth, async (req, res) => {
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+//  EXTERNAL FIELD — objective environmental signals (sun/moon/earth/weather/
+//  cosmos/social/experimental). Sources are isolated under services/external/*;
+//  a poller ingests them into external_signal_events; users read via the API.
+//  Tone is factual/observational — no predictions, no medical claims.
+// ════════════════════════════════════════════════════════════════════════════
+const EXT_SOURCES = {
+  noaa:    { load: () => require('./services/external/noaa'),    everyMs: 10 * 60 * 1000 },
+  donki:   { load: () => require('./services/external/donki'),   everyMs: 60 * 60 * 1000 },
+  usgs:    { load: () => require('./services/external/usgs'),    everyMs: 15 * 60 * 1000 },
+  gracedb: { load: () => require('./services/external/gracedb'), everyMs: 5 * 60 * 1000 },
+  gdelt:   { load: () => require('./services/external/gdelt'),   everyMs: 60 * 60 * 1000 },
+  moon:    { load: () => require('./services/external/moon'),    everyMs: 24 * 60 * 60 * 1000 }
+};
+
+async function extInsert(ev) {
+  const rows = await sql`
+    INSERT INTO external_signal_events
+      (user_id, layer, source, source_url, event_type, title, description, timestamp,
+       start_time, end_time, severity, location_scope, latitude, longitude, dedup_key, raw_payload)
+    VALUES (${ev.user_id || null}, ${ev.layer}, ${ev.source}, ${ev.source_url || null},
+       ${ev.event_type || null}, ${ev.title || null}, ${ev.description || null}, ${ev.timestamp},
+       ${ev.start_time || null}, ${ev.end_time || null}, ${ev.severity || null},
+       ${ev.location_scope || 'global'}, ${ev.latitude != null ? ev.latitude : null},
+       ${ev.longitude != null ? ev.longitude : null}, ${ev.dedup_key || null},
+       ${JSON.stringify(ev.raw_payload || {})}::jsonb)
+    ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
+    RETURNING id`;
+  return rows.length ? rows[0].id : null;
+}
+
+function extSignificant(ev) {
+  if (ev.layer === 'sun' && /^[MX]/.test(ev.severity || '')) return true;       // M/X flares
+  if (ev.event_type === 'cme' || ev.event_type === 'geomagnetic_storm') return true;
+  if (ev.layer === 'earth' && /Kp(\d)/.test(ev.severity || '')) { const kp = parseFloat((ev.severity.match(/Kp(\d+(\.\d+)?)/) || [])[1]); return kp >= 5; }
+  if (ev.event_type === 'earthquake') { const m = parseFloat((ev.severity || '').replace('M', '')); return m >= 5.5; }
+  if (ev.event_type === 'gw_candidate') return true;
+  return false;
+}
+function extNotifyBody(ev) {
+  if (ev.event_type === 'flare') return 'Solar flare detected: ' + (ev.severity || '') + ' class. Source: ' + ev.source + '. Potential Earth-directed effects depend on CME confirmation.';
+  if (ev.event_type === 'cme') return 'Coronal mass ejection recorded. Source: ' + ev.source + '. Event saved to External Field timeline.';
+  if (ev.layer === 'earth' && /Kp/.test(ev.severity || '')) return 'Geomagnetic activity increased: ' + ev.severity + '. Event saved to External Field timeline.';
+  if (ev.event_type === 'earthquake') return ev.title + '. Source: USGS. Event saved to Earth layer.';
+  if (ev.event_type === 'gw_candidate') return 'Gravitational-wave candidate detected by LVK public alerts. Event saved to Cosmos layer. Biological relevance is not assumed.';
+  return ev.title + '. Event saved to External Field timeline.';
+}
+async function extNotify(ev, eventId) {
+  if (!extSignificant(ev)) return;
+  let subs;
+  try { subs = await sql`SELECT user_id, config FROM external_field_subscriptions`; } catch (e) { return; }
+  for (const s of subs) {
+    try {
+      const cfg = (s.config || {})[ev.layer];
+      if (!cfg || !cfg.enabled || !cfg.notify) continue;
+      const body = extNotifyBody(ev);
+      await sql`INSERT INTO external_field_notifications (user_id, event_id, layer, title, body) VALUES (${s.user_id}, ${eventId}, ${ev.layer}, ${ev.title}, ${body})`;
+      await sql`INSERT INTO notifications (user_id, kind, payload) VALUES (${s.user_id}, 'external_field', ${JSON.stringify({ layer: ev.layer, title: ev.title, body: body, event_id: eventId })}::jsonb)`;
+    } catch (e) { /* one user's notify failure must not block others */ }
+  }
+}
+async function runExtSource(name) {
+  try {
+    const mod = EXT_SOURCES[name].load();
+    const events = await mod.fetchLatest({ nasaKey: process.env.NASA_API_KEY || 'DEMO_KEY' });
+    let added = 0;
+    for (const ev of (events || [])) {
+      if (!ev || !ev.timestamp || !ev.layer) continue;
+      const id = await extInsert(ev);
+      if (id) { added++; await extNotify(ev, id); }
+    }
+    if (added) console.log('[ext/' + name + '] +' + added + ' new events');
+  } catch (e) { console.warn('[ext/' + name + '] poll failed:', e.message); }
+}
+function startExternalPoller() {
+  if (!process.env.DATABASE_URL) return;
+  Object.keys(EXT_SOURCES).forEach(function (name, i) {
+    setTimeout(function () { runExtSource(name); }, 5000 + i * 3000);   // staggered first run
+    setInterval(function () { runExtSource(name); }, EXT_SOURCES[name].everyMs);
+  });
+  console.log('[ext] External Field poller started');
+}
+
+// GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
+app.get('/api/external/events', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const layer = req.query.layer && /^[a-z]+$/.test(req.query.layer) ? req.query.layer : null;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 300);
+    const from = req.query.from ? new Date(req.query.from).toISOString() : new Date(Date.now() - 30 * 864e5).toISOString();
+    const to = req.query.to ? new Date(req.query.to).toISOString() : new Date().toISOString();
+    const rows = layer
+      ? await sql`SELECT id, user_id, layer, source, source_url, event_type, title, description, timestamp, start_time, end_time, severity, location_scope, latitude, longitude, raw_payload
+                  FROM external_signal_events
+                  WHERE layer = ${layer} AND (user_id IS NULL OR user_id = ${userId}) AND timestamp >= ${from} AND timestamp <= ${to}
+                  ORDER BY timestamp DESC LIMIT ${limit}`
+      : await sql`SELECT id, user_id, layer, source, source_url, event_type, title, description, timestamp, start_time, end_time, severity, location_scope, latitude, longitude, raw_payload
+                  FROM external_signal_events
+                  WHERE (user_id IS NULL OR user_id = ${userId}) AND timestamp >= ${from} AND timestamp <= ${to}
+                  ORDER BY timestamp DESC LIMIT ${limit}`;
+    res.json({ ok: true, events: rows });
+  } catch (err) { console.error('GET /api/external/events:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET/POST /api/external/subscriptions — per-layer config (enabled / showOnPath / notify)
+app.get('/api/external/subscriptions', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`SELECT config FROM external_field_subscriptions WHERE user_id = ${userId}`;
+    res.json({ ok: true, config: rows.length ? rows[0].config : {} });
+  } catch (err) { console.error('GET /api/external/subscriptions:', err); res.status(500).json({ error: err.message }); }
+});
+app.post('/api/external/subscriptions', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const config = (req.body && req.body.config) || {};
+    await sql`INSERT INTO external_field_subscriptions (user_id, config, updated_at)
+              VALUES (${userId}, ${JSON.stringify(config)}::jsonb, now())
+              ON CONFLICT (user_id) DO UPDATE SET config = ${JSON.stringify(config)}::jsonb, updated_at = now()`;
+    res.json({ ok: true });
+  } catch (err) { console.error('POST /api/external/subscriptions:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/users/me/location {lat,lon,city} — for weather/AQ/sunrise (no default)
+app.post('/api/users/me/location', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const lat = parseFloat(req.body && req.body.lat), lon = parseFloat(req.body && req.body.lon);
+    const city = (req.body && req.body.city ? String(req.body.city) : '').slice(0, 120) || null;
+    if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      return res.status(400).json({ error: 'Valid lat/lon required' });
+    }
+    await sql`UPDATE users SET location_lat = ${lat}, location_lon = ${lon}, location_city = ${city} WHERE id = ${userId}`;
+    res.json({ ok: true, location: { lat: lat, lon: lon, city: city } });
+  } catch (err) { console.error('POST /api/users/me/location:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/external/notifications — this user's External Field notifications
+app.get('/api/external/notifications', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`SELECT id, event_id, layer, title, body, read_at, created_at
+                           FROM external_field_notifications WHERE user_id = ${userId}
+                           ORDER BY created_at DESC LIMIT 50`;
+    res.json({ ok: true, notifications: rows });
+  } catch (err) { console.error('GET /api/external/notifications:', err); res.status(500).json({ error: err.message }); }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
+  try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
 });
