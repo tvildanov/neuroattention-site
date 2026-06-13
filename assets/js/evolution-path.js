@@ -425,10 +425,12 @@
     // Show every Nth label so each gets ≥MIN_SLOT px, and truncate to the label's
     // own slot width. Divider lines stay for every section (they're faint).
     var slotW = secs.length ? (x1 - x0) / secs.length : (x1 - x0);
-    var MIN_SLOT = 78;                                    // px a label needs to breathe
+    var MIN_SLOT = 128;                                   // px each shown label needs
     var step = Math.max(1, Math.ceil(MIN_SLOT / Math.max(1, slotW)));
-    var charPx = 6.4;                                     // ~px per char at this font
-    var maxChars = Math.max(6, Math.floor((slotW * step - 10) / charPx));
+    var charPx = 6.6;                                     // ~px per char at this font
+    var prefixChars = hasMods ? (String(secs.length).length + 3) : 0; // "21 · "
+    // chars available within the inter-label spacing, minus the index prefix
+    var maxChars = Math.max(4, Math.floor((slotW * step - 16) / charPx) - prefixChars);
     secs.forEach(function (s, i) {
       var sx0 = x0 + (x1 - x0) * s.frac0, sx1 = x0 + (x1 - x0) * s.frac1, mid = (sx0 + sx1) / 2;
       if (i > 0) g.appendChild(el('line', { x1: sx0, y1: yTop, x2: sx0, y2: H - 30,
