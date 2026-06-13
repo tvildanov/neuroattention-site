@@ -468,96 +468,366 @@
     g.appendChild(el('circle', { cx: x, cy: y, r: 4, fill: 'var(--myc-cyan)', filter: 'url(#evoGlow)' }));
   }
 
-  /* ── view: TUNNEL (hero — dense 2D mycelium field) ──────────────────────── */
-  function renderTunnel(svg, W, data, container, lang, st) {
+  /* ── view: PATH OF DEVELOPMENT (rework) ───────────────────────────────────
+     One white light-spine runs left→right through time (registration → now).
+     Every instrument entry is a mycelium branch off the spine on the day it
+     happened; Y of the tip is a soft hint by type (emotions up, sensations down,
+     practices far below w/ green glow, insights highest). Real journey_links are
+     drawn as glowing chains between node tips — no decorative filler. Infinite
+     horizontal pan (wheel / drag), ctrl+wheel zooms the time scale, period
+     buttons just recentre on a window. Clicking a node opens a mini-neuromap. */
+
+  // soft Y-offset of a branch tip from the spine, as a fraction of the half-field
+  var BRANCH_DY = { insight: -0.86, emotion: -0.58, thought: -0.34, event: -0.05,
+                    sensation: 0.40, practice: 0.72, xp_gain: -0.20 };
+  // days covered by each period preset (controls the default zoom, not a crop)
+  var PERIOD_DAYS = { day: 1, week: 7, month: 30, '3months': 90, year: 365, all: 1460 };
+  var DAY_MS = 864e5;
+
+  function nodeShape(layer, cx, cy, r) {
+    if (layer === 'practice') {
+      var s = r * 1.0;
+      return el('rect', { x: (cx - s).toFixed(1), y: (cy - s).toFixed(1), width: (s * 2).toFixed(1), height: (s * 2).toFixed(1), rx: 1.4 });
+    }
+    if (layer === 'insight') {
+      // 4-point star
+      var R = r * 1.5, rr = r * 0.55, d = '';
+      for (var k = 0; k < 8; k++) {
+        var ang = Math.PI * k / 4 - Math.PI / 2, rad = (k % 2 === 0) ? R : rr;
+        d += (k === 0 ? 'M' : 'L') + (cx + Math.cos(ang) * rad).toFixed(1) + ' ' + (cy + Math.sin(ang) * rad).toFixed(1);
+      }
+      return el('path', { d: d + 'Z' });
+    }
+    return el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1) });
+  }
+  function layerFill(layer, valence) {
+    if (layer === 'emotion') return valStyle(valence).c;
+    if (layer === 'insight') return 'var(--myc-cyan)';
+    if (layer === 'practice') return '#8DFFC8';
+    if (layer === 'thought') return 'rgb(200,180,240)';
+    if (layer === 'sensation') return 'rgb(140,180,255)';
+    if (layer === 'event') return 'rgb(100,220,180)';
+    return valStyle(valence).c;
+  }
+
+  // compute / persist the pan-zoom view on st.view
+  function ensureView(st, data, x0, x1) {
     var dom = domain(data);
+    // origin = registration (if known) else earliest event else range.from
+    var reg = st.user && st.user.createdAt ? tms(st.user.createdAt) : 0;
+    var evs = allEvents(data);
+    var earliest = evs.length ? evs[0].t : dom.from;
+    var originT = Math.min(reg || earliest, earliest, dom.from);
+    var nowT = Math.max(dom.to, evs.length ? evs[evs.length - 1].t : dom.to);
+    if (!st.view || st.view._fieldW == null) {
+      var days = PERIOD_DAYS[st.period] || 30;
+      var pxPerDay = (x1 - x0) / days;
+      // place "now" near the right edge
+      var v = { originT: originT, nowT: nowT, pxPerDay: pxPerDay, panX: 0, _fieldW: (x1 - x0) };
+      var wxNow = (nowT - originT) / DAY_MS * pxPerDay;
+      v.panX = (x1 - 40) - wxNow; // now sits ~40px from the right edge
+      st.view = v;
+    } else {
+      st.view.originT = originT; st.view.nowT = nowT; st.view._fieldW = (x1 - x0);
+    }
+    return st.view;
+  }
+
+  function renderTunnel(svg, W, data, container, lang, st) {
     var padL = 168, padR = 150, padTop = 50, padBot = 34;
     var x0 = padL, x1 = W - padR;
     var fieldTop = padTop, fieldBot = H - padBot, fieldH = fieldBot - fieldTop, cy = (fieldTop + fieldBot) / 2;
-    var xOf = function (t) { return x0 + (clamp01((tms(t) - dom.from) / dom.span)) * (x1 - x0); };
-    var yOfLayer = function (layer, i) {
-      var base = fieldTop + (LAYER_YFRAC[layer] != null ? LAYER_YFRAC[layer] : 0.5) * fieldH;
-      return base + (jit(i) - 0.5) * fieldH * 0.16;
-    };
-    var g = el('g', { 'class': 'myc-fade' });
-
-    // background depth grid + organic mycelium
-    var grid = el('g', { opacity: '0.5' });
-    for (var gx = x0; gx <= x1; gx += 70) grid.appendChild(el('line', { x1: gx, y1: fieldTop, x2: gx, y2: fieldBot, stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
-    for (var gy = fieldTop; gy <= fieldBot; gy += 52) grid.appendChild(el('line', { x1: x0, y1: gy, x2: x1, y2: gy, stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
-    g.appendChild(grid);
-    backgroundFilaments(g, x0, x1, fieldTop + 8, fieldBot - 8, 9);
-
-    // module sections across the top
-    drawModuleHeaders(g, st, dom, lang, x0, x1, fieldTop);
-
+    var half = fieldH / 2 - 10;
+    var view = ensureView(st, data, x0, x1);
     var hidden = st.hidden || {};
+
+    // world X for a time (before pan). The world <g> is translated by panX.
+    var wx = function (t) { return (tms(t) - view.originT) / DAY_MS * view.pxPerDay; };
+    var spineY = function (worldX) { return cy + 4 * Math.sin(worldX * 0.012); };
+    var tipY = function (layer, i) {
+      var dy = (BRANCH_DY[layer] != null ? BRANCH_DY[layer] : 0) * half;
+      return cy + dy + (jit(i) - 0.5) * half * 0.20;
+    };
+
+    var wxOrigin = wx(view.originT), wxNow = wx(view.nowT);
+
+    // clip so panned content never spills over the side panels
+    var clipId = 'evoClip' + (st._isOverlay ? 'O' : 'E');
+    var defs = svg.querySelector('defs') || svg.insertBefore(el('defs'), svg.firstChild);
+    var clip = el('clipPath', { id: clipId });
+    clip.appendChild(el('rect', { x: x0 - 6, y: 0, width: (x1 - x0) + 12, height: H }));
+    defs.appendChild(clip);
+
+    var viewport = el('g', { 'clip-path': 'url(#' + clipId + ')' });
+    svg.appendChild(viewport);
+    var world = el('g', { 'class': 'evo-world myc-fade', transform: 'translate(' + view.panX.toFixed(1) + ',0)' });
+    viewport.appendChild(world);
+
+    // faint depth grid across the world (vertical day-ish ticks)
+    var grid = el('g', { opacity: '0.5' });
+    var gridStep = Math.max(60, view.pxPerDay * 2);
+    for (var gx = wxOrigin; gx <= wxNow + gridStep; gx += gridStep)
+      grid.appendChild(el('line', { x1: gx.toFixed(1), y1: fieldTop, x2: gx.toFixed(1), y2: fieldBot, stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
+    world.appendChild(grid);
+
+    // module headers across the world (spread over the full time range)
+    drawModuleHeaders(world, st, { from: view.originT, to: view.nowT, span: (view.nowT - view.originT) }, lang, wxOrigin, wxNow, fieldTop);
+
+    // ── the spine: base + bright "lived" tract + soft glow, breathing slightly ──
+    function spinePath(a, b) {
+      var d = '', f = true;
+      for (var px = a; px <= b; px += 10) { d += (f ? 'M' : 'L') + px.toFixed(1) + ' ' + spineY(px).toFixed(1); f = false; }
+      d += 'L' + b.toFixed(1) + ' ' + spineY(b).toFixed(1);
+      return d;
+    }
+    world.appendChild(el('path', { d: spinePath(wxOrigin, wxNow), fill: 'none', stroke: 'var(--myc-line-secondary)', 'stroke-width': '1.4', 'stroke-linecap': 'round', opacity: '0.45' }));
+    world.appendChild(el('path', { d: spinePath(wxOrigin, wxNow), fill: 'none', stroke: 'rgba(255,255,255,0.88)', 'stroke-width': '2', 'stroke-linecap': 'round', filter: 'url(#evoGlow)' }));
+
     var events = allEvents(data).filter(function (e) { return !hidden[e.layer]; });
     indexEvents(events);
 
-    // central spine (course)
-    g.appendChild(el('line', { x1: x0, y1: cy, x2: x1, y2: cy, stroke: 'var(--myc-line-primary)', 'stroke-width': '1.6', 'stroke-linecap': 'round', filter: 'url(#evoGlow)', opacity: '0.7' }));
-
-    // XP filament above the spine
+    // ── XP light filament above the spine ──
     if (!hidden.xp_gain) {
       var xp = data.layers.xp_gain || [];
       if (xp.length) {
-        var maxC = xp[xp.length - 1].cumulative || 1, d = '', f = true;
-        xp.forEach(function (pt) { var y = cy - 12 - 30 * (pt.cumulative / maxC); d += (f ? 'M' : 'L') + xOf(pt.t).toFixed(1) + ' ' + y.toFixed(1); f = false; });
-        g.appendChild(el('path', { d: d, fill: 'none', stroke: 'url(#evoXp)', 'stroke-width': '2', 'stroke-linecap': 'round', filter: 'url(#evoGlowSoft)', opacity: '0.5' }));
-        g.appendChild(el('path', { d: d, fill: 'none', stroke: 'url(#evoXp)', 'stroke-width': '1.6', 'stroke-linecap': 'round' }));
+        var maxC = xp[xp.length - 1].cumulative || 1, dd = '', ff = true;
+        xp.forEach(function (pt) { var X = wx(pt.t), y = spineY(X) - 12 - 28 * (pt.cumulative / maxC); dd += (ff ? 'M' : 'L') + X.toFixed(1) + ' ' + y.toFixed(1); ff = false; });
+        world.appendChild(el('path', { d: dd, fill: 'none', stroke: 'url(#evoXp)', 'stroke-width': '1.6', 'stroke-linecap': 'round', opacity: '0.85' }));
       }
     }
 
-    // nodes — scattered across the whole field. D п.23: a short d3-force pass
-    // spreads them on X=time / Y=layer-band with collision, so events never pile
-    // into a single column when timestamps cluster. Practices ride the spine.
-    var sim = events.map(function (e, i) {
-      var isInsight = e.layer === 'insight';
-      var onSpine = e.layer === 'practice';
-      var r = isInsight ? 3.6 : (onSpine ? 3.8 : (2.2 + Math.min(2.6, Math.log(1 + e.weight))));
-      var tx = xOf(e.t);
-      var ty = onSpine ? cy : yOfLayer(e.layer, i);
-      return { e: e, i: i, isInsight: isInsight, onSpine: onSpine, r: r,
-               tx: tx, ty: ty, x: tx + (jit(i) - 0.5) * 6, y: ty };
+    // ── branches + nodes ──
+    POS = {};
+    // label visibility threshold scales with zoom: tighter zoom → more labels
+    var labelEvery = view.pxPerDay > 60 ? 1 : (view.pxPerDay > 26 ? 3 : 7);
+    var branchG = el('g', { 'class': 'evo-branches' });
+    var nodeLayer = el('g', { 'class': 'evo-nodes' });
+    events.forEach(function (e, i) {
+      var X = wx(e.t);
+      var sy = spineY(X);
+      var ty = tipY(e.layer, i);
+      var fill = layerFill(e.layer, e.valence);
+      var glow = e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive';
+      var r = e.layer === 'insight' ? 4.2 : (e.layer === 'practice' ? 3.8 : (2.6 + Math.min(2.4, Math.log(1 + (e.weight || 1)))));
+      // organic branch from spine to tip
+      var cxp = X + (jit(i) - 0.5) * 10;
+      var bd = 'M' + X.toFixed(1) + ' ' + sy.toFixed(1) +
+               ' Q' + (X + (cxp - X) * 0.4).toFixed(1) + ' ' + ((sy + ty) / 2).toFixed(1) +
+               ' ' + cxp.toFixed(1) + ' ' + ty.toFixed(1);
+      branchG.appendChild(el('path', { d: bd, fill: 'none', stroke: fill, 'stroke-width': '0.9', opacity: '0.32', 'stroke-linecap': 'round' }));
+      // node at the tip
+      var shape = nodeShape(e.layer, cxp, ty, r);
+      shape.setAttribute('fill', fill);
+      shape.setAttribute('opacity', String(e.layer === 'emotion' ? valStyle(e.valence).o : 0.95));
+      if (glow) shape.setAttribute('filter', 'url(#evoGlow)');
+      shape.appendChild(titleNode(e, lang));
+      registerNode(e.id, cxp, ty);
+      // label on bright/zoomed nodes
+      var showLabel = (e.layer === 'insight') || (i % labelEvery === 0) || (view.pxPerDay > 60);
+      var wrap = el('g', { 'class': 'evo-node', tabindex: '0' });
+      wrap.style.cursor = 'pointer';
+      wrap.appendChild(el('circle', { 'class': 'evo-hit', cx: cxp.toFixed(1), cy: ty.toFixed(1), r: 16, fill: 'transparent', 'pointer-events': 'all' }));
+      wrap.appendChild(shape);
+      if (showLabel) {
+        var lbl = el('text', { x: cxp.toFixed(1), y: (ty - r - 5).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-node-label' });
+        lbl.textContent = truncate(prettyTitle(e, lang), 18);
+        wrap.appendChild(lbl);
+      }
+      (function (ev) {
+        function open(domEv) { if (domEv) domEv.stopPropagation(); if (window._evolNavLock) return; window._evolNavLock = true; try { openMiniNeuromap(container, ev, lang, st); } finally { setTimeout(function () { window._evolNavLock = false; }, 120); } }
+        wrap.addEventListener('click', open);
+        wrap.addEventListener('keydown', function (k) { if (k.key === 'Enter' || k.key === ' ') open(k); });
+      })(e);
+      nodeLayer.appendChild(wrap);
     });
-    if (window.d3 && window.d3.forceSimulation) {
-      var fsim = window.d3.forceSimulation(sim)
-        .force('x', window.d3.forceX(function (d) { return d.tx; }).strength(0.92)) // hug true time
-        .force('y', window.d3.forceY(function (d) { return d.ty; }).strength(function (d) { return d.onSpine ? 0.9 : 0.16; }))
-        .force('collide', window.d3.forceCollide(function (d) { return d.r + 1.6; }).iterations(2))
-        .stop();
-      for (var ti = 0; ti < 150; ti++) fsim.tick();
+
+    // ── real journey_links as glowing mycelium chains (no filler) ──
+    var chains = el('g', { 'class': 'evo-chains' });
+    (data.links || []).forEach(function (lk) {
+      var a = POS[String(lk.a)], b = POS[String(lk.b)];
+      if (!a || !b) return;
+      chains.appendChild(chainPath(a, b, lk.kind === 'correlation' ? 'var(--myc-cyan)' : 'rgba(255,255,255,0.5)', lk.kind === 'correlation' ? 0.4 : 0.22));
+    });
+
+    world.appendChild(branchG);
+    world.appendChild(chains);
+    world.appendChild(nodeLayer);
+
+    // ── "now" terminator + time axis (inside world so they pan) ──
+    nowMarker(world, wxNow, spineY(wxNow));
+    drawWorldTimeAxis(world, view, lang, wxOrigin, wxNow);
+
+    // ── pan / zoom interaction (attached to the svg) ──
+    wirePanZoom(svg, world, st, container, lang, x0, x1);
+  }
+
+  // smooth Bezier chain between two node tips
+  function chainPath(a, b, stroke, op) {
+    var midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2 - Math.min(50, Math.abs(b.x - a.x) * 0.25 + 14);
+    var d;
+    if (window.d3 && window.d3.line && window.d3.curveCatmullRom) {
+      d = window.d3.line().curve(window.d3.curveCatmullRom.alpha(0.7))([[a.x, a.y], [midX, midY], [b.x, b.y]]);
+    } else {
+      d = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
     }
-    var nodeLayer = el('g');
-    sim.forEach(function (d) {
-      var e = d.e, st2 = valStyle(e.valence);
-      var px = Math.max(x0, Math.min(x1, d.x));
-      var yy = d.onSpine ? cy : Math.max(fieldTop + 4, Math.min(fieldBot - 4, d.y));
-      var vis = el('circle', { cx: px.toFixed(1), cy: yy.toFixed(1), r: d.r.toFixed(1),
-        fill: d.isInsight ? 'var(--myc-cyan)' : (d.onSpine ? 'var(--myc-bg-2)' : st2.c),
-        stroke: d.onSpine ? 'var(--myc-line-primary)' : 'none', 'stroke-width': d.onSpine ? '1.4' : '0',
-        opacity: d.isInsight ? 0.95 : st2.o });
-      if (d.isInsight || d.onSpine || e.valence === 'positive') vis.setAttribute('filter', 'url(#evoGlow)');
-      vis.appendChild(titleNode(e, lang));
-      registerNode(e.id, px, parseFloat(yy.toFixed(1)));
-      nodeLayer.appendChild(interactiveNode(vis, e, container, lang));
+    return el('path', { d: d, fill: 'none', stroke: stroke, 'stroke-width': '1', opacity: String(op), filter: 'url(#evoGlow)' });
+  }
+
+  // date ticks along the bottom, in world coords
+  function drawWorldTimeAxis(g, view, lang, wxA, wxB) {
+    var y = H - 16;
+    var span = view.nowT - view.originT, n = 7;
+    for (var i = 0; i <= n; i++) {
+      var t = view.originT + span * (i / n), X = (t - view.originT) / DAY_MS * view.pxPerDay;
+      g.appendChild(el('line', { x1: X.toFixed(1), y1: y - 11, x2: X.toFixed(1), y2: y - 5, stroke: 'var(--myc-line-muted)', 'stroke-width': '1' }));
+      var tx = el('text', { x: X.toFixed(1), y: y.toFixed(1), 'text-anchor': 'middle', 'class': 'evo-axis-label' });
+      tx.textContent = fmtAxis(t, lang);
+      g.appendChild(tx);
+    }
+  }
+
+  // wheel = horizontal pan, drag = pan, ctrl/⌘+wheel = zoom (keep time-under-cursor fixed)
+  function wirePanZoom(svg, world, st, container, lang, x0, x1) {
+    var view = st.view;
+    function applyPan() {
+      // clamp so you can't drag the whole spine off-screen
+      var minPan = (x1 - 40) - (view.nowT - view.originT) / DAY_MS * view.pxPerDay - (x1 - x0);
+      var maxPan = x0 + (x1 - x0) * 0.5;
+      view.panX = Math.max(minPan, Math.min(maxPan, view.panX));
+      world.setAttribute('transform', 'translate(' + view.panX.toFixed(1) + ',0)');
+    }
+    svg.addEventListener('wheel', function (e) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        var rect = svg.getBoundingClientRect();
+        var scaleR = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) ? (svg.viewBox.baseVal.width / rect.width) : 1;
+        var localX = (e.clientX - rect.left) * scaleR;            // svg-space x under cursor
+        var worldXUnder = (localX - view.panX);                   // world x under cursor
+        var tUnder = view.originT + worldXUnder / view.pxPerDay * DAY_MS;
+        var factor = e.deltaY < 0 ? 1.12 : 0.89;
+        view.pxPerDay = Math.max(0.4, Math.min(140, view.pxPerDay * factor));
+        // re-render at new scale, then keep tUnder under the cursor
+        var newWorldXUnder = (tUnder - view.originT) / DAY_MS * view.pxPerDay;
+        view.panX = localX - newWorldXUnder;
+        paint(container, st, lang);
+      } else {
+        e.preventDefault();
+        view.panX -= (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY);
+        applyPan();
+      }
+    }, { passive: false });
+    var panning = false, sx = 0, sp = 0, moved = false;
+    svg.addEventListener('mousedown', function (e) {
+      if (e.target.closest('.evo-node')) return;
+      panning = true; moved = false; sx = e.clientX; sp = view.panX; svg.style.cursor = 'grabbing';
     });
-
-    drawFilaments(g, data, events);   // filaments under nodes
-    g.appendChild(nodeLayer);
-
-    // "now" marker on the spine + time axis
-    nowMarker(g, xOf(dom.to), cy);
-    drawTimeAxis(g, dom, lang, x0, x1);
-
-    svg.appendChild(g);
+    window.addEventListener('mousemove', function (e) {
+      if (!panning) return;
+      var rect = svg.getBoundingClientRect();
+      var scaleR = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) ? (svg.viewBox.baseVal.width / rect.width) : 1;
+      view.panX = sp + (e.clientX - sx) * scaleR; if (Math.abs(e.clientX - sx) > 3) moved = true; applyPan();
+    });
+    window.addEventListener('mouseup', function () { panning = false; svg.style.cursor = ''; });
   }
 
   function titleNode(e, lang) {
     var t = el('title');
     t.textContent = prettyTitle(e, lang) + (e.valence && e.valence !== 'neutral' ? ' · ' + e.valence : '');
     return t;
+  }
+
+  /* ── mini-neuromap embed ──────────────────────────────────────────────────
+     Clicking a node opens a small graph overlay (the clicked event + everything
+     it links to via journey_links) rendered in the neuromap visual language —
+     a fresh tiny renderer (the full neuromap is a non-reusable monolith). The
+     "Открыть в нейромапе" button hands off to the full tool. */
+  var MINI_STR = {
+    chain:   { ru: 'Цепочка', en: 'Chain', es: 'Cadena' },
+    single:  { ru: 'Событие', en: 'Event', es: 'Evento' },
+    openNm:  { ru: 'Открыть в нейромапе', en: 'Open in NeuroMap', es: 'Abrir en NeuroMapa' },
+    noLinks: { ru: 'Связей нет — отдельная запись на спине.', en: 'No links — a standalone entry on the spine.', es: 'Sin enlaces.' }
+  };
+  function closeMiniNeuromap(container) {
+    var ex = container.querySelector('.evo-mini-nm'); if (ex) ex.remove();
+    if (container.__miniNmOutside) { document.removeEventListener('mousedown', container.__miniNmOutside, true); container.__miniNmOutside = null; }
+  }
+  function openMiniNeuromap(container, ev, lang, st) {
+    closeMiniNeuromap(container);
+    closeDetailCard(container);
+    var canvas = container.querySelector('.myc-evo-canvas');
+    if (!canvas) return;
+
+    // gather the clicked event + its 1-hop linked neighbours (real journey_links)
+    var center = ev;
+    var neighbours = (ev.links || []).map(function (lk) { return EVENT_INDEX[String(lk.to != null ? lk.to : lk)]; }).filter(Boolean);
+    // dedupe
+    var seen = {}; neighbours = neighbours.filter(function (n) { if (seen[n.id]) return false; seen[n.id] = 1; return true; }).slice(0, 8);
+
+    var box = document.createElement('div');
+    box.className = 'evo-mini-nm';
+    var W = 460, Hm = 380;
+    var title = neighbours.length ? L(MINI_STR.chain, lang) : L(MINI_STR.single, lang);
+    box.innerHTML =
+      '<div class="evo-mini-head"><span class="evo-mini-title">🧠 ' + escapeHtml(title) + '</span>' +
+      '<button class="evo-mini-x" title="' + L(CARD_STR.close, lang) + '">✕</button></div>' +
+      '<div class="evo-mini-body"></div>' +
+      '<div class="evo-mini-foot">' +
+        '<span class="evo-mini-note">' + (neighbours.length ? '' : escapeHtml(L(MINI_STR.noLinks, lang))) + '</span>' +
+        '<button class="evo-mini-open">' + L(MINI_STR.openNm, lang) + ' →</button>' +
+      '</div>';
+    canvas.appendChild(box);
+
+    var body = box.querySelector('.evo-mini-body');
+    var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + Hm, width: '100%', height: '100%', style: 'display:block;' });
+    svg.insertAdjacentHTML('afterbegin', defsMarkup());
+    body.appendChild(svg);
+
+    var cx = W / 2, cyc = Hm / 2 - 6;
+    // radial placement: center node + neighbours on a ring
+    var positions = {}; positions[String(center.id)] = { x: cx, y: cyc, e: center, center: true };
+    var R = Math.min(W, Hm) * 0.34;
+    neighbours.forEach(function (n, i) {
+      var ang = (Math.PI * 2 * i / Math.max(1, neighbours.length)) - Math.PI / 2;
+      positions[String(n.id)] = { x: cx + Math.cos(ang) * R, y: cyc + Math.sin(ang) * R, e: n, center: false };
+    });
+
+    // links: center↔neighbour, plus neighbour↔neighbour if they link each other
+    var linkG = el('g');
+    function drawLink(a, b, kind) {
+      var pa = positions[String(a)], pb = positions[String(b)];
+      if (!pa || !pb) return;
+      var midX = (pa.x + pb.x) / 2, midY = (pa.y + pb.y) / 2 - 18;
+      linkG.appendChild(el('path', { d: 'M' + pa.x.toFixed(1) + ' ' + pa.y.toFixed(1) + ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) + ' ' + pb.x.toFixed(1) + ' ' + pb.y.toFixed(1),
+        fill: 'none', stroke: kind === 'correlation' ? 'rgba(120,220,255,0.5)' : 'rgba(255,255,255,0.35)', 'stroke-width': '1.2', filter: 'url(#evoGlow)' }));
+    }
+    (center.links || []).forEach(function (lk) { drawLink(center.id, lk.to != null ? lk.to : lk, lk.kind); });
+    neighbours.forEach(function (n) { (n.links || []).forEach(function (lk) { var to = lk.to != null ? lk.to : lk; if (positions[String(to)] && String(to) !== String(center.id)) drawLink(n.id, to, lk.kind); }); });
+    svg.appendChild(linkG);
+
+    // nodes
+    Object.keys(positions).forEach(function (k) {
+      var p = positions[k], e = p.e;
+      var r = p.center ? 16 : 11;
+      var fill = layerFill(e.layer, e.valence);
+      var node = nodeShape(e.layer, p.x, p.y, r);
+      node.setAttribute('fill', fill);
+      node.setAttribute('filter', 'url(#evoGlow)');
+      node.setAttribute('opacity', e.layer === 'emotion' ? String(valStyle(e.valence).o) : '0.96');
+      if (p.center) node.setAttribute('stroke', 'rgba(255,255,255,0.8)'), node.setAttribute('stroke-width', '1.4');
+      svg.appendChild(node);
+      var lbl = el('text', { x: p.x.toFixed(1), y: (p.y + r + 13).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-label' });
+      lbl.textContent = truncate(prettyTitle(e, lang), 20);
+      svg.appendChild(lbl);
+      var typ = el('text', { x: p.x.toFixed(1), y: (p.y + 4).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-type' });
+      typ.textContent = humanLabel(e.kind || e.layer, lang).slice(0, 3);
+      svg.appendChild(typ);
+    });
+
+    box.querySelector('.evo-mini-x').addEventListener('click', function () { closeMiniNeuromap(container); });
+    box.querySelector('.evo-mini-open').addEventListener('click', function () { closeMiniNeuromap(container); openInSource(center); });
+    // outside-click closes
+    container.__miniNmOutside = function (e) { if (!box.contains(e.target) && !e.target.closest('.evo-node')) closeMiniNeuromap(container); };
+    setTimeout(function () { document.addEventListener('mousedown', container.__miniNmOutside, true); }, 0);
   }
 
   /* ── view: LAYERS (horizontal lanes, wavy baselines) ────────────────────── */
@@ -697,7 +967,9 @@
     var jget = function (url) { return fetch(apiBase + url, { headers: hdr }).then(function (r) { return r.json(); }).catch(function () { return null; }); };
 
     Promise.all([
-      jget('/api/users/me/evolution?period=' + encodeURIComponent(st.period)),
+      // Load a WIDE window once (the spine spans registration→now); the period
+      // buttons re-zoom this pool client-side instead of refetching/cropping.
+      jget('/api/users/me/evolution?period=year'),
       st.user ? Promise.resolve(null) : jget('/api/users/me/xp'),
       st.modules ? Promise.resolve(null) : fetchModules(jget)
     ]).then(function (res) {
@@ -761,6 +1033,7 @@
       level: (xp && xp.current_level) || (cu && cu.current_level) || 1,
       xp: (xp && xp.total_xp) || 0,
       xpNext: (xp && xp.next_level_at) || 100,
+      createdAt: (cu && (cu.created_at || cu.createdAt)) || null, // spine starts at registration
       isAdmin: typeof window.naIsAdmin === 'function' ? window.naIsAdmin(cu) : false
     };
   }
@@ -903,7 +1176,15 @@
             }
           } else {
             if (st.period === val) return;
-            st.period = val; st.cursor = 1; st.data = null; // 🅲️ C8: refetch on period change
+            // Period is now a NAVIGATION zoom, not a crop: data is loaded wide
+            // (registration→now) once; switching period just re-fits the view and
+            // recentres on "now" without refetching. — rework
+            st.period = val; st.cursor = 1;
+            if (st.data) {
+              segEl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-active', x === b); });
+              st.view = null;            // force ensureView() to recompute zoom/centre
+              paint(container, st, lang); return;
+            }
           }
           rerender();
         });
