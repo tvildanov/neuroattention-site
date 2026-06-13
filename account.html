@@ -749,11 +749,8 @@
 
   <!-- TAB: Курсы — student-side course list + practices (protocol merged here in A) -->
   <div class="tab-panel" id="tab-courses">
-    <!-- Sub-tabs: Мои курсы / Практики -->
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
-      <button class="dash-tab active" id="courses-mode-courses" onclick="setCoursesMode('courses')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.courses.title">Мои курсы</button>
-      <button class="dash-tab" id="courses-mode-pract" onclick="setCoursesMode('pract')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.protocol.practices">Практики</button>
-    </div>
+    <!-- Practices subtab removed (#5): all practices live inside their course's
+         path view now; standalone list let zero-access users play any audio. -->
     <div id="courses-courses-content">
       <div class="dash-grid">
         <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
@@ -761,22 +758,6 @@
           <p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);" data-i18n="a.courses.subtitle">Курсы, доступные вам по приобретённой программе.</p>
           <div id="student-courses-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;"></div>
           <p id="student-courses-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.courses.empty">Пока нет курсов, доступных вам. Зайдите позже или приобретите программу.</p>
-        </div>
-      </div>
-    </div>
-    <!-- Practices content — moved from removed Протокол tab (A) -->
-    <div id="courses-pract-content" style="display:none;">
-      <div class="dash-grid">
-        <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-          <div id="practices-loading" style="text-align:center;padding:2rem 0;">
-            <p style="font-size:13px;color:var(--text-muted);" data-i18n="a.protocol.loading_practices">Загрузка практик...</p>
-          </div>
-          <div id="practices-list"></div>
-          <div id="practices-empty" style="display:none;text-align:center;padding:3rem 1rem;">
-            <svg style="width:48px;height:48px;fill:none;stroke:rgba(255,255,255,0.12);stroke-width:1.5;margin-bottom:1rem;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
-            <p style="font-size:14px;color:var(--text-muted);margin:0 0 0.5rem;" data-i18n="a.protocol.practices_not_loaded">Практики пока не загружены</p>
-            <p style="font-size:12px;color:var(--text-dim);margin:0;" data-i18n="a.protocol.practices_admin_msg">Аудиопрактики появятся здесь, когда будут добавлены администратором.</p>
-          </div>
         </div>
       </div>
     </div>
@@ -4663,26 +4644,15 @@ var selectedDiaryDay = null;
 
 // Mode toggle
 // Courses sub-tab switcher (A: practices merged from removed Протокол tab).
+// #5: standalone "Практики" subtab removed — practices live only inside their
+// course path view now. Kept as a no-op shim so legacy callers/links don't throw;
+// it just ensures the courses list is visible.
 function setCoursesMode(mode){
   var coursesC = document.getElementById('courses-courses-content');
-  var practC = document.getElementById('courses-pract-content');
-  var btnCourses = document.getElementById('courses-mode-courses');
-  var btnPract = document.getElementById('courses-mode-pract');
-  if(mode==='pract'){
-    if(coursesC) coursesC.style.display='none';
-    if(practC) practC.style.display='';
-    if(btnCourses){ btnCourses.classList.remove('active'); btnCourses.style.borderBottomColor='transparent'; }
-    if(btnPract){ btnPract.classList.add('active'); btnPract.style.borderBottomColor='var(--accent-cyan)'; }
-    if(!window._practicesLoaded) loadFrontendPractices();
-  } else {
-    if(coursesC) coursesC.style.display='';
-    if(practC) practC.style.display='none';
-    if(btnCourses){ btnCourses.classList.add('active'); btnCourses.style.borderBottomColor='var(--accent-cyan)'; }
-    if(btnPract){ btnPract.classList.remove('active'); btnPract.style.borderBottomColor='transparent'; }
-  }
+  if(coursesC) coursesC.style.display='';
 }
 // Legacy alias — old code/links may still call setProtoMode('pract').
-function setProtoMode(mode){ setCoursesMode(mode==='pract' ? 'pract' : 'courses'); }
+function setProtoMode(mode){ setCoursesMode('courses'); }
 function setToolsMode(mode){
   var nmContent = document.getElementById('tools-nm-content');
   var calDiaryWrap = document.getElementById('tools-cal-diary-wrap');
@@ -10556,6 +10526,27 @@ function cpRestore(){
 }
 window.cpMinimize = cpMinimize; window.cpRestore = cpRestore;
 
+// #2: placeholder-aware block-title resolver. Mirrors courseTitle(): pick by the
+// course's own primary language first, then UI lang, then ru/en/es — and skip the
+// auto-generated placeholders ("Новый раздел"/"Новый блок"/"Новый курс") so an
+// English-named section doesn't fall back to its empty Russian placeholder.
+var CP_TITLE_PLACEHOLDERS = ['Новый раздел','Новый блок','Новый курс'];
+function cpBlockTitle(block, uiLang){
+  if (!block) return '';
+  var p = block.payload || {};
+  function nm(l){
+    if (!l) return '';
+    var v = block['title_' + l];
+    v = (v == null ? '' : String(v)).trim();
+    if (!v || CP_TITLE_PLACEHOLDERS.indexOf(v) !== -1) return '';
+    return v;
+  }
+  var course = coursePlayer.course || {};
+  var clang = course.lang || (Array.isArray(course.languages) ? course.languages[0] : null);
+  return nm(clang) || nm(uiLang) || nm('ru') || nm('en') || nm('es')
+      || (p.practice_name ? String(p.practice_name).trim() : '') || '';
+}
+
 function cpRenderBlock(){
   var area = document.getElementById('cp-block-area');
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
@@ -10572,7 +10563,7 @@ function cpRenderBlock(){
   document.getElementById('cp-next-btn').style.display = '';
   coursePlayer.blockResponse = null;
   var p = block.payload || {};
-  var title = block['title_'+lang] || block.title_ru || block.title_en || block.title_es || p.practice_name || '';
+  var title = cpBlockTitle(block, lang) || (block.block_type === 'section' ? '(без названия)' : '');
   var titleHtml = title ? '<h3 style="font-size:16px;margin:0 0 1rem;color:var(--text-primary);">' + title + '</h3>' : '';
   var body = '';
   switch (block.block_type) {
@@ -10582,7 +10573,7 @@ function cpRenderBlock(){
       var secDesc = p['description_'+lang] || p.description_ru || p['body_'+lang] || p.body_ru || '';
       var kids = (coursePlayer.blocks || []).filter(function(x){ return x.parent_block_id === block.id; });
       var kidsList = kids.map(function(k, ki){
-        var kt = k['title_'+lang] || k.title_ru || k.title_en || k.title_es || (k.payload && k.payload.practice_name) || _cpTypeLabel(k.block_type);
+        var kt = cpBlockTitle(k, lang) || _cpTypeLabel(k.block_type);
         return '<li style="padding:0.45rem 0.7rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;display:flex;align-items:center;gap:0.5rem;">'
              + '<span style="font-size:11px;color:var(--text-dim);font-family:JetBrains Mono,monospace;min-width:1.4em;">' + (ki+1) + '.</span>'
              + '<span style="font-size:13px;color:var(--text-primary);">' + kt + '</span>'
@@ -10994,7 +10985,7 @@ function domApi(path, opts){
 
 function domSwitch(sub){
   dom.sub = sub;
-  ['feed','dms','notifs','profile'].forEach(function(s){
+  ['feed','dms','notifs','groups','teams','profile'].forEach(function(s){
     var pane = document.getElementById('dom-pane-' + s);
     var btn = document.getElementById('dom-subtab-' + s);
     if (pane) pane.style.display = (s === sub ? '' : 'none');

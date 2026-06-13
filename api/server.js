@@ -278,6 +278,13 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 // ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
 app.post('/api/run-migrations', async (req, res) => {
   try {
+    // ⚠️ Critical schema columns FIRST — the course-block constructor (tool_task)
+    // breaks hard without these. Kept at the very top of the pipeline so they
+    // always apply even if a later (non-critical) migration statement throws and
+    // aborts the rest of the run. Fully idempotent.
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_kind TEXT`;
+    await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_config JSONB DEFAULT '{}'::jsonb`;
+
     // Migration 003: Add role column
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`;
     await sql`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`;
@@ -4471,6 +4478,28 @@ app.get('/api/admin/courses/:id', requireAuth, async (req, res) => {
     const [course] = await sql`SELECT * FROM courses WHERE id = ${id}`;
     if (!course) return res.status(404).json({ error: 'Not found' });
     const blocks = await sql`SELECT * FROM course_blocks WHERE course_id = ${id} ORDER BY order_idx ASC, id ASC`;
+    // #4: resolve practice audio so the admin preview player also plays.
+    const practiceIds = [...new Set(blocks
+      .filter(b => b.block_type === 'practice' && b.payload && b.payload.practice_id)
+      .map(b => parseInt(b.payload.practice_id, 10))
+      .filter(n => Number.isFinite(n)))];
+    if (practiceIds.length) {
+      const prRows = await sql`SELECT id, slug, lang, name, audio_url, duration_seconds FROM practices WHERE id = ANY(${practiceIds})`;
+      const prMap = {};
+      prRows.forEach(p => { prMap[p.id] = p; });
+      blocks.forEach(b => {
+        if (b.block_type === 'practice' && b.payload && b.payload.practice_id) {
+          const pr = prMap[parseInt(b.payload.practice_id, 10)];
+          if (pr) b.payload = Object.assign({}, b.payload, {
+            audio_url: pr.audio_url || b.payload.audio_url || '',
+            practice_slug: b.payload.practice_slug || pr.slug,
+            practice_name: b.payload.practice_name || pr.name,
+            practice_lang: b.payload.practice_lang || pr.lang,
+            duration_seconds: pr.duration_seconds
+          });
+        }
+      });
+    }
     const branches = await sql`SELECT cb.* FROM course_branches cb JOIN course_blocks b ON b.id = cb.block_id WHERE b.course_id = ${id}`;
     res.json({ course, blocks, branches });
   } catch (err) { console.error('GET course:', err); res.status(500).json({ error: err.message }); }
@@ -4748,8 +4777,34 @@ app.get('/api/courses/:slug', requireAuth, async (req, res) => {
         return res.status(404).json({ error: 'Course not available in this language' });
       }
     }
-    const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id, unlock_condition
+    const blocks = await sql`SELECT id, course_id, order_idx, block_type, title_ru, title_en, title_es, payload, points, parent_block_id, unlock_condition, tool_kind, tool_config
                               FROM course_blocks WHERE course_id = ${course.id} ORDER BY order_idx ASC`;
+    // #4: practice blocks reference a library practice by practice_id; their audio
+    // lives in the practices table, not in the block payload. Resolve audio_url
+    // (+ duration) here so the player can actually render a working <audio> element.
+    const practiceIds = [...new Set(blocks
+      .filter(b => b.block_type === 'practice' && b.payload && b.payload.practice_id)
+      .map(b => parseInt(b.payload.practice_id, 10))
+      .filter(n => Number.isFinite(n)))];
+    if (practiceIds.length) {
+      const prRows = await sql`SELECT id, slug, lang, name, audio_url, duration_seconds FROM practices WHERE id = ANY(${practiceIds})`;
+      const prMap = {};
+      prRows.forEach(p => { prMap[p.id] = p; });
+      blocks.forEach(b => {
+        if (b.block_type === 'practice' && b.payload && b.payload.practice_id) {
+          const pr = prMap[parseInt(b.payload.practice_id, 10)];
+          if (pr) {
+            b.payload = Object.assign({}, b.payload, {
+              audio_url: pr.audio_url || b.payload.audio_url || '',
+              practice_slug: b.payload.practice_slug || pr.slug,
+              practice_name: b.payload.practice_name || pr.name,
+              practice_lang: b.payload.practice_lang || pr.lang,
+              duration_seconds: pr.duration_seconds
+            });
+          }
+        }
+      });
+    }
     const progress = await sql`SELECT block_id, response, points_earned, completed_at FROM course_block_progress
                                 WHERE user_id = ${userId} AND course_id = ${course.id}`;
     res.json({ course, blocks, progress });
