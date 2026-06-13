@@ -623,12 +623,27 @@ section {
   grid-template-columns: 1fr;
 }
 
+/* Ecosystem pillars — 1 col on mobile (was an inline repeat(5,1fr) that
+   squeezed 5 columns on phones), widening up to 5 on large screens. */
+.grid-5 {
+  grid-template-columns: 1fr;
+}
+
 @media (min-width: 640px) {
   .grid-3 {
     grid-template-columns: repeat(2, 1fr);
   }
   .grid-4 {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-5 {
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 

@@ -61,7 +61,8 @@
   }
 
   // run after i18n has applied (it dispatches `langchange`), and once on load.
-  function schedule() { (window.requestAnimationFrame || setTimeout)(run); }
+  // setTimeout (not rAF) so it still fires in a backgrounded/throttled tab.
+  function schedule() { setTimeout(run, 0); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule);
   else schedule();
   document.addEventListener('langchange', schedule);
