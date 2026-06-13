@@ -344,6 +344,25 @@
   #coursePlayerModal .cp-content #cp-grid{ grid-template-columns:1fr !important; }
   #coursePlayerModal #cp-path-view{ height:150px; }
 }
+/* Mobile: sub-tab bars that overflow (Инструменты had 5 tabs + Раскрыть, the
+   last ones — incl. External Field — were off-screen and unreachable). Make the
+   bar horizontally swipeable with a right-edge fade hint; the active tab is
+   auto-scrolled into view in JS. Applied to Tools + admin «Люди» sub-tabs. */
+@media (max-width:768px){
+  .na-mobile-scroll{
+    flex-wrap:nowrap !important;
+    overflow-x:auto; overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;
+    scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);
+            mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);
+  }
+  .na-mobile-scroll::-webkit-scrollbar{ display:none; }
+  .na-mobile-scroll>*{ scroll-snap-align:start; flex-shrink:0; }
+  /* the «Раскрыть» button shouldn't eat the row via margin-left:auto on mobile */
+  .na-mobile-scroll>.btn-ghost{ margin-left:0 !important; }
+}
 </style>
 <script src="https://unpkg.com/3d-force-graph@1"></script>
 <!-- d3 modules (R5): Evolution Path filaments (d3-shape) + node layout (d3-force).
@@ -994,7 +1013,7 @@
   <!-- TAB: Инструменты (was Calendar + NeuroMap + Diary) -->
   <div class="tab-panel" id="tab-tools">
     <!-- Sub-tabs: NeuroMap / Календарь / Дневник -->
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+    <div class="tools-subtabs na-mobile-scroll" style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
       <button class="dash-tab dash-subtab active" id="tools-mode-nm" onclick="setToolsMode('nm')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.tools.neuromap">NeuroMap</button>
       <!-- Calendar sub-tab removed (17.3) — DB table kept for future migration -->
       <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
@@ -1644,7 +1663,7 @@
   <!-- «Люди» sub-tabs — shown only while a people panel is active. The ids
        admin-rehab-tab / admin-purchases-tab and the data-tab values are kept so
        the existing role-gating (which targets them) works unchanged. -->
-  <div class="dash-tabs" id="admin-people-subtabs" style="display:none;margin-top:-1rem;margin-bottom:1.5rem;">
+  <div class="dash-tabs na-mobile-scroll" id="admin-people-subtabs" style="display:none;margin-top:-1rem;margin-bottom:1.5rem;">
     <button class="dash-tab active" data-tab="admin-users" data-i18n="a.admin.users">Пользователи</button>
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
@@ -3398,6 +3417,11 @@ function switchAdminTab(id){
   if(subBar){
     subBar.style.display = isPeople ? '' : 'none';
     subBar.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
+    // Mobile: keep the chosen «Люди» sub-tab in view inside the swipeable bar.
+    try {
+      var act=subBar.querySelector('.dash-tab.active');
+      if(act && act.offsetParent && act.scrollIntoView) act.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    } catch(e){}
   }
 }
 
@@ -4749,6 +4773,11 @@ function setToolsMode(mode){
     // Refresh saved A→B map state when the sub-tab opens.
     try { if (typeof abLoadFromServer === 'function') abLoadFromServer(); } catch(e){}
   }
+  // Mobile: keep the chosen sub-tab in view inside the swipeable bar.
+  try {
+    var activeSub = document.querySelector('.tools-subtabs .dash-subtab.active');
+    if(activeSub && activeSub.offsetParent && activeSub.scrollIntoView) activeSub.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  } catch(e){}
 }
 // Open the active Инструменты sub-tool in a shared fullscreen overlay (R1/R3).
 // Uses DOM relocation (move the live container in, restore it on close) so all
