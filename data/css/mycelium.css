@@ -419,7 +419,7 @@
    one top) and overlap. Anchoring the stat card below the user panel keeps them
    clear in both the embedded card and the taller fullscreen overlay. */
 .evo-char-stats {
-  position: absolute; left: 12px; top: 186px; z-index: 17; width: 180px;
+  position: absolute; left: 12px; top: 224px; z-index: 17; width: 180px;
   background: rgba(5,9,14,0.6); border: 1px solid var(--myc-line-muted);
   border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(4px);
 }
