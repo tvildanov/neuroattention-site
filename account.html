@@ -4756,14 +4756,18 @@ function setToolsMode(mode){
 function toolsExpandActive(){
   if (typeof window.mountFullscreenOverlay !== 'function') return;
   var map = {
-    nm:       { id: 'tools-nm-content',     title: 'NeuroMap' },
-    sensation:{ id: 'tools-sensation-wrap', title: 'Карта ощущений' },
-    pointab:  { id: 'tools-pointab-content',title: 'Точка А → B' },
-    diary:    { id: 'tools-cal-diary-wrap', title: 'Дневник' }
+    nm:       { id: 'tools-nm-content',      title: 'NeuroMap' },
+    sensation:{ id: 'tools-sensation-wrap',  title: 'Карта ощущений' },
+    pointab:  { id: 'tools-pointab-content', title: 'Точка А → B' },
+    external: { id: 'tools-external-content', title: 'External Field' },
+    diary:    { id: 'tools-cal-diary-wrap',  title: 'Дневник' }
   };
+  // External Field was missing here, so its «Раскрыть» fell through to the
+  // 'diary' default and expanded the Diary instead. — fix
   var active = document.querySelector('#tools-mode-nm.active') ? 'nm'
              : document.querySelector('#tools-mode-sensation.active') ? 'sensation'
              : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
+             : document.querySelector('#tools-mode-external.active') ? 'external'
              : 'diary';
   var info = map[active]; if (!info) return;
   var src = document.getElementById(info.id); if (!src) return;
