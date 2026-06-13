@@ -3382,8 +3382,10 @@ function switchAdminTab(id){
   }
   var isPeople = ADMIN_PEOPLE_SUBS.indexOf(id)>=0;
   if(isPeople) window._lastPeopleSub = id;
-  // panels
-  document.querySelectorAll('#admin-dashboard .tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-'+id);});
+  // panels — the admin panels live in #admin-dashboard until the «Администрирование»
+  // client tab is opened, after which switchTab moves them into #admin-embed-container.
+  // Query both so activation works in either location.
+  document.querySelectorAll('#admin-dashboard .tab-panel, #admin-embed-container .tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-'+id);});
   // top tabs — the «Люди» button is active for any people sub
   document.querySelectorAll('#admin-tabs .dash-tab[data-tab]').forEach(function(t){
     t.classList.toggle('active', isPeople ? t.dataset.tab==='admin-people' : t.dataset.tab===id);
@@ -4111,22 +4113,24 @@ function switchTab(id){
     var container = document.getElementById('admin-embed-container');
     var adminSrc = document.getElementById('admin-dashboard');
     if(container && adminSrc && container.children.length===0){
-      // Move admin tabs and panels into the embed container
+      // Move the admin top-tab bar, the «Люди» sub-tab bar, AND the panels into the
+      // embed container. (The sub-tab bar used to be left behind, which is why the
+      // «Люди» group rendered with no sub-tabs / an empty panel — regression fix.)
       var adminTabs = document.getElementById('admin-tabs');
+      var adminSubtabs = document.getElementById('admin-people-subtabs');
       var adminPanels = adminSrc.querySelectorAll('.tab-panel');
       if(adminTabs) container.appendChild(adminTabs);
+      if(adminSubtabs) container.appendChild(adminSubtabs);
       adminPanels.forEach(function(p){ container.appendChild(p); });
-      // Show first admin tab as active
-      container.querySelectorAll('.dash-tab').forEach(function(t,i){ t.classList.toggle('active',i===0); });
-      container.querySelectorAll('.tab-panel').forEach(function(p,i){ p.classList.toggle('active',i===0); });
-      // Wire admin sub-tab switching
+      // Drive every admin tab/sub-tab through the real switchAdminTab (it knows the
+      // «Люди» grouping, the sub-tab bar visibility, and the default sub-tab) —
+      // replaces the old naive switcher that activated the nonexistent
+      // "tab-admin-people" panel and blanked the screen.
       container.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){
-        t.onclick = function(){
-          var subId = this.dataset.tab;
-          container.querySelectorAll('.dash-tab').forEach(function(bt){ bt.classList.toggle('active',bt.dataset.tab===subId); });
-          container.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active',p.id==='tab-'+subId); });
-        };
+        t.onclick = function(){ if(this.style.display==='none') return; switchAdminTab(this.dataset.tab); };
       });
+      // Open «Люди» → first visible sub (Пользователи) by default.
+      switchAdminTab('admin-people');
     }
   }
   document.querySelectorAll('#client-dashboard > .dash-tabs > .dash-tab[data-tab]').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
