@@ -899,17 +899,32 @@ body.method-flashlight {
   }
 
   /* ─── Navbar mobile tweaks ─── */
+  /* Fix: on mobile the logo's "Lab" suffix overlapped the language switcher and
+     the "Dashboard" login text overflowed the viewport. Tighten the row: logo
+     shrinks but never wraps/overlaps, the account login collapses into the burger
+     menu, and the right cluster stays compact. */
   .navbar-inner {
     padding: 0.5rem 0 !important;
+    gap: 0.5rem;
   }
   .nav-logo {
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
   }
   .nav-right {
-    gap: 0.5rem !important;
+    gap: 0.4rem !important;
+    flex-shrink: 0;
+  }
+  /* the "Dashboard"/account pill is reachable from the burger menu on mobile */
+  .nav-login {
+    display: none !important;
   }
   .lang-switch {
     gap: 2px !important;
+    flex-shrink: 0;
   }
   .lang-btn {
     font-size: 11px !important;
@@ -978,3 +993,10 @@ body.method-flashlight {
     padding: 1rem !important;
   }
 }
+
+/* ── Team photo crop fix ──────────────────────────────────────────────────
+   Takhir Kennedy's portrait sits high in the frame, so the default centred
+   object-fit:cover crop clipped the top of his head. Nudge the focal point up
+   so his head fits the circle and matches the other two team photos. Applies at
+   every width (the crop was off on desktop too). */
+.team-photo img[src*="takhir"] { object-position: center 18%; }
