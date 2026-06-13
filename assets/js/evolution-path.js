@@ -526,16 +526,21 @@
   // compute / persist the pan-zoom view on st.view
   function ensureView(st, data, x0, x1) {
     var dom = domain(data);
-    // origin = registration (if known) else earliest event else range.from
     var reg = st.user && st.user.createdAt ? tms(st.user.createdAt) : 0;
     var evs = allEvents(data);
     var earliest = evs.length ? evs[0].t : dom.from;
-    var originT = Math.min(reg || earliest, earliest, dom.from);
+    // #2: the spine spans the ACTUAL journey — registration→now (or first-event→now),
+    // NOT the data-fetch window. Pulling originT back to the fetch range start made
+    // everything cluster near "now" with a long empty left tail.
+    var originT = reg ? Math.min(reg, earliest) : earliest;
     var nowT = Math.max(dom.to, evs.length ? evs[evs.length - 1].t : dom.to);
+    if (nowT <= originT) nowT = originT + DAY_MS;
+    var spanDays = (nowT - originT) / DAY_MS;
     if (!st.view || st.view._fieldW == null) {
-      var days = PERIOD_DAYS[st.period] || 30;
+      // period = how far to zoom out, but never wider than the real span (+10%) —
+      // so a 2-week-old account doesn't render its events squished at the right.
+      var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
       var pxPerDay = (x1 - x0) / days;
-      // place "now" near the right edge
       var v = { originT: originT, nowT: nowT, pxPerDay: pxPerDay, panX: 0, _fieldW: (x1 - x0) };
       var wxNow = (nowT - originT) / DAY_MS * pxPerDay;
       v.panX = (x1 - 40) - wxNow; // now sits ~40px from the right edge
@@ -547,7 +552,11 @@
   }
 
   function renderTunnel(svg, W, data, container, lang, st) {
-    var padL = 168, padR = 150, padTop = 50, padBot = 34;
+    // #1: on phones the desktop side-paddings (168 + 150) left only a ~57px field
+    // → the "narrow vertical strip". Shrink them so the field uses the full width;
+    // the side panels become a compact stacked overlay (see mycelium.css mobile).
+    var isMobile = W <= 560;
+    var padL = isMobile ? 14 : 168, padR = isMobile ? 14 : 150, padTop = isMobile ? 64 : 50, padBot = 34;
     var x0 = padL, x1 = W - padR;
     var fieldTop = padTop, fieldBot = H - padBot, fieldH = fieldBot - fieldTop, cy = (fieldTop + fieldBot) / 2;
     var half = fieldH / 2 - 10;
@@ -637,8 +646,13 @@
     var labelEvery = view.pxPerDay > 60 ? 1 : (view.pxPerDay > 26 ? 3 : 7);
     var branchG = el('g', { 'class': 'evo-branches' });
     var nodeLayer = el('g', { 'class': 'evo-nodes' });
+    // #3: virtualize when there are many events — only build nodes/branches within
+    // ±3 screens of the current viewport (the pan-idle repaint re-fills as you move).
+    var virtualize = events.length > 200;
+    var visLo = (x0 - view.panX) - 3 * (x1 - x0), visHi = (x1 - view.panX) + 3 * (x1 - x0);
     events.forEach(function (e, i) {
       var X = wx(e.t);
+      if (virtualize && (X < visLo || X > visHi)) { registerNode(e.id, X, cy); return; }
       var sy = spineY(X);
       var fill = layerFill(e.layer, e.valence);
       var r = e.layer === 'insight' ? 4.2 : (e.layer === 'practice' ? 3.8 : (2.6 + Math.min(2.4, Math.log(1 + (e.weight || 1)))));
@@ -667,7 +681,11 @@
       shape.appendChild(titleNode(e, lang));
       registerNode(e.id, cxp, ty);
       // label on bright/zoomed nodes
-      var showLabel = (e.layer === 'insight') || (i % labelEvery === 0) || (view.pxPerDay > 60);
+      // #1: on mobile, labels can't fit — show them only when zoomed in close
+      // (otherwise they stack into an unreadable column); tapping a node reveals it.
+      var showLabel = isMobile
+        ? (view.pxPerDay > 90 && (i % labelEvery === 0))
+        : ((e.layer === 'insight') || (i % labelEvery === 0) || (view.pxPerDay > 60));
       var wrap = el('g', { 'class': 'evo-node', tabindex: '0' });
       wrap.style.cursor = 'pointer';
       wrap.appendChild(el('circle', { 'class': 'evo-hit', cx: cxp.toFixed(1), cy: ty.toFixed(1), r: 16, fill: 'transparent', 'pointer-events': 'all' }));
@@ -861,11 +879,21 @@
       if (S.panIdle) clearTimeout(S.panIdle);
       S.panIdle = setTimeout(function () { S.panIdle = null; if (!S.dragging) { paint(container, S.st, S.lang); applyWorldTransform(); } }, 200);
     }
-    function panBy(dx) { S.st.view.panX += dx; clampPanFor(effPPD()); applyWorldTransform(); haptic(Math.abs(dx)); schedulePanRepaint(); }
+    // #3: during a gesture, drop SVG filters (glow/halo blur) on the moving world.
+    // Filtered content re-rasterises every frame when its <g> is transformed — the
+    // real cause of the stutter. They snap back ~160ms after motion stops.
+    function gesture() {
+      var sv = curSvg();
+      if (sv && !sv._gesturing) { sv.classList.add('evo-gesturing'); sv._gesturing = true; }
+      if (S.gestIdle) clearTimeout(S.gestIdle);
+      S.gestIdle = setTimeout(function () { var s = curSvg(); if (s) { s.classList.remove('evo-gesturing'); s._gesturing = false; } }, 160);
+    }
+    function panBy(dx) { gesture(); S.st.view.panX += dx; clampPanFor(effPPD()); applyWorldTransform(); haptic(Math.abs(dx)); schedulePanRepaint(); }
 
     // ── zoom: live CSS scale (instant, GPU) + ONE crisp repaint when the gesture
     // goes idle (~110ms). No per-frame SVG rebuild → no "тык-тык-тык". ──
     function zoomWheel(deltaY, atX) {
+      gesture();
       S.cursorX = atX;
       var view = S.st.view;
       var sx0 = S.liveScale || 1;
@@ -1172,10 +1200,15 @@
     var hdr = token ? { 'Authorization': 'Bearer ' + token } : {};
     var jget = function (url) { return fetch(apiBase + url, { headers: hdr }).then(function (r) { return r.json(); }).catch(function () { return null; }); };
 
+    // #2: load the FULL journey (registration→now) once, not just the last year —
+    // the period buttons only re-zoom this pool client-side. Bounded by account age.
+    var cu = (typeof window.currentUser !== 'undefined' && window.currentUser) ? window.currentUser : null;
+    var regIso = cu && (cu.created_at || cu.createdAt);
+    var evoUrl = regIso
+      ? '/api/users/me/evolution?from=' + encodeURIComponent(new Date(regIso).toISOString()) + '&to=' + encodeURIComponent(new Date().toISOString())
+      : '/api/users/me/evolution?period=all';
     Promise.all([
-      // Load a WIDE window once (the spine spans registration→now); the period
-      // buttons re-zoom this pool client-side instead of refetching/cropping.
-      jget('/api/users/me/evolution?period=year'),
+      jget(evoUrl),
       st.user ? Promise.resolve(null) : jget('/api/users/me/xp'),
       st.modules ? Promise.resolve(null) : fetchModules(jget)
     ]).then(function (res) {
@@ -1186,16 +1219,27 @@
       if (res[2]) st.modules = res[2];
       st.data = maybeDemo(data, st, lang);
       requestAnimationFrame(function () { paint(container, st, lang); });
-      // repaint once the canvas reaches its real width (handles the layout race
-      // and later window/tab resizes) — guarded so it never loops.
-      if (!st._ro && typeof ResizeObserver === 'function') {
-        st._ro = new ResizeObserver(function () {
-          var cv = container.querySelector('.myc-evo-canvas');
-          if (!cv || !st.data) return;
-          var w = measureW(cv, container);
-          if (Math.abs(w - (st._w || 0)) > 40) paint(container, st, lang);
-        });
-        try { st._ro.observe(container); } catch (e) {}
+      // Repaint when the canvas width actually changes (layout race, tab/window
+      // resize, mobile mount, orientation change). Debounced ~120ms so it never
+      // fires per-pixel during a drag-resize (#1 + #3). On width change the view
+      // is rebuilt against the new field width so phones don't get a narrow strip.
+      if (!st._ro) {
+        var debounced = function () {
+          clearTimeout(st._roTimer);
+          st._roTimer = setTimeout(function () {
+            var cv = container.querySelector('.myc-evo-canvas');
+            if (!cv || !st.data) return;
+            var w = measureW(cv, container);
+            if (Math.abs(w - (st._w || 0)) > 24) { st.view = null; paint(container, st, lang); }
+          }, 120);
+        };
+        if (typeof ResizeObserver === 'function') {
+          st._ro = new ResizeObserver(debounced);
+          try { st._ro.observe(container); } catch (e) {}
+        }
+        window.addEventListener('orientationchange', debounced);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', debounced);
+        st._roBound = true;
       }
     }).catch(function (e) {
       console.warn('EvolutionPath:', e);

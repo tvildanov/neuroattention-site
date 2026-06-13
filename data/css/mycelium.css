@@ -436,7 +436,21 @@
 }
 
 /* mobile: panels collapse to keep the field usable */
+/* #3: while panning/zooming, drop the expensive glow/halo blur filters on the
+   moving world so the GPU transform stays cheap (no per-frame filter re-raster).
+   They snap back ~160ms after motion stops. */
+.evo-gesturing .evo-world * { filter: none !important; }
+.evo-world { will-change: transform; }
+
 @media (max-width: 720px) {
+  /* #1: side panels stack below the chart instead of reserving horizontal field
+     space (which had crushed the timeline into a narrow vertical strip). */
   .evo-user-panel, .evo-layer-toggles { position: static; width: auto; display: inline-flex; margin: 6px 6px 0 0; }
   .evo-char-panel, .evo-char-stats { position: static; transform: none; width: auto; margin: 8px 0; }
+  .evo-layer-toggles { flex-wrap: wrap; gap: 4px 12px; max-width: 100%; }
+  .evo-char-stats { font-size: 11px; }
+  .myc-evo-canvas { overflow-x: hidden; }
+  /* mobile fullscreen: push the mode/period controls below the overlay's own
+     title so they don't overlap it */
+  .na-fs-body .myc-evo-head { margin-top: 1.6rem; flex-wrap: wrap; gap: 0.5rem; }
 }
