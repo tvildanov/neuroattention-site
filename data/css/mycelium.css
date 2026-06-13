@@ -372,8 +372,12 @@
   border: 1px solid var(--myc-cyan-deep); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-family: inherit;
 }
 .evo-char-profile:hover { background: rgba(168,247,255,0.08); }
+/* #8: stat-card sits in the LEFT column directly under the user panel; layer-
+   toggles stay top-RIGHT. They used to both sit on the right edge (one centered,
+   one top) and overlap. Anchoring the stat card below the user panel keeps them
+   clear in both the embedded card and the taller fullscreen overlay. */
 .evo-char-stats {
-  position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 18; width: 190px;
+  position: absolute; left: 12px; top: 186px; z-index: 17; width: 180px;
   background: rgba(5,9,14,0.6); border: 1px solid var(--myc-line-muted);
   border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(4px);
 }
