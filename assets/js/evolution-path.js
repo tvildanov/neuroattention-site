@@ -776,10 +776,12 @@
      ctrl/⌘+wheel zoom. navigator.vibrate gives a soft mobile "tick" while panning,
      denser at higher zoom and over node clusters (2.4). */
   function wirePanZoom(svg, world, st, container, lang, x0, x1) {
-    if (container._evoPZ) { var s = container._evoPZ; s.x0 = x0; s.x1 = x1; s.lang = lang; s.st = st; return; }
+    // attach gestures to the canvas (the path area), not the whole chrome/panels.
+    var target = container.querySelector('.myc-evo-canvas') || container;
+    if (target._evoPZ) { var s = target._evoPZ; s.x0 = x0; s.x1 = x1; s.lang = lang; s.st = st; return; }
     var S = { x0: x0, x1: x1, lang: lang, st: st, panVel: 0, zoomVel: 0, cursorX: null,
               raf: null, needPaint: false, dragging: false, lastClientX: 0, hapticAcc: 0 };
-    container._evoPZ = S;
+    target._evoPZ = S;
 
     function curWorld() { return container.querySelector('.evo-world'); }
     function curSvg() { return container.querySelector('svg'); }
@@ -853,7 +855,7 @@
     function kick() { if (!S.raf) S.raf = requestAnimationFrame(loop); }
 
     // wheel: ctrl/⌘ → zoom, otherwise two-finger pan (independent of zoom)
-    container.addEventListener('wheel', function (e) {
+    target.addEventListener('wheel', function (e) {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         zoomBy(e.deltaY, localX(e.clientX));
@@ -867,13 +869,13 @@
     }, { passive: false });
 
     // pointer drag pan (mouse + touch) with release momentum
-    container.addEventListener('pointerdown', function (e) {
+    target.addEventListener('pointerdown', function (e) {
       if (e.target.closest && e.target.closest('.evo-node')) return;
       S.dragging = true; S.lastClientX = e.clientX; S.panVel = 0;
-      try { container.setPointerCapture(e.pointerId); } catch (er) {}
-      container.style.cursor = 'grabbing';
+      try { target.setPointerCapture(e.pointerId); } catch (er) {}
+      target.style.cursor = 'grabbing';
     });
-    container.addEventListener('pointermove', function (e) {
+    target.addEventListener('pointermove', function (e) {
       S.cursorX = localX(e.clientX);
       if (!S.dragging) return;
       var dx = (e.clientX - S.lastClientX) * svgScale();
@@ -881,10 +883,10 @@
       panBy(dx);
       S.panVel = dx;                                  // last delta seeds the flick momentum
     });
-    function endDrag() { if (!S.dragging) return; S.dragging = false; container.style.cursor = ''; kick(); }
-    container.addEventListener('pointerup', endDrag);
-    container.addEventListener('pointercancel', endDrag);
-    container.addEventListener('pointerleave', function () { S.hapticAcc = 0; });
+    function endDrag() { if (!S.dragging) return; S.dragging = false; target.style.cursor = ''; kick(); }
+    target.addEventListener('pointerup', endDrag);
+    target.addEventListener('pointercancel', endDrag);
+    target.addEventListener('pointerleave', function () { S.hapticAcc = 0; });
   }
 
   function titleNode(e, lang) {
