@@ -224,7 +224,7 @@
       if (domEv) domEv.stopPropagation();
       if (window._evolNavLock) return;
       window._evolNavLock = true;
-      try { showDetailCard(container, ev, lang); }
+      try { openMiniNeuromap(container, ev, lang); }   // rework: mini-neuromap, same as tunnel
       finally { setTimeout(function () { window._evolNavLock = false; }, 120); }
     }
     g.addEventListener('click', open);
