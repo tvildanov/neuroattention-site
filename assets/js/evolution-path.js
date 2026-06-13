@@ -600,9 +600,81 @@
     window.__evoEventsX = events.map(function (e) { return (tms(e.t) - view.originT) / DAY_MS * view.pxPerDay; });
     st._tunnel = { cv: cv, ctx: cv.getContext('2d'), dpr: dpr, W: W, x0: x0, x1: x1,
       fieldTop: fieldTop, fieldBot: fieldBot, cy: cy, half: half, isMobile: isMobile,
-      lang: lang, data: data, events: events, container: container };
+      lang: lang, data: data, events: events, container: container,
+      components: buildTunnelComponents(events, half) };
     drawTunnel(st);
     wireCanvasPanZoom(container, st, lang);
+  }
+
+  // ── v6: group events into connected components (real journey_links) and lay
+  // each out as ONE lightning branch with its nodes strung ALONG it in chain
+  // order. Real sub-branches appear only at genuine graph forks; isolated events
+  // become a single branch with one node at the tip. Layout is in LOCAL px
+  // (offsets from the spine anchor) so it's computed once and just translated by
+  // the live pan/zoom each frame. ──
+  function nodeR(e) { return e.layer === 'insight' ? 4.2 : (e.layer === 'practice' ? 3.8 : (2.6 + Math.min(2.4, Math.log(1 + (e.weight || 1))))); }
+  function strHash(s) { s = String(s); var h = 2166136261; for (var i = 0; i < s.length; i++) { h = (h ^ s.charCodeAt(i)) >>> 0; h = (h * 16777619) >>> 0; } return h; }
+  function jit2(s) { var v = Math.sin(strHash(s) * 0.000013 + 1.13) * 43758.5453; return v - Math.floor(v); }
+  function distToSeg(px, py, x1, y1, x2, y2) {
+    var dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    var u = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
+    return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy));
+  }
+  function buildTunnelComponents(events, half) {
+    var byId = {}; events.forEach(function (e) { if (e.id != null) byId[String(e.id)] = e; });
+    var adj = {};
+    function addEdge(a, b) { if (a == null || b == null) return; a = String(a); b = String(b); if (a === b || !byId[a] || !byId[b]) return; (adj[a] = adj[a] || {})[b] = 1; (adj[b] = adj[b] || {})[a] = 1; }
+    events.forEach(function (e) { (e.links || []).forEach(function (lk) { addEdge(e.id, lk && lk.to != null ? lk.to : lk); }); });
+    var seen = {}, out = [];
+    events.forEach(function (e) {
+      var id = String(e.id); if (seen[id]) return;
+      var stack = [id], ids = []; seen[id] = 1;
+      while (stack.length) { var u = stack.pop(); ids.push(u); Object.keys(adj[u] || {}).forEach(function (v) { if (!seen[v]) { seen[v] = 1; stack.push(v); } }); }
+      var laid = layoutComponent(ids, adj, byId, half);
+      if (laid) out.push(laid);
+    });
+    return out;
+  }
+  function layoutComponent(ids, adj, byId, half) {
+    var evs = ids.map(function (id) { return byId[id]; }).filter(Boolean).sort(function (a, b) { return a.t - b.t; });
+    if (!evs.length) return null;
+    var rootId = String(evs[0].id), anchorT = evs[0].t;
+    // spanning tree from the earliest event; neighbours visited in time order so
+    // the main trunk follows the temporal flow of the chain.
+    var visited = {}, parent = {}, order = [], q = [rootId]; visited[rootId] = 1;
+    while (q.length) {
+      var u = q.shift(); order.push(u);
+      var nb = Object.keys(adj[u] || {}).filter(function (v) { return !visited[v]; }).sort(function (a, b) { return (byId[a].t || 0) - (byId[b].t || 0); });
+      nb.forEach(function (v) { visited[v] = 1; parent[v] = u; q.push(v); });
+    }
+    var children = {}; order.forEach(function (id) { var p = parent[id]; if (p != null) { (children[p] = children[p] || []).push(id); } });
+    var meanDy = evs.reduce(function (s, e) { return s + (BRANCH_DY[e.layer] != null ? BRANCH_DY[e.layer] : 0); }, 0) / evs.length;
+    var sign = meanDy <= 0 ? -1 : 1;                 // upper layers drift up, lower drift down
+    var SEG = order.length > 8 ? 32 : 42;
+    var pos = {}, edges = [], maxX = 0;
+    var rootX = 54 + jit2(rootId) * 26, rootY = sign * (16 + Math.abs(meanDy) * half * 0.04 + jit2(rootId + 'r') * 10);
+    pos[rootId] = { x: rootX, y: rootY }; maxX = rootX;
+    edges.push({ a: null, ax: 0, ay: 0, b: rootId });           // stem from the spine to the root
+    (function place(id, dirAng) {
+      var px = pos[id].x, py = pos[id].y, kids = children[id] || [];
+      kids.forEach(function (kid, kidi) {
+        var spread = kids.length > 1 ? (kidi - (kids.length - 1) / 2) : 0;
+        var ang = dirAng + spread * (24 * Math.PI / 180) + (jit2(kid) - 0.5) * 0.14;
+        ang = Math.max(-1.15, Math.min(1.15, ang));            // keep it forward-ish
+        var nx = px + Math.cos(ang) * SEG, ny = py + Math.sin(ang) * SEG;
+        if (nx <= px + 6) nx = px + SEG * 0.5;                  // guarantee forward (+X)
+        pos[kid] = { x: nx, y: ny }; if (nx > maxX) maxX = nx;
+        edges.push({ a: id, b: kid });
+        place(kid, ang * 0.55);                                 // damp toward horizontal each step
+      });
+    })(rootId, sign * 0.32);
+    var nodes = order.map(function (id) { return { id: id, e: byId[id], lx: pos[id].x, ly: pos[id].y, r: nodeR(byId[id]) }; });
+    var segs = edges.map(function (ed) {
+      var a = ed.a == null ? { x: ed.ax, y: ed.ay } : pos[ed.a], b = pos[ed.b], le = byId[ed.b];
+      return { pts: lightningPts(a.x, a.y, b.x, b.y, 3, (strHash(ed.b) % 9999) + 1), layer: le && le.layer, val: le && le.valence };
+    });
+    return { anchorT: anchorT, rootId: rootId, rootEvent: byId[rootId], nodes: nodes, segs: segs, maxX: maxX };
   }
 
   function drawTunnel(st) {
@@ -664,69 +736,40 @@
       }
     }
 
-    // ── branches + nodes (visible only) ──
-    st._nodes = [];
-    var labelEvery = view.pxPerDay > 60 ? 1 : (view.pxPerDay > 26 ? 3 : 7);
-    T.events.forEach(function (e, i) {
-      var X = sx(e.t);
-      if (X < x0 - 90 || X > x1 + 90) return;            // virtualize off-screen
-      var sy = syAt(X);
-      var fill = cvLayerFill(e.layer, e.valence);
-      var r = e.layer === 'insight' ? 4.2 : (e.layer === 'practice' ? 3.8 : (2.6 + Math.min(2.4, Math.log(1 + (e.weight || 1)))));
-      // ── branches v3: LIGHTNING — always forward in time (right / +X). A jagged,
-      // strongly-horizontal main bolt (dx ≫ |dy|) from the spine to the node tip,
-      // plus a sharp sub-fork at 15–30° continuing forward, thickness fading with
-      // depth. white nerve-fibre base + thin coloured stripe. Never points back. ──
-      var dyTip = (BRANCH_DY[e.layer] != null ? BRANCH_DY[e.layer] : 0) * half;
-      var driftX = 60 + Math.abs(dyTip) * 0.7 + jit(i + 3) * 70;   // always forward (+X)
-      var cxp = X + driftX, ty = cy + dyTip + (jit(i) - 0.5) * half * 0.14;
-      // main bolt: a few forward segments that zig-zag slightly in Y (monotonic in X)
-      var segN = 3 + Math.floor(jit(i + 7) * 3);                   // 3..5 segments
-      var mainPts = lightningPts(X, sy, cxp, ty, segN, i + 1);
-      strokePolyline(ctx, mainPts, 'rgba(255,255,255,0.6)', 2.4, 0.5);
-      strokePolyline(ctx, mainPts, fill, 1, 0.85);
-      // 1–2 forward sub-forks off interior vertices, sharp 15–30° angle, thinner
-      var forkN = jit(i + 11) < 0.5 ? 1 : 2;
-      for (var fk = 0; fk < forkN; fk++) {
-        var vi = 1 + Math.floor(jit(i + 13 + fk) * Math.max(1, mainPts.length - 2));
-        var base = mainPts[vi], prev = mainPts[vi - 1];
-        var bdx = base.x - prev.x, bdy = base.y - prev.y, blen = Math.hypot(bdx, bdy) || 1;
-        var ux = bdx / blen, uy = bdy / blen;                     // forward dir at vertex
-        var ang = (15 + jit(i + 17 + fk) * 15) * Math.PI / 180;   // 15–30°
-        var sgn = (jit(i + 19 + fk) < 0.5) ? -1 : 1;              // fork up or down
-        var ca = Math.cos(ang * sgn), sa = Math.sin(ang * sgn);
-        var fx = ux * ca - uy * sa, fy = ux * sa + uy * ca;       // rotate forward vector
-        if (fx < 0) { fx = -fx; }                                  // guarantee forward (+X)
-        var flen = (18 + jit(i + 23 + fk) * 34) * (1 - fk * 0.3);  // varied, shorter w/ depth
-        var fpts = lightningPts(base.x, base.y, base.x + fx * flen, base.y + fy * flen, 2, i + 31 + fk);
-        var w = 1.6 - fk * 0.5;                                    // thinner with depth
-        strokePolyline(ctx, fpts, 'rgba(255,255,255,0.45)', w, 0.4);
-        strokePolyline(ctx, fpts, fill, Math.max(0.5, w - 1.0), 0.7);
+    // ── branches v6: ONE lightning branch per connected component (a real
+    // journey_links chain). Nodes sit ALONG the branch in chain order; real
+    // sub-branches appear only at genuine graph forks. No decorative sub-forks,
+    // no separate chain curves — the branch IS the chain. ──
+    st._nodes = []; st._visComps = [];
+    var comps = T.components || [];
+    for (var ci = 0; ci < comps.length; ci++) {
+      var comp = comps[ci];
+      var ax = sx(comp.anchorT);
+      if (ax + comp.maxX < x0 - 30 || ax > x1 + 30) continue;     // virtualize whole branch
+      var ay = syAt(ax);
+      st._visComps.push({ comp: comp, ax: ax, ay: ay });
+      // edges — white nerve-fibre base + thin coloured stripe over it
+      for (var si = 0; si < comp.segs.length; si++) {
+        var sg = comp.segs[si], fillS = cvLayerFill(sg.layer, sg.val), spts = sg.pts, scr = [];
+        for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x, y: ay + spts[pi].y });
+        strokePolyline(ctx, scr, 'rgba(255,255,255,0.6)', 2.2, 0.5);
+        strokePolyline(ctx, scr, fillS, 1, 0.85);
       }
-      // node — white core + coloured outline (+ glow when idle)
-      var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
-      drawNodeCv(ctx, e.layer, cxp, ty, r, fill, glow);
-      st._nodes.push({ x: cxp, y: ty, r: r, e: e });
-      // label
-      var showLabel = T.isMobile ? (view.pxPerDay > 90 && i % labelEvery === 0)
-                                  : ((e.layer === 'insight') || (i % labelEvery === 0) || (view.pxPerDay > 60));
-      if (showLabel && !gesturing) {
-        ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-        ctx.lineWidth = 2.6; ctx.strokeStyle = 'rgba(6,9,14,0.85)'; ctx.fillStyle = C.textDim;
-        var txt = truncate(prettyTitle(e, lang), 18);
-        ctx.strokeText(txt, cxp, ty - r - 5); ctx.fillText(txt, cxp, ty - r - 5);
+      // nodes strung along the branch
+      for (var ni = 0; ni < comp.nodes.length; ni++) {
+        var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx, ny = ay + nd.ly;
+        var fillN = cvLayerFill(e.layer, e.valence);
+        var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
+        drawNodeCv(ctx, e.layer, nx, ny, nd.r, fillN, glow);
+        st._nodes.push({ x: nx, y: ny, r: nd.r, e: e });
+        if (!gesturing && (e.layer === 'insight' || ni === 0 || view.pxPerDay > 55)) {
+          ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+          ctx.lineWidth = 2.6; ctx.strokeStyle = 'rgba(6,9,14,0.85)'; ctx.fillStyle = C.textDim;
+          var txt = truncate(prettyTitle(e, lang), 16);
+          ctx.strokeText(txt, nx, ny - nd.r - 5); ctx.fillText(txt, nx, ny - nd.r - 5);
+        }
       }
-    });
-
-    // chains (visible) — quadratic between node tips
-    var posOf = {}; st._nodes.forEach(function (n) { posOf[String(n.e.id)] = n; });
-    (T.data.links || []).forEach(function (lk) {
-      var na = posOf[String(lk.a)], nb = posOf[String(lk.b)]; if (!na || !nb) return;
-      var mx = (na.x + nb.x) / 2, my = (na.y + nb.y) / 2 - Math.min(50, Math.abs(nb.x - na.x) * 0.25 + 14);
-      ctx.beginPath(); ctx.moveTo(na.x, na.y); ctx.quadraticCurveTo(mx, my, nb.x, nb.y);
-      ctx.strokeStyle = lk.kind === 'correlation' ? C.cyan : 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 1; ctx.globalAlpha = lk.kind === 'correlation' ? 0.4 : 0.22; ctx.stroke(); ctx.globalAlpha = 1;
-    });
+    }
 
     // module headers (top), now marker, time axis (bottom)
     drawModuleHeadersCv(ctx, st, sx, x0, x1, T.fieldTop, C, lang, gesturing);
@@ -941,16 +984,23 @@
     target.addEventListener('touchcancel', function () { TG.mode = null; });
 
     function hitTest(lx, ly) {
+      // node hit — fixed 24px target per node (independent of the branch line)
       var nodes = S.st._nodes || [], best = null, bd = 1e9;
-      for (var i = 0; i < nodes.length; i++) { var n = nodes[i], d = Math.hypot(n.x - lx, n.y - ly); if (d < n.r + 14 && d < bd) { bd = d; best = n; } }
+      for (var i = 0; i < nodes.length; i++) { var n = nodes[i], d = Math.hypot(n.x - lx, n.y - ly), hit = Math.max(24, n.r + 12); if (d < hit && d < bd) { bd = d; best = n; } }
       if (best) { openMiniNeuromap(S.st._tunnel.container, best.e, S.lang, S.st); return; }
-      // chain hit-test: sample each visible link's quadratic and check proximity
-      var posOf = {}; nodes.forEach(function (n) { posOf[String(n.e.id)] = n; });
-      var links = (S.st._tunnel.data.links || []);
-      for (var j = 0; j < links.length; j++) {
-        var lk = links[j], na = posOf[String(lk.a)], nb = posOf[String(lk.b)]; if (!na || !nb) continue;
-        var mx = (na.x + nb.x) / 2, my = (na.y + nb.y) / 2 - Math.min(50, Math.abs(nb.x - na.x) * 0.25 + 14);
-        for (var u = 0; u <= 1.0001; u += 0.1) { var qx = (1 - u) * (1 - u) * na.x + 2 * (1 - u) * u * mx + u * u * nb.x, qy = (1 - u) * (1 - u) * na.y + 2 * (1 - u) * u * my + u * u * nb.y; if (Math.hypot(qx - lx, qy - ly) < 12) { var ev = EVENT_INDEX[String(lk.a)] || EVENT_INDEX[String(lk.b)]; if (ev) { openMiniNeuromap(S.st._tunnel.container, ev, S.lang, S.st); } return; } }
+      // branch hit — proximity to any edge of a visible component → open the chain
+      var vc = S.st._visComps || [];
+      for (var c = 0; c < vc.length; c++) {
+        var comp = vc[c].comp, ax = vc[c].ax, ay = vc[c].ay;
+        for (var s = 0; s < comp.segs.length; s++) {
+          var pts = comp.segs[s].pts;
+          for (var p = 1; p < pts.length; p++) {
+            if (distToSeg(lx, ly, ax + pts[p - 1].x, ay + pts[p - 1].y, ax + pts[p].x, ay + pts[p].y) < 9) {
+              if (comp.rootEvent) openMiniNeuromap(S.st._tunnel.container, comp.rootEvent, S.lang, S.st);
+              return;
+            }
+          }
+        }
       }
     }
   }
