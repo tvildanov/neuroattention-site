@@ -420,14 +420,27 @@
   }
   function drawModuleHeaders(g, st, dom, lang, x0, x1, yTop) {
     var secs = moduleSections(st, dom, lang);
+    var hasMods = st.modules && st.modules.length;
+    // #8: 21 modules across a fixed width pile their labels on top of each other.
+    // Show every Nth label so each gets ≥MIN_SLOT px, and truncate to the label's
+    // own slot width. Divider lines stay for every section (they're faint).
+    var slotW = secs.length ? (x1 - x0) / secs.length : (x1 - x0);
+    var MIN_SLOT = 128;                                   // px each shown label needs
+    var step = Math.max(1, Math.ceil(MIN_SLOT / Math.max(1, slotW)));
+    var charPx = 6.6;                                     // ~px per char at this font
+    var prefixChars = hasMods ? (String(secs.length).length + 3) : 0; // "21 · "
+    // chars available within the inter-label spacing, minus the index prefix
+    var maxChars = Math.max(4, Math.floor((slotW * step - 16) / charPx) - prefixChars);
     secs.forEach(function (s, i) {
       var sx0 = x0 + (x1 - x0) * s.frac0, sx1 = x0 + (x1 - x0) * s.frac1, mid = (sx0 + sx1) / 2;
       if (i > 0) g.appendChild(el('line', { x1: sx0, y1: yTop, x2: sx0, y2: H - 30,
         stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
+      // Always show first + last; otherwise thin to every `step`-th label.
+      var show = (i % step === 0) || (i === secs.length - 1);
+      if (!show) return;
       var t = el('text', { x: mid.toFixed(1), y: (yTop - 14).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mod-num' });
       // D п.20: real names when present; «Модуль N» fallback for empty/placeholder.
-      var hasMods = st.modules && st.modules.length;
-      var nm = truncate(s.label, 16);
+      var nm = truncate(s.label, maxChars);
       t.textContent = hasMods ? (nm ? ((i + 1) + ' · ' + nm) : (L(STR.module, lang) + ' ' + (i + 1))) : nm;
       g.appendChild(t);
     });
@@ -832,9 +845,14 @@
     var expandBtn = (!st._isOverlay && typeof window.mountFullscreenOverlay === 'function')
       ? '<button class="myc-evo-expand" title="Раскрыть на весь экран" style="margin-left:0.5rem;background:rgba(20,24,30,0.7);border:1px solid rgba(255,255,255,0.12);color:var(--myc-text,#cdd);border-radius:8px;height:30px;padding:0 0.7rem;font-size:12px;cursor:pointer;">⤢ Раскрыть</button>'
       : '';
-    return '<div class="myc-evo-head">' +
-      '<div><h3 class="myc-evo-title">' + L(STR.title, lang) + '</h3>' +
-      '<p class="myc-evo-sub">' + L(STR.sub, lang) + '</p></div>' +
+    // #8: in the fullscreen overlay the title is already shown by the overlay
+    // chrome — don't render a second <h3> here (it stacked two "Путь развития").
+    var titleBlock = st._isOverlay
+      ? ''
+      : '<div><h3 class="myc-evo-title">' + L(STR.title, lang) + '</h3>' +
+        '<p class="myc-evo-sub">' + L(STR.sub, lang) + '</p></div>';
+    return '<div class="myc-evo-head"' + (st._isOverlay ? ' style="justify-content:flex-end;"' : '') + '>' +
+      titleBlock +
       '<div class="myc-controls">' + seg(MODES, st.mode, 'mode') + seg(PERIODS, st.period, 'period') + expandBtn + '</div></div>';
   }
 
@@ -854,6 +872,17 @@
         '<div class="myc-evo-canvas" style="position:relative;min-height:' + H + 'px;"></div>';
       wireChrome(container, ost, lang, function () { mountEvolutionPath(container, { lang: lang }); });
       requestAnimationFrame(function () { if (ost.data) paint(container, ost, lang); });
+      // #9: repaint once the overlay reaches its real size (and on later resizes)
+      // so the field fills the fullscreen height instead of the first-frame 380.
+      if (typeof ResizeObserver === 'function') {
+        var ro = new ResizeObserver(function () {
+          if (!ost.data) return;
+          var w = measureW(container.querySelector('.myc-evo-canvas'), container);
+          var h = computeH(container, ost);
+          if (Math.abs(w - (ost._w || 0)) > 40 || Math.abs(h - (H || 0)) > 24) paint(container, ost, lang);
+        });
+        try { ro.observe(body); } catch (e) {}
+      }
     }, { title: L(STR.title, lang), accent: '#56F2A6' });
   }
 
@@ -882,6 +911,23 @@
     });
   }
 
+  // #9: the logical SVG height. 380 in the embedded card; in the fullscreen
+  // overlay it grows to fill the available vertical space so the field, panels and
+  // module headers actually use the screen instead of staying letterboxed. All
+  // render fns read this module-level H, so recomputing it here rescales them all.
+  var H_BASE = 380;
+  function computeH(container, st) {
+    if (!st._isOverlay) return H_BASE;
+    var bodyEl = (container.closest && container.closest('.na-fs-body')) || container.parentElement;
+    var head = container.querySelector('.myc-evo-head');
+    var avail = 0;
+    try {
+      avail = (bodyEl ? bodyEl.clientHeight : 0) - (head ? head.offsetHeight : 0) - 36;
+    } catch (e) {}
+    if (!avail || avail < H_BASE) return Math.max(H_BASE, Math.min(960, (typeof window !== 'undefined' ? window.innerHeight - 150 : H_BASE)));
+    return Math.max(H_BASE, Math.min(960, avail));
+  }
+
   function paint(container, st, lang) {
     var canvas = container.querySelector('.myc-evo-canvas');
     canvas.innerHTML = '';
@@ -892,6 +938,9 @@
       canvas.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">✦</div><div class="myc-empty-text">' + L(STR.empty, lang) + '</div></div>';
       return;
     }
+    // recompute the logical height for this paint (fullscreen → taller field)
+    H = computeH(container, st);
+    canvas.style.minHeight = H + 'px';
     var W = measureW(canvas, container);
     st._w = W;
     var svg = newSvg(W);
