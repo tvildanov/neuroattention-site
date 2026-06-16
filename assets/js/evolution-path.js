@@ -621,18 +621,61 @@
     var u = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2));
     return Math.hypot(px - (x1 + u * dx), py - (y1 + u * dy));
   }
+  // v7: a branch is ONE real chain, not the whole history. Two safety bounds keep
+  // a single component from running away into a "spine":
+  var MAX_CHAIN_NODES = 10;                 // hard cap on nodes per branch
+  var MAX_CHAIN_GAP_MS = 60 * 60 * 1000;    // cut the chain on a >1h gap between steps
+  // Links carry { to, kind, weight }. 'correlation' (a sensation bound to many
+  // emotions/thoughts — see server linkJourney 'correlation') is a WEAK hub: it
+  // used to transitively fuse separate sequence-chains into one giant branch.
+  // Only 'sequence' / legacy links (no kind) define the structural chain now.
+  function isStrongLink(lk) {
+    return !(lk && typeof lk === 'object' && lk.kind === 'correlation');
+  }
+  // Split a connected component's ids into time-ordered sub-chains, cutting on a
+  // big time gap or when the node cap is reached. Returns arrays of id strings.
+  function splitComponent(ids, byId) {
+    var evs = ids.map(function (id) { return byId[id]; }).filter(Boolean)
+                 .sort(function (a, b) { return a.t - b.t; });
+    var groups = [], cur = [];
+    for (var i = 0; i < evs.length; i++) {
+      if (cur.length) {
+        var gap = evs[i].t - evs[i - 1].t;
+        if (gap > MAX_CHAIN_GAP_MS || cur.length >= MAX_CHAIN_NODES) { groups.push(cur); cur = []; }
+      }
+      cur.push(evs[i]);
+    }
+    if (cur.length) groups.push(cur);
+    return groups.map(function (g) { return g.map(function (e) { return String(e.id); }); });
+  }
   function buildTunnelComponents(events, half) {
     var byId = {}; events.forEach(function (e) { if (e.id != null) byId[String(e.id)] = e; });
     var adj = {};
     function addEdge(a, b) { if (a == null || b == null) return; a = String(a); b = String(b); if (a === b || !byId[a] || !byId[b]) return; (adj[a] = adj[a] || {})[b] = 1; (adj[b] = adj[b] || {})[a] = 1; }
-    events.forEach(function (e) { (e.links || []).forEach(function (lk) { addEdge(e.id, lk && lk.to != null ? lk.to : lk); }); });
+    // strong links only — correlation hubs no longer merge chains
+    events.forEach(function (e) { (e.links || []).forEach(function (lk) { if (!isStrongLink(lk)) return; addEdge(e.id, lk && lk.to != null ? lk.to : lk); }); });
     var seen = {}, out = [];
     events.forEach(function (e) {
       var id = String(e.id); if (seen[id]) return;
       var stack = [id], ids = []; seen[id] = 1;
       while (stack.length) { var u = stack.pop(); ids.push(u); Object.keys(adj[u] || {}).forEach(function (v) { if (!seen[v]) { seen[v] = 1; stack.push(v); } }); }
-      var laid = layoutComponent(ids, adj, byId, half);
-      if (laid) out.push(laid);
+      // Defensive split: bound branch length + cut on big time gaps. For genuine
+      // short chains (the common case) this returns the component unchanged.
+      var subs = splitComponent(ids, byId);
+      subs.forEach(function (sub) {
+        // When we actually split, rebuild a linear adjacency over the sub-chain so
+        // layout stays connected (the original cross-edge may span the cut point).
+        var subAdj = adj;
+        if (subs.length > 1) {
+          subAdj = {};
+          for (var k = 0; k < sub.length - 1; k++) {
+            var x = sub[k], y = sub[k + 1];
+            (subAdj[x] = subAdj[x] || {})[y] = 1; (subAdj[y] = subAdj[y] || {})[x] = 1;
+          }
+        }
+        var laid = layoutComponent(sub, subAdj, byId, half);
+        if (laid) out.push(laid);
+      });
     });
     return out;
   }
