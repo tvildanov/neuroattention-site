@@ -33,6 +33,17 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* Clip horizontal overflow at the document root too: body{overflow-x:hidden}
+     alone doesn't stop a stray wide/absolute element from expanding the layout
+     viewport on mobile (page zooms out / scrolls sideways). */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Media never forces the page wider than its column. (canvas/svg are JS-sized
+   in the dashboard, so they're left alone.) */
+img, video {
+  max-width: 100%;
 }
 
 body {
@@ -493,6 +504,23 @@ section {
   background: rgba(5, 7, 10, 0.8);
   backdrop-filter: blur(32px) saturate(1.5);
   border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Backdrop dimming behind the open mobile menu — tap it (or Esc) to close. */
+.mobile-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49; /* just under .navbar (50) so nav + menu stay on top */
+  background: rgba(3, 6, 10, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.mobile-menu-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .mobile-menu.open {
