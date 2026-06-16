@@ -1080,6 +1080,10 @@
           <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;" data-i18n="a.tools.sensation_context">Связать с контекстом <span style="text-transform:none;letter-spacing:0;opacity:0.7;">(эмоция, событие, мысль, практика — по желанию)</span></div>
           <div id="sm-context-list" style="display:flex;flex-wrap:wrap;gap:0.4rem;"></div>
           <div id="sm-context-empty" style="font-size:12px;color:var(--text-muted);display:none;" data-i18n="a.tools.sensation_context_empty">Нет недавних записей в нейромапе за 7 дней. Можно сохранить без контекста.</div>
+          <div style="display:flex;gap:0.4rem;align-items:center;margin-top:0.6rem;">
+            <input id="sm-ctx-custom" type="text" class="glass-input" maxlength="120" placeholder="+ Добавить свой контекст…" data-i18n-placeholder="a.tools.sensation_context_custom_ph" style="flex:1;min-width:0;font-size:13px;padding:0.45rem 0.7rem;" onkeydown="if(event.key==='Enter'){event.preventDefault();smAddCustomCtx();}" />
+            <button type="button" class="sm-add-btn" onclick="smAddCustomCtx()" style="white-space:nowrap;" data-i18n="a.tools.sensation_context_custom_btn">Добавить</button>
+          </div>
         </div>
 
         <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
@@ -9190,7 +9194,7 @@ function loadSmContext(){
   var list = document.getElementById('sm-context-list');
   var empty = document.getElementById('sm-context-empty');
   if (!list) return;
-  fetch(AUTH_API + '/api/neuromap/context-candidates?days=7&limit=40', { headers: { 'Authorization': 'Bearer ' + token } })
+  fetch(AUTH_API + '/api/neuromap/context-candidates?days=30&limit=15', { headers: { 'Authorization': 'Bearer ' + token } })
     .then(function(r){ return r.json(); })
     .then(function(d){
       SM_CONTEXT = (d && d.items) || [];
@@ -9199,8 +9203,9 @@ function loadSmContext(){
       var icon = { emotion:'❤', event:'◆', thought:'✦', practice:'☼' };
       list.innerHTML = SM_CONTEXT.map(function(it){
         var lbl = (icon[it.kind]||'•') + ' ' + (it.label||it.kind);
+        var freq = (it.freq && it.freq > 1) ? ' <span style="opacity:0.55;font-size:11px;">×'+it.freq+'</span>' : '';
         return '<button type="button" class="sm-chip sm-ctx-chip" data-id="'+it.id+'" onclick="toggleSmCtx(this)" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:#cdcdd6;padding:0.35rem 0.7rem;font-size:12px;cursor:pointer;">'+
-          lbl.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+'</button>';
+          lbl.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+freq+'</button>';
       }).join('');
     })
     .catch(function(){ if (empty) empty.style.display = 'block'; });
@@ -9211,8 +9216,28 @@ function toggleSmCtx(btn){
   btn.style.borderColor = on ? 'var(--accent,#2ea98a)' : 'rgba(255,255,255,0.12)';
   btn.style.color = on ? '#eafff7' : '#cdcdd6';
 }
+// Add a free-text context chip (PR2 §5). It's marked data-custom and starts
+// active; submitSensationMap sends these as custom_context. The backend persists
+// each as a thought event so it returns as a normal candidate next time.
+function smAddCustomCtx(){
+  var inp = document.getElementById('sm-ctx-custom');
+  var list = document.getElementById('sm-context-list');
+  if (!inp || !list) return;
+  var text = (inp.value || '').trim().slice(0, 120);
+  if (!text) return;
+  var esc = text.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
+  var btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'sm-chip sm-ctx-chip active'; btn.dataset.custom = '1'; btn.dataset.label = text;
+  btn.onclick = function(){ toggleSmCtx(btn); };
+  btn.style.cssText = 'background:rgba(46,169,138,0.18);border:1px solid var(--accent,#2ea98a);border-radius:14px;color:#eafff7;padding:0.35rem 0.7rem;font-size:12px;cursor:pointer;';
+  btn.innerHTML = '✎ ' + esc;
+  var empty = document.getElementById('sm-context-empty'); if (empty) empty.style.display = 'none';
+  list.appendChild(btn);
+  inp.value = '';
+}
 window.loadSmContext = loadSmContext;
 window.toggleSmCtx = toggleSmCtx;
+window.smAddCustomCtx = smAddCustomCtx;
 function loadSmRecent(){
   var token = localStorage.getItem('na_token');
   if (!token) return;
@@ -9250,7 +9275,9 @@ function submitSensationMap(){
   var intensity = intEl ? parseInt(intEl.value, 10) : null;
   var whenEl = document.getElementById('sm-when');
   var occurredAt = (whenEl && whenEl.value) ? new Date(whenEl.value).toISOString() : null;
-  var linkTo = Array.from(document.querySelectorAll('#sm-context-list .sm-ctx-chip.active')).map(function(c){ return c.dataset.id; });
+  var activeCtx = Array.from(document.querySelectorAll('#sm-context-list .sm-ctx-chip.active'));
+  var linkTo = activeCtx.filter(function(c){ return !c.dataset.custom; }).map(function(c){ return c.dataset.id; });
+  var customContext = activeCtx.filter(function(c){ return c.dataset.custom; }).map(function(c){ return c.dataset.label; });
   // 4.3: send RU labels for any detailed body-part slugs (not in the seeded vocab)
   var locLabels = {};
   (window.SM_LOC_LABELS || {}) && locSel.forEach(function(slug){
@@ -9262,7 +9289,8 @@ function submitSensationMap(){
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ sensations: sensSel, body_locations: locSel, comment: comment,
-                           intensity: intensity, occurred_at: occurredAt, link_to: linkTo, loc_labels: locLabels })
+                           intensity: intensity, occurred_at: occurredAt, link_to: linkTo,
+                           custom_context: customContext, loc_labels: locLabels })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
