@@ -280,8 +280,12 @@
    ≥1280px: all 5 in one row · <1280px: 3-up (3+2) · 768–1024: 2-up · ≤480: stack */
 .program-cards-grid { display:grid;gap:1rem;grid-template-columns:repeat(5,1fr);align-items:stretch;padding-bottom:0.5rem; }
 .program-cards-grid > .dash-card { min-width:0;grid-column:auto;padding:1.4rem 1rem; }
-.program-cards-grid h4 { overflow-wrap:break-word;word-wrap:break-word;hyphens:auto;font-size:clamp(0.95rem,0.95vw,1.1rem)!important;line-height:1.3;padding-bottom:0.1rem; }
-@media(min-width:1280px){ .program-cards-grid h4 { font-size:0.92rem!important; } }
+/* Break titles/descriptions only at word boundaries (no mid-word breaks, no auto-hyphens).
+   break-word is kept purely as an anti-overflow safety net; font is sized so the longest
+   single word (RU «Самостоятельная») fits the column, so it never actually triggers. */
+.program-cards-grid h4 { overflow-wrap:break-word;word-wrap:break-word;word-break:normal;hyphens:none;font-size:clamp(0.85rem,0.95vw,1.05rem)!important;line-height:1.3;padding-bottom:0.1rem; }
+.program-cards-grid p { overflow-wrap:break-word;word-wrap:break-word;word-break:normal;hyphens:none; }
+@media(min-width:1280px){ .program-cards-grid h4 { font-size:0.8rem!important; } }
 @media(max-width:1279px){ .program-cards-grid { grid-template-columns:repeat(3,1fr); } }
 @media(max-width:1024px){ .program-cards-grid { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:480px){ .program-cards-grid { grid-template-columns:1fr; } }
@@ -1525,7 +1529,7 @@
       </div>
 
       <!-- Program cards -->
-      <div class="program-cards-grid" style="grid-column:span 12;">
+      <div class="program-cards-grid" data-na-no-typo="1" style="grid-column:span 12;">
         <!-- Self-Guided -->
         <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:0;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
@@ -13496,7 +13500,7 @@ window.pbMove = pbMove;
 <script src="assets/js/sensation-icons.js"></script>
 <script src="assets/js/registration-location.js"></script>
 <script src="assets/js/i18n.js"></script>
-<script src="assets/js/typography.js" defer></script>
+<script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
 <script src="assets/js/evolution-path.js"></script>
