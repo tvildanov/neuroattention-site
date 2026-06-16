@@ -596,6 +596,20 @@
           </button>
         </div>
       </div>
+      <div class="auth-field">
+        <label for="reg-country" data-i18n="a.auth.label_country">Страна</label>
+        <input id="reg-country" type="text" class="glass-input" list="reg-country-list" autocomplete="off" required placeholder="Начните вводить…" data-i18n-placeholder="a.auth.placeholder_country" />
+        <datalist id="reg-country-list"></datalist>
+      </div>
+      <div class="auth-field">
+        <label for="reg-city" data-i18n="a.auth.label_city">Город</label>
+        <div style="position:relative;">
+          <input id="reg-city" type="text" class="glass-input" autocomplete="off" required placeholder="Начните вводить город…" data-i18n-placeholder="a.auth.placeholder_city" />
+          <div id="reg-city-box" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:5;background:rgba(12,15,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;overflow:hidden;max-height:240px;overflow-y:auto;margin-top:2px;"></div>
+        </div>
+        <p id="reg-city-hint" style="font-size:11px;color:var(--text-dim);margin:0.3rem 0 0;" data-i18n="a.auth.city_hint">Выберите город из списка — координаты определятся автоматически</p>
+      </div>
+      <input type="hidden" id="reg-lat" /><input type="hidden" id="reg-lon" />
       <p id="reg-error" style="font-size:12px;color:rgba(255,120,120,0.9);margin:0 0 0.75rem;min-height:1rem;"></p>
       <button type="submit" class="btn btn-solid auth-submit" data-i18n="a.auth.btn_register">
         Создать аккаунт <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
@@ -1039,6 +1053,7 @@
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.55;" data-i18n="a.tools.sensation_subtitle">Отметь, что ты сейчас чувствуешь и где. Записи добавляются в твой граф ощущений и в дневник нейроресурса. Можно дополнять карту в любой момент — не только во время практики.</p>
 
         <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;" data-i18n="a.tools.sensation_pick">Выбери ощущения</div>
+        <button type="button" class="sm-add-btn" onclick="smOpenAddModal()" style="margin-bottom:0.6rem;" data-i18n="a.tools.sensation_add_new">+ Добавить новые ощущения</button>
         <div id="sm-sens-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;"></div>
 
         <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;" data-i18n="a.tools.sensation_where">Где ты чувствуешь это?</div>
@@ -2500,6 +2515,22 @@ function onLogin(user){
   try { calLoadFromAPI(); } catch(e){ console.warn('calLoadFromAPI error:', e); }
   try { progLoadFromAPI(); } catch(e){ console.warn('progLoadFromAPI error:', e); }
   try { loadTestProfile(); } catch(e){ console.warn('loadTestProfile error:', e); }
+
+  // PR4 (4.4): one-time residence prompt for users registered before location
+  // became mandatory. Reads the authoritative user from /api/auth/me.
+  try {
+    var tok = localStorage.getItem('na_token');
+    if (tok && typeof naMaybeLocationModal === 'function') {
+      fetch(AUTH_API + '/api/auth/me', { headers: { 'Authorization': 'Bearer ' + tok } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.user) naMaybeLocationModal(d.user, tok, AUTH_API, function(loc){
+            if (currentUser) { currentUser.location_lat = loc.lat; currentUser.location_lon = loc.lon; currentUser.location_city = loc.city; }
+            if (window.ExternalField && typeof window.ExternalField.reload === 'function') window.ExternalField.reload();
+          });
+        }).catch(function(){});
+    }
+  } catch(e){ console.warn('location modal error:', e); }
 }
 
 // Re-render greeting/role when i18n.js loads (it fires 'langchange' on init)
@@ -4001,16 +4032,41 @@ document.getElementById('auth-form').addEventListener('submit',async function(e)
   }
 });
 
+// PR4 (4.4): wire country datalist + city autocomplete on the registration form.
+// Deferred to DOMContentLoaded so the location module (loaded at the page bottom)
+// is available before we call it.
+function initRegLocation(){
+  if (typeof window.naPopulateCountryList !== 'function') return;
+  window.naPopulateCountryList(document.getElementById('reg-country-list'));
+  var cityIn = document.getElementById('reg-city');
+  window.naWireCityAutocomplete(cityIn, document.getElementById('reg-city-box'), function(r){
+    document.getElementById('reg-lat').value = r.lat;
+    document.getElementById('reg-lon').value = r.lon;
+    var c = document.getElementById('reg-country');
+    if (r.country && !c.value.trim()) c.value = r.country;
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRegLocation);
+else initRegLocation();
+
 document.getElementById('register-form').addEventListener('submit',async function(e){
   e.preventDefault();
   var name=document.getElementById('reg-name').value.trim();
   var email=document.getElementById('reg-email').value.trim();
   var pass=document.getElementById('reg-pass').value;
+  var country=document.getElementById('reg-country').value.trim();
+  var city=document.getElementById('reg-city').value.trim();
+  var lat=document.getElementById('reg-lat').value;
+  var lon=document.getElementById('reg-lon').value;
   var errEl=document.getElementById('reg-error');
   errEl.textContent='';
   if(!email||pass.length<6){errEl.textContent='Введите email и пароль (мин. 6 символов)';return;}
+  if(!country||!city||!lat||!lon){
+    errEl.textContent=(typeof t==='function'?t('a.auth.err_location','Укажите страну и выберите город из списка'):'Укажите страну и выберите город из списка');
+    return;
+  }
   try {
-    var resp=await fetch(AUTH_API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass,display_name:name||null})});
+    var resp=await fetch(AUTH_API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass,display_name:name||null,country:country,city:city,location_lat:parseFloat(lat),location_lon:parseFloat(lon)})});
     var data=await resp.json();
     if(!resp.ok){errEl.textContent=data.error||'Ошибка регистрации';return;}
     naSetAuth(data.token,data.user);
@@ -9031,26 +9087,75 @@ function loadSensationMap(){
     var lang = (typeof getLang === 'function') ? getLang() : 'ru';
     return item['label_'+lang] || item.label_ru || item.label_en || item.slug;
   }
-  function renderChips(boxId, list){
-    var box = document.getElementById(boxId);
-    if (!box) return;
+  function smEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var CHIP_STYLE = 'padding:0.4rem 0.7rem;border-radius:18px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02);color:#cdcdd6;font-size:13px;cursor:pointer;user-select:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;';
+  // detailed body-part slug → {ru,en,es}, used to label custom locations on save
+  window.SM_LOC_LABELS = window.SM_LOC_LABELS || {};
+  function wireChipToggle(c){
+    c.addEventListener('click', function(){
+      var on = c.classList.contains('active');
+      c.style.background = on ? 'rgba(0,224,255,0.12)' : 'rgba(255,255,255,0.02)';
+      c.style.borderColor = on ? 'rgba(0,224,255,0.6)' : 'rgba(255,255,255,0.12)';
+      c.style.color = on ? '#fff' : '#cdcdd6';
+    });
+  }
+  // 4.2: sensation chips with leading icon
+  function renderSensChips(list){
+    var box = document.getElementById('sm-sens-chips'); if (!box) return;
     box.innerHTML = list.map(function(v){
-      return '<div class="sm-chip" data-slug="' + v.slug + '" onclick="this.classList.toggle(\'active\')" style="padding:0.4rem 0.85rem;border-radius:18px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02);color:#cdcdd6;font-size:13px;cursor:pointer;user-select:none;transition:all 0.2s;">' + pickLabel(v) + '</div>';
+      var ico = v.icon && window.ICON_BY_KEY ? window.ICON_BY_KEY(v.icon) : (window.SENS_ICON ? window.SENS_ICON(v.slug) : '');
+      return '<div class="sm-chip" data-slug="'+smEsc(v.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'">'+ico+'<span>'+smEsc(pickLabel(v))+'</span></div>';
     }).join('');
-    // Apply active class on click via direct style for simplicity
-    box.querySelectorAll('.sm-chip').forEach(function(c){
-      c.addEventListener('click', function(){
-        if (c.classList.contains('active')) {
-          c.style.background='rgba(0,224,255,0.12)';
-          c.style.borderColor='rgba(0,224,255,0.6)';
-          c.style.color='#fff';
-        } else {
-          c.style.background='rgba(255,255,255,0.02)';
-          c.style.borderColor='rgba(255,255,255,0.12)';
-          c.style.color='#cdcdd6';
-        }
+    box.querySelectorAll('.sm-chip').forEach(wireChipToggle);
+  }
+  // 4.2 + 4.3: location chips with icons; regions with a hierarchy expand into
+  // detailed sub-parts on hover (desktop) / tap on the caret (mobile).
+  function renderLocChips(list){
+    var box = document.getElementById('sm-loc-chips'); if (!box) return;
+    var H = window.BODY_HIERARCHY || {};
+    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+    var flat = [], groups = [];
+    list.forEach(function(v){ (H[v.slug] ? groups : flat).push(v); });
+    var flatHtml = flat.map(function(v){
+      var ico = window.BODY_ICON ? window.BODY_ICON(v.slug) : '';
+      return '<div class="sm-chip" data-slug="'+smEsc(v.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'">'+ico+'<span>'+smEsc(pickLabel(v))+'</span></div>';
+    }).join('');
+    var groupHtml = groups.map(function(v){
+      var ico = window.BODY_ICON ? window.BODY_ICON(v.slug) : '';
+      var kids = (H[v.slug].children || []).map(function(k){
+        window.SM_LOC_LABELS[k.slug] = { ru:k.ru, en:k.en, es:k.es };
+        var kico = window.BODY_ICON ? window.BODY_ICON(k.slug) : '';
+        return '<div class="sm-chip sm-subchip" data-slug="'+smEsc(k.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'font-size:12px;">'+kico+'<span>'+smEsc(k[lang]||k.ru)+'</span></div>';
+      }).join('');
+      return '<div class="sm-locgroup" data-parent="'+smEsc(v.slug)+'">'+
+        '<div class="sm-chip sm-parent" data-slug="'+smEsc(v.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'">'+ico+'<span>'+smEsc(pickLabel(v))+'</span><span class="sm-caret">▾</span></div>'+
+        '<div class="sm-subgroup">'+kids+'</div>'+
+      '</div>';
+    }).join('');
+    box.innerHTML = (flatHtml ? '<div class="sm-flatrow">'+flatHtml+'</div>' : '') + groupHtml;
+    box.querySelectorAll('.sm-chip').forEach(wireChipToggle);
+    // expansion wiring
+    box.querySelectorAll('.sm-locgroup').forEach(function(g){
+      var sub = g.querySelector('.sm-subgroup');
+      g.addEventListener('mouseenter', function(){ sub.classList.add('open'); });
+      g.addEventListener('mouseleave', function(){ if (!g.classList.contains('pinned')) sub.classList.remove('open'); });
+      var caret = g.querySelector('.sm-caret');
+      if (caret) caret.addEventListener('click', function(e){
+        e.stopPropagation();
+        g.classList.toggle('pinned');
+        sub.classList.toggle('open', g.classList.contains('pinned'));
       });
     });
+    // mobile: tap outside collapses pinned groups
+    if (!box.__smOutside) {
+      box.__smOutside = true;
+      document.addEventListener('click', function(e){
+        if (box.contains(e.target)) return;
+        box.querySelectorAll('.sm-locgroup.pinned').forEach(function(g){
+          g.classList.remove('pinned'); var s=g.querySelector('.sm-subgroup'); if(s) s.classList.remove('open');
+        });
+      });
+    }
   }
   Promise.all([
     fetch(AUTH_API + '/api/vocab/sensation').then(function(r){return r.json();}),
@@ -9058,8 +9163,8 @@ function loadSensationMap(){
   ]).then(function(arr){
     SM_VOCAB.sens = arr[0].terms || [];
     SM_VOCAB.loc = arr[1].terms || [];
-    renderChips('sm-sens-chips', SM_VOCAB.sens);
-    renderChips('sm-loc-chips', SM_VOCAB.loc);
+    renderSensChips(SM_VOCAB.sens);
+    renderLocChips(SM_VOCAB.loc);
   }).catch(function(){});
   // Load recent entries
   loadSmRecent();
@@ -9146,13 +9251,18 @@ function submitSensationMap(){
   var whenEl = document.getElementById('sm-when');
   var occurredAt = (whenEl && whenEl.value) ? new Date(whenEl.value).toISOString() : null;
   var linkTo = Array.from(document.querySelectorAll('#sm-context-list .sm-ctx-chip.active')).map(function(c){ return c.dataset.id; });
+  // 4.3: send RU labels for any detailed body-part slugs (not in the seeded vocab)
+  var locLabels = {};
+  (window.SM_LOC_LABELS || {}) && locSel.forEach(function(slug){
+    if (window.SM_LOC_LABELS && window.SM_LOC_LABELS[slug]) locLabels[slug] = window.SM_LOC_LABELS[slug].ru;
+  });
   document.getElementById('sm-status').style.color = 'var(--text-muted)';
   document.getElementById('sm-status').textContent = '...';
   fetch(AUTH_API + '/api/neuromap/sensation', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ sensations: sensSel, body_locations: locSel, comment: comment,
-                           intensity: intensity, occurred_at: occurredAt, link_to: linkTo })
+                           intensity: intensity, occurred_at: occurredAt, link_to: linkTo, loc_labels: locLabels })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
@@ -9183,6 +9293,60 @@ function submitSensationMap(){
 }
 window.loadSensationMap = loadSensationMap;
 window.submitSensationMap = submitSensationMap;
+
+// 4.1: add a new sensation to the shared vocabulary (RU/EN/ES + icon).
+function smOpenAddModal(){
+  function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+  var keys = window.SENS_ICON_KEYS || ['dots'];
+  var pick = keys.map(function(k){ return '<button type="button" data-key="'+k+'" onclick="smPickIcon(this)">'+(window.ICON_BY_KEY?window.ICON_BY_KEY(k):'•')+'</button>'; }).join('');
+  var ov = document.createElement('div');
+  ov.className = 'rpg-modal-overlay';
+  ov.id = 'sm-add-overlay';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:440px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">'+
+      '<h3 style="font-family:\'Unbounded\',sans-serif;font-size:1rem;font-weight:500;color:var(--text-primary);margin:0;">'+_t('a.tools.sensation_add_title','Новое ощущение')+'</h3>'+
+      '<button onclick="this.closest(\'.rpg-modal-overlay\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;"><svg style="width:18px;height:18px;fill:none;stroke:var(--text-muted);stroke-width:2;" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>'+
+    '</div>'+
+    '<label style="font-size:11px;color:var(--text-dim);">RU</label>'+
+    '<input id="sm-add-ru" class="glass-input" style="width:100%;margin:0.2rem 0 0.7rem;" placeholder="'+_t('a.tools.sensation_add_ph','Название ощущения')+'">'+
+    '<label style="font-size:11px;color:var(--text-dim);">EN</label>'+
+    '<input id="sm-add-en" class="glass-input" style="width:100%;margin:0.2rem 0 0.7rem;" placeholder="Sensation name">'+
+    '<label style="font-size:11px;color:var(--text-dim);">ES</label>'+
+    '<input id="sm-add-es" class="glass-input" style="width:100%;margin:0.2rem 0 0.9rem;" placeholder="Nombre de la sensación">'+
+    '<label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:0.4rem;">'+_t('a.tools.sensation_add_icon','Иконка')+'</label>'+
+    '<div class="sm-iconpick" id="sm-add-iconpick">'+pick+'</div>'+
+    '<p id="sm-add-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0.5rem 0 0;"></p>'+
+    '<button class="btn btn-solid" onclick="smSubmitAdd()" style="width:100%;justify-content:center;margin-top:0.5rem;">'+_t('a.tools.sensation_add_save','Добавить')+'</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  var first = ov.querySelector('#sm-add-iconpick button'); if(first) first.classList.add('sel');
+}
+function smPickIcon(btn){
+  var box = btn.parentNode; box.querySelectorAll('button').forEach(function(b){ b.classList.remove('sel'); }); btn.classList.add('sel');
+}
+function smSubmitAdd(){
+  var ru=document.getElementById('sm-add-ru').value.trim();
+  var en=document.getElementById('sm-add-en').value.trim();
+  var es=document.getElementById('sm-add-es').value.trim();
+  var sel=document.querySelector('#sm-add-iconpick button.sel');
+  var icon=sel?sel.getAttribute('data-key'):null;
+  var err=document.getElementById('sm-add-err');
+  if(!ru){ err.textContent=(typeof t==='function'?t('a.tools.sensation_add_need','Введите название (RU)'):'Введите название (RU)'); return; }
+  var token=localStorage.getItem('na_token'); if(!token) return;
+  err.textContent='...'; err.style.color='var(--text-muted)';
+  fetch(AUTH_API+'/api/vocab/user',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({category:'sensation',label_ru:ru,label_en:en||ru,label_es:es||ru,icon:icon})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d&&d.ok){ var ov=document.getElementById('sm-add-overlay'); if(ov) ov.remove(); if(typeof loadSensationMap==='function') loadSensationMap(); }
+    else { err.style.color='#ff8a8a'; err.textContent='Ошибка: '+((d&&d.error)||'unknown'); }
+  })
+  .catch(function(e){ err.style.color='#ff8a8a'; err.textContent='Ошибка сети'; });
+}
+window.smOpenAddModal = smOpenAddModal;
+window.smPickIcon = smPickIcon;
+window.smSubmitAdd = smSubmitAdd;
 
 // ── Pack 20.5: Vocabulary Editor ──
 var VOCAB_CATEGORY = 'sensation';
@@ -13324,6 +13488,8 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/media.js" defer></script>
+<script src="assets/js/sensation-icons.js"></script>
+<script src="assets/js/registration-location.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/typography.js" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>

@@ -922,7 +922,6 @@
   "rehab_app.success_title": "Заявка отправлена",
   "rehab_app.success_text": "Мы получили вашу заявку на участие в Rehabilitation Program. Наша команда свяжется с вами в ближайшее время для обсуждения персонального формата.",
   "rehab_app.success_back_link": "Вернуться в личный кабинет",
-
   "xr_page.eyebrow": "XR Платформа",
   "xr_page.title": "XR NeuroAttention Platform",
   "xr_page.subtitle": "Платформа управления вниманием и состоянием",
@@ -956,7 +955,6 @@
   "xr_page.cta.desc": "Получите ранний доступ к XR NeuroAttention Platform и участвуйте в развитии технологии.",
   "xr_page.cta_apply": "Подать заявку",
   "xr_page.cta_programs": "Улучшить внимание уже сейчас",
-
   "custom.eyebrow": "DOM Ecosystem",
   "custom.title": "DOM Custom Group",
   "custom.subtitle": "Один шаг от внутреннего развития к внешней реализации",
@@ -1139,7 +1137,6 @@
   "a.admin.close_view": "← Закрыть просмотр",
   "a.admin.tools_desc": "Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.",
   "a.admin.audio_practices": "Аудиопрактики",
-  "a.profile.deepen": "Подобрать программу",
   "a.profile.unlock_full": "Раскройте полный доступ к персонажу",
   "a.profile.unlock_desc": "Выберите формат работы и начните прокачку параметров",
   "a.profile.format_self": "Самостоятельная работа с аудиопрактиками",
@@ -1265,7 +1262,6 @@
   "a.protocol.block6_name": "Блок 6 · Интероцепция и саморегуляция",
   "a.protocol.block6_meta": "нед 11–12 · 2 практики + интеграция",
   "a.protocol.loading_practices": "Загрузка практик...",
-  "a.tools.fullscreen": "На весь экран",
   "a.tools.neuromap_onboard_desc": "Отслеживайте связи между эмоциями, сферами жизни, мыслями и действиями. Каждое заполнение строит вашу карту.",
   "a.tools.patterns": "Паттерны поведения",
   "a.tools.emotion_links": "Связи эмоций",
@@ -1320,7 +1316,6 @@
   "a.enroll.rehab_plan_title": "План восстановления",
   "a.enroll.rehab_desc_text": "Оставьте заявку на участие в программе восстановления когнитивных функций NeuroAttention Lab.",
   "a.tools.analyze_btn": "Проанализировать",
-
   "a.admin.practices.title": "Управление аудиопрактиками",
   "a.admin.practices.subtitle": "Загрузка MP3-файлов в репозиторий GitHub. Одна практика = один язык.",
   "a.admin.practices.add": "Добавить практику",
@@ -1343,5 +1338,17 @@
   "a.admin.practices.th_dur": "Длит.",
   "a.admin.practices.th_order": "Порядок",
   "a.admin.practices.th_date": "Дата",
-  "a.admin.practices.empty": "Практик пока нет."
+  "a.admin.practices.empty": "Практик пока нет.",
+  "a.auth.label_country": "Страна",
+  "a.auth.placeholder_country": "Начните вводить…",
+  "a.auth.label_city": "Город",
+  "a.auth.placeholder_city": "Начните вводить город…",
+  "a.auth.city_hint": "Выберите город из списка — координаты определятся автоматически",
+  "a.auth.err_location": "Укажите страну и выберите город из списка",
+  "a.tools.sensation_add_new": "+ Добавить новые ощущения",
+  "a.tools.sensation_add_title": "Новое ощущение",
+  "a.tools.sensation_add_ph": "Название ощущения",
+  "a.tools.sensation_add_icon": "Иконка",
+  "a.tools.sensation_add_save": "Добавить",
+  "a.tools.sensation_add_need": "Введите название (RU)"
 }
