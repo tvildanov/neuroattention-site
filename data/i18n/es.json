@@ -924,7 +924,6 @@
   "rehab_app.success_title": "Solicitud enviada",
   "rehab_app.success_text": "Hemos recibido su solicitud para el Programa de Rehabilitación. Nuestro equipo se comunicará con usted pronto para discutir un formato personalizado.",
   "rehab_app.success_back_link": "Volver al panel",
-
   "xr_page.eyebrow": "Plataforma XR",
   "xr_page.title": "XR NeuroAttention Platform",
   "xr_page.subtitle": "Gestión del estado y la atención",
@@ -958,7 +957,6 @@
   "xr_page.cta.desc": "Obtén acceso temprano a la XR NeuroAttention Platform y ayuda a dar forma al futuro de la tecnología.",
   "xr_page.cta_apply": "Solicitar ahora",
   "xr_page.cta_programs": "Mejora tu atención hoy",
-
   "custom.eyebrow": "Ecosistema DOM",
   "custom.title": "DOM Custom Group",
   "custom.subtitle": "Del desarrollo interno a la realización externa",
@@ -1141,7 +1139,6 @@
   "a.admin.close_view": "← Cerrar vista",
   "a.admin.tools_desc": "Como especialista o fundador, tiene acceso completo a todas las herramientas de la plataforma.",
   "a.admin.audio_practices": "Prácticas de Audio",
-  "a.profile.deepen": "Elegir programa",
   "a.profile.unlock_full": "Desbloquear acceso completo al personaje",
   "a.profile.unlock_desc": "Elige tu formato de trabajo y comienza a mejorar tus parámetros",
   "a.profile.format_self": "Trabajo independiente con prácticas de audio",
@@ -1267,7 +1264,6 @@
   "a.protocol.block6_name": "Bloque 6 · Interoception y autorregulación",
   "a.protocol.block6_meta": "sem 11–12 · 2 prácticas + integración",
   "a.protocol.loading_practices": "Cargando prácticas...",
-  "a.tools.fullscreen": "Pantalla completa",
   "a.tools.neuromap_onboard_desc": "Rastrée las conexiones entre emociones, áreas de vida, pensamientos y acciones. Cada entrada construye su mapa.",
   "a.tools.patterns": "Patrones de comportamiento",
   "a.tools.emotion_links": "Enlaces de emoción",
@@ -1322,7 +1318,6 @@
   "a.enroll.rehab_plan_title": "Plan de recuperación",
   "a.enroll.rehab_desc_text": "Solicita participar en el programa de recuperación cognitiva del NeuroAttention Lab.",
   "a.tools.analyze_btn": "Analizar",
-
   "a.admin.practices.title": "Gestión de Prácticas de Audio",
   "a.admin.practices.subtitle": "Sube archivos MP3 al repositorio GitHub. Una práctica = un idioma.",
   "a.admin.practices.add": "Añadir Práctica",
@@ -1355,5 +1350,17 @@
   "a.admin.prev": "Atrás",
   "a.admin.next": "Siguiente",
   "a.admin.page": "Pág.",
-  "a.admin.total_short": "total"
+  "a.admin.total_short": "total",
+  "a.auth.label_country": "País",
+  "a.auth.placeholder_country": "Empieza a escribir…",
+  "a.auth.label_city": "Ciudad",
+  "a.auth.placeholder_city": "Empieza a escribir una ciudad…",
+  "a.auth.city_hint": "Elige una ciudad de la lista — las coordenadas se completan automáticamente",
+  "a.auth.err_location": "Indica tu país y elige una ciudad de la lista",
+  "a.tools.sensation_add_new": "+ Añadir nuevas sensaciones",
+  "a.tools.sensation_add_title": "Nueva sensación",
+  "a.tools.sensation_add_ph": "Nombre de la sensación",
+  "a.tools.sensation_add_icon": "Icono",
+  "a.tools.sensation_add_save": "Añadir",
+  "a.tools.sensation_add_need": "Introduce un nombre (RU)"
 }
