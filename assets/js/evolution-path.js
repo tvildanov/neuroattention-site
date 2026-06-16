@@ -623,27 +623,42 @@
   }
   // v7: a branch is ONE real chain, not the whole history. Two safety bounds keep
   // a single component from running away into a "spine":
-  var MAX_CHAIN_NODES = 10;                 // hard cap on nodes per branch
+  // v8: one chain ≈ one layer-sequence (emotion → sensation → event → thought),
+  // so cap branches near 4 nodes — Nick was still seeing 8-10 node "spines".
+  var MAX_CHAIN_NODES = 4;                  // hard cap on nodes per branch
   var MAX_CHAIN_GAP_MS = 60 * 60 * 1000;    // cut the chain on a >1h gap between steps
+  var MIN_LINK_WEIGHT = 0.5;                // links weaker than this don't define structure
   // Links carry { to, kind, weight }. 'correlation' (a sensation bound to many
   // emotions/thoughts — see server linkJourney 'correlation') is a WEAK hub: it
   // used to transitively fuse separate sequence-chains into one giant branch.
-  // Only 'sequence' / legacy links (no kind) define the structural chain now.
+  // Only 'sequence' / legacy links (no kind) and links with weight ≥ MIN_LINK_WEIGHT
+  // define the structural chain now.
   function isStrongLink(lk) {
-    return !(lk && typeof lk === 'object' && lk.kind === 'correlation');
+    if (lk && typeof lk === 'object') {
+      if (lk.kind === 'correlation') return false;
+      if (lk.weight != null && lk.weight < MIN_LINK_WEIGHT) return false;
+    }
+    return true;
   }
-  // Split a connected component's ids into time-ordered sub-chains, cutting on a
-  // big time gap or when the node cap is reached. Returns arrays of id strings.
+  // Split a connected component's ids into time-ordered sub-chains. Cut on a big
+  // time gap, when the node cap is reached, or before a SECOND emotion — every
+  // emotion should start its own chain rather than continue someone else's.
+  // Returns arrays of id strings.
   function splitComponent(ids, byId) {
     var evs = ids.map(function (id) { return byId[id]; }).filter(Boolean)
                  .sort(function (a, b) { return a.t - b.t; });
-    var groups = [], cur = [];
+    var groups = [], cur = [], curHasEmotion = false;
     for (var i = 0; i < evs.length; i++) {
+      var isEmo = evs[i].layer === 'emotion';
       if (cur.length) {
         var gap = evs[i].t - evs[i - 1].t;
-        if (gap > MAX_CHAIN_GAP_MS || cur.length >= MAX_CHAIN_NODES) { groups.push(cur); cur = []; }
+        var emoBreak = isEmo && curHasEmotion;     // a second emotion begins a new chain
+        if (gap > MAX_CHAIN_GAP_MS || cur.length >= MAX_CHAIN_NODES || emoBreak) {
+          groups.push(cur); cur = []; curHasEmotion = false;
+        }
       }
       cur.push(evs[i]);
+      if (isEmo) curHasEmotion = true;
     }
     if (cur.length) groups.push(cur);
     return groups.map(function (g) { return g.map(function (e) { return String(e.id); }); });
