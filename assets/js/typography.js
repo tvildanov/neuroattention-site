@@ -36,6 +36,9 @@
 
   function processEl(el) {
     if (el.dataset && el.dataset.naNoTypo === '1') return;
+    // also skip if any ancestor opts out (lets a container exempt its whole subtree,
+    // e.g. narrow program cards where NBSP runs would overflow the box)
+    if (el.closest && el.closest('[data-na-no-typo="1"]')) return;
     // collect text nodes in document order
     var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
     var nodes = [], n;
