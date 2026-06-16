@@ -1362,5 +1362,7 @@
   "a.tools.sensation_add_ph": "Nombre de la sensación",
   "a.tools.sensation_add_icon": "Icono",
   "a.tools.sensation_add_save": "Añadir",
-  "a.tools.sensation_add_need": "Introduce un nombre (RU)"
+  "a.tools.sensation_add_need": "Introduce un nombre (RU)",
+  "a.tools.sensation_context_custom_ph": "+ Añadir tu propio contexto…",
+  "a.tools.sensation_context_custom_btn": "Añadir"
 }
