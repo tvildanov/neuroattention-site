@@ -762,9 +762,18 @@ body.method-flashlight {
     font-size: clamp(1.4rem, 5vw, 1.75rem) !important;
     line-height: 1.3;
   }
+  /* Match the specificity of the desktop hero-h1 rule (section:first-of-type
+     h1.heading-space, no media query) so this actually wins on mobile, and let
+     long single words wrap instead of being clipped off-screen. */
   .hero .heading-space,
-  section:first-of-type .heading-space {
+  .hero h1.heading-space,
+  section:first-of-type .heading-space,
+  section:first-of-type h1.heading-space,
+  .method-hero h1.heading-space {
     font-size: clamp(1.6rem, 6vw, 2rem) !important;
+  }
+  h1, h2, h3, .heading-space {
+    overflow-wrap: break-word;
   }
   .sub-muted {
     font-size: 0.95rem !important;
