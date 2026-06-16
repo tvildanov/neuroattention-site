@@ -585,3 +585,47 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .ef-harm-cap { font-size: 10px; color: var(--text-mono, #5b6b7a); text-align: center; margin-top: 0.35rem; }
 .ef-disabled { font-size: 11.5px; color: var(--text-muted, #8c98a6); background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); border-radius: 8px; padding: 0.55rem 0.75rem; margin-top: 0.7rem; line-height: 1.5; }
 .ef-notify-integ { margin-top: 0.7rem; font-size: 12px; color: var(--text-secondary, #b3bdc7); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   LK VISUAL POLISH v1 (PR3) — additive, minimal, science-calm.
+   Subtle glow + soft fill/entry animations for the RPG profile dashboard.
+   No aggressive flashes; respects prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Stat-layer cards: deli­cate left-edge category accent + soft entry. */
+/* border-left overrides the card's inline `border` shorthand, hence !important */
+.rpg-layer-card { animation: rpgFadeInUp .5s cubic-bezier(.2,.7,.2,1) both; }
+.rpg-layer-card.cat-body_core    { border-left: 2px solid rgba(255,236,206,0.5) !important; }  /* warm white / body */
+.rpg-layer-card.cat-mind_control { border-left: 2px solid rgba(94,224,255,0.5)  !important; }  /* cyan light */
+.rpg-layer-card.cat-world        { border-left: 2px solid rgba(86,242,166,0.5)  !important; }  /* green light */
+
+/* Progress fills: gentle glow on the filled part + smooth grow-in. */
+.rpg-stat-fill { box-shadow: 0 0 6px rgba(255,255,255,0.16); animation: rpgFillBar .9s cubic-bezier(.4,0,.2,1) both; }
+#rpg-xp-bar    { box-shadow: 0 0 8px rgba(0,255,180,0.35); }
+
+/* Level / XP card: a touch more presence + a calm pulse on level-up. */
+#rpg-xp-card { transition: box-shadow .4s ease, border-color .4s ease; }
+#rpg-xp-card.rpg-levelup { animation: rpgLevelPulse 1.3s ease; border-color: rgba(0,255,180,0.4); }
+
+/* Cards/buttons: soft press feedback. */
+.rpg-pressable { transition: transform .12s ease; }
+.rpg-pressable:active { transform: scale(0.98); }
+
+/* Locked "expand understanding" button: clearly clickable, not greyed-out. */
+.rpg-locked-cta { opacity: 1 !important; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
+.rpg-locked-cta:hover { border-color: rgba(94,224,255,0.4) !important; color: var(--myc-text, #e8edf2) !important; background: rgba(94,224,255,0.05); }
+.rpg-locked-preview { font-size: 11px; line-height: 1.55; color: var(--myc-text-dim, #8c98a6); margin: 0.5rem 0 0; opacity: 0.85; }
+
+@keyframes rpgFillBar    { from { width: 0; } }
+@keyframes rpgFadeInUp   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rpgLevelPulse { 0%,100% { box-shadow: 0 0 0 rgba(0,255,180,0); } 50% { box-shadow: 0 0 22px rgba(0,255,180,0.28); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rpg-layer-card, .rpg-stat-fill, #rpg-xp-card.rpg-levelup { animation: none; }
+}
+
+/* Primary CTAs in the dashboard: subtle hover glow (no flash). mycelium.css is
+   loaded only on account.html, so this stays scoped to the LK. */
+.btn-solid, .btn-primary { transition: box-shadow .25s ease, transform .12s ease; }
+.btn-solid:hover, .btn-primary:hover { box-shadow: 0 0 16px rgba(94,224,255,0.18); }
+.btn-solid:active, .btn-primary:active { transform: scale(0.985); }
