@@ -495,6 +495,23 @@ section {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+/* Backdrop dimming behind the open mobile menu — tap it (or Esc) to close. */
+.mobile-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49; /* just under .navbar (50) so nav + menu stay on top */
+  background: rgba(3, 6, 10, 0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.mobile-menu-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .mobile-menu.open {
   max-height: 500px;
   opacity: 1;
