@@ -289,6 +289,8 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lon DOUBLE PRECISION`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_city TEXT`;
+    // PR4 (4.4): country captured at registration alongside city/lat/lon.
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_country TEXT`;
     await sql`CREATE TABLE IF NOT EXISTS external_signal_events (
       id BIGSERIAL PRIMARY KEY,
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -582,6 +584,9 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_vocab_cat_slug ON vocab_terms(category, slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_vocab_active ON vocab_terms(category, is_active, order_idx)`;
+    // PR4 (4.1/4.2): icon key (resolved client-side) + who added a user-created term.
+    await sql`ALTER TABLE vocab_terms ADD COLUMN IF NOT EXISTS icon TEXT`;
+    await sql`ALTER TABLE vocab_terms ADD COLUMN IF NOT EXISTS created_by UUID`;
 
     // Seed sensations (28 terms)
     const sensSeed = [
@@ -1211,9 +1216,18 @@ function signToken(user) {
 // Register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    let { email, password, display_name, phone } = req.body;
+    let { email, password, display_name, phone, country, city, location_lat, location_lon } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    // PR4 (4.4): residence is required at registration so External Field has a
+    // location immediately. Coordinates come from the city autocomplete (Open-Meteo).
+    const lat = (location_lat != null && !isNaN(parseFloat(location_lat))) ? parseFloat(location_lat) : null;
+    const lon = (location_lon != null && !isNaN(parseFloat(location_lon))) ? parseFloat(location_lon) : null;
+    country = country ? String(country).trim().slice(0, 80) : null;
+    city = city ? String(city).trim().slice(0, 120) : null;
+    if (!country || !city || lat == null || lon == null) {
+      return res.status(400).json({ error: 'Country, city and coordinates are required' });
+    }
 
     email = email.toLowerCase().trim();
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -1231,16 +1245,17 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const inserted = await sql`
-      INSERT INTO users (email, password_hash, display_name, phone, role)
-      VALUES (${email}, ${passwordHash}, ${display_name || null}, ${phone || null}, ${role})
-      RETURNING id, email, display_name, phone, role, created_at
+      INSERT INTO users (email, password_hash, display_name, phone, role, location_country, location_city, location_lat, location_lon)
+      VALUES (${email}, ${passwordHash}, ${display_name || null}, ${phone || null}, ${role}, ${country}, ${city}, ${lat}, ${lon})
+      RETURNING id, email, display_name, phone, role, created_at, location_country, location_city, location_lat, location_lon
     `;
     const user = inserted[0];
     const token = signToken(user);
 
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: null }
+      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: null,
+              location_country: user.location_country, location_city: user.location_city, location_lat: user.location_lat, location_lon: user.location_lon }
     });
   } catch (err) {
     console.error('POST /api/auth/register:', err);
@@ -1287,7 +1302,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
       SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
-             location_lat, location_lon, location_city
+             location_lat, location_lon, location_city, location_country
       FROM users WHERE id = ${req.user.id}
     `;
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
@@ -3883,6 +3898,18 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
     // Resolve labels
     const sensRows = sensations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'sensation' AND slug = ANY(${sensations}::text[])` : [];
     const locRows = body_locations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'body_location' AND slug = ANY(${body_locations}::text[])` : [];
+    // PR4 (4.3): accept detailed/custom body-location slugs (e.g. "right_leg__foot")
+    // that aren't seeded in vocab_terms. Label comes from the client-sent loc_labels
+    // map (the body-part hierarchy lives in the frontend) or a humanized slug.
+    const knownLoc = new Set(locRows.map(r => r.slug));
+    const locLabels = (req.body && req.body.loc_labels) || {};
+    for (const slug of body_locations) {
+      if (knownLoc.has(slug)) continue;
+      knownLoc.add(slug);
+      const lbl = (locLabels && locLabels[slug]) ? String(locLabels[slug]).slice(0, 80)
+                : String(slug).replace(/__/g, ' › ').replace(/_/g, ' ');
+      locRows.push({ slug, label_ru: lbl });
+    }
 
     // occurred_at supports back-dating; default to now. date_key follows it.
     let when = occurred_at ? new Date(occurred_at) : new Date();
@@ -3985,10 +4012,41 @@ app.get('/api/neuromap/context-candidates', requireAuth, async (req, res) => {
 app.get('/api/vocab/:category', async (req, res) => {
   try {
     const cat = req.params.category;
-    const rows = await sql`SELECT slug, label_ru, label_en, label_es, polarity_strength, order_idx FROM vocab_terms WHERE category = ${cat} AND is_active = true ORDER BY order_idx ASC, label_ru ASC`;
+    const rows = await sql`SELECT slug, label_ru, label_en, label_es, polarity_strength, icon, order_idx FROM vocab_terms WHERE category = ${cat} AND is_active = true ORDER BY order_idx ASC, label_ru ASC`;
     res.json({ category: cat, terms: rows });
   } catch (err) {
     console.error('GET /api/vocab/:category:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PR4 (4.1): authenticated user adds a new sensation/body_location term to the
+// shared vocabulary. slug is auto-derived; icon is an optional icon-key resolved
+// client-side. Added terms are active and appear in everyone's picker (single
+// shared vocab is the existing model); created_by records the author.
+app.post('/api/vocab/user', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    let { category, label_ru, label_en, label_es, icon } = req.body || {};
+    category = (category === 'body_location') ? 'body_location' : 'sensation';
+    label_ru = label_ru ? String(label_ru).trim().slice(0, 80) : '';
+    label_en = label_en ? String(label_en).trim().slice(0, 80) : label_ru;
+    label_es = label_es ? String(label_es).trim().slice(0, 80) : label_ru;
+    icon = icon ? String(icon).trim().slice(0, 40) : null;
+    if (!label_ru) return res.status(400).json({ error: 'label_ru required' });
+    // slug from a transliteration-ish of the labels + short uniqueness suffix
+    const base = (label_en || label_ru).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'custom';
+    const suffix = userId.replace(/[^a-z0-9]/gi, '').slice(0, 4).toLowerCase();
+    let slug = base + '_u' + suffix;
+    const [maxOrder] = await sql`SELECT COALESCE(MAX(order_idx), 0) AS m FROM vocab_terms WHERE category = ${category}`;
+    const [row] = await sql`
+      INSERT INTO vocab_terms (category, slug, label_ru, label_en, label_es, icon, created_by, order_idx)
+      VALUES (${category}, ${slug}, ${label_ru}, ${label_en}, ${label_es}, ${icon}, ${userId}, ${(maxOrder.m || 0) + 1})
+      ON CONFLICT (category, slug) DO UPDATE SET label_ru = EXCLUDED.label_ru, label_en = EXCLUDED.label_en, label_es = EXCLUDED.label_es, icon = EXCLUDED.icon, is_active = true, updated_at = now()
+      RETURNING slug, label_ru, label_en, label_es, icon, order_idx`;
+    res.json({ ok: true, term: row });
+  } catch (err) {
+    console.error('POST /api/vocab/user:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -6977,11 +7035,17 @@ app.post('/api/users/me/location', requireAuth, async (req, res) => {
     const userId = req.user.sub || req.user.id;
     const lat = parseFloat(req.body && req.body.lat), lon = parseFloat(req.body && req.body.lon);
     const city = (req.body && req.body.city ? String(req.body.city) : '').slice(0, 120) || null;
+    const country = (req.body && req.body.country ? String(req.body.country) : '').slice(0, 80) || null;
     if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
       return res.status(400).json({ error: 'Valid lat/lon required' });
     }
-    await sql`UPDATE users SET location_lat = ${lat}, location_lon = ${lon}, location_city = ${city} WHERE id = ${userId}`;
-    res.json({ ok: true, location: { lat: lat, lon: lon, city: city } });
+    // country is optional here (External Field's quick set-location may omit it); only overwrite when provided.
+    if (country) {
+      await sql`UPDATE users SET location_lat = ${lat}, location_lon = ${lon}, location_city = ${city}, location_country = ${country} WHERE id = ${userId}`;
+    } else {
+      await sql`UPDATE users SET location_lat = ${lat}, location_lon = ${lon}, location_city = ${city} WHERE id = ${userId}`;
+    }
+    res.json({ ok: true, location: { lat: lat, lon: lon, city: city, country: country } });
   } catch (err) { console.error('POST /api/users/me/location:', err); res.status(500).json({ error: err.message }); }
 });
 
