@@ -276,13 +276,16 @@
 @media(max-width:600px){
   #tab-enroll .dash-grid > div[style*="display:flex"] { flex-wrap:nowrap; }
 }
-@media(max-width:768px){
-  .program-cards-scroll { scroll-padding-left:1rem; }
-  .program-cards-scroll > .dash-card { min-width:85vw!important;flex:none!important; }
-  .program-scroll-dots { display:flex!important; }
-}
-.prog-dot { width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.15);transition:all 0.25s; }
-.prog-dot.active { background:rgba(0,224,255,0.6);transform:scale(1.3); }
+/* ── Program cards: responsive grid (no horizontal scroll) ──
+   ≥1280px: all 5 in one row · <1280px: 3-up (3+2) · 768–1024: 2-up · ≤480: stack */
+.program-cards-grid { display:grid;gap:1rem;grid-template-columns:repeat(5,1fr);align-items:stretch;padding-bottom:0.5rem; }
+.program-cards-grid > .dash-card { min-width:0;grid-column:auto;padding:1.4rem 1rem; }
+.program-cards-grid h4 { overflow-wrap:break-word;word-wrap:break-word;hyphens:auto;font-size:clamp(0.95rem,0.95vw,1.1rem)!important;line-height:1.3;padding-bottom:0.1rem; }
+@media(min-width:1280px){ .program-cards-grid h4 { font-size:0.92rem!important; } }
+@media(max-width:1279px){ .program-cards-grid { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:1024px){ .program-cards-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:480px){ .program-cards-grid { grid-template-columns:1fr; } }
+.program-scroll-dots { display:none!important; }
 /* ── Mobile bottom-nav ── */
 @media(max-width:768px){
   .dash-tabs {
@@ -1522,9 +1525,9 @@
       </div>
 
       <!-- Program cards -->
-      <div class="program-cards-scroll" style="grid-column:span 12;display:flex;gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:0.5rem;">
+      <div class="program-cards-grid" style="grid-column:span 12;">
         <!-- Self-Guided -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:0;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Self-Guided</span>
@@ -1540,7 +1543,7 @@
         </div>
 
         <!-- Guided Program -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;border-color:rgba(0,224,255,0.15);">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:0;border-color:rgba(0,224,255,0.15);">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Guided</span>
@@ -1557,7 +1560,7 @@
         </div>
 
         <!-- Group Program -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:0;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Group</span>
@@ -1574,7 +1577,7 @@
 
         <!-- DRAFT: pending medical review -->
         <!-- Rehabilitation Program -->
-        <div class="dash-card glass-card-elevated" id="rehab-program-card" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;border-color:rgba(167,139,250,0.15);">
+        <div class="dash-card glass-card-elevated" id="rehab-program-card" style="display:flex;flex-direction:column;min-width:0;border-color:rgba(167,139,250,0.15);">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-violet);text-transform:uppercase;">Rehabilitation</span>
@@ -1591,7 +1594,7 @@
         <!-- /DRAFT -->
 
         <!-- Specialist Training -->
-        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:260px;flex:1;scroll-snap-align:start;">
+        <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:0;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c6 3 10 0 12-1v-4"/></svg>
             <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-cyan);text-transform:uppercase;">Specialist</span>
@@ -1605,14 +1608,6 @@
             Получить доступ <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
         </div>
-      </div>
-      <!-- Mobile scroll indicator dots -->
-      <div class="program-scroll-dots" style="grid-column:span 12;display:none;justify-content:center;gap:6px;padding:0.25rem 0;">
-        <span class="prog-dot active" data-idx="0"></span>
-        <span class="prog-dot" data-idx="1"></span>
-        <span class="prog-dot" data-idx="2"></span>
-        <span class="prog-dot" data-idx="3"></span>
-        <span class="prog-dot" data-idx="4"></span>
       </div>
 
       <!-- DRAFT: pending medical review -->
@@ -4684,24 +4679,6 @@ function loadAvatar(user){
     img.src = user.avatar_url;
   }
 }
-
-// ══════════════════════════════════════════
-// PROGRAM CARDS SCROLL DOTS (mobile)
-// ══════════════════════════════════════════
-(function(){
-  var scroller = document.querySelector('.program-cards-scroll');
-  if(!scroller) return;
-  scroller.addEventListener('scroll', function(){
-    var dots = document.querySelectorAll('.prog-dot');
-    if(!dots.length) return;
-    var cards = scroller.querySelectorAll('.dash-card');
-    var scrollLeft = scroller.scrollLeft;
-    var cardW = cards[0] ? cards[0].offsetWidth + 16 : 1; // 16 = gap
-    var idx = Math.round(scrollLeft / cardW);
-    idx = Math.max(0, Math.min(idx, dots.length - 1));
-    dots.forEach(function(d,i){ d.classList.toggle('active', i===idx); });
-  });
-})();
 
 // ══════════════════════════════════════════
 // PRESET AVATAR GALLERY
