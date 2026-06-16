@@ -3972,6 +3972,18 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       }
     }
 
+    // PR (custom context): free-text context the user typed (not from the
+    // candidate list). Persist each as a 'thought' journey event so it binds now
+    // and reappears as a candidate next time (deduped by label).
+    let customContext = Array.isArray(req.body && req.body.custom_context) ? req.body.custom_context : [];
+    customContext = customContext.map(s => String(s == null ? '' : s).trim().slice(0, 120)).filter(Boolean).slice(0, 10);
+    if (sensationEventId && customContext.length) {
+      for (const text of customContext) {
+        const cid = await logJourney(userId, 'thought', 'thought', { label: text, source: 'custom_context' }, when.toISOString());
+        if (cid) { await linkJourney(sensationEventId, cid, 'correlation', 1.0); linkedCount++; }
+      }
+    }
+
     res.json({ ok: true, sensations: sensRows.length, locations: locRows.length,
                journey_id: sensationEventId, linked: linkedCount });
   } catch (err) {
@@ -3987,18 +3999,34 @@ app.get('/api/neuromap/context-candidates', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
     const days = Math.min(366, Math.max(1, parseInt(req.query.days, 10) || 7));
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 40));
+    // PR (context dedup): default to a tight list of the most recent distinct
+    // items (max 30). The same emotion/thought is logged many times — without
+    // de-duplication the picker showed dozens of identical chips.
+    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 15));
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    // One chip per distinct (kind, label): keep the newest occurrence, expose how
+    // many times it appeared (freq) so the UI can hint at frequency, order by recency.
     const rows = await sql`
-      SELECT id, kind, layer, payload, occurred_at FROM journey_events
-      WHERE user_id = ${userId}
-        AND kind IN ('emotion','event','thought','practice')
-        AND occurred_at >= ${since}
+      WITH base AS (
+        SELECT id, kind, layer, occurred_at,
+               COALESCE(NULLIF(payload->>'label',''), NULLIF(payload->>'practice_name',''),
+                        NULLIF(payload->>'title',''), kind) AS lbl,
+               COALESCE(payload->>'valence','neutral') AS valence
+        FROM journey_events
+        WHERE user_id = ${userId}
+          AND kind IN ('emotion','event','thought','practice')
+          AND occurred_at >= ${since}
+      ), ranked AS (
+        SELECT *, COUNT(*) OVER (PARTITION BY kind, lbl) AS freq,
+               ROW_NUMBER() OVER (PARTITION BY kind, lbl ORDER BY occurred_at DESC) AS rn
+        FROM base
+      )
+      SELECT id, kind, layer, occurred_at, lbl, valence, freq
+      FROM ranked WHERE rn = 1
       ORDER BY occurred_at DESC LIMIT ${limit}`;
     const items = rows.map(r => ({
       id: String(r.id), kind: r.kind, layer: r.layer, occurred_at: r.occurred_at,
-      label: (r.payload && (r.payload.label || r.payload.practice_name || r.payload.title)) || r.kind,
-      valence: (r.payload && r.payload.valence) || 'neutral'
+      label: r.lbl || r.kind, valence: r.valence || 'neutral', freq: Number(r.freq) || 1
     }));
     res.json({ ok: true, items });
   } catch (err) {

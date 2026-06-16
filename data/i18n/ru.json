@@ -1350,5 +1350,7 @@
   "a.tools.sensation_add_ph": "Название ощущения",
   "a.tools.sensation_add_icon": "Иконка",
   "a.tools.sensation_add_save": "Добавить",
-  "a.tools.sensation_add_need": "Введите название (RU)"
+  "a.tools.sensation_add_need": "Введите название (RU)",
+  "a.tools.sensation_context_custom_ph": "+ Добавить свой контекст…",
+  "a.tools.sensation_context_custom_btn": "Добавить"
 }
