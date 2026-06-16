@@ -924,7 +924,6 @@
   "rehab_app.success_title": "Application sent",
   "rehab_app.success_text": "We have received your application for the Rehabilitation Program. Our team will contact you soon to discuss a personalized format.",
   "rehab_app.success_back_link": "Back to dashboard",
-
   "xr_page.eyebrow": "XR Platform",
   "xr_page.title": "XR NeuroAttention Platform",
   "xr_page.subtitle": "Manage your attention and state",
@@ -958,7 +957,6 @@
   "xr_page.cta.desc": "Get early access to the XR NeuroAttention Platform and help shape the future of the technology.",
   "xr_page.cta_apply": "Apply now",
   "xr_page.cta_programs": "Improve attention today",
-
   "custom.eyebrow": "DOM Ecosystem",
   "custom.title": "DOM Custom Group",
   "custom.subtitle": "From inner development to outer realization",
@@ -1141,7 +1139,6 @@
   "a.admin.close_view": "← Close view",
   "a.admin.tools_desc": "As a specialist or founder, you have full access to all platform tools.",
   "a.admin.audio_practices": "Audio Practices",
-  "a.profile.deepen": "Choose a Program",
   "a.profile.unlock_full": "Unlock full character access",
   "a.profile.unlock_desc": "Choose your work format and start leveling up your parameters",
   "a.profile.format_self": "Self-guided work with audio practices",
@@ -1267,7 +1264,6 @@
   "a.protocol.block6_name": "Block 6 · Interoception and Self-Regulation",
   "a.protocol.block6_meta": "weeks 11–12 · 2 practices + integration",
   "a.protocol.loading_practices": "Loading practices...",
-  "a.tools.fullscreen": "Fullscreen",
   "a.tools.neuromap_onboard_desc": "Track connections between emotions, life domains, thoughts, and actions. Each entry builds your map.",
   "a.tools.patterns": "Behavior Patterns",
   "a.tools.emotion_links": "Emotion Links",
@@ -1322,7 +1318,6 @@
   "a.enroll.rehab_plan_title": "Recovery Plan",
   "a.enroll.rehab_desc_text": "Apply to participate in the cognitive recovery program of NeuroAttention Lab.",
   "a.tools.analyze_btn": "Analyze",
-
   "a.admin.practices.title": "Audio Practices Management",
   "a.admin.practices.subtitle": "Upload MP3 files to GitHub repository. One practice = one language.",
   "a.admin.practices.add": "Add Practice",
@@ -1355,5 +1350,17 @@
   "a.admin.prev": "Back",
   "a.admin.next": "Next",
   "a.admin.page": "Page",
-  "a.admin.total_short": "total"
+  "a.admin.total_short": "total",
+  "a.auth.label_country": "Country",
+  "a.auth.placeholder_country": "Start typing…",
+  "a.auth.label_city": "City",
+  "a.auth.placeholder_city": "Start typing a city…",
+  "a.auth.city_hint": "Pick a city from the list — coordinates are filled automatically",
+  "a.auth.err_location": "Enter your country and pick a city from the list",
+  "a.tools.sensation_add_new": "+ Add new sensations",
+  "a.tools.sensation_add_title": "New sensation",
+  "a.tools.sensation_add_ph": "Sensation name",
+  "a.tools.sensation_add_icon": "Icon",
+  "a.tools.sensation_add_save": "Add",
+  "a.tools.sensation_add_need": "Enter a name (RU)"
 }
