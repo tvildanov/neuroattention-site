@@ -33,6 +33,17 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  /* Clip horizontal overflow at the document root too: body{overflow-x:hidden}
+     alone doesn't stop a stray wide/absolute element from expanding the layout
+     viewport on mobile (page zooms out / scrolls sideways). */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Media never forces the page wider than its column. (canvas/svg are JS-sized
+   in the dashboard, so they're left alone.) */
+img, video {
+  max-width: 100%;
 }
 
 body {
