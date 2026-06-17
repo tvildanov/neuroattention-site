@@ -1692,7 +1692,7 @@
     }
     // 🅲️ C7: drop the technical subtitle; keep a short human one
     var expandBtn = (!st._isOverlay && typeof window.mountFullscreenOverlay === 'function')
-      ? '<button class="myc-evo-expand" title="Раскрыть на весь экран" style="margin-left:0.5rem;background:rgba(20,24,30,0.7);border:1px solid rgba(255,255,255,0.12);color:var(--myc-text,#cdd);border-radius:8px;height:30px;padding:0 0.7rem;font-size:12px;cursor:pointer;">⤢ Раскрыть</button>'
+      ? '<button class="myc-evo-expand" title="'+(window.t?window.t('a.tools.fullscreen_tooltip','Раскрыть на весь экран'):'Раскрыть на весь экран')+'" style="margin-left:0.5rem;background:rgba(20,24,30,0.7);border:1px solid rgba(255,255,255,0.12);color:var(--myc-text,#cdd);border-radius:8px;height:30px;padding:0 0.7rem;font-size:12px;cursor:pointer;">⤢ '+(window.t?window.t('a.tools.fullscreen','Раскрыть'):'Раскрыть')+'</button>'
       : '';
     // #8: in the fullscreen overlay the title is already shown by the overlay
     // chrome — don't render a second <h3> here (it stacked two "Путь развития").
