@@ -132,6 +132,9 @@
     }
   };
   function lang() { try { return (window.getLang && window.getLang()) || 'ru'; } catch (e) { return 'ru'; } }
+  // BCP-47 locale for the user's selected language, so dates/numbers follow the
+  // UI language rather than the browser's OS locale (fixes RU month names in EN/ES).
+  function locale() { return { ru: 'ru-RU', en: 'en-US', es: 'es-ES' }[lang()] || 'en-US'; }
   function dict() { return I18N[lang()] || I18N.en; }
   function t(path) {
     var parts = path.split('.'), cur = dict(), fb = I18N.en, i;
@@ -154,8 +157,8 @@
     }, opts || {})).then(function (r) { return r.json(); });
   }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function fmtTime(ts) { var d = new Date(ts); if (isNaN(d)) return ''; try { return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return d.toISOString().slice(0, 16).replace('T', ' '); } }
-  function fmtHM(ts) { var d = new Date(ts); if (isNaN(d)) return '—'; try { return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
+  function fmtTime(ts) { var d = new Date(ts); if (isNaN(d)) return ''; try { return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return d.toISOString().slice(0, 16).replace('T', ' '); } }
+  function fmtHM(ts) { var d = new Date(ts); if (isNaN(d)) return '—'; try { return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
   function hasLocation() { return S.user && S.user.location_lat != null && S.user.location_lon != null; }
 
   /* ── shell ─────────────────────────────────────────────────────────────── */
@@ -435,7 +438,7 @@
         '<div><div class="ef-quake-place">' + esc(place || q.title) + '</div>' +
         '<div class="ef-quake-sub">' + esc(t('earth.lastGlobalQuake')) + '</div></div></div>' +
       map +
-      '<div class="ef-quake-meta">' + esc(fmtTime(q.timestamp)) + (dist != null ? ' · ' + dist.toLocaleString() + ' km ' + t('earth.from') : '') +
+      '<div class="ef-quake-meta">' + esc(fmtTime(q.timestamp)) + (dist != null ? ' · ' + dist.toLocaleString(locale()) + ' km ' + t('earth.from') : '') +
         (q.source_url ? ' · <a href="' + esc(q.source_url) + '" target="_blank" rel="noopener">USGS ↗</a>' : '') + '</div></div>';
   }
   function worldPin(lat, lon) {
