@@ -1499,5 +1499,8 @@
   "a.domunity.role_uncle": "Tío",
   "a.domunity.role_cousin": "Primo/a",
   "a.domunity.role_other": "Otro",
-  "a.evo.no_location": "Sin ubicación"
+  "a.evo.no_location": "Sin ubicación",
+  "a.admin.delete_btn": "Eliminar",
+  "a.admin.delete_confirm": "¿Seguro que quieres eliminar a este usuario?",
+  "a.admin.delete_error": "No se pudo eliminar"
 }

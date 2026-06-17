@@ -3612,6 +3612,21 @@ function populateUsersList(admin){
     });
 }
 
+// Superadmin: delete a user (with confirmation). Uses DELETE /api/admin/user.
+function adminDeleteUser(email, name){
+  if(!email) return;
+  var msg=(typeof t==='function')?t('a.admin.delete_confirm','Уверены что хотите удалить этого пользователя?'):'Уверены что хотите удалить этого пользователя?';
+  if(!confirm(msg+(name?'\n\n'+name+' ('+email+')':''))) return;
+  var token=localStorage.getItem('na_token'); if(!token) return;
+  fetch(AUTH_API+'/api/admin/user',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({email:email})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.ok){ if(typeof populateUsersList==='function'&&currentUser) populateUsersList(currentUser); }
+      else { alert(((typeof t==='function')?t('a.admin.delete_error','Не удалось удалить'):'Не удалось удалить')+': '+((d&&d.error)||'unknown')); }
+    })
+    .catch(function(){ alert((typeof t==='function')?t('a.admin.delete_error','Не удалось удалить'):'Не удалось удалить'); });
+}
+window.adminDeleteUser=adminDeleteUser;
 function renderAdminUsersList(list,admin){
   var tbody=document.querySelector('#admin-full-users-table tbody');
   if(!tbody) return;
@@ -3660,6 +3675,13 @@ function renderAdminUsersList(list,admin){
       roleCell=roleText;
     }
 
+    // delete button — superadmin only, never on your own row
+    var delBtn='';
+    if(isSuperadmin && u.id!==admin.id && u.email){
+      var safeEmail=String(u.email).replace(/'/g,"\\'");
+      var safeName=String(name).replace(/'/g,"\\'");
+      delBtn='<button class="event-edit" style="color:var(--accent-rose);border-color:rgba(255,90,90,0.35);margin-left:4px;" onclick="event.stopPropagation();adminDeleteUser(\''+safeEmail+'\',\''+safeName+'\')">'+t('a.admin.delete_btn','Удалить')+'</button>';
+    }
     var tr=document.createElement('tr');
     tr.style.cursor='pointer';
     tr.onclick=function(){ openUserDetail(u.id); };
@@ -3668,7 +3690,7 @@ function renderAdminUsersList(list,admin){
       '<td>'+roleCell+'</td>'+
       '<td style="font-size:11px;">'+progText+'</td>'+
       '<td style="font-size:11px;">'+accessText+'</td>'+
-      '<td><button class="event-edit" onclick="event.stopPropagation();openUserDetail(\''+u.id+'\')">'+t('a.admin.view_btn','Просмотр')+'</button></td>';
+      '<td style="white-space:nowrap;"><button class="event-edit" onclick="event.stopPropagation();openUserDetail(\''+u.id+'\')">'+t('a.admin.view_btn','Просмотр')+'</button>'+delBtn+'</td>';
     tbody.appendChild(tr);
   });
 
