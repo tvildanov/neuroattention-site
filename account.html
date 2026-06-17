@@ -9183,10 +9183,11 @@ function loadSmContext(){
       if (empty) empty.style.display = 'none';
       var icon = { emotion:'❤', event:'◆', thought:'✦', practice:'☼' };
       list.innerHTML = SM_CONTEXT.map(function(it){
-        var lbl = (icon[it.kind]||'•') + ' ' + (it.label||it.kind);
-        var freq = (it.freq && it.freq > 1) ? ' <span style="opacity:0.55;font-size:11px;">×'+it.freq+'</span>' : '';
-        return '<button type="button" class="sm-chip sm-ctx-chip" data-id="'+it.id+'" onclick="toggleSmCtx(this)" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:#cdcdd6;padding:0.35rem 0.7rem;font-size:12px;cursor:pointer;">'+
-          lbl.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+freq+'</button>';
+        var ic = it.sensation ? '🌊' : (icon[it.kind]||'•');
+        var lbl = ic + ' ' + (it.label||it.kind);
+        // count kept only as metadata (data-count), never shown in the label
+        return '<button type="button" class="sm-chip sm-ctx-chip" data-id="'+it.id+'" data-count="'+(it.freq||1)+'" onclick="toggleSmCtx(this)" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:#cdcdd6;padding:0.35rem 0.7rem;font-size:12px;cursor:pointer;">'+
+          lbl.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+'</button>';
       }).join('');
     })
     .catch(function(){ if (empty) empty.style.display = 'block'; });
@@ -13497,7 +13498,7 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/media.js" defer></script>
-<script src="assets/js/sensation-icons.js"></script>
+<script src="assets/js/sensation-icons.js?v=2"></script>
 <script src="assets/js/registration-location.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/typography.js?v=2" defer></script>
