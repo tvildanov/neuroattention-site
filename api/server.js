@@ -4024,10 +4024,42 @@ app.get('/api/neuromap/context-candidates', requireAuth, async (req, res) => {
       SELECT id, kind, layer, occurred_at, lbl, valence, freq
       FROM ranked WHERE rn = 1
       ORDER BY occurred_at DESC LIMIT ${limit}`;
-    const items = rows.map(r => ({
-      id: String(r.id), kind: r.kind, layer: r.layer, occurred_at: r.occurred_at,
-      label: r.lbl || r.kind, valence: r.valence || 'neutral', freq: Number(r.freq) || 1
-    }));
+    // Clean each label so the picker never shows raw slot dumps or mid-word cuts:
+    //  · collapse whitespace
+    //  · a "Sensation: a, b, c…" dump → just the first sensation type, flagged so
+    //    the client can render it as a sensation chip ("🌊 <type> · <date>")
+    //  · truncate long free text to a word boundary + ellipsis (never mid-word)
+    //  · drop junk (1-char / punctuation-only labels)
+    const SENS_RE = /^(?:sensation|ощущени[ея])\s*[:·—–-]\s*(.+)$/i;
+    function cleanCtxLabel(raw) {
+      let s = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+      let sensation = false;
+      const m = s.match(SENS_RE);
+      if (m) {
+        sensation = true;
+        const first = (m[1].split(/[,;·]/)[0] || '').trim();
+        s = first || s;
+      }
+      const LIMIT = 42;
+      if (s.length > LIMIT) {
+        let cut = s.slice(0, LIMIT);
+        const sp = cut.lastIndexOf(' ');
+        if (sp >= 20) cut = cut.slice(0, sp);            // back off to last word boundary
+        s = cut.replace(/[\s,.;:·—–-]+$/, '') + '…';
+      }
+      return { label: s, sensation };
+    }
+    const items = rows.map(r => {
+      const c = cleanCtxLabel(r.lbl || r.kind);
+      return {
+        id: String(r.id), kind: r.kind, layer: r.layer, occurred_at: r.occurred_at,
+        label: c.label, sensation: c.sensation,
+        valence: r.valence || 'neutral', freq: Number(r.freq) || 1
+      };
+    }).filter(it => {
+      const core = it.label.replace(/[…\s]/g, '');
+      return core.length >= 2 && /[\p{L}\p{N}]/u.test(core); // keep only meaningful labels
+    });
     res.json({ ok: true, items });
   } catch (err) {
     console.error('GET /api/neuromap/context-candidates:', err);
@@ -5013,10 +5045,17 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
       const map = TOOL_JOURNEY[block.tool_kind];
       if (map) {
         try {
+          // cap the label to a word boundary so it never lands as mid-word junk
+          var rawLabel = (response && (response.label || response.text)) || block.title_ru || '';
+          rawLabel = String(rawLabel).replace(/\s+/g, ' ').trim();
+          if (rawLabel.length > 80) {
+            var sp = rawLabel.slice(0, 80).lastIndexOf(' ');
+            rawLabel = rawLabel.slice(0, sp >= 40 ? sp : 80).replace(/[\s,.;:—–-]+$/, '');
+          }
           await logJourney(userId, map.kind, map.layer, {
             source: 'course_tool_task', tool_kind: block.tool_kind,
             course_id: courseId, block_id: blockId,
-            label: (response && (response.label || response.text)) || block.title_ru || '',
+            label: rawLabel,
             valence: (response && response.valence) || 'neutral',
             comment: (response && (response.comment || response.text)) || '',
             response: response || {}
