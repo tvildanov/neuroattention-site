@@ -1138,6 +1138,15 @@ app.post('/api/run-migrations', async (req, res) => {
       PRIMARY KEY (team_id, user_id)
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id)`;
+    // PR7: team kind — 'team' (default) or 'family' (members carry a kin role).
+    await sql`ALTER TABLE teams ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'team'`;
+
+    // PR7: simple key/value system settings (e.g. collective_path_published).
+    await sql`CREATE TABLE IF NOT EXISTS system_settings (
+      key TEXT PRIMARY KEY,
+      value JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMP DEFAULT now()
+    )`;
 
     // Pack 31: «Мицелий сознания» foundation tables — universal journey
     // events log + links + global cycles. UI layers consume these in
@@ -5608,6 +5617,115 @@ app.post('/api/users/me/evolution/backfill', requireAuth, async (req, res) => {
 
     res.json({ ok: true, backfilled: { neuromap: nmCount, diary: diaryCount, blocks: blockCount } });
   } catch (err) { console.error('POST evolution/backfill:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── PR7: Collective Path of Development ──────────────────────────────────────
+// Every user as a parallel "spine" on a shared time axis, starting at their
+// registration. Superadmin always sees it; regular users only once published.
+async function getCollectivePublished() {
+  try {
+    const rows = await sql`SELECT value FROM system_settings WHERE key = 'collective_path_published'`;
+    return !!(rows[0] && rows[0].value && rows[0].value.published);
+  } catch (e) { return false; }
+}
+// GET /api/admin/collective-path?from=&to=&overlay=sun,earth
+app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    const isSuper = !!caller && ['superadmin', 'founder'].includes(caller.role);
+    const published = await getCollectivePublished();
+    if (!isSuper && !published) return res.status(403).json({ error: 'Not published' });
+
+    let toD = new Date(); let fromD = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    if (req.query.from) { const d = new Date(req.query.from); if (!isNaN(d.getTime())) fromD = d; }
+    if (req.query.to)   { const d = new Date(req.query.to);   if (!isNaN(d.getTime())) toD = d; }
+    const fromIso = fromD.toISOString(), toIso = toD.toISOString();
+    const safe = (p) => p.then(r => r).catch(() => []);
+
+    // users (bounded). Active accounts with a registration date.
+    const users = await safe(sql`SELECT id, COALESCE(display_name, split_part(email,'@',1)) AS name,
+        created_at, location_lat AS lat, location_lon AS lon
+      FROM users WHERE created_at IS NOT NULL ORDER BY created_at ASC LIMIT 200`);
+    const uids = users.map(u => u.id);
+    let evRows = [], linkRows = [], teamRows = [];
+    if (uids.length) {
+      // cap total events for safety; newest within window per the index order
+      evRows = await safe(sql`SELECT id, user_id, kind, layer, payload, occurred_at FROM journey_events
+        WHERE user_id = ANY(${uids}::uuid[]) AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
+        ORDER BY occurred_at ASC LIMIT 8000`);
+      const eids = evRows.map(e => e.id);
+      if (eids.length) {
+        linkRows = await safe(sql`SELECT event_a, event_b, kind, weight FROM journey_links
+          WHERE event_a = ANY(${eids}::bigint[]) OR event_b = ANY(${eids}::bigint[])`);
+      }
+      teamRows = await safe(sql`SELECT t.id, t.name, t.kind, tm.user_id, tm.role
+        FROM teams t JOIN team_members tm ON tm.team_id = t.id
+        WHERE tm.user_id = ANY(${uids}::uuid[])`);
+    }
+    function jeLabel(e) {
+      const p = e.payload || {};
+      if (e.kind === 'sensation') return ((p.sensation_labels || []).join(', ') || 'ощущение');
+      if (e.kind === 'practice') return p.practice_name || 'practice';
+      if (e.kind === 'insight') return String(p.text || 'insight').slice(0, 60);
+      if (e.kind === 'xp_gain') return '+' + (p.points || 0) + ' XP';
+      return p.label || p.title || e.kind;
+    }
+    const evByUser = {};
+    evRows.forEach(e => {
+      const k = String(e.user_id);
+      (evByUser[k] = evByUser[k] || []).push({ id: String(e.id), kind: e.kind, layer: e.layer,
+        t: e.occurred_at, occurred_at: e.occurred_at, label: jeLabel(e),
+        valence: (e.payload && e.payload.valence) || 'neutral' });
+    });
+    const idSet = new Set(evRows.map(e => String(e.id)));
+    const links = [];
+    linkRows.forEach(l => { const a = String(l.event_a), b = String(l.event_b); if (idSet.has(a) && idSet.has(b)) links.push({ a, b, kind: l.kind, weight: l.weight }); });
+    const teams = {};
+    teamRows.forEach(r => {
+      const id = String(r.id);
+      if (!teams[id]) teams[id] = { id, name: r.name, kind: r.kind || 'team', members: [] };
+      teams[id].members.push({ user_id: String(r.user_id), role: r.role || 'member' });
+    });
+
+    // External Field overlays for the layers requested (global signals only here).
+    const layers = String(req.query.overlay || '').split(',').map(s => s.trim()).filter(s => /^[a-z]+$/.test(s));
+    let external_overlays = {};
+    if (layers.length) {
+      const ovRows = await safe(sql`SELECT id, layer, event_type, title, timestamp, severity, source, source_url
+        FROM external_signal_events WHERE user_id IS NULL AND layer = ANY(${layers}::text[])
+          AND timestamp >= ${fromIso} AND timestamp <= ${toIso} ORDER BY timestamp ASC LIMIT 2000`);
+      ovRows.forEach(r => { (external_overlays[r.layer] = external_overlays[r.layer] || []).push({
+        id: String(r.id), layer: r.layer, event_type: r.event_type, title: r.title,
+        t: r.timestamp, timestamp: r.timestamp, severity: r.severity, source: r.source, source_url: r.source_url }); });
+    }
+
+    res.json({
+      ok: true, published, is_superadmin: isSuper,
+      range: { from: fromIso, to: toIso },
+      users: users.map(u => ({ id: String(u.id), name: u.name, created_at: u.created_at,
+        lat: u.lat, lon: u.lon, events: evByUser[String(u.id)] || [] })),
+      links, teams: Object.values(teams), external_overlays
+    });
+  } catch (err) { console.error('GET /api/admin/collective-path:', err); res.status(500).json({ error: err.message }); }
+});
+// POST /api/admin/collective-path/publish { published: bool } — superadmin only
+app.post('/api/admin/collective-path/publish', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    if (!caller || !['superadmin', 'founder'].includes(caller.role)) return res.status(403).json({ error: 'Forbidden' });
+    const published = !!(req.body && req.body.published);
+    await sql`INSERT INTO system_settings (key, value, updated_at)
+      VALUES ('collective_path_published', ${JSON.stringify({ published })}::jsonb, now())
+      ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify({ published })}::jsonb, updated_at = now()`;
+    res.json({ ok: true, published });
+  } catch (err) { console.error('POST collective-path/publish:', err); res.status(500).json({ error: err.message }); }
+});
+// GET /api/collective-path/status — is the collective path published? (for subtab gating)
+app.get('/api/collective-path/status', async (req, res) => {
+  try { res.json({ ok: true, published: await getCollectivePublished() }); }
+  catch (err) { res.json({ ok: true, published: false }); }
 });
 
 // GET /api/admin/journeys — list all users with progress summary (admin only)
