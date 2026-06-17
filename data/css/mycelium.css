@@ -672,6 +672,10 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .bp-sub:hover { border-color: rgba(120,210,255,0.6); color: #fff; }
 .bp-sub.picked { background: rgba(94,224,255,0.16); border-color: rgba(94,224,255,0.7); color: #eafaff; }
 .bp-toggle-list { margin-top: 0.75rem; }
+/* PR7: collective path side panel */
+.cp-lyr { display: flex; align-items: center; gap: 0.45rem; font-size: 12px; color: var(--text-secondary, #b8c0d0); padding: 0.22rem 0; cursor: pointer; }
+.cp-lyr input { accent-color: var(--accent-cyan, #5ce0ff); }
+@media (max-width: 560px) { .cp-side { width: 100% !important; } }
 @media (max-width: 560px) {
   .bp-grid { gap: 0.5rem; }
   .bp-stage { height: 220px; }
