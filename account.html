@@ -37,7 +37,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=2" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -1071,7 +1071,11 @@
         <div id="sm-sens-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;"></div>
 
         <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;" data-i18n="a.tools.sensation_where">Где ты чувствуешь это?</div>
-        <div id="sm-loc-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;"></div>
+        <!-- PR6: interactive body graphic above the text list -->
+        <div id="sm-body-picker"></div>
+        <div id="sm-body-selected" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.6rem 0 0;"></div>
+        <button type="button" class="sm-add-btn bp-toggle-list" onclick="smToggleLocList()" style="margin-bottom:0.6rem;" data-i18n="a.tools.sensation_show_full_list">Раскрыть весь список мест</button>
+        <div id="sm-loc-chips" style="display:none;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;"></div>
 
         <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.5rem;" data-i18n="a.tools.sensation_comment">Комментарий (по желанию)</div>
         <textarea id="sm-comment" rows="3" data-i18n-placeholder="a.tools.sensation_comment_ph" placeholder="Опиши контекст: что происходило, что заметил…" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:var(--text-primary);padding:0.75rem;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box;margin-bottom:1rem;"></textarea>
@@ -9112,25 +9116,28 @@ function loadSensationMap(){
     var box = document.getElementById('sm-loc-chips'); if (!box) return;
     var H = window.BODY_HIERARCHY || {};
     var lang = (typeof getLang === 'function') ? getLang() : 'ru';
-    var flat = [], groups = [];
-    list.forEach(function(v){ (H[v.slug] ? groups : flat).push(v); });
-    var flatHtml = flat.map(function(v){
+    // PR6: ONE inline list — every place renders as a chip in document order; a
+    // place with sub-parts opens a floating popover on hover/tap, a place without
+    // is just selectable. No more "expandable vs plain" split into separate rows.
+    function chipHtml(v){
       var ico = window.BODY_ICON ? window.BODY_ICON(v.slug) : '';
+      var grp = H[v.slug];
+      if (grp && grp.children && grp.children.length){
+        var kids = grp.children.map(function(k){
+          window.SM_LOC_LABELS[k.slug] = { ru:k.ru, en:k.en, es:k.es };
+          var kico = window.BODY_ICON ? window.BODY_ICON(k.slug) : '';
+          return '<div class="sm-chip sm-subchip" data-slug="'+smEsc(k.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'font-size:12px;">'+kico+'<span>'+smEsc(k[lang]||k.ru)+'</span></div>';
+        }).join('');
+        return '<div class="sm-locgroup" data-parent="'+smEsc(v.slug)+'">'+
+          '<div class="sm-chip sm-parent" data-slug="'+smEsc(v.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'">'+ico+'<span>'+smEsc(pickLabel(v))+'</span><span class="sm-caret">▾</span></div>'+
+          '<div class="sm-subgroup">'+kids+'</div>'+
+        '</div>';
+      }
       return '<div class="sm-chip" data-slug="'+smEsc(v.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'">'+ico+'<span>'+smEsc(pickLabel(v))+'</span></div>';
-    }).join('');
-    var groupHtml = groups.map(function(v){
-      var ico = window.BODY_ICON ? window.BODY_ICON(v.slug) : '';
-      var kids = (H[v.slug].children || []).map(function(k){
-        window.SM_LOC_LABELS[k.slug] = { ru:k.ru, en:k.en, es:k.es };
-        var kico = window.BODY_ICON ? window.BODY_ICON(k.slug) : '';
-        return '<div class="sm-chip sm-subchip" data-slug="'+smEsc(k.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'font-size:12px;">'+kico+'<span>'+smEsc(k[lang]||k.ru)+'</span></div>';
-      }).join('');
-      return '<div class="sm-locgroup" data-parent="'+smEsc(v.slug)+'">'+
-        '<div class="sm-chip sm-parent" data-slug="'+smEsc(v.slug)+'" onclick="this.classList.toggle(\'active\')" style="'+CHIP_STYLE+'">'+ico+'<span>'+smEsc(pickLabel(v))+'</span><span class="sm-caret">▾</span></div>'+
-        '<div class="sm-subgroup">'+kids+'</div>'+
-      '</div>';
-    }).join('');
-    box.innerHTML = (flatHtml ? '<div class="sm-flatrow">'+flatHtml+'</div>' : '') + groupHtml;
+    }
+    var addLbl = (typeof t==='function') ? t('a.tools.sensation_place_add','+ Добавить своё место') : '+ Добавить своё место';
+    var addBtn = '<button type="button" class="sm-chip sm-loc-add" onclick="smOpenAddPlace()" style="'+CHIP_STYLE+'"><span>'+smEsc(addLbl)+'</span></button>';
+    box.innerHTML = list.map(chipHtml).join('') + addBtn;
     box.querySelectorAll('.sm-chip').forEach(wireChipToggle);
     // expansion wiring
     box.querySelectorAll('.sm-locgroup').forEach(function(g){
@@ -9163,6 +9170,7 @@ function loadSensationMap(){
     SM_VOCAB.loc = arr[1].terms || [];
     renderSensChips(SM_VOCAB.sens);
     renderLocChips(SM_VOCAB.loc);
+    mountSmBodyPicker();
   }).catch(function(){});
   // Load recent entries
   loadSmRecent();
@@ -9368,6 +9376,101 @@ function smSubmitAdd(){
   .catch(function(e){ err.style.color='#ff8a8a'; err.textContent='Ошибка сети'; });
 }
 window.smOpenAddModal = smOpenAddModal;
+// PR6: add a custom body place (same shared-vocab model as custom sensations).
+var SM_BODY_ICON_KEYS = ['body','head','neck','chest','belly','back','arm','hand','leg','foot','pelvis','organ','pin'];
+function smOpenAddPlace(){
+  function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+  var pick = SM_BODY_ICON_KEYS.map(function(k){ return '<button type="button" data-key="'+k+'" onclick="smPickIcon(this)">'+(window.ICON_BY_KEY?window.ICON_BY_KEY(k):'•')+'</button>'; }).join('');
+  var ov = document.createElement('div');
+  ov.className = 'rpg-modal-overlay'; ov.id = 'sm-addplace-overlay';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:440px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">'+
+      '<h3 style="font-family:\'Unbounded\',sans-serif;font-size:1rem;font-weight:500;color:var(--text-primary);margin:0;">'+_t('a.tools.sensation_place_add_title','Новое место')+'</h3>'+
+      '<button onclick="this.closest(\'.rpg-modal-overlay\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;"><svg style="width:18px;height:18px;fill:none;stroke:var(--text-muted);stroke-width:2;" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>'+
+    '</div>'+
+    '<label style="font-size:11px;color:var(--text-dim);">RU</label>'+
+    '<input id="smp-ru" class="glass-input" style="width:100%;margin:0.2rem 0 0.7rem;" placeholder="'+_t('a.tools.sensation_place_add_ph','Название места')+'">'+
+    '<label style="font-size:11px;color:var(--text-dim);">EN</label>'+
+    '<input id="smp-en" class="glass-input" style="width:100%;margin:0.2rem 0 0.7rem;" placeholder="Place name">'+
+    '<label style="font-size:11px;color:var(--text-dim);">ES</label>'+
+    '<input id="smp-es" class="glass-input" style="width:100%;margin:0.2rem 0 0.9rem;" placeholder="Nombre del lugar">'+
+    '<label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:0.4rem;">'+_t('a.tools.sensation_add_icon','Иконка')+'</label>'+
+    '<div class="sm-iconpick" id="smp-iconpick">'+pick+'</div>'+
+    '<p id="smp-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0.5rem 0 0;"></p>'+
+    '<button class="btn btn-solid" onclick="smSubmitAddPlace()" style="width:100%;justify-content:center;margin-top:0.5rem;">'+_t('a.tools.sensation_add_save','Добавить')+'</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  var first = ov.querySelector('#smp-iconpick button'); if(first) first.classList.add('sel');
+}
+function smSubmitAddPlace(){
+  var ru=document.getElementById('smp-ru').value.trim();
+  var en=document.getElementById('smp-en').value.trim();
+  var es=document.getElementById('smp-es').value.trim();
+  var sel=document.querySelector('#smp-iconpick button.sel');
+  var icon=sel?sel.getAttribute('data-key'):null;
+  var err=document.getElementById('smp-err');
+  if(!ru){ err.textContent=(typeof t==='function'?t('a.tools.sensation_add_need','Введите название (RU)'):'Введите название (RU)'); return; }
+  var token=localStorage.getItem('na_token'); if(!token) return;
+  err.textContent='...'; err.style.color='var(--text-muted)';
+  fetch(AUTH_API+'/api/vocab/user',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify({category:'body_location',label_ru:ru,label_en:en||ru,label_es:es||ru,icon:icon})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d&&d.ok){ var ov=document.getElementById('sm-addplace-overlay'); if(ov) ov.remove(); if(typeof loadSensationMap==='function') loadSensationMap(); }
+    else { err.style.color='#ff8a8a'; err.textContent='Ошибка: '+((d&&d.error)||'unknown'); }
+  })
+  .catch(function(e){ err.style.color='#ff8a8a'; err.textContent='Ошибка сети'; });
+}
+window.smOpenAddPlace = smOpenAddPlace;
+window.smSubmitAddPlace = smSubmitAddPlace;
+// ── PR6: interactive body picker integration ──
+window.SM_BODY_SEL = window.SM_BODY_SEL || {};
+function mountSmBodyPicker(){
+  var host=document.getElementById('sm-body-picker');
+  if(!host || typeof window.mountBodyPicker!=='function') return;
+  var gender=(window.currentUser&&window.currentUser.gender)||null;   // MVP renders male
+  window.mountBodyPicker(host, smBodySelect, { lang:(typeof getLang==='function'?getLang():'ru'), gender:gender });
+}
+function smBodySelect(slug, labels, picked){
+  window.SM_LOC_LABELS = window.SM_LOC_LABELS || {};
+  window.SM_LOC_LABELS[slug]=labels;
+  if(picked) window.SM_BODY_SEL[slug]=labels; else delete window.SM_BODY_SEL[slug];
+  renderSmBodySelected();
+}
+function renderSmBodySelected(){
+  var strip=document.getElementById('sm-body-selected');
+  var locBox=document.getElementById('sm-loc-chips');
+  var lang=(typeof getLang==='function')?getLang():'ru';
+  function esc2(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  var st='padding:0.35rem 0.6rem;border-radius:16px;border:1px solid rgba(94,224,255,0.4);background:rgba(94,224,255,0.1);color:#eafaff;font-size:12px;display:inline-flex;align-items:center;gap:6px;';
+  if(strip){
+    strip.innerHTML=Object.keys(window.SM_BODY_SEL).map(function(slug){
+      var lab=window.SM_BODY_SEL[slug]; var txt=(lab[lang]||lab.ru||slug);
+      return '<span style="'+st+'">'+esc2(txt)+' <button type="button" onclick="smBodyUnselect(\''+esc2(slug)+'\')" style="background:none;border:none;color:#9cf;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button></span>';
+    }).join('');
+  }
+  // mirror selections into #sm-loc-chips as hidden active chips so submitSensationMap collects them
+  if(locBox){
+    locBox.querySelectorAll('.sm-chip[data-bodyorigin]').forEach(function(c){c.remove();});
+    Object.keys(window.SM_BODY_SEL).forEach(function(slug){
+      var c=document.createElement('div'); c.className='sm-chip active'; c.setAttribute('data-slug',slug); c.setAttribute('data-bodyorigin','1'); c.style.display='none'; locBox.appendChild(c);
+    });
+  }
+}
+function smBodyUnselect(slug){
+  delete window.SM_BODY_SEL[slug]; renderSmBodySelected();
+  try { document.querySelectorAll('.bp-sub.picked').forEach(function(b){ if(b.getAttribute('data-slug')===slug) b.classList.remove('picked'); }); } catch(e){}
+}
+function smToggleLocList(){
+  var box=document.getElementById('sm-loc-chips'); if(!box) return;
+  var shown=box.style.display && box.style.display!=='none';
+  box.style.display = shown ? 'none' : 'flex';
+}
+window.mountSmBodyPicker=mountSmBodyPicker;
+window.smBodySelect=smBodySelect;
+window.smBodyUnselect=smBodyUnselect;
+window.smToggleLocList=smToggleLocList;
 window.smPickIcon = smPickIcon;
 window.smSubmitAdd = smSubmitAdd;
 
@@ -13511,7 +13614,8 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/media.js" defer></script>
-<script src="assets/js/sensation-icons.js?v=2"></script>
+<script src="assets/js/sensation-icons.js?v=3"></script>
+<script src="assets/js/body-picker.js?v=1"></script>
 <script src="assets/js/registration-location.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/typography.js?v=2" defer></script>
