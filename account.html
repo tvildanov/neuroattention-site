@@ -251,6 +251,13 @@
 .nm-chip.selected { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-chip.neg.selected { background:rgba(255,120,120,0.08);border-color:rgba(255,120,120,0.25);color:rgba(255,140,140,1); }
 .nm-chip.pos.selected { background:rgba(120,255,160,0.08);border-color:rgba(120,255,160,0.25);color:rgba(140,255,170,1); }
+/* Valence grouping: light = positive/neutral, dark = negative. Subtle lab-tone
+   fills so the two groups read apart even before selection (.selected rules
+   above win by specificity when a chip is chosen). */
+.nm-chip.pos { background:rgba(150,225,195,0.05);border-color:rgba(150,225,195,0.16);color:rgba(206,232,222,0.92); }
+.nm-chip.pos:hover { border-color:rgba(150,225,195,0.34); }
+.nm-chip.neg { background:rgba(26,16,22,0.6);border-color:rgba(150,92,112,0.24);color:rgba(202,168,178,0.82); }
+.nm-chip.neg:hover { border-color:rgba(192,120,142,0.44); }
 .nm-slider-wrap { display:flex;align-items:center;gap:1rem;margin-top:0.75rem; }
 .nm-slider-wrap input[type=range] { flex:1;accent-color:rgba(255,255,255,0.5);height:6px; }
 .nm-slider-val { font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--text-primary);min-width:2rem;text-align:center; }
@@ -5333,6 +5340,10 @@ function getCausesForChain(area, isNeg){
   if(isNeg) return neg.concat(pos.slice(0,3)).concat(['другое']);
   return pos.concat(neg.slice(0,3)).concat(['другое']);
 }
+// Flatten every negative cause so a rendered situation/event chip can be tinted
+// by valence (dark = negative, light = positive/neutral). '_default' included.
+var NM_CAUSES_NEG_SET=(function(){var s={};Object.keys(NM_CAUSES_NEG).forEach(function(k){NM_CAUSES_NEG[k].forEach(function(c){s[c]=1;});});return s;})();
+function nmCauseValence(c){ if(!c||c==='другое') return ''; return NM_CAUSES_NEG_SET[c]?'neg':'pos'; }
 
 var NM_THOUGHTS = [
   'Я не справляюсь','Мне не хватает сил','Я не понимаю, что делать дальше','Я теряю контроль',
@@ -5460,7 +5471,8 @@ function renderNmStep(){
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
     causes.forEach(function(c){
       var sel=selCauses.indexOf(c)!==-1;
-      h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+nmTranslate(c)+'</span>';
+      var val=nmCauseValence(c);
+      h+='<span class="nm-chip'+(val?' '+val:'')+(sel?' selected':'')+'" onclick="nmToggleCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+nmTranslate(c)+'</span>';
     });
     h+='</div>';
     if(selCauses.indexOf('другое')!==-1){
