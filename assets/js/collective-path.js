@@ -74,24 +74,38 @@
     }).catch(function () { host.innerHTML = '<div style="padding:2rem;color:#f99;">network error</div>'; });
   };
 
-  // ── layout: order users top→bottom. families → teams → loners by reg date ──
+  // ── layout: order users top→bottom as BLOCKS (PR10 geo-clustering):
+  //   families → teams → loners, and WITHIN each tier by real-world proximity to
+  //   the caller (server-provided Haversine `dist`). Members of a family/team stay
+  //   adjacent; users with no location fall to the end. ──
   function layout(S) {
     var users = S.data.users || [], teams = S.data.teams || [];
+    var byId = {}; users.forEach(function (u) { byId[u.id] = u; });
     var teamOf = {};
     teams.forEach(function (tm) { tm.members.forEach(function (m) {
       var cur = teamOf[m.user_id];
       if (!cur || (tm.kind === 'family' && cur.kind !== 'family')) teamOf[m.user_id] = { teamId: tm.id, kind: tm.kind };
     }); });
-    function rank(u) { var t = teamOf[u.id]; if (!t) return 'c'; return t.kind === 'family' ? 'a' : 'b'; }
-    var sorted = users.slice().sort(function (a, b) {
-      var ra = rank(a), rb = rank(b); if (ra !== rb) return ra < rb ? -1 : 1;
-      var ta = teamOf[a.id], tb = teamOf[b.id];
-      if (ta && tb && ta.teamId !== tb.teamId) return ta.teamId < tb.teamId ? -1 : 1;
-      return tms(a.created_at) - tms(b.created_at);
+    function distOf(u) { return (u && u.dist != null && isFinite(u.dist)) ? u.dist : Infinity; }
+    function catRank(kind) { return kind === 'family' ? 0 : kind === 'team' ? 1 : 2; }
+    var blocks = [], seen = {};
+    teams.forEach(function (tm) {
+      // a user belongs to THIS block only if their resolved team is this one
+      // (so someone in both a family and a team appears under the family)
+      var mem = tm.members.map(function (m) { return byId[m.user_id]; })
+        .filter(function (u) { return u && teamOf[u.id] && teamOf[u.id].teamId === tm.id; });
+      if (!mem.length) return;
+      mem.forEach(function (u) { seen[u.id] = 1; });
+      mem.sort(function (a, b) { return distOf(a) - distOf(b) || tms(a.created_at) - tms(b.created_at); });
+      var ds = mem.map(distOf).filter(isFinite);
+      var centroid = ds.length ? ds.reduce(function (s, d) { return s + d; }, 0) / ds.length : Infinity;
+      blocks.push({ cat: catRank(tm.kind), dist: centroid, teamId: tm.id, users: mem });
     });
+    users.forEach(function (u) { if (!seen[u.id]) blocks.push({ cat: 2, dist: distOf(u), teamId: 0, users: [u] }); });
+    blocks.sort(function (a, b) { return (a.cat - b.cat) || (a.dist - b.dist) || (Number(a.teamId) - Number(b.teamId)); });
+    var sorted = []; blocks.forEach(function (bk) { bk.users.forEach(function (u) { sorted.push(u); }); });
     S.order = sorted; S.teamOf = teamOf;
     S.rowOf = {}; sorted.forEach(function (u, i) { S.rowOf[u.id] = i; });
-    // anchor = the logged-in user's row if present, else 0
     var meId = (window.currentUser && window.currentUser.id) ? String(window.currentUser.id) : null;
     S.anchorRow = (meId != null && S.rowOf[meId] != null) ? S.rowOf[meId] : 0;
   }
@@ -216,10 +230,14 @@
         S._nodes.push({ x: ex, y: ny, e: e, row: i });
       });
       if (!isMobile && nameH) {
-        ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        var place = (sh >= 36 && (u.city || u.country)) ? [u.city, u.country].filter(Boolean).join(', ') : '';
+        var nameY = place ? y - 6 : y;
+        ctx.font = '9px Inter, system-ui, sans-serif';
         ctx.fillStyle = hov === i ? '#eaf6ff' : 'rgba(160,175,195,' + (0.7 * dim) + ')';
         var tname = (u.name || '—'); if (tname.length > 16) tname = tname.slice(0, 15) + '…';
-        ctx.fillText(tname, x0 - 6, y);
+        ctx.fillText(tname, x0 - 6, nameY);
+        if (place) { ctx.font = '8px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(140,155,175,' + (0.55 * dim) + ')'; if (place.length > 18) place = place.slice(0, 17) + '…'; ctx.fillText(place, x0 - 6, y + 6); }
       }
     }
     ctx.textBaseline = 'alphabetic';
