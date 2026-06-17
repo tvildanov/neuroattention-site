@@ -833,7 +833,7 @@
           <button class="dash-tab" id="dom-subtab-dms" onclick="domSwitch('dms')" data-i18n="a.domunity.dms">Сообщения <span id="dom-dms-count" style="color:var(--accent-cyan);"></span></button>
           <button class="dash-tab" id="dom-subtab-notifs" onclick="domSwitch('notifs')" data-i18n="a.domunity.notifs">Уведомления <span id="dom-notif-count" style="color:var(--accent-rose);"></span></button>
           <button class="dash-tab" id="dom-subtab-groups" onclick="domSwitch('groups')" data-i18n="a.domunity.groups">Группы</button>
-          <button class="dash-tab" id="dom-subtab-teams" onclick="domSwitch('teams')">Команды</button>
+          <button class="dash-tab" id="dom-subtab-teams" onclick="domSwitch('teams')" data-i18n="a.domunity.teams_tab">Команды</button>
           <button class="dash-tab" id="dom-subtab-profile" onclick="domSwitch('profile')" data-i18n="a.domunity.profile">Настройки профиля</button>
         </div>
 
@@ -841,8 +841,8 @@
         <div id="dom-pane-feed">
           <div id="dom-feed-admin-form" style="display:none;background:rgba(0,229,255,0.04);border:1px dashed rgba(0,229,255,0.2);padding:1rem;border-radius:10px;margin-bottom:1rem;">
             <h4 style="margin:0 0 0.5rem;font-size:13px;" data-i18n="a.domunity.new_post">Создать пост в ленте</h4>
-            <input id="dom-post-title" type="text" placeholder="Заголовок" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.5rem;box-sizing:border-box;">
-            <textarea id="dom-post-body" rows="3" placeholder="Текст поста (markdown)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+            <input id="dom-post-title" type="text" placeholder="Заголовок" data-i18n-placeholder="a.domunity.post_title_ph" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.5rem;box-sizing:border-box;">
+            <textarea id="dom-post-body" rows="3" placeholder="Текст поста (markdown)" data-i18n-placeholder="a.domunity.post_body_ph" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
             <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;">
               <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;"><input type="checkbox" id="dom-post-pinned" style="accent-color:var(--accent-cyan);"> <span data-i18n="a.domunity.pin">Закрепить</span></label>
               <button class="btn btn-solid" onclick="domPublishPost()" style="margin-left:auto;font-size:12px;padding:0.4rem 1rem;" data-i18n="a.domunity.publish">Опубликовать</button>
@@ -858,7 +858,7 @@
           <div style="display:grid;grid-template-columns:280px 1fr;gap:1rem;min-height:400px;">
             <div style="border-right:1px solid rgba(255,255,255,0.06);padding-right:1rem;">
               <div style="display:flex;gap:0.4rem;margin-bottom:0.75rem;">
-                <input id="dom-dm-search" type="text" placeholder="Найти пользователя…" oninput="domSearchUsers(this.value)" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+                <input id="dom-dm-search" type="text" placeholder="Найти пользователя…" data-i18n-placeholder="a.domunity.search_user_ph" oninput="domSearchUsers(this.value)" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.6rem;color:var(--text-primary);font-size:12px;box-sizing:border-box;">
               </div>
               <div id="dom-dm-search-results" style="margin-bottom:0.75rem;"></div>
               <h4 style="margin:0 0 0.5rem;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;" data-i18n="a.domunity.threads">Беседы</h4>
@@ -940,15 +940,15 @@
         <!-- Teams -->
         <div id="dom-pane-teams" style="display:none;">
           <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap;">
-            <button class="btn btn-solid" onclick="domTeamCreatePrompt()" style="font-size:12px;padding:0.4rem 0.9rem;">+ Создать команду</button>
-            <span style="font-size:11px;color:var(--text-muted);">Команда — приватный круг участников с настраиваемой рассылкой уведомлений.</span>
+            <button class="btn btn-solid" onclick="domTeamCreatePrompt()" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.domunity.team_create_btn">+ Создать команду</button>
+            <span style="font-size:11px;color:var(--text-muted);" data-i18n="a.domunity.team_description">Команда — приватный круг участников с настраиваемой рассылкой уведомлений.</span>
           </div>
           <div style="display:grid;grid-template-columns:280px 1fr;gap:1rem;min-height:400px;">
             <div style="border-right:1px solid rgba(255,255,255,0.06);padding-right:1rem;">
               <div id="dom-teams-list" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
             </div>
             <div id="dom-team-detail" style="display:flex;flex-direction:column;">
-              <div id="dom-team-empty" style="margin:auto;text-align:center;color:var(--text-muted);font-size:13px;">Выберите команду слева или создайте новую.</div>
+              <div id="dom-team-empty" style="margin:auto;text-align:center;color:var(--text-muted);font-size:13px;" data-i18n="a.domunity.team_empty">Выберите команду слева или создайте новую.</div>
               <div id="dom-team-active" style="display:none;"></div>
             </div>
           </div>
@@ -993,7 +993,7 @@
             <button class="btn btn-ghost" onclick="domDonate(1000)" style="font-size:12px;padding:0.35rem 0.7rem;">$10</button>
             <button class="btn btn-ghost" onclick="domDonate(2500)" style="font-size:12px;padding:0.35rem 0.7rem;">$25</button>
             <button class="btn btn-ghost" onclick="domDonate(5000)" style="font-size:12px;padding:0.35rem 0.7rem;">$50</button>
-            <input id="dom-donate-amount" type="number" min="1" placeholder="$ другое" style="width:120px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="dom-donate-amount" type="number" min="1" placeholder="$ другое" data-i18n-placeholder="a.donate.amount_other_ph" style="width:120px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
             <button class="btn btn-solid" onclick="domDonate(null)" style="font-size:12px;padding:0.35rem 1rem;" data-i18n="a.domunity.donate_btn">Поддержать</button>
           </div>
         </div>
@@ -1057,7 +1057,7 @@
       <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
       <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
       <button class="dash-tab dash-subtab" id="tools-mode-external" onclick="setToolsMode('external')" style="border:none;border-bottom:2px solid transparent;">External Field</button>
-      <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ Раскрыть</button>
+      <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
     <!-- ── Pack 20.8: Sensation Map standalone (in Tools) ── -->
@@ -1931,34 +1931,34 @@
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-          <h3 style="margin:0;">Заявки на Rehabilitation Program</h3>
+          <h3 style="margin:0;" data-i18n="a.admin.rehab.title">Заявки на Rehabilitation Program</h3>
           <div style="display:flex;gap:0.5rem;">
-            <button class="nm-filter-btn active" onclick="filterRehabApps('all',this)">Все</button>
-            <button class="nm-filter-btn" onclick="filterRehabApps('new',this)">Новые</button>
-            <button class="nm-filter-btn" onclick="filterRehabApps('contacted',this)">Связались</button>
-            <button class="nm-filter-btn" onclick="filterRehabApps('in_progress',this)">В работе</button>
-            <button class="nm-filter-btn" onclick="filterRehabApps('accepted',this)">Приняты</button>
-            <button class="nm-filter-btn" onclick="filterRehabApps('declined',this)">Отклонены</button>
+            <button class="nm-filter-btn active" onclick="filterRehabApps('all',this)" data-i18n="a.admin.rehab.filter_all">Все</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('new',this)" data-i18n="a.admin.rehab.filter_new">Новые</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('contacted',this)" data-i18n="a.admin.rehab.filter_contacted">Связались</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('in_progress',this)" data-i18n="a.admin.rehab.filter_in_progress">В работе</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('accepted',this)" data-i18n="a.admin.rehab.filter_accepted">Приняты</button>
+            <button class="nm-filter-btn" onclick="filterRehabApps('declined',this)" data-i18n="a.admin.rehab.filter_declined">Отклонены</button>
           </div>
         </div>
         <div style="overflow-x:auto;">
           <table class="admin-table" id="rehab-apps-table">
             <thead>
               <tr>
-                <th>Имя / Email</th>
-                <th>Город</th>
-                <th>Тел.</th>
-                <th>Возр.</th>
-                <th>Описание</th>
-                <th>Условия</th>
-                <th>Статус</th>
-                <th>Дата</th>
+                <th data-i18n="a.admin.rehab.col_name_email">Имя / Email</th>
+                <th data-i18n="a.admin.rehab.col_city">Город</th>
+                <th data-i18n="a.admin.rehab.col_phone">Тел.</th>
+                <th data-i18n="a.admin.rehab.col_age">Возр.</th>
+                <th data-i18n="a.admin.rehab.col_description">Описание</th>
+                <th data-i18n="a.admin.rehab.col_conditions">Условия</th>
+                <th data-i18n="a.admin.rehab.col_status">Статус</th>
+                <th data-i18n="a.admin.rehab.col_date">Дата</th>
               </tr>
             </thead>
             <tbody id="rehab-apps-tbody"></tbody>
           </table>
         </div>
-        <p id="rehab-apps-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">Заявок пока нет.</p>
+        <p id="rehab-apps-empty" style="display:none;text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;" data-i18n="a.admin.rehab.empty">Заявок пока нет.</p>
       </div>
     </div>
   </div>
@@ -3361,14 +3361,15 @@ function renderRehabApps(apps){
     return;
   }
   if(empty) empty.style.display = 'none';
-  var statusLabels = { new:'Новая', contacted:'Связались', in_progress:'В работе', accepted:'Принята', declined:'Отклонена' };
+  var statusLabels = { new:t('a.admin.rehab.status_new','Новая'), contacted:t('a.admin.rehab.status_contacted','Связались'), in_progress:t('a.admin.rehab.status_in_progress','В работе'), accepted:t('a.admin.rehab.status_accepted','Принята'), declined:t('a.admin.rehab.status_declined','Отклонена') };
   var statusColors = { new:'var(--accent-amber)', contacted:'var(--accent-cyan)', in_progress:'var(--accent-violet)', accepted:'var(--accent-green)', declined:'var(--accent-rose)' };
+  var rehabLocale = (typeof getLocale === 'function') ? getLocale() : ({ru:'ru-RU',en:'en-US',es:'es-ES'}[(typeof getLang==='function'?getLang():'ru')]||'en-US');
   tbody.innerHTML = apps.map(function(a){
     var name = a.user_name || '—';
     var email = a.user_email || '';
     var conditions = (a.rehab_conditions || []).join(', ') || '—';
     var desc = (a.description || '').length > 80 ? a.description.substring(0,80) + '...' : (a.description || '—');
-    var date = a.created_at ? new Date(a.created_at).toLocaleDateString('ru-RU') : '—';
+    var date = a.created_at ? new Date(a.created_at).toLocaleDateString(rehabLocale) : '—';
     var statusOpts = ['new','contacted','in_progress','accepted','declined'].map(function(s){
       return '<option value="'+s+'"'+(s===a.status?' selected':'')+'>'+statusLabels[s]+'</option>';
     }).join('');
@@ -3868,7 +3869,7 @@ function renderUserDetail(data){
     if(diary.last_entry_at) h+=' · Последняя: '+new Date(diary.last_entry_at).toLocaleDateString('ru-RU');
     h+='</div>';
   } else {
-    h+='<div style="font-size:13px;color:var(--text-dim);">Нет записей в дневнике</div>';
+    h+='<div style="font-size:13px;color:var(--text-dim);">'+window.t('a.tools.no_records','Нет записей')+'</div>';
   }
   h+='</div>';
 
@@ -12139,13 +12140,13 @@ function domLoadTeams(){
 function renderTeamsList(){
   var box = document.getElementById('dom-teams-list');
   if (!box) return;
-  if (!domTeams.list.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">Пока команд нет.</p>'; return; }
+  if (!domTeams.list.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">'+window.t('a.domunity.teams_empty','Пока команд нет.')+'</p>'; return; }
   box.innerHTML = domTeams.list.map(function(t){
     var active = (domTeams.activeId === t.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
     var roleTag = t.my_role === 'owner' ? '<span style="color:#fc0;font-size:9px;font-weight:600;margin-left:0.3rem;">👑 OWNER</span>' : '';
     return '<div onclick="domTeamOpen(' + t.id + ')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
       + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">' + t.name + roleTag + '</div>'
-      + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (t.member_count||0) + ' участников</div>'
+      + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (t.member_count||0) + ' ' + window.t('a.domunity.member_count_suffix','участников') + '</div>'
       + '</div>';
   }).join('');
 }
@@ -12162,24 +12163,24 @@ function domTeamCreatePrompt(){
       + k.label + '</label>';
   }).join('');
   modal.innerHTML = '<div style="max-width:520px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">Создать команду</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
-    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Название</label>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">'+window.t('a.domunity.team_create_title','Создать команду')+'</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+window.t('a.domunity.team_name_label','Название')+'</label>'
     + '<input id="newteam-name" type="text" placeholder="Например: Утренний круг" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;">'
-    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Описание (по желанию)</label>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+window.t('a.domunity.team_desc_label','Описание (по желанию)')+'</label>'
     + '<textarea id="newteam-desc" rows="2" placeholder="О чём эта команда…" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;resize:vertical;"></textarea>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:0.3rem;">Лидер: <b style="color:var(--text-primary);">вы</b> (можно передать позже)</div>'
-    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Участники (email через запятую, по желанию)</label>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+window.t('a.domunity.team_members_label','Участники (email через запятую, по желанию)')+'</label>'
     + '<textarea id="newteam-members" rows="2" placeholder="anna@mail.com, ivan@mail.com" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:12px;margin-bottom:0.75rem;box-sizing:border-box;resize:vertical;"></textarea>'
     + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">Уведомления команды</div>'
     + '<div style="padding:0.5rem 0.7rem;background:rgba(0,229,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;margin-bottom:0.9rem;">' + kindRows + '</div>'
-    + '<button class="btn btn-solid" onclick="domTeamSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">Создать команду</button>'
+    + '<button class="btn btn-solid" onclick="domTeamSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">'+window.t('a.domunity.team_create_submit','Создать команду')+'</button>'
     + '</div>';
   document.body.appendChild(modal);
 }
 function domTeamSubmit(){
   var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
   var name = (document.getElementById('newteam-name').value||'').trim();
-  if (!name) { alert('Название обязательно'); return; }
+  if (!name) { alert(window.t('a.domunity.team_name_required','Название обязательно')); return; }
   var desc = (document.getElementById('newteam-desc').value||'').trim();
   var kinds = Array.from(document.querySelectorAll('.newteam-kind-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
   var emails = (document.getElementById('newteam-members').value||'').split(/[,\n;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
@@ -12606,15 +12607,15 @@ function domLoadGroups(){
     if (!box) return;
     if (!domGroups.rooms.length) {
       var isAdmin = currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin');
-      box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);line-height:1.5;">Пока нет групп.' +
-        (isAdmin ? ' Создайте первую кнопкой «+ Создать комнату» выше.' : ' Админ может создать группу первым.') + '</p>';
+      box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);line-height:1.5;">'+window.t('a.domunity.groups_empty','Пока нет групп.') +
+        (isAdmin ? ' '+window.t('a.domunity.groups_empty_create','Создайте первую кнопкой «+ Создать комнату» выше.') : ' '+window.t('a.domunity.groups_empty_admin','Админ может создать группу первым.')) + '</p>';
       return;
     }
     box.innerHTML = domGroups.rooms.map(function(r){
       var active = (domGroups.activeId === r.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
       return '<div onclick="domGroupOpen(' + r.id + ',\''+r.name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
            + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">'+r.name+'</div>'
-           + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+(r.member_count||0)+' участников</div>'
+           + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+(r.member_count||0)+' '+window.t('a.domunity.member_count_suffix','участников')+'</div>'
            + '</div>';
     }).join('');
   }).catch(function(e){ console.warn('groups:', e); });
@@ -12624,14 +12625,14 @@ function domGroupCreate(){
   var modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10020;padding:2rem 1rem;overflow-y:auto;';
   modal.innerHTML = '<div style="max-width:520px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">Создать комнату</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
-    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Название</label>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">'+window.t('a.domunity.group_create_title','Создать комнату')+'</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+window.t('a.domunity.group_name_label','Название')+'</label>'
     + '<input id="dom-room-name" type="text" placeholder="Например: Поток 1 — март" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.75rem;box-sizing:border-box;">'
-    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Добавить участников</label>'
-    + '<input id="dom-room-search" type="text" placeholder="Найти по имени/email…" oninput="domRoomSearch(this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:12px;margin-bottom:0.5rem;box-sizing:border-box;">'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+window.t('a.domunity.group_add_members_label','Добавить участников')+'</label>'
+    + '<input id="dom-room-search" type="text" placeholder="'+window.t('a.domunity.group_search_members_ph','Найти по имени/email…')+'" oninput="domRoomSearch(this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:12px;margin-bottom:0.5rem;box-sizing:border-box;">'
     + '<div id="dom-room-results" style="max-height:200px;overflow-y:auto;margin-bottom:0.5rem;"></div>'
     + '<div id="dom-room-selected" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.75rem;"></div>'
-    + '<button class="btn btn-solid" onclick="domRoomSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">Создать</button>'
+    + '<button class="btn btn-solid" onclick="domRoomSubmit()" style="width:100%;font-size:13px;padding:0.5rem;">'+window.t('a.domunity.group_create_submit','Создать')+'</button>'
     + '</div>';
   document.body.appendChild(modal);
   modal.dataset.members = JSON.stringify([]);
@@ -12666,7 +12667,7 @@ function domRoomRemoveMember(idx){
 function domRoomSubmit(){
   var modal = document.querySelector('div[style*="z-index:10020"]'); if (!modal) return;
   var name = document.getElementById('dom-room-name').value.trim();
-  if (!name) { alert('Название обязательно'); return; }
+  if (!name) { alert(window.t('a.domunity.team_name_required','Название обязательно')); return; }
   var arr = JSON.parse(modal.dataset.members||'[]');
   var slug = name.toLowerCase().replace(/[^a-z0-9а-я]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) + '-' + Date.now();
   domApi('/api/admin/chat/rooms', { method:'POST', body: { slug: slug, name: name, description: '', member_ids: arr.map(function(x){return x.id;}) } })
@@ -13516,8 +13517,8 @@ window.pbMove = pbMove;
 <script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
-<script src="assets/js/evolution-path.js"></script>
-<script src="assets/js/external-field.js"></script>
+<script src="assets/js/evolution-path.js?v=2"></script>
+<script src="assets/js/external-field.js?v=2"></script>
 <script>
   // 5.3: deep-link into Tools → NeuroMap, focused on a node + chain. Opened in a
   // NEW TAB from the embedded Evolution-Path mini-map
