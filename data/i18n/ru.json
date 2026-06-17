@@ -1488,5 +1488,8 @@
   "a.domunity.role_uncle": "Дядя",
   "a.domunity.role_cousin": "Двоюродн(ый/ая)",
   "a.domunity.role_other": "Другое",
-  "a.evo.no_location": "Без локации"
+  "a.evo.no_location": "Без локации",
+  "a.admin.delete_btn": "Удалить",
+  "a.admin.delete_confirm": "Уверены что хотите удалить этого пользователя?",
+  "a.admin.delete_error": "Не удалось удалить"
 }
