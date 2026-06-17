@@ -635,20 +635,49 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
    ════════════════════════════════════════════════════════════════════════ */
 .sm-ico { opacity: 0.85; }
 .sm-flatrow { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
-.sm-locgroup { width: 100%; }
+/* PR6: groups now flow INLINE with plain chips in one list; the sub-parts open as
+   a floating popover under the parent chip so the row layout never breaks. */
+.sm-locgroup { display: inline-flex; position: relative; }
 .sm-parent { width: auto; }
 .sm-caret { opacity: 0.55; font-size: 11px; margin-left: 2px; transition: transform 0.2s ease; }
 .sm-locgroup.pinned .sm-caret { transform: rotate(180deg); }
-/* sub-parts slide down on hover/tap */
 .sm-subgroup {
-  display: flex; flex-wrap: wrap; gap: 0.4rem; width: 100%;
-  max-height: 0; overflow: hidden; opacity: 0; margin-top: 0;
-  transition: max-height 0.28s cubic-bezier(.2,.7,.2,1), opacity 0.28s ease, margin-top 0.28s ease;
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; gap: 0.4rem; width: max-content; max-width: 340px;
+  padding: 0.6rem; opacity: 0; visibility: hidden; transform: translateY(-4px);
+  background: rgba(10,12,18,0.98); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
 }
-.sm-subgroup.open { max-height: 360px; opacity: 1; margin-top: 0.45rem; }
+.sm-subgroup.open { opacity: 1; visibility: visible; transform: translateY(0); }
 .sm-subchip { background: rgba(94,224,255,0.05) !important; }
 .sm-subchip:hover { border-color: rgba(94,224,255,0.45) !important; }
+.sm-loc-add { border-style: dashed !important; opacity: 0.85; }
+.sm-loc-add:hover { opacity: 1; border-color: rgba(94,224,255,0.5) !important; }
 @media (prefers-reduced-motion: reduce) { .sm-subgroup { transition: none; } }
+
+/* ── PR6: interactive body picker (blueprint silhouettes) ── */
+.bp-root { margin-bottom: 1rem; }
+.bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.bp-view { background: rgba(8,12,18,0.5); border: 1px solid rgba(120,210,255,0.12); border-radius: 14px; padding: 0.5rem; }
+.bp-view-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(120,210,255,0.7); text-align: center; margin-bottom: 0.25rem; font-family: 'JetBrains Mono', monospace; }
+.bp-stage { position: relative; height: 300px; }
+.bp-region { cursor: pointer; transition: fill 0.15s ease, stroke 0.15s ease, transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
+.bp-region:hover, .bp-region.active { fill: rgba(120,210,255,0.18); stroke: rgba(180,235,255,0.95); stroke-width: 1.4; filter: drop-shadow(0 0 7px rgba(120,210,255,0.85)); transform: scale(1.03); }
+.bp-label { position: absolute; transform: translateX(-50%); padding: 2px 8px; background: rgba(10,14,20,0.95); border: 1px solid rgba(120,210,255,0.4); border-radius: 8px; font-size: 11px; color: #dff2ff; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; z-index: 12; }
+.bp-label.show { opacity: 1; }
+.bp-panel { position: absolute; z-index: 20; display: none; flex-wrap: wrap; gap: 0.3rem; max-width: 200px; padding: 0.5rem; background: rgba(10,13,19,0.98); border: 1px solid rgba(120,210,255,0.25); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
+.bp-panel.open { display: flex; }
+.bp-sub { font-size: 11px; padding: 0.28rem 0.55rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.03); color: #cdd; cursor: pointer; transition: all 0.15s ease; }
+.bp-sub:hover { border-color: rgba(120,210,255,0.6); color: #fff; }
+.bp-sub.picked { background: rgba(94,224,255,0.16); border-color: rgba(94,224,255,0.7); color: #eafaff; }
+.bp-toggle-list { margin-top: 0.75rem; }
+@media (max-width: 560px) {
+  .bp-grid { gap: 0.5rem; }
+  .bp-stage { height: 220px; }
+  /* mobile: sub-buttons cascade below the graphic, not as a floating popover */
+  .bp-panel.open { position: static; display: flex; max-width: 100%; margin-top: 0.5rem; box-shadow: none; background: rgba(255,255,255,0.02); }
+}
 
 /* "+ Add new sensation" button + add-modal */
 .sm-add-btn {

@@ -1450,5 +1450,9 @@
   "a.domunity.group_name_required": "El nombre es obligatorio",
   "a.domunity.group_search_members_ph": "Buscar por nombre/email…",
   "a.domunity.group_add_members_label": "Añadir miembros",
-  "a.domunity.groups_empty_admin": "Un admin puede crear la primera sala."
+  "a.domunity.groups_empty_admin": "Un admin puede crear la primera sala.",
+  "a.tools.sensation_place_add": "+ Añadir tu propio lugar",
+  "a.tools.sensation_place_add_title": "Nuevo lugar",
+  "a.tools.sensation_place_add_ph": "Nombre del lugar",
+  "a.tools.sensation_show_full_list": "Mostrar lista completa de lugares"
 }
