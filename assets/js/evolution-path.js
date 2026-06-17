@@ -852,8 +852,10 @@
     // scale is capped so branches never leave the zone, so it tracks zoom live. ──
     if (T._maxAbsLy == null) { var mly = 0; comps.forEach(function (cp) { cp.nodes.forEach(function (n) { var a = Math.abs(n.ly); if (a > mly) mly = a; }); }); T._maxAbsLy = mly || 1; }
     var bkt = {}, dens = 1;
-    for (var di = 0; di < comps.length; di++) { var axd = sx(comps[di].anchorT); if (axd < x0 - 30 || axd > x1 + 30) continue; var bk = Math.floor(axd / 50); bkt[bk] = (bkt[bk] || 0) + 1; if (bkt[bk] > dens) dens = bkt[bk]; }
-    var wantS = dens > 4 ? 2.0 : dens > 2 ? 1.5 : 1.0;
+    for (var di = 0; di < comps.length; di++) { var axd = sx(comps[di].anchorT); if (axd < x0 - 30 || axd > x1 + 30) continue; var bk = Math.floor(axd / 40); bkt[bk] = (bkt[bk] || 0) + 1; if (bkt[bk] > dens) dens = bkt[bk]; }
+    // PR FIX #6: spread as soon as TWO chains share a time-slice (was 3+), and
+    // spread harder, so zoom-in visibly fans crowded slots apart.
+    var wantS = dens > 4 ? 2.6 : dens > 2 ? 2.0 : dens > 1 ? 1.6 : 1.0;
     var vS = Math.min(wantS, Math.max(1.0, (half - 8) / T._maxAbsLy));
     st._vScale = vS;
     for (var ci = 0; ci < comps.length; ci++) {
@@ -876,11 +878,15 @@
         var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
         drawNodeCv(ctx, e.layer, nx, ny, nd.r, fillN, glow);
         st._nodes.push({ x: nx, y: ny, r: nd.r, e: e });
-        if (!gesturing && (e.layer === 'insight' || ni === 0 || view.pxPerDay > 55)) {
-          ctx.font = '9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-          ctx.lineWidth = 2.6; ctx.strokeStyle = 'rgba(6,9,14,0.85)'; ctx.fillStyle = C.textDim;
-          var txt = truncate(prettyTitle(e, lang), 16);
-          ctx.strokeText(txt, nx, ny - nd.r - 5); ctx.fillText(txt, nx, ny - nd.r - 5);
+        // PR FIX #8: labels are hidden by default (they overlapped on zoom-in).
+        // Only the hovered/tapped node shows its label, and it's highlighted.
+        var isHover = st._hoverNodeId != null && String(e.id) === st._hoverNodeId;
+        if (isHover) {
+          ctx.save(); ctx.beginPath(); ctx.arc(nx, ny, nd.r + 3, 0, 6.283); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+          ctx.font = '10px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(6,9,14,0.92)'; ctx.fillStyle = '#eaf2ff';
+          var txt = truncate(prettyTitle(e, lang), 22);
+          ctx.strokeText(txt, nx, ny - nd.r - 6); ctx.fillText(txt, nx, ny - nd.r - 6);
         }
       }
     }
@@ -966,6 +972,13 @@
     return title || (OVERLAY_LABEL[layer] ? (OVERLAY_LABEL[layer][lang] || OVERLAY_LABEL[layer].ru) : layer);
   }
   function hideOverlayTip() { var tp = document.getElementById('evo-ov-tip'); if (tp) tp.style.display = 'none'; }
+  // PR FIX #8: track the hovered node so only its label is drawn.
+  function nodeHover(S, lx, ly) {
+    var st = S.st, nodes = (st && st._nodes) || [], best = null, bd = 1e9;
+    for (var i = 0; i < nodes.length; i++) { var n = nodes[i], d = Math.hypot(n.x - lx, n.y - ly), hit = Math.max(20, n.r + 10); if (d < hit && d < bd) { bd = d; best = n; } }
+    var id = best ? String(best.e.id) : null;
+    if (id !== st._hoverNodeId) { st._hoverNodeId = id; try { drawTunnel(st); } catch (e) {} }
+  }
   function overlayHover(S, lx, ly, clientX, clientY, lang) {
     var st = S.st, nodes = (st && st._overlayNodes) || [], hit = null;
     for (var i = 0; i < nodes.length; i++) { if (Math.hypot(nodes[i].x - lx, nodes[i].y - ly) < 9) { hit = nodes[i]; break; } }
@@ -1145,12 +1158,12 @@
     target.addEventListener('pointermove', function (e) {
       if (e.pointerType === 'touch') return;
       S.cursorX = rectL(e.clientX);
-      if (!S.dragging) { overlayHover(S, rectL(e.clientX), rectT(e.clientY), e.clientX, e.clientY, lang); return; }
+      if (!S.dragging) { overlayHover(S, rectL(e.clientX), rectT(e.clientY), e.clientX, e.clientY, lang); nodeHover(S, rectL(e.clientX), rectT(e.clientY)); return; }
       var dx = e.clientX - S.lastX; S.lastX = e.clientX;
       if (Math.abs(dx) > 2) S.moved = true;
       panBy(dx); S.panVel = dx;
     });
-    target.addEventListener('pointerleave', function () { hideOverlayTip(); });
+    target.addEventListener('pointerleave', function () { hideOverlayTip(); if (S.st && S.st._hoverNodeId != null) { S.st._hoverNodeId = null; try { drawTunnel(S.st); } catch (e) {} } });
     function up(e) {
       if (e.pointerType === 'touch') return;
       if (!S.dragging) return; S.dragging = false; target.style.cursor = ''; kick();
