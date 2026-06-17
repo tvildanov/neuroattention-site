@@ -1467,5 +1467,12 @@
   "a.evo.layer_thought": "Thoughts",
   "a.evo.layer_sensation": "Sensations",
   "a.evo.layer_practice": "Practices",
-  "a.evo.layer_insight": "Insights"
+  "a.evo.layer_insight": "Insights",
+  "a.evo.period": "Period",
+  "a.evo.period_day": "Day",
+  "a.evo.period_week": "Week",
+  "a.evo.period_month": "Month",
+  "a.evo.period_3months": "3m",
+  "a.evo.period_year": "Year",
+  "a.evo.visible_users": "Visible users"
 }

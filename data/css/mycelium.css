@@ -672,10 +672,15 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .bp-sub:hover { border-color: rgba(120,210,255,0.6); color: #fff; }
 .bp-sub.picked { background: rgba(94,224,255,0.16); border-color: rgba(94,224,255,0.7); color: #eafaff; }
 .bp-toggle-list { margin-top: 0.75rem; }
-/* PR7: collective path side panel */
+/* PR7: collective path side panel + toolbar */
 .cp-lyr { display: flex; align-items: center; gap: 0.45rem; font-size: 12px; color: var(--text-secondary, #b8c0d0); padding: 0.22rem 0; cursor: pointer; }
 .cp-lyr input { accent-color: var(--accent-cyan, #5ce0ff); }
-@media (max-width: 560px) { .cp-side { width: 100% !important; } }
+.cp-tb-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim, #89a); }
+.cp-seg { display: inline-flex; gap: 2px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; padding: 2px; }
+.cp-pbtn, .cp-dbtn { font-size: 11px; padding: 0.28rem 0.6rem; border: none; border-radius: 7px; background: transparent; color: var(--text-secondary, #b8c0d0); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.cp-pbtn:hover, .cp-dbtn:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.cp-pbtn.active, .cp-dbtn.active { background: rgba(94,224,255,0.16); color: #eafaff; }
+@media (max-width: 560px) { .cp-side { width: 100% !important; } .cp-toolbar { gap: 0.5rem 0.75rem !important; } }
 @media (max-width: 560px) {
   .bp-grid { gap: 0.5rem; }
   .bp-stage { height: 220px; }
