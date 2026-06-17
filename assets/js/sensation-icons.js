@@ -199,7 +199,56 @@
     right_hand_fingers: { icon: 'hand', children: handFingerKids('right_hand_fingers') },
     left_hand_fingers:  { icon: 'hand', children: handFingerKids('left_hand_fingers') },
     right_foot_toes:    { icon: 'foot', children: footToeKids('right_foot_toes') },
-    left_foot_toes:     { icon: 'foot', children: footToeKids('left_foot_toes') }
+    left_foot_toes:     { icon: 'foot', children: footToeKids('left_foot_toes') },
+    // PR6: expansion for the remaining divisible places so the list reads uniformly.
+    right_palm: { icon: 'hand', children: [
+      { slug: 'right_palm__center', ru: 'Центр ладони', en: 'Palm centre', es: 'Centro de la palma' },
+      { slug: 'right_palm__back',   ru: 'Тыльная сторона', en: 'Back of hand', es: 'Dorso de la mano' },
+      { slug: 'right_palm__wrist',  ru: 'Запястье', en: 'Wrist', es: 'Muñeca' },
+      { slug: 'right_palm__fingers', ru: 'Пальцы', en: 'Fingers', es: 'Dedos' }
+    ] },
+    left_palm: { icon: 'hand', children: [
+      { slug: 'left_palm__center', ru: 'Центр ладони', en: 'Palm centre', es: 'Centro de la palma' },
+      { slug: 'left_palm__back',   ru: 'Тыльная сторона', en: 'Back of hand', es: 'Dorso de la mano' },
+      { slug: 'left_palm__wrist',  ru: 'Запястье', en: 'Wrist', es: 'Muñeca' },
+      { slug: 'left_palm__fingers', ru: 'Пальцы', en: 'Fingers', es: 'Dedos' }
+    ] },
+    face: { icon: 'head', children: [
+      { slug: 'face__forehead', ru: 'Лоб',   en: 'Forehead', es: 'Frente' },
+      { slug: 'face__eyes',     ru: 'Глаза', en: 'Eyes',     es: 'Ojos' },
+      { slug: 'face__nose',     ru: 'Нос',   en: 'Nose',     es: 'Nariz' },
+      { slug: 'face__cheeks',   ru: 'Щёки',  en: 'Cheeks',   es: 'Mejillas' },
+      { slug: 'face__mouth',    ru: 'Рот',   en: 'Mouth',    es: 'Boca' },
+      { slug: 'face__jaw',      ru: 'Челюсть', en: 'Jaw',    es: 'Mandíbula' }
+    ] },
+    lungs: { icon: 'chest', children: [
+      { slug: 'lungs__left',  ru: 'Левое лёгкое',  en: 'Left lung',  es: 'Pulmón izquierdo' },
+      { slug: 'lungs__right', ru: 'Правое лёгкое', en: 'Right lung', es: 'Pulmón derecho' }
+    ] },
+    spine: { icon: 'back', children: [
+      { slug: 'spine__cervical', ru: 'Шейный отдел',     en: 'Cervical',  es: 'Cervical' },
+      { slug: 'spine__thoracic', ru: 'Грудной отдел',    en: 'Thoracic',  es: 'Torácica' },
+      { slug: 'spine__lumbar',   ru: 'Поясничный отдел', en: 'Lumbar',    es: 'Lumbar' }
+    ] },
+    pelvis: { icon: 'pelvis', children: [
+      { slug: 'pelvis__pubic',   ru: 'Лобковая область', en: 'Pubic area', es: 'Zona púbica' },
+      { slug: 'pelvis__hip_l',   ru: 'Тазобедренный сустав (лево)',  en: 'Hip joint (left)',  es: 'Cadera (izq.)' },
+      { slug: 'pelvis__hip_r',   ru: 'Тазобедренный сустав (право)', en: 'Hip joint (right)', es: 'Cadera (der.)' },
+      { slug: 'pelvis__glute_l', ru: 'Ягодица (левая)',  en: 'Buttock (left)',  es: 'Glúteo (izq.)' },
+      { slug: 'pelvis__glute_r', ru: 'Ягодица (правая)', en: 'Buttock (right)', es: 'Glúteo (der.)' }
+    ] },
+    thighs: { icon: 'leg', children: [
+      { slug: 'thighs__left',  ru: 'Левое бедро',  en: 'Left thigh',  es: 'Muslo izquierdo' },
+      { slug: 'thighs__right', ru: 'Правое бедро', en: 'Right thigh', es: 'Muslo derecho' }
+    ] },
+    shins: { icon: 'leg', children: [
+      { slug: 'shins__left',  ru: 'Левая голень',  en: 'Left shin',  es: 'Espinilla izquierda' },
+      { slug: 'shins__right', ru: 'Правая голень', en: 'Right shin', es: 'Espinilla derecha' }
+    ] },
+    knees: { icon: 'leg', children: [
+      { slug: 'knees__left',  ru: 'Левое колено',  en: 'Left knee',  es: 'Rodilla izquierda' },
+      { slug: 'knees__right', ru: 'Правое колено', en: 'Right knee', es: 'Rodilla derecha' }
+    ] }
   };
 
   // icon keys offered to the user when adding a custom sensation
