@@ -1487,5 +1487,6 @@
   "a.domunity.role_aunt": "Тётя",
   "a.domunity.role_uncle": "Дядя",
   "a.domunity.role_cousin": "Двоюродн(ый/ая)",
-  "a.domunity.role_other": "Другое"
+  "a.domunity.role_other": "Другое",
+  "a.evo.no_location": "Без локации"
 }

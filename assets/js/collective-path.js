@@ -99,15 +99,70 @@
       mem.sort(function (a, b) { return distOf(a) - distOf(b) || tms(a.created_at) - tms(b.created_at); });
       var ds = mem.map(distOf).filter(isFinite);
       var centroid = ds.length ? ds.reduce(function (s, d) { return s + d; }, 0) / ds.length : Infinity;
-      blocks.push({ cat: catRank(tm.kind), dist: centroid, teamId: tm.id, users: mem });
+      blocks.push({ cat: catRank(tm.kind), dist: centroid, teamId: tm.id, kind: tm.kind, name: tm.name, users: mem });
     });
     users.forEach(function (u) { if (!seen[u.id]) blocks.push({ cat: 2, dist: distOf(u), teamId: 0, users: [u] }); });
     blocks.sort(function (a, b) { return (a.cat - b.cat) || (a.dist - b.dist) || (Number(a.teamId) - Number(b.teamId)); });
     var sorted = []; blocks.forEach(function (bk) { bk.users.forEach(function (u) { sorted.push(u); }); });
     S.order = sorted; S.teamOf = teamOf;
-    S.rowOf = {}; sorted.forEach(function (u, i) { S.rowOf[u.id] = i; });
+
+    // ── PR12: groups. family/team blocks are groups; loners are bucketed by
+    // country (no-location → its own group), preserving the geo order. ──
+    var groups = [], cbuckets = {};
+    blocks.forEach(function (bk) {
+      if (bk.teamId) {
+        groups.push({ key: 't' + bk.teamId, kind: bk.kind, label: bk.name || (bk.kind === 'family' ? 'Family' : 'Team'),
+          icon: bk.kind === 'family' ? '🏠' : '👥', users: bk.users });
+      } else {
+        var u = bk.users[0], ckey = u.country ? ('c' + u.country) : 'noloc';
+        if (!cbuckets[ckey]) { cbuckets[ckey] = { key: ckey, kind: 'country', label: u.country || T('a.evo.no_location', 'Без локации'), icon: u.country ? '📍' : '∅', users: [] }; groups.push(cbuckets[ckey]); }
+        cbuckets[ckey].users.push(u);
+      }
+    });
+    groups.forEach(function (g) { g.count = g.users.length; g.eventCount = g.users.reduce(function (s, u) { return s + ((u.events || []).length); }, 0); });
+    S.groups = groups;
     var meId = (window.currentUser && window.currentUser.id) ? String(window.currentUser.id) : null;
-    S.anchorRow = (meId != null && S.rowOf[meId] != null) ? S.rowOf[meId] : 0;
+    S._meId = meId;
+    // default expansion: anchor's group + the few most active groups; user
+    // overrides are persisted per-group in localStorage.
+    var ranked = groups.slice().sort(function (a, b) { return b.eventCount - a.eventCount; });
+    var topKeys = {}; ranked.slice(0, 6).forEach(function (g) { topKeys[g.key] = 1; });
+    groups.forEach(function (g) {
+      var has = g.users.some(function (u) { return String(u.id) === meId; });
+      var def = has || !!topKeys[g.key];
+      var ov = null; try { ov = localStorage.getItem('cp_grp_' + g.key); } catch (e) {}
+      g.expanded = ov == null ? def : (ov === '1');
+    });
+    buildRows(S);
+  }
+  // Flatten groups into display rows. ≤50 users → no headers (all spines flat).
+  function buildRows(S) {
+    var groups = S.groups || [], total = (S.order || []).length;
+    var rows = [];
+    S.collapsible = total > 50;
+    if (!S.collapsible) {
+      (S.order || []).forEach(function (u) { rows.push({ type: 'spine', user: u }); });
+    } else {
+      groups.forEach(function (g) {
+        rows.push({ type: 'header', group: g });
+        if (g.expanded) g.users.forEach(function (u) { rows.push({ type: 'spine', user: u, group: g }); });
+      });
+    }
+    S.rows = rows;
+    S.rowOf = {};
+    rows.forEach(function (r, i) { if (r.type === 'spine') S.rowOf[r.user.id] = i; });
+    var meId = S._meId;
+    var anchor = (meId != null && S.rowOf[meId] != null) ? S.rowOf[meId] : null;
+    if (anchor == null) { // anchor's group collapsed → point at its header
+      for (var i = 0; i < rows.length; i++) { if (rows[i].type === 'header' && rows[i].group.users.some(function (u) { return String(u.id) === meId; })) { anchor = i; break; } }
+    }
+    S.anchorRow = anchor == null ? 0 : anchor;
+  }
+  function toggleGroup(S, key) {
+    var g = (S.groups || []).filter(function (x) { return x.key === key; })[0]; if (!g) return;
+    g.expanded = !g.expanded;
+    try { localStorage.setItem('cp_grp_' + key, g.expanded ? '1' : '0'); } catch (e) {}
+    buildRows(S); requestDraw(S);
   }
 
   function ensureView(S, x0, x1) {
@@ -134,7 +189,7 @@
     };
     S._mraf = requestAnimationFrame(tick);
   }
-  function contentH(S) { return (S.order || []).length * S.spineH; }
+  function contentH(S) { return (S.rows || S.order || []).length * S.spineH; }
   function spinesViewH(S) { return S._spinesBot - S._padTop; }
   function clampScroll(S) { var max = Math.max(0, contentH(S) - spinesViewH(S)); S.scrollY = clamp(S.scrollY, 0, max); }
 
@@ -174,10 +229,12 @@
     var mw = body.clientWidth || 148, mh = body.clientHeight || 110, dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(mw * dpr); cv.height = Math.round(mh * dpr); cv.style.width = mw + 'px'; cv.style.height = mh + 'px';
     var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, mw, mh);
-    var order = S.order || [], n = order.length || 1, v = S.view; if (!v) return;
+    var rowsArr = S.rows || [], n = rowsArr.length || 1, v = S.view; if (!v) return;
     var minT = v.originT, span = Math.max(1, v.nowT - minT), lw = Math.max(0.5, mh / n);
     for (var i = 0; i < n; i++) {
-      var u = order[i], y = (i + 0.5) / n * mh, xm = (tms(u.created_at) - minT) / span * mw;
+      var r = rowsArr[i], y = (i + 0.5) / n * mh;
+      if (r.type === 'header') { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mw, y); ctx.strokeStyle = 'rgba(120,200,255,0.25)'; ctx.lineWidth = Math.max(0.6, lw); ctx.stroke(); continue; }
+      var u = r.user, xm = (tms(u.created_at) - minT) / span * mw;
       var col = 'rgba(180,200,220,0.45)', tm = S.teamOf[u.id];
       if (tm) col = tm.kind === 'family' ? 'rgba(255,170,120,0.7)' : 'rgba(120,200,255,0.6)';
       ctx.beginPath(); ctx.moveTo(Math.max(0, xm), y); ctx.lineTo(mw, y); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
@@ -221,7 +278,7 @@
     var sx = function (t) { return (tms(t) - view.originT) / DAY * view.pxPerDay + view.panX + x0; };
     S._sx = sx;
 
-    var order = S.order || [], n = order.length, sh = S.spineH;
+    var rowsArr = S.rows || [], n = rowsArr.length, sh = S.spineH;
     var rowY = function (i) { return padTop + i * sh + sh / 2 - S.scrollY; };
     S._rowY = rowY;
     // VIRTUALISATION: only rows whose band intersects the viewport (± buffer)
@@ -232,14 +289,14 @@
     // clip the spines zone so scrolled content can't paint over the axis/overlays
     ctx.save(); ctx.beginPath(); ctx.rect(0, padTop - 2, W, spinesBot - padTop + 2); ctx.clip();
 
-    // connection nerves (only segments touching the visible window)
+    // connection nerves (only between members that are currently expanded/visible)
     (S.data.teams || []).forEach(function (tm) {
-      var rows = tm.members.map(function (m) { return S.rowOf[m.user_id]; }).filter(function (r) { return r != null; }).sort(function (a, b) { return a - b; });
+      var rws = tm.members.map(function (m) { return S.rowOf[m.user_id]; }).filter(function (r) { return r != null; }).sort(function (a, b) { return a - b; });
       var col = tm.kind === 'family' ? 'rgba(255,170,120,0.5)' : 'rgba(120,200,255,0.32)';
       var lw = tm.kind === 'family' ? 1.4 : 1;
-      for (var i = 0; i < rows.length - 1; i++) {
-        if (rows[i + 1] < first || rows[i] > last) continue;
-        var ya = rowY(rows[i]), yb = rowY(rows[i + 1]), xx = x0 + 6;
+      for (var i = 0; i < rws.length - 1; i++) {
+        if (rws[i + 1] < first || rws[i] > last) continue;
+        var ya = rowY(rws[i]), yb = rowY(rws[i + 1]), xx = x0 + 6;
         ctx.beginPath(); ctx.moveTo(xx, ya); ctx.bezierCurveTo(xx - 10, (ya + yb) / 2, xx - 10, (ya + yb) / 2, xx, yb);
         ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
       }
@@ -247,14 +304,25 @@
 
     var hov = S._hoverRow;
     S._nodes = [];
-    var nameH = sh >= 26;     // only label when there's vertical room
-    for (var i = first; i < last; i++) {
-      var u = order[i]; if (!u) continue;
-      var y = rowY(i), cs = sx(u.created_at), ce = Math.min(x1, sx(view.nowT));
-      var dim = (hov != null && hov !== i) ? 0.35 : 1;
+    var nameH = sh >= 26;
+    for (var ri = first; ri < last; ri++) {
+      var row = rowsArr[ri]; if (!row) continue;
+      var y = rowY(ri), dim = (hov != null && hov !== ri) ? 0.35 : 1;
+      if (row.type === 'header') {
+        var g = row.group;
+        ctx.fillStyle = 'rgba(120,200,255,' + (hov === ri ? 0.10 : 0.05) + ')';
+        ctx.fillRect(x0 - (isMobile ? 6 : 124), y - sh / 2 + 1, (x1 - x0) + (isMobile ? 12 : 130), sh - 2);
+        ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#cfe3f5';
+        ctx.fillText((g.expanded ? '▼ ' : '▶ ') + g.icon + ' ' + g.label + '  (' + g.count + ')', isMobile ? 4 : (x0 - 120), y);
+        ctx.textBaseline = 'alphabetic';
+        continue;
+      }
+      var u = row.user;
+      var cs = sx(u.created_at), ce = Math.min(x1, sx(view.nowT));
       ctx.globalAlpha = 0.5 * dim;
       ctx.beginPath(); ctx.moveTo(Math.max(x0, cs), y); ctx.lineTo(ce, y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = hov === i ? 2 : 1.1; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = hov === ri ? 2 : 1.1; ctx.stroke();
       ctx.globalAlpha = 1;
       if (cs >= x0 - 4 && cs <= x1) { ctx.beginPath(); ctx.arc(cs, y, 2.4, 0, 6.283); ctx.fillStyle = 'rgba(150,220,255,0.9)'; ctx.globalAlpha = dim; ctx.fill(); ctx.globalAlpha = 1; }
       var branch = Math.min(sh * 0.34, 8);
@@ -265,16 +333,17 @@
         var ny = y + dy, col = LAYER_COLOR[e.layer] || '#cfd6e6';
         ctx.globalAlpha = 0.4 * dim; ctx.beginPath(); ctx.moveTo(ex, y); ctx.lineTo(ex, ny); ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
         ctx.globalAlpha = dim; ctx.beginPath(); ctx.arc(ex, ny, 2, 0, 6.283); ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
-        S._nodes.push({ x: ex, y: ny, e: e, row: i });
+        S._nodes.push({ x: ex, y: ny, e: e, row: ri });
       });
       if (!isMobile && nameH) {
         ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        var indent = S.collapsible ? 0 : 0;
         var place = (sh >= 36 && (u.city || u.country)) ? [u.city, u.country].filter(Boolean).join(', ') : '';
         var nameY = place ? y - 6 : y;
         ctx.font = '9px Inter, system-ui, sans-serif';
-        ctx.fillStyle = hov === i ? '#eaf6ff' : 'rgba(160,175,195,' + (0.7 * dim) + ')';
+        ctx.fillStyle = hov === ri ? '#eaf6ff' : 'rgba(160,175,195,' + (0.7 * dim) + ')';
         var tname = (u.name || '—'); if (tname.length > 16) tname = tname.slice(0, 15) + '…';
-        ctx.fillText(tname, x0 - 6, nameY);
+        ctx.fillText((S.collapsible ? '· ' : '') + tname, x0 - 6, nameY);
         if (place) { ctx.font = '8px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(140,155,175,' + (0.55 * dim) + ')'; if (place.length > 18) place = place.slice(0, 17) + '…'; ctx.fillText(place, x0 - 6, y + 6); }
       }
     }
@@ -463,14 +532,16 @@
   function laneAt(S, ly) {
     if (ly == null || ly < S._padTop || ly > S._spinesBot) return null;
     var row = Math.floor((S.scrollY + (ly - S._padTop)) / S.spineH);
-    if (row < 0 || row >= (S.order || []).length) return null;
+    if (row < 0 || row >= (S.rows || S.order || []).length) return null;
     return row;
   }
   function hitTest(S, lx, ly) {
     var ov = S._ovNodes || [];
     for (var o = 0; o < ov.length; o++) { if (Math.hypot(ov[o].x - lx, ov[o].y - ly) < 12) { showCard(S, ov[o]); return; } }
     var row = laneAt(S, ly); if (row == null) return;
-    var u = (S.order || [])[row]; if (!u) return;
+    var r = (S.rows || [])[row]; if (!r) return;
+    if (r.type === 'header') { toggleGroup(S, r.group.key); return; }   // PR12: header toggles its group
+    var u = r.user; if (!u) return;
     S.anchorRow = row;
     if (S.data.is_superadmin) { try { window.open('/account.html?tab=profile&userId=' + encodeURIComponent(u.id), '_blank'); } catch (e) {} }
     else showUserCard(S, u);

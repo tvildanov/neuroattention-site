@@ -1498,5 +1498,6 @@
   "a.domunity.role_aunt": "Tía",
   "a.domunity.role_uncle": "Tío",
   "a.domunity.role_cousin": "Primo/a",
-  "a.domunity.role_other": "Otro"
+  "a.domunity.role_other": "Otro",
+  "a.evo.no_location": "Sin ubicación"
 }
