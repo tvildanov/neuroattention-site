@@ -142,7 +142,7 @@
     var host = S._host; host.innerHTML = '';
     var cv = document.createElement('canvas'); cv.style.cssText = 'display:block;width:100%;height:100%;cursor:grab;touch-action:none;';
     host.appendChild(cv);
-    host.appendChild(buildMiniMapStub());
+    host.appendChild(buildMiniMap(S));
     var card = document.createElement('div'); card.className = 'cp-card'; host.appendChild(card);
     S._cv = cv; S._card = card;
     sizeAndDraw(S);
@@ -152,7 +152,44 @@
     }
     wire(S);
   }
-  function buildMiniMapStub() { var d = document.createElement('div'); d.className = 'cp-minimap'; d.style.display = 'none'; return d; }
+  // ── PR11: mini-map — an overview of ALL spines with a draggable viewport box ──
+  function buildMiniMap(S) {
+    var wrap = document.createElement('div'); wrap.className = 'cp-minimap';
+    wrap.innerHTML = '<button class="cp-mini-toggle" title="mini-map">▭</button>' +
+      '<div class="cp-mini-body"><canvas class="cp-mini-cv"></canvas><div class="cp-mini-vp"></div></div>';
+    S._mini = wrap;
+    wrap.querySelector('.cp-mini-toggle').addEventListener('click', function (e) { e.stopPropagation(); wrap.classList.toggle('collapsed'); });
+    var body = wrap.querySelector('.cp-mini-body'), dragging = false;
+    function jumpTo(clientY) { var r = body.getBoundingClientRect(); var frac = clamp((clientY - r.top) / r.height, 0, 1); S.scrollY = frac * contentH(S) - spinesViewH(S) / 2; clampScroll(S); requestDraw(S); }
+    body.addEventListener('pointerdown', function (e) { dragging = true; jumpTo(e.clientY); try { body.setPointerCapture(e.pointerId); } catch (er) {} e.stopPropagation(); });
+    body.addEventListener('pointermove', function (e) { if (dragging) { jumpTo(e.clientY); e.stopPropagation(); } });
+    body.addEventListener('pointerup', function () { dragging = false; });
+    return wrap;
+  }
+  function drawMiniMap(S) {
+    var wrap = S._mini; if (!wrap) return;
+    if (S._isMobile) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    var cv = wrap.querySelector('.cp-mini-cv'), body = wrap.querySelector('.cp-mini-body');
+    var mw = body.clientWidth || 148, mh = body.clientHeight || 110, dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(mw * dpr); cv.height = Math.round(mh * dpr); cv.style.width = mw + 'px'; cv.style.height = mh + 'px';
+    var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, mw, mh);
+    var order = S.order || [], n = order.length || 1, v = S.view; if (!v) return;
+    var minT = v.originT, span = Math.max(1, v.nowT - minT), lw = Math.max(0.5, mh / n);
+    for (var i = 0; i < n; i++) {
+      var u = order[i], y = (i + 0.5) / n * mh, xm = (tms(u.created_at) - minT) / span * mw;
+      var col = 'rgba(180,200,220,0.45)', tm = S.teamOf[u.id];
+      if (tm) col = tm.kind === 'family' ? 'rgba(255,170,120,0.7)' : 'rgba(120,200,255,0.6)';
+      ctx.beginPath(); ctx.moveTo(Math.max(0, xm), y); ctx.lineTo(mw, y); ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
+    }
+    S._miniH = mh; updateMiniViewport(S);
+  }
+  function updateMiniViewport(S) {
+    var wrap = S._mini; if (!wrap || S._isMobile) return;
+    var vp = wrap.querySelector('.cp-mini-vp'), mh = S._miniH || 110, ch = contentH(S), vh = spinesViewH(S);
+    if (ch <= vh) { vp.style.display = 'none'; return; }
+    vp.style.display = ''; vp.style.top = ((S.scrollY / ch) * mh) + 'px'; vp.style.height = Math.max(6, (vh / ch) * mh) + 'px';
+  }
 
   function sizeAndDraw(S) {
     var host = S._host, cv = S._cv;
@@ -162,6 +199,7 @@
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     S._W = W; S._H = H; S._dpr = dpr;
     draw(S);
+    drawMiniMap(S);
   }
 
   function draw(S) {
@@ -273,6 +311,7 @@
 
     // sticky bottom time axis (always visible)
     drawTimeAxis(ctx, view, x0, x1, H - padBot + 4, S._lang);
+    updateMiniViewport(S);
   }
 
   function drawTimeAxis(ctx, view, x0, x1, y, lang) {
