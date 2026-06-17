@@ -1450,5 +1450,9 @@
   "a.domunity.group_name_required": "Name is required",
   "a.domunity.group_search_members_ph": "Search by name/email…",
   "a.domunity.group_add_members_label": "Add members",
-  "a.domunity.groups_empty_admin": "An admin can create the first room."
+  "a.domunity.groups_empty_admin": "An admin can create the first room.",
+  "a.tools.sensation_place_add": "+ Add your own place",
+  "a.tools.sensation_place_add_title": "New place",
+  "a.tools.sensation_place_add_ph": "Place name",
+  "a.tools.sensation_show_full_list": "Show full list of places"
 }

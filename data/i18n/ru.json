@@ -1439,5 +1439,9 @@
   "a.domunity.group_name_required": "Название обязательно",
   "a.domunity.group_search_members_ph": "Найти по имени/email…",
   "a.domunity.group_add_members_label": "Добавить участников",
-  "a.domunity.groups_empty_admin": "Админ может создать группу первым."
+  "a.domunity.groups_empty_admin": "Админ может создать группу первым.",
+  "a.tools.sensation_place_add": "+ Добавить своё место",
+  "a.tools.sensation_place_add_title": "Новое место",
+  "a.tools.sensation_place_add_ph": "Название места",
+  "a.tools.sensation_show_full_list": "Раскрыть весь список мест"
 }
