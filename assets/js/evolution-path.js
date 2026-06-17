@@ -499,6 +499,8 @@
   };
   // Marker colour by layer + severity. Sun flares B/C/M/X; Earth Kp storm levels;
   // everything else by a generic low/med/high band. Falls back to a calm cyan.
+  // PR FIX #2: server-provided severity_color word → hex.
+  var SEV_WORD = { yellow: '#ffcf4d', orange: '#ff9d3c', red: '#ff5a5a' };
   function overlaySeverityColor(layer, severity) {
     var s = String(severity || '').toUpperCase();
     if (layer === 'sun') {
@@ -628,7 +630,8 @@
     // layer the overlay zone collapses and chains use the full height. ──
     var ovData = (data && data.overlays) || {};
     var ovLayers = [];
-    OVERLAY_ORDER.forEach(function (k) { var evs = ovData[k]; if (evs && evs.length) ovLayers.push({ key: k, icon: OVERLAY_ICON[k], events: evs }); });
+    var ovHidden = st.hidden || {};
+    OVERLAY_ORDER.forEach(function (k) { var evs = ovData[k]; if (evs && evs.length && !ovHidden[k]) ovLayers.push({ key: k, icon: OVERLAY_ICON[k], events: evs }); });
     if (isMobile && ovLayers.length > 3) ovLayers = ovLayers.slice(0, 3);   // mobile: cap visible tracks
     var fullBot = H - padBot, hasOverlay = ovLayers.length > 0;
     var fieldBot = hasOverlay ? Math.round(fieldTop + (fullBot - fieldTop) * 0.70) : fullBot;
@@ -924,7 +927,7 @@
       for (var ei = 0; ei < L.events.length; ei++) {
         var ev = L.events[ei], mx = sx(ev.t);
         if (mx < x0 - 4 || mx > x1 + 4) continue;
-        var col = overlaySeverityColor(L.key, ev.severity);
+        var col = SEV_WORD[ev.severity_color] || overlaySeverityColor(L.key, ev.severity);
         if (!gesturing) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 5; }
         ctx.beginPath(); ctx.arc(mx, cyT, 3.4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
         if (!gesturing) ctx.restore();
@@ -935,6 +938,44 @@
   }
 
   // ── PR5: detail card for an External Field overlay marker (click/tap). ──
+  // PR FIX #3: short human phrase for a hover tooltip (severity → plain words +
+  // a tiny impact hint). Localised RU/EN/ES.
+  function buildOverlayPhrase(ev, layer, lang) {
+    function pick(ru, en, es) { return lang === 'en' ? en : lang === 'es' ? es : ru; }
+    var sev = String(ev.severity || ''), title = String(ev.title || '');
+    if (layer === 'sun') {
+      var fm = sev.match(/([CMX])\s*([\d.]*)/i);
+      if (fm) { var c = fm[1].toUpperCase(); var strong = c === 'X' ? pick('очень сильная', 'very strong', 'muy fuerte') : c === 'M' ? pick('сильная', 'strong', 'fuerte') : pick('умеренная', 'moderate', 'moderada');
+        return pick('Вспышка ' + c + fm[2] + ' — ' + strong, 'Flare ' + c + fm[2] + ' — ' + strong, 'Llamarada ' + c + fm[2] + ' — ' + strong); }
+      var kp = sev.match(/Kp\s*([\d.]+)/i);
+      if (kp) return pick('Магнитная буря Kp ' + kp[1] + ' — возможны головные боли', 'Geomagnetic storm Kp ' + kp[1] + ' — headaches possible', 'Tormenta geomagnética Kp ' + kp[1] + ' — posibles dolores de cabeza');
+    }
+    if (layer === 'earth') {
+      var mg = sev.match(/M\s*([\d.]+)/i);
+      if (mg) return pick('Землетрясение M' + mg[1], 'Earthquake M' + mg[1], 'Terremoto M' + mg[1]) + (title && title.length < 40 ? ' — ' + title : '');
+    }
+    if (layer === 'moon') {
+      if (/full|полнолун/i.test(title + sev)) return pick('Полнолуние', 'Full moon', 'Luna llena');
+      if (/new|новолун/i.test(title + sev)) return pick('Новолуние', 'New moon', 'Luna nueva');
+    }
+    if (layer === 'weather') {
+      var uv = sev.match(/UV\s*([\d.]+)/i) || title.match(/UV\s*([\d.]+)/i);
+      if (uv) return pick('UV ' + uv[1] + ' — ожог за ~10 мин', 'UV ' + uv[1] + ' — sunburn in ~10 min', 'UV ' + uv[1] + ' — quemadura en ~10 min');
+    }
+    if (layer === 'cosmos') return pick('Гравитационная волна', 'Gravitational wave', 'Onda gravitacional');
+    return title || (OVERLAY_LABEL[layer] ? (OVERLAY_LABEL[layer][lang] || OVERLAY_LABEL[layer].ru) : layer);
+  }
+  function hideOverlayTip() { var tp = document.getElementById('evo-ov-tip'); if (tp) tp.style.display = 'none'; }
+  function overlayHover(S, lx, ly, clientX, clientY, lang) {
+    var st = S.st, nodes = (st && st._overlayNodes) || [], hit = null;
+    for (var i = 0; i < nodes.length; i++) { if (Math.hypot(nodes[i].x - lx, nodes[i].y - ly) < 9) { hit = nodes[i]; break; } }
+    var tip = document.getElementById('evo-ov-tip');
+    if (!hit) { if (tip) tip.style.display = 'none'; return; }
+    if (!tip) { tip = document.createElement('div'); tip.id = 'evo-ov-tip'; tip.style.cssText = 'position:fixed;z-index:10050;pointer-events:none;background:rgba(10,14,20,0.97);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:4px 9px;font:11px Inter,system-ui,sans-serif;color:#dfe;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,0.5);'; document.body.appendChild(tip); }
+    tip.style.borderColor = (hit.color || '#8fd0ff') + '66';
+    tip.textContent = buildOverlayPhrase(hit.ev, hit.layer, lang);
+    tip.style.left = (clientX + 12) + 'px'; tip.style.top = (clientY - 10) + 'px'; tip.style.display = 'block';
+  }
   function showOverlayCard(container, marker, lang) {
     var host = container.querySelector('.myc-evo-canvas') || container;
     var old = host.querySelector('.evo-ov-card'); if (old) old.remove();
@@ -1104,11 +1145,12 @@
     target.addEventListener('pointermove', function (e) {
       if (e.pointerType === 'touch') return;
       S.cursorX = rectL(e.clientX);
-      if (!S.dragging) return;
+      if (!S.dragging) { overlayHover(S, rectL(e.clientX), rectT(e.clientY), e.clientX, e.clientY, lang); return; }
       var dx = e.clientX - S.lastX; S.lastX = e.clientX;
       if (Math.abs(dx) > 2) S.moved = true;
       panBy(dx); S.panVel = dx;
     });
+    target.addEventListener('pointerleave', function () { hideOverlayTip(); });
     function up(e) {
       if (e.pointerType === 'touch') return;
       if (!S.dragging) return; S.dragging = false; target.style.cursor = ''; kick();
@@ -1998,12 +2040,24 @@
     st.hidden = st.hidden || {};
     var box = document.createElement('div');
     box.className = 'evo-layer-toggles';
+    // PR FIX #7: External Field layers the server returned (showOnPath=true) get
+    // their own quick-toggle here, alongside the personal layers — a session-local
+    // override of overlay visibility (doesn't change the External Field setting).
+    var ovData = (st.data && st.data.overlays) || {};
+    var extKeys = OVERLAY_ORDER.filter(function (k) { return ovData[k] && ovData[k].length; });
+    var extRows = extKeys.map(function (k) {
+      var on = !st.hidden[k];
+      var nm = OVERLAY_LABEL[k] ? (OVERLAY_LABEL[k][lang] || OVERLAY_LABEL[k].ru) : k;
+      return '<label class="evo-lt-row"><input type="checkbox" data-layer="' + k + '"' + (on ? ' checked' : '') + '>' +
+        '<span>' + OVERLAY_ICON[k] + ' ' + nm + '</span></label>';
+    }).join('');
     box.innerHTML = '<div class="evo-lt-title">' + L(STR.layersTitle, lang) + '</div>' +
       LAYERS.map(function (l) {
         var on = !st.hidden[l.key];
         return '<label class="evo-lt-row"><input type="checkbox" data-layer="' + l.key + '"' + (on ? ' checked' : '') + '>' +
           '<span>' + L(l.label, lang) + '</span></label>';
-      }).join('');
+      }).join('') +
+      (extRows ? '<div class="evo-lt-sep" style="height:1px;background:rgba(255,255,255,0.08);margin:0.4rem 0;"></div>' + extRows : '');
     canvas.appendChild(box);
     box.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
       cb.addEventListener('change', function () {

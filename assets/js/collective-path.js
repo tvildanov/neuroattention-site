@@ -370,7 +370,7 @@
         ctx.fillText(EXT_ICON[lk] + '', isMobile ? 2 : (x0 - 120), cyT);
         (S.data.external_overlays[lk] || []).forEach(function (ev) {
           var mx = sx(ev.t); if (mx < x0 - 3 || mx > x1 + 3) return;
-          var col = extColor(lk, ev.severity);
+          var col = ({ yellow: '#ffcf4d', orange: '#ff9d3c', red: '#ff5a5a' })[ev.severity_color] || extColor(lk, ev.severity);
           ctx.beginPath(); ctx.arc(mx, cyT, 3, 0, 6.283); ctx.fillStyle = col; ctx.fill();
           S._ovNodes.push({ x: mx, y: cyT, ev: ev, layer: lk, color: col });
         });

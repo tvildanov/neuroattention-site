@@ -315,6 +315,10 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_ese_layer_time ON external_signal_events (layer, timestamp DESC)`;
     // dedup_key makes the poller idempotent (same external event never doubles)
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_ese_dedup ON external_signal_events (dedup_key) WHERE dedup_key IS NOT NULL`;
+    // PR FIX #4: purge stale GraceDB Mock-Data-Challenge / Test replays that the
+    // old poller ingested hourly (dedup_key gracedb:MS… / gracedb:TS…). The poller
+    // now filters these out, but the historical rows still polluted the Cosmos layer.
+    try { await sql`DELETE FROM external_signal_events WHERE layer = 'cosmos' AND (dedup_key LIKE 'gracedb:MS%' OR dedup_key LIKE 'gracedb:TS%' OR dedup_key LIKE 'gracedb:T0%')`; } catch (e) {}
     await sql`CREATE TABLE IF NOT EXISTS external_field_subscriptions (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       config JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -5375,6 +5379,60 @@ app.get('/api/users/me/journey', requireAuth, async (req, res) => {
 //
 // Filtering: ?from=<ISO>&to=<ISO> takes precedence; otherwise ?period=
 // day|week|month|3months|year|all. Every query is fault-tolerant.
+
+// PR FIX #2: per-layer significance threshold for Path-of-Development overlays.
+// Only meaningful events get through; returns { pass, color: yellow|orange|red }.
+function overlayThreshold(r) {
+  const layer = r.layer, et = r.event_type || '', sev = String(r.severity || ''), title = String(r.title || ''), desc = String(r.description || '');
+  const num = (re) => { const m = sev.match(re) || title.match(re); return m ? parseFloat(m[1]) : null; };
+  if (layer === 'sun') {
+    if (et === 'flare') {
+      const cm = sev.match(/([BCMX])\s*[\d.]*/i) || title.match(/([BCMX])\s*[\d.]*/i);
+      if (!cm) return { pass: false };
+      const C = cm[1].toUpperCase();
+      if (C === 'B') return { pass: false };                 // skip B-class flares
+      return { pass: true, color: C === 'X' ? 'red' : C === 'M' ? 'orange' : 'yellow' };
+    }
+    if (et === 'geomagnetic_storm' || et === 'kp_index') {
+      const kp = num(/Kp\s*([\d.]+)/i);
+      if (kp != null && kp >= 5) return { pass: true, color: kp >= 9 ? 'red' : kp >= 7 ? 'orange' : 'yellow' };
+    }
+    return { pass: false };                                   // skip solar_wind / f107 / xray / cme noise
+  }
+  if (layer === 'earth') {
+    if (et === 'earthquake') { const mag = num(/M\s*([\d.]+)/i); if (mag != null && mag >= 5) return { pass: true, color: mag >= 7 ? 'red' : mag >= 6 ? 'orange' : 'yellow' }; }
+    if (et === 'geomagnetic_storm' || et === 'kp_index') { const kp = num(/Kp\s*([\d.]+)/i); if (kp != null && kp >= 5) return { pass: true, color: kp >= 9 ? 'red' : kp >= 7 ? 'orange' : 'yellow' }; }
+    return { pass: false };
+  }
+  if (layer === 'moon') {
+    const isNF = /\b(new|full)\b/i.test(title + ' ' + sev) || /полнолун|новолун/i.test(title);
+    return isNF ? { pass: true, color: 'yellow' } : { pass: false };
+  }
+  if (layer === 'weather') {
+    const uv = num(/UV\s*([\d.]+)/i); if (uv != null && uv >= 9) return { pass: true, color: uv >= 11 ? 'red' : 'yellow' };
+    const aqi = num(/AQI\s*([\d.]+)/i); if (aqi != null && aqi >= 150) return { pass: true, color: aqi >= 300 ? 'red' : 'orange' };
+    const tmp = num(/(-?[\d.]+)\s*°?\s*C/i); if (tmp != null && (tmp > 35 || tmp < -20)) return { pass: true, color: 'orange' };
+    if (/high|severe|extreme/i.test(sev)) return { pass: true, color: 'red' };
+    return { pass: false };
+  }
+  if (layer === 'cosmos') {
+    if (et === 'gw_candidate') {
+      if (/terrestrial|uncertain|retract/i.test(title + ' ' + sev + ' ' + desc)) return { pass: false };
+      return { pass: true, color: /BBH|BNS|NSBH/i.test(title + ' ' + sev + ' ' + desc) ? 'orange' : 'yellow' };
+    }
+    return { pass: false };
+  }
+  if (layer === 'social') {
+    if (/crisis|disaster|war|conflict|election|emergency|attack|flood|wildfire/i.test(title + ' ' + desc)) return { pass: true, color: 'orange' };
+    return { pass: false };
+  }
+  if (layer === 'experimental') {
+    const hz = num(/([\d.]+)\s*Hz/i); if (hz != null && Math.abs(hz - 7.83) >= 1) return { pass: true, color: 'orange' };
+    return { pass: false };
+  }
+  return { pass: true, color: 'yellow' };
+}
+
 app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
@@ -5531,26 +5589,29 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     };
 
     // External Field overlays (PR5): thin-track markers on the same time axis,
-    // ONLY for layers the user marked showOnPath in their subscription config.
-    // Global events (user_id NULL) + this user's local events, same as /external/events.
+    // ONLY for layers the user marked showOnPath, and ONLY events that pass the
+    // per-layer significance threshold (PR FIX #2) — so the Path isn't buried in
+    // constant solar-wind/phase noise. Each kept event carries a severity_color.
     let overlays = {};
     try {
       const subRows = await safe(sql`SELECT config FROM external_field_subscriptions WHERE user_id = ${me}`);
       const cfg = (subRows[0] && subRows[0].config) || {};
       const onPath = Object.keys(cfg).filter(k => cfg[k] && cfg[k].showOnPath && cfg[k].enabled !== false);
       if (onPath.length) {
-        const ovRows = await safe(sql`SELECT id, layer, event_type, title, description, timestamp, severity, source, source_url, location_scope
+        const ovRows = await safe(sql`SELECT id, layer, event_type, title, description, timestamp, severity, source, source_url, location_scope, raw_payload
                                       FROM external_signal_events
                                       WHERE (user_id IS NULL OR user_id = ${me})
                                         AND layer = ANY(${onPath}::text[])
                                         AND timestamp >= ${fromIso} AND timestamp <= ${toIso}
                                       ORDER BY timestamp ASC`);
         ovRows.forEach(r => {
+          const th = overlayThreshold(r);
+          if (!th.pass) return;
           (overlays[r.layer] = overlays[r.layer] || []).push({
             id: String(r.id), layer: r.layer, event_type: r.event_type,
             title: r.title, description: r.description,
             timestamp: r.timestamp, t: r.timestamp,
-            severity: r.severity, source: r.source, source_url: r.source_url, scope: r.location_scope
+            severity: r.severity, severity_color: th.color, source: r.source, source_url: r.source_url, scope: r.location_scope
           });
         });
       }
@@ -5713,12 +5774,12 @@ app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
     const layers = String(req.query.overlay || '').split(',').map(s => s.trim()).filter(s => /^[a-z]+$/.test(s));
     let external_overlays = {};
     if (layers.length) {
-      const ovRows = await safe(sql`SELECT id, layer, event_type, title, timestamp, severity, source, source_url
+      const ovRows = await safe(sql`SELECT id, layer, event_type, title, description, timestamp, severity, source, source_url
         FROM external_signal_events WHERE user_id IS NULL AND layer = ANY(${layers}::text[])
           AND timestamp >= ${fromIso} AND timestamp <= ${toIso} ORDER BY timestamp ASC LIMIT 2000`);
-      ovRows.forEach(r => { (external_overlays[r.layer] = external_overlays[r.layer] || []).push({
+      ovRows.forEach(r => { const th = overlayThreshold(r); if (!th.pass) return; (external_overlays[r.layer] = external_overlays[r.layer] || []).push({
         id: String(r.id), layer: r.layer, event_type: r.event_type, title: r.title,
-        t: r.timestamp, timestamp: r.timestamp, severity: r.severity, source: r.source, source_url: r.source_url }); });
+        t: r.timestamp, timestamp: r.timestamp, severity: r.severity, severity_color: th.color, source: r.source, source_url: r.source_url }); });
     }
 
     // PR10: geo distance (km) of every user to the CALLER, so the client layout

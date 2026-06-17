@@ -619,9 +619,9 @@
   function openSubscriptions() {
     var rows = LAYERS.map(function (l) {
       var c = S.config[l.key] || {};
+      // PR FIX: only two real toggles per layer — show on Path, and notify.
       return '<div class="ef-sub-row" data-layer="' + l.key + '">' +
         '<div class="ef-sub-name">' + l.icon + ' ' + esc(t('tab.' + l.key)) + '</div>' +
-        '<label class="ef-chk"><input type="checkbox" data-k="enabled"' + (c.enabled ? ' checked' : '') + '> ' + esc(t('subs.show')) + '</label>' +
         '<label class="ef-chk"><input type="checkbox" data-k="showOnPath"' + (c.showOnPath ? ' checked' : '') + '> ' + esc(t('subs.onPath')) + '</label>' +
         '<label class="ef-chk"><input type="checkbox" data-k="notify"' + (c.notify ? ' checked' : '') + '> ' + esc(t('subs.notify')) + '</label>' +
       '</div>';
@@ -631,7 +631,7 @@
     ov.querySelector('#ef-sub-save').addEventListener('click', function () {
       var cfg = {};
       ov.querySelectorAll('.ef-sub-row').forEach(function (r) {
-        var layer = r.getAttribute('data-layer'); cfg[layer] = {};
+        var layer = r.getAttribute('data-layer'); cfg[layer] = { enabled: true };   // layers always fetchable; gating is showOnPath/notify
         r.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cfg[layer][cb.getAttribute('data-k')] = cb.checked; });
       });
       api('/api/external/subscriptions', { method: 'POST', body: JSON.stringify({ config: cfg }) })
