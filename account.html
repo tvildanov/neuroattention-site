@@ -947,6 +947,7 @@
         <div id="dom-pane-teams" style="display:none;">
           <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap;">
             <button class="btn btn-solid" onclick="domTeamCreatePrompt()" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.domunity.team_create_btn">+ Создать команду</button>
+            <button class="btn btn-ghost" onclick="domFamilyCreatePrompt()" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.domunity.family_create_btn">🏠 + Создать семью</button>
             <span style="font-size:11px;color:var(--text-muted);" data-i18n="a.domunity.team_description">Команда — приватный круг участников с настраиваемой рассылкой уведомлений.</span>
           </div>
           <div style="display:grid;grid-template-columns:280px 1fr;gap:1rem;min-height:400px;">
@@ -12262,6 +12263,67 @@ var BROADCAST_KINDS = [
   { key: 'feed_post',          label: 'Публикация поста в общей ленте' },
   { key: 'team_announcement',  label: 'Объявление от владельца команды' }
 ];
+// PR9: kin roles for families (must match server FAMILY_ROLES).
+var FAMILY_ROLES = ['mother','father','spouse','partner','son','daughter','brother','sister','grandmother','grandfather','grandchild','aunt','uncle','cousin','other'];
+function famRoleLabel(r){ return (typeof t==='function') ? t('a.domunity.role_'+r, r) : r; }
+function famRoleOptions(sel){
+  return FAMILY_ROLES.map(function(r){ return '<option value="'+r+'"'+(r===sel?' selected':'')+'>'+famRoleLabel(r)+'</option>'; }).join('');
+}
+// PR9: family creation modal — name + my kin role + members (email + role) + kinds.
+function domFamilyCreatePrompt(){
+  function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+  var modal = document.createElement('div'); modal.id = 'dom-family-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10020;padding:2rem 1rem;overflow-y:auto;';
+  var kindRows = BROADCAST_KINDS.map(function(k){ return '<label style="display:flex;align-items:center;gap:0.4rem;font-size:12px;color:var(--text-secondary);margin-bottom:0.25rem;cursor:pointer;"><input type="checkbox" class="newfam-kind-cb" value="'+k.key+'" '+(k.key==='block_done'||k.key==='course_done'?'checked':'')+' style="accent-color:var(--accent-cyan);">'+k.label+'</label>'; }).join('');
+  modal.innerHTML = '<div style="max-width:520px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;"><h3 style="margin:0;font-size:15px;">🏠 '+esc_(_t('a.domunity.family_create_title','Создать семью'))+'</h3><button class="btn btn-ghost" onclick="this.closest(\'#dom-family-modal\').remove()">✕</button></div>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+esc_(_t('a.domunity.family_name_label','Название семьи'))+'</label>'
+    + '<input id="newfam-name" type="text" placeholder="'+esc_(_t('a.domunity.family_name_ph','Например: Семья Ивановых'))+'" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;">'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+esc_(_t('a.domunity.team_desc_label','Описание (по желанию)'))+'</label>'
+    + '<textarea id="newfam-desc" rows="2" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.6rem;box-sizing:border-box;resize:vertical;"></textarea>'
+    + '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+esc_(_t('a.domunity.family_my_role','Моя роль'))+'</label>'
+    + '<select id="newfam-myrole" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;margin-bottom:0.8rem;box-sizing:border-box;">'+famRoleOptions('mother')+'</select>'
+    + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">'+esc_(_t('a.domunity.family_members','Участники семьи'))+'</div>'
+    + '<div id="newfam-members"></div>'
+    + '<button class="btn btn-ghost" onclick="domFamilyAddRow()" style="font-size:11px;padding:0.3rem 0.7rem;margin-bottom:0.9rem;">'+esc_(_t('a.domunity.family_add_member','+ Добавить участника'))+'</button>'
+    + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">'+esc_(_t('a.domunity.notifs_title','Уведомления'))+'</div>'
+    + '<div style="padding:0.5rem 0.7rem;background:rgba(0,229,255,0.03);border:1px dashed rgba(0,229,255,0.18);border-radius:8px;margin-bottom:0.9rem;">'+kindRows+'</div>'
+    + '<p id="newfam-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0 0 0.4rem;"></p>'
+    + '<button class="btn btn-solid" onclick="domFamilySubmit()" style="width:100%;font-size:13px;padding:0.5rem;">'+esc_(_t('a.domunity.family_create_submit','Создать семью'))+'</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  domFamilyAddRow();
+}
+function esc_(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function domFamilyAddRow(){
+  var box = document.getElementById('newfam-members'); if(!box) return;
+  var row = document.createElement('div'); row.className='newfam-row';
+  row.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.4rem;align-items:center;';
+  row.innerHTML = '<input type="email" class="newfam-email" placeholder="email" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">'
+    + '<select class="newfam-role" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.5rem;color:var(--text-primary);font-size:12px;">'+famRoleOptions('son')+'</select>'
+    + '<button class="btn btn-ghost" onclick="this.closest(\'.newfam-row\').remove()" style="font-size:11px;padding:0.2rem 0.5rem;color:var(--accent-rose);">✕</button>';
+  box.appendChild(row);
+}
+function domFamilySubmit(){
+  var modal = document.getElementById('dom-family-modal'); if(!modal) return;
+  var name = (document.getElementById('newfam-name').value||'').trim();
+  var err = document.getElementById('newfam-err');
+  if(!name){ err.textContent = window.t('a.domunity.team_name_required','Название обязательно'); return; }
+  var desc = (document.getElementById('newfam-desc').value||'').trim();
+  var myRole = document.getElementById('newfam-myrole').value;
+  var kinds = Array.from(document.querySelectorAll('.newfam-kind-cb')).filter(function(cb){return cb.checked;}).map(function(cb){return cb.value;});
+  var members = Array.from(document.querySelectorAll('.newfam-row')).map(function(r){
+    var em = (r.querySelector('.newfam-email').value||'').trim();
+    return em ? { email: em, role: r.querySelector('.newfam-role').value } : null;
+  }).filter(Boolean);
+  err.textContent = '...'; err.style.color='var(--text-muted)';
+  domApi('/api/teams', { method:'POST', body: { name: name, description: desc, kind: 'family', my_role: myRole, members: members, broadcast_kinds: kinds } })
+    .then(function(d){ var tid=d.team.id; modal.remove(); domLoadTeams(); setTimeout(function(){ domTeamOpen(tid); }, 200); })
+    .catch(function(e){ err.style.color='#ff8a8a'; err.textContent = e.message || 'error'; });
+}
+window.domFamilyCreatePrompt = domFamilyCreatePrompt;
+window.domFamilyAddRow = domFamilyAddRow;
+window.domFamilySubmit = domFamilySubmit;
 
 function domLoadTeams(){
   domApi('/api/teams').then(function(d){
@@ -12277,9 +12339,10 @@ function renderTeamsList(){
   if (!domTeams.list.length) { box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">'+window.t('a.domunity.teams_empty','Пока команд нет.')+'</p>'; return; }
   box.innerHTML = domTeams.list.map(function(t){
     var active = (domTeams.activeId === t.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
-    var roleTag = t.my_role === 'owner' ? '<span style="color:#fc0;font-size:9px;font-weight:600;margin-left:0.3rem;">👑 OWNER</span>' : '';
+    var roleTag = (t.my_role === 'owner' || FAMILY_ROLES.indexOf(t.my_role) !== -1) ? '<span style="color:#fc0;font-size:9px;font-weight:600;margin-left:0.3rem;">👑 OWNER</span>' : '';
+    var famIcon = t.kind === 'family' ? '🏠 ' : '';
     return '<div onclick="domTeamOpen(' + t.id + ')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
-      + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">' + t.name + roleTag + '</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">' + famIcon + t.name + roleTag + '</div>'
       + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + (t.member_count||0) + ' ' + window.t('a.domunity.member_count_suffix','участников') + '</div>'
       + '</div>';
   }).join('');
@@ -12346,8 +12409,10 @@ function domTeamOpen(tid){
         + '<input type="checkbox" class="team-kind-cb" value="' + k.key + '" ' + (on?'checked':'') + ' ' + (iAmOwner?'':'disabled') + ' style="accent-color:var(--accent-cyan);">'
         + k.label + '</label>';
     }).join('');
+    var isFamily = t.kind === 'family';
     var memberRows = members.map(function(m){
-      var roleTag = m.role === 'owner' ? '<span style="color:#fc0;font-size:9px;margin-left:0.4rem;">👑</span>' : '';
+      var roleTag = (m.role === 'owner' && !isFamily) ? '<span style="color:#fc0;font-size:9px;margin-left:0.4rem;">👑</span>' : '';
+      if (FAMILY_ROLES.indexOf(m.role) !== -1) roleTag += '<span style="font-size:10px;color:#9fd;background:rgba(94,224,255,0.1);border:1px solid rgba(94,224,255,0.25);border-radius:8px;padding:1px 7px;margin-left:0.4rem;">' + famRoleLabel(m.role) + '</span>';
       var rm = (iAmOwner && m.role !== 'owner')
         ? '<button class="btn btn-ghost" onclick="domTeamRemoveMember(' + tid + ',\'' + m.id + '\')" style="font-size:10px;padding:0.15rem 0.4rem;color:var(--accent-rose);margin-left:auto;">Удалить</button>'
         : '';
