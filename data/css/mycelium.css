@@ -681,6 +681,15 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .cp-pbtn:hover, .cp-dbtn:hover { background: rgba(255,255,255,0.06); color: #fff; }
 .cp-pbtn.active, .cp-dbtn.active { background: rgba(94,224,255,0.16); color: #eafaff; }
 @media (max-width: 560px) { .cp-side { width: 100% !important; } .cp-toolbar { gap: 0.5rem 0.75rem !important; } }
+/* PR11: collective-path mini-map */
+.cp-minimap { position: absolute; right: 10px; bottom: 34px; width: 148px; z-index: 16; }
+.cp-mini-toggle { float: right; background: rgba(10,14,20,0.9); border: 1px solid rgba(255,255,255,0.12); color: #9ab; border-radius: 6px; width: 22px; height: 20px; font-size: 11px; line-height: 1; cursor: pointer; margin-bottom: 3px; }
+.cp-mini-toggle:hover { color: #fff; border-color: rgba(120,200,255,0.5); }
+.cp-mini-body { position: relative; height: 110px; background: rgba(8,11,16,0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; cursor: pointer; clear: both; }
+.cp-minimap.collapsed .cp-mini-body { display: none; }
+.cp-mini-cv { display: block; }
+.cp-mini-vp { position: absolute; left: 0; right: 0; background: rgba(120,200,255,0.14); border: 1px solid rgba(120,200,255,0.55); border-radius: 3px; pointer-events: none; }
+@media (max-width: 480px) { .cp-minimap { display: none !important; } }
 @media (max-width: 560px) {
   .bp-grid { gap: 0.5rem; }
   .bp-stage { height: 220px; }
