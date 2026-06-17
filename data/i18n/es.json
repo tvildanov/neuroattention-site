@@ -1454,5 +1454,18 @@
   "a.tools.sensation_place_add": "+ Añadir tu propio lugar",
   "a.tools.sensation_place_add_title": "Nuevo lugar",
   "a.tools.sensation_place_add_ph": "Nombre del lugar",
-  "a.tools.sensation_show_full_list": "Mostrar lista completa de lugares"
+  "a.tools.sensation_show_full_list": "Mostrar lista completa de lugares",
+  "a.evo.personal_path": "Camino personal",
+  "a.evo.collective_path": "Camino colectivo",
+  "a.evo.layers": "Capas",
+  "a.evo.publish": "Publicar para todos los usuarios",
+  "a.evo.users_count": "Usuarios",
+  "a.evo.events": "eventos",
+  "a.evo.loading": "Construyendo el camino colectivo…",
+  "a.evo.layer_event": "Eventos",
+  "a.evo.layer_emotion": "Emociones",
+  "a.evo.layer_thought": "Pensamientos",
+  "a.evo.layer_sensation": "Sensaciones",
+  "a.evo.layer_practice": "Prácticas",
+  "a.evo.layer_insight": "Insights"
 }

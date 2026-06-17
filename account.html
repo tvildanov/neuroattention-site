@@ -37,7 +37,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=2" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=3" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -821,7 +821,13 @@
 
   <!-- TAB: Путь развития — Mycelium Stage 2 (Personal Evolution Path) -->
   <div class="tab-panel" id="tab-evolution">
+    <!-- PR7: sub-tabs — personal vs collective path (collective gated below) -->
+    <div class="dash-tabs" id="evo-subtabs" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <button class="dash-tab active" id="evo-subtab-personal" onclick="evoSwitchSub('personal')" data-i18n="a.evo.personal_path">Личный путь</button>
+      <button class="dash-tab" id="evo-subtab-collective" onclick="evoSwitchSub('collective')" style="display:none;" data-i18n="a.evo.collective_path">Коллективный путь</button>
+    </div>
     <div id="evo-path"></div>
+    <div id="collective-path" style="display:none;"></div>
   </div>
 
   <!-- TAB: DOMunity — community layer -->
@@ -4273,6 +4279,7 @@ function switchTab(id){
     } else {
       setTimeout(mountEvo, 50);
     }
+    evoMaybeShowCollective();
   }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
@@ -4283,6 +4290,30 @@ function backToAdmin(){
   switchTab('overview');
   document.getElementById('back-to-admin-btn').style.display='none';
 }
+// PR7: show the «Коллективный путь» sub-tab to superadmins always, and to
+// everyone once it's been published. Hidden entirely otherwise.
+function evoMaybeShowCollective(){
+  var btn = document.getElementById('evo-subtab-collective'); if(!btn) return;
+  var isSuper = !!(currentUser && currentUser.serverRole === 'superadmin');
+  if(isSuper){ btn.style.display=''; return; }
+  fetch((window.AUTH_API||'') + '/api/collective-path/status')
+    .then(function(r){return r.json();})
+    .then(function(d){ btn.style.display = (d && d.published) ? '' : 'none'; })
+    .catch(function(){ btn.style.display='none'; });
+}
+function evoSwitchSub(which){
+  var pers=document.getElementById('evo-subtab-personal'), coll=document.getElementById('evo-subtab-collective');
+  var personalBox=document.getElementById('evo-path'), collBox=document.getElementById('collective-path');
+  var isColl = which==='collective';
+  if(pers) pers.classList.toggle('active', !isColl);
+  if(coll) coll.classList.toggle('active', isColl);
+  if(personalBox) personalBox.style.display = isColl ? 'none' : '';
+  if(collBox) collBox.style.display = isColl ? '' : 'none';
+  if(isColl){ try{ if(window.mountCollectivePath) mountCollectivePath(collBox); }catch(e){ console.warn('collective mount:', e); } }
+  else { try{ if(window.mountEvolutionPath) mountEvolutionPath(personalBox); }catch(e){} }
+}
+window.evoSwitchSub = evoSwitchSub;
+window.evoMaybeShowCollective = evoMaybeShowCollective;
 // Pack 31.5: Evolution Path "Open in source" handler. Routes a clicked event to
 // the instrument it came from (NeuroMap / Sensation map / Diary / Calendar /
 // Courses) so the user can drill into the real data behind a timeline point.
@@ -13622,6 +13653,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
 <script src="assets/js/evolution-path.js?v=3"></script>
+<script src="assets/js/collective-path.js?v=1"></script>
 <script src="assets/js/external-field.js?v=3"></script>
 <script>
   // 5.3: deep-link into Tools → NeuroMap, focused on a node + chain. Opened in a

@@ -1443,5 +1443,18 @@
   "a.tools.sensation_place_add": "+ Добавить своё место",
   "a.tools.sensation_place_add_title": "Новое место",
   "a.tools.sensation_place_add_ph": "Название места",
-  "a.tools.sensation_show_full_list": "Раскрыть весь список мест"
+  "a.tools.sensation_show_full_list": "Раскрыть весь список мест",
+  "a.evo.personal_path": "Личный путь",
+  "a.evo.collective_path": "Коллективный путь",
+  "a.evo.layers": "Слои",
+  "a.evo.publish": "Опубликовать для всех пользователей",
+  "a.evo.users_count": "Участников",
+  "a.evo.events": "событий",
+  "a.evo.loading": "Собираем коллективный путь…",
+  "a.evo.layer_event": "События",
+  "a.evo.layer_emotion": "Эмоции",
+  "a.evo.layer_thought": "Мысли",
+  "a.evo.layer_sensation": "Ощущения",
+  "a.evo.layer_practice": "Практики",
+  "a.evo.layer_insight": "Инсайты"
 }

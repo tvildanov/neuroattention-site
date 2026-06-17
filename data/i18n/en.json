@@ -1454,5 +1454,18 @@
   "a.tools.sensation_place_add": "+ Add your own place",
   "a.tools.sensation_place_add_title": "New place",
   "a.tools.sensation_place_add_ph": "Place name",
-  "a.tools.sensation_show_full_list": "Show full list of places"
+  "a.tools.sensation_show_full_list": "Show full list of places",
+  "a.evo.personal_path": "Personal path",
+  "a.evo.collective_path": "Collective path",
+  "a.evo.layers": "Layers",
+  "a.evo.publish": "Publish for all users",
+  "a.evo.users_count": "Users",
+  "a.evo.events": "events",
+  "a.evo.loading": "Building the collective path…",
+  "a.evo.layer_event": "Events",
+  "a.evo.layer_emotion": "Emotions",
+  "a.evo.layer_thought": "Thoughts",
+  "a.evo.layer_sensation": "Sensations",
+  "a.evo.layer_practice": "Practices",
+  "a.evo.layer_insight": "Insights"
 }
