@@ -111,6 +111,26 @@
       { slug: p + '__shoulder', ru: 'Плечевой сустав', en: 'Shoulder joint', es: 'Articulación del hombro' }
     ];
   }
+  // hand fingers — parent label already says which hand (right/left)
+  function handFingerKids(p) {
+    return [
+      { slug: p + '__thumb',  ru: 'Большой',      en: 'Thumb',  es: 'Pulgar' },
+      { slug: p + '__index',  ru: 'Указательный', en: 'Index',  es: 'Índice' },
+      { slug: p + '__middle', ru: 'Средний',      en: 'Middle', es: 'Medio' },
+      { slug: p + '__ring',   ru: 'Безымянный',   en: 'Ring',   es: 'Anular' },
+      { slug: p + '__pinky',  ru: 'Мизинец',      en: 'Pinky',  es: 'Meñique' }
+    ];
+  }
+  // foot toes — parent label already says which foot (right/left)
+  function footToeKids(p) {
+    return [
+      { slug: p + '__big',    ru: 'Большой палец', en: 'Big toe',    es: 'Dedo gordo' },
+      { slug: p + '__second', ru: 'Второй',        en: 'Second toe', es: 'Segundo dedo' },
+      { slug: p + '__middle', ru: 'Средний',       en: 'Middle toe', es: 'Dedo medio' },
+      { slug: p + '__fourth', ru: 'Четвёртый',     en: 'Fourth toe', es: 'Cuarto dedo' },
+      { slug: p + '__little', ru: 'Мизинец',       en: 'Little toe', es: 'Dedo pequeño' }
+    ];
+  }
   var BODY_HIERARCHY = {
     head: { icon: 'head', children: [
       { slug: 'head__forehead', ru: 'Лоб',     en: 'Forehead', es: 'Frente' },
@@ -146,7 +166,40 @@
       { slug: 'chest__lungs',     ru: 'Лёгкие',  en: 'Lungs',     es: 'Pulmones' },
       { slug: 'chest__stomach',   ru: 'Желудок', en: 'Stomach',   es: 'Estómago' },
       { slug: 'chest__intestine', ru: 'Кишечник', en: 'Intestines', es: 'Intestinos' }
-    ] }
+    ] },
+    body: { icon: 'body', children: [
+      { slug: 'body__front', ru: 'Передняя сторона', en: 'Front',      es: 'Lado frontal' },
+      { slug: 'body__back',  ru: 'Задняя сторона',   en: 'Back',       es: 'Lado posterior' },
+      { slug: 'body__left',  ru: 'Левая сторона',    en: 'Left side',  es: 'Lado izquierdo' },
+      { slug: 'body__right', ru: 'Правая сторона',   en: 'Right side', es: 'Lado derecho' },
+      { slug: 'body__upper', ru: 'Верх',             en: 'Upper',      es: 'Parte superior' },
+      { slug: 'body__lower', ru: 'Низ',              en: 'Lower',      es: 'Parte inferior' }
+    ] },
+    belly: { icon: 'belly', children: [
+      { slug: 'belly__solar', ru: 'Верх (солнечное сплетение)', en: 'Upper (solar plexus)', es: 'Arriba (plexo solar)' },
+      { slug: 'belly__mid',   ru: 'Середина',      en: 'Middle',     es: 'Medio' },
+      { slug: 'belly__low',   ru: 'Низ',           en: 'Lower',      es: 'Abajo' },
+      { slug: 'belly__left',  ru: 'Левая сторона', en: 'Left side',  es: 'Lado izquierdo' },
+      { slug: 'belly__right', ru: 'Правая сторона', en: 'Right side', es: 'Lado derecho' }
+    ] },
+    neck: { icon: 'neck', children: [
+      { slug: 'neck__front', ru: 'Передняя', en: 'Front', es: 'Frente' },
+      { slug: 'neck__back',  ru: 'Задняя',   en: 'Back',  es: 'Nuca' },
+      { slug: 'neck__left',  ru: 'Левая',    en: 'Left',  es: 'Izquierda' },
+      { slug: 'neck__right', ru: 'Правая',   en: 'Right', es: 'Derecha' },
+      { slug: 'neck__base',  ru: 'Основание (плечевой пояс)', en: 'Base (shoulders)', es: 'Base (hombros)' }
+    ] },
+    brain: { icon: 'head', children: [
+      { slug: 'brain__frontal',    ru: 'Лобная область',    en: 'Frontal',          es: 'Frontal' },
+      { slug: 'brain__temporal_l', ru: 'Височная (лево)',   en: 'Temporal (left)',  es: 'Temporal (izq.)' },
+      { slug: 'brain__temporal_r', ru: 'Височная (право)',  en: 'Temporal (right)', es: 'Temporal (der.)' },
+      { slug: 'brain__occipital',  ru: 'Затылочная',        en: 'Occipital',        es: 'Occipital' },
+      { slug: 'brain__parietal',   ru: 'Теменная',          en: 'Parietal',         es: 'Parietal' }
+    ] },
+    right_hand_fingers: { icon: 'hand', children: handFingerKids('right_hand_fingers') },
+    left_hand_fingers:  { icon: 'hand', children: handFingerKids('left_hand_fingers') },
+    right_foot_toes:    { icon: 'foot', children: footToeKids('right_foot_toes') },
+    left_foot_toes:     { icon: 'foot', children: footToeKids('left_foot_toes') }
   };
 
   // icon keys offered to the user when adding a custom sensation
