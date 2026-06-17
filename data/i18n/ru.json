@@ -1456,5 +1456,12 @@
   "a.evo.layer_thought": "Мысли",
   "a.evo.layer_sensation": "Ощущения",
   "a.evo.layer_practice": "Практики",
-  "a.evo.layer_insight": "Инсайты"
+  "a.evo.layer_insight": "Инсайты",
+  "a.evo.period": "Период",
+  "a.evo.period_day": "Сутки",
+  "a.evo.period_week": "Неделя",
+  "a.evo.period_month": "Месяц",
+  "a.evo.period_3months": "3м",
+  "a.evo.period_year": "Год",
+  "a.evo.visible_users": "Видно пользователей"
 }
