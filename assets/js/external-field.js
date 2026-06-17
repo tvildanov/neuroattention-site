@@ -52,7 +52,7 @@
       loc: { title: 'Set your location', p: 'Used for local weather, air quality, sunrise/sunset and moonrise. Search a city or enter coordinates.',
         search: 'City or place (e.g. Berlin)', orCoords: 'or coordinates', lat: 'latitude', lon: 'longitude', save: 'Save location', none: 'No matches.', invalid: 'Enter valid coordinates or pick a city.' },
       subs: { title: 'External Field subscriptions', p: 'Choose which layers you track, which appear on your Path of Development, and which send notifications.',
-        show: 'show', onPath: 'on Path', notify: 'notify', save: 'Save' }
+        show: 'show', onPath: 'Show on Path of Development', notify: 'notify', save: 'Save' }
     },
     ru: {
       title: 'Внешнее поле', sub: 'Объективные внешние события и параметры среды. Наблюдательные данные — без интерпретации.',
@@ -90,7 +90,7 @@
       loc: { title: 'Укажите локацию', p: 'Нужно для местной погоды, качества воздуха, восхода/заката и восхода Луны. Найдите город или введите координаты.',
         search: 'Город или место (напр. Берлин)', orCoords: 'или координаты', lat: 'широта', lon: 'долгота', save: 'Сохранить локацию', none: 'Совпадений нет.', invalid: 'Введите корректные координаты или выберите город.' },
       subs: { title: 'Подписки на внешнее поле', p: 'Выберите слои, за которыми следите, какие показывать на Пути развития и по каким присылать уведомления.',
-        show: 'показать', onPath: 'на Пути', notify: 'уведомлять', save: 'Сохранить' }
+        show: 'показать', onPath: 'Показывать на Пути развития', notify: 'уведомлять', save: 'Сохранить' }
     },
     es: {
       title: 'Campo Externo', sub: 'Eventos externos objetivos y parámetros ambientales. Datos observacionales — sin interpretación.',
@@ -128,7 +128,7 @@
       loc: { title: 'Define tu ubicación', p: 'Se usa para el clima local, calidad del aire, amanecer/atardecer y salida de la Luna. Busca una ciudad o introduce coordenadas.',
         search: 'Ciudad o lugar (p. ej. Berlín)', orCoords: 'o coordenadas', lat: 'latitud', lon: 'longitud', save: 'Guardar ubicación', none: 'Sin coincidencias.', invalid: 'Introduce coordenadas válidas o elige una ciudad.' },
       subs: { title: 'Suscripciones del Campo Externo', p: 'Elige qué capas sigues, cuáles aparecen en tu Camino de Desarrollo y cuáles envían notificaciones.',
-        show: 'mostrar', onPath: 'en Camino', notify: 'notificar', save: 'Guardar' }
+        show: 'mostrar', onPath: 'Mostrar en Camino de evolución', notify: 'notificar', save: 'Guardar' }
     }
   };
   function lang() { try { return (window.getLang && window.getLang()) || 'ru'; } catch (e) { return 'ru'; } }

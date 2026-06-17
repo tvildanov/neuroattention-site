@@ -485,6 +485,37 @@
   // days covered by each period preset (controls the default zoom, not a crop)
   var PERIOD_DAYS = { day: 1, week: 7, month: 30, '3months': 90, year: 365, all: 1460 };
   var DAY_MS = 864e5, HOUR_MS = 36e5, MIN_MS = 6e4;
+  // ── PR5: External Field overlay layers (bottom-zone tracks) ──
+  var OVERLAY_ORDER = ['sun', 'moon', 'earth', 'weather', 'cosmos', 'social', 'experimental'];
+  var OVERLAY_ICON = { sun: '☀', moon: '☾', earth: '⊕', weather: '🌦', cosmos: '✦', social: '🌐', experimental: '⚡' };
+  var OVERLAY_LABEL = {
+    sun:    { ru: 'Солнце',  en: 'Sun',     es: 'Sol' },
+    moon:   { ru: 'Луна',    en: 'Moon',    es: 'Luna' },
+    earth:  { ru: 'Земля',   en: 'Earth',   es: 'Tierra' },
+    weather:{ ru: 'Погода',  en: 'Weather', es: 'Clima' },
+    cosmos: { ru: 'Космос',  en: 'Cosmos',  es: 'Cosmos' },
+    social: { ru: 'Социум',  en: 'Social',  es: 'Social' },
+    experimental: { ru: 'Эксп.', en: 'Exp.', es: 'Exp.' }
+  };
+  // Marker colour by layer + severity. Sun flares B/C/M/X; Earth Kp storm levels;
+  // everything else by a generic low/med/high band. Falls back to a calm cyan.
+  function overlaySeverityColor(layer, severity) {
+    var s = String(severity || '').toUpperCase();
+    if (layer === 'sun') {
+      if (s[0] === 'X') return '#ff5a5a';
+      if (s[0] === 'M') return '#ffcf4d';
+      if (s[0] === 'C') return '#6fe39b';
+      if (s[0] === 'B') return '#7fb8ff';
+      return '#8fd0ff';
+    }
+    if (layer === 'earth') {                       // geomagnetic Kp (numeric severity)
+      var kp = parseFloat(s); if (isFinite(kp)) { if (kp >= 7) return '#ff5a5a'; if (kp >= 5) return '#ffcf4d'; if (kp >= 4) return '#ffe08a'; return '#6fe39b'; }
+    }
+    if (s === 'HIGH' || s === 'SEVERE' || s === 'X') return '#ff5a5a';
+    if (s === 'MED' || s === 'MEDIUM' || s === 'MODERATE') return '#ffcf4d';
+    if (s === 'LOW' || s === 'MINOR') return '#6fe39b';
+    return '#8fd0ff';
+  }
   // zoom limits (px per day): MIN ≈ multi-year overview, MAX ≈ ~30-min resolution
   // (at 7200 px/day one hour ≈ 300px and a 30-min slot ≈ 150px). — 2.2
   var MIN_PXPD = 0.4, MAX_PXPD = 7200;
@@ -590,7 +621,19 @@
     var dpr = Math.min(2, window.devicePixelRatio || 1);   // retina, but never >2 (no double-render)
     var isMobile = W <= 560;
     var padL = isMobile ? 14 : 168, padR = isMobile ? 14 : 150, padTop = isMobile ? 64 : 50, padBot = 34;
-    var x0 = padL, x1 = W - padR, fieldTop = padTop, fieldBot = H - padBot, cy = (fieldTop + fieldBot) / 2, half = (fieldBot - fieldTop) / 2 - 10;
+    var x0 = padL, x1 = W - padR, fieldTop = padTop;
+    // ── PR5: split the viewport into a chains zone (top ~70%) and an External
+    // Field overlay zone (bottom ~30%). Overlay layers are only those the user
+    // marked showOnPath (server returns them in data.overlays). With no enabled
+    // layer the overlay zone collapses and chains use the full height. ──
+    var ovData = (data && data.overlays) || {};
+    var ovLayers = [];
+    OVERLAY_ORDER.forEach(function (k) { var evs = ovData[k]; if (evs && evs.length) ovLayers.push({ key: k, icon: OVERLAY_ICON[k], events: evs }); });
+    if (isMobile && ovLayers.length > 3) ovLayers = ovLayers.slice(0, 3);   // mobile: cap visible tracks
+    var fullBot = H - padBot, hasOverlay = ovLayers.length > 0;
+    var fieldBot = hasOverlay ? Math.round(fieldTop + (fullBot - fieldTop) * 0.70) : fullBot;
+    var cy = (fieldTop + fieldBot) / 2, half = (fieldBot - fieldTop) / 2 - 10;
+    var ovZone = hasOverlay ? { top: fieldBot + 10, bot: fullBot, layers: ovLayers } : null;
     var view = ensureView(st, data, x0, x1);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
@@ -600,7 +643,7 @@
     window.__evoEventsX = events.map(function (e) { return (tms(e.t) - view.originT) / DAY_MS * view.pxPerDay; });
     st._tunnel = { cv: cv, ctx: cv.getContext('2d'), dpr: dpr, W: W, x0: x0, x1: x1,
       fieldTop: fieldTop, fieldBot: fieldBot, cy: cy, half: half, isMobile: isMobile,
-      lang: lang, data: data, events: events, container: container,
+      lang: lang, data: data, events: events, container: container, overlay: ovZone,
       components: buildTunnelComponents(events, half) };
     drawTunnel(st);
     wireCanvasPanZoom(container, st, lang);
@@ -800,6 +843,16 @@
     // no separate chain curves — the branch IS the chain. ──
     st._nodes = []; st._visComps = [];
     var comps = T.components || [];
+    // ── PR5 smart auto-expand: when several chains crowd the same time-slice,
+    // spread their branches vertically (use more of the chains zone); when sparse,
+    // stay compact. Density = max visible anchors inside any 50px time bucket. The
+    // scale is capped so branches never leave the zone, so it tracks zoom live. ──
+    if (T._maxAbsLy == null) { var mly = 0; comps.forEach(function (cp) { cp.nodes.forEach(function (n) { var a = Math.abs(n.ly); if (a > mly) mly = a; }); }); T._maxAbsLy = mly || 1; }
+    var bkt = {}, dens = 1;
+    for (var di = 0; di < comps.length; di++) { var axd = sx(comps[di].anchorT); if (axd < x0 - 30 || axd > x1 + 30) continue; var bk = Math.floor(axd / 50); bkt[bk] = (bkt[bk] || 0) + 1; if (bkt[bk] > dens) dens = bkt[bk]; }
+    var wantS = dens > 4 ? 2.0 : dens > 2 ? 1.5 : 1.0;
+    var vS = Math.min(wantS, Math.max(1.0, (half - 8) / T._maxAbsLy));
+    st._vScale = vS;
     for (var ci = 0; ci < comps.length; ci++) {
       var comp = comps[ci];
       var ax = sx(comp.anchorT);
@@ -809,13 +862,13 @@
       // edges — white nerve-fibre base + thin coloured stripe over it
       for (var si = 0; si < comp.segs.length; si++) {
         var sg = comp.segs[si], fillS = cvLayerFill(sg.layer, sg.val), spts = sg.pts, scr = [];
-        for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x, y: ay + spts[pi].y });
+        for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x, y: ay + spts[pi].y * vS });
         strokePolyline(ctx, scr, 'rgba(255,255,255,0.6)', 2.2, 0.5);
         strokePolyline(ctx, scr, fillS, 1, 0.85);
       }
       // nodes strung along the branch
       for (var ni = 0; ni < comp.nodes.length; ni++) {
-        var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx, ny = ay + nd.ly;
+        var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx, ny = ay + nd.ly * vS;
         var fillN = cvLayerFill(e.layer, e.valence);
         var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
         drawNodeCv(ctx, e.layer, nx, ny, nd.r, fillN, glow);
@@ -829,6 +882,10 @@
       }
     }
 
+    // ── PR5: External Field overlay tracks (bottom zone) ──
+    st._overlayNodes = [];
+    if (T.overlay) drawOverlayTracks(ctx, st, T, sx, view, C, gesturing, lang);
+
     // module headers (top), now marker, time axis (bottom)
     drawModuleHeadersCv(ctx, st, sx, x0, x1, T.fieldTop, C, lang, gesturing);
     if (sNow >= x0 && sNow <= x1 + 4) {
@@ -839,6 +896,69 @@
     }
     drawTimeAxisCv(ctx, view, lang, x0, x1, C);
     ctx.restore();
+  }
+
+  // ── PR5: draw the External Field overlay tracks in the bottom zone. One thin
+  // horizontal track per showOnPath layer; markers sit on the SAME time axis as
+  // the chains (shared sx). Severity drives marker colour. Populates
+  // st._overlayNodes for hover/click hit-testing. ──
+  function drawOverlayTracks(ctx, st, T, sx, view, C, gesturing, lang) {
+    var ov = T.overlay; if (!ov || !ov.layers.length) return;
+    var x0 = T.x0, x1 = T.x1, n = ov.layers.length;
+    var zoneTop = ov.top, zoneBot = ov.bot, trackH = (zoneBot - zoneTop) / n;
+    // zone divider line between personal chains and environmental context
+    ctx.beginPath(); ctx.moveTo(x0 - 6, zoneTop - 6); ctx.lineTo(x1 + 6, zoneTop - 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+    for (var li = 0; li < n; li++) {
+      var L = ov.layers[li], cyT = zoneTop + trackH * li + trackH / 2;
+      // faint track baseline
+      ctx.beginPath(); ctx.moveTo(x0, cyT); ctx.lineTo(x1, cyT);
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.stroke();
+      // layer icon + label on the left gutter (skip glyph crowding on mobile)
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = '12px Inter, system-ui, sans-serif'; ctx.fillStyle = C.textDim;
+      var lx = T.isMobile ? 2 : (x0 - 150);
+      var llab = OVERLAY_LABEL[L.key] ? (OVERLAY_LABEL[L.key][lang] || OVERLAY_LABEL[L.key].ru) : L.key;
+      ctx.fillText(L.icon + (T.isMobile ? '' : ' ' + llab), lx, cyT);
+      // markers
+      for (var ei = 0; ei < L.events.length; ei++) {
+        var ev = L.events[ei], mx = sx(ev.t);
+        if (mx < x0 - 4 || mx > x1 + 4) continue;
+        var col = overlaySeverityColor(L.key, ev.severity);
+        if (!gesturing) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 5; }
+        ctx.beginPath(); ctx.arc(mx, cyT, 3.4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        if (!gesturing) ctx.restore();
+        st._overlayNodes.push({ x: mx, y: cyT, r: 3.4, ev: ev, layer: L.key, color: col });
+      }
+    }
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  // ── PR5: detail card for an External Field overlay marker (click/tap). ──
+  function showOverlayCard(container, marker, lang) {
+    var host = container.querySelector('.myc-evo-canvas') || container;
+    var old = host.querySelector('.evo-ov-card'); if (old) old.remove();
+    var ev = marker.ev, lab = OVERLAY_LABEL[marker.layer] ? (OVERLAY_LABEL[marker.layer][lang] || OVERLAY_LABEL[marker.layer].ru) : marker.layer;
+    var icon = OVERLAY_ICON[marker.layer] || '•';
+    var when = '';
+    try { when = new Date(ev.t).toLocaleString(lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
+    var sev = ev.severity ? '<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;font-size:10px;background:' + marker.color + '22;color:' + marker.color + ';border:1px solid ' + marker.color + '55;">' + escapeHtml(String(ev.severity)) + '</span>' : '';
+    var src = ev.source_url ? '<a href="' + escapeHtml(ev.source_url) + '" target="_blank" rel="noopener" style="color:var(--accent-cyan,#5cf);font-size:11px;text-decoration:none;">' + escapeHtml(ev.source || 'source') + ' ↗</a>' : (ev.source ? '<span style="color:var(--myc-text-dim,#89a);font-size:11px;">' + escapeHtml(ev.source) + '</span>' : '');
+    var card = document.createElement('div');
+    card.className = 'evo-ov-card';
+    card.style.cssText = 'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:30;max-width:340px;width:calc(100% - 32px);background:rgba(12,15,20,0.97);border:1px solid ' + marker.color + '55;border-radius:12px;padding:0.85rem 1rem;backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,0.5);';
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+        '<div style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:' + marker.color + ';">' + icon + ' ' + escapeHtml(lab) + sev + '</div>' +
+        '<button class="evo-ov-x" style="background:none;border:none;color:var(--myc-text-dim,#89a);font-size:15px;cursor:pointer;line-height:1;">✕</button>' +
+      '</div>' +
+      '<div style="font-size:13px;color:var(--myc-text,#cdd);font-weight:600;margin:0.35rem 0 0.2rem;">' + escapeHtml(ev.title || lab) + '</div>' +
+      (ev.description ? '<div style="font-size:12px;color:var(--myc-text-dim,#9ab);line-height:1.5;margin-bottom:0.35rem;">' + escapeHtml(String(ev.description).slice(0, 220)) + '</div>' : '') +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:0.3rem;">' +
+        '<span style="font-size:11px;color:var(--myc-text-dim,#789);font-family:\'JetBrains Mono\',monospace;">' + escapeHtml(when) + '</span>' + src +
+      '</div>';
+    host.appendChild(card);
+    var x = card.querySelector('.evo-ov-x'); if (x) x.addEventListener('click', function () { card.remove(); });
   }
 
   // jagged forward-biased polyline (lightning). X advances monotonically forward
@@ -1042,18 +1162,22 @@
     target.addEventListener('touchcancel', function () { TG.mode = null; });
 
     function hitTest(lx, ly) {
+      // PR5: External Field overlay marker hit (bottom zone) → detail card
+      var ovn = S.st._overlayNodes || [], ob = null, obd = 1e9;
+      for (var oi = 0; oi < ovn.length; oi++) { var m = ovn[oi], od = Math.hypot(m.x - lx, m.y - ly); if (od < 14 && od < obd) { obd = od; ob = m; } }
+      if (ob) { showOverlayCard(S.st._tunnel.container, ob, S.lang); return; }
       // node hit — fixed 24px target per node (independent of the branch line)
       var nodes = S.st._nodes || [], best = null, bd = 1e9;
       for (var i = 0; i < nodes.length; i++) { var n = nodes[i], d = Math.hypot(n.x - lx, n.y - ly), hit = Math.max(24, n.r + 12); if (d < hit && d < bd) { bd = d; best = n; } }
       if (best) { openMiniNeuromap(S.st._tunnel.container, best.e, S.lang, S.st); return; }
       // branch hit — proximity to any edge of a visible component → open the chain
-      var vc = S.st._visComps || [];
+      var vc = S.st._visComps || [], vSc = S.st._vScale || 1;
       for (var c = 0; c < vc.length; c++) {
         var comp = vc[c].comp, ax = vc[c].ax, ay = vc[c].ay;
         for (var s = 0; s < comp.segs.length; s++) {
           var pts = comp.segs[s].pts;
           for (var p = 1; p < pts.length; p++) {
-            if (distToSeg(lx, ly, ax + pts[p - 1].x, ay + pts[p - 1].y, ax + pts[p].x, ay + pts[p].y) < 9) {
+            if (distToSeg(lx, ly, ax + pts[p - 1].x, ay + pts[p - 1].y * vSc, ax + pts[p].x, ay + pts[p].y * vSc) < 9) {
               if (comp.rootEvent) openMiniNeuromap(S.st._tunnel.container, comp.rootEvent, S.lang, S.st);
               return;
             }
