@@ -35,6 +35,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function tms(t) { var d = new Date(t); return isNaN(d) ? 0 : d.getTime(); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function cpJit(s) { s = String(s); var h = 2166136261; for (var i = 0; i < s.length; i++) { h = (h ^ s.charCodeAt(i)) >>> 0; h = (h * 16777619) >>> 0; } return (h % 1000) / 1000; }
   function extColor(layer, sev) {
     var s = String(sev || '').toUpperCase();
     if (layer === 'sun') { if (s[0] === 'X') return '#ff5a5a'; if (s[0] === 'M') return '#ffcf4d'; if (s[0] === 'C') return '#6fe39b'; return '#8fd0ff'; }
@@ -206,6 +207,10 @@
       try { S._ro.observe(host); } catch (e) {}
     }
     wire(S);
+    if (!S._esc) {
+      S._esc = function (e) { if (e.key !== 'Escape') return; if (S._focusUser) exitFocus(S); else if (S._container && S._container.classList.contains('cp-fullscreen')) toggleFullscreen(S); };
+      document.addEventListener('keydown', S._esc);
+    }
   }
   // ── PR11: mini-map — an overview of ALL spines with a draggable viewport box ──
   function buildMiniMap(S) {
@@ -320,19 +325,40 @@
       }
       var u = row.user;
       var cs = sx(u.created_at), ce = Math.min(x1, sx(view.nowT));
-      ctx.globalAlpha = 0.5 * dim;
-      ctx.beginPath(); ctx.moveTo(Math.max(x0, cs), y); ctx.lineTo(ce, y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = hov === ri ? 2 : 1.1; ctx.stroke();
+      // PR FIX #9: each spine is a mini personal-path. Detail scales with height:
+      //   ≥60px → full (wave + lightning branches + XP aura + glowing nodes),
+      //   ≥30px → spine + branches, <30px → thin spine + dots.
+      var detail = sh >= 60 ? 2 : sh >= 30 ? 1 : 0;
+      var amp = detail >= 1 ? Math.min(sh * 0.12, 6) : 0, x0s = Math.max(x0, cs);
+      var yAt = function (px) { return amp ? y + amp * Math.sin((px - cs) * 0.016) : y; };
+      var spineStep = detail ? 6 : (ce - x0s) || 1;
+      // XP aura — soft lived-band (full detail only)
+      if (detail >= 2 && (u.events || []).length) {
+        ctx.save(); ctx.globalAlpha = 0.16 * dim; ctx.strokeStyle = 'rgba(120,200,180,0.9)'; ctx.lineWidth = Math.min(sh * 0.5, 18); ctx.shadowColor = 'rgba(120,200,180,0.5)'; ctx.shadowBlur = 8;
+        ctx.beginPath(); for (var pa = x0s; pa <= ce; pa += 10) { var ya = yAt(pa); if (pa === x0s) ctx.moveTo(pa, ya); else ctx.lineTo(pa, ya); } ctx.stroke(); ctx.restore();
+      }
+      // spine
+      ctx.globalAlpha = 0.5 * dim; ctx.beginPath();
+      for (var ps = x0s; ps <= ce; ps += spineStep) { var ys = yAt(ps); if (ps === x0s) ctx.moveTo(ps, ys); else ctx.lineTo(ps, ys); }
+      ctx.lineTo(ce, yAt(ce));
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = hov === ri ? 2 : (detail >= 2 ? 1.6 : 1.1); ctx.stroke();
       ctx.globalAlpha = 1;
-      if (cs >= x0 - 4 && cs <= x1) { ctx.beginPath(); ctx.arc(cs, y, 2.4, 0, 6.283); ctx.fillStyle = 'rgba(150,220,255,0.9)'; ctx.globalAlpha = dim; ctx.fill(); ctx.globalAlpha = 1; }
-      var branch = Math.min(sh * 0.34, 8);
+      if (cs >= x0 - 4 && cs <= x1) { ctx.beginPath(); ctx.arc(cs, yAt(cs), detail >= 2 ? 3.2 : 2.4, 0, 6.283); ctx.fillStyle = 'rgba(150,220,255,0.9)'; ctx.globalAlpha = dim; ctx.fill(); ctx.globalAlpha = 1; }
+      var branch = Math.min(sh * 0.34, detail >= 2 ? 22 : 8);
       (u.events || []).forEach(function (e) {
         if (S.hiddenLayers[e.layer]) return;
         var ex = sx(e.t); if (ex < x0 - 3 || ex > x1 + 3) return;
-        var dy = (e.layer === 'emotion' || e.layer === 'insight' || e.layer === 'thought') ? -branch : branch;
-        var ny = y + dy, col = LAYER_COLOR[e.layer] || '#cfd6e6';
-        ctx.globalAlpha = 0.4 * dim; ctx.beginPath(); ctx.moveTo(ex, y); ctx.lineTo(ex, ny); ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
-        ctx.globalAlpha = dim; ctx.beginPath(); ctx.arc(ex, ny, 2, 0, 6.283); ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
+        var baseY = yAt(ex), dir = (e.layer === 'emotion' || e.layer === 'insight' || e.layer === 'thought') ? -1 : 1;
+        var ny = baseY + dir * branch, col = LAYER_COLOR[e.layer] || '#cfd6e6';
+        ctx.globalAlpha = (detail ? 0.55 : 0.4) * dim; ctx.strokeStyle = col; ctx.lineWidth = detail >= 2 ? 1.4 : 1;
+        ctx.beginPath(); ctx.moveTo(ex, baseY);
+        if (detail >= 2) { var mx = ex + (cpJit(e.id) - 0.5) * 7; ctx.lineTo(mx, (baseY + ny) / 2); ctx.lineTo(ex, ny); } else ctx.lineTo(ex, ny);
+        ctx.stroke();
+        var r = detail >= 2 ? 3.2 : 2;
+        if (detail >= 2) { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 6; }
+        ctx.globalAlpha = dim; ctx.beginPath(); ctx.arc(ex, ny, r, 0, 6.283); ctx.fillStyle = col; ctx.fill();
+        if (detail >= 2) ctx.restore();
+        ctx.globalAlpha = 1;
         S._nodes.push({ x: ex, y: ny, e: e, row: ri });
       });
       if (!isMobile && nameH) {
@@ -403,9 +429,19 @@
     var dens = [10, 100, 1000].map(function (nn) { return '<button class="cp-dbtn" data-density="' + nn + '">' + nn + '</button>'; }).join('');
     tb.innerHTML =
       '<div style="display:flex;align-items:center;gap:0.4rem;"><span class="cp-tb-label">' + esc(T('a.evo.period', 'Период')) + '</span><div class="cp-seg">' + per + '</div></div>' +
-      '<div style="display:flex;align-items:center;gap:0.4rem;"><span class="cp-tb-label">' + esc(T('a.evo.visible_users', 'Видно пользователей')) + '</span><div class="cp-seg">' + dens + '</div></div>';
+      '<div style="display:flex;align-items:center;gap:0.4rem;"><span class="cp-tb-label">' + esc(T('a.evo.visible_users', 'Видно пользователей')) + '</span><div class="cp-seg">' + dens + '</div></div>' +
+      '<button class="cp-fs-btn" style="margin-left:auto;">⤢ ' + esc(T('a.tools.fullscreen', 'Раскрыть')) + '</button>';
     tb.querySelectorAll('.cp-pbtn').forEach(function (b) { b.addEventListener('click', function () { applyPeriod(S, b.getAttribute('data-period')); }); });
     tb.querySelectorAll('.cp-dbtn').forEach(function (b) { b.addEventListener('click', function () { applyDensity(S, parseInt(b.getAttribute('data-density'), 10)); }); });
+    var fs = tb.querySelector('.cp-fs-btn'); if (fs) fs.addEventListener('click', function () { toggleFullscreen(S); });
+  }
+  // PR FIX #11: expand the collective path to a full-viewport overlay; Esc closes.
+  function toggleFullscreen(S) {
+    var c = S._container; if (!c) return;
+    var on = !c.classList.contains('cp-fullscreen');
+    c.classList.toggle('cp-fullscreen', on);
+    document.body.style.overflow = on ? 'hidden' : '';
+    setTimeout(function () { S.view = S.view; sizeAndDraw(S); }, 30);
   }
   function applyPeriod(S, period) {
     var days = ({ day: 1, week: 7, month: 30, '3months': 90, year: 365 })[period] || 30;
@@ -543,8 +579,35 @@
     if (r.type === 'header') { toggleGroup(S, r.group.key); return; }   // PR12: header toggles its group
     var u = r.user; if (!u) return;
     S.anchorRow = row;
-    if (S.data.is_superadmin) { try { window.open('/account.html?tab=profile&userId=' + encodeURIComponent(u.id), '_blank'); } catch (e) {} }
-    else showUserCard(S, u);
+    // PR FIX #10: first click on a spine zooms INTO it (full-height, like the
+    // personal path); a second click on the focused spine opens the profile.
+    if (S._focusUser === String(u.id)) {
+      if (S.data.is_superadmin) { try { window.open('/account.html?tab=profile&userId=' + encodeURIComponent(u.id), '_blank'); } catch (e) {} }
+      else showUserCard(S, u);
+    } else {
+      focusUser(S, u, row);
+    }
+  }
+  function focusUser(S, u, row) {
+    S._focusPrev = { spineH: S.spineH, scrollY: S.scrollY };
+    S._focusUser = String(u.id);
+    S.spineH = Math.max(120, spinesViewH(S));      // one spine fills the chains zone
+    S.scrollY = row * S.spineH;
+    clampScroll(S); renderBreadcrumb(S); requestDraw(S);
+  }
+  function exitFocus(S) {
+    if (!S._focusUser) return;
+    if (S._focusPrev) { S.spineH = S._focusPrev.spineH; S.scrollY = S._focusPrev.scrollY; }
+    S._focusUser = null; S._focusPrev = null; clampScroll(S); renderBreadcrumb(S); requestDraw(S);
+  }
+  function renderBreadcrumb(S) {
+    var host = S._host; if (!host) return;
+    var bc = host.querySelector('.cp-breadcrumb');
+    if (!S._focusUser) { if (bc) bc.remove(); return; }
+    var u = (S.order || []).filter(function (x) { return String(x.id) === S._focusUser; })[0];
+    if (!bc) { bc = document.createElement('div'); bc.className = 'cp-breadcrumb'; host.appendChild(bc); }
+    bc.innerHTML = '<button class="cp-bc-root">' + esc(T('a.evo.collective_path', 'Коллективный путь')) + '</button> <span style="opacity:0.5;">/</span> <b>' + esc(u ? u.name : '') + '</b>';
+    bc.querySelector('.cp-bc-root').addEventListener('click', function () { exitFocus(S); });
   }
 
   function showCard(S, marker) {
