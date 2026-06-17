@@ -5500,12 +5500,39 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
       spread:     +clamp01(0.30 + 0.50 * positivity - 0.40 * turbulence + 0.20 * consistency).toFixed(3)
     };
 
+    // External Field overlays (PR5): thin-track markers on the same time axis,
+    // ONLY for layers the user marked showOnPath in their subscription config.
+    // Global events (user_id NULL) + this user's local events, same as /external/events.
+    let overlays = {};
+    try {
+      const subRows = await safe(sql`SELECT config FROM external_field_subscriptions WHERE user_id = ${me}`);
+      const cfg = (subRows[0] && subRows[0].config) || {};
+      const onPath = Object.keys(cfg).filter(k => cfg[k] && cfg[k].showOnPath && cfg[k].enabled !== false);
+      if (onPath.length) {
+        const ovRows = await safe(sql`SELECT id, layer, event_type, title, description, timestamp, severity, source, source_url, location_scope
+                                      FROM external_signal_events
+                                      WHERE (user_id IS NULL OR user_id = ${me})
+                                        AND layer = ANY(${onPath}::text[])
+                                        AND timestamp >= ${fromIso} AND timestamp <= ${toIso}
+                                      ORDER BY timestamp ASC`);
+        ovRows.forEach(r => {
+          (overlays[r.layer] = overlays[r.layer] || []).push({
+            id: String(r.id), layer: r.layer, event_type: r.event_type,
+            title: r.title, description: r.description,
+            timestamp: r.timestamp, t: r.timestamp,
+            severity: r.severity, source: r.source, source_url: r.source_url, scope: r.location_scope
+          });
+        });
+      }
+    } catch (e) { overlays = {}; }
+
     res.json({
       ok: true,
       range: { from: fromIso, to: toIso, period },
       layers,
       events,
       links: flatLinks,
+      overlays,
       aggregates,
       totals: {
         xp_total: cum,
