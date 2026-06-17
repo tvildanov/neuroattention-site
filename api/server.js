@@ -5666,7 +5666,7 @@ app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
 
     // users (bounded). Active accounts with a registration date.
     const users = await safe(sql`SELECT id, COALESCE(display_name, split_part(email,'@',1)) AS name,
-        created_at, location_lat AS lat, location_lon AS lon
+        created_at, location_lat AS lat, location_lon AS lon, location_city AS city, location_country AS country
       FROM users WHERE created_at IS NOT NULL ORDER BY created_at ASC LIMIT 200`);
     const uids = users.map(u => u.id);
     let evRows = [], linkRows = [], teamRows = [];
@@ -5721,11 +5721,25 @@ app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
         t: r.timestamp, timestamp: r.timestamp, severity: r.severity, source: r.source, source_url: r.source_url }); });
     }
 
+    // PR10: geo distance (km) of every user to the CALLER, so the client layout
+    // can order family/team blocks and loners by real-world proximity (Haversine).
+    function haversineKm(la1, lo1, la2, lo2) {
+      if (la1 == null || lo1 == null || la2 == null || lo2 == null) return null;
+      const R = 6371, toR = Math.PI / 180;
+      const dLa = (la2 - la1) * toR, dLo = (lo2 - lo1) * toR;
+      const a = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * toR) * Math.cos(la2 * toR) * Math.sin(dLo / 2) ** 2;
+      return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(a))));
+    }
+    const anchor = users.find(u => String(u.id) === String(me)) || null;
+    const aLat = anchor ? anchor.lat : null, aLon = anchor ? anchor.lon : null;
+
     res.json({
       ok: true, published, is_superadmin: isSuper,
       range: { from: fromIso, to: toIso },
       users: users.map(u => ({ id: String(u.id), name: u.name, created_at: u.created_at,
-        lat: u.lat, lon: u.lon, events: evByUser[String(u.id)] || [] })),
+        lat: u.lat, lon: u.lon, city: u.city, country: u.country,
+        dist: haversineKm(aLat, aLon, u.lat, u.lon),
+        events: evByUser[String(u.id)] || [] })),
       links, teams: Object.values(teams), external_overlays
     });
   } catch (err) { console.error('GET /api/admin/collective-path:', err); res.status(500).json({ error: err.message }); }
