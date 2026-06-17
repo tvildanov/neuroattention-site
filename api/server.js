@@ -5171,19 +5171,39 @@ app.get('/api/teams/:id', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET team:', err); res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/teams — create a new team (creator = owner)
+// Kin roles a family member can hold (validated server-side).
+const FAMILY_ROLES = ['mother','father','spouse','partner','son','daughter','brother','sister','grandmother','grandfather','grandchild','aunt','uncle','cousin','other'];
+// POST /api/teams — create a team OR a family (creator = owner). For a family,
+// kind='family', the creator's kin role comes in my_role, and members[] may carry
+// per-member {email|user_id, role} so the whole family can be set up at once.
 app.post('/api/teams', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
-    const { name, description, broadcast_kinds, is_public } = req.body || {};
+    const { name, description, broadcast_kinds, is_public, kind, my_role, members } = req.body || {};
     if (!name || !String(name).trim()) return res.status(400).json({ error: 'name required' });
+    const teamKind = kind === 'family' ? 'family' : 'team';
     const slug = String(name).toLowerCase().replace(/[^a-z0-9а-я]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) + '-' + Date.now();
     const kinds = Array.isArray(broadcast_kinds) ? broadcast_kinds : ['block_done','course_done','achievement_earned'];
-    const [t] = await sql`INSERT INTO teams (slug, name, description, owner_user_id, broadcast_kinds, is_public)
-                          VALUES (${slug}, ${name.trim()}, ${description||''}, ${me}, ${kinds}::text[], ${!!is_public})
+    const [t] = await sql`INSERT INTO teams (slug, name, description, owner_user_id, broadcast_kinds, is_public, kind)
+                          VALUES (${slug}, ${name.trim()}, ${description||''}, ${me}, ${kinds}::text[], ${!!is_public}, ${teamKind})
                           RETURNING *`;
-    await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${t.id}, ${me}, 'owner')`;
-    res.status(201).json({ team: t });
+    // owner row — for a family keep the kin role too (still the structural owner)
+    const ownerRole = (teamKind === 'family' && FAMILY_ROLES.includes(my_role)) ? my_role : 'owner';
+    await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${t.id}, ${me}, ${ownerRole})`;
+    // inline members (best-effort; unknown emails are skipped, not fatal)
+    let added = 0;
+    if (Array.isArray(members)) {
+      for (const m of members.slice(0, 40)) {
+        let uid = m && m.user_id ? m.user_id : null;
+        if (!uid && m && m.email) { const [u] = await sql`SELECT id FROM users WHERE LOWER(email) = LOWER(${String(m.email)})`; if (u) uid = u.id; }
+        if (!uid || String(uid) === String(me)) continue;
+        const role = (teamKind === 'family' && FAMILY_ROLES.includes(m && m.role)) ? m.role : 'member';
+        await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${t.id}, ${uid}, ${role}) ON CONFLICT DO NOTHING`;
+        try { await notifyUser(uid, 'team_invite', { team_id: t.id, team_name: t.name, inviter: me }); } catch (e) {}
+        added++;
+      }
+    }
+    res.status(201).json({ team: t, members_added: added });
   } catch (err) { console.error('POST team:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -5236,7 +5256,8 @@ app.post('/api/teams/:id/members', requireAuth, async (req, res) => {
       uid = u.id;
     }
     if (!uid) return res.status(400).json({ error: 'email or user_id required' });
-    await sql`INSERT INTO team_members (team_id, user_id) VALUES (${tid}, ${uid}) ON CONFLICT DO NOTHING`;
+    const role = FAMILY_ROLES.includes(req.body && req.body.role) ? req.body.role : 'member';
+    await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${tid}, ${uid}, ${role}) ON CONFLICT DO NOTHING`;
     await notifyUser(uid, 'team_invite', { team_id: tid, team_name: t.name, inviter: me });
     res.json({ ok: true });
   } catch (err) { console.error('add member:', err); res.status(500).json({ error: err.message }); }
