@@ -5178,7 +5178,7 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
         await sql`INSERT INTO notifications (user_id, kind, payload)
                   SELECT id, ${kind}, ${JSON.stringify(payload)}::jsonb
                   FROM users
-                  WHERE notifications_enabled = true AND id <> ${userId}
+                  WHERE notifications_enabled = true AND deleted_at IS NULL AND id <> ${userId}
                     AND NOT (${kind} = ANY(COALESCE(notif_mute, '{}'::text[])))`;
       }
     } catch (peerErr) { console.warn('peer broadcast:', peerErr.message); }
@@ -5206,7 +5206,7 @@ async function broadcastToTeams(actorUserId, kind, payload) {
         FROM team_members m
         JOIN users u ON u.id = m.user_id
         WHERE m.team_id = ${t.id} AND m.user_id <> ${actorUserId}
-          AND u.notifications_enabled = true
+          AND u.notifications_enabled = true AND u.deleted_at IS NULL
           AND NOT (${'team_' + kind} = ANY(COALESCE(u.notif_mute, '{}'::text[])))`;
     }
   } catch (e) { console.warn('broadcastToTeams:', e.message); }
@@ -5362,7 +5362,7 @@ app.post('/api/teams/:id/announce', requireAuth, async (req, res) => {
       SELECT m.user_id, 'team_announcement', ${JSON.stringify({ team_id: tid, team_name: t.name, body: String(body).slice(0, 500), from: me })}::jsonb
       FROM team_members m JOIN users u ON u.id = m.user_id
       WHERE m.team_id = ${tid} AND m.user_id <> ${me}
-        AND u.notifications_enabled = true
+        AND u.notifications_enabled = true AND u.deleted_at IS NULL
         AND NOT ('team_announcement' = ANY(COALESCE(u.notif_mute, '{}'::text[])))`;
     res.json({ ok: true });
   } catch (err) { console.error('team announce:', err); res.status(500).json({ error: err.message }); }
@@ -5795,7 +5795,7 @@ app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
     // users (bounded). Active accounts with a registration date.
     const users = await safe(sql`SELECT id, COALESCE(display_name, split_part(email,'@',1)) AS name,
         created_at, location_lat AS lat, location_lon AS lon, location_city AS city, location_country AS country
-      FROM users WHERE created_at IS NOT NULL ORDER BY created_at ASC LIMIT 200`);
+      FROM users WHERE created_at IS NOT NULL AND deleted_at IS NULL ORDER BY created_at ASC LIMIT 200`);
     const uids = users.map(u => u.id);
     let evRows = [], linkRows = [], teamRows = [];
     if (uids.length) {
@@ -5906,6 +5906,7 @@ app.get('/api/admin/journeys', requireAuth, async (req, res) => {
              (SELECT MAX(completed_at) FROM course_block_progress WHERE user_id = u.id) AS last_active,
              (SELECT COUNT(*)::int FROM user_achievements WHERE user_id = u.id) AS badges_count
       FROM users u
+      WHERE u.deleted_at IS NULL
       ORDER BY (
         (SELECT COALESCE(SUM(points_earned),0) FROM course_block_progress WHERE user_id = u.id) +
         (SELECT COALESCE(SUM(a.xp_reward),0) FROM user_achievements ua JOIN achievements a ON a.id = ua.achievement_id WHERE ua.user_id = u.id)
@@ -6078,7 +6079,7 @@ async function tryAwardAchievement(userId, slug, out) {
   if (usr && usr.profile_public) {
     await sql`INSERT INTO notifications (user_id, kind, payload)
               SELECT id, 'peer_achievement', ${JSON.stringify({ user_id: userId, user_name: usr.display_name, slug, title: ach.title_ru, emoji: ach.badge_emoji })}::jsonb
-              FROM users WHERE notifications_enabled = true AND id <> ${userId}
+              FROM users WHERE notifications_enabled = true AND deleted_at IS NULL AND id <> ${userId}
                 AND NOT ('peer_achievement' = ANY(COALESCE(notif_mute, '{}'::text[])))`;
   }
   if (out) out.push(slug);
@@ -6096,7 +6097,8 @@ app.get('/api/users/search', requireAuth, async (req, res) => {
     const rows = await sql`
       SELECT id, display_name, email, role, profile_public
       FROM users
-      WHERE (LOWER(display_name) LIKE ${'%' + q + '%'} OR LOWER(email) LIKE ${'%' + q + '%'})
+      WHERE deleted_at IS NULL
+        AND (LOWER(display_name) LIKE ${'%' + q + '%'} OR LOWER(email) LIKE ${'%' + q + '%'})
         AND id <> ${req.user.sub || req.user.id}
         AND (profile_public = true OR ${(['superadmin','founder','admin'].includes((req.user.role||'')))})
       LIMIT 25
@@ -6224,7 +6226,7 @@ app.post('/api/feed/posts', requireAuth, async (req, res) => {
     // Broadcast notification to all users with notifications enabled
     await sql`INSERT INTO notifications (user_id, kind, payload)
               SELECT id, 'feed_post', ${JSON.stringify({ post_id: row.id, title: title||'', preview: String(body).slice(0, 100) })}::jsonb
-              FROM users WHERE notifications_enabled = true AND id <> ${userId}
+              FROM users WHERE notifications_enabled = true AND deleted_at IS NULL AND id <> ${userId}
                 AND NOT ('feed_post' = ANY(COALESCE(notif_mute, '{}'::text[])))`;
     res.status(201).json({ post: row });
   } catch (err) { console.error('POST feed:', err); res.status(500).json({ error: err.message }); }
