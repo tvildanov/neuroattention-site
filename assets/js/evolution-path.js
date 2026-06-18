@@ -905,6 +905,34 @@
     }
     drawTimeAxisCv(ctx, view, lang, x0, x1, C);
     ctx.restore();
+    // Sticky External Field layer icons — drawn OUTSIDE the scroll clip so they
+    // hang in the leftmost part of the visible area at any zoom/scroll (1.2),
+    // mirroring the collective path's "sticky — outside the scroll clip" tracks.
+    if (T.overlay) drawOverlayIcons(ctx, T, C, lang);
+  }
+
+  // ── 1.2: sticky left-gutter icons for each External Field overlay layer. Kept
+  // out of drawOverlayTracks (which is clipped) and rendered after the clip is
+  // restored, so the glyphs never scroll off or get clipped. A faint backing
+  // chip keeps them legible over the track baselines/markers on desktop. ──
+  function drawOverlayIcons(ctx, T, C, lang) {
+    var ov = T.overlay; if (!ov || !ov.layers.length) return;
+    var n = ov.layers.length, zoneTop = ov.top, zoneBot = ov.bot, trackH = (zoneBot - zoneTop) / n;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '12px Inter, system-ui, sans-serif';
+    var lx = T.isMobile ? 2 : 8;
+    for (var li = 0; li < n; li++) {
+      var L = ov.layers[li], cyT = zoneTop + trackH * li + trackH / 2;
+      var llab = OVERLAY_LABEL[L.key] ? (OVERLAY_LABEL[L.key][lang] || OVERLAY_LABEL[L.key].ru) : L.key;
+      var text = L.icon + (T.isMobile ? '' : ' ' + llab);
+      if (!T.isMobile) {
+        var w = ctx.measureText(text).width;
+        ctx.fillStyle = 'rgba(6,9,14,0.72)'; ctx.fillRect(lx - 3, cyT - 8, w + 6, 16);
+      }
+      ctx.fillStyle = C.textDim;
+      ctx.fillText(text, lx, cyT);
+    }
+    ctx.textBaseline = 'alphabetic';
   }
 
   // ── PR5: draw the External Field overlay tracks in the bottom zone. One thin
@@ -923,12 +951,9 @@
       // faint track baseline
       ctx.beginPath(); ctx.moveTo(x0, cyT); ctx.lineTo(x1, cyT);
       ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.stroke();
-      // layer icon + label on the left gutter (skip glyph crowding on mobile)
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.font = '12px Inter, system-ui, sans-serif'; ctx.fillStyle = C.textDim;
-      var lx = T.isMobile ? 2 : (x0 - 150);
-      var llab = OVERLAY_LABEL[L.key] ? (OVERLAY_LABEL[L.key][lang] || OVERLAY_LABEL[L.key].ru) : L.key;
-      ctx.fillText(L.icon + (T.isMobile ? '' : ' ' + llab), lx, cyT);
+      // NB: layer icons are drawn separately by drawOverlayIcons() AFTER the
+      // scroll clip is restored, so they stay pinned to the left edge of the
+      // visible area instead of being clipped out of the [x0-6, x1+6] band (1.2).
       // markers
       for (var ei = 0; ei < L.events.length; ei++) {
         var ev = L.events[ei], mx = sx(ev.t);

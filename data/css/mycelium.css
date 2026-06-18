@@ -519,16 +519,30 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .ef-chk input { accent-color: var(--accent-cyan, #39d3c3); }
 
 /* ── External Field polish v1: scales/gauges, sparklines, maps, GW timeline ── */
-.ef-gauge { margin-bottom: 1rem; }
-.ef-g-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.35rem; }
+.ef-gauge { margin-bottom: 1.15rem; }
+.ef-g-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem; }
 .ef-g-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mono, #5b6b7a); }
 .ef-g-val { font-size: 15px; font-weight: 600; color: var(--text-primary, #e8edf2); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+/* PACK 2: value bubble that rides above the marker at the current position */
+.ef-g-valrow { position: relative; height: 20px; }
+.ef-g-bubble { position: absolute; bottom: 1px; transform: translateX(-50%); font-size: 12px; font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--text-primary, #e8edf2);
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); border-radius: 4px;
+  padding: 1px 6px; white-space: nowrap; line-height: 1.3; }
+.ef-g-bubble::after { content: ''; position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%);
+  border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid rgba(255,255,255,0.16); }
 .ef-g-track { position: relative; display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: rgba(255,255,255,0.05); }
-.ef-g-seg { height: 100%; opacity: 0.55; }
-.ef-g-marker { position: absolute; top: -3px; width: 3px; height: 14px; background: #fff; border-radius: 2px; box-shadow: 0 0 6px rgba(255,255,255,0.8); transform: translateX(-50%); }
+.ef-g-seg { height: 100%; opacity: 0.6; }
+.ef-g-marker { position: absolute; top: -3px; width: 3px; height: 14px; background: #fff; border-radius: 2px; box-shadow: 0 0 6px rgba(255,255,255,0.8); transform: translateX(-50%); z-index: 2; }
+/* PACK 2: per-zone class tags aligned under their colour bands */
+.ef-g-zlabels { display: flex; margin-top: 0.28rem; }
+.ef-g-zl { font-size: 9px; line-height: 1.2; text-align: center; opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 1px; }
+.ef-g-zl.is-cur { opacity: 1; font-weight: 700; }
+/* PACK 2: numeric range endpoints */
+.ef-g-ends { display: flex; justify-content: space-between; margin-top: 0.15rem; font-size: 10px; color: var(--text-mono, #5b6b7a); font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .ef-g-meta { display: flex; justify-content: space-between; margin-top: 0.3rem; }
 .ef-g-zone { font-size: 11px; font-weight: 600; }
-.ef-g-note, .ef-g-range { font-size: 10px; color: var(--text-mono, #5b6b7a); }
+.ef-g-note, .ef-g-range { font-size: 10px; color: var(--text-mono, #5b6b7a); margin-top: 0.25rem; }
 /* sparklines */
 .ef-spark-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }
 .ef-spark-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.7rem 0.85rem; }
@@ -570,6 +584,22 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .ef-gw-meta { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.25rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
 .ef-gw-meta a { color: var(--accent-cyan, #39d3c3); text-decoration: none; }
 .ef-gw-cls { font-weight: 700; }
+/* PACK 5.2: honest "quiet sun" note when DONKI has no flares/CMEs */
+.ef-quiet-note { font-size: 11.5px; color: var(--text-mono, #5b6b7a); line-height: 1.5; margin: 0.1rem 0 0.9rem; padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; }
+/* PACK 5.1: honest "no gravitational waves" empty state + last-event card */
+.ef-gw-empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1.6rem 1rem; text-align: center; }
+.ef-gw-empty-h { font-size: 14px; font-weight: 600; color: var(--text-primary, #e8edf2); max-width: 26rem; line-height: 1.4; }
+.ef-gw-empty-sub { font-size: 12px; color: var(--text-mono, #5b6b7a); max-width: 26rem; line-height: 1.5; }
+.ef-gw-last-btn { margin-top: 0.4rem; font-size: 12px; color: var(--text-secondary, #b3bdc7); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 0.45rem 0.9rem; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.ef-gw-last-btn:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.25); }
+.ef-gw-last-pop { width: 100%; max-width: 26rem; }
+.ef-gw-last-card { margin-top: 0.7rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.7rem 0.85rem; text-align: left; font-size: 12px; color: var(--text-secondary, #b3bdc7); line-height: 1.5; }
+.ef-gw-last-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-mono, #5b6b7a); margin-bottom: 0.35rem; }
+.ef-gw-last-name { font-size: 13px; color: var(--text-primary, #e8edf2); }
+.ef-gw-last-meta { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.2rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-gw-last-desc { margin-top: 0.35rem; }
+.ef-gw-last-none { margin-bottom: 0.4rem; }
+.ef-gw-last-card a { color: var(--accent-cyan, #39d3c3); text-decoration: none; display: inline-block; margin-top: 0.4rem; }
 /* collapsible help */
 .ef-help { margin-top: 1rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 0.4rem 0.85rem; }
 .ef-help summary { font-size: 12.5px; color: var(--accent-cyan, #39d3c3); cursor: pointer; padding: 0.35rem 0; }
