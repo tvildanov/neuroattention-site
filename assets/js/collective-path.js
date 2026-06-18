@@ -52,6 +52,10 @@
     var token = (typeof localStorage !== 'undefined') ? localStorage.getItem('na_token') : '';
     var S = container.__cp || { hiddenLayers: {}, extOn: {}, view: null, spineH: SPINE_DEFAULT, scrollY: 0, velY: 0, anchorRow: 0 };
     container.__cp = S; S._lang = lang; S._container = container;
+    // 1.4: every (re)entry to the collective view (tab switch / return from ЛК)
+    // starts un-zoomed. A stale _focusUser would otherwise make the next click
+    // open the profile directly, skipping the zoom-in step.
+    if (S._focusUser) { if (S._focusPrev) { S.spineH = S._focusPrev.spineH; S.scrollY = S._focusPrev.scrollY; } S._focusUser = null; S._focusPrev = null; }
 
     container.innerHTML =
       '<div class="cp-toolbar" style="display:flex;flex-wrap:wrap;gap:0.5rem 1.25rem;align-items:center;margin-bottom:0.7rem;"></div>' +
@@ -64,8 +68,10 @@
     host.innerHTML = '<div style="padding:2rem;color:var(--text-muted,#89a);font-size:13px;">' + esc(T('a.evo.loading', 'Собираем коллективный путь…')) + '</div>';
 
     var hdr = token ? { 'Authorization': 'Bearer ' + token } : {};
-    var activeExt = EXT_LAYERS.filter(function (k) { return S.extOn[k]; });
-    var url = apiBase + '/api/admin/collective-path?period=year' + (activeExt.length ? '&overlay=' + activeExt.join(',') : '');
+    // 1.3: always fetch ALL layers' overlay data up front so toggling a layer
+    // on/off is an instant redraw (flip S.extOn → requestDraw) with no re-fetch
+    // and no canvas rebuild. draw() already filters by S.extOn each frame.
+    var url = apiBase + '/api/admin/collective-path?period=year&overlay=' + EXT_LAYERS.join(',');
     fetch(url, { headers: hdr }).then(function (r) { return r.json(); }).then(function (data) {
       if (!data || data.error) { host.innerHTML = '<div style="padding:2rem;color:#f99;font-size:13px;">' + esc((data && data.error) || 'error') + '</div>'; return; }
       S.data = data;
@@ -474,7 +480,10 @@
       dataRows + '<div style="height:0.5rem;"></div>' + extRows + pub +
       '<div style="margin-top:0.8rem;font-size:11px;color:var(--text-muted,#789);">' + esc(T('a.evo.users_count', 'Участников')) + ': ' + ((S.data.users || []).length) + '</div>';
     side.querySelectorAll('input[data-layer]').forEach(function (cb) { cb.addEventListener('change', function () { S.hiddenLayers[cb.getAttribute('data-layer')] = !cb.checked; requestDraw(S); }); });
-    side.querySelectorAll('input[data-ext]').forEach(function (cb) { cb.addEventListener('change', function () { S.extOn[cb.getAttribute('data-ext')] = cb.checked; window.mountCollectivePath(S._container); }); });
+    // 1.3: toggling a layer is a pure redraw — flip its flag and requestDraw.
+    // All layers' data is already loaded, draw() filters by S.extOn each frame,
+    // so no re-fetch / no canvas rebuild (keeps scroll, zoom and focus state).
+    side.querySelectorAll('input[data-ext]').forEach(function (cb) { cb.addEventListener('change', function () { S.extOn[cb.getAttribute('data-ext')] = cb.checked; requestDraw(S); }); });
     var pubCb = side.querySelector('#cp-publish');
     if (pubCb) pubCb.addEventListener('change', function () {
       var token = localStorage.getItem('na_token');
