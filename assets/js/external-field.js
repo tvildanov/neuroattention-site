@@ -245,26 +245,44 @@
     api('/api/external/events?layer=' + layer + '&limit=150').then(function (d) { cb((d && d.events) || []); }).catch(function () { cb(null); });
   }
 
-  // value-on-scale gauge: opts = { value, min, max, unit, zones:[{to,color,label}], note }
+  // value-on-scale gauge: opts = { value, min, max, unit, zones:[{to,color,label,tag?}], note }
+  // PACK 2: the range is legible at a glance — min/max printed at the ends, each
+  // colour band carries its class tag underneath, and the current value rides a
+  // bubble + marker AT its position on the scale (not parked in a corner).
   function gauge(opts) {
     var v = opts.value;
     if (v == null || !isFinite(v)) return '';
     var min = opts.min || 0, max = opts.max, span = (max - min) || 1;
     var pct = Math.max(0, Math.min(100, ((v - min) / span) * 100));
-    var segs = opts.zones.map(function (z, i) {
+    var bubblePct = Math.max(7, Math.min(93, pct));        // keep the value label inside the bar
+    // per-zone widths shared by the colour segments AND the class tags below
+    var widths = opts.zones.map(function (z, i) {
       var from = i === 0 ? min : opts.zones[i - 1].to;
-      var w = ((Math.min(z.to, max) - from) / span) * 100;
-      return '<span class="ef-g-seg" style="width:' + Math.max(0, w).toFixed(2) + '%;background:' + z.color + '"></span>';
+      return Math.max(0, ((Math.min(z.to, max) - from) / span) * 100);
+    });
+    // current zone index (for the head badge + to highlight its tag)
+    var zi = opts.zones.length - 1;
+    for (var i = 0; i < opts.zones.length; i++) { if (v <= opts.zones[i].to) { zi = i; break; } }
+    var zone = opts.zones[zi];
+    var segs = opts.zones.map(function (z, i) {
+      return '<span class="ef-g-seg" style="width:' + widths[i].toFixed(2) + '%;background:' + z.color + '"></span>';
     }).join('');
-    var zone = null;
-    for (var i = 0; i < opts.zones.length; i++) { if (v <= opts.zones[i].to) { zone = opts.zones[i]; break; } }
-    if (!zone) zone = opts.zones[opts.zones.length - 1];
+    var tags = opts.zones.map(function (z, i) {
+      return '<span class="ef-g-zl' + (i === zi ? ' is-cur' : '') + '" style="width:' + widths[i].toFixed(2) +
+        '%;color:' + z.color + '">' + esc(z.tag || z.label) + '</span>';
+    }).join('');
     var disp = (opts.display != null ? opts.display : v) + (opts.unit ? ' ' + opts.unit : '');
+    var end = function (x) { var r = Math.round(x * 100) / 100; return esc(r + (opts.unit ? ' ' + opts.unit : '')); };
+    var loEnd = opts.minLabel != null ? esc(opts.minLabel) : end(min);
+    var hiEnd = opts.maxLabel != null ? esc(opts.maxLabel) : end(max);
     return '<div class="ef-gauge">' +
-      '<div class="ef-g-head"><span class="ef-g-label">' + esc(opts.label) + '</span><span class="ef-g-val">' + esc(disp) + '</span></div>' +
+      '<div class="ef-g-head"><span class="ef-g-label">' + esc(opts.label) + '</span>' +
+        '<span class="ef-g-zone" style="color:' + zone.color + '">' + esc(zone.label) + '</span></div>' +
+      '<div class="ef-g-valrow"><span class="ef-g-bubble" style="left:' + bubblePct.toFixed(1) + '%">' + esc(disp) + '</span></div>' +
       '<div class="ef-g-track">' + segs + '<span class="ef-g-marker" style="left:' + pct.toFixed(1) + '%"></span></div>' +
-      '<div class="ef-g-meta"><span class="ef-g-zone" style="color:' + zone.color + '">' + esc(zone.label) + '</span>' +
-      (opts.note ? '<span class="ef-g-note">' + esc(opts.note) + '</span>' : '') + '</div>' +
+      '<div class="ef-g-zlabels">' + tags + '</div>' +
+      '<div class="ef-g-ends"><span>' + loEnd + '</span><span>' + hiEnd + '</span></div>' +
+      (opts.note ? '<div class="ef-g-note">' + esc(opts.note) + '</div>' : '') +
     '</div>';
   }
   function sparkline(values, color) {
@@ -291,7 +309,7 @@
       var html = '';
       // X-ray flux gauge (B/C/M/X)
       var xc = xray && classPos(xray.severity);
-      html += gauge({ label: t('sun.xray'), value: xc, display: xray ? xray.severity : '—', min: 0, max: 4,
+      html += gauge({ label: t('sun.xray'), value: xc, display: xray ? xray.severity : '—', min: 0, max: 4, minLabel: 'B', maxLabel: 'X',
         zones: [{ to: 1, color: ZONE.blue, label: 'B' }, { to: 2, color: ZONE.green, label: 'C' }, { to: 3, color: ZONE.yellow, label: 'M' }, { to: 4, color: ZONE.red, label: 'X' }],
         note: xc != null && xc < 1 ? t('sun.xrayQuiet') : '' }) || stat2(t('sun.xray'), '—');
       // Solar wind speed gauge
