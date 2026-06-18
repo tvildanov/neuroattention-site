@@ -80,7 +80,9 @@
   //   the caller (server-provided Haversine `dist`). Members of a family/team stay
   //   adjacent; users with no location fall to the end. ──
   function layout(S) {
-    var users = S.data.users || [], teams = S.data.teams || [];
+    // Client-side safeguard: never render soft-deleted accounts even if the API
+    // ever leaks one (server already filters deleted_at IS NULL).
+    var users = (S.data.users || []).filter(function (u) { return !u.deleted_at; }), teams = S.data.teams || [];
     var byId = {}; users.forEach(function (u) { byId[u.id] = u; });
     var teamOf = {};
     teams.forEach(function (tm) { tm.members.forEach(function (m) {
