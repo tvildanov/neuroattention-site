@@ -144,6 +144,27 @@
       ru:'Продолговатый мозг', en:'Medulla oblongata', es:'Bulbo raquídeo' }
   ];
 
+  // ── Sensation-map alignment (C2) ────────────────────────────────────────────
+  // Maps Atlas region ids → Sensation-Map sub-part slugs (body-picker.js). Keeps
+  // the 3D atlas and the existing 2D picker on ONE id space so saved sensations
+  // stay backward-compatible whichever picker is shown. Body-surface zones reuse
+  // body-picker region keys directly (head/neck/chest/…); spine + organs map to
+  // their concrete slugs here.
+  var SENSATION_REGION_MAP = {
+    // vertebral column (atlas spine segments → body-picker spine slugs)
+    'cervical-spine': 'bp_spine_b_cervical',
+    'thoracic-spine': 'bp_spine_b_thoracic',
+    'lumbar-spine':   'bp_spine_b_lumbar',
+    'sacral-spine':   'bp_spine_b_sacral',
+    'spinal-cord':    'bp_spine_b_cord',
+    // inset organs → general organ slugs
+    'heart':   'bp_org_heart',
+    'lungs':   'bp_org_lungs',
+    'liver':   'bp_org_liver',
+    'kidneys': 'bp_org_kidneys',
+    'brain':   'bp_head_f_brain'
+  };
+
   // ── Atlas instance ─────────────────────────────────────────────────────────
   function Atlas(container, options) {
     this.container = container;
@@ -805,6 +826,7 @@
   var _instances = [];
   window.BodyAtlas = {
     REGIONS: BRAIN_REGIONS,
+    SENSATION_REGION_MAP: SENSATION_REGION_MAP,
     init: function (container, options) {
       var a = new Atlas(container, options);
       _instances.push(a);

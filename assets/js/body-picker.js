@@ -114,6 +114,15 @@
       P('bp_lback_upper', 'Верхняя поясница', 'Upper lumbar', 'Lumbar alta'),
       P('bp_lback_lower', 'Нижняя поясница', 'Lower lumbar', 'Lumbar baja'),
       P('bp_lback_sacrum', 'Крестец', 'Sacrum', 'Sacro') ] },
+    // Spinal column by segment — Nick's request; aligned with the 3D atlas
+    // spine regions (cervical/thoracic/lumbar/sacral). New slugs = additive,
+    // existing saved sensations are untouched.
+    spine: { label: { ru: 'Позвоночник', en: 'Spine', es: 'Columna' }, sub: [
+      P('bp_spine_b_cervical', 'Шейный отдел (C1–C7)', 'Cervical spine (C1–C7)', 'Columna cervical (C1–C7)'),
+      P('bp_spine_b_thoracic', 'Грудной отдел (T1–T12)', 'Thoracic spine (T1–T12)', 'Columna torácica (T1–T12)'),
+      P('bp_spine_b_lumbar', 'Поясничный отдел (L1–L5)', 'Lumbar spine (L1–L5)', 'Columna lumbar (L1–L5)'),
+      P('bp_spine_b_sacral', 'Крестцовый отдел', 'Sacral spine', 'Columna sacra'),
+      P('bp_spine_b_cord', 'Спинной мозг', 'Spinal cord', 'Médula espinal') ] },
     pelvis: { label: { ru: 'Таз (сзади)', en: 'Pelvis (back)', es: 'Pelvis (atrás)' }, sub: [
       P('bp_pelvis_b_glute_l', 'Ягодица (левая)', 'Buttock (left)', 'Glúteo (izq.)'),
       P('bp_pelvis_b_glute_r', 'Ягодица (правая)', 'Buttock (right)', 'Glúteo (der.)'),
@@ -145,11 +154,13 @@
     arm_l:      'M34 66 L40 66 L36 150 L26 150 Z',
     arm_r:      'M80 66 L86 66 L94 150 L84 150 Z',
     leg_l:      'M48 178 H60 L56 292 H44 Z',
-    leg_r:      'M60 178 H74 L78 292 H66 Z'
+    leg_r:      'M60 178 H74 L78 292 H66 Z',
+    // central vertical strip over the back — the spinal column (C4)
+    spine:      'M56 62 H64 V160 H56 Z'
   };
-  // draw order so smaller overlays (organs) sit above the torso
+  // draw order so smaller overlays (organs / spine) sit above the torso
   var FRONT_ORDER = ['arm_l', 'arm_r', 'leg_l', 'leg_r', 'chest', 'belly', 'pelvis', 'organs', 'neck', 'head'];
-  var BACK_ORDER  = ['arm_l', 'arm_r', 'leg_l', 'leg_r', 'upper_back', 'lower_back', 'pelvis', 'neck', 'head'];
+  var BACK_ORDER  = ['arm_l', 'arm_r', 'leg_l', 'leg_r', 'upper_back', 'lower_back', 'pelvis', 'spine', 'neck', 'head'];
 
   // wireframe humanoid outline (thin blueprint strokes)
   function silhouette() {
