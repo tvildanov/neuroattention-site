@@ -30,7 +30,32 @@
   var THREE_R128 = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
   var ORBIT_URL  = 'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js';
   var GLTF_URL   = 'https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+  var DRACO_URL  = 'https://unpkg.com/three@0.128.0/examples/js/loaders/DRACOLoader.js';
   var BODY_GLB   = 'assets/3d/body/body-male.glb';
+
+  // Real Z-Anatomy (CC-BY-SA) systems are streamed per-layer from a CDN; URLs
+  // live in this config so they can be rotated without a code change. Procedural
+  // capsule layers remain as an instant fallback / preview until the GLB arrives.
+  var MODELS_CFG_URL = 'data/config/anatomy-models.json';
+  var _cfgPromise = null;
+  function loadModelsConfig() {
+    if (_cfgPromise) return _cfgPromise;
+    _cfgPromise = fetch(MODELS_CFG_URL)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+    return _cfgPromise;
+  }
+
+  // per-layer x-ray styling for streamed real meshes (no purple; mycelium tokens
+  // + warm accents to tell vessels/organs apart)
+  var LAYER_STYLE = {
+    skin:     { color: 0xA8F7FF, opacity: 0.45, glow: 0.6, fresnelPower: 2.4 },
+    muscles:  { color: 0xC0FFE0, rim: 0x8DFFC8, opacity: 0.42, glow: 0.5, fresnelPower: 2.2 },
+    skeleton: { color: 0xE8FBFF, rim: 0xFFFFFF, opacity: 0.62, glow: 1.0, fresnelPower: 1.8 },
+    nervous:  { color: 0x8DFFC8, rim: 0xFFFFFF, opacity: 0.72, glow: 1.0, fresnelPower: 1.7 },
+    vessels:  { color: 0xFF8FA3, rim: 0xFFD6DE, opacity: 0.58, glow: 0.9, fresnelPower: 1.8 },
+    organs:   { color: 0xFFCB8D, rim: 0xFFE9CC, opacity: 0.5,  glow: 0.7, fresnelPower: 2.0 }
+  };
 
   // ── tiny script loader (sequential, cached) ───────────────────────────────
   var _loaded = {};
@@ -50,7 +75,7 @@
     if (window.THREE && window.THREE.OrbitControls && window.THREE.GLTFLoader) return Promise.resolve();
     if (_threeReady) return _threeReady;
     _threeReady = loadScript(THREE_R128)
-      .then(function () { return Promise.all([loadScript(ORBIT_URL), loadScript(GLTF_URL)]); });
+      .then(function () { return Promise.all([loadScript(ORBIT_URL), loadScript(GLTF_URL), loadScript(DRACO_URL)]); });
     return _threeReady;
   }
 
@@ -564,10 +589,67 @@
   };
 
   Atlas.prototype.toggleLayer = function (name, visible) {
-    var grp = this._layers[name]; if (!grp) return;
-    grp.visible = !!visible;
-    if (this._layerState[name]) this._layerState[name].visible = !!visible;
-    this._emit('layer-change', { layer: name, visible: !!visible });
+    visible = !!visible;
+    if (this._layerState[name]) this._layerState[name].visible = visible;
+    else this._layerState[name] = { visible: visible, opacity: (LAYER_STYLE[name] && LAYER_STYLE[name].opacity) || 0.5 };
+    var grp = this._layers[name];
+    if (grp) grp.visible = visible;
+    // Stream the real Z-Anatomy mesh the first time a layer is shown; the
+    // procedural capsule (if any) stays visible until the GLB swaps in.
+    if (visible) this._loadRealLayer(name);
+    this._emit('layer-change', { layer: name, visible: visible });
+  };
+
+  // ── real model streaming (lazy, per layer) ─────────────────────────────────
+  // GLBs are pre-normalized to the atlas frame (centered, height ≈ 2.0), so they
+  // mount directly with no extra transform. Materials are replaced with the
+  // holographic x-ray shader at load time.
+  Atlas.prototype._loadRealLayer = function (name) {
+    var self = this, T = window.THREE;
+    if (!this._real) this._real = {};
+    if (this._real[name]) return this._real[name];     // already loading/loaded
+    this._real[name] = loadModelsConfig().then(function (cfg) {
+      if (!cfg || !cfg.layers || !cfg.layers[name]) return null;   // no real source → keep procedural
+      var url = cfg.layers[name];
+      return new Promise(function (resolve) {
+        var loader = new T.GLTFLoader();
+        try {
+          if (T.DRACOLoader) {
+            var draco = new T.DRACOLoader();
+            draco.setDecoderPath(cfg.dracoDecoderPath || 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+            loader.setDRACOLoader(draco);
+          }
+        } catch (e) { /* draco optional */ }
+        self._emit('layer-loading', { layer: name });
+        loader.load(url, function (gltf) {
+          var grp = new T.Group(); grp.name = name + '-real';
+          var style = LAYER_STYLE[name] || { color: COLD_CYAN, opacity: 0.5, glow: 0.7 };
+          gltf.scene.traverse(function (o) {
+            if (o.isMesh && o.geometry) o.material = makeXrayMaterial(style);
+          });
+          grp.add(gltf.scene);
+          self._swapRealLayer(name, grp);
+          self._emit('layer-loaded', { layer: name });
+          resolve(grp);
+        }, undefined, function (err) {
+          console.warn('[BodyAtlas] real layer load failed: ' + name, err);
+          self._emit('layer-error', { layer: name });
+          resolve(null);
+        });
+      });
+    });
+    return this._real[name];
+  };
+
+  Atlas.prototype._swapRealLayer = function (name, grp) {
+    if (this._destroyed) return;
+    var old = this._layers[name];
+    if (old && old.parent) old.parent.remove(old);   // drop procedural capsule
+    this.root.add(grp);
+    this._layers[name] = grp;
+    var st = this._layerState[name] || { visible: false, opacity: (LAYER_STYLE[name] && LAYER_STYLE[name].opacity) || 0.5 };
+    grp.visible = !!st.visible;
+    this.setLayerOpacity(name, st.opacity != null ? st.opacity : 0.5);
   };
 
   Atlas.prototype.setLayerOpacity = function (name, opacity) {
@@ -599,7 +681,7 @@
       if (this._layers.skin) this.toggleLayer('skin', true);
       ['muscles', 'skeleton', 'nervous', 'brain'].forEach(function (n) { /* hidden */ });
       var self = this;
-      ['muscles', 'skeleton', 'nervous', 'brain'].forEach(function (n) { if (self._layers[n]) self.toggleLayer(n, false); });
+      ['muscles', 'skeleton', 'nervous', 'vessels', 'organs', 'brain'].forEach(function (n) { if (self._layers[n]) self.toggleLayer(n, false); });
     } else if (mode === 'brain-detail') {
       this.enterBrainDetail();
     } else { // full
@@ -634,7 +716,7 @@
     if (!this._brainGroup) return;
     this._brainDetail = true;
     this.toggleLayer('brain', true);
-    ['skin', 'muscles', 'skeleton', 'nervous'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
+    ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
     // animate camera to brain
     this._tweenCamera(this._brainCenter.clone().add(new window.THREE.Vector3(0, 0, this._brainRadius * 6)), this._brainCenter.clone());
     this.controls.minDistance = this._brainRadius * 2;
@@ -654,7 +736,7 @@
     // organId one of brain region ids or 'heart','liver','lungs','kidneys'
     var target = this._organAnchor(organId);
     if (!target) return;
-    ['muscles', 'skeleton', 'nervous'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
+    ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
     this.setLayerOpacity('skin', 0.1);
     this.toggleLayer('skin', true);
     this._tweenCamera(target.clone().add(new window.THREE.Vector3(0.4, 0.2, 1.0)), target.clone());
