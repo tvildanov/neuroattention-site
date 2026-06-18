@@ -291,6 +291,12 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_city TEXT`;
     // PR4 (4.4): country captured at registration alongside city/lat/lon.
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_country TEXT`;
+    // soft-delete: superadmin marks a user deleted; a cron hard-deletes after 1h.
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`;
+    await sql`CREATE TABLE IF NOT EXISTS audit_log (
+      id BIGSERIAL PRIMARY KEY, actor_user_id UUID, action TEXT NOT NULL,
+      target_user_id UUID, detail JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT now()
+    )`;
     await sql`CREATE TABLE IF NOT EXISTS external_signal_events (
       id BIGSERIAL PRIMARY KEY,
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -2310,33 +2316,94 @@ app.get('/api/progress', requireAuth, async (req, res) => {
 });
 
 // ── ADMIN: Delete user by email (superadmin only) ──
+// ── Soft-delete: superadmin marks a user deleted; a cron hard-deletes after 1h,
+// during which it can be restored from the Trash. ──
+async function requireSuperadmin(req, res) {
+  const caller = await sql`SELECT id, role FROM users WHERE id = ${req.user.id}`;
+  if (!caller.length || caller[0].role !== 'superadmin') { res.status(403).json({ error: 'Forbidden' }); return null; }
+  return caller[0];
+}
+// Cascade hard-delete of one user's data + the row. Best-effort per table so a
+// missing table never aborts the whole purge. Used by the cron after 1h.
+async function hardDeleteUser(userId) {
+  const del = async (p) => { try { await p; } catch (e) {} };
+  await del(sql`DELETE FROM nm_links WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM nm_nodes WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM neuro_map_entries WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM neuro_resource_diary WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM calendar_events WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM course_progress WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM course_block_progress WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM journey_events WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM team_members WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM external_field_subscriptions WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM external_field_notifications WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM external_signal_events WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM test_results WHERE user_id = ${userId}`);
+  await del(sql`DELETE FROM password_resets WHERE user_id = ${userId}`);
+  // teams this user owned: hand leadership to the earliest other member, else delete the team
+  try {
+    const owned = await sql`SELECT id FROM teams WHERE owner_user_id = ${userId}`;
+    for (const t of owned) {
+      const [next] = await sql`SELECT user_id FROM team_members WHERE team_id = ${t.id} AND user_id <> ${userId} ORDER BY joined_at ASC LIMIT 1`;
+      if (next) await sql`UPDATE teams SET owner_user_id = ${next.user_id} WHERE id = ${t.id}`;
+      else await sql`DELETE FROM teams WHERE id = ${t.id}`;
+    }
+  } catch (e) {}
+  await sql`DELETE FROM users WHERE id = ${userId}`;
+}
+// POST /api/admin/users/:id/soft-delete { confirm_email } — superadmin only.
+app.post('/api/admin/users/:id/soft-delete', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const targetId = req.params.id;
+    if (String(targetId) === String(caller.id)) return res.status(400).json({ error: 'Cannot delete yourself' });
+    const [target] = await sql`SELECT id, email, role, deleted_at FROM users WHERE id = ${targetId}`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (target.role === 'superadmin') return res.status(400).json({ error: 'Cannot delete another superadmin' });
+    const confirm = String((req.body && req.body.confirm_email) || '').trim().toLowerCase();
+    if (!confirm || confirm !== String(target.email || '').toLowerCase()) return res.status(400).json({ error: 'Confirmation email does not match' });
+    const [u] = await sql`UPDATE users SET deleted_at = now() WHERE id = ${targetId} RETURNING deleted_at`;
+    try { await sql`INSERT INTO audit_log (actor_user_id, action, target_user_id, detail) VALUES (${caller.id}, 'user.soft_delete', ${targetId}, ${JSON.stringify({ email: target.email })}::jsonb)`; } catch (e) {}
+    res.json({ success: true, deleted_at: u.deleted_at });
+  } catch (err) { console.error('soft-delete:', err); res.status(500).json({ error: 'Internal error' }); }
+});
+// POST /api/admin/users/:id/restore — only within the 1h grace window.
+app.post('/api/admin/users/:id/restore', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const [target] = await sql`SELECT id, deleted_at FROM users WHERE id = ${req.params.id}`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (!target.deleted_at) return res.json({ success: true });   // already active
+    if (new Date(target.deleted_at).getTime() < Date.now() - 60 * 60 * 1000) return res.status(410).json({ error: 'Grace window expired' });
+    await sql`UPDATE users SET deleted_at = NULL WHERE id = ${req.params.id}`;
+    try { await sql`INSERT INTO audit_log (actor_user_id, action, target_user_id) VALUES (${caller.id}, 'user.restore', ${req.params.id})`; } catch (e) {}
+    res.json({ success: true });
+  } catch (err) { console.error('restore:', err); res.status(500).json({ error: 'Internal error' }); }
+});
+// GET /api/admin/users/trash — soft-deleted users still in the 1h grace window.
+app.get('/api/admin/users/trash', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const rows = await sql`SELECT id, email, display_name, role, deleted_at FROM users
+      WHERE deleted_at IS NOT NULL AND deleted_at > now() - interval '1 hour' ORDER BY deleted_at DESC`;
+    res.json({ ok: true, users: rows });
+  } catch (err) { console.error('trash:', err); res.status(500).json({ error: 'Internal error' }); }
+});
+// Legacy DELETE /api/admin/user {email} — now performs a SOFT delete (superadmin).
 app.delete('/api/admin/user', requireAuth, async (req, res) => {
   try {
-    // Role is not in JWT, fetch from DB
-    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
-    if (!caller.length || caller[0].role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
-    const { email } = req.body;
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const email = String((req.body && req.body.email) || '').toLowerCase().trim();
     if (!email) return res.status(400).json({ error: 'Email required' });
-
-    const rows = await sql`SELECT id FROM users WHERE LOWER(email) = ${email.toLowerCase().trim()}`;
-    if (!rows.length) return res.status(404).json({ error: 'User not found' });
-
-    const userId = rows[0].id;
-    // Cascade delete user data
-    await sql`DELETE FROM nm_links WHERE user_id = ${userId}`;
-    await sql`DELETE FROM nm_nodes WHERE user_id = ${userId}`;
-    await sql`DELETE FROM neuro_map_entries WHERE user_id = ${userId}`;
-    await sql`DELETE FROM neuro_resource_diary WHERE user_id = ${userId}`;
-    await sql`DELETE FROM calendar_events WHERE user_id = ${userId}`;
-    await sql`DELETE FROM course_progress WHERE user_id = ${userId}`;
-    await sql`DELETE FROM password_resets WHERE user_id = ${userId}`;
-    await sql`DELETE FROM users WHERE id = ${userId}`;
-
-    res.json({ ok: true, deleted: email });
-  } catch (err) {
-    console.error('DELETE /api/admin/user:', err);
-    res.status(500).json({ error: 'Internal error' });
-  }
+    const [target] = await sql`SELECT id, role FROM users WHERE LOWER(email) = ${email}`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (String(target.id) === String(caller.id)) return res.status(400).json({ error: 'Cannot delete yourself' });
+    if (target.role === 'superadmin') return res.status(400).json({ error: 'Cannot delete another superadmin' });
+    await sql`UPDATE users SET deleted_at = now() WHERE id = ${target.id}`;
+    try { await sql`INSERT INTO audit_log (actor_user_id, action, target_user_id, detail) VALUES (${caller.id}, 'user.soft_delete', ${target.id}, ${JSON.stringify({ email })}::jsonb)`; } catch (e) {}
+    res.json({ ok: true, soft_deleted: email });
+  } catch (err) { console.error('DELETE /api/admin/user:', err); res.status(500).json({ error: 'Internal error' }); }
 });
 
 // ── ADMIN: Merge duplicate nodes using vocabulary aliases ──
@@ -6974,31 +7041,31 @@ app.get('/api/admin/users', requireAuth, async (req, res) => {
     const like = search ? `%${search.toLowerCase()}%` : null;
 
     if (roleArr && like) {
-      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
       users = await sql`
         SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
-        FROM users WHERE role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
+        FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else if (roleArr) {
-      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = ANY(${roleArr}::text[])`;
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[])`;
       users = await sql`
         SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
-        FROM users WHERE role = ANY(${roleArr}::text[])
+        FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[])
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else if (like) {
-      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
       users = await sql`
         SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
-        FROM users WHERE (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
+        FROM users WHERE deleted_at IS NULL AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else {
-      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users`;
+      [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL`;
       users = await sql`
         SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
-        FROM users ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
+        FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     }
 
@@ -7368,7 +7435,25 @@ app.get('/api/external/notifications', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET /api/external/notifications:', err); res.status(500).json({ error: err.message }); }
 });
 
+// Soft-delete cron: every 5 min, hard-delete users whose grace window (1h) has
+// elapsed. Idempotent and best-effort.
+function startSoftDeleteCron() {
+  async function sweep() {
+    try {
+      const due = await sql`SELECT id, email FROM users WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '1 hour' LIMIT 50`;
+      for (const u of due) {
+        await hardDeleteUser(u.id);
+        try { await sql`INSERT INTO audit_log (action, target_user_id, detail) VALUES ('user.hard_delete', ${u.id}, ${JSON.stringify({ email: u.email })}::jsonb)`; } catch (e) {}
+        console.log('[soft-delete] hard-deleted user', u.id);
+      }
+    } catch (e) { console.warn('[soft-delete cron]', e.message); }
+  }
+  setInterval(sweep, 5 * 60 * 1000);
+  setTimeout(sweep, 30 * 1000);   // first pass shortly after boot
+}
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
+  try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
 });

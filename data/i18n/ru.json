@@ -1491,5 +1491,18 @@
   "a.evo.no_location": "Без локации",
   "a.admin.delete_btn": "Удалить",
   "a.admin.delete_confirm": "Уверены что хотите удалить этого пользователя?",
-  "a.admin.delete_error": "Не удалось удалить"
+  "a.admin.delete_error": "Не удалось удалить",
+  "a.admin.delete_tooltip": "Удалить пользователя (нельзя отменить через час)",
+  "a.admin.delete_title": "Удалить пользователя",
+  "a.admin.delete_body": "Это действие отвяжет и удалит все его данные: профиль, journey_events, нейромап, ощущения, прогресс курсов, участие в командах. Действие необратимо через 1 час после подтверждения.",
+  "a.admin.delete_warning": "Перепроверьте — данные нельзя будет восстановить через 1 час.",
+  "a.admin.delete_confirm_label": "Введите email пользователя для подтверждения",
+  "a.admin.delete_cancel": "Отмена",
+  "a.admin.trash_tab": "🗑 Корзина",
+  "a.admin.trash_title": "Корзина — удалённые пользователи",
+  "a.admin.trash_hint": "Можно восстановить в течение 1 часа после удаления. Затем данные удаляются безвозвратно.",
+  "a.admin.trash_col_name": "Имя",
+  "a.admin.trash_col_deleted": "Удалён",
+  "a.admin.trash_restore": "Восстановить",
+  "a.admin.trash_empty": "Корзина пуста"
 }

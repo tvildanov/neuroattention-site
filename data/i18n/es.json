@@ -1502,5 +1502,18 @@
   "a.evo.no_location": "Sin ubicación",
   "a.admin.delete_btn": "Eliminar",
   "a.admin.delete_confirm": "¿Seguro que quieres eliminar a este usuario?",
-  "a.admin.delete_error": "No se pudo eliminar"
+  "a.admin.delete_error": "No se pudo eliminar",
+  "a.admin.delete_tooltip": "Eliminar usuario (irreversible tras una hora)",
+  "a.admin.delete_title": "Eliminar usuario",
+  "a.admin.delete_body": "Esto desvinculará y eliminará todos sus datos: perfil, journey_events, neuromapa, sensaciones, progreso de cursos, membresías de equipo. Irreversible 1 hora después de confirmar.",
+  "a.admin.delete_warning": "Verifica de nuevo — los datos no se podrán recuperar tras 1 hora.",
+  "a.admin.delete_confirm_label": "Escribe el email del usuario para confirmar",
+  "a.admin.delete_cancel": "Cancelar",
+  "a.admin.trash_tab": "🗑 Papelera",
+  "a.admin.trash_title": "Papelera — usuarios eliminados",
+  "a.admin.trash_hint": "Restaurable dentro de 1 hora tras la eliminación. Después los datos se eliminan permanentemente.",
+  "a.admin.trash_col_name": "Nombre",
+  "a.admin.trash_col_deleted": "Eliminado",
+  "a.admin.trash_restore": "Restaurar",
+  "a.admin.trash_empty": "La papelera está vacía"
 }
