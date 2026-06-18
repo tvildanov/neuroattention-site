@@ -26,7 +26,8 @@
       sun: { xray: 'X-ray flux', wind: 'Solar wind', f107: 'F10.7 flux', lastFlare: 'Last flare', lastCME: 'Last CME',
         sunrise: 'Sunrise', sunset: 'Sunset', recent: 'Recent solar events', flares: 'Solar flares', cmes: 'Coronal mass ejections',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (latest)', sdoOpen: 'Open full SDO image ↗',
-        windField: 'within typical range', xrayQuiet: 'background / quiet' },
+        windField: 'within typical range', xrayQuiet: 'background / quiet',
+        flareQuiet: 'No significant flares or CMEs recorded in the last 7 days — a quiet stretch of solar activity.' },
       moon: { phase: 'Phase', illum: 'Illumination', age: 'Lunar age', moonrise: 'Moonrise', moonset: 'Moonset', timeline: 'Lunar timeline',
         days: 'd', computed: 'Computed astronomically (always available).',
         phases: { 'New Moon': 'New Moon', 'Waxing Crescent': 'Waxing Crescent', 'First Quarter': 'First Quarter', 'Waxing Gibbous': 'Waxing Gibbous', 'Full Moon': 'Full Moon', 'Waning Gibbous': 'Waning Gibbous', 'Last Quarter': 'Last Quarter', 'Waning Crescent': 'Waning Crescent' } },
@@ -38,6 +39,8 @@
         snapshot: 'Weather & air quality by Open-Meteo. Snapshot at load time.', enterLoc: 'Enter your address or coordinates to see local weather and air quality.' },
       cosmos: { note: 'Public gravitational-wave alerts from LIGO/Virgo/KAGRA. Mock-data replays are filtered out. Biological relevance is not assumed.',
         candidates: 'Gravitational-wave candidates', noConfirmed: 'No confirmed candidates right now. Real detections are rare — only during active observing runs.',
+        noneIn7d: 'No gravitational waves detected in the last 7 days.', gwRare: 'Gravitational waves are rare — they are only caught during active observing runs, so an empty window is normal.',
+        lastBtn: 'Show last recorded event', lastTitle: 'Last recorded gravitational wave', lastNone: 'No confirmed gravitational wave has been recorded since monitoring began. See the full LIGO/Virgo/KAGRA catalog on GraceDB.', lastErr: 'Could not load the last event.',
         whatQ: 'What is a gravitational wave?', whatA: 'Ripples in spacetime from violent cosmic events — merging black holes or neutron stars. LIGO/Virgo/KAGRA detect them as tiny length changes (far smaller than a proton). They carry no known biological effect; this layer is shown for completeness, not health relevance.',
         cls: { BBH: 'Binary black hole', BNS: 'Binary neutron star', NSBH: 'Neutron star – black hole', Terrestrial: 'Likely terrestrial (noise)', Unknown: 'Unclassified' } },
       social: { note: 'A filtered layer of high-impact world events (conflict, disaster, elections, economic & health crises) from GDELT — not a media feed.',
@@ -64,7 +67,8 @@
       sun: { xray: 'Рентген. поток', wind: 'Солнечный ветер', f107: 'Поток F10.7', lastFlare: 'Последняя вспышка', lastCME: 'Последний CME',
         sunrise: 'Восход', sunset: 'Закат', recent: 'Недавние солнечные события', flares: 'Солнечные вспышки', cmes: 'Корональные выбросы массы',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (актуальное)', sdoOpen: 'Открыть полное изображение SDO ↗',
-        windField: 'в пределах нормы', xrayQuiet: 'фон / спокойно' },
+        windField: 'в пределах нормы', xrayQuiet: 'фон / спокойно',
+        flareQuiet: 'За последние 7 дней значимых вспышек и выбросов не зафиксировано — затишье солнечной активности.' },
       moon: { phase: 'Фаза', illum: 'Освещённость', age: 'Возраст Луны', moonrise: 'Восход Луны', moonset: 'Заход Луны', timeline: 'Лунная хроника',
         days: 'дн', computed: 'Рассчитано астрономически (доступно всегда).',
         phases: { 'New Moon': 'Новолуние', 'Waxing Crescent': 'Растущий серп', 'First Quarter': 'Первая четверть', 'Waxing Gibbous': 'Растущая Луна', 'Full Moon': 'Полнолуние', 'Waning Gibbous': 'Убывающая Луна', 'Last Quarter': 'Последняя четверть', 'Waning Crescent': 'Убывающий серп' } },
@@ -76,6 +80,8 @@
         snapshot: 'Погода и качество воздуха — Open-Meteo. Снимок на момент загрузки.', enterLoc: 'Укажите адрес или координаты, чтобы видеть местную погоду и качество воздуха.' },
       cosmos: { note: 'Публичные оповещения о гравитационных волнах от LIGO/Virgo/KAGRA. Тестовые (mock) повторы отфильтрованы. Биологическая значимость не предполагается.',
         candidates: 'Кандидаты гравитационных волн', noConfirmed: 'Сейчас подтверждённых кандидатов нет. Реальные регистрации редки — только во время активных наблюдательных сессий.',
+        noneIn7d: 'За последние 7 дней гравитационных волн не обнаружено.', gwRare: 'Гравитационные волны редки — их регистрируют только во время активных наблюдательных сессий, поэтому пустое окно — это норма.',
+        lastBtn: 'Показать последнее зарегистрированное событие', lastTitle: 'Последняя зарегистрированная гравитационная волна', lastNone: 'С начала мониторинга подтверждённых гравитационных волн не зарегистрировано. Полный каталог LIGO/Virgo/KAGRA — на GraceDB.', lastErr: 'Не удалось загрузить последнее событие.',
         whatQ: 'Что такое гравитационная волна?', whatA: 'Рябь пространства-времени от мощных космических событий — слияний чёрных дыр или нейтронных звёзд. LIGO/Virgo/KAGRA регистрируют их как крошечные изменения длины (меньше размера протона). Известного биологического эффекта нет; слой показан для полноты, а не как фактор здоровья.',
         cls: { BBH: 'Двойная чёрная дыра', BNS: 'Двойная нейтронная звезда', NSBH: 'Нейтронная звезда – чёрная дыра', Terrestrial: 'Вероятно земной шум', Unknown: 'Без классификации' } },
       social: { note: 'Отфильтрованный слой значимых мировых событий (конфликты, катастрофы, выборы, экономические и медицинские кризисы) из GDELT — не новостная лента.',
@@ -102,7 +108,8 @@
       sun: { xray: 'Flujo de rayos X', wind: 'Viento solar', f107: 'Flujo F10.7', lastFlare: 'Última fulguración', lastCME: 'Última CME',
         sunrise: 'Amanecer', sunset: 'Atardecer', recent: 'Eventos solares recientes', flares: 'Fulguraciones solares', cmes: 'Eyecciones de masa coronal',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (reciente)', sdoOpen: 'Abrir imagen completa de SDO ↗',
-        windField: 'dentro del rango típico', xrayQuiet: 'fondo / tranquilo' },
+        windField: 'dentro del rango típico', xrayQuiet: 'fondo / tranquilo',
+        flareQuiet: 'No se han registrado fulguraciones ni CME significativas en los últimos 7 días — un periodo de calma solar.' },
       moon: { phase: 'Fase', illum: 'Iluminación', age: 'Edad lunar', moonrise: 'Salida de la Luna', moonset: 'Puesta de la Luna', timeline: 'Cronología lunar',
         days: 'd', computed: 'Calculado astronómicamente (siempre disponible).',
         phases: { 'New Moon': 'Luna nueva', 'Waxing Crescent': 'Creciente', 'First Quarter': 'Cuarto creciente', 'Waxing Gibbous': 'Gibosa creciente', 'Full Moon': 'Luna llena', 'Waning Gibbous': 'Gibosa menguante', 'Last Quarter': 'Cuarto menguante', 'Waning Crescent': 'Menguante' } },
@@ -114,6 +121,8 @@
         snapshot: 'Clima y calidad del aire por Open-Meteo. Instantánea al cargar.', enterLoc: 'Introduce tu dirección o coordenadas para ver el clima local y la calidad del aire.' },
       cosmos: { note: 'Alertas públicas de ondas gravitacionales de LIGO/Virgo/KAGRA. Las repeticiones de datos simulados se filtran. No se asume relevancia biológica.',
         candidates: 'Candidatos de ondas gravitacionales', noConfirmed: 'No hay candidatos confirmados ahora. Las detecciones reales son raras — solo durante campañas de observación activas.',
+        noneIn7d: 'No se han detectado ondas gravitacionales en los últimos 7 días.', gwRare: 'Las ondas gravitacionales son raras — solo se captan durante campañas de observación activas, por lo que una ventana vacía es normal.',
+        lastBtn: 'Ver el último evento registrado', lastTitle: 'Última onda gravitacional registrada', lastNone: 'No se ha registrado ninguna onda gravitacional confirmada desde el inicio del monitoreo. Consulta el catálogo completo de LIGO/Virgo/KAGRA en GraceDB.', lastErr: 'No se pudo cargar el último evento.',
         whatQ: '¿Qué es una onda gravitacional?', whatA: 'Ondulaciones del espacio-tiempo por eventos cósmicos violentos — fusiones de agujeros negros o estrellas de neutrones. LIGO/Virgo/KAGRA las detectan como cambios de longitud diminutos (mucho menores que un protón). No tienen efecto biológico conocido; esta capa se muestra por completitud, no por relevancia para la salud.',
         cls: { BBH: 'Agujeros negros binarios', BNS: 'Estrellas de neutrones binarias', NSBH: 'Estrella de neutrones – agujero negro', Terrestrial: 'Probable ruido terrestre', Unknown: 'Sin clasificar' } },
       social: { note: 'Una capa filtrada de eventos mundiales de alto impacto (conflictos, desastres, elecciones, crisis económicas y sanitarias) de GDELT — no es un feed de noticias.',
@@ -245,26 +254,44 @@
     api('/api/external/events?layer=' + layer + '&limit=150').then(function (d) { cb((d && d.events) || []); }).catch(function () { cb(null); });
   }
 
-  // value-on-scale gauge: opts = { value, min, max, unit, zones:[{to,color,label}], note }
+  // value-on-scale gauge: opts = { value, min, max, unit, zones:[{to,color,label,tag?}], note }
+  // PACK 2: the range is legible at a glance — min/max printed at the ends, each
+  // colour band carries its class tag underneath, and the current value rides a
+  // bubble + marker AT its position on the scale (not parked in a corner).
   function gauge(opts) {
     var v = opts.value;
     if (v == null || !isFinite(v)) return '';
     var min = opts.min || 0, max = opts.max, span = (max - min) || 1;
     var pct = Math.max(0, Math.min(100, ((v - min) / span) * 100));
-    var segs = opts.zones.map(function (z, i) {
+    var bubblePct = Math.max(7, Math.min(93, pct));        // keep the value label inside the bar
+    // per-zone widths shared by the colour segments AND the class tags below
+    var widths = opts.zones.map(function (z, i) {
       var from = i === 0 ? min : opts.zones[i - 1].to;
-      var w = ((Math.min(z.to, max) - from) / span) * 100;
-      return '<span class="ef-g-seg" style="width:' + Math.max(0, w).toFixed(2) + '%;background:' + z.color + '"></span>';
+      return Math.max(0, ((Math.min(z.to, max) - from) / span) * 100);
+    });
+    // current zone index (for the head badge + to highlight its tag)
+    var zi = opts.zones.length - 1;
+    for (var i = 0; i < opts.zones.length; i++) { if (v <= opts.zones[i].to) { zi = i; break; } }
+    var zone = opts.zones[zi];
+    var segs = opts.zones.map(function (z, i) {
+      return '<span class="ef-g-seg" style="width:' + widths[i].toFixed(2) + '%;background:' + z.color + '"></span>';
     }).join('');
-    var zone = null;
-    for (var i = 0; i < opts.zones.length; i++) { if (v <= opts.zones[i].to) { zone = opts.zones[i]; break; } }
-    if (!zone) zone = opts.zones[opts.zones.length - 1];
+    var tags = opts.zones.map(function (z, i) {
+      return '<span class="ef-g-zl' + (i === zi ? ' is-cur' : '') + '" style="width:' + widths[i].toFixed(2) +
+        '%;color:' + z.color + '">' + esc(z.tag || z.label) + '</span>';
+    }).join('');
     var disp = (opts.display != null ? opts.display : v) + (opts.unit ? ' ' + opts.unit : '');
+    var end = function (x) { var r = Math.round(x * 100) / 100; return esc(r + (opts.unit ? ' ' + opts.unit : '')); };
+    var loEnd = opts.minLabel != null ? esc(opts.minLabel) : end(min);
+    var hiEnd = opts.maxLabel != null ? esc(opts.maxLabel) : end(max);
     return '<div class="ef-gauge">' +
-      '<div class="ef-g-head"><span class="ef-g-label">' + esc(opts.label) + '</span><span class="ef-g-val">' + esc(disp) + '</span></div>' +
+      '<div class="ef-g-head"><span class="ef-g-label">' + esc(opts.label) + '</span>' +
+        '<span class="ef-g-zone" style="color:' + zone.color + '">' + esc(zone.label) + '</span></div>' +
+      '<div class="ef-g-valrow"><span class="ef-g-bubble" style="left:' + bubblePct.toFixed(1) + '%">' + esc(disp) + '</span></div>' +
       '<div class="ef-g-track">' + segs + '<span class="ef-g-marker" style="left:' + pct.toFixed(1) + '%"></span></div>' +
-      '<div class="ef-g-meta"><span class="ef-g-zone" style="color:' + zone.color + '">' + esc(zone.label) + '</span>' +
-      (opts.note ? '<span class="ef-g-note">' + esc(opts.note) + '</span>' : '') + '</div>' +
+      '<div class="ef-g-zlabels">' + tags + '</div>' +
+      '<div class="ef-g-ends"><span>' + loEnd + '</span><span>' + hiEnd + '</span></div>' +
+      (opts.note ? '<div class="ef-g-note">' + esc(opts.note) + '</div>' : '') +
     '</div>';
   }
   function sparkline(values, color) {
@@ -291,7 +318,7 @@
       var html = '';
       // X-ray flux gauge (B/C/M/X)
       var xc = xray && classPos(xray.severity);
-      html += gauge({ label: t('sun.xray'), value: xc, display: xray ? xray.severity : '—', min: 0, max: 4,
+      html += gauge({ label: t('sun.xray'), value: xc, display: xray ? xray.severity : '—', min: 0, max: 4, minLabel: 'B', maxLabel: 'X',
         zones: [{ to: 1, color: ZONE.blue, label: 'B' }, { to: 2, color: ZONE.green, label: 'C' }, { to: 3, color: ZONE.yellow, label: 'M' }, { to: 4, color: ZONE.red, label: 'X' }],
         note: xc != null && xc < 1 ? t('sun.xrayQuiet') : '' }) || stat2(t('sun.xray'), '—');
       // Solar wind speed gauge
@@ -310,6 +337,9 @@
         [t('sun.lastFlare'), flares.length ? flares[0].severity : '—'],
         [t('sun.lastCME'), cmes.length ? fmtTime(cmes[0].timestamp) : '—']
       ]);
+      // PACK 5.2: when DONKI returns no flares/CMEs, say it's a genuine quiet
+      // stretch rather than leaving two bare dashes with no explanation.
+      if (!flares.length && !cmes.length) html += '<div class="ef-quiet-note">' + esc(t('sun.flareQuiet')) + '</div>';
       // sunrise/sunset
       html += hasLocation() ? '<div class="ef-suntimes" id="ef-suntimes"><span>☀ ' + esc(t('sun.sunrise')) + ': <b>—</b></span><span>🌇 ' + esc(t('sun.sunset')) + ': <b>—</b></span></div>'
                             : '<div class="ef-need-loc">' + esc(t('needLoc')) + '</div>';
@@ -528,7 +558,14 @@
       var note = '<div class="ef-note">' + esc(t('cosmos.note')) + '</div>';
       var list;
       if (!events || !events.length) {
-        list = emptyState(t('cosmos.noConfirmed'));
+        // PACK 5.1: GW are genuinely rare, so an empty 7-day window is the normal
+        // state — say so honestly, and offer the last recorded event on demand
+        // (fetched all-time, outside the default window) instead of a bare dash.
+        list = '<div class="ef-gw-empty">' +
+          '<div class="ef-gw-empty-h">' + esc(t('cosmos.noneIn7d')) + '</div>' +
+          '<div class="ef-gw-empty-sub">' + esc(t('cosmos.gwRare')) + '</div>' +
+          '<button type="button" class="ef-gw-last-btn" id="ef-gw-last">' + esc(t('cosmos.lastBtn')) + '</button>' +
+          '<div class="ef-gw-last-pop" id="ef-gw-last-pop"></div></div>';
       } else {
         list = '<div class="ef-gw-timeline">' + events.map(function (e) {
           var cl = gwClass(e);
@@ -539,7 +576,31 @@
         }).join('') + '</div>';
       }
       body.innerHTML = note + '<h4 class="ef-h4">' + esc(t('cosmos.candidates')) + '</h4>' + list + help;
+      var lb = body.querySelector('#ef-gw-last');
+      if (lb) lb.addEventListener('click', function () { showLastGW(body.querySelector('#ef-gw-last-pop'), lb); });
     });
+  }
+  // PACK 5.1: load the most recent GW ever stored (ignore the default 30-day
+  // window via from=2015) and show it in a small card; honest fallback if none.
+  function showLastGW(pop, btn) {
+    if (!pop) return;
+    pop.innerHTML = '<div class="ef-gw-last-card">…</div>';
+    api('/api/external/events?layer=cosmos&limit=1&from=2015-01-01').then(function (d) {
+      var e = d && d.events && d.events[0];
+      if (!e) {
+        pop.innerHTML = '<div class="ef-gw-last-card"><div class="ef-gw-last-none">' + esc(t('cosmos.lastNone')) + '</div>' +
+          '<a href="https://gracedb.ligo.org/superevents/public/O4/" target="_blank" rel="noopener">GraceDB ↗</a></div>';
+        return;
+      }
+      var cl = gwClass(e);
+      pop.innerHTML = '<div class="ef-gw-last-card">' +
+        '<div class="ef-gw-last-title">' + esc(t('cosmos.lastTitle')) + '</div>' +
+        '<div class="ef-gw-last-name"><b>' + esc(e.title || '') + '</b></div>' +
+        '<div class="ef-gw-last-meta"><span style="color:' + cl.color + '">' + esc(cl.label) + '</span> · ' + esc(fmtTime(e.timestamp)) + '</div>' +
+        (e.description ? '<div class="ef-gw-last-desc">' + esc(e.description) + '</div>' : '') +
+        (e.source_url ? '<a href="' + esc(e.source_url) + '" target="_blank" rel="noopener">GraceDB ↗</a>' : '') + '</div>';
+      if (btn) btn.style.display = 'none';
+    }).catch(function () { pop.innerHTML = '<div class="ef-gw-last-card">' + esc(t('cosmos.lastErr')) + '</div>'; });
   }
 
   /* ── Social Events ──────────────────────────────────────────────────────── */

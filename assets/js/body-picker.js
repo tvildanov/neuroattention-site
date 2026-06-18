@@ -244,11 +244,16 @@
 
     // event delegation
     container.querySelectorAll('.bp-svg').forEach(function (svg) {
-      if (isTouch) {
-        svg.addEventListener('click', function (e) {
-          var r = e.target.closest('.bp-region'); if (r) { e.stopPropagation(); openRegion(r); }
-        });
-      } else {
+      // A click on the body that misses every region path dismisses the current
+      // overlay (1.5) — on touch (open-on-tap) and desktop alike. Clicking an
+      // empty area between regions or on the silhouette wire should not leave the
+      // sub-part panel stuck blocking the next pick.
+      svg.addEventListener('click', function (e) {
+        var r = e.target.closest('.bp-region');
+        if (r) { if (isTouch) { e.stopPropagation(); openRegion(r); } }
+        else { closePanels(); }
+      });
+      if (!isTouch) {
         svg.addEventListener('mouseover', function (e) { var r = e.target.closest('.bp-region'); if (r) openRegion(r); });
       }
     });
