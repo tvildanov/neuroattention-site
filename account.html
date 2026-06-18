@@ -2339,6 +2339,15 @@
             <span style="font-size:10px;color:var(--text-muted);font-style:italic;margin-left:auto;" data-i18n="a.admin.courses.lang_hint">Пусто = на всех языках</span>
           </div>
 
+          <!-- Tool access: which tools this course unlocks + global free toggle -->
+          <div style="margin-bottom:0.75rem;padding:0.5rem 0.6rem;background:rgba(141,255,200,0.03);border:1px dashed rgba(141,255,200,0.2);border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
+              <span style="font-size:11px;color:var(--myc-green,#8DFFC8);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;" data-i18n="a.admin.courses.tools_title">Доступные инструменты:</span>
+              <span style="font-size:10px;color:var(--text-muted);font-style:italic;" data-i18n="a.admin.courses.tools_hint">✓ — входит в курс · 🌐 — свободный доступ для всех</span>
+            </div>
+            <div id="course-tools-cbs" style="display:flex;flex-direction:column;gap:0.35rem;"></div>
+          </div>
+
           <p id="course-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
 
           <!-- Path roadmap visualization (sections horizontally) -->
@@ -10290,8 +10299,46 @@ function renderCourseEditor(){
     }
   });
   applyCourseLangVisibility();
+  renderCourseToolAccess();
   renderCourseBlocks();
 }
+
+// ── Tool access: render tool checkboxes for the current course ──
+var _allToolsCache = null;
+function renderCourseToolAccess(){
+  var host = document.getElementById('course-tools-cbs');
+  if (!host || !courseState.currentCourse) return;
+  var cid = courseState.currentCourse.id;
+  host.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Загрузка…</span>';
+  var lang = (typeof lang === 'function') ? 'ru' : ((window.currentLang||localStorage.getItem('na_lang')||'ru').slice(0,2));
+  Promise.all([
+    _allToolsCache ? Promise.resolve({tools:_allToolsCache}) : courseApi('/api/admin/tools'),
+    courseApi('/api/admin/courses/' + cid + '/tools')
+  ]).then(function(r){
+    _allToolsCache = r[0].tools || [];
+    var sel = (r[1].tool_ids) || [];
+    host.innerHTML = '';
+    _allToolsCache.forEach(function(t){
+      var nm = t['name_'+lang] || t.name_ru || t.code;
+      var row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;font-size:12.5px;color:var(--text-secondary);';
+      row.innerHTML =
+        '<input type="checkbox" class="course-tool-cb" value="'+t.id+'" '+(sel.indexOf(t.id)!==-1?'checked':'')+' style="accent-color:var(--myc-green,#8DFFC8);">'+
+        '<span style="flex:1;min-width:0;">'+nm+'</span>'+
+        '<label style="display:inline-flex;align-items:center;gap:0.25rem;font-size:11px;color:var(--text-muted);cursor:pointer;" title="Свободный доступ для всех без курса">'+
+        '<input type="checkbox" class="course-tool-free" data-tid="'+t.id+'" '+(t.is_free_default?'checked':'')+' style="accent-color:var(--accent-cyan);" onchange="courseToggleToolFree('+t.id+',this.checked)"> 🌐</label>';
+      host.appendChild(row);
+    });
+  }).catch(function(e){ host.innerHTML = '<span style="font-size:11px;color:#f88;">Ошибка загрузки инструментов: '+e.message+'</span>'; });
+}
+window.renderCourseToolAccess = renderCourseToolAccess;
+
+function courseToggleToolFree(toolId, checked){
+  courseApi('/api/admin/tools/' + toolId, { method:'PATCH', body:{ is_free_default: checked } })
+    .then(function(d){ if(_allToolsCache){ _allToolsCache.forEach(function(t){ if(t.id===toolId) t.is_free_default = checked; }); } courseSetStatus('Доступ инструмента обновлён', true); })
+    .catch(function(e){ courseSetStatus('Ошибка: '+e.message); });
+}
+window.courseToggleToolFree = courseToggleToolFree;
 
 // Reads the current course-lang-cb selection and shows/hides name + desc
 // inputs (and similar in block payloads). Empty selection = show all.
@@ -10437,11 +10484,16 @@ function courseSaveMeta(){
     program_access: access,
     languages: langs
   };
+  var toolIds = Array.from(document.querySelectorAll('.course-tool-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return parseInt(cb.value,10); });
   courseSetStatus('Сохранение…');
   courseApi('/api/admin/courses/' + courseState.currentCourse.id, { method: 'PATCH', body: body })
     .then(function(d){
       courseState.currentCourse = d.course;
       courseState.dirtyMeta = false;
+      // Persist the course→tool grants alongside meta.
+      return courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/tools', { method: 'PUT', body: { tool_ids: toolIds } });
+    })
+    .then(function(){
       courseSetStatus('Сохранено', true);
       loadCourses();
     })
@@ -13946,9 +13998,31 @@ window.pbMove = pbMove;
 
   var atlas = null, mounted = false;
 
+  function atlasApiBase(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : ''; }
+  function showLocked(vp, unlockCourse){
+    var nm = unlockCourse ? (unlockCourse['name_'+lang()]||unlockCourse.name_ru||'') : '';
+    var msg = lang()==='en' ? ('Available with the course'+(nm?' “'+nm+'”':'')+'.')
+            : lang()==='es' ? ('Disponible con el curso'+(nm?' «'+nm+'»':'')+'.')
+            : ('Доступно при подписке на курс'+(nm?' «'+nm+'»':'')+'.');
+    vp.querySelectorAll('.atlas-lock').forEach(function(e){e.remove();});
+    var d=document.createElement('div'); d.className='atlas-lock';
+    d.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.6rem;text-align:center;padding:2rem;background:radial-gradient(60% 60% at 50% 40%,rgba(168,247,255,0.06),transparent);';
+    d.innerHTML='<div style="font-size:34px;opacity:0.6;">🔒</div><div style="font-size:14px;color:var(--text-primary);max-width:320px;line-height:1.5;">'+msg+'</div>';
+    vp.appendChild(d);
+  }
   window.mountAnatomyAtlas = function(){
     var vp = document.getElementById('atlas-viewport');
     if(!vp || !window.BodyAtlas) return;
+    if(mounted){ if(atlas) atlas.render({}); return; }
+    // Access gate — anatomy-atlas may be course-locked.
+    var token = localStorage.getItem('na_token');
+    fetch(atlasApiBase()+'/api/tools/anatomy-atlas/access', { headers:{ 'Authorization':'Bearer '+token } })
+      .then(function(r){ return r.ok ? r.json() : {unlocked:true}; })
+      .then(function(a){ if(a && a.unlocked===false){ showLocked(vp, a.unlock_course); } else { _mountAnatomyNow(); } })
+      .catch(function(){ _mountAnatomyNow(); }); // network/endpoint absent → fail open (don't block)
+  };
+  function _mountAnatomyNow(){
+    var vp = document.getElementById('atlas-viewport');
     if(mounted){ if(atlas) atlas.render({}); return; }
     mounted = true;
     injectLayers(); injectOrgans();
