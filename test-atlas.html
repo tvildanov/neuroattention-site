@@ -39,7 +39,7 @@
 <script src="assets/js/body-atlas.js?v=2"></script>
 <script>
 var A;
-var LAYERS=[['skin','#A8F7FF',true,50],['muscles','#8DFFC8',false,45],['skeleton','#E8FBFF',false,70],['nervous','#8DFFC8',false,80],['brain','#6FE9F0',false,50]];
+var LAYERS=[['skin','#A8F7FF',true,50],['muscles','#8DFFC8',false,45],['skeleton','#E8FBFF',false,70],['nervous','#8DFFC8',false,80],['vessels','#FF8FA3',false,60],['organs','#FFCB8D',false,55],['brain','#6FE9F0',false,50]];
 function buildControls(){
   var h=document.getElementById('layers');
   LAYERS.forEach(function(L){
@@ -56,6 +56,9 @@ BodyAtlas.init(document.getElementById('vp'),{mode:'full'}).then(function(a){
   a.on('region-hover',function(h){ document.getElementById('log').textContent = h? ('hover: '+(h.names? (h.names.ru||h.id):h.id)) : 'idle'; });
   a.on('region-click',function(h){ document.getElementById('log').textContent = 'CLICK: '+(h.names? (h.names.ru||h.id):h.id); });
   a.on('ready',function(){ document.getElementById('log').textContent='ready'; });
+  a.on('layer-loading',function(e){ document.getElementById('log').textContent='loading '+e.layer+'…'; });
+  a.on('layer-loaded',function(e){ document.getElementById('log').textContent='loaded '+e.layer+' ✓'; });
+  a.on('layer-error',function(e){ document.getElementById('log').textContent='ERR layer '+e.layer; });
 }).catch(function(e){ document.getElementById('log').textContent='ERR: '+e.message; });
 </script>
 </body>

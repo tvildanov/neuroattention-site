@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "source": "Z-Anatomy",
+  "license": "CC-BY-SA 4.0",
+  "credits_url": "https://github.com/LluisV/Z-Anatomy",
+  "attribution": "3D meshes derived from Z-Anatomy (CC-BY-SA 4.0), based on BodyParts3D/DBCLS.",
+  "dracoDecoderPath": "https://www.gstatic.com/draco/versioned/decoders/1.5.6/",
+  "base": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1",
+  "layers": {
+    "muscles":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/muscles.glb",
+    "skeleton": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/skeleton.glb",
+    "nervous":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/nervous.glb",
+    "vessels":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/vessels.glb",
+    "organs":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/organs.glb"
+  },
+  "extra": {
+    "joints":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/joints.glb",
+    "lymph":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/lymph.glb",
+    "regions": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/regions.glb"
+  }
+}
