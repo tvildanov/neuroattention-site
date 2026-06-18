@@ -1713,6 +1713,19 @@
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
     <button class="dash-tab" data-tab="admin-stats" data-i18n="a.admin.stats">Статистика</button>
+    <button class="dash-tab" data-tab="admin-trash" id="admin-trash-tab" style="display:none;" data-i18n="a.admin.trash_tab">🗑 Корзина</button>
+  </div>
+
+  <!-- TAB: Trash (superadmin) -->
+  <div class="tab-panel" id="tab-admin-trash">
+    <div class="dash-grid"><div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+      <h3 style="margin:0 0 0.5rem;" data-i18n="a.admin.trash_title">Корзина — удалённые пользователи</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;" data-i18n="a.admin.trash_hint">Можно восстановить в течение 1 часа после удаления. Затем данные удаляются безвозвратно.</p>
+      <div style="overflow-x:auto;"><table class="admin-table">
+        <thead><tr><th data-i18n="a.admin.trash_col_name">Имя</th><th>Email</th><th data-i18n="a.admin.trash_col_deleted">Удалён</th><th></th></tr></thead>
+        <tbody id="admin-trash-tbody"></tbody>
+      </table></div>
+    </div></div>
   </div>
 
   <!-- TAB: Stats -->
@@ -3312,6 +3325,9 @@ function setupAdminDashboard(user){
     rehabTab.style.display = '';
     loadRehabApplications('all');
   }
+  // Trash tab — superadmin/founder only (soft-deleted users)
+  var trashTab = document.getElementById('admin-trash-tab');
+  if(trashTab && isFounder){ trashTab.style.display = ''; }
   // Practices tab — founder/superadmin only
   var practTab = document.getElementById('admin-practices-tab');
   if(practTab && isFounder){
@@ -3462,7 +3478,7 @@ function rebuildGraph(){
 }
 
 // The four people panels share one top «Люди» tab + a sub-tab bar.
-var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-purchases','admin-stats'];
+var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-purchases','admin-stats','admin-trash'];
 function switchAdminTab(id){
   // «Люди» group entry → resolve to the last/first visible people sub.
   if(id==='admin-people'){
@@ -3485,6 +3501,7 @@ function switchAdminTab(id){
   if(subBar){
     subBar.style.display = isPeople ? '' : 'none';
     subBar.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
+    if(id==='admin-trash' && typeof loadAdminTrash==='function') loadAdminTrash();
     // Mobile: keep the chosen «Люди» sub-tab in view inside the swipeable bar.
     try {
       var act=subBar.querySelector('.dash-tab.active');
@@ -3613,20 +3630,75 @@ function populateUsersList(admin){
 }
 
 // Superadmin: delete a user (with confirmation). Uses DELETE /api/admin/user.
-function adminDeleteUser(email, name){
-  if(!email) return;
-  var msg=(typeof t==='function')?t('a.admin.delete_confirm','Уверены что хотите удалить этого пользователя?'):'Уверены что хотите удалить этого пользователя?';
-  if(!confirm(msg+(name?'\n\n'+name+' ('+email+')':''))) return;
-  var token=localStorage.getItem('na_token'); if(!token) return;
-  fetch(AUTH_API+'/api/admin/user',{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({email:email})})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d&&d.ok){ if(typeof populateUsersList==='function'&&currentUser) populateUsersList(currentUser); }
-      else { alert(((typeof t==='function')?t('a.admin.delete_error','Не удалось удалить'):'Не удалось удалить')+': '+((d&&d.error)||'unknown')); }
-    })
-    .catch(function(){ alert((typeof t==='function')?t('a.admin.delete_error','Не удалось удалить'):'Не удалось удалить'); });
+// Soft-delete: a guarded confirm modal that requires typing the user's email.
+function adminDeleteUser(uid, email, name){
+  if(!uid || !email) return;
+  function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+  function esc2(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var ov=document.createElement('div'); ov.className='rpg-modal-overlay'; ov.id='admin-del-overlay';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div class="rpg-modal" style="max-width:460px;">'+
+    '<h3 style="font-family:\'Unbounded\',sans-serif;font-size:1rem;font-weight:500;color:var(--text-primary);margin:0 0 0.75rem;">'+_t('a.admin.delete_title','Удалить пользователя')+' '+esc2(name)+'?</h3>'+
+    '<p style="font-size:13px;color:var(--text-secondary);line-height:1.55;margin:0 0 0.6rem;">'+_t('a.admin.delete_body','Это действие отвяжет и удалит все его данные: профиль, journey_events, нейромап, ощущения, прогресс курсов, участие в командах. Действие необратимо через 1 час после подтверждения.')+'</p>'+
+    '<p style="font-size:12px;color:#ff8a8a;margin:0 0 0.8rem;">'+_t('a.admin.delete_warning','Перепроверьте — данные нельзя будет восстановить через 1 час.')+'</p>'+
+    '<label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:0.25rem;">'+_t('a.admin.delete_confirm_label','Введите email пользователя для подтверждения')+'</label>'+
+    '<input id="admin-del-email" class="glass-input" autocomplete="off" placeholder="'+esc2(email)+'" style="width:100%;margin-bottom:0.9rem;">'+
+    '<p id="admin-del-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0 0 0.4rem;"></p>'+
+    '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">'+
+      '<button class="btn btn-ghost" id="admin-del-cancel" autofocus>'+_t('a.admin.delete_cancel','Отмена')+'</button>'+
+      '<button class="btn btn-solid" id="admin-del-go" disabled style="background:#c0392b;border-color:#c0392b;opacity:0.55;">'+_t('a.admin.delete_btn','Удалить')+'</button>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(ov);
+  var inp=ov.querySelector('#admin-del-email'), go=ov.querySelector('#admin-del-go'), err=ov.querySelector('#admin-del-err');
+  ov.querySelector('#admin-del-cancel').addEventListener('click',function(){ ov.remove(); });
+  ov.querySelector('#admin-del-cancel').focus();
+  inp.addEventListener('input',function(){
+    var ok=inp.value.trim().toLowerCase()===String(email).toLowerCase();
+    go.disabled=!ok; go.style.opacity=ok?'1':'0.55';
+  });
+  go.addEventListener('click',function(){
+    if(go.disabled) return;
+    var token=localStorage.getItem('na_token'); if(!token) return;
+    err.textContent='...';
+    fetch(AUTH_API+'/api/admin/users/'+encodeURIComponent(uid)+'/soft-delete',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({confirm_email:inp.value.trim()})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d.success){ ov.remove(); if(typeof populateUsersList==='function'&&currentUser) populateUsersList(currentUser); }
+        else { err.textContent=_t('a.admin.delete_error','Не удалось удалить')+': '+((d&&d.error)||'unknown'); }
+      })
+      .catch(function(){ err.textContent=_t('a.admin.delete_error','Не удалось удалить'); });
+  });
 }
 window.adminDeleteUser=adminDeleteUser;
+// Trash sub-tab: list soft-deleted users (within the 1h grace window) + restore.
+function loadAdminTrash(){
+  var tbody=document.getElementById('admin-trash-tbody'); if(!tbody) return;
+  var token=localStorage.getItem('na_token'); if(!token) return;
+  function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+  tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem;">'+_t('a.admin.loading','Загрузка...')+'</td></tr>';
+  fetch(AUTH_API+'/api/admin/users/trash',{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var list=(d&&d.users)||[];
+      if(!list.length){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:1.5rem;">'+_t('a.admin.trash_empty','Корзина пуста')+'</td></tr>'; return; }
+      tbody.innerHTML=list.map(function(u){
+        var when=''; try{ when=new Date(u.deleted_at).toLocaleString((typeof getLang==='function'?getLang():'ru')); }catch(e){}
+        return '<tr><td>'+(u.display_name||'—')+'</td><td style="font-family:monospace;font-size:11px;">'+(u.email||'')+'</td><td style="font-size:11px;">'+when+'</td>'+
+          '<td><button class="event-edit" onclick="adminRestoreUser(\''+u.id+'\')">'+_t('a.admin.trash_restore','Восстановить')+'</button></td></tr>';
+      }).join('');
+    })
+    .catch(function(){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--accent-rose);padding:1.5rem;">'+_t('a.admin.error_load','Ошибка загрузки')+'</td></tr>'; });
+}
+function adminRestoreUser(uid){
+  var token=localStorage.getItem('na_token'); if(!token) return;
+  fetch(AUTH_API+'/api/admin/users/'+encodeURIComponent(uid)+'/restore',{method:'POST',headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d&&d.success){ loadAdminTrash(); } else { alert((d&&d.error)||'error'); } })
+    .catch(function(){});
+}
+window.loadAdminTrash=loadAdminTrash;
+window.adminRestoreUser=adminRestoreUser;
 function renderAdminUsersList(list,admin){
   var tbody=document.querySelector('#admin-full-users-table tbody');
   if(!tbody) return;
@@ -3675,12 +3747,12 @@ function renderAdminUsersList(list,admin){
       roleCell=roleText;
     }
 
-    // delete button — superadmin only, never on your own row
+    // delete button — superadmin only, never on your own row or another superadmin
     var delBtn='';
-    if(isSuperadmin && u.id!==admin.id && u.email){
+    if(isSuperadmin && u.id!==admin.id && u.role!=='superadmin' && u.email){
       var safeEmail=String(u.email).replace(/'/g,"\\'");
       var safeName=String(name).replace(/'/g,"\\'");
-      delBtn='<button class="event-edit" style="color:var(--accent-rose);border-color:rgba(255,90,90,0.35);margin-left:4px;" onclick="event.stopPropagation();adminDeleteUser(\''+safeEmail+'\',\''+safeName+'\')">'+t('a.admin.delete_btn','Удалить')+'</button>';
+      delBtn='<button class="event-edit" title="'+t('a.admin.delete_tooltip','Удалить пользователя (нельзя отменить через час)')+'" style="color:var(--accent-rose);border-color:rgba(255,90,90,0.35);margin-left:4px;" onclick="event.stopPropagation();adminDeleteUser(\''+u.id+'\',\''+safeEmail+'\',\''+safeName+'\')">🗑 '+t('a.admin.delete_btn','Удалить')+'</button>';
     }
     var tr=document.createElement('tr');
     tr.style.cursor='pointer';
