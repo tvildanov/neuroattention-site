@@ -1,5 +1,32 @@
 # Handoff — feat/anatomy-atlas
 
+## ✅ UPDATE 2026-06-18 (Z-Anatomy session, commit `e08f679`)
+**Z-Anatomy real-model pipeline is DONE and browser-verified against the live CDN.**
+- **R2 was a dead end** — it is NOT configured anywhere (no `R2_*` on any Railway
+  service: checked `neuroattention-api`/`monad-server`/`monad-agents`/`perfect-growth`;
+  none in keychain/history/local `.env`). `api/server.js` storage is
+  `r2Client ? 'r2' : 'github'` and prod uses the **GitHub-Pages fallback**.
+  GitHub *release assets* don't send CORS headers → GLTFLoader can't fetch them.
+- **Hosting = jsDelivr** from a dedicated public repo `tvildanov/neuroattention-anatomy@v1`
+  (`cdn.jsdelivr.net/gh/...` sends `access-control-allow-origin: *`), kept OUT of
+  the Pages repo (no git bloat). 8 systems, ~28 MB, CC-BY-SA 4.0 attributed.
+- **Pipeline:** `tools/convert_anatomy.py` (FBX→GLB+Draco, Blender 5.1 headless) +
+  `tools/normalize_anatomy.py` (one shared transform baked in → all layers aligned,
+  centered, H≈2.0). URLs in `data/config/anatomy-models.json`.
+- **body-atlas.js:** `ensureThree()` loads DRACOLoader; `_loadRealLayer`/`_swapRealLayer`
+  lazy-stream each layer's GLB on toggle and swap the procedural capsule out.
+  muscles/skeleton/nervous/vessels/organs = real; skin+brain stay procedural.
+- **account.html:** added `vessels` + `organs` toggles.
+- **Verified in a real browser** vs live jsDelivr: config fetch, Draco decode, all 5
+  real layers stream/swap/align (skeleton 1948 / muscles 683 / vessels 676 /
+  organs 296 meshes), x-ray shader applied, no console errors.
+- **NOT on neuroattention.org yet:** Pages deploys from `main`; this is on
+  `feat/anatomy-atlas`. Merging to main currently **conflicts in `account.html`**
+  (main advanced: PACK 1/2/5.1/5.2). Go-live = a `main` merge decision.
+---
+# (original handoff below)
+
+
 **Handoff commit base:** branch `feat/anatomy-atlas` at `d1354a7` (this doc adds one
 commit on top). Everything below is pushed to `origin/feat/anatomy-atlas`.
 Do **not** merge to main until Nick verifies.
