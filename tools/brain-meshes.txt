@@ -1,0 +1,229 @@
+# Z-Anatomy brain subset — 228 hit-testable meshes (from nervous.glb)
+Amygdaloid body.l
+Amygdaloid body.r
+Angular gyrus.l
+Angular gyrus.r
+Anterior commissure
+Anterior occipital sulcus*.l
+Anterior occipital sulcus*.r
+Anterior quadrangular lobule.l
+Anterior quadrangular lobule.r
+Aqueduct of midbrain
+Base of peduncle.l
+Base of peduncle.r
+Biventral lobule.l
+Biventral lobule.r
+Calcarine sulcus.l
+Calcarine sulcus.r
+Central canal
+Central canal'
+Central lobule
+Central sulcus.l
+Central sulcus.r
+Cingulate gyrus (Posteroventral part*).l
+Cingulate gyrus (Posteroventral part*).r
+Cingulate gyrus and sulcus (Middle anterior part).l
+Cingulate gyrus and sulcus (Middle anterior part).r
+Cingulate gyrus and sulcus (Middle posterior part).l
+Cingulate gyrus and sulcus (Middle posterior part).r
+Cingulate gyrus and sulcus (Posterior dorsal part).l
+Cingulate gyrus and sulcus (Posterior dorsal part).r
+Cingulate sulcus (Marginal part*).l
+Cingulate sulcus (Marginal part*).r
+Circular sulcus of insula.l
+Circular sulcus of insula.r
+Collateral sulcus.l
+Collateral sulcus.r
+Corpus callosum
+Culmen
+Cuneus.l
+Cuneus.r
+Declive
+Flocculus.l
+Flocculus.r
+Folium of vermis
+Fornix.l
+Fornix.r
+Fourth ventricle
+Globus pallidus.l
+Globus pallidus.r
+Gracile lobule.l
+Gracile lobule.r
+Habenula
+Hippocampal commissure
+Hippocampus.l
+Hippocampus.r
+Hypothalamus
+Inferior colliculus.l
+Inferior colliculus.r
+Inferior frontal sulcus.l
+Inferior frontal sulcus.r
+Inferior occipital gyrus and sulcus*.l
+Inferior occipital gyrus and sulcus*.r
+Inferior salivatory nucleus.l
+Inferior salivatory nucleus.r
+Inferior semilunar lobule.l
+Inferior semilunar lobule.r
+Inferior temporal gyrus.l
+Inferior temporal gyrus.r
+Inferior temporal sulcus.l
+Inferior temporal sulcus.r
+Insula (Subcentral gyrus and ant. and post. sulci*).l
+Insula (Subcentral gyrus and ant. and post. sulci*).r
+Interpeduncular fossa.l
+Interpeduncular fossa.r
+Intraparietal sulcus.l
+Intraparietal sulcus.r
+Lat_Fis-ant-Horizont.l
+Lat_Fis-ant-Horizont.r
+Lat_Fis-ant-Vertical.l
+Lat_Fis-ant-Vertical.r
+Lat_Fis-post.l
+Lat_Fis-post.r
+Lateral geniculate body.l
+Lateral geniculate body.r
+Lateral occipital gyrus (Middle occipital gyrus*).l
+Lateral occipital gyrus (Middle occipital gyrus*).r
+Lateral occipitotemporal gyrus.l
+Lateral occipitotemporal gyrus.r
+Lateral ventricle.l
+Lateral ventricle.r
+Lentiform nucleus.l
+Lentiform nucleus.r
+Lingual gyrus.l
+Lingual gyrus.r
+Lingula of cerebellum
+Lunate sulcus.l
+Lunate sulcus.r
+Mamillary body.l
+Mamillary body.r
+Medial geniculate body.l
+Medial geniculate body.r
+Medial occipitotemporal gyrus (Parahippocampal*).l
+Medial occipitotemporal gyrus (Parahippocampal*).r
+Medulla oblongata.l
+Medulla oblongata.r
+Midbrain.l
+Midbrain.r
+Middle frontal gyrus.l
+Middle frontal gyrus.r
+Middle temporal gyrus.l
+Middle temporal gyrus.r
+Nodule of vermis
+Nucleus ambiguus.l
+Nucleus ambiguus.r
+Nucleus of solitary tract.l
+Nucleus of solitary tract.r
+Occipital pole.l
+Occipital pole.r
+Occipitotemporal sulcus (Lateral part*).l
+Occipitotemporal sulcus (Lateral part*).r
+Olfactory sulcus.l
+Olfactory sulcus.r
+Olive.l
+Olive.r
+Opercular part of inferior frontal gyrus.l
+Opercular part of inferior frontal gyrus.r
+Optic chiasm.l
+Optic chiasm.r
+Optic tract.l
+Optic tract.r
+Orbital gyri (Frontomarginal gyrus and sulcus*).l
+Orbital gyri (Frontomarginal gyrus and sulcus*).r
+Orbital gyri.l
+Orbital gyri.r
+Orbital part of  inferior frontal gyrus.l
+Orbital part of  inferior frontal gyrus.r
+Orbital sulci (H-shaped orbital sulci*).l
+Orbital sulci (H-shaped orbital sulci*).r
+Orbital sulci (Lateral Orbital sulcus*).l
+Orbital sulci (Lateral Orbital sulcus*).r
+Paracentral gyrus and sulcus*.l
+Paracentral gyrus and sulcus*.r
+Paracentral sulcus.l
+Paracentral sulcus.r
+Parieto-occipital sulcus.l
+Parieto-occipital sulcus.r
+Peduncle of flocculus.l
+Peduncle of flocculus.r
+Pons.l
+Pons.r
+Postcentral gyrus.l
+Postcentral gyrus.r
+Postcentral sulcus.l
+Postcentral sulcus.r
+Posterior commissure
+Posterior quadrangular lobule.l
+Posterior quadrangular lobule.r
+Posterior transverse collateral sulcus.l
+Posterior transverse collateral sulcus.r
+Precentral gyrus.l
+Precentral gyrus.r
+Precentral sulcus (inferior part)*.l
+Precentral sulcus (inferior part)*.r
+Precentral sulcus (Superior part)*.l
+Precentral sulcus (Superior part)*.r
+Precuneus.l
+Precuneus.r
+Putamen.l
+Putamen.r
+Pyramid of medulla oblongata.l
+Pyramid of medulla oblongata.r
+Pyramis of vermis
+Red nucleus.l
+Red nucleus.r
+Septal nuclei
+Septum pellucidum
+Straight gyrus (Gyrus rectus).l
+Straight gyrus (Gyrus rectus).r
+Stria medullaris thalami.l
+Stria medullaris thalami.r
+Stria terminalis.l
+Stria terminalis.r
+Subparietal sulcus.l
+Subparietal sulcus.r
+Sulcus interm_prim-Jensen.l
+Sulcus interm_prim-Jensen.r
+Superior cerebellar peduncle.l
+Superior cerebellar peduncle.r
+Superior colliculus.l
+Superior colliculus.r
+Superior frontal gyrus.l
+Superior frontal gyrus.r
+Superior frontal sulcus.l
+Superior frontal sulcus.r
+Superior occipital gyri.l
+Superior occipital gyri.r
+Superior parietal lobule.l
+Superior parietal lobule.r
+Superior salivatory nucleus.l
+Superior salivatory nucleus.r
+Superior semilunar lobule.l
+Superior semilunar lobule.r
+Superior temporal gyrus (Lateral part).l
+Superior temporal gyrus (Lateral part).r
+Superior temporal sulcus.l
+Superior temporal sulcus.r
+Supramarginal gyrus.l
+Supramarginal gyrus.r
+Temporal plane.l
+Temporal plane.r
+Temporal pole.l
+Temporal pole.r
+Thalamus.l
+Thalamus.r
+Third ventricle
+Tonsil of cerebellum.l
+Tonsil of cerebellum.r
+Transverse frontopolar gyrus and sulcus*.l
+Transverse frontopolar gyrus and sulcus*.r
+Transverse occipital sulcus.l
+Transverse occipital sulcus.r
+Transverse temporal gyri.l
+Transverse temporal gyri.r
+Triangular part of inferior frontal gyrus.l
+Triangular part of inferior frontal gyrus.r
+Tuber of vermis
+Uvula of vermis
+Wing of central lobule.l
+Wing of central lobule.r

@@ -13964,7 +13964,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=7"></script>
 <script src="assets/js/collective-path.js?v=8"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=5"></script>
+<script src="assets/js/body-atlas.js?v=6"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14003,6 +14003,7 @@ window.pbMove = pbMove;
     'cingulate':      { ru:'Поясная кора: внимание, обработка ошибок, эмоции, мотивация.', en:'Cingulate cortex: attention, error processing, emotion, motivation.', es:'Corteza cingulada: atención, procesamiento de errores, emoción, motivación.' },
     'corpus-callosum':{ ru:'Главный мост между полушариями — передаёт сигналы слева направо.', en:'The main bridge between hemispheres — relays signals left↔right.', es:'El puente principal entre hemisferios — transmite señales de un lado a otro.' },
     'fornix':         { ru:'Свод — главный выходной путь гиппокампа, ключевой для памяти.', en:'Fornix — the major output tract of the hippocampus, key for memory.', es:'Fórnix — la principal vía de salida del hipocampo, clave para la memoria.' },
+    'ventricles':     { ru:'Желудочки — полости мозга с спинномозговой жидкостью, защита и питание.', en:'Ventricles — fluid-filled cavities; cushioning and nutrient transport.', es:'Ventrículos — cavidades con líquido cefalorraquídeo; amortiguación y nutrición.' },
     'cervical-spine': { ru:'Шейный отдел (C1–C7): иннервация шеи, рук, диафрагмы.', en:'Cervical (C1–C7): innervates neck, arms, diaphragm.', es:'Cervical (C1–C7): inerva cuello, brazos, diafragma.' },
     'thoracic-spine': { ru:'Грудной отдел (T1–T12): иннервация туловища и внутренних органов.', en:'Thoracic (T1–T12): innervates trunk and internal organs.', es:'Torácica (T1–T12): inerva tronco y órganos.' },
     'lumbar-spine':   { ru:'Поясничный отдел (L1–L5): иннервация ног, частые боли в пояснице.', en:'Lumbar (L1–L5): innervates legs; common low-back pain site.', es:'Lumbar (L1–L5): inerva piernas; dolor lumbar común.' },
@@ -14111,7 +14112,9 @@ window.pbMove = pbMove;
     // show their layer name (muscles / skeleton / vessels / organs / nervous).
     var grp = ud.group ? ud.group : layerLabel(hit.layer || ud.layer || '');
     document.getElementById('arp-group').textContent = grp;
-    var d = REGION_DESC[hit.id];
+    // description keyed by the coarse brain region (the ~124 fine meshes share
+    // one) → fall back to the fine id for body regions that key REGION_DESC.
+    var d = REGION_DESC[ud.coarseId] || REGION_DESC[hit.id];
     var ph = lang()==='en' ? 'Description coming soon.' : lang()==='es' ? 'Descripción próximamente.' : 'Описание скоро появится.';
     document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : ph;
     document.getElementById('arp-back').style.display = (atlas && atlas._brainDetail) ? '' : 'none';
