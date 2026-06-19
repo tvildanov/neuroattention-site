@@ -1064,6 +1064,7 @@
       <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
       <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
       <button class="dash-tab dash-subtab" id="tools-mode-external" onclick="setToolsMode('external')" style="border:none;border-bottom:2px solid transparent;">External Field</button>
+      <button class="dash-tab dash-subtab" id="tools-mode-anatomy" onclick="setToolsMode('anatomy')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.anatomy">Анатомия</button>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -1261,6 +1262,81 @@
     </div>
     <!-- External Field tool — objective environmental signals -->
     <div id="tools-external-content" style="display:none;"></div>
+
+    <!-- ── Anatomy Atlas tool (3D BodyAtlas) ── -->
+    <div id="tools-anatomy-content" style="display:none;">
+      <style>
+        .atlas-shell{display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:radial-gradient(120% 120% at 50% 0%, rgba(168,247,255,0.06), rgba(0,0,0,0.25));border:1px solid rgba(168,247,255,0.12);}
+        .atlas-topbar{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.7rem 1rem;border-bottom:1px solid rgba(168,247,255,0.1);flex-wrap:wrap;}
+        .atlas-topbar h3{margin:0;font-size:15px;letter-spacing:0.02em;}
+        .atlas-topbar .atlas-actions{display:flex;gap:0.4rem;flex-wrap:wrap;}
+        .atlas-btn{background:rgba(168,247,255,0.08);border:1px solid rgba(168,247,255,0.2);color:var(--text-primary,#e8edf2);border-radius:9px;padding:0.4rem 0.7rem;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:0.35rem;transition:.15s;}
+        .atlas-btn:hover{background:rgba(168,247,255,0.16);}
+        .atlas-btn.active{background:rgba(141,255,200,0.16);border-color:rgba(141,255,200,0.4);}
+        .atlas-body{display:flex;gap:0;min-height:520px;}
+        .atlas-layers,.atlas-organs{flex:0 0 188px;padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;background:rgba(0,0,0,0.18);}
+        .atlas-layers{border-right:1px solid rgba(168,247,255,0.08);}
+        .atlas-organs{border-left:1px solid rgba(168,247,255,0.08);}
+        .atlas-viewport{flex:1 1 auto;position:relative;min-width:0;background:radial-gradient(80% 80% at 50% 35%, rgba(168,247,255,0.05), transparent 70%);}
+        .atlas-sec-title{font-size:10.5px;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-dim,#7c8896);margin:0 0 0.2rem;}
+        .atlas-layer{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.09);border-radius:10px;padding:0.5rem 0.6rem;}
+        .atlas-layer-head{display:flex;align-items:center;gap:0.45rem;font-size:12.5px;cursor:pointer;}
+        .atlas-layer-head input{accent-color:#A8F7FF;}
+        .atlas-layer-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor;}
+        .atlas-layer-op{width:100%;margin-top:0.45rem;accent-color:#A8F7FF;height:3px;}
+        .atlas-organ{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.1);border-radius:10px;padding:0.4rem;display:flex;flex-direction:column;align-items:center;gap:0.25rem;cursor:pointer;transition:.15s;}
+        .atlas-organ:hover{background:rgba(168,247,255,0.12);transform:translateY(-1px);}
+        .atlas-organ svg{width:42px;height:42px;animation:atlasSpin 9s linear infinite;}
+        @keyframes atlasSpin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+        .atlas-organ span{font-size:10.5px;color:var(--text-muted,#8c98a6);}
+        .atlas-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11px;color:var(--text-dim,#7c8896);background:rgba(0,0,0,0.45);padding:0.3rem 0.7rem;border-radius:8px;pointer-events:none;}
+        .atlas-tooltip{position:absolute;pointer-events:none;background:rgba(8,18,22,0.92);border:1px solid rgba(168,247,255,0.35);color:#A8F7FF;font-size:12px;padding:0.25rem 0.55rem;border-radius:7px;transform:translate(-50%,-130%);white-space:nowrap;display:none;z-index:5;}
+        .atlas-region-panel{position:absolute;top:0;right:0;height:100%;width:280px;max-width:80%;background:rgba(6,14,18,0.94);border-left:1px solid rgba(168,247,255,0.25);padding:1.1rem;transform:translateX(105%);transition:transform .3s ease;overflow-y:auto;z-index:6;}
+        .atlas-region-panel.open{transform:translateX(0);}
+        .atlas-region-panel h4{margin:0 0 0.3rem;color:#A8F7FF;font-size:15px;}
+        .atlas-region-panel .arp-group{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim,#7c8896);margin-bottom:0.8rem;}
+        .atlas-region-panel p{font-size:13px;line-height:1.6;color:var(--text-muted,#cdd6df);}
+        .atlas-region-panel .arp-x{position:absolute;top:0.6rem;right:0.7rem;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;}
+        .atlas-schematic{font-size:10px;color:var(--text-dim,#7c8896);opacity:0.8;margin-top:auto;line-height:1.4;}
+        @media(max-width:760px){.atlas-body{flex-direction:column;}.atlas-layers,.atlas-organs{flex:none;flex-direction:row;overflow-x:auto;}.atlas-organs{order:3;}.atlas-viewport{min-height:420px;order:2;}.atlas-organ svg{width:34px;height:34px;}}
+      </style>
+      <div class="dash-card glass-card-elevated" style="padding:1.25rem;">
+        <h3 style="margin:0 0 0.4rem;" data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;" data-i18n="a.tools.anatomy_subtitle">Интерактивное 3D-тело: вращай, переключай слои, нажми на голову — погрузишься в детальный мозг. Слои мышц, скелета и нервной системы — анатомически точные схемы.</p>
+        <div class="atlas-shell">
+          <div class="atlas-topbar">
+            <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
+            <div class="atlas-actions">
+              <button class="atlas-btn" id="atlas-sex-toggle" onclick="atlasToggleSex()" title="Male / Female">⚥ <span id="atlas-sex-label" data-i18n="a.tools.anatomy_male">Муж.</span></button>
+              <button class="atlas-btn" onclick="atlasBrainDetail()" id="atlas-brain-btn">🧠 <span data-i18n="a.tools.anatomy_brain">Детальный мозг</span></button>
+              <button class="atlas-btn" onclick="atlasResetView()">⟲ <span data-i18n="a.tools.anatomy_reset">Сбросить вид</span></button>
+            </div>
+          </div>
+          <div class="atlas-body">
+            <aside class="atlas-layers" id="atlas-layers">
+              <div class="atlas-sec-title" data-i18n="a.tools.anatomy_layers">Слои</div>
+              <!-- layers injected by JS -->
+              <div class="atlas-schematic" data-i18n="a.tools.anatomy_schematic_note">Скелет, мышцы и нервы — анатомически точные схемы (не сканы).</div>
+            </aside>
+            <div class="atlas-viewport" id="atlas-viewport">
+              <div class="atlas-tooltip" id="atlas-tooltip"></div>
+              <div class="atlas-hint" id="atlas-hint" data-i18n="a.tools.anatomy_hint">Тяни — вращать · колесо — зум · клик по голове — мозг</div>
+              <div class="atlas-region-panel" id="atlas-region-panel">
+                <button class="arp-x" onclick="atlasCloseRegion()">×</button>
+                <h4 id="arp-name">—</h4>
+                <div class="arp-group" id="arp-group"></div>
+                <p id="arp-desc"></p>
+                <button class="atlas-btn" id="arp-back" onclick="atlasExitBrain()" style="display:none;margin-top:0.5rem;" data-i18n="a.tools.anatomy_back_body">← Назад к телу</button>
+              </div>
+            </div>
+            <aside class="atlas-organs" id="atlas-organs">
+              <div class="atlas-sec-title" data-i18n="a.tools.anatomy_organs">Органы</div>
+              <!-- inset organs injected by JS -->
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- TAB: NeuroMap -->
@@ -2261,6 +2337,15 @@
             <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-lang-cb" value="en" style="accent-color:#fc0;"> 🇬🇧 EN</label>
             <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-lang-cb" value="es" style="accent-color:#fc0;"> 🇪🇸 ES</label>
             <span style="font-size:10px;color:var(--text-muted);font-style:italic;margin-left:auto;" data-i18n="a.admin.courses.lang_hint">Пусто = на всех языках</span>
+          </div>
+
+          <!-- Tool access: which tools this course unlocks + global free toggle -->
+          <div style="margin-bottom:0.75rem;padding:0.5rem 0.6rem;background:rgba(141,255,200,0.03);border:1px dashed rgba(141,255,200,0.2);border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
+              <span style="font-size:11px;color:var(--myc-green,#8DFFC8);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;" data-i18n="a.admin.courses.tools_title">Доступные инструменты:</span>
+              <span style="font-size:10px;color:var(--text-muted);font-style:italic;" data-i18n="a.admin.courses.tools_hint">✓ — входит в курс · 🌐 — свободный доступ для всех</span>
+            </div>
+            <div id="course-tools-cbs" style="display:flex;flex-direction:column;gap:0.35rem;"></div>
           </div>
 
           <p id="course-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
@@ -4935,8 +5020,10 @@ function setToolsMode(mode){
   var pointabContent = document.getElementById('tools-pointab-content');
   var btnExternal = document.getElementById('tools-mode-external');
   var externalContent = document.getElementById('tools-external-content');
+  var btnAnatomy = document.getElementById('tools-mode-anatomy');
+  var anatomyContent = document.getElementById('tools-anatomy-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
@@ -4944,6 +5031,13 @@ function setToolsMode(mode){
   if(sensationWrap) sensationWrap.style.display='none';
   if(pointabContent) pointabContent.style.display='none';
   if(externalContent) externalContent.style.display='none';
+  if(anatomyContent) anatomyContent.style.display='none';
+  if(mode==='anatomy'){
+    if(btnAnatomy){ btnAnatomy.classList.add('active'); btnAnatomy.style.borderBottomColor='var(--accent-cyan)'; }
+    if(anatomyContent){ anatomyContent.style.display='';
+      setTimeout(function(){ try{ if(typeof window.mountAnatomyAtlas==='function') window.mountAnatomyAtlas(); }catch(e){ console.warn('anatomy mount', e); } }, 60);
+    }
+  }
   if(mode==='external'){
     if(btnExternal){ btnExternal.classList.add('active'); btnExternal.style.borderBottomColor='var(--accent-cyan)'; }
     if(externalContent){ externalContent.style.display='';
@@ -4994,6 +5088,7 @@ function toolsExpandActive(){
     sensation:{ id: 'tools-sensation-wrap',  title: 'Карта ощущений' },
     pointab:  { id: 'tools-pointab-content', title: 'Точка А → B' },
     external: { id: 'tools-external-content', title: 'External Field' },
+    anatomy:  { id: 'tools-anatomy-content', title: 'Анатомический атлас' },
     diary:    { id: 'tools-cal-diary-wrap',  title: 'Дневник' }
   };
   // External Field was missing here, so its «Раскрыть» fell through to the
@@ -5002,6 +5097,7 @@ function toolsExpandActive(){
              : document.querySelector('#tools-mode-sensation.active') ? 'sensation'
              : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
              : document.querySelector('#tools-mode-external.active') ? 'external'
+             : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
              : 'diary';
   var info = map[active]; if (!info) return;
   var src = document.getElementById(info.id); if (!src) return;
@@ -10214,8 +10310,46 @@ function renderCourseEditor(){
     }
   });
   applyCourseLangVisibility();
+  renderCourseToolAccess();
   renderCourseBlocks();
 }
+
+// ── Tool access: render tool checkboxes for the current course ──
+var _allToolsCache = null;
+function renderCourseToolAccess(){
+  var host = document.getElementById('course-tools-cbs');
+  if (!host || !courseState.currentCourse) return;
+  var cid = courseState.currentCourse.id;
+  host.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Загрузка…</span>';
+  var lang = (typeof lang === 'function') ? 'ru' : ((window.currentLang||localStorage.getItem('na_lang')||'ru').slice(0,2));
+  Promise.all([
+    _allToolsCache ? Promise.resolve({tools:_allToolsCache}) : courseApi('/api/admin/tools'),
+    courseApi('/api/admin/courses/' + cid + '/tools')
+  ]).then(function(r){
+    _allToolsCache = r[0].tools || [];
+    var sel = (r[1].tool_ids) || [];
+    host.innerHTML = '';
+    _allToolsCache.forEach(function(t){
+      var nm = t['name_'+lang] || t.name_ru || t.code;
+      var row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;font-size:12.5px;color:var(--text-secondary);';
+      row.innerHTML =
+        '<input type="checkbox" class="course-tool-cb" value="'+t.id+'" '+(sel.indexOf(t.id)!==-1?'checked':'')+' style="accent-color:var(--myc-green,#8DFFC8);">'+
+        '<span style="flex:1;min-width:0;">'+nm+'</span>'+
+        '<label style="display:inline-flex;align-items:center;gap:0.25rem;font-size:11px;color:var(--text-muted);cursor:pointer;" title="Свободный доступ для всех без курса">'+
+        '<input type="checkbox" class="course-tool-free" data-tid="'+t.id+'" '+(t.is_free_default?'checked':'')+' style="accent-color:var(--accent-cyan);" onchange="courseToggleToolFree('+t.id+',this.checked)"> 🌐</label>';
+      host.appendChild(row);
+    });
+  }).catch(function(e){ host.innerHTML = '<span style="font-size:11px;color:#f88;">Ошибка загрузки инструментов: '+e.message+'</span>'; });
+}
+window.renderCourseToolAccess = renderCourseToolAccess;
+
+function courseToggleToolFree(toolId, checked){
+  courseApi('/api/admin/tools/' + toolId, { method:'PATCH', body:{ is_free_default: checked } })
+    .then(function(d){ if(_allToolsCache){ _allToolsCache.forEach(function(t){ if(t.id===toolId) t.is_free_default = checked; }); } courseSetStatus('Доступ инструмента обновлён', true); })
+    .catch(function(e){ courseSetStatus('Ошибка: '+e.message); });
+}
+window.courseToggleToolFree = courseToggleToolFree;
 
 // Reads the current course-lang-cb selection and shows/hides name + desc
 // inputs (and similar in block payloads). Empty selection = show all.
@@ -10361,11 +10495,16 @@ function courseSaveMeta(){
     program_access: access,
     languages: langs
   };
+  var toolIds = Array.from(document.querySelectorAll('.course-tool-cb')).filter(function(cb){ return cb.checked; }).map(function(cb){ return parseInt(cb.value,10); });
   courseSetStatus('Сохранение…');
   courseApi('/api/admin/courses/' + courseState.currentCourse.id, { method: 'PATCH', body: body })
     .then(function(d){
       courseState.currentCourse = d.course;
       courseState.dirtyMeta = false;
+      // Persist the course→tool grants alongside meta.
+      return courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/tools', { method: 'PUT', body: { tool_ids: toolIds } });
+    })
+    .then(function(){
       courseSetStatus('Сохранено', true);
       loadCourses();
     })
@@ -13825,6 +13964,155 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=7"></script>
 <script src="assets/js/collective-path.js?v=8"></script>
 <script src="assets/js/external-field.js?v=6"></script>
+<script src="assets/js/body-atlas.js?v=3"></script>
+<script>
+/* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
+(function(){
+  var LAYERS = [
+    { key:'skin',     color:'#A8F7FF', ru:'Кожа / контур', en:'Skin / outline', es:'Piel / contorno', on:true,  op:50 },
+    { key:'muscles',  color:'#8DFFC8', ru:'Мышцы',         en:'Muscles',        es:'Músculos',        on:false, op:45 },
+    { key:'skeleton', color:'#E8FBFF', ru:'Скелет',        en:'Skeleton',       es:'Esqueleto',       on:false, op:70 },
+    { key:'nervous',  color:'#8DFFC8', ru:'Нервная система',en:'Nervous system',es:'Sistema nervioso',on:false, op:80 },
+    { key:'vessels',  color:'#FF8FA3', ru:'Сосуды',        en:'Vessels',        es:'Vasos',           on:false, op:60 },
+    { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 },
+    { key:'brain',    color:'#6FE9F0', ru:'Мозг',          en:'Brain',          es:'Cerebro',         on:false, op:50 }
+  ];
+  var ORGANS = [
+    { id:'brain',   ru:'Мозг',   en:'Brain',   es:'Cerebro', glyph:'M22 6c-3 0-5 2-5 4 0 0-2 0-2 3 0 2 1 3 2 3 0 2 1 4 4 4 1 2 3 3 5 3s4-1 5-3c3 0 4-2 4-4 1 0 2-1 2-3 0-3-2-3-2-3 0-2-2-4-5-4-1-1-2-2-3-2s-2 1-3 2z' },
+    { id:'heart',   ru:'Сердце', en:'Heart',   es:'Corazón', glyph:'M24 34C12 26 8 20 8 15c0-4 3-7 7-7 3 0 5 2 6 4l3 4 3-4c1-2 3-4 6-4 4 0 7 3 7 7 0 5-4 11-16 19z' },
+    { id:'lungs',   ru:'Лёгкие', en:'Lungs',   es:'Pulmones',glyph:'M24 8v14M18 14c-4 1-7 5-7 12 0 6 2 9 6 9 3 0 4-2 4-6V16c0-2-1-3-3-2zM30 14c4 1 7 5 7 12 0 6-2 9-6 9-3 0-4-2-4-6V16c0-2 1-3 3-2z' },
+    { id:'liver',   ru:'Печень', en:'Liver',   es:'Hígado',  glyph:'M10 16c8-3 20-4 28-1 2 1 2 4 1 7-2 6-7 11-14 11-6 0-12-3-15-9-1-3-2-7 0-8z' },
+    { id:'kidneys', ru:'Почки',  en:'Kidneys', es:'Riñones', glyph:'M18 12c4 0 5 4 5 8s-1 8-5 8-7-4-7-8 3-8 7-8zM30 12c-4 0-5 4-5 8s1 8 5 8 7-4 7-8-3-8-7-8z' }
+  ];
+  // Short, accurate region descriptions (educational base; Nick can expand per course).
+  var REGION_DESC = {
+    'frontal-lobe':   { ru:'Планирование, принятие решений, контроль внимания и движений, речь.', en:'Planning, decision-making, attention control, voluntary movement, speech.', es:'Planificación, toma de decisiones, control de la atención, movimiento, habla.' },
+    'parietal-lobe':  { ru:'Обработка осязания, пространственная ориентация, интеграция ощущений.', en:'Touch processing, spatial orientation, sensory integration.', es:'Procesamiento táctil, orientación espacial, integración sensorial.' },
+    'temporal-lobe':  { ru:'Слух, понимание речи, память (вместе с гиппокампом).', en:'Hearing, language comprehension, memory (with the hippocampus).', es:'Audición, comprensión del lenguaje, memoria.' },
+    'occipital-lobe': { ru:'Зрительная кора — обработка изображения с сетчатки.', en:'Visual cortex — processing of input from the retina.', es:'Corteza visual — procesa la información de la retina.' },
+    'thalamus':       { ru:'Главное реле сенсорных сигналов к коре; регуляция сна и бодрствования.', en:'Main relay of sensory signals to the cortex; sleep/wake regulation.', es:'Relevo principal de señales sensoriales a la corteza.' },
+    'hypothalamus':   { ru:'Гомеостаз: температура, голод, жажда, гормоны, стресс-ось.', en:'Homeostasis: temperature, hunger, thirst, hormones, stress axis.', es:'Homeostasis: temperatura, hambre, sed, hormonas.' },
+    'hippocampus':    { ru:'Формирование долговременной памяти и пространственная навигация.', en:'Formation of long-term memory and spatial navigation.', es:'Formación de memoria a largo plazo y navegación espacial.' },
+    'amygdala':       { ru:'Эмоции, страх, эмоциональная окраска памяти.', en:'Emotion, fear, emotional tagging of memory.', es:'Emoción, miedo, marcado emocional de la memoria.' },
+    'basal-ganglia':  { ru:'Инициация и торможение движений, привычки, вознаграждение.', en:'Initiation/inhibition of movement, habits, reward.', es:'Inicio e inhibición del movimiento, hábitos, recompensa.' },
+    'cerebellum':     { ru:'Координация движений, равновесие, точность и обучение моторике.', en:'Movement coordination, balance, precision, motor learning.', es:'Coordinación, equilibrio, precisión y aprendizaje motor.' },
+    'midbrain':       { ru:'Зрительные и слуховые рефлексы, контроль движений глаз, дофамин.', en:'Visual/auditory reflexes, eye movement, dopamine pathways.', es:'Reflejos visuales/auditivos, movimiento ocular, dopamina.' },
+    'pons':           { ru:'Связь коры с мозжечком, дыхание, сон, мимика.', en:'Cortex–cerebellum relay, breathing, sleep, facial movement.', es:'Relevo corteza–cerebelo, respiración, sueño.' },
+    'medulla':        { ru:'Жизненные центры: дыхание, сердцебиение, давление, рефлексы.', en:'Vital centres: breathing, heartbeat, blood pressure, reflexes.', es:'Centros vitales: respiración, latido, presión, reflejos.' },
+    'cervical-spine': { ru:'Шейный отдел (C1–C7): иннервация шеи, рук, диафрагмы.', en:'Cervical (C1–C7): innervates neck, arms, diaphragm.', es:'Cervical (C1–C7): inerva cuello, brazos, diafragma.' },
+    'thoracic-spine': { ru:'Грудной отдел (T1–T12): иннервация туловища и внутренних органов.', en:'Thoracic (T1–T12): innervates trunk and internal organs.', es:'Torácica (T1–T12): inerva tronco y órganos.' },
+    'lumbar-spine':   { ru:'Поясничный отдел (L1–L5): иннервация ног, частые боли в пояснице.', en:'Lumbar (L1–L5): innervates legs; common low-back pain site.', es:'Lumbar (L1–L5): inerva piernas; dolor lumbar común.' },
+    'sacral-spine':   { ru:'Крестцовый отдел: таз, мочевой пузырь, нижние конечности.', en:'Sacral: pelvis, bladder, lower limbs.', es:'Sacro: pelvis, vejiga, extremidades inferiores.' },
+    'spinal-cord':    { ru:'Спинной мозг — магистраль сигналов между телом и головным мозгом.', en:'Spinal cord — the signal highway between body and brain.', es:'Médula espinal — la vía entre el cuerpo y el cerebro.' }
+  };
+
+  function lang(){ try{ return (window.currentLang||window.__lang||localStorage.getItem('na_lang')||document.documentElement.lang||'ru').slice(0,2); }catch(e){ return 'ru'; } }
+  function pickName(names){ if(!names) return ''; return names[lang()]||names.ru||names.en||''; }
+
+  var atlas = null, mounted = false;
+
+  function atlasApiBase(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : ''; }
+  function showLocked(vp, unlockCourse){
+    var nm = unlockCourse ? (unlockCourse['name_'+lang()]||unlockCourse.name_ru||'') : '';
+    var msg = lang()==='en' ? ('Available with the course'+(nm?' “'+nm+'”':'')+'.')
+            : lang()==='es' ? ('Disponible con el curso'+(nm?' «'+nm+'»':'')+'.')
+            : ('Доступно при подписке на курс'+(nm?' «'+nm+'»':'')+'.');
+    vp.querySelectorAll('.atlas-lock').forEach(function(e){e.remove();});
+    var d=document.createElement('div'); d.className='atlas-lock';
+    d.style.cssText='position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.6rem;text-align:center;padding:2rem;background:radial-gradient(60% 60% at 50% 40%,rgba(168,247,255,0.06),transparent);';
+    d.innerHTML='<div style="font-size:34px;opacity:0.6;">🔒</div><div style="font-size:14px;color:var(--text-primary);max-width:320px;line-height:1.5;">'+msg+'</div>';
+    vp.appendChild(d);
+  }
+  window.mountAnatomyAtlas = function(){
+    var vp = document.getElementById('atlas-viewport');
+    if(!vp || !window.BodyAtlas) return;
+    if(mounted){ if(atlas) atlas.render({}); return; }
+    // Access gate — anatomy-atlas may be course-locked.
+    var token = localStorage.getItem('na_token');
+    fetch(atlasApiBase()+'/api/tools/anatomy-atlas/access', { headers:{ 'Authorization':'Bearer '+token } })
+      .then(function(r){ return r.ok ? r.json() : {unlocked:true}; })
+      .then(function(a){ if(a && a.unlocked===false){ showLocked(vp, a.unlock_course); } else { _mountAnatomyNow(); } })
+      .catch(function(){ _mountAnatomyNow(); }); // network/endpoint absent → fail open (don't block)
+  };
+  function _mountAnatomyNow(){
+    var vp = document.getElementById('atlas-viewport');
+    if(mounted){ if(atlas) atlas.render({}); return; }
+    mounted = true;
+    injectLayers(); injectOrgans();
+    window.BodyAtlas.init(vp, { mode:'full' }).then(function(a){
+      atlas = a; window._anatomyAtlas = a;
+      a.on('region-hover', onHover);
+      a.on('region-click', onClick);
+      a.on('brain-enter', function(){ setBrainBtn(true); });
+      a.on('brain-exit',  function(){ setBrainBtn(false); atlasCloseRegion(); });
+      // sync initial layer state from controls
+      LAYERS.forEach(function(L){ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op/100); });
+    }).catch(function(e){ console.warn('Atlas init failed', e); mounted=false;
+      vp.insertAdjacentHTML('beforeend','<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;padding:1rem;text-align:center;">3D-движок не загрузился. Проверь интернет-соединение.</div>'); });
+  };
+
+  function injectLayers(){
+    var host = document.getElementById('atlas-layers'); if(!host) return;
+    var note = host.querySelector('.atlas-schematic');
+    LAYERS.forEach(function(L){
+      var el = document.createElement('div'); el.className='atlas-layer';
+      el.innerHTML =
+        '<label class="atlas-layer-head"><input type="checkbox" '+(L.on?'checked':'')+' onchange="atlasToggleLayer(\''+L.key+'\',this.checked)">'+
+        '<span class="atlas-layer-dot" style="color:'+L.color+';background:'+L.color+'"></span>'+
+        '<span data-i18n="a.tools.anatomy_layer_'+L.key+'">'+L[lang()]+'</span></label>'+
+        '<input type="range" class="atlas-layer-op" min="0" max="100" value="'+L.op+'" oninput="atlasSetOpacity(\''+L.key+'\',this.value)">';
+      host.insertBefore(el, note);
+    });
+  }
+  function injectOrgans(){
+    var host = document.getElementById('atlas-organs'); if(!host) return;
+    ORGANS.forEach(function(O){
+      var el = document.createElement('div'); el.className='atlas-organ'; el.onclick=function(){ atlasFocusOrgan(O.id); };
+      el.innerHTML='<svg viewBox="0 0 48 48" fill="none" stroke="#A8F7FF" stroke-width="1.4" stroke-linejoin="round"><path d="'+O.glyph+'"/></svg>'+
+        '<span data-i18n="a.tools.anatomy_organ_'+O.id+'">'+O[lang()]+'</span>';
+      host.appendChild(el);
+    });
+  }
+
+  function onHover(hit){
+    var tip = document.getElementById('atlas-tooltip'); if(!tip) return;
+    if(hit && hit.names){
+      tip.textContent = pickName(hit.names);
+      var vp = document.getElementById('atlas-viewport').getBoundingClientRect();
+      // position via last mouse — use event from BodyAtlas point projection fallback: center-top
+      tip.style.display='block';
+      document.getElementById('atlas-viewport').onmousemove = function(e){ tip.style.left=(e.clientX-vp.left)+'px'; tip.style.top=(e.clientY-vp.top)+'px'; };
+    } else { tip.style.display='none'; }
+  }
+  function onClick(hit){
+    if(!hit) return;
+    var p = document.getElementById('atlas-region-panel');
+    document.getElementById('arp-name').textContent = pickName(hit.names) || hit.id;
+    var grp = hit.object && hit.object.userData ? (hit.object.userData.group||hit.object.userData.layer||'') : '';
+    document.getElementById('arp-group').textContent = grp;
+    var d = REGION_DESC[hit.id];
+    document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : '';
+    document.getElementById('arp-back').style.display = (atlas && atlas._brainDetail) ? '' : 'none';
+    p.classList.add('open');
+  }
+  function setBrainBtn(on){ var b=document.getElementById('atlas-brain-btn'); if(b) b.classList.toggle('active', !!on); }
+
+  window.atlasToggleLayer = function(k,v){ if(atlas) atlas.toggleLayer(k,v); var L=LAYERS.filter(function(x){return x.key===k;})[0]; if(L) L.on=v; };
+  window.atlasSetOpacity = function(k,v){ if(atlas) atlas.setLayerOpacity(k, v/100); };
+  window.atlasToggleSex = function(){
+    var lab=document.getElementById('atlas-sex-label');
+    var female = lab && lab.getAttribute('data-sex')==='female';
+    var next = female ? 'male':'female';
+    if(lab){ lab.setAttribute('data-sex', next); lab.textContent = next==='female' ? (lang()==='en'?'Female':lang()==='es'?'Mujer':'Жен.') : (lang()==='en'?'Male':lang()==='es'?'Hombre':'Муж.'); }
+    if(atlas) atlas.setSex(next);
+  };
+  window.atlasBrainDetail = function(){ if(!atlas) return; if(atlas._brainDetail) atlas.exitBrainDetail(); else atlas.enterBrainDetail(); };
+  window.atlasExitBrain = function(){ if(atlas) atlas.exitBrainDetail(); };
+  window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail(); atlas.resetView(); } atlasCloseRegion(); };
+  window.atlasCloseRegion = function(){ var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); };
+  window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
+})();
+</script>
 <script>
   // 5.3: deep-link into Tools → NeuroMap, focused on a node + chain. Opened in a
   // NEW TAB from the embedded Evolution-Path mini-map
