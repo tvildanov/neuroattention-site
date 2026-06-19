@@ -574,7 +574,10 @@
       // so a 2-week-old account doesn't render its events squished at the right.
       var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
       var pxPerDay = (x1 - x0) / days;
-      var v = { originT: originT, nowT: nowT, pxPerDay: pxPerDay, panX: 0, _fieldW: (x1 - x0) };
+      // _basePxPerDay = the period's fit-to-view zoom; the live zoom factor Z used
+      // by the renderer (3.1) is pxPerDay / _basePxPerDay, so the branch geometry,
+      // node radius and label size grow when you zoom IN, not just the time axis.
+      var v = { originT: originT, nowT: nowT, pxPerDay: pxPerDay, _basePxPerDay: pxPerDay, panX: 0, _fieldW: (x1 - x0) };
       var wxNow = (nowT - originT) / DAY_MS * pxPerDay;
       v.panX = (x1 - 40) - wxNow; // now sits ~40px from the right edge
       st.view = v;
@@ -792,6 +795,13 @@
 
     var sx = function (t) { return (tms(t) - view.originT) / DAY_MS * view.pxPerDay + view.panX; };
     var syAt = function (scrX) { return cy + 4 * Math.sin((scrX - view.panX) * 0.012); };
+    // 3.1 real zoom: a single factor derived from how far we've zoomed past the
+    // period's fit-to-view scale. Drives branch length, node spacing/radius,
+    // tooltip size and (capped to the zone) the parallel-branch spread.
+    var Z = Math.max(0.6, Math.min(3.5, view.pxPerDay / (view._basePxPerDay || view.pxPerDay)));
+    st._zoomScale = Z;
+    var rZ = Math.max(0.85, Math.min(2.2, Z));         // node-radius scale (gentler)
+    var labelPx = Math.round(Math.max(10, Math.min(18, 10 * Z)));
     var sOrigin = sx(view.originT), sNow = sx(view.nowT);
     var a = Math.max(x0 - 20, sOrigin), b = Math.min(x1 + 20, sNow);
 
@@ -857,36 +867,39 @@
     // spread harder, so zoom-in visibly fans crowded slots apart.
     var wantS = dens > 4 ? 2.6 : dens > 2 ? 2.0 : dens > 1 ? 1.6 : 1.0;
     var vS = Math.min(wantS, Math.max(1.0, (half - 8) / T._maxAbsLy));
-    st._vScale = vS;
+    // 3.1: let zoom-in widen the parallel-branch spread too, but never past the
+    // chains zone — at deep zoom branches fan out to fill the available height.
+    var vCombined = Math.min((half - 6) / T._maxAbsLy, vS * Math.max(1, Z * 0.7));
+    st._vScale = vCombined;
     for (var ci = 0; ci < comps.length; ci++) {
       var comp = comps[ci];
       var ax = sx(comp.anchorT);
-      if (ax + comp.maxX < x0 - 30 || ax > x1 + 30) continue;     // virtualize whole branch
+      if (ax + comp.maxX * Z < x0 - 30 || ax > x1 + 30) continue;     // virtualize whole branch (scaled extent)
       var ay = syAt(ax);
       st._visComps.push({ comp: comp, ax: ax, ay: ay });
       // edges — white nerve-fibre base + thin coloured stripe over it
       for (var si = 0; si < comp.segs.length; si++) {
         var sg = comp.segs[si], fillS = cvLayerFill(sg.layer, sg.val), spts = sg.pts, scr = [];
-        for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x, y: ay + spts[pi].y * vS });
-        strokePolyline(ctx, scr, 'rgba(255,255,255,0.6)', 2.2, 0.5);
-        strokePolyline(ctx, scr, fillS, 1, 0.85);
+        for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x * Z, y: ay + spts[pi].y * vCombined });
+        strokePolyline(ctx, scr, 'rgba(255,255,255,0.6)', 2.2 * Math.min(1.6, rZ), 0.5);
+        strokePolyline(ctx, scr, fillS, 1 * Math.min(1.6, rZ), 0.85);
       }
       // nodes strung along the branch
       for (var ni = 0; ni < comp.nodes.length; ni++) {
-        var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx, ny = ay + nd.ly * vS;
+        var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx * Z, ny = ay + nd.ly * vCombined, ndr = nd.r * rZ;
         var fillN = cvLayerFill(e.layer, e.valence);
         var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
-        drawNodeCv(ctx, e.layer, nx, ny, nd.r, fillN, glow);
-        st._nodes.push({ x: nx, y: ny, r: nd.r, e: e });
+        drawNodeCv(ctx, e.layer, nx, ny, ndr, fillN, glow);
+        st._nodes.push({ x: nx, y: ny, r: ndr, e: e });
         // PR FIX #8: labels are hidden by default (they overlapped on zoom-in).
         // Only the hovered/tapped node shows its label, and it's highlighted.
         var isHover = st._hoverNodeId != null && String(e.id) === st._hoverNodeId;
         if (isHover) {
-          ctx.save(); ctx.beginPath(); ctx.arc(nx, ny, nd.r + 3, 0, 6.283); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
-          ctx.font = '10px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+          ctx.save(); ctx.beginPath(); ctx.arc(nx, ny, ndr + 3, 0, 6.283); ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+          ctx.font = labelPx + 'px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
           ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(6,9,14,0.92)'; ctx.fillStyle = '#eaf2ff';
           var txt = truncate(prettyTitle(e, lang), 22);
-          ctx.strokeText(txt, nx, ny - nd.r - 6); ctx.fillText(txt, nx, ny - nd.r - 6);
+          ctx.strokeText(txt, nx, ny - ndr - 6); ctx.fillText(txt, nx, ny - ndr - 6);
         }
       }
     }

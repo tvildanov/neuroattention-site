@@ -219,7 +219,16 @@
     { id:'pons',           group:'brainstem', color:WARM_CYAN,
       ru:'Мост', en:'Pons', es:'Puente' },
     { id:'medulla',        group:'brainstem', color:WARM_CYAN,
-      ru:'Продолговатый мозг', en:'Medulla oblongata', es:'Bulbo raquídeo' }
+      ru:'Продолговатый мозг', en:'Medulla oblongata', es:'Bulbo raquídeo' },
+    // additional regions present in the real Z-Anatomy brain model
+    { id:'insula',         group:'cortex',  color:COLD_CYAN,
+      ru:'Островковая доля', en:'Insula', es:'Ínsula' },
+    { id:'cingulate',      group:'limbic',  color:NEURO_GREEN,
+      ru:'Поясная извилина', en:'Cingulate cortex', es:'Corteza cingulada' },
+    { id:'corpus-callosum',group:'deep',    color:WARM_CYAN,
+      ru:'Мозолистое тело', en:'Corpus callosum', es:'Cuerpo calloso' },
+    { id:'fornix',         group:'limbic',  color:NEURO_GREEN,
+      ru:'Свод мозга', en:'Fornix', es:'Fórnix' }
   ];
 
   // ── Sensation-map alignment (C2) ────────────────────────────────────────────
@@ -627,6 +636,103 @@
     this._layerState.brain = { visible: false, opacity: 0.5 };
   };
 
+  // ── real anatomical brain (Z-Anatomy) — lazy, streamed once ──────────────────
+  // Replaces the 13 procedural capsules with 198 named meshes across 17 regions.
+  // The procedural brain stays as an instant preview until the GLB swaps in.
+  // Each mesh already carries regionId + regionName in node.extras (→ userData);
+  // we layer the localized {ru,en,es} names + group/colour from BRAIN_REGIONS so
+  // hover tooltips and the region panel work identically to the procedural mode.
+  Atlas.prototype._loadBrainDetail = function () {
+    if (this._brainDetailReq) return this._brainDetailReq;
+    var self = this, T = window.THREE;
+    function regionInfo(id) {
+      for (var i = 0; i < BRAIN_REGIONS.length; i++) if (BRAIN_REGIONS[i].id === id) return BRAIN_REGIONS[i];
+      return null;
+    }
+    this._brainDetailReq = loadModelsConfig().then(function (cfg) {
+      var url = cfg && cfg.brainDetail;
+      if (!url) return null;                           // no real source → keep procedural
+      return new Promise(function (resolve) {
+        var loader = new T.GLTFLoader();
+        try {
+          if (T.DRACOLoader) {
+            var draco = new T.DRACOLoader();
+            draco.setDecoderPath(cfg.dracoDecoderPath || 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+            loader.setDRACOLoader(draco);
+          }
+        } catch (e) { /* draco optional */ }
+        self._emit('brain-loading', {});
+        loader.load(url, function (gltf) {
+          if (self._destroyed) { resolve(null); return; }
+          var grp = new T.Group(); grp.name = 'brain-real';
+          var meshes = [];
+          // resolve a node's regionId by walking up the ancestry — multi-primitive
+          // glTF nodes become a Group (carrying node.extras) whose child Meshes have
+          // no extras of their own, so inheritance keeps every mesh tagged.
+          function resolveRegion(o) {
+            var n = o;
+            while (n) {
+              if (n.userData && n.userData.regionId) return n;
+              n = n.parent;
+            }
+            return null;
+          }
+          // first: enrich every node that carries a regionId from node.extras with
+          // localized names + group so hover/click (which walk up to it) work.
+          gltf.scene.traverse(function (o) {
+            var id = o.userData && o.userData.regionId;
+            if (!id) return;
+            var info = regionInfo(id);
+            o.userData.regionName = o.userData.regionName || o.name;
+            o.userData.names = info ? { ru: info.ru, en: info.en, es: info.es } : null;
+            o.userData.group = info ? info.group : '';
+            o.userData.layer = 'brain'; o.userData.brain = true; o.userData.baseOpacity = 0.5;
+          });
+          // then: apply the holographic x-ray material to every mesh, coloured by
+          // its (possibly inherited) region group.
+          gltf.scene.traverse(function (o) {
+            if (!o.isMesh || !o.geometry) return;
+            var node = resolveRegion(o);
+            var info = node ? regionInfo(node.userData.regionId) : null;
+            var color = info ? info.color : COLD_CYAN;
+            o.material = makeXrayMaterial({ color: color, rim: RIM_WHITE, opacity: 0.5, glow: 0.7, fresnelPower: 2.2 });
+            if (!o.userData || !o.userData.regionId) o.userData = o.userData || {};
+            meshes.push(o);
+          });
+          grp.add(gltf.scene);
+          self.root.add(grp);
+          self._brainRealGroup = grp;
+          self._brainRealMeshes = meshes;
+          // frame the camera on the real brain's true bounding box
+          var box = new T.Box3().setFromObject(grp);
+          var c = box.getCenter(new T.Vector3());
+          var size = box.getSize(new T.Vector3());
+          self._brainCenter = c;
+          self._brainRadius = Math.max(size.x, size.y, size.z) * 0.5 || self._brainRadius;
+          // hide the procedural preview now that the real mesh is in
+          if (self._brainGroup) self._brainGroup.visible = false;
+          grp.visible = !!self._brainDetail;
+          self._emit('brain-loaded', { regions: meshes.length });
+          // re-frame if we're already inside brain-detail
+          if (self._brainDetail) self._frameBrain();
+          resolve(grp);
+        }, undefined, function (err) {
+          console.warn('[BodyAtlas] brain-detail load failed', err);
+          self._emit('brain-error', {});
+          resolve(null);
+        });
+      });
+    });
+    return this._brainDetailReq;
+  };
+
+  Atlas.prototype._frameBrain = function () {
+    if (!this._brainCenter) return;
+    var T = window.THREE;
+    this._tweenCamera(this._brainCenter.clone().add(new T.Vector3(0, 0, this._brainRadius * 6)), this._brainCenter.clone());
+    if (this.controls) this.controls.minDistance = this._brainRadius * 2;
+  };
+
   // ── layer config / visibility / opacity ────────────────────────────────────
   Atlas.prototype._applyLayerConfig = function () {
     var requested = this.opts.layers;   // array of layer names to show, or undefined = full
@@ -796,16 +902,18 @@
   Atlas.prototype.enterBrainDetail = function () {
     if (!this._brainGroup) return;
     this._brainDetail = true;
-    this.toggleLayer('brain', true);
+    // procedural capsules are an instant preview; the real GLB swaps in async
+    if (this._brainRealGroup) { this._brainRealGroup.visible = true; this._brainGroup.visible = false; }
+    else this.toggleLayer('brain', true);
+    this._loadBrainDetail();
     ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
-    // animate camera to brain
-    this._tweenCamera(this._brainCenter.clone().add(new window.THREE.Vector3(0, 0, this._brainRadius * 6)), this._brainCenter.clone());
-    this.controls.minDistance = this._brainRadius * 2;
+    this._frameBrain();
     this._emit('brain-enter', {});
   };
 
   Atlas.prototype.exitBrainDetail = function () {
     this._brainDetail = false;
+    if (this._brainRealGroup) this._brainRealGroup.visible = false;
     this.toggleLayer('skin', true);
     this.toggleLayer('brain', false);
     this.controls.minDistance = 0.4;
@@ -895,8 +1003,11 @@
 
   Atlas.prototype._hittableMeshes = function () {
     var self = this, arr = [];
-    if (this._brainDetail && this._brainGroup) {
-      this._brainGroup.children.forEach(function (o) { if (o.isMesh && o.userData && o.userData.regionId) arr.push(o); });
+    if (this._brainDetail && (this._brainRealGroup || this._brainGroup)) {
+      // brain-detail session's domain: prefer the real anatomical brain once it
+      // has streamed in, else the procedural brain regions.
+      var src = (this._brainRealGroup && this._brainRealGroup.visible) ? this._brainRealGroup : this._brainGroup;
+      src.traverse(function (o) { if (o.isMesh && o.userData && o.userData.regionId) arr.push(o); });
       return arr;
     }
     // Every visible loaded layer contributes its named meshes — generic per-mesh
