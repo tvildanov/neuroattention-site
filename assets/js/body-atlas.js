@@ -98,6 +98,35 @@
     var regionId = baseSlug + (side === 'l' ? '_left' : side === 'r' ? '_right' : '');
     return { regionId: regionId, baseSlug: baseSlug, displayEn: displayEn, side: side };
   }
+  // i18n dictionary for the ~124 named brain structures (slug → {en,ru,es}).
+  var BRAIN_I18N_URL = 'data/i18n/anatomy-brain.json';
+  var _brainI18nPromise = null;
+  function loadBrainI18n() {
+    if (_brainI18nPromise) return _brainI18nPromise;
+    _brainI18nPromise = fetch(BRAIN_I18N_URL)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return (j && j.regions) || {}; })
+      .catch(function () { return {}; });
+    return _brainI18nPromise;
+  }
+
+  // localized "(left)/(right)" suffix appended to a paired structure's name.
+  var BRAIN_SIDE = {
+    l: { en: ' (left)',  ru: ' (слева)',  es: ' (izq.)' },
+    r: { en: ' (right)', ru: ' (справа)', es: ' (der.)' }
+  };
+  // last-resort humanizer if a slug is somehow missing from the dictionary.
+  function humanizeSlug(slug) {
+    var s = (slug || '').replace(/_/g, ' ').trim();
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Brain region';
+  }
+  // build the localized {en,ru,es} fine name for a mesh from its slug + side.
+  function brainNames(dict, slug, side) {
+    var rec = (dict && dict[slug]) || null;
+    var base = rec || { en: humanizeSlug(slug), ru: humanizeSlug(slug), es: humanizeSlug(slug) };
+    var sx = BRAIN_SIDE[side] || { en: '', ru: '', es: '' };
+    return { en: base.en + sx.en, ru: (base.ru || base.en) + sx.ru, es: (base.es || base.en) + sx.es };
+  }
 
   // per-layer x-ray styling for streamed real meshes (no purple; mycelium tokens
   // + warm accents to tell vessels/organs apart)
@@ -228,7 +257,9 @@
     { id:'corpus-callosum',group:'deep',    color:WARM_CYAN,
       ru:'Мозолистое тело', en:'Corpus callosum', es:'Cuerpo calloso' },
     { id:'fornix',         group:'limbic',  color:NEURO_GREEN,
-      ru:'Свод мозга', en:'Fornix', es:'Fórnix' }
+      ru:'Свод мозга', en:'Fornix', es:'Fórnix' },
+    { id:'ventricles',     group:'deep',    color:WARM_CYAN,
+      ru:'Желудочки мозга', en:'Ventricles', es:'Ventrículos' }
   ];
 
   // ── Sensation-map alignment (C2) ────────────────────────────────────────────
@@ -637,11 +668,11 @@
   };
 
   // ── real anatomical brain (Z-Anatomy) — lazy, streamed once ──────────────────
-  // Replaces the 13 procedural capsules with 198 named meshes across 17 regions.
+  // Replaces the 13 procedural capsules with ~228 individually-named meshes (124
+  // distinct structures). Every mesh is its own hit-testable region: its slug +
+  // side resolve to a localized {en,ru,es} name via the anatomy-brain dictionary,
+  // and its coarseId picks the holographic colour + the region-panel description.
   // The procedural brain stays as an instant preview until the GLB swaps in.
-  // Each mesh already carries regionId + regionName in node.extras (→ userData);
-  // we layer the localized {ru,en,es} names + group/colour from BRAIN_REGIONS so
-  // hover tooltips and the region panel work identically to the procedural mode.
   Atlas.prototype._loadBrainDetail = function () {
     if (this._brainDetailReq) return this._brainDetailReq;
     var self = this, T = window.THREE;
@@ -649,7 +680,8 @@
       for (var i = 0; i < BRAIN_REGIONS.length; i++) if (BRAIN_REGIONS[i].id === id) return BRAIN_REGIONS[i];
       return null;
     }
-    this._brainDetailReq = loadModelsConfig().then(function (cfg) {
+    this._brainDetailReq = Promise.all([loadModelsConfig(), loadBrainI18n()]).then(function (res) {
+      var cfg = res[0], dict = res[1] || {};
       var url = cfg && cfg.brainDetail;
       if (!url) return null;                           // no real source → keep procedural
       return new Promise(function (resolve) {
@@ -666,37 +698,28 @@
           if (self._destroyed) { resolve(null); return; }
           var grp = new T.Group(); grp.name = 'brain-real';
           var meshes = [];
-          // resolve a node's regionId by walking up the ancestry — multi-primitive
-          // glTF nodes become a Group (carrying node.extras) whose child Meshes have
-          // no extras of their own, so inheritance keeps every mesh tagged.
-          function resolveRegion(o) {
+          // each mesh carries its own anatomical tag in node.extras (→ userData):
+          // { regionName, base, slug, side, coarseId }. Walk up only as a fallback
+          // for multi-primitive nodes (Group keeps extras, child Meshes don't).
+          function resolveTag(o) {
             var n = o;
-            while (n) {
-              if (n.userData && n.userData.regionId) return n;
-              n = n.parent;
-            }
+            while (n) { if (n.userData && n.userData.slug) return n.userData; n = n.parent; }
             return null;
           }
-          // first: enrich every node that carries a regionId from node.extras with
-          // localized names + group so hover/click (which walk up to it) work.
-          gltf.scene.traverse(function (o) {
-            var id = o.userData && o.userData.regionId;
-            if (!id) return;
-            var info = regionInfo(id);
-            o.userData.regionName = o.userData.regionName || o.name;
-            o.userData.names = info ? { ru: info.ru, en: info.en, es: info.es } : null;
-            o.userData.group = info ? info.group : '';
-            o.userData.layer = 'brain'; o.userData.brain = true; o.userData.baseOpacity = 0.5;
-          });
-          // then: apply the holographic x-ray material to every mesh, coloured by
-          // its (possibly inherited) region group.
           gltf.scene.traverse(function (o) {
             if (!o.isMesh || !o.geometry) return;
-            var node = resolveRegion(o);
-            var info = node ? regionInfo(node.userData.regionId) : null;
-            var color = info ? info.color : COLD_CYAN;
-            o.material = makeXrayMaterial({ color: color, rim: RIM_WHITE, opacity: 0.5, glow: 0.7, fresnelPower: 2.2 });
-            if (!o.userData || !o.userData.regionId) o.userData = o.userData || {};
+            var tag = (o.userData && o.userData.slug) ? o.userData : resolveTag(o);
+            var coarseId = tag ? tag.coarseId : null;
+            var info = coarseId ? regionInfo(coarseId) : null;     // coarse → colour + group
+            o.material = makeXrayMaterial({ color: info ? info.color : COLD_CYAN, rim: RIM_WHITE, opacity: 0.5, glow: 0.7, fresnelPower: 2.2 });
+            var slug = tag ? tag.slug : null, side = tag ? (tag.side || '') : '';
+            o.userData = {
+              regionId: slug ? (slug + (side ? '_' + side : '')) : 'brain',  // fine, per-mesh
+              slug: slug, coarseId: coarseId,
+              regionName: tag ? tag.regionName : o.name,
+              names: brainNames(dict, slug, side),          // localized {en,ru,es} fine name
+              group: info ? info.group : '', layer: 'brain', brain: true, baseOpacity: 0.5
+            };
             meshes.push(o);
           });
           grp.add(gltf.scene);
