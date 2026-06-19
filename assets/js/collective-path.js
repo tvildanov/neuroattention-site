@@ -198,7 +198,10 @@
     if (!isFinite(minT)) minT = Date.now() - 365 * DAY;
     var nowT = Date.now(); if (maxT < nowT) maxT = nowT;
     var spanDays = Math.max(1, (nowT - minT) / DAY);
-    S.view = { originT: minT, nowT: nowT, pxPerDay: (x1 - x0) / (spanDays * 1.04), panX: 0, _x0: x0, _x1: x1 };
+    var basePxPerDay = (x1 - x0) / (spanDays * 1.04);
+    // _basePxPerDay = the fit-to-view zoom baseline; the live time-zoom factor is
+    // pxPerDay/_basePxPerDay (3.1 inheritance — drives per-spine Y-zoom in draw()).
+    S.view = { originT: minT, nowT: nowT, pxPerDay: basePxPerDay, _basePxPerDay: basePxPerDay, panX: 0, _x0: x0, _x1: x1 };
     return S.view;
   }
 
@@ -307,6 +310,9 @@
     ctx.clearRect(0, 0, W, H);
     var sx = function (t) { return (tms(t) - view.originT) / DAY * view.pxPerDay + view.panX + x0; };
     S._sx = sx;
+    // 3.1 inheritance: live time-zoom factor (how far we've zoomed past the fit
+    // baseline), clamped like the personal path. Drives per-spine Y-zoom below.
+    var timeZoom = clamp(view.pxPerDay / (view._basePxPerDay || view.pxPerDay), 0.6, 3.5);
 
     var rowsArr = S.rows || [], n = rowsArr.length, sh = S.spineH;
     var rowY = function (i) { return padTop + i * sh + sh / 2 - S.scrollY; };
@@ -374,11 +380,13 @@
       // instead of the old per-event up/down pips. vScale maps the component's
       // local layout (built with half=22) into this row's slim band.
       if (window.EvolutionPath && window.EvolutionPath.drawSlimSpine && u._comps) {
-        var slimVS = Math.min(sh * 0.34, detail >= 2 ? 22 : 9) / 22;
-        // Compress chains horizontally in the slim collective layout so dense,
-        // active spines read as tidy branches instead of an overlapping blob.
+        // bandHalf caps each spine's vertical spread to < half the row height so
+        // adjacent spines never collide; drawSlimSpine fills it adaptively (sparse
+        // stretch, crowded fan + horizontal compress + priority sampling).
+        var bandHalf = Math.min(sh * 0.40, detail >= 2 ? 26 : 11);
         window.EvolutionPath.drawSlimSpine(ctx, u._comps, {
-          sx: sx, cy: y, x0: x0, x1: x1, zoom: detail >= 2 ? 0.75 : 0.55, vScale: slimVS, rZ: detail >= 2 ? 0.95 : 0.65,
+          sx: sx, cy: y, x0: x0, x1: x1, zoom: detail >= 2 ? 0.75 : 0.55, bandHalf: bandHalf,
+          rZ: detail >= 2 ? 0.95 : 0.65, timeZoom: timeZoom,
           hidden: S.hiddenLayers, dim: dim, nodesOut: S._nodes, row: ri
         });
       }
@@ -413,8 +421,14 @@
       activeExt.forEach(function (lk, li) {
         var cyT = ovTop + tH * li + tH / 2;
         ctx.beginPath(); ctx.moveTo(x0, cyT); ctx.lineTo(x1, cyT); ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(160,175,195,0.8)';
-        ctx.fillText(EXT_ICON[lk] + '', isMobile ? 2 : (x0 - 120), cyT);
+        // 1.2 inheritance: sticky left-gutter icon + label with a faint backing
+        // chip (mirrors the personal path's drawOverlayIcons). Drawn outside the
+        // scroll clip → never scrolls off; left-anchored → never pans away.
+        ctx.font = '11px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        var lblTxt = EXT_ICON[lk] + (isMobile ? '' : ' ' + T('tab.' + lk, lk)), lblX = isMobile ? 2 : (x0 - 120);
+        if (!isMobile) { var lblW = ctx.measureText(lblTxt).width; ctx.fillStyle = 'rgba(6,9,14,0.72)'; ctx.fillRect(lblX - 3, cyT - 8, lblW + 6, 16); }
+        ctx.fillStyle = 'rgba(160,175,195,0.85)';
+        ctx.fillText(lblTxt, lblX, cyT);
         (S.data.external_overlays[lk] || []).forEach(function (ev) {
           var mx = sx(ev.t); if (mx < x0 - 3 || mx > x1 + 3) return;
           var col = ({ yellow: '#ffcf4d', orange: '#ff9d3c', red: '#ff5a5a' })[ev.severity_color] || extColor(lk, ev.severity);
@@ -538,13 +552,17 @@
     cv.addEventListener('pointermove', function (e) {
       if (e.pointerType === 'touch') return;
       if (st.drag) { var dx = e.clientX - st.lastX, dy = e.clientY - st.lastY; st.lastX = e.clientX; st.lastY = e.clientY; if (Math.abs(dx) + Math.abs(dy) > 2) st.moved = true; if (S.view) S.view.panX += dx; S.scrollY -= dy; S.velY = -dy; clampScroll(S); requestDraw(S); return; }
-      var row = laneAt(S, rt(e.clientY)), changed = row !== S._hoverRow; S._hoverRow = row;
+      var lx = rl(e.clientX), ly = rt(e.clientY);
+      var row = laneAt(S, ly), changed = row !== S._hoverRow; S._hoverRow = row;
       cv.style.cursor = row != null ? 'pointer' : 'grab';
+      // 3.2: node hover tooltip — reuse the personal path's shared tip component
+      // (same DOM/style + same prettyTitle text source), no duplication.
+      nodeHoverTip(S, lx, ly, e.clientX, e.clientY);
       if (changed) requestDraw(S);
     });
     function endDrag(e) { if (e.pointerType === 'touch') return; if (!st.drag) return; st.drag = false; cv.style.cursor = 'grab'; startMomentum(S); if (!st.moved) hitTest(S, rl(e.clientX), rt(e.clientY)); }
     cv.addEventListener('pointerup', endDrag);
-    cv.addEventListener('pointerleave', function () { if (S._hoverRow != null) { S._hoverRow = null; requestDraw(S); } });
+    cv.addEventListener('pointerleave', function () { if (window.EvolutionPath && window.EvolutionPath.hideTip) window.EvolutionPath.hideTip(); if (S._hoverRow != null) { S._hoverRow = null; requestDraw(S); } });
 
     // touch: 1-finger pan/scroll, 2-finger pinch (vertical focus → density, else time)
     var tg = { mode: null, lastX: 0, lastY: 0, startDist: 0, startDistX: 0, startDistY: 0, startPx: 0, startSh: 0, lastMid: 0, anchorRow: 0, anchorMy: 0, moved: false };
@@ -589,6 +607,19 @@
     }, { passive: false });
   }
 
+  // 3.2: hover hit-test over the spine nodes drawn this frame (S._nodes, filled by
+  // EvolutionPath.drawSlimSpine). Shows the shared tooltip; drag suppresses it.
+  function nodeHoverTip(S, lx, ly, clientX, clientY) {
+    var EP = window.EvolutionPath;
+    if (!EP || !EP.showTip) return;
+    var nodes = S._nodes || [], best = null, bd = 1e9;
+    if (ly >= S._padTop && ly <= S._spinesBot) {
+      for (var i = 0; i < nodes.length; i++) { var nd = nodes[i], d = Math.hypot(nd.x - lx, nd.y - ly), hit = Math.max(10, nd.r + 7); if (d < hit && d < bd) { bd = d; best = nd; } }
+    }
+    if (!best) { EP.hideTip(); return; }
+    var e = best.e, col = LAYER_COLOR[e.layer] || '#8fd0ff';
+    EP.showTip(clientX, clientY, EP.tipText(e, S._lang), col);
+  }
   function laneAt(S, ly) {
     if (ly == null || ly < S._padTop || ly > S._spinesBot) return null;
     var row = Math.floor((S.scrollY + (ly - S._padTop)) / S.spineH);
