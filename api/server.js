@@ -7531,6 +7531,25 @@ app.get('/api/external/events', requireAuth, async (req, res) => {
                   FROM external_signal_events
                   WHERE (user_id IS NULL OR user_id = ${userId}) AND timestamp >= ${from} AND timestamp <= ${to}
                   ORDER BY timestamp DESC LIMIT ${limit}`;
+
+    // C1: the Social layer carries free-form English GDELT headlines. When the
+    // user's UI language is RU/ES, attach title_translated / description_translated
+    // (cached, provider-pluggable). No provider configured -> fields equal the
+    // original so the frontend transparently falls back to English.
+    const lang = (req.query.lang || '').toLowerCase().slice(0, 2);
+    if (/^(ru|es)$/.test(lang)) {
+      try {
+        const { translateMany, isConfigured } = require('./services/translate');
+        if (isConfigured()) {
+          const social = rows.filter(r => r.layer === 'social');
+          if (social.length) {
+            const titles = await translateMany(social.map(r => r.title || ''), lang, 60);
+            const descs = await translateMany(social.map(r => r.description || ''), lang, 60);
+            social.forEach((r, i) => { r.title_translated = titles[i]; r.description_translated = descs[i]; });
+          }
+        }
+      } catch (e) { console.warn('social translate skipped:', e.message); }
+    }
     res.json({ ok: true, events: rows });
   } catch (err) { console.error('GET /api/external/events:', err); res.status(500).json({ error: err.message }); }
 });
