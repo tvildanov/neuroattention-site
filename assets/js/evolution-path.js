@@ -2161,4 +2161,40 @@
   }
 
   window.mountEvolutionPath = mountEvolutionPath;
+
+  // ── 3.2: reusable spine engine shared with the collective path. Defined inside
+  // the IIFE so it reuses the private chain builders + node painters. The personal
+  // path keeps its own drawTunnel (untouched); the collective calls these to get
+  // the SAME lightning-chain branches + nodes, so the two read identically. ──
+  window.EvolutionPath = {
+    // group a user's events (numeric t, links attached as e.links) into chain
+    // components laid out in local px (offsets from the spine anchor).
+    buildSpine: function (events, half) { return buildTunnelComponents(events || [], half || 22); },
+    nodeR: nodeR,
+    // render pre-built components into a horizontal band centred at o.cy. Slim
+    // layout for the collective: no per-node glow (perf across many spines).
+    // o = { sx, cy, x0, x1, zoom?, vScale?, rZ?, hidden?, dim?, nodesOut?, row? }
+    drawSlimSpine: function (ctx, comps, o) {
+      if (!comps || !comps.length) return;
+      var sx = o.sx, cy = o.cy, x0 = o.x0, x1 = o.x1, Z = o.zoom || 1, vS = o.vScale || 1, rZ = o.rZ || 1;
+      var hidden = o.hidden || {}, dim = o.dim == null ? 1 : o.dim;
+      for (var ci = 0; ci < comps.length; ci++) {
+        var comp = comps[ci], ax = sx(comp.anchorT);
+        if (ax + comp.maxX * Z < x0 - 30 || ax > x1 + 30) continue;
+        for (var si = 0; si < comp.segs.length; si++) {
+          var sg = comp.segs[si]; if (sg.layer && hidden[sg.layer]) continue;
+          var spts = sg.pts, scr = [];
+          for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x * Z, y: cy + spts[pi].y * vS });
+          ctx.globalAlpha = 0.55 * dim; strokePolyline(ctx, scr, 'rgba(255,255,255,0.5)', 1.4, 0.5);
+          strokePolyline(ctx, scr, cvLayerFill(sg.layer, sg.val), 1, 0.85); ctx.globalAlpha = 1;
+        }
+        for (var ni = 0; ni < comp.nodes.length; ni++) {
+          var nd = comp.nodes[ni], e = nd.e; if (e.layer && hidden[e.layer]) continue;
+          var nx = ax + nd.lx * Z, ny = cy + nd.ly * vS, ndr = nd.r * rZ;
+          ctx.globalAlpha = dim; drawNodeCv(ctx, e.layer, nx, ny, ndr, cvLayerFill(e.layer, e.valence), false); ctx.globalAlpha = 1;
+          if (o.nodesOut) o.nodesOut.push({ x: nx, y: ny, r: ndr, e: e, row: o.row });
+        }
+      }
+    }
+  };
 })();
