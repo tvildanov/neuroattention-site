@@ -17,8 +17,14 @@
   'use strict';
 
   var STORAGE_KEY = 'na_lang';
+  // DEFAULT_LANG is the *fallback dictionary* (HTML markup is authored in RU,
+  // ru.json is the most complete catalogue). The default *displayed* language
+  // for a fresh international visitor is English — see detectInitialLang().
   var DEFAULT_LANG = 'ru';
+  var INITIAL_LANG = 'en'; // shown when no stored choice & no RU/ES signal
   var SUPPORTED = ['ru', 'en', 'es'];
+  var GEO_KEY = 'na_geo_done'; // marks that the one-time geo-IP probe already ran
+  var geoEligible = false; // set true only when detection fell through to the bare EN default
   var cache = {};
   var currentLang = DEFAULT_LANG;
   var ready = false;
@@ -167,18 +173,86 @@
       var explicit = localStorage.getItem(EXPLICIT_KEY);
       if (explicit && SUPPORTED.indexOf(explicit) !== -1) return explicit;
     } catch (e) {}
-    // 2. Auto-detect from OS / browser language settings
+    // 2. Honour a previously persisted choice (browser- or geo-detected).
+    //    This makes repeat visits instant — no flash, no re-probe.
+    try {
+      var stored = localStorage.getItem(STORAGE_KEY);
+      if (stored && SUPPORTED.indexOf(stored) !== -1) return stored;
+    } catch (e) {}
+    // 3. Auto-detect from OS / browser language settings (RU/ES override EN)
     var browserLangs = navigator.languages || [navigator.language || 'en'];
     for (var i = 0; i < browserLangs.length; i++) {
       var code = browserLangs[i].toLowerCase().slice(0, 2);
-      if (SUPPORTED.indexOf(code) !== -1) return code;
+      if (SUPPORTED.indexOf(code) !== -1) {
+        // An English browser carries no RU/ES signal — still geo-eligible so a
+        // visitor physically in a RU/ES region gets upgraded.
+        if (code === 'en') geoEligible = true;
+        return code;
+      }
     }
-    return 'en'; // international fallback
+    // 4. Default to English. Mark this visitor eligible for the one-time
+    //    geo-IP probe (see maybeGeoOverride) — they carried no language signal,
+    //    so their region may still upgrade them to RU/ES.
+    geoEligible = true;
+    return INITIAL_LANG;
+  }
+
+  /* ── one-time geo-IP override ──────────────────────────────────────────
+   * Default display language is English. For visitors whose browser carries
+   * no RU/ES signal, we run a single lightweight country lookup and, if they
+   * are in a Russian- or Spanish-speaking region, switch through the very same
+   * setLang() path a manual click uses (identical re-render + fade). The result
+   * is persisted (STORAGE_KEY) so the probe never repeats. Fails silently and
+   * leaves English in place on any network/parse error. */
+  var GEO_LANG_BY_COUNTRY = {
+    RU: 'ru', BY: 'ru', KZ: 'ru', KG: 'ru', UA: 'ru', MD: 'ru', AM: 'ru', AZ: 'ru', UZ: 'ru', TJ: 'ru', TM: 'ru',
+    ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es', VE: 'es', EC: 'es', GT: 'es', CU: 'es',
+    BO: 'es', DO: 'es', HN: 'es', PY: 'es', SV: 'es', NI: 'es', CR: 'es', PA: 'es', UY: 'es', PR: 'es'
+  };
+
+  function maybeGeoOverride() {
+    // Only probe when detection fell through to the bare EN default (no explicit
+    // choice, no prior stored value, no RU/ES browser signal) and we never have.
+    if (!geoEligible || currentLang !== INITIAL_LANG) return;
+    try {
+      if (localStorage.getItem(EXPLICIT_KEY)) return;
+      if (localStorage.getItem(GEO_KEY)) return;
+    } catch (e) {}
+
+    var done = false;
+    var finish = function () {
+      if (done) return; done = true;
+      try { localStorage.setItem(GEO_KEY, '1'); } catch (e) {}
+    };
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'https://ipapi.co/country/', true);
+      xhr.timeout = 4000;
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        finish();
+        if (xhr.status !== 200) return;
+        var cc = (xhr.responseText || '').trim().toUpperCase().slice(0, 2);
+        var geoLang = GEO_LANG_BY_COUNTRY[cc];
+        // Only override if still on the untouched English default.
+        if (geoLang && geoLang !== currentLang &&
+            (function () { try { return !localStorage.getItem(EXPLICIT_KEY); } catch (e) { return true; } })()) {
+          window.setLang(geoLang, false); // same animated re-render as a click; persists choice
+        }
+      };
+      xhr.ontimeout = xhr.onerror = finish;
+      xhr.send();
+    } catch (e) { finish(); }
   }
 
   /* ── init ── */
   function init() {
     currentLang = detectInitialLang();
+    // Persist the resolved language so subsequent visits apply it instantly
+    // (the inline <head> script reads STORAGE_KEY to avoid a flash of RU).
+    try {
+      if (!localStorage.getItem(EXPLICIT_KEY)) localStorage.setItem(STORAGE_KEY, currentLang);
+    } catch (e) {}
 
     // bind lang-switch buttons
     var btns = document.querySelectorAll('.lang-btn');
@@ -193,10 +267,12 @@
       if (currentLang === DEFAULT_LANG) {
         applyTranslations(cache[DEFAULT_LANG]);
         ready = true;
+        maybeGeoOverride();
       } else {
         loadDict(currentLang, function (dict) {
           applyTranslations(dict);
           ready = true;
+          maybeGeoOverride();
         });
       }
     });
