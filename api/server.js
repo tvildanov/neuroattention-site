@@ -7535,6 +7535,25 @@ app.get('/api/external/events', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET /api/external/events:', err); res.status(500).json({ error: err.message }); }
 });
 
+// POST /api/admin/external/poll { source } — superadmin: force one poll cycle of a
+// source NOW and report what it returned. Distinguishes a real quiet window
+// (fetched=0) from a fetch/key failure, and reports whether the env key is set.
+app.post('/api/admin/external/poll', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const src = String((req.body && req.body.source) || '').trim();
+    if (!EXT_SOURCES[src]) return res.status(400).json({ error: 'Unknown source. Valid: ' + Object.keys(EXT_SOURCES).join(', ') });
+    let events;
+    try { events = await EXT_SOURCES[src].load().fetchLatest({ nasaKey: process.env.NASA_API_KEY || 'DEMO_KEY' }); }
+    catch (e) { return res.status(502).json({ ok: false, source: src, error: 'fetch failed: ' + e.message, usingKey: process.env.NASA_API_KEY ? 'env' : 'DEMO_KEY' }); }
+    let added = 0;
+    for (const ev of (events || [])) { if (!ev || !ev.timestamp || !ev.layer) continue; const id = await extInsert(ev); if (id) { added++; await extNotify(ev, id); } }
+    const byType = {};
+    (events || []).forEach(function (e) { if (e && e.event_type) byType[e.event_type] = (byType[e.event_type] || 0) + 1; });
+    res.json({ ok: true, source: src, fetched: (events || []).length, added, byType, usingKey: process.env.NASA_API_KEY ? 'env' : 'DEMO_KEY' });
+  } catch (err) { console.error('POST /api/admin/external/poll:', err); res.status(500).json({ error: err.message }); }
+});
+
 // GET/POST /api/external/subscriptions — per-layer config (enabled / showOnPath / notify)
 app.get('/api/external/subscriptions', requireAuth, async (req, res) => {
   try {
