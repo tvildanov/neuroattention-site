@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BodyAtlas dev harness</title>
+<style>
+  :root{ --text-primary:#e8edf2; --text-muted:#8c98a6; --text-dim:#7c8896; }
+  html,body{margin:0;height:100%;background:#06090d;color:#e8edf2;font-family:system-ui,sans-serif;}
+  #wrap{display:flex;height:100vh;}
+  #side{width:230px;padding:14px;border-right:1px solid rgba(168,247,255,0.15);overflow:auto;}
+  #vp{flex:1;position:relative;}
+  h1{font-size:14px;color:#A8F7FF;}
+  .row{margin:6px 0;font-size:13px;}
+  button{background:rgba(168,247,255,0.1);border:1px solid rgba(168,247,255,0.3);color:#e8edf2;border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer;margin:2px 0;}
+  input[type=range]{width:100%;accent-color:#A8F7FF;}
+  #log{position:absolute;left:10px;bottom:10px;font-size:11px;color:#8DFFC8;background:rgba(0,0,0,.5);padding:4px 8px;border-radius:6px;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="side">
+    <h1>BodyAtlas harness</h1>
+    <div id="layers"></div>
+    <hr style="border-color:rgba(255,255,255,.1)">
+    <button onclick="A.enterBrainDetail()">🧠 Brain detail</button>
+    <button onclick="A.exitBrainDetail()">← Back to body</button>
+    <button onclick="A.resetView()">⟲ Reset</button>
+    <button onclick="A.setMode('sensation-picker')">Sensation-picker mode</button>
+    <button onclick="A.setMode('full')">Full mode</button>
+    <hr style="border-color:rgba(255,255,255,.1)">
+    <div class="row">Focus organ:</div>
+    <button onclick="A.focusOrgan('heart')">Heart</button>
+    <button onclick="A.focusOrgan('liver')">Liver</button>
+    <button onclick="A.focusOrgan('kidneys')">Kidneys</button>
+  </div>
+  <div id="vp"><div id="log">loading…</div></div>
+</div>
+<script src="assets/js/body-atlas.js?v=3"></script>
+<script>
+var A;
+var LAYERS=[['skin','#A8F7FF',true,50],['muscles','#8DFFC8',false,45],['skeleton','#E8FBFF',false,70],['nervous','#8DFFC8',false,80],['vessels','#FF8FA3',false,60],['organs','#FFCB8D',false,55],['brain','#6FE9F0',false,50]];
+function buildControls(){
+  var h=document.getElementById('layers');
+  LAYERS.forEach(function(L){
+    var d=document.createElement('div'); d.className='row';
+    d.innerHTML='<label><input type="checkbox" '+(L[2]?'checked':'')+' onchange="A.toggleLayer(\''+L[0]+'\',this.checked)"> <b style="color:'+L[1]+'">'+L[0]+'</b></label>'+
+      '<input type="range" min="0" max="100" value="'+L[3]+'" oninput="A.setLayerOpacity(\''+L[0]+'\',this.value/100)">';
+    h.appendChild(d);
+  });
+}
+buildControls();
+BodyAtlas.init(document.getElementById('vp'),{mode:'full'}).then(function(a){
+  A=a; window.A=a;
+  LAYERS.forEach(function(L){ a.toggleLayer(L[0],L[2]); a.setLayerOpacity(L[0],L[3]/100); });
+  a.on('region-hover',function(h){ document.getElementById('log').textContent = h? ('hover: '+(h.names? (h.names.ru||h.id):h.id)) : 'idle'; });
+  a.on('region-click',function(h){ document.getElementById('log').textContent = 'CLICK: '+(h.names? (h.names.ru||h.id):h.id); });
+  a.on('ready',function(){ document.getElementById('log').textContent='ready'; });
+  a.on('layer-loading',function(e){ document.getElementById('log').textContent='loading '+e.layer+'…'; });
+  a.on('layer-loaded',function(e){ document.getElementById('log').textContent='loaded '+e.layer+' ✓'; });
+  a.on('layer-error',function(e){ document.getElementById('log').textContent='ERR layer '+e.layer; });
+}).catch(function(e){ document.getElementById('log').textContent='ERR: '+e.message; });
+</script>
+</body>
+</html>

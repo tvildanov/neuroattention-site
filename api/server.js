@@ -834,6 +834,34 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_courses_published ON courses(is_published, order_idx)`;
 
+    // ── Tool access (017): tools catalogue + per-course grants ──
+    await sql`CREATE TABLE IF NOT EXISTS tools (
+      id SERIAL PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      name_ru TEXT, name_en TEXT, name_es TEXT,
+      description_ru TEXT, description_en TEXT, description_es TEXT,
+      icon_url TEXT,
+      is_free_default BOOLEAN DEFAULT FALSE,
+      order_idx INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`;
+    await sql`CREATE TABLE IF NOT EXISTS course_tools (
+      course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+      tool_id INTEGER REFERENCES tools(id) ON DELETE CASCADE,
+      PRIMARY KEY (course_id, tool_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_course_tools_tool ON course_tools(tool_id)`;
+    // Seed catalogue — existing tools free (no behaviour change); anatomy gated.
+    await sql`INSERT INTO tools (code, name_ru, name_en, name_es, description_ru, description_en, description_es, is_free_default, order_idx) VALUES
+      ('neuromap','NeuroMap','NeuroMap','NeuroMap','Граф ваших состояний и связей.','Graph of your states and links.','Grafo de tus estados y enlaces.',TRUE,1),
+      ('sensation-map','Карта ощущений','Sensation Map','Mapa de sensaciones','Где и что вы чувствуете в теле.','Where and what you feel in the body.','Dónde y qué sientes en el cuerpo.',TRUE,2),
+      ('diary','Дневник','Diary','Diario','Дневник нейроресурса.','Neuro-resource diary.','Diario de neurorrecurso.',TRUE,3),
+      ('point-ab','Точка А → B','Point A → B','Punto A → B','Карта перехода из точки А в точку B.','Map your shift from point A to B.','Mapa de tu cambio de A a B.',TRUE,4),
+      ('external-field','External Field','External Field','External Field','Объективные сигналы внешней среды.','Objective environmental signals.','Señales objetivas del entorno.',TRUE,5),
+      ('evolution-path','Путь развития','Evolution Path','Camino de evolución','Ваш персональный путь развития.','Your personal evolution path.','Tu camino de evolución personal.',TRUE,6),
+      ('anatomy-atlas','Анатомический атлас','Anatomy Atlas','Atlas anatómico','Интерактивное 3D-тело: слои, мозг, органы.','Interactive 3D body: layers, brain, organs.','Cuerpo 3D interactivo: capas, cerebro, órganos.',FALSE,7)
+      ON CONFLICT (code) DO NOTHING`;
+
     await sql`CREATE TABLE IF NOT EXISTS course_blocks (
       id SERIAL PRIMARY KEY,
       course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
@@ -4954,6 +4982,126 @@ async function getUserAccessTags(userId) {
   for (const r of rows) if (map[r.product]) tags.add(map[r.product]);
   return Array.from(tags);
 }
+
+// ── Tool access (017) ──────────────────────────────────────────────────────
+// A tool is available to a user when it is free-by-default, or when the user
+// has access to ≥1 published course that includes it (course access reuses the
+// same program_access ∩ user-access-tags rule as /api/courses). Admins: all.
+async function getUserToolAccess(userId) {
+  const out = {}; // code -> { unlocked, free, unlock_course:{name_ru,...}|null }
+  const tools = await sql`SELECT * FROM tools ORDER BY order_idx ASC, id ASC`;
+  const [me] = await sql`SELECT role FROM users WHERE id = ${userId}`;
+  const isAdmin = me && ['superadmin', 'founder', 'admin'].includes(me.role);
+  const access = await getUserAccessTags(userId);
+  // courses the user can access (published + program_access gate)
+  const courses = await sql`
+    SELECT id, name_ru, name_en, name_es, program_access FROM courses WHERE is_published = true`;
+  const accessibleCourseIds = new Set();
+  courses.forEach(c => {
+    const pa = c.program_access || [];
+    if (isAdmin || pa.length === 0 || pa.some(t => access.includes(t))) accessibleCourseIds.add(c.id);
+  });
+  // course_tools map: tool_id -> [course rows]
+  const links = await sql`SELECT ct.tool_id, c.id, c.name_ru, c.name_en, c.name_es, c.program_access, c.is_published
+    FROM course_tools ct JOIN courses c ON c.id = ct.course_id`;
+  const byTool = {};
+  links.forEach(l => { (byTool[l.tool_id] = byTool[l.tool_id] || []).push(l); });
+  tools.forEach(t => {
+    let unlocked = isAdmin || !!t.is_free_default;
+    let unlockCourse = null;
+    const linked = byTool[t.id] || [];
+    for (const l of linked) {
+      if (accessibleCourseIds.has(l.id)) { unlocked = true; break; }
+      if (l.is_published && !unlockCourse) unlockCourse = { name_ru: l.name_ru, name_en: l.name_en, name_es: l.name_es };
+    }
+    out[t.code] = { unlocked, free: !!t.is_free_default, unlock_course: unlocked ? null : unlockCourse, tool: t };
+  });
+  return out;
+}
+// Express gate helper for tool-specific endpoints → 403 if locked.
+async function requireToolAccess(req, res, toolCode) {
+  const userId = req.user.sub || req.user.id;
+  const acc = await getUserToolAccess(userId);
+  if (acc[toolCode] && acc[toolCode].unlocked) return true;
+  res.status(403).json({ error: 'tool_locked', tool: toolCode, unlock_course: acc[toolCode] ? acc[toolCode].unlock_course : null });
+  return false;
+}
+
+// GET /api/tools — user-facing catalogue with unlocked flags
+app.get('/api/tools', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const acc = await getUserToolAccess(userId);
+    const tools = Object.keys(acc).map(code => ({
+      code,
+      name_ru: acc[code].tool.name_ru, name_en: acc[code].tool.name_en, name_es: acc[code].tool.name_es,
+      description_ru: acc[code].tool.description_ru, description_en: acc[code].tool.description_en, description_es: acc[code].tool.description_es,
+      icon_url: acc[code].tool.icon_url, order_idx: acc[code].tool.order_idx,
+      unlocked: acc[code].unlocked, free: acc[code].free, unlock_course: acc[code].unlock_course
+    })).sort((a, b) => (a.order_idx - b.order_idx));
+    res.json({ tools });
+  } catch (err) { console.error('GET /api/tools:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/tools/:code/access — single-tool gate check (used by client before opening)
+app.get('/api/tools/:code/access', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const acc = await getUserToolAccess(userId);
+    const t = acc[req.params.code];
+    if (!t) return res.status(404).json({ error: 'unknown_tool' });
+    res.json({ code: req.params.code, unlocked: t.unlocked, free: t.free, unlock_course: t.unlock_course });
+  } catch (err) { console.error('GET tool access:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Admin: tools catalogue + per-course grants ──
+app.get('/api/admin/tools', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const tools = await sql`SELECT * FROM tools ORDER BY order_idx ASC, id ASC`;
+    res.json({ tools });
+  } catch (err) { console.error('GET admin tools:', err); res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/admin/tools/:id', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id, 10);
+    const b = req.body || {};
+    const [row] = await sql`UPDATE tools SET
+      is_free_default = COALESCE(${b.is_free_default !== undefined ? !!b.is_free_default : null}, is_free_default),
+      name_ru = COALESCE(${b.name_ru ?? null}, name_ru),
+      name_en = COALESCE(${b.name_en ?? null}, name_en),
+      name_es = COALESCE(${b.name_es ?? null}, name_es)
+      WHERE id = ${id} RETURNING *`;
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json({ tool: row });
+  } catch (err) { console.error('PATCH tool:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET tool ids attached to a course
+app.get('/api/admin/courses/:id/tools', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id, 10);
+    const rows = await sql`SELECT tool_id FROM course_tools WHERE course_id = ${id}`;
+    res.json({ tool_ids: rows.map(r => r.tool_id) });
+  } catch (err) { console.error('GET course tools:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PUT — replace the set of tools attached to a course
+app.put('/api/admin/courses/:id/tools', requireAuth, async (req, res) => {
+  try {
+    if (!await callerIsAdmin(req)) return res.status(403).json({ error: 'Forbidden' });
+    const id = parseInt(req.params.id, 10);
+    const ids = Array.isArray(req.body && req.body.tool_ids) ? req.body.tool_ids.map(n => parseInt(n, 10)).filter(Number.isFinite) : [];
+    await sql`DELETE FROM course_tools WHERE course_id = ${id}`;
+    for (const tid of ids) {
+      await sql`INSERT INTO course_tools (course_id, tool_id) VALUES (${id}, ${tid}) ON CONFLICT DO NOTHING`;
+    }
+    res.json({ ok: true, tool_ids: ids });
+  } catch (err) { console.error('PUT course tools:', err); res.status(500).json({ error: err.message }); }
+});
 
 // GET /api/courses — list published courses available to the caller (gated by their access tags)
 app.get('/api/courses', requireAuth, async (req, res) => {
