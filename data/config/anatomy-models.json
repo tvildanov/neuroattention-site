@@ -13,6 +13,7 @@
     "vessels":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/vessels.glb",
     "organs":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/organs.glb"
   },
+  "brainDetail": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/brain-detail.glb",
   "extra": {
     "joints":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/joints.glb",
     "lymph":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/lymph.glb",
