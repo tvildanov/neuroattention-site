@@ -14012,6 +14012,20 @@ window.pbMove = pbMove;
 
   function lang(){ try{ return (window.currentLang||window.__lang||localStorage.getItem('na_lang')||document.documentElement.lang||'ru').slice(0,2); }catch(e){ return 'ru'; } }
   function pickName(names){ if(!names) return ''; return names[lang()]||names.ru||names.en||''; }
+  // Tooltip / panel format: "Latin/English — localized" when a translation exists
+  // and differs from the Latin term; otherwise the Latin term alone (honest — no
+  // fake translation for the long tail of Z-Anatomy regions).
+  function fmtName(names){
+    if(!names) return '';
+    var en = names.en || names.ru || '';
+    var loc = names[lang()] || '';
+    if(loc && loc !== en) return en + ' — ' + loc;
+    return en || loc;
+  }
+  function layerLabel(key){
+    var L = LAYERS.filter(function(x){return x.key===key;})[0];
+    return L ? (L[lang()]||L.en||key) : (key||'');
+  }
 
   var atlas = null, mounted = false;
 
@@ -14081,7 +14095,7 @@ window.pbMove = pbMove;
   function onHover(hit){
     var tip = document.getElementById('atlas-tooltip'); if(!tip) return;
     if(hit && hit.names){
-      tip.textContent = pickName(hit.names);
+      tip.textContent = fmtName(hit.names);
       var vp = document.getElementById('atlas-viewport').getBoundingClientRect();
       // position via last mouse — use event from BodyAtlas point projection fallback: center-top
       tip.style.display='block';
@@ -14091,11 +14105,15 @@ window.pbMove = pbMove;
   function onClick(hit){
     if(!hit) return;
     var p = document.getElementById('atlas-region-panel');
-    document.getElementById('arp-name').textContent = pickName(hit.names) || hit.id;
-    var grp = hit.object && hit.object.userData ? (hit.object.userData.group||hit.object.userData.layer||'') : '';
+    document.getElementById('arp-name').textContent = fmtName(hit.names) || hit.id;
+    var ud = hit.object && hit.object.userData ? hit.object.userData : {};
+    // brain procedural regions carry a sub-group (cortex/limbic/…); real layers
+    // show their layer name (muscles / skeleton / vessels / organs / nervous).
+    var grp = ud.group ? ud.group : layerLabel(hit.layer || ud.layer || '');
     document.getElementById('arp-group').textContent = grp;
     var d = REGION_DESC[hit.id];
-    document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : '';
+    var ph = lang()==='en' ? 'Description coming soon.' : lang()==='es' ? 'Descripción próximamente.' : 'Описание скоро появится.';
+    document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : ph;
     document.getElementById('arp-back').style.display = (atlas && atlas._brainDetail) ? '' : 'none';
     p.classList.add('open');
   }

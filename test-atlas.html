@@ -53,11 +53,12 @@ buildControls();
 BodyAtlas.init(document.getElementById('vp'),{mode:'full'}).then(function(a){
   A=a; window.A=a;
   LAYERS.forEach(function(L){ a.toggleLayer(L[0],L[2]); a.setLayerOpacity(L[0],L[3]/100); });
-  a.on('region-hover',function(h){ document.getElementById('log').textContent = h? ('hover: '+(h.names? (h.names.ru||h.id):h.id)) : 'idle'; });
-  a.on('region-click',function(h){ document.getElementById('log').textContent = 'CLICK: '+(h.names? (h.names.ru||h.id):h.id); });
+  function fmt(h){ if(!h) return 'idle'; var n=h.names||{}; var en=n.en||h.id; return n.ru&&n.ru!==en ? (en+' — '+n.ru) : en; }
+  a.on('region-hover',function(h){ document.getElementById('log').textContent = h? ('hover ['+(h.layer||'?')+']: '+fmt(h)) : 'idle'; });
+  a.on('region-click',function(h){ document.getElementById('log').textContent = 'CLICK ['+(h.layer||'?')+']: '+fmt(h); });
   a.on('ready',function(){ document.getElementById('log').textContent='ready'; });
   a.on('layer-loading',function(e){ document.getElementById('log').textContent='loading '+e.layer+'…'; });
-  a.on('layer-loaded',function(e){ document.getElementById('log').textContent='loaded '+e.layer+' ✓'; });
+  a.on('layer-loaded',function(e){ document.getElementById('log').textContent='loaded '+e.layer+' ✓ ('+(e.regions||0)+' regions)'; });
   a.on('layer-error',function(e){ document.getElementById('log').textContent='ERR layer '+e.layer; });
 }).catch(function(e){ document.getElementById('log').textContent='ERR: '+e.message; });
 </script>
