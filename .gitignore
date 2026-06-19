@@ -2,3 +2,9 @@ node_modules/
 .env
 .DS_Store
 reports/
+
+# anatomy build artifact (regenerate via tools/gen_regions_index.py)
+data/anatomy/regions-index.json
+
+# python bytecode
+tools/__pycache__/
