@@ -14,7 +14,7 @@ import bpy, os, re
 SRC = os.environ.get('BRAIN_SRC', '/tmp/nervous.glb')
 OUT = os.environ.get('BRAIN_OUT', '/tmp/brain-output/brain-detail.glb')
 
-EXCLUDE = re.compile(r'(nerve|plexus|ganglion|ganglia|sympathetic trunk|\brami\b|root of|spinal|\bcord\b|cauda|eyeball|cornea|\biris\b|\blens\b|retina|sclera|cochlea|vestibul|tympanic|auditory|nasolacrimal|lacrimal|\bpupil|ciliary|ophthalmic|zonular|vitreous|conjunctiva|eyelid|\borbit\b|meninges|\bdura\b|falx|tentorium|choroid plexus|ependyma|arachnoid|auditory tube|ampulla|semicircular|bony limb|\bmembrane\b|chamber of eyeball|pole of eyeball|segment of eyeball|suspensory|chorda|ventricle|white matter of telencephalon|fasciculus proprius|corticospinal|spinothalamic|reticulospinal|vestibulospinal|rubrospinal|tectospinal|spinotectal|posterolateral tract|cuneate fasciculus|gracile fasciculus|central canal|nucleus proprius|intermediolateral|intermediomedial|lateral intermediate substance)', re.I)
+EXCLUDE = re.compile(r'(nerve|plexus|ganglion|ganglia|sympathetic trunk|\brami\b|root of|spinal|\bcord\b|cauda|eyeball|cornea|\biris\b|\blens\b|retina|sclera|cochlea|vestibul|tympanic|auditory|nasolacrimal|lacrimal|\bpupil|ciliary|ophthalmic|zonular|vitreous|conjunctiva|eyelid|\borbit\b|meninges|\bdura\b|falx|tentorium|choroid plexus|ependyma|arachnoid|auditory tube|ampulla|semicircular|bony limb|\bmembrane\b|chamber of eyeball|pole of eyeball|segment of eyeball|suspensory|chorda|ventricle|white matter of telencephalon|fasciculus proprius|corticospinal|spinocerebellar|spinothalamic|reticulospinal|vestibulospinal|rubrospinal|tectospinal|spinotectal|posterolateral tract|cuneate fasciculus|gracile fasciculus|central canal|nucleus proprius|intermediolateral|intermediomedial|lateral intermediate substance)', re.I)
 
 def classify(raw):
     n = raw.strip().lower()
@@ -47,6 +47,18 @@ def classify(raw):
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=SRC)
+
+# Flatten parenting while preserving world transforms. Z-Anatomy nests deep
+# midline meshes (fornix, corpus callosum, commissures) under placeholder ".j"
+# parent meshes that carry a transform; deleting those parents below would
+# otherwise drop the children to the origin. Baking world transforms first
+# makes every deletion positionally safe.
+for o in bpy.context.scene.objects:
+    o.select_set(True)
+if bpy.context.scene.objects:
+    bpy.context.view_layer.objects.active = bpy.context.scene.objects[0]
+    bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+    bpy.ops.object.select_all(action='DESELECT')
 
 kept, dropped = [], 0
 for obj in list(bpy.context.scene.objects):
