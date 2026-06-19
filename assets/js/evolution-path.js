@@ -1010,6 +1010,16 @@
     return title || (OVERLAY_LABEL[layer] ? (OVERLAY_LABEL[layer][lang] || OVERLAY_LABEL[layer].ru) : layer);
   }
   function hideOverlayTip() { var tp = document.getElementById('evo-ov-tip'); if (tp) tp.style.display = 'none'; }
+  // 3.2: ONE tooltip element + show/hide, shared by the personal overlay markers
+  // AND the collective path's node hover (via window.EvolutionPath). No duplicate
+  // DOM/style — both paths render the visually-identical chip.
+  function showSharedTip(clientX, clientY, text, color) {
+    var tip = document.getElementById('evo-ov-tip');
+    if (!tip) { tip = document.createElement('div'); tip.id = 'evo-ov-tip'; tip.style.cssText = 'position:fixed;z-index:10050;pointer-events:none;background:rgba(10,14,20,0.97);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:4px 9px;font:11px Inter,system-ui,sans-serif;color:#dfe;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,0.5);'; document.body.appendChild(tip); }
+    tip.style.borderColor = (color || '#8fd0ff') + '66';
+    tip.textContent = text;
+    tip.style.left = (clientX + 12) + 'px'; tip.style.top = (clientY - 10) + 'px'; tip.style.display = 'block';
+  }
   // PR FIX #8: track the hovered node so only its label is drawn.
   function nodeHover(S, lx, ly) {
     var st = S.st, nodes = (st && st._nodes) || [], best = null, bd = 1e9;
@@ -1020,12 +1030,8 @@
   function overlayHover(S, lx, ly, clientX, clientY, lang) {
     var st = S.st, nodes = (st && st._overlayNodes) || [], hit = null;
     for (var i = 0; i < nodes.length; i++) { if (Math.hypot(nodes[i].x - lx, nodes[i].y - ly) < 9) { hit = nodes[i]; break; } }
-    var tip = document.getElementById('evo-ov-tip');
-    if (!hit) { if (tip) tip.style.display = 'none'; return; }
-    if (!tip) { tip = document.createElement('div'); tip.id = 'evo-ov-tip'; tip.style.cssText = 'position:fixed;z-index:10050;pointer-events:none;background:rgba(10,14,20,0.97);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:4px 9px;font:11px Inter,system-ui,sans-serif;color:#dfe;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,0.5);'; document.body.appendChild(tip); }
-    tip.style.borderColor = (hit.color || '#8fd0ff') + '66';
-    tip.textContent = buildOverlayPhrase(hit.ev, hit.layer, lang);
-    tip.style.left = (clientX + 12) + 'px'; tip.style.top = (clientY - 10) + 'px'; tip.style.display = 'block';
+    if (!hit) { hideOverlayTip(); return; }
+    showSharedTip(clientX, clientY, buildOverlayPhrase(hit.ev, hit.layer, lang), hit.color);
   }
   function showOverlayCard(container, marker, lang) {
     var host = container.querySelector('.myc-evo-canvas') || container;
@@ -2171,26 +2177,70 @@
     // components laid out in local px (offsets from the spine anchor).
     buildSpine: function (events, half) { return buildTunnelComponents(events || [], half || 22); },
     nodeR: nodeR,
+    // 3.2: tooltip text for a node — same source (prettyTitle) as the personal
+    // path's hover label, plus the date, so the two read identically.
+    tipText: function (e, lang) {
+      var ttl = prettyTitle(e, lang || 'ru'), dt = '';
+      try { dt = fmtAxis(e.t, lang || 'ru'); } catch (_) {}
+      return dt ? (ttl + ' · ' + dt) : ttl;
+    },
+    showTip: showSharedTip,
+    hideTip: hideOverlayTip,
     // render pre-built components into a horizontal band centred at o.cy. Slim
     // layout for the collective: no per-node glow (perf across many spines).
-    // o = { sx, cy, x0, x1, zoom?, vScale?, rZ?, hidden?, dim?, nodesOut?, row? }
+    // o = { sx, cy, x0, x1, zoom?, bandHalf?, rZ?, timeZoom?, hidden?, dim?,
+    //       nodesOut?, row? }
+    //   • bandHalf  — vertical half-height available to this spine (anti-collision
+    //     cap; branches never spread past it into the neighbouring spine).
+    //   • timeZoom  — PACK 3.1 zoom factor inherited from the time axis: zoom-in
+    //     lengthens branches, fans them taller (toward bandHalf) and grows nodes.
     drawSlimSpine: function (ctx, comps, o) {
       if (!comps || !comps.length) return;
-      var sx = o.sx, cy = o.cy, x0 = o.x0, x1 = o.x1, Z = o.zoom || 1, vS = o.vScale || 1, rZ = o.rZ || 1;
+      var sx = o.sx, cy = o.cy, x0 = o.x0, x1 = o.x1;
       var hidden = o.hidden || {}, dim = o.dim == null ? 1 : o.dim;
+      var tZ = o.timeZoom || 1;
+      var bandHalf = o.bandHalf || (22 * (o.vScale || 1));
+      // local vertical extent of this user's branches (cache on the comps array)
+      if (comps._maxLy == null) {
+        var mly = 0;
+        for (var c0 = 0; c0 < comps.length; c0++) { var nn0 = comps[c0].nodes; for (var n0 = 0; n0 < nn0.length; n0++) { var a0 = Math.abs(nn0[n0].ly); if (a0 > mly) mly = a0; } }
+        comps._maxLy = mly || 1;
+      }
+      // STEP 2 adaptive density — measure crowding as the max number of visible
+      // chains sharing a ~40px time-bucket on THIS spine.
+      var bkt = {}, dens = 1, visN = 0;
+      for (var d0 = 0; d0 < comps.length; d0++) { var axd = sx(comps[d0].anchorT); if (axd < x0 - 30 || axd > x1 + 30) continue; visN++; var bk = Math.floor(axd / 40); bkt[bk] = (bkt[bk] || 0) + 1; if (bkt[bk] > dens) dens = bkt[bk]; }
+      // vertical fill: map the tallest branch to a fraction of the band that grows
+      // with crowding AND with zoom-in, but never past the band (anti-collision).
+      // Sparse spines (base ≈0.58) leave headroom; crowded/zoomed ones fan to fill.
+      var fit = bandHalf / comps._maxLy;
+      var base = dens > 4 ? 0.92 : dens > 2 ? 0.82 : dens > 1 ? 0.70 : 0.58;
+      var vS = Math.min(fit, fit * base * Math.max(1, tZ));
+      // horizontal: compress crowded spines so branches stay tidy; lengthen on
+      // zoom-in (3.1 inheritance).
+      var hAdj = dens > 4 ? 0.68 : dens > 2 ? 0.84 : 1.0;
+      var hZ = (o.zoom || 1) * hAdj * Math.max(1, tZ * 0.7);
+      var rZ = (o.rZ || 1) * Math.min(1.8, Math.max(1, tZ));
+      // priority sampling: at extreme crowding drop filler singleton chains (a lone
+      // low-weight, non-insight/practice event) so the key branches stay readable.
+      var dropFiller = dens > 5 && visN > 14;
       for (var ci = 0; ci < comps.length; ci++) {
         var comp = comps[ci], ax = sx(comp.anchorT);
-        if (ax + comp.maxX * Z < x0 - 30 || ax > x1 + 30) continue;
+        if (ax + comp.maxX * hZ < x0 - 30 || ax > x1 + 30) continue;
+        if (dropFiller && comp.nodes.length === 1) {
+          var fe = comp.nodes[0].e;
+          if (fe && fe.layer !== 'insight' && fe.layer !== 'practice' && fe.valence !== 'positive' && (fe.weight || 1) <= 2) continue;
+        }
         for (var si = 0; si < comp.segs.length; si++) {
           var sg = comp.segs[si]; if (sg.layer && hidden[sg.layer]) continue;
           var spts = sg.pts, scr = [];
-          for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x * Z, y: cy + spts[pi].y * vS });
+          for (var pi = 0; pi < spts.length; pi++) scr.push({ x: ax + spts[pi].x * hZ, y: cy + spts[pi].y * vS });
           ctx.globalAlpha = 0.55 * dim; strokePolyline(ctx, scr, 'rgba(255,255,255,0.5)', 1.4, 0.5);
           strokePolyline(ctx, scr, cvLayerFill(sg.layer, sg.val), 1, 0.85); ctx.globalAlpha = 1;
         }
         for (var ni = 0; ni < comp.nodes.length; ni++) {
           var nd = comp.nodes[ni], e = nd.e; if (e.layer && hidden[e.layer]) continue;
-          var nx = ax + nd.lx * Z, ny = cy + nd.ly * vS, ndr = nd.r * rZ;
+          var nx = ax + nd.lx * hZ, ny = cy + nd.ly * vS, ndr = nd.r * rZ;
           ctx.globalAlpha = dim; drawNodeCv(ctx, e.layer, nx, ny, ndr, cvLayerFill(e.layer, e.valence), false); ctx.globalAlpha = 1;
           if (o.nodesOut) o.nodesOut.push({ x: nx, y: ny, r: ndr, e: e, row: o.row });
         }
