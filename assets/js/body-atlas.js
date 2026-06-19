@@ -46,6 +46,59 @@
     return _cfgPromise;
   }
 
+  // Lazy anatomy data: localized region names (ru/es) + the CNS exclusion list
+  // for the nervous layer. Loaded once, the first time any real layer streams.
+  var ANAT_I18N_RU = 'data/i18n/anatomy/ru.json';
+  var ANAT_I18N_ES = 'data/i18n/anatomy/es.json';
+  var NERVOUS_CNS  = 'data/anatomy/nervous-cns-meshes.json';
+  var _anatPromise = null;
+  function loadAnatomyData() {
+    if (_anatPromise) return _anatPromise;
+    function j(u) { return fetch(u).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
+    _anatPromise = Promise.all([j(ANAT_I18N_RU), j(ANAT_I18N_ES), j(NERVOUS_CNS)])
+      .then(function (res) {
+        var cns = {};
+        if (res[2] && res[2].cns_meshes) res[2].cns_meshes.forEach(function (n) { cns[n] = 1; });
+        return { ru: res[0] || {}, es: res[1] || {}, cns: cns };
+      });
+    return _anatPromise;
+  }
+
+  // ── anatomical name parsing ────────────────────────────────────────────────
+  // Mirrors tools/gen_regions_index.py parse_name() BYTE-FOR-BYTE so engine slugs
+  // and the generated i18n keys always agree. Z-Anatomy laterality / attachment
+  // markers are a trailing ".<token>" (l/r/j/i, el/er/ol/or, e1l…); side = last
+  // char when l/r, else no laterality. Real names are already clean Latin/English.
+  // THREE.GLTFLoader runs PropertyBinding.sanitizeNodeName on every node name:
+  // spaces → "_", and reserved chars ([ ] . : /) are stripped. That destroys the
+  // ".l/.r/.j" markers ("fascia.l" → "fascial"), so we recover the RAW node name
+  // from gltf.parser.json.nodes via this same transform before parsing.
+  function sanitizeNodeName(name) {
+    return String(name).replace(/\s/g, '_').replace(/[\[\]\.:\/]/g, '');
+  }
+
+  var _ANAT_MARKER = /\.([a-z][a-z0-9]{0,2})$/;
+  function parseAnatName(layer, name) {
+    var s = (name || '').trim();
+    var side = null;
+    var m = _ANAT_MARKER.exec(s);
+    if (m) {
+      var marker = m[1];
+      s = s.slice(0, m.index);
+      if (marker.charAt(marker.length - 1) === 'l' && marker !== 'j') side = 'l';
+      else if (marker.charAt(marker.length - 1) === 'r') side = 'r';
+    }
+    var displayEn = s.trim();
+    var slug = displayEn.toLowerCase()
+      .replace(/[''`’]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!slug) return { regionId: '', baseSlug: '', displayEn: '', side: null };
+    var baseSlug = layer + '_' + slug;
+    var regionId = baseSlug + (side === 'l' ? '_left' : side === 'r' ? '_right' : '');
+    return { regionId: regionId, baseSlug: baseSlug, displayEn: displayEn, side: side };
+  }
+
   // per-layer x-ray styling for streamed real meshes (no purple; mycelium tokens
   // + warm accents to tell vessels/organs apart)
   var LAYER_STYLE = {
@@ -608,7 +661,9 @@
     var self = this, T = window.THREE;
     if (!this._real) this._real = {};
     if (this._real[name]) return this._real[name];     // already loading/loaded
-    this._real[name] = loadModelsConfig().then(function (cfg) {
+    this._real[name] = Promise.all([loadModelsConfig(), loadAnatomyData()]).then(function (arr) {
+      var cfg = arr[0], anat = arr[1];
+      if (anat) self._anat = anat;     // {ru, es, cns} cached for name resolution
       if (!cfg || !cfg.layers || !cfg.layers[name]) return null;   // no real source → keep procedural
       var url = cfg.layers[name];
       return new Promise(function (resolve) {
@@ -624,12 +679,38 @@
         loader.load(url, function (gltf) {
           var grp = new T.Group(); grp.name = name + '-real';
           var style = LAYER_STYLE[name] || { color: COLD_CYAN, opacity: 0.5, glow: 0.7 };
+          var cns = (self._anat && self._anat.cns) || {};
+          var tagged = 0;
+          // sanitized→raw node-name map, so we can undo GLTFLoader's name mangling
+          var rawByClean = {};
+          try {
+            var nodes = gltf.parser && gltf.parser.json && gltf.parser.json.nodes;
+            if (nodes) nodes.forEach(function (nd) { if (nd && nd.name) rawByClean[sanitizeNodeName(nd.name)] = nd.name; });
+          } catch (e) { /* fall back to o.name below */ }
           gltf.scene.traverse(function (o) {
-            if (o.isMesh && o.geometry) o.material = makeXrayMaterial(style);
+            if (!(o.isMesh && o.geometry)) return;
+            o.material = makeXrayMaterial(style);
+            // Tag every named mesh as an individual hit-testable region. Recover
+            // the raw anatomical node name (with its .l/.r/.j marker) from the
+            // parser json; fall back to the sanitized name or a named ancestor.
+            var rawName = rawByClean[o.name] || (o.parent && rawByClean[o.parent.name]) || o.name || (o.parent && o.parent.name) || '';
+            var p = parseAnatName(name, rawName);
+            if (!p.baseSlug) return;     // garbage / unnamed mesh → not clickable
+            o.userData.regionId = p.regionId;
+            o.userData.baseSlug = p.baseSlug;
+            o.userData.displayEn = p.displayEn;
+            o.userData.side = p.side;
+            o.userData.originalName = rawName;
+            o.userData.layer = name;
+            // nervous CNS (brain/brainstem/cerebellum/cord nuclei) is the parallel
+            // brain-detail session's domain — render it, but don't hit-test it here.
+            if (name === 'nervous' && cns[rawName]) o.userData.isBrain = true;
+            tagged++;
           });
+          console.log('[BodyAtlas] ' + name + ': ' + tagged + ' named regions');
           grp.add(gltf.scene);
           self._swapRealLayer(name, grp);
-          self._emit('layer-loaded', { layer: name });
+          self._emit('layer-loaded', { layer: name, regions: tagged });
           resolve(grp);
         }, undefined, function (err) {
           console.warn('[BodyAtlas] real layer load failed: ' + name, err);
@@ -785,25 +866,51 @@
     for (var i = 0; i < hits.length; i++) {
       var o = hits[i].object;
       while (o && (!o.userData || !o.userData.regionId)) o = o.parent;
-      if (o && o.userData && o.userData.regionId) return { id: o.userData.regionId, names: o.userData.names, object: o, point: hits[i].point };
+      if (o && o.userData && o.userData.regionId) {
+        // CNS meshes are non-interactive outside brain-detail (their geometry is
+        // still ray-hit, so skip them here and let the loop continue past).
+        if (o.userData.isBrain && !this._brainDetail) continue;
+        return { id: o.userData.regionId, names: this._regionNames(o.userData), object: o, point: hits[i].point, layer: o.userData.layer };
+      }
     }
     return null;
   };
 
+  // Resolve a region's display names. Procedural regions carry an explicit
+  // userData.names {ru,en,es}; streamed Z-Anatomy meshes resolve on the fly:
+  // en = humanized Latin (+ left/right), ru/es from the lazy dictionary (+ a
+  // localized side label) — undefined when no translation exists, so the UI
+  // honestly shows the Latin term alone rather than a wrong guess.
+  Atlas.prototype._regionNames = function (ud) {
+    if (ud.names) return ud.names;
+    var sideEn = ud.side === 'l' ? ' (left)' : ud.side === 'r' ? ' (right)' : '';
+    var en = (ud.displayEn || ud.originalName || ud.regionId) + sideEn;
+    var dict = this._anat || {};
+    var ru = dict.ru && dict.ru[ud.baseSlug];
+    var es = dict.es && dict.es[ud.baseSlug];
+    var sideRu = ud.side === 'l' ? ' (левая)' : ud.side === 'r' ? ' (правая)' : '';
+    var sideEs = ud.side === 'l' ? ' (izq.)' : ud.side === 'r' ? ' (der.)' : '';
+    return { en: en, ru: ru ? ru + sideRu : undefined, es: es ? es + sideEs : undefined };
+  };
+
   Atlas.prototype._hittableMeshes = function () {
-    var arr = [];
+    var self = this, arr = [];
     if (this._brainDetail && this._brainGroup) {
       this._brainGroup.children.forEach(function (o) { if (o.isMesh && o.userData && o.userData.regionId) arr.push(o); });
-    } else {
-      // body-level regions: spine segments, muscles, spinal cord
-      var self = this;
-      ['skeleton', 'muscles', 'nervous'].forEach(function (ln) {
-        var grp = self._layers[ln]; if (!grp || !grp.visible) return;
-        grp.traverse(function (o) { if ((o.isMesh || o.isGroup) && o.userData && o.userData.regionId) arr.push(o); });
-      });
-      // skin head → brain entry
-      if (this._layers.skin && this._layers.skin.visible) arr.push(this._layers.skin);
+      return arr;
     }
+    // Every visible loaded layer contributes its named meshes — generic per-mesh
+    // hit-testing across skin/muscles/skeleton/nervous/vessels/organs.
+    Object.keys(this._layers).forEach(function (ln) {
+      if (ln === 'brain') return;            // brain only in detail mode (above)
+      var grp = self._layers[ln]; if (!grp || !grp.visible) return;
+      grp.traverse(function (o) {
+        if (!(o.isMesh || o.isGroup)) return;
+        if (o.userData && o.userData.regionId) arr.push(o);
+      });
+    });
+    // skin head → brain entry (procedural skin has no per-mesh regions)
+    if (this._layers.skin && this._layers.skin.visible) arr.push(this._layers.skin);
     return arr;
   };
 
