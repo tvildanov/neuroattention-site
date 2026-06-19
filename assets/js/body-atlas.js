@@ -729,8 +729,12 @@
   Atlas.prototype._frameBrain = function () {
     if (!this._brainCenter) return;
     var T = window.THREE;
-    this._tweenCamera(this._brainCenter.clone().add(new T.Vector3(0, 0, this._brainRadius * 6)), this._brainCenter.clone());
-    if (this.controls) this.controls.minDistance = this._brainRadius * 2;
+    // fit the brain's bounding sphere to the vertical FOV (+ margin) so it fills
+    // the view regardless of viewport aspect, instead of a fixed radius multiple.
+    var fov = ((this.camera && this.camera.fov) || 38) * Math.PI / 180;
+    var dist = (this._brainRadius / Math.sin(fov / 2)) * 1.35;
+    this._tweenCamera(this._brainCenter.clone().add(new T.Vector3(0, 0, dist)), this._brainCenter.clone());
+    if (this.controls) this.controls.minDistance = this._brainRadius * 1.1;
   };
 
   // ── layer config / visibility / opacity ────────────────────────────────────
