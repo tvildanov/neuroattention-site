@@ -859,8 +859,42 @@ app.post('/api/run-migrations', async (req, res) => {
       ('point-ab','Точка А → B','Point A → B','Punto A → B','Карта перехода из точки А в точку B.','Map your shift from point A to B.','Mapa de tu cambio de A a B.',TRUE,4),
       ('external-field','External Field','External Field','External Field','Объективные сигналы внешней среды.','Objective environmental signals.','Señales objetivas del entorno.',TRUE,5),
       ('evolution-path','Путь развития','Evolution Path','Camino de evolución','Ваш персональный путь развития.','Your personal evolution path.','Tu camino de evolución personal.',TRUE,6),
-      ('anatomy-atlas','Анатомический атлас','Anatomy Atlas','Atlas anatómico','Интерактивное 3D-тело: слои, мозг, органы.','Interactive 3D body: layers, brain, organs.','Cuerpo 3D interactivo: capas, cerebro, órganos.',FALSE,7)
+      ('anatomy-atlas','Анатомический атлас','Anatomy Atlas','Atlas anatómico','Интерактивное 3D-тело: слои, мозг, органы.','Interactive 3D body: layers, brain, organs.','Cuerpo 3D interactivo: capas, cerebro, órganos.',FALSE,7),
+      ('anatomy-functions','Функции тела','Body Functions','Funciones del cuerpo','Какие регионы и контуры стоят за каждой функцией тела.','Which regions and circuits power each body function.','Que regiones y circuitos sostienen cada funcion del cuerpo.',FALSE,8)
       ON CONFLICT (code) DO NOTHING`;
+
+    // PACK F1 / B9: Body-Functions library + region relations + named circuits.
+    // Tables created on boot; the rich seed lives in migrations/018 (run via the
+    // migration runner). Mirrors how anatomy-atlas was introduced.
+    await sql`CREATE TABLE IF NOT EXISTS anatomy_circuits (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      name_en TEXT NOT NULL, name_ru TEXT, name_es TEXT,
+      description_en TEXT, description_ru TEXT, description_es TEXT,
+      region_ids TEXT[] NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`;
+    await sql`CREATE TABLE IF NOT EXISTS anatomy_region_relations (
+      id SERIAL PRIMARY KEY,
+      region_a TEXT NOT NULL, region_b TEXT NOT NULL,
+      relation_type TEXT NOT NULL DEFAULT 'functional',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (region_a, region_b, relation_type)
+    )`;
+    await sql`CREATE TABLE IF NOT EXISTS anatomy_functions (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      name_en TEXT NOT NULL, name_ru TEXT, name_es TEXT,
+      description_en TEXT NOT NULL, description_ru TEXT, description_es TEXT,
+      category TEXT,
+      region_ids TEXT[] NOT NULL DEFAULT '{}',
+      circuit_ids INTEGER[] DEFAULT '{}',
+      tags TEXT[] DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_slug ON anatomy_functions(slug)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_tags ON anatomy_functions USING GIN(tags)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_cat ON anatomy_functions(category)`;
 
     await sql`CREATE TABLE IF NOT EXISTS course_blocks (
       id SERIAL PRIMARY KEY,
@@ -7513,6 +7547,72 @@ function startExternalPoller() {
   });
   console.log('[ext] External Field poller started');
 }
+
+// ── PACK F / B9: Body-Functions library + circuits + region relations ───────
+// Reference data (no PII) — served without auth; tool *visibility* is still gated
+// by tool-access in the UI. Used by the Body Functions tool, the atlas relations
+// panel, and course-embedded function blocks.
+
+// GET /api/anatomy/functions?q=&category=&limit= — search/list functions
+app.get('/api/anatomy/functions', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    const category = (req.query.category || '').trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    let rows;
+    if (q) {
+      const like = '%' + q + '%';
+      rows = await sql`SELECT * FROM anatomy_functions
+        WHERE (${category} = '' OR lower(category) = ${category})
+          AND (lower(name_en) LIKE ${like} OR lower(coalesce(name_ru,'')) LIKE ${like}
+               OR lower(coalesce(name_es,'')) LIKE ${like}
+               OR lower(coalesce(description_en,'')) LIKE ${like}
+               OR EXISTS (SELECT 1 FROM unnest(tags) tg WHERE lower(tg) LIKE ${like}))
+        ORDER BY category, name_en LIMIT ${limit}`;
+    } else if (category) {
+      rows = await sql`SELECT * FROM anatomy_functions WHERE lower(category) = ${category} ORDER BY name_en LIMIT ${limit}`;
+    } else {
+      rows = await sql`SELECT * FROM anatomy_functions ORDER BY category, name_en LIMIT ${limit}`;
+    }
+    res.json({ ok: true, functions: rows });
+  } catch (err) { console.error('GET /api/anatomy/functions:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/anatomy/functions/:slug — one function with its resolved circuits
+app.get('/api/anatomy/functions/:slug', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM anatomy_functions WHERE slug = ${req.params.slug}`;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const fn = rows[0];
+    let circuits = [];
+    if (fn.circuit_ids && fn.circuit_ids.length) {
+      circuits = await sql`SELECT * FROM anatomy_circuits WHERE id = ANY(${fn.circuit_ids}::int[]) ORDER BY name_en`;
+    }
+    res.json({ ok: true, function: fn, circuits });
+  } catch (err) { console.error('GET /api/anatomy/functions/:slug:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/anatomy/circuits — all named circuits
+app.get('/api/anatomy/circuits', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM anatomy_circuits ORDER BY name_en`;
+    res.json({ ok: true, circuits: rows });
+  } catch (err) { console.error('GET /api/anatomy/circuits:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/anatomy/relations?region=slug — relations touching a region (both dirs)
+app.get('/api/anatomy/relations', async (req, res) => {
+  try {
+    const region = (req.query.region || '').trim();
+    let rows;
+    if (region) {
+      rows = await sql`SELECT * FROM anatomy_region_relations WHERE region_a = ${region} OR region_b = ${region}`;
+    } else {
+      rows = await sql`SELECT * FROM anatomy_region_relations ORDER BY region_a, region_b`;
+    }
+    res.json({ ok: true, relations: rows });
+  } catch (err) { console.error('GET /api/anatomy/relations:', err); res.status(500).json({ error: err.message }); }
+});
 
 // GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
 app.get('/api/external/events', requireAuth, async (req, res) => {
