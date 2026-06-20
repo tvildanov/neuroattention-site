@@ -859,8 +859,19 @@ app.post('/api/run-migrations', async (req, res) => {
       ('point-ab','Точка А → B','Point A → B','Punto A → B','Карта перехода из точки А в точку B.','Map your shift from point A to B.','Mapa de tu cambio de A a B.',TRUE,4),
       ('external-field','External Field','External Field','External Field','Объективные сигналы внешней среды.','Objective environmental signals.','Señales objetivas del entorno.',TRUE,5),
       ('evolution-path','Путь развития','Evolution Path','Camino de evolución','Ваш персональный путь развития.','Your personal evolution path.','Tu camino de evolución personal.',TRUE,6),
-      ('anatomy-atlas','Анатомический атлас','Anatomy Atlas','Atlas anatómico','Интерактивное 3D-тело: слои, мозг, органы.','Interactive 3D body: layers, brain, organs.','Cuerpo 3D interactivo: capas, cerebro, órganos.',FALSE,7),
-      ('anatomy-functions','Функции тела','Body Functions','Funciones del cuerpo','Какие регионы и контуры стоят за каждой функцией тела.','Which regions and circuits power each body function.','Que regiones y circuitos sostienen cada funcion del cuerpo.',FALSE,8)
+      ('anatomy-atlas','Анатомический атлас','Anatomy Atlas','Atlas anatómico','Интерактивное 3D-тело: слои, мозг, органы.','Interactive 3D body: layers, brain, organs.','Cuerpo 3D interactivo: capas, cerebro, órganos.',FALSE,7)
+      ON CONFLICT (code) DO NOTHING`;
+    // PACK F: consolidate into ONE tool "Human Atlas" with 3 in-app tabs
+    // (Anatomy / Human Functions / Conditions). Rename the existing anatomy-atlas
+    // in place (id preserved → course grants survive); never a separate tool.
+    await sql`UPDATE tools SET code = 'human-atlas',
+      name_ru = 'Атлас человека', name_en = 'Human Atlas', name_es = 'Atlas humano',
+      description_ru = 'Единый 3D-атлас: анатомия, функции человека и состояния.',
+      description_en = 'Unified 3D atlas: anatomy, human functions and conditions.',
+      description_es = 'Atlas 3D unificado: anatomia, funciones humanas y estados.'
+      WHERE code = 'anatomy-atlas'`;
+    await sql`INSERT INTO tools (code, name_ru, name_en, name_es, description_ru, description_en, description_es, is_free_default, order_idx) VALUES
+      ('human-atlas','Атлас человека','Human Atlas','Atlas humano','Единый 3D-атлас: анатомия, функции человека и состояния.','Unified 3D atlas: anatomy, human functions and conditions.','Atlas 3D unificado: anatomia, funciones humanas y estados.',FALSE,7)
       ON CONFLICT (code) DO NOTHING`;
 
     // PACK F1 / B9: Body-Functions library + region relations + named circuits.
@@ -895,6 +906,23 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_slug ON anatomy_functions(slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_tags ON anatomy_functions USING GIN(tags)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_cat ON anatomy_functions(category)`;
+    // Conditions / states (internal field) — tab 3 of Human Atlas.
+    await sql`CREATE TABLE IF NOT EXISTS human_conditions (
+      id SERIAL PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      name_en TEXT NOT NULL, name_ru TEXT, name_es TEXT,
+      category TEXT,
+      description_en TEXT, description_ru TEXT, description_es TEXT,
+      affected_region_ids TEXT[] NOT NULL DEFAULT '{}',
+      affected_function_ids INTEGER[] DEFAULT '{}',
+      impact_summary_en TEXT, impact_summary_ru TEXT, impact_summary_es TEXT,
+      recommendations_en TEXT, recommendations_ru TEXT, recommendations_es TEXT,
+      is_neurodevelopmental BOOLEAN DEFAULT FALSE,
+      severity_default TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_slug ON human_conditions(slug)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_cat ON human_conditions(category)`;
 
     await sql`CREATE TABLE IF NOT EXISTS course_blocks (
       id SERIAL PRIMARY KEY,
@@ -7612,6 +7640,60 @@ app.get('/api/anatomy/relations', async (req, res) => {
     }
     res.json({ ok: true, relations: rows });
   } catch (err) { console.error('GET /api/anatomy/relations:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/anatomy/regions/:id/links — everything connected to a region:
+// related regions, named circuits, functions and conditions that involve it.
+// Backs the Anatomy-tab side panel cross-links (B9 + F5).
+app.get('/api/anatomy/regions/:id/links', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [relations, circuits, functions, conditions] = await Promise.all([
+      sql`SELECT * FROM anatomy_region_relations WHERE region_a = ${id} OR region_b = ${id}`,
+      sql`SELECT id, slug, name_en, name_ru, name_es FROM anatomy_circuits WHERE ${id} = ANY(region_ids)`,
+      sql`SELECT id, slug, name_en, name_ru, name_es, category FROM anatomy_functions WHERE ${id} = ANY(region_ids) ORDER BY name_en`,
+      sql`SELECT id, slug, name_en, name_ru, name_es, category, is_neurodevelopmental FROM human_conditions WHERE ${id} = ANY(affected_region_ids) ORDER BY name_en`
+    ]);
+    res.json({ ok: true, region: id, relations, circuits, functions, conditions });
+  } catch (err) { console.error('GET /api/anatomy/regions/:id/links:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/anatomy/conditions?q=&category=&limit= — diagnoses / states (tab 3)
+app.get('/api/anatomy/conditions', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    const category = (req.query.category || '').trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
+    let rows;
+    if (q) {
+      const like = '%' + q + '%';
+      rows = await sql`SELECT * FROM human_conditions
+        WHERE (${category} = '' OR lower(category) = ${category})
+          AND (lower(name_en) LIKE ${like} OR lower(coalesce(name_ru,'')) LIKE ${like}
+               OR lower(coalesce(name_es,'')) LIKE ${like}
+               OR lower(coalesce(description_en,'')) LIKE ${like})
+        ORDER BY category, name_en LIMIT ${limit}`;
+    } else if (category) {
+      rows = await sql`SELECT * FROM human_conditions WHERE lower(category) = ${category} ORDER BY name_en LIMIT ${limit}`;
+    } else {
+      rows = await sql`SELECT * FROM human_conditions ORDER BY category, name_en LIMIT ${limit}`;
+    }
+    res.json({ ok: true, conditions: rows });
+  } catch (err) { console.error('GET /api/anatomy/conditions:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/anatomy/conditions/:slug — one condition with its resolved functions
+app.get('/api/anatomy/conditions/:slug', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM human_conditions WHERE slug = ${req.params.slug}`;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const cond = rows[0];
+    let functions = [];
+    if (cond.affected_function_ids && cond.affected_function_ids.length) {
+      functions = await sql`SELECT * FROM anatomy_functions WHERE id = ANY(${cond.affected_function_ids}::int[]) ORDER BY name_en`;
+    }
+    res.json({ ok: true, condition: cond, functions });
+  } catch (err) { console.error('GET /api/anatomy/conditions/:slug:', err); res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
