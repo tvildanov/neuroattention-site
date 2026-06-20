@@ -869,6 +869,74 @@
     return this;
   };
 
+  // PACK 10: a standalone mini-viewer of one region for the side panel. It CLONES
+  // the region's meshes out of the main scene (shares geometry — read-only — and
+  // bakes their world transform) into a tiny self-contained scene + renderer +
+  // OrbitControls, so there's no second multi-MB GLB download. Returns a handle
+  // whose .destroy() frees the mini renderer/controls/materials (NOT the shared
+  // geometry, which the main scene still owns). null if the region has no meshes.
+  Atlas.prototype.makeRegionMiniViewer = function (container, regionId, size) {
+    var T = window.THREE; if (!T || !this.root || !container) return null;
+    size = size || 200;
+    var src = [];
+    this._forEachRegionMesh(regionId, function (m) { if (m.isMesh && m.geometry) src.push(m); });
+    if (!src.length) return null;
+
+    var scene = new T.Scene();
+    var grp = new T.Group(); scene.add(grp);
+    src.forEach(function (m) {
+      var col = (m.material && m.material.uniforms && m.material.uniforms.uColor) ? m.material.uniforms.uColor.value.getHex() : COLD_CYAN;
+      // SOLID material so the isolated region reads clearly from any angle (the
+      // holographic additive x-ray is near-invisible on a small edge-on mesh).
+      var mat = makeXrayMaterial({ color: col, opacity: 1.0, glow: 1.0, fresnelPower: 1.7 });
+      mat.uniforms.uSolid.value = 1.0; mat.blending = T.NormalBlending; mat.depthWrite = true; mat.transparent = false;
+      var c = new T.Mesh(m.geometry, mat);     // SHARE geometry (read-only)
+      m.updateWorldMatrix(true, false);
+      c.applyMatrix4(m.matrixWorld);           // bake the source's world transform
+      grp.add(c);
+    });
+    // center on origin + size the camera to the bounding sphere
+    var box = new T.Box3().setFromObject(grp);
+    var ctr = box.getCenter(new T.Vector3()), sz = box.getSize(new T.Vector3());
+    grp.position.sub(ctr);
+    var radius = Math.max(sz.x, sz.y, sz.z) * 0.5 || 1;
+
+    scene.add(new T.AmbientLight(0x6699aa, 0.7));
+    var key = new T.DirectionalLight(0xA8F7FF, 0.85); key.position.set(2, 3, 4); scene.add(key);
+    var fill = new T.DirectionalLight(0x8DFFC8, 0.35); fill.position.set(-3, 1, -2); scene.add(fill);
+
+    var cam = new T.PerspectiveCamera(42, 1, 0.01, 100);
+    var dist = (radius / Math.sin(42 * Math.PI / 360)) * 1.35;
+    cam.position.set(0, 0, dist);
+
+    var rndr = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+    rndr.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    rndr.setSize(size, size); rndr.setClearColor(0x000000, 0);
+    rndr.domElement.style.display = 'block';
+    container.appendChild(rndr.domElement);
+
+    var ctrls = new T.OrbitControls(cam, rndr.domElement);
+    ctrls.enableDamping = true; ctrls.dampingFactor = 0.12; ctrls.enablePan = false;
+    ctrls.minDistance = dist * 0.5; ctrls.maxDistance = dist * 2.4;
+    ctrls.autoRotate = true; ctrls.autoRotateSpeed = 1.1;
+
+    var raf = null, destroyed = false;
+    (function loop() { if (destroyed) return; raf = requestAnimationFrame(loop); ctrls.update(); rndr.render(scene, cam); })();
+
+    return {
+      destroy: function () {
+        if (destroyed) return; destroyed = true;
+        if (raf) cancelAnimationFrame(raf);
+        try { ctrls.dispose && ctrls.dispose(); } catch (e) {}
+        grp.traverse(function (o) { if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (mm) { mm.dispose && mm.dispose(); }); } });
+        // NB: geometry is shared with the live scene — do NOT dispose it here.
+        try { rndr.dispose(); rndr.forceContextLoss && rndr.forceContextLoss(); } catch (e) {}
+        if (rndr.domElement && rndr.domElement.parentNode) rndr.domElement.parentNode.removeChild(rndr.domElement);
+        scene = grp = cam = rndr = ctrls = null;
+      }
+    };
+  };
+
   // ── brain detail mode (zoom + body fade) ────────────────────────────────────
   Atlas.prototype.enterBrainDetail = function () {
     if (!this._metrics) return;            // atlas not mounted yet
