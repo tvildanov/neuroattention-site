@@ -1314,12 +1314,54 @@
         .atlas-region-panel .arp-x{position:absolute;top:0.6rem;right:0.7rem;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;}
         .atlas-schematic{font-size:10px;color:var(--text-dim,#7c8896);opacity:0.8;margin-top:auto;line-height:1.4;}
         @media(max-width:760px){.atlas-body{flex-direction:column;}.atlas-layers,.atlas-organs{flex:none;flex-direction:row;overflow-x:auto;}.atlas-organs{order:3;}.atlas-viewport{min-height:420px;order:2;}.atlas-organ svg{width:34px;height:34px;}}
+        /* ── Human Atlas 3-tab UI (Anatomy / Functions / Conditions) ── */
+        .ha-tabs{display:flex;gap:0.3rem;padding:0.55rem 0.7rem 0;border-bottom:1px solid rgba(168,247,255,0.1);flex-wrap:wrap;}
+        .ha-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted,#8c98a6);font-size:13px;padding:0.45rem 0.7rem;cursor:pointer;display:inline-flex;align-items:center;gap:0.35rem;transition:.15s;border-radius:8px 8px 0 0;}
+        .ha-tab:hover{color:var(--text-primary,#e8edf2);background:rgba(168,247,255,0.05);}
+        .ha-tab.active{color:#A8F7FF;border-bottom-color:var(--accent-cyan,#A8F7FF);}
+        .ha-search{width:100%;background:rgba(168,247,255,0.05);border:1px solid rgba(168,247,255,0.18);border-radius:9px;color:var(--text-primary,#e8edf2);font-size:12.5px;padding:0.5rem 0.6rem;outline:none;}
+        .ha-search:focus{border-color:rgba(168,247,255,0.45);}
+        .ha-cats{display:flex;flex-wrap:wrap;gap:0.3rem;}
+        .ha-cat{background:rgba(168,247,255,0.05);border:1px solid rgba(168,247,255,0.12);color:var(--text-muted,#8c98a6);border-radius:20px;font-size:10.5px;padding:0.22rem 0.55rem;cursor:pointer;transition:.15s;white-space:nowrap;}
+        .ha-cat:hover{background:rgba(168,247,255,0.13);}
+        .ha-cat.active{background:rgba(141,255,200,0.16);border-color:rgba(141,255,200,0.4);color:#8DFFC8;}
+        .ha-list{display:flex;flex-direction:column;gap:0.25rem;overflow-y:auto;max-height:430px;padding-right:2px;}
+        .ha-item{text-align:left;background:rgba(168,247,255,0.03);border:1px solid rgba(168,247,255,0.08);border-radius:9px;padding:0.45rem 0.6rem;cursor:pointer;transition:.15s;}
+        .ha-item:hover{background:rgba(168,247,255,0.1);border-color:rgba(168,247,255,0.22);}
+        .ha-item.active{background:rgba(141,255,200,0.12);border-color:rgba(141,255,200,0.35);}
+        .ha-item-name{font-size:12.5px;color:var(--text-primary,#e8edf2);display:block;}
+        .ha-item-cat{font-size:9.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim,#7c8896);}
+        .ha-empty{font-size:12px;color:var(--text-dim,#7c8896);padding:0.6rem;text-align:center;}
+        .ha-side{position:absolute;top:0;right:0;height:100%;width:300px;max-width:84%;background:rgba(6,14,18,0.95);border-left:1px solid rgba(168,247,255,0.25);padding:1.1rem;transform:translateX(105%);transition:transform .3s ease;overflow-y:auto;z-index:6;}
+        .ha-side.open{transform:translateX(0);}
+        .ha-side h4{margin:0 0 0.25rem;color:#A8F7FF;font-size:15px;padding-right:1.4rem;}
+        .ha-side .ha-side-cat{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim,#7c8896);margin-bottom:0.7rem;}
+        .ha-side p{font-size:12.5px;line-height:1.6;color:var(--text-muted,#cdd6df);margin:0.4rem 0;}
+        .ha-side .ha-x{position:absolute;top:0.6rem;right:0.7rem;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;line-height:1;}
+        .ha-side-h{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:#8DFFC8;margin:0.9rem 0 0.35rem;}
+        .ha-chip{display:inline-flex;align-items:center;gap:0.25rem;background:rgba(168,247,255,0.07);border:1px solid rgba(168,247,255,0.18);border-radius:7px;font-size:11px;color:var(--text-primary,#e8edf2);padding:0.25rem 0.5rem;margin:0 0.3rem 0.3rem 0;cursor:pointer;transition:.15s;}
+        .ha-chip:hover{background:rgba(168,247,255,0.16);border-color:rgba(168,247,255,0.4);}
+        .ha-chip.link{border-style:dashed;border-color:rgba(141,255,200,0.3);}
+        .ha-chip.link:hover{background:rgba(141,255,200,0.12);}
+        .ha-miniview{width:100%;height:150px;border-radius:10px;border:1px solid rgba(168,247,255,0.15);background:radial-gradient(70% 70% at 50% 40%,rgba(168,247,255,0.06),transparent);margin:0.5rem 0;position:relative;overflow:hidden;}
+        .ha-sev{display:inline-block;font-size:10px;border-radius:6px;padding:0.1rem 0.45rem;margin-left:0.4rem;vertical-align:middle;}
+        .ha-sev.mild{background:rgba(141,255,200,0.15);color:#8DFFC8;}
+        .ha-sev.moderate{background:rgba(255,203,141,0.15);color:#FFCB8D;}
+        .ha-sev.severe{background:rgba(255,143,163,0.16);color:#FF8FA3;}
+        .ha-sev.variable{background:rgba(168,247,255,0.13);color:#A8F7FF;}
+        .ha-nd{display:inline-block;font-size:9.5px;border-radius:6px;padding:0.1rem 0.45rem;margin-left:0.4rem;background:rgba(141,255,200,0.12);color:#8DFFC8;vertical-align:middle;}
+        @media(max-width:760px){.ha-side{width:100%;max-width:100%;}.ha-list{max-height:300px;}}
       </style>
       <div class="dash-card glass-card-elevated" style="padding:1.25rem;">
         <h3 style="margin:0 0 0.4rem;" data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;" data-i18n="a.tools.anatomy_subtitle">Интерактивное 3D-тело: вращай, переключай слои, нажми на голову — погрузишься в детальный мозг. Слои мышц, скелета и нервной системы — анатомически точные схемы.</p>
         <div class="atlas-shell">
-          <div class="atlas-topbar">
+          <div class="ha-tabs">
+            <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')">🫀 <span data-i18n="a.ha.tab_anatomy">Анатомия</span></button>
+            <button class="ha-tab" id="ha-tab-functions" onclick="haSwitchTab('functions')">🧠 <span data-i18n="a.ha.tab_functions">Функции человека</span></button>
+            <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')">🩺 <span data-i18n="a.ha.tab_conditions">Диагнозы и состояния</span></button>
+          </div>
+          <div class="atlas-topbar" id="ha-topbar">
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
             <div class="atlas-actions">
               <button class="atlas-btn" id="atlas-sex-toggle" onclick="atlasToggleSex()" title="Male / Female">⚥ <span id="atlas-sex-label" data-i18n="a.tools.anatomy_male">Муж.</span></button>
@@ -1333,6 +1375,16 @@
               <!-- layers injected by JS -->
               <div class="atlas-schematic" data-i18n="a.tools.anatomy_schematic_note">Скелет, мышцы и нервы — анатомически точные схемы (не сканы).</div>
             </aside>
+            <aside class="atlas-layers" id="ha-left-functions" style="display:none;">
+              <input class="ha-search" id="ha-fn-search" oninput="haFnSearch(this.value)" data-i18n-ph="a.ha.fn_search" placeholder="Поиск функции…" autocomplete="off">
+              <div class="ha-cats" id="ha-fn-cats"></div>
+              <div class="ha-list" id="ha-fn-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
+            </aside>
+            <aside class="atlas-layers" id="ha-left-conditions" style="display:none;">
+              <input class="ha-search" id="ha-cond-search" oninput="haCondSearch(this.value)" data-i18n-ph="a.ha.cond_search" placeholder="Поиск состояния…" autocomplete="off">
+              <div class="ha-cats" id="ha-cond-cats"></div>
+              <div class="ha-list" id="ha-cond-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
+            </aside>
             <div class="atlas-viewport" id="atlas-viewport">
               <div class="atlas-tooltip" id="atlas-tooltip"></div>
               <div class="atlas-hint" id="atlas-hint" data-i18n="a.tools.anatomy_hint">Тяни — вращать · колесо — зум · клик по голове — мозг</div>
@@ -1341,7 +1393,12 @@
                 <h4 id="arp-name">—</h4>
                 <div class="arp-group" id="arp-group"></div>
                 <p id="arp-desc"></p>
+                <div id="arp-links"></div>
                 <button class="atlas-btn" id="arp-back" onclick="atlasExitBrain()" style="display:none;margin-top:0.5rem;" data-i18n="a.tools.anatomy_back_body">← Назад к телу</button>
+              </div>
+              <div class="ha-side" id="ha-detail-panel">
+                <button class="ha-x" onclick="haCloseDetail()">×</button>
+                <div id="ha-detail-body"></div>
               </div>
             </div>
             <aside class="atlas-organs" id="atlas-organs">
@@ -10557,7 +10614,8 @@ window.TOOL_TASK_META = {
   diary:            { tool: 'diary',     title_ru: 'Задание · Дневник нейроресурса', icon: '📓', label_ru: 'Дневник нейроресурса' },
   neuromap_emotion: { tool: 'neuromap',  nm: 'emotion', title_ru: 'Задание · Нейромап (эмоция)', icon: '💗', label_ru: 'Нейромап · эмоция' },
   neuromap_event:   { tool: 'neuromap',  nm: 'event',   title_ru: 'Задание · Нейромап (событие)', icon: '📍', label_ru: 'Нейромап · событие' },
-  neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' }
+  neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' },
+  'human-atlas':    { tool: 'anatomy',   title_ru: 'Задание · Атлас человека', icon: '🧬', label_ru: 'Атлас человека' }
 };
 
 // Picker: "Добавить задание из инструмента" → choose which instrument (🅱 п.3).
@@ -10566,7 +10624,9 @@ function courseAddToolTask(parentBlockId){
   var ov = document.createElement('div');
   ov.className = 'rpg-modal-overlay';
   ov.style.zIndex = '10050';
-  var kinds = Object.keys(window.TOOL_TASK_META);
+  // human-atlas has its own mode+entity picker (courseAddHumanAtlas); the rest are
+  // one-click instrument embeds.
+  var kinds = Object.keys(window.TOOL_TASK_META).filter(function(k){ return k !== 'human-atlas'; });
   ov.innerHTML = '<div class="rpg-modal" style="max-width:360px;">' +
     '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">Задание из инструмента</h3>' +
     '<p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);">Ученик выполнит инструмент прямо в плеере курса.</p>' +
@@ -10574,12 +10634,14 @@ function courseAddToolTask(parentBlockId){
       kinds.map(function(k){ var m = window.TOOL_TASK_META[k];
         return '<button class="btn btn-ghost tt-pick" data-kind="' + k + '" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">' +
           m.icon + '&nbsp; ' + m.label_ru + '</button>'; }).join('') +
+      '<button class="btn btn-ghost" id="tt-pick-ha" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">🧬&nbsp; Атлас человека…</button>' +
     '</div>' +
     '<button class="btn btn-ghost" id="tt-cancel" style="margin-top:0.9rem;font-size:12px;">Отмена</button></div>';
   document.body.appendChild(ov);
   function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
   ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
   ov.querySelector('#tt-cancel').addEventListener('click', close);
+  ov.querySelector('#tt-pick-ha').addEventListener('click', function(){ close(); courseAddHumanAtlas(parentBlockId); });
   ov.querySelectorAll('.tt-pick').forEach(function(b){
     b.addEventListener('click', function(){
       courseAddBlock('tool_task', parentBlockId, b.getAttribute('data-kind'));
@@ -10587,6 +10649,67 @@ function courseAddToolTask(parentBlockId){
     });
   });
 }
+
+// 🧬 Human Atlas course block: pick a mode (anatomy / function / condition) and an
+// entity, saved as tool_kind='human-atlas', tool_config={mode, payload:{…}}.
+function courseAddHumanAtlas(parentBlockId){
+  if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
+  var REGIONS = [
+    'frontal-lobe','parietal-lobe','temporal-lobe','occipital-lobe','thalamus','hypothalamus',
+    'hippocampus','amygdala','basal-ganglia','cerebellum','midbrain','pons','medulla','insula',
+    'cingulate','corpus-callosum','fornix','heart','lungs','liver','kidneys','spinal-cord',
+    'cervical-spine','thoracic-spine','lumbar-spine','sacral-spine'
+  ];
+  function rlabel(id){ return id.replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
+  var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+  var fns = [], conds = [], mode = 'anatomy';
+  var ov = document.createElement('div'); ov.className='rpg-modal-overlay'; ov.style.zIndex='10050';
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:420px;">' +
+    '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">🧬 Атлас человека — блок курса</h3>' +
+    '<p style="margin:0 0 0.8rem;font-size:12px;color:var(--text-muted);">Выбери режим и объект — студент увидит его в 3D-атласе.</p>' +
+    '<div style="display:flex;gap:0.4rem;margin-bottom:0.8rem;" id="ha-mode-row">' +
+      '<button class="btn btn-ghost ha-mode-b active" data-mode="anatomy" style="flex:1;font-size:12px;">🫀 Анатомия</button>' +
+      '<button class="btn btn-ghost ha-mode-b" data-mode="function" style="flex:1;font-size:12px;">🧠 Функция</button>' +
+      '<button class="btn btn-ghost ha-mode-b" data-mode="condition" style="flex:1;font-size:12px;">🩺 Состояние</button>' +
+    '</div>' +
+    '<select id="ha-entity" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.5rem;font-size:13px;box-sizing:border-box;margin-bottom:0.9rem;"></select>' +
+    '<div style="display:flex;gap:0.5rem;"><button class="btn btn-solid" id="ha-add" style="flex:1;font-size:13px;padding:0.5rem;">Добавить блок</button>' +
+    '<button class="btn btn-ghost" id="ha-cancel" style="font-size:12px;">Отмена</button></div></div>';
+  document.body.appendChild(ov);
+  function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
+  ov.querySelector('#ha-cancel').addEventListener('click', close);
+  var sel = ov.querySelector('#ha-entity');
+  function fill(){
+    if (mode==='anatomy'){ sel.innerHTML = REGIONS.map(function(id){ return '<option value="'+id+'">'+rlabel(id)+'</option>'; }).join(''); }
+    else if (mode==='function'){ sel.innerHTML = fns.length ? fns.map(function(f){ return '<option value="'+f.slug+'">'+(f.name_ru||f.name_en)+'</option>'; }).join('') : '<option value="">— загрузка… —</option>'; }
+    else { sel.innerHTML = conds.length ? conds.map(function(c){ return '<option value="'+c.slug+'">'+(c.name_ru||c.name_en)+'</option>'; }).join('') : '<option value="">— загрузка… —</option>'; }
+  }
+  fill();
+  fetch(base+'/api/anatomy/functions?limit=500').then(function(r){return r.ok?r.json():{};}).then(function(d){ fns=(d.functions)||[]; if(mode==='function') fill(); }).catch(function(){});
+  fetch(base+'/api/anatomy/conditions?limit=500').then(function(r){return r.ok?r.json():{};}).then(function(d){ conds=(d.conditions)||[]; if(mode==='condition') fill(); }).catch(function(){});
+  ov.querySelectorAll('.ha-mode-b').forEach(function(b){ b.addEventListener('click', function(){
+    mode=b.getAttribute('data-mode');
+    ov.querySelectorAll('.ha-mode-b').forEach(function(x){ x.classList.toggle('active', x===b); });
+    fill();
+  }); });
+  ov.querySelector('#ha-add').addEventListener('click', function(){
+    var val = sel.value; if(!val){ alert('Выбери объект'); return; }
+    var payload = mode==='anatomy' ? { region_id: val } : mode==='function' ? { function_slug: val } : { condition_slug: val };
+    var label = mode==='anatomy' ? rlabel(val) : (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : val);
+    var body = {
+      block_type: 'tool_task', tool_kind: 'human-atlas',
+      tool_config: { mode: mode, payload: payload },
+      title_ru: 'Атлас человека · ' + label,
+      payload: { instruction_ru: '', instruction_en: '', instruction_es: '' }, points: 5
+    };
+    if (parentBlockId) body.parent_block_id = parentBlockId;
+    courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', { method:'POST', body: body })
+      .then(function(d){ courseState.currentBlocks.push(d.block); renderCourseBlocks(); close(); })
+      .catch(function(e){ alert(e.message); });
+  });
+}
+window.courseAddHumanAtlas = courseAddHumanAtlas;
 window.courseAddToolTask = courseAddToolTask;
 
 function courseAddBlock(blockType, parentBlockId, toolKind){
@@ -11532,6 +11655,7 @@ window.cpCancelAutoAdvance = cpCancelAutoAdvance;
 // course_block_progress AND the server logs it to the matching Evolution layer.
 function cpRenderToolTask(block, p, lang){
   var kind = block.tool_kind || 'sensation_map';
+  if (kind === 'human-atlas') return cpRenderHumanAtlas(block, p, lang);
   var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || { icon:'🛠', label_ru:'Инструмент' };
   var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
   var emotionLike = (kind === 'neuromap_emotion' || kind === 'sensation_map' || kind === 'diary');
@@ -11561,6 +11685,70 @@ function cpRenderToolTask(block, p, lang){
   return h;
 }
 window.cpRenderToolTask = cpRenderToolTask;
+
+// 🧬 human-atlas course block — informative card + deep-link into the full 3D
+// atlas (preselected tab + entity). The 3D engine is heavy, so the player shows a
+// rich card and opens the full tool on demand rather than mounting a 3rd renderer.
+function cpRenderHumanAtlas(block, p, lang){
+  var cfg = block.tool_config || {};
+  var mode = cfg.mode || 'anatomy';
+  var pl = cfg.payload || {};
+  var key = pl.region_id || pl.function_slug || pl.condition_slug || '';
+  var modeLabel = mode==='function' ? (lang==='en'?'Human function':lang==='es'?'Función':'Функция человека')
+               : mode==='condition' ? (lang==='en'?'Condition':lang==='es'?'Estado':'Состояние')
+               : (lang==='en'?'Anatomy':lang==='es'?'Anatomía':'Анатомия');
+  var fallbackTitle = mode==='anatomy' ? key.replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}) : key;
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var openLbl = lang==='en'?'Open in the full Atlas →':lang==='es'?'Abrir en el Atlas completo →':'Открыть в полном Атласе →';
+  var cfgJson = encodeURIComponent(JSON.stringify({ mode: mode, payload: pl }));
+  var h = '<div style="padding:0.9rem 1rem;background:rgba(141,255,200,0.06);border:1px solid rgba(141,255,200,0.22);border-radius:10px;margin-bottom:0.9rem;">'
+        + '<div style="font-size:10px;color:#8DFFC8;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">🧬 ' + modeLabel + '</div>'
+        + '<div id="ha-cp-title" style="font-size:16px;color:var(--text-primary);font-weight:600;margin-bottom:0.3rem;">' + fallbackTitle.replace(/</g,'&lt;') + '</div>'
+        + '<div id="ha-cp-desc" style="font-size:13px;line-height:1.6;color:var(--text-muted);"></div>'
+        + '<button class="btn btn-ghost" style="margin-top:0.7rem;font-size:12px;padding:0.4rem 0.8rem;" onclick="haOpenTool(decodeURIComponent(\'' + cfgJson + '\'))">' + openLbl + '</button>'
+        + '</div>'
+        + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.7rem;">' + instr.replace(/</g,'&lt;') + '</div>' : '')
+        + '<textarea id="cp-response" rows="4" placeholder="' + (lang==='en'?'Your notes…':lang==='es'?'Tus notas…':'Твои заметки…') + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+  // async: resolve the real localized name + description for function/condition
+  if (mode !== 'anatomy' && key) {
+    var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+    var url = mode==='function' ? '/api/anatomy/functions/'+key : '/api/anatomy/conditions/'+key;
+    setTimeout(function(){
+      fetch(base+url).then(function(r){return r.ok?r.json():null;}).then(function(d){
+        if(!d) return; var row = d.function||d.condition; if(!row) return;
+        var t=document.getElementById('ha-cp-title'); var ds=document.getElementById('ha-cp-desc');
+        if(t) t.textContent = row['name_'+lang]||row.name_ru||row.name_en||fallbackTitle;
+        if(ds) ds.textContent = row['description_'+lang]||row.description_en||row.description_ru||'';
+      }).catch(function(){});
+    }, 0);
+  }
+  return h;
+}
+window.cpRenderHumanAtlas = cpRenderHumanAtlas;
+
+// Deep-link: close the course player and open the full Human Atlas tool with the
+// right tab + entity preselected. Accepts the JSON {mode, payload} string.
+window.haOpenTool = function(cfgStr){
+  var cfg; try{ cfg = typeof cfgStr==='string' ? JSON.parse(cfgStr) : cfgStr; }catch(e){ cfg = {}; }
+  var mode = (cfg && cfg.mode) || 'anatomy';
+  var pl = (cfg && cfg.payload) || {};
+  // close the course player modal if open
+  try{ var m=document.getElementById('coursePlayerModal'); if(m){ if(typeof cpClose==='function') cpClose(); else m.remove(); } }catch(e){}
+  try{ switchTab('tools'); }catch(e){}
+  try{ setToolsMode('anatomy'); }catch(e){}
+  var tries=0;
+  var timer=setInterval(function(){
+    tries++;
+    var ready = typeof window.haSwitchTab==='function' && document.getElementById('ha-tab-anatomy');
+    if(ready){
+      clearInterval(timer);
+      if(mode==='function' && pl.function_slug && window.haGoFunction){ window.haGoFunction(pl.function_slug); }
+      else if(mode==='condition' && pl.condition_slug && window.haGoCondition){ window.haGoCondition(pl.condition_slug); }
+      else if(pl.region_id && window.haGoRegionMulti){ window.haGoRegionMulti(pl.region_id); }
+      else { window.haSwitchTab('anatomy'); }
+    } else if(tries>60){ clearInterval(timer); }
+  }, 120);
+};
 
 function cpPickBranch(answerLabel){
   coursePlayer.blockResponse = { answer: answerLabel };
@@ -14133,6 +14321,7 @@ window.pbMove = pbMove;
     var ph = lang()==='en' ? 'Description coming soon.' : lang()==='es' ? 'Descripción próximamente.' : 'Описание скоро появится.';
     document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : ph;
     document.getElementById('arp-back').style.display = (atlas && atlas._brainDetail) ? '' : 'none';
+    var lk = document.getElementById('arp-links'); if(lk){ lk.innerHTML=''; try{ if(window.haRegionLinks) window.haRegionLinks(ud.coarseId || hit.id); }catch(e){} }
     p.classList.add('open');
   }
   function setBrainBtn(on){ var b=document.getElementById('atlas-brain-btn'); if(b) b.classList.toggle('active', !!on); }
@@ -14151,6 +14340,295 @@ window.pbMove = pbMove;
   window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail(); atlas.resetView(); } atlasCloseRegion(); };
   window.atlasCloseRegion = function(){ var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); };
   window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
+})();
+</script>
+<script>
+/* ── Human Atlas 3-tab controller (Anatomy / Functions / Conditions) ──────────
+   One shared BodyAtlas instance (window._anatomyAtlas). Tabs only swap the left
+   panel + right detail panel and the visualization mode (Anatomy = layers,
+   Functions/Conditions = focusRegions hybrid). Data (functions/conditions/
+   circuits/relations) is loaded once and all search + cross-linking is client
+   side over ~40 rows each. */
+(function(){
+  var T = {
+    tab_anatomy:{ru:'Анатомия',en:'Anatomy',es:'Anatomía'},
+    tab_functions:{ru:'Функции человека',en:'Human functions',es:'Funciones humanas'},
+    tab_conditions:{ru:'Диагнозы и состояния',en:'Conditions & states',es:'Diagnósticos y estados'},
+    fn_search:{ru:'Поиск функции…',en:'Search a function…',es:'Buscar una función…'},
+    cond_search:{ru:'Поиск состояния…',en:'Search a condition…',es:'Buscar un estado…'},
+    loading:{ru:'Загрузка…',en:'Loading…',es:'Cargando…'},
+    empty:{ru:'Ничего не найдено',en:'Nothing found',es:'Nada encontrado'},
+    all:{ru:'Все',en:'All',es:'Todos'},
+    regions:{ru:'Регионы',en:'Regions',es:'Regiones'},
+    circuits:{ru:'Нейронные контуры',en:'Neural circuits',es:'Circuitos neuronales'},
+    in_conditions:{ru:'При каких состояниях изменена',en:'Altered in conditions',es:'Alterada en condiciones'},
+    impact:{ru:'Влияние',en:'Impact',es:'Impacto'},
+    recommend:{ru:'Рекомендации',en:'Recommendations',es:'Recomendaciones'},
+    aff_functions:{ru:'Затронутые функции',en:'Affected functions',es:'Funciones afectadas'},
+    aff_regions:{ru:'Регионы поражения',en:'Affected regions',es:'Regiones afectadas'},
+    rel_regions:{ru:'Связанные регионы',en:'Related regions',es:'Regiones relacionadas'},
+    fns_here:{ru:'Функции этого региона',en:'Functions here',es:'Funciones aquí'},
+    conds_here:{ru:'Затронут состояниями',en:'Involved in conditions',es:'Afectado en condiciones'},
+    open_anatomy:{ru:'Показать в Анатомии',en:'Show in Anatomy',es:'Ver en Anatomía'},
+    tip_fn:{ru:'Выбери функцию слева — связанные регионы подсветятся на 3D-модели.',en:'Pick a function on the left — its regions light up on the 3D model.',es:'Elige una función a la izquierda — sus regiones se resaltan en el modelo 3D.'},
+    tip_cond:{ru:'Выбери состояние слева — затронутые регионы подсветятся на 3D-модели.',en:'Pick a condition on the left — affected regions light up on the 3D model.',es:'Elige un estado a la izquierda — las regiones afectadas se resaltan.'},
+    nd:{ru:'нейроотличие',en:'neurodivergence',es:'neurodivergencia'}
+  };
+  var CAT = {
+    cognitive:{ru:'Когнитивные',en:'Cognitive',es:'Cognitivas'},
+    executive:{ru:'Исполнительные',en:'Executive',es:'Ejecutivas'},
+    motor:{ru:'Моторные',en:'Motor',es:'Motoras'},
+    sensory:{ru:'Сенсорные',en:'Sensory',es:'Sensoriales'},
+    autonomic:{ru:'Вегетативные',en:'Autonomic',es:'Autónomas'},
+    emotional:{ru:'Эмоциональные',en:'Emotional',es:'Emocionales'},
+    language:{ru:'Речь и язык',en:'Language',es:'Lenguaje'},
+    neurodegenerative:{ru:'Нейродегенеративные',en:'Neurodegenerative',es:'Neurodegenerativas'},
+    neurodevelopmental:{ru:'Нейроотличия',en:'Neurodevelopmental',es:'Neurodesarrollo'},
+    psychiatric:{ru:'Психиатрические',en:'Psychiatric',es:'Psiquiátricas'},
+    gi:{ru:'ЖКТ',en:'Gastrointestinal',es:'Digestivas'},
+    musculoskeletal:{ru:'Опорно-двигательные',en:'Musculoskeletal',es:'Musculoesqueléticas'},
+    cardiovascular:{ru:'Сердечно-сосудистые',en:'Cardiovascular',es:'Cardiovasculares'},
+    endocrine:{ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'},
+    neurological:{ru:'Неврологические',en:'Neurological',es:'Neurológicas'},
+    respiratory:{ru:'Дыхательные',en:'Respiratory',es:'Respiratorias'}
+  };
+  var SEV = { mild:{ru:'лёгкое',en:'mild',es:'leve'}, moderate:{ru:'умеренное',en:'moderate',es:'moderado'}, severe:{ru:'тяжёлое',en:'severe',es:'grave'}, variable:{ru:'вариативное',en:'variable',es:'variable'} };
+  var BRAIN = {'frontal-lobe':1,'parietal-lobe':1,'temporal-lobe':1,'occipital-lobe':1,'thalamus':1,'hypothalamus':1,'hippocampus':1,'amygdala':1,'basal-ganglia':1,'cerebellum':1,'midbrain':1,'pons':1,'medulla':1,'insula':1,'cingulate':1,'corpus-callosum':1,'fornix':1,'ventricles':1};
+  var ORGANS = {'heart':1,'lungs':1,'liver':1,'kidneys':1};
+  var SPINE = {'cervical-spine':1,'thoracic-spine':1,'lumbar-spine':1,'sacral-spine':1,'spinal-cord':1};
+
+  function lang(){ try{ return (window.getLang ? window.getLang() : (localStorage.getItem('na_lang')||'ru')).slice(0,2); }catch(e){ return 'ru'; } }
+  function tr(o){ if(!o) return ''; return o[lang()]||o.ru||o.en||''; }
+  function nm(row){ if(!row) return ''; return row['name_'+lang()]||row.name_ru||row.name_en||''; }
+  function desc(row){ if(!row) return ''; return row['description_'+lang()]||row.description_en||row.description_ru||''; }
+  function fld(row,base){ if(!row) return ''; return row[base+'_'+lang()]||row[base+'_en']||row[base+'_ru']||''; }
+  function catLabel(c){ return (CAT[c]&&tr(CAT[c]))||c||''; }
+  function regionLabel(id){ return (id||'').replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function apiBase(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
+
+  var DATA = { fns:null, conds:null, circuits:null, relations:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{} };
+  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null;
+
+  function ensureData(cb){
+    if(loaded){ cb&&cb(); return; }
+    if(loading){ setTimeout(function(){ ensureData(cb); }, 120); return; }
+    loading = true;
+    var b = apiBase();
+    function gj(u){ return fetch(b+u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
+    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations') ])
+      .then(function(res){
+        DATA.fns = (res[0].functions)||[]; DATA.conds = (res[1].conditions)||[];
+        DATA.circuits = (res[2].circuits)||[]; DATA.relations = (res[3].relations)||[];
+        DATA.fns.forEach(function(f){ DATA.byFnId[f.id]=f; DATA.fnBySlug[f.slug]=f; });
+        DATA.conds.forEach(function(c){ DATA.byCondId[c.id]=c; DATA.condBySlug[c.slug]=c; });
+        DATA.circuits.forEach(function(c){ DATA.circById[c.id]=c; });
+        loaded = true; loading = false; cb&&cb();
+      });
+  }
+
+  // distinct categories, in the order CAT defines them
+  function catsOf(rows){ var seen={}; rows.forEach(function(r){ if(r.category) seen[r.category]=1; }); return Object.keys(CAT).filter(function(c){ return seen[c]; }); }
+
+  /* ── 3D focus helpers ───────────────────────────────────────────────────── */
+  function regionLayer(id){ if(BRAIN[id]) return 'brain'; if(ORGANS[id]) return 'organs'; if(SPINE[id]) return id==='spinal-cord'?'nervous':'skeleton'; return null; }
+  function focus(ids){
+    var a = window._anatomyAtlas; if(!a) return;
+    ids = (ids||[]).filter(Boolean);
+    try{ if(a._brainDetail && a.exitBrainDetail) a.exitBrainDetail(); }catch(e){}
+    var need={}; ids.forEach(function(id){ var L=regionLayer(id); if(L) need[L]=1; });
+    if(!Object.keys(need).length) need.brain=1; // most functions are neural
+    try{
+      a.toggleLayer('skin', true); a.setLayerOpacity('skin', 0.05);
+      ['muscles','vessels'].forEach(function(l){ a.toggleLayer(l,false); });
+      ['brain','organs','skeleton','nervous'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
+    }catch(e){}
+    var apply=function(){ try{ a.focusRegions(ids, 0.12); }catch(e){} };
+    apply(); setTimeout(apply, 350); setTimeout(apply, 900); // catch lazy-loaded GLB meshes
+  }
+  function clearFocus(){ var a=window._anatomyAtlas; if(a){ try{ a.resetRegions&&a.resetRegions(); }catch(e){} } }
+  function syncAnatomyLayers(){
+    var a=window._anatomyAtlas; if(!a) return;
+    try{ a.resetRegions&&a.resetRegions(); }catch(e){}
+    document.querySelectorAll('#atlas-layers .atlas-layer').forEach(function(el){
+      var cb=el.querySelector('input[type=checkbox]'); var rg=el.querySelector('input[type=range]');
+      var oc=cb&&cb.getAttribute('onchange'); var m=oc&&oc.match(/'([^']+)'/); if(!m) return;
+      try{ a.toggleLayer(m[1], cb.checked); if(rg) a.setLayerOpacity(m[1], rg.value/100); }catch(e){}
+    });
+  }
+
+  /* ── tab switching ──────────────────────────────────────────────────────── */
+  window.haSwitchTab = function(tab){
+    activeTab = tab;
+    ['anatomy','functions','conditions'].forEach(function(t){
+      var btn=document.getElementById('ha-tab-'+t); if(btn) btn.classList.toggle('active', t===tab);
+    });
+    var lAn=document.getElementById('atlas-layers'), lFn=document.getElementById('ha-left-functions'), lCo=document.getElementById('ha-left-conditions');
+    if(lAn) lAn.style.display = tab==='anatomy'?'':'none';
+    if(lFn) lFn.style.display = tab==='functions'?'':'none';
+    if(lCo) lCo.style.display = tab==='conditions'?'':'none';
+    var organs=document.getElementById('atlas-organs'); if(organs) organs.style.display = tab==='anatomy'?'':'none';
+    var topbar=document.getElementById('ha-topbar'); if(topbar) topbar.style.display = tab==='anatomy'?'':'none';
+    // close both detail panels on switch
+    var rp=document.getElementById('atlas-region-panel'); if(rp) rp.classList.remove('open');
+    haCloseDetail();
+    var hint=document.getElementById('atlas-hint');
+    if(tab==='anatomy'){ syncAnatomyLayers(); if(hint){ hint.style.display=''; } }
+    else {
+      clearFocus();
+      if(hint){ hint.textContent = tr(tab==='functions'?T.tip_fn:T.tip_cond); hint.style.display=''; }
+      ensureData(function(){ tab==='functions' ? renderFnPanel() : renderCondPanel(); });
+    }
+  };
+
+  /* ── Functions tab ──────────────────────────────────────────────────────── */
+  var fnQuery='', fnCat='';
+  function renderFnPanel(){
+    var cats=document.getElementById('ha-fn-cats');
+    if(cats && !cats.dataset.built){
+      cats.dataset.built='1';
+      var list=catsOf(DATA.fns); var html='<button class="ha-cat'+(fnCat===''?' active':'')+'" onclick="haFnCat(\'\')">'+esc(tr(T.all))+'</button>';
+      list.forEach(function(c){ html+='<button class="ha-cat" data-cat="'+c+'" onclick="haFnCat(\''+c+'\')">'+esc(catLabel(c))+'</button>'; });
+      cats.innerHTML=html;
+    }
+    renderFnList();
+  }
+  window.haFnCat=function(c){ fnCat=c; document.querySelectorAll('#ha-fn-cats .ha-cat').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-cat')||'')===c); }); renderFnList(); };
+  window.haFnSearch=function(v){ fnQuery=(v||'').trim().toLowerCase(); renderFnList(); };
+  function fnMatch(f){
+    if(fnCat && f.category!==fnCat) return false;
+    if(!fnQuery) return true;
+    var hay=((f.name_en||'')+' '+(f.name_ru||'')+' '+(f.name_es||'')+' '+(f.description_en||'')+' '+((f.tags||[]).join(' '))).toLowerCase();
+    return hay.indexOf(fnQuery)>=0;
+  }
+  function renderFnList(){
+    var host=document.getElementById('ha-fn-list'); if(!host) return;
+    var rows=(DATA.fns||[]).filter(fnMatch);
+    if(!rows.length){ host.innerHTML='<div class="ha-empty">'+esc(tr(T.empty))+'</div>'; return; }
+    host.innerHTML = rows.map(function(f){
+      return '<button class="ha-item'+(curFn&&curFn.slug===f.slug?' active':'')+'" onclick="haSelectFunction(\''+f.slug+'\')">'+
+        '<span class="ha-item-name">'+esc(nm(f))+'</span><span class="ha-item-cat">'+esc(catLabel(f.category))+'</span></button>';
+    }).join('');
+  }
+  window.haSelectFunction=function(slug){
+    ensureData(function(){
+      var f=DATA.fnBySlug[slug]; if(!f) return; curFn=f;
+      renderFnList();
+      focus(f.region_ids||[]);
+      // cross: conditions where this function is affected
+      var inConds=(DATA.conds||[]).filter(function(c){ return (c.affected_function_ids||[]).indexOf(f.id)>=0; });
+      var circuits=(f.circuit_ids||[]).map(function(id){ return DATA.circById[id]; }).filter(Boolean);
+      var h='<h4>'+esc(nm(f))+'</h4><div class="ha-side-cat">'+esc(catLabel(f.category))+'</div>';
+      h+='<p>'+esc(desc(f))+'</p>';
+      h+=regionSection(T.regions, f.region_ids||[], false);
+      if(circuits.length){ h+='<div class="ha-side-h">'+esc(tr(T.circuits))+'</div>'; h+=circuits.map(function(c){ return '<span class="ha-chip" onclick="haFocusList(\''+(c.region_ids||[]).join(',')+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
+      if(inConds.length){ h+='<div class="ha-side-h">'+esc(tr(T.in_conditions))+'</div>'; h+=inConds.map(function(c){ return '<span class="ha-chip link" onclick="haGoCondition(\''+c.slug+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
+      openDetail(h);
+    });
+  };
+
+  /* ── Conditions tab ─────────────────────────────────────────────────────── */
+  var condQuery='', condCat='';
+  function renderCondPanel(){
+    var cats=document.getElementById('ha-cond-cats');
+    if(cats && !cats.dataset.built){
+      cats.dataset.built='1';
+      var list=catsOf(DATA.conds); var html='<button class="ha-cat'+(condCat===''?' active':'')+'" onclick="haCondCat(\'\')">'+esc(tr(T.all))+'</button>';
+      list.forEach(function(c){ html+='<button class="ha-cat" data-cat="'+c+'" onclick="haCondCat(\''+c+'\')">'+esc(catLabel(c))+'</button>'; });
+      cats.innerHTML=html;
+    }
+    renderCondList();
+  }
+  window.haCondCat=function(c){ condCat=c; document.querySelectorAll('#ha-cond-cats .ha-cat').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-cat')||'')===c); }); renderCondList(); };
+  window.haCondSearch=function(v){ condQuery=(v||'').trim().toLowerCase(); renderCondList(); };
+  function condMatch(c){
+    if(condCat && c.category!==condCat) return false;
+    if(!condQuery) return true;
+    var hay=((c.name_en||'')+' '+(c.name_ru||'')+' '+(c.name_es||'')+' '+(c.description_en||'')).toLowerCase();
+    return hay.indexOf(condQuery)>=0;
+  }
+  function renderCondList(){
+    var host=document.getElementById('ha-cond-list'); if(!host) return;
+    var rows=(DATA.conds||[]).filter(condMatch);
+    if(!rows.length){ host.innerHTML='<div class="ha-empty">'+esc(tr(T.empty))+'</div>'; return; }
+    host.innerHTML = rows.map(function(c){
+      var ndb = c.is_neurodevelopmental ? ' <span class="ha-nd">'+esc(tr(T.nd))+'</span>' : '';
+      return '<button class="ha-item'+(curCond&&curCond.slug===c.slug?' active':'')+'" onclick="haSelectCondition(\''+c.slug+'\')">'+
+        '<span class="ha-item-name">'+esc(nm(c))+ndb+'</span><span class="ha-item-cat">'+esc(catLabel(c.category))+'</span></button>';
+    }).join('');
+  }
+  window.haSelectCondition=function(slug){
+    ensureData(function(){
+      var c=DATA.condBySlug[slug]; if(!c) return; curCond=c;
+      renderCondList();
+      focus(c.affected_region_ids||[]);
+      var fns=(c.affected_function_ids||[]).map(function(id){ return DATA.byFnId[id]; }).filter(Boolean);
+      var sev=c.severity_default||'';
+      var sevb = sev ? ' <span class="ha-sev '+esc(sev)+'">'+esc(tr(SEV[sev]||{ru:sev,en:sev,es:sev}))+'</span>' : '';
+      var ndb = c.is_neurodevelopmental ? ' <span class="ha-nd">'+esc(tr(T.nd))+'</span>' : '';
+      var h='<h4>'+esc(nm(c))+sevb+ndb+'</h4><div class="ha-side-cat">'+esc(catLabel(c.category))+'</div>';
+      h+='<p>'+esc(desc(c))+'</p>';
+      var imp=fld(c,'impact_summary'); if(imp){ h+='<div class="ha-side-h">'+esc(tr(T.impact))+'</div><p>'+esc(imp)+'</p>'; }
+      var rec=fld(c,'recommendations'); if(rec){ h+='<div class="ha-side-h">'+esc(tr(T.recommend))+'</div><p>'+esc(rec)+'</p>'; }
+      if(fns.length){ h+='<div class="ha-side-h">'+esc(tr(T.aff_functions))+'</div>'; h+=fns.map(function(f){ return '<span class="ha-chip link" onclick="haGoFunction(\''+f.slug+'\')">'+esc(nm(f))+'</span>'; }).join(''); }
+      h+=regionSection(T.aff_regions, c.affected_region_ids||[], false);
+      openDetail(h);
+    });
+  };
+
+  /* ── shared: region chip section (click = re-focus this region) ─────────── */
+  function regionSection(label, ids, asLinks){
+    ids=(ids||[]).filter(Boolean); if(!ids.length) return '';
+    var h='<div class="ha-side-h">'+esc(tr(label))+'</div>';
+    h+=ids.map(function(id){
+      return '<span class="ha-chip'+(asLinks?' link':'')+'" onclick="haFocusList(\''+id+'\')">'+esc(regionLabel(id))+'</span>';
+    }).join('');
+    h+='<div style="margin-top:0.4rem;"><span class="ha-chip link" onclick="haGoRegionMulti(\''+ids.join(',')+'\')">'+esc(tr(T.open_anatomy))+' →</span></div>';
+    return h;
+  }
+  window.haFocusList=function(csv){ var ids=(csv||'').split(',').filter(Boolean); focus(ids); };
+
+  /* ── Anatomy region cross-links (populates #arp-links) ──────────────────── */
+  window.haRegionLinks=function(regionId){
+    var lk=document.getElementById('arp-links'); if(!lk) return;
+    ensureData(function(){
+      var fns=(DATA.fns||[]).filter(function(f){ return (f.region_ids||[]).indexOf(regionId)>=0; });
+      var conds=(DATA.conds||[]).filter(function(c){ return (c.affected_region_ids||[]).indexOf(regionId)>=0; });
+      var rels=(DATA.relations||[]).filter(function(r){ return r.region_a===regionId||r.region_b===regionId; })
+        .map(function(r){ return r.region_a===regionId?r.region_b:r.region_a; });
+      var h='';
+      if(rels.length){ h+='<div class="ha-side-h">'+esc(tr(T.rel_regions))+'</div>'; h+=rels.map(function(id){ return '<span class="ha-chip" onclick="haGoRegionMulti(\''+id+'\')">'+esc(regionLabel(id))+'</span>'; }).join(''); }
+      if(fns.length){ h+='<div class="ha-side-h">'+esc(tr(T.fns_here))+'</div>'; h+=fns.map(function(f){ return '<span class="ha-chip link" onclick="haGoFunction(\''+f.slug+'\')">'+esc(nm(f))+'</span>'; }).join(''); }
+      if(conds.length){ h+='<div class="ha-side-h">'+esc(tr(T.conds_here))+'</div>'; h+=conds.map(function(c){ return '<span class="ha-chip link" onclick="haGoCondition(\''+c.slug+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
+      lk.innerHTML=h;
+    });
+  };
+
+  /* ── cross-navigation ───────────────────────────────────────────────────── */
+  window.haGoFunction=function(slug){ haSwitchTab('functions'); setTimeout(function(){ var i=document.getElementById('ha-fn-search'); if(i) i.value=''; fnQuery=''; fnCat=''; haSelectFunction(slug); },30); };
+  window.haGoCondition=function(slug){ haSwitchTab('conditions'); setTimeout(function(){ var i=document.getElementById('ha-cond-search'); if(i) i.value=''; condQuery=''; condCat=''; haSelectCondition(slug); },30); };
+  window.haGoRegionMulti=function(csv){ var ids=(csv||'').split(',').filter(Boolean); haSwitchTab('anatomy'); setTimeout(function(){ focus(ids); },40); };
+
+  /* ── detail panel ───────────────────────────────────────────────────────── */
+  function openDetail(html){ var p=document.getElementById('ha-detail-panel'); var b=document.getElementById('ha-detail-body'); if(b) b.innerHTML=html; if(p) p.classList.add('open'); }
+  window.haCloseDetail=function(){ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); };
+
+  /* ── static label localization (tabs, placeholders, headers) ────────────── */
+  function localize(){
+    var map=[['ha-tab-anatomy',T.tab_anatomy],['ha-tab-functions',T.tab_functions],['ha-tab-conditions',T.tab_conditions]];
+    map.forEach(function(p){ var el=document.getElementById(p[0]); if(el){ var sp=el.querySelector('span'); if(sp) sp.textContent=tr(p[1]); } });
+    var fs=document.getElementById('ha-fn-search'); if(fs) fs.placeholder=tr(T.fn_search);
+    var cs=document.getElementById('ha-cond-search'); if(cs) cs.placeholder=tr(T.cond_search);
+    // rebuild category bars (labels are language-dependent)
+    var fc=document.getElementById('ha-fn-cats'); if(fc) delete fc.dataset.built;
+    var cc=document.getElementById('ha-cond-cats'); if(cc) delete cc.dataset.built;
+    if(loaded && activeTab==='functions') renderFnPanel();
+    if(loaded && activeTab==='conditions') renderCondPanel();
+  }
+  document.addEventListener('langchange', function(){ localize(); });
+  // localize once the tool DOM exists
+  if(document.getElementById('ha-tab-anatomy')) localize();
+  else document.addEventListener('DOMContentLoaded', localize);
 })();
 </script>
 <script>
