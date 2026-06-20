@@ -11339,6 +11339,7 @@ function cpOpenFullscreen(){
 function cpEscHandler(e){ if (e.key === 'Escape') cpClose(); }
 function cpClose(){
   if (typeof cpCancelAutoAdvance === 'function') cpCancelAutoAdvance();
+  cpDisposeHumanAtlas();   // PACK 9: free the inline 3D atlas GPU resources on close
   var modal = document.getElementById('coursePlayerModal');
   if (modal){ modal.style.display='none'; modal.classList.remove('cp-fullscreen','cp-minimized'); }
   document.removeEventListener('keydown', cpEscHandler);
@@ -11399,6 +11400,7 @@ function cpBlockTitle(block, uiLang){
 
 function cpRenderBlock(){
   cpCancelAutoAdvance();   // clear any pending auto-advance toast on (re)render
+  cpDisposeHumanAtlas();   // PACK 9: tear down any inline 3D atlas from the prior block
   var area = document.getElementById('cp-block-area');
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var block = coursePlayer.blocks[coursePlayer.idx];
@@ -11565,6 +11567,10 @@ function cpRenderBlock(){
       area.appendChild(wrap);
       var rb = document.getElementById('cp-text-read');
       if (rb) rb.addEventListener('click', function(){ rb.disabled = true; rb.style.opacity = '0.6'; cpScheduleAutoAdvance(); });
+    } else if (bt === 'tool_task' && block.tool_kind === 'human-atlas') {
+      // PACK 9: mount the real 3D atlas INLINE inside the player (no tab switch).
+      // Give the DOM a tick so the embed container has its size before WebGL init.
+      setTimeout(cpMountHumanAtlas, 40);
     }
     // 3.5: when we LAND here via auto-advance, start the next audio/video itself
     // (give the DOM ~0.6s to mount the element). If the browser blocks autoplay,
@@ -11685,14 +11691,23 @@ function cpRenderHumanAtlas(block, p, lang){
                : (lang==='en'?'Anatomy':lang==='es'?'Anatomía':'Анатомия');
   var fallbackTitle = mode==='anatomy' ? key.replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}) : key;
   var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
-  var openLbl = lang==='en'?'Open in the full Atlas →':lang==='es'?'Abrir en el Atlas completo →':'Открыть в полном Атласе →';
+  var openLbl = lang==='en'?'Open in the full Atlas ↗':lang==='es'?'Abrir en el Atlas completo ↗':'Открыть в полном Атласе ↗';
   var cfgJson = encodeURIComponent(JSON.stringify({ mode: mode, payload: pl }));
-  var h = '<div style="padding:0.9rem 1rem;background:rgba(141,255,200,0.06);border:1px solid rgba(141,255,200,0.22);border-radius:10px;margin-bottom:0.9rem;">'
+  // PACK 9: stash the block config so the post-render hook (cpMountHumanAtlas)
+  // can mount the real 3D atlas INLINE — the student never leaves the course.
+  coursePlayer._haCfg = { mode: mode, payload: pl, key: key, lang: lang };
+  var loadingLbl = lang==='en'?'Loading 3D…':lang==='es'?'Cargando 3D…':'Загружаем 3D…';
+  var h = '<div style="padding:0.9rem 1rem;background:rgba(141,255,200,0.06);border:1px solid rgba(141,255,200,0.22);border-radius:10px;margin-bottom:0.7rem;">'
         + '<div style="font-size:10px;color:#8DFFC8;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">🧬 ' + modeLabel + '</div>'
         + '<div id="ha-cp-title" style="font-size:16px;color:var(--text-primary);font-weight:600;margin-bottom:0.3rem;">' + fallbackTitle.replace(/</g,'&lt;') + '</div>'
         + '<div id="ha-cp-desc" style="font-size:13px;line-height:1.6;color:var(--text-muted);"></div>'
-        + '<button class="btn btn-ghost" style="margin-top:0.7rem;font-size:12px;padding:0.4rem 0.8rem;" onclick="haOpenTool(decodeURIComponent(\'' + cfgJson + '\'))">' + openLbl + '</button>'
         + '</div>'
+        // inline 3D embed — mounted by cpMountHumanAtlas after the DOM settles
+        + '<div id="cp-ha-embed" style="position:relative;width:100%;height:380px;background:radial-gradient(80% 80% at 50% 35%,rgba(141,255,200,0.05),transparent 70%);border:1px solid rgba(141,255,200,0.16);border-radius:12px;overflow:hidden;margin-bottom:0.5rem;touch-action:none;">'
+        +   '<div id="cp-ha-embed-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;">' + loadingLbl + '</div>'
+        + '</div>'
+        + '<div id="cp-ha-layers" style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;margin-bottom:0.6rem;"></div>'
+        + '<div style="text-align:right;margin-bottom:0.7rem;"><a href="#" onclick="haOpenTool(decodeURIComponent(\'' + cfgJson + '\'));return false;" style="font-size:11.5px;color:var(--text-dim);text-decoration:none;">' + openLbl + '</a></div>'
         + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.7rem;">' + instr.replace(/</g,'&lt;') + '</div>' : '')
         + '<textarea id="cp-response" rows="4" placeholder="' + (lang==='en'?'Your notes…':lang==='es'?'Tus notas…':'Твои заметки…') + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
   // async: resolve the real localized name + description for function/condition
@@ -11711,6 +11726,68 @@ function cpRenderHumanAtlas(block, p, lang){
   return h;
 }
 window.cpRenderHumanAtlas = cpRenderHumanAtlas;
+
+// PACK 9: inline 3D atlas lifecycle inside the course player ─────────────────
+// A dedicated BodyAtlas instance lives in #cp-ha-embed for the duration of a
+// human-atlas block. It is its OWN instance (not window._anatomyAtlas) and is
+// fully disposed when the block changes or the player closes, so the heavy GPU
+// resources never leak. Completion stays on the normal "Далее →" (cpNext) flow.
+function cpDisposeHumanAtlas(){
+  try{ if(coursePlayer._haAtlas){ coursePlayer._haAtlas.destroy(); } }catch(e){}
+  coursePlayer._haAtlas = null;
+}
+window.cpDisposeHumanAtlas = cpDisposeHumanAtlas;
+
+var CP_HA_LAYERS = [
+  { key:'skin',     ru:'Кожа',   en:'Skin',     es:'Piel',      on:true,  op:0.5 },
+  { key:'muscles',  ru:'Мышцы',  en:'Muscles',  es:'Músculos',  on:false, op:0.5 },
+  { key:'skeleton', ru:'Скелет', en:'Skeleton', es:'Esqueleto', on:false, op:0.7 },
+  { key:'nervous',  ru:'Нервы',  en:'Nerves',   es:'Nervios',   on:false, op:0.8 },
+  { key:'vessels',  ru:'Сосуды', en:'Vessels',  es:'Vasos',     on:false, op:0.6 },
+  { key:'organs',   ru:'Органы', en:'Organs',   es:'Órganos',   on:false, op:0.55 }
+];
+function cpMountHumanAtlas(){
+  var cfg = coursePlayer._haCfg || {};
+  var lang = cfg.lang || ((typeof getLang==='function') ? getLang() : 'ru');
+  var vp = document.getElementById('cp-ha-embed');
+  if(!vp) return;
+  if(!window.BodyAtlas){ var m0=document.getElementById('cp-ha-embed-msg'); if(m0) m0.textContent='3D engine unavailable'; return; }
+  cpDisposeHumanAtlas();
+  var reveal = cfg.mode==='anatomy' ? (cfg.key||'') : '';
+  window.BodyAtlas.init(vp, { mode:'full' }).then(function(a){
+    if(!document.getElementById('cp-ha-embed')){ try{ a.destroy(); }catch(e){} return; } // block already changed
+    coursePlayer._haAtlas = a;
+    a.on('ready', function(){ var m=document.getElementById('cp-ha-embed-msg'); if(m) m.style.display='none'; });
+    cpHaInjectLayers(a, lang);
+    // best-effort focus: if the block targets a brain structure, zoom into the brain
+    a.on('ready', function(){
+      try{
+        if(cfg.mode==='anatomy' && /front|pariet|tempor|occip|thalam|hypothal|hippocamp|amygdal|cerebell|brain|cortex|limbic|insula|cingul|midbrain|pons|medulla/i.test(reveal)){
+          a.enterBrainDetail();
+        }
+      }catch(e){}
+    });
+  }).catch(function(){ var m=document.getElementById('cp-ha-embed-msg'); if(m) m.textContent=(lang==='en'?'3D failed to load':lang==='es'?'Error al cargar 3D':'3D не загрузился'); });
+}
+window.cpMountHumanAtlas = cpMountHumanAtlas;
+
+function cpHaInjectLayers(a, lang){
+  var host = document.getElementById('cp-ha-layers'); if(!host) return;
+  host.innerHTML='';
+  CP_HA_LAYERS.forEach(function(L){
+    var chip = document.createElement('button'); chip.type='button';
+    chip.textContent = L[lang]||L.en; chip.dataset.layer = L.key; chip.dataset.on = L.on?'1':'';
+    function setStyle(on){ chip.style.cssText='font-size:11.5px;padding:0.28rem 0.6rem;border-radius:999px;cursor:pointer;border:1px solid '+(on?'rgba(141,255,200,0.5)':'rgba(255,255,255,0.12)')+';background:'+(on?'rgba(141,255,200,0.16)':'rgba(255,255,255,0.04)')+';color:'+(on?'#8DFFC8':'var(--text-muted)')+';transition:.15s;'; }
+    setStyle(L.on);
+    try{ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op); }catch(e){}
+    chip.addEventListener('click', function(){
+      var on = !(chip.dataset.on==='1'); chip.dataset.on = on?'1':''; setStyle(on);
+      try{ a.toggleLayer(L.key, on); }catch(e){}
+    });
+    host.appendChild(chip);
+  });
+}
+window.cpHaInjectLayers = cpHaInjectLayers;
 
 // Deep-link: close the course player and open the full Human Atlas tool with the
 // right tab + entity preselected. Accepts the JSON {mode, payload} string.
