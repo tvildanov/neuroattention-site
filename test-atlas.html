@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,6 +16,21 @@
   input[type=range]{width:100%;accent-color:#A8F7FF;}
   #log{position:absolute;left:10px;bottom:10px;font-size:11px;color:#8DFFC8;background:rgba(0,0,0,.5);padding:4px 8px;border-radius:6px;}
 </style>
+<!-- ═══ Icons / PWA / Social (injected) ═══ -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#05070A" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="NeuroAttention Lab" />
+<meta property="og:image" content="https://neuroattention.org/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
 </head>
 <body>
 <div id="wrap">
@@ -36,7 +51,7 @@
   </div>
   <div id="vp"><div id="log">loading…</div></div>
 </div>
-<script src="assets/js/body-atlas.js?v=6"></script>
+<script src="assets/js/body-atlas.js?v=7"></script>
 <script>
 var A;
 var LAYERS=[['skin','#A8F7FF',true,50],['muscles','#8DFFC8',false,45],['skeleton','#E8FBFF',false,70],['nervous','#8DFFC8',false,80],['vessels','#FF8FA3',false,60],['organs','#FFCB8D',false,55],['brain','#6FE9F0',false,50]];

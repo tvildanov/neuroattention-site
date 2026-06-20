@@ -22,8 +22,10 @@
 (function () {
   'use strict';
 
-  var DAY = 864e5, MIN_PXPD = 0.04, MAX_PXPD = 400;
-  var SPINE_DEFAULT = 44, SPINE_MIN = 18, SPINE_MAX = 120, BUFFER = 20;
+  var DAY = 864e5, MIN_PXPD = 0.04, MAX_PXPD = 800;
+  // E1: raise the density cap so a single spine can be zoomed tall enough to read
+  // individual nodes (personal-path level of detail), not just the fit-to-view band.
+  var SPINE_DEFAULT = 44, SPINE_MIN = 18, SPINE_MAX = 260, BUFFER = 20;
   var LAYER_COLOR = { emotion: '#ff8aa0', event: '#a78bfa', thought: '#7fd0ff',
     sensation: '#67e3c0', practice: '#8fe39b', insight: '#ffd76a', xp_gain: '#cfd6e6' };
   var EXT_LAYERS = ['sun', 'moon', 'earth', 'weather', 'cosmos', 'social', 'experimental'];
@@ -312,7 +314,7 @@
     S._sx = sx;
     // 3.1 inheritance: live time-zoom factor (how far we've zoomed past the fit
     // baseline), clamped like the personal path. Drives per-spine Y-zoom below.
-    var timeZoom = clamp(view.pxPerDay / (view._basePxPerDay || view.pxPerDay), 0.6, 3.5);
+    var timeZoom = clamp(view.pxPerDay / (view._basePxPerDay || view.pxPerDay), 0.6, 6);
 
     var rowsArr = S.rows || [], n = rowsArr.length, sh = S.spineH;
     var rowY = function (i) { return padTop + i * sh + sh / 2 - S.scrollY; };
@@ -383,7 +385,7 @@
         // bandHalf caps each spine's vertical spread to < half the row height so
         // adjacent spines never collide; drawSlimSpine fills it adaptively (sparse
         // stretch, crowded fan + horizontal compress + priority sampling).
-        var bandHalf = Math.min(sh * 0.40, detail >= 2 ? 26 : 11);
+        var bandHalf = Math.min(sh * 0.40, detail >= 2 ? 44 : 11);
         window.EvolutionPath.drawSlimSpine(ctx, u._comps, {
           sx: sx, cy: y, x0: x0, x1: x1, zoom: detail >= 2 ? 0.75 : 0.55, bandHalf: bandHalf,
           rZ: detail >= 2 ? 0.95 : 0.65, timeZoom: timeZoom,
@@ -634,13 +636,27 @@
     if (r.type === 'header') { toggleGroup(S, r.group.key); return; }   // PR12: header toggles its group
     var u = r.user; if (!u) return;
     S.anchorRow = row;
-    // PR FIX #10: first click on a spine zooms INTO it (full-height, like the
-    // personal path); a second click on the focused spine opens the profile.
-    if (S._focusUser === String(u.id)) {
-      if (S.data.is_superadmin) { try { window.open('/account.html?tab=profile&userId=' + encodeURIComponent(u.id), '_blank'); } catch (e) {} }
-      else showUserCard(S, u);
+    // E2: explicit click rules, keyed on the per-spine zoom state (S._focusUser):
+    //   • single click while NOT zoomed → zoom into the spine
+    //   • single click while ALREADY zoomed on it → no-op (stay put)
+    //   • DOUBLE click → open the user's profile
+    // (Nick: single-click-opens-profile was the bug; profile is double-click only.)
+    var now = Date.now();
+    var isDouble = S._lastClick && S._lastClick.row === row && (now - S._lastClick.t) < 350;
+    S._lastClick = { row: row, t: now };
+    if (isDouble) {
+      S._lastClick = null;                 // consume so a 3rd click starts fresh
+      openProfile(S, u);
+      return;
+    }
+    if (S._focusUser !== String(u.id)) focusUser(S, u, row);
+    // else: already zoomed on this spine — a single click does nothing.
+  }
+  function openProfile(S, u) {
+    if (S.data && S.data.is_superadmin) {
+      try { window.open('/account.html?tab=profile&userId=' + encodeURIComponent(u.id), '_blank'); } catch (e) {}
     } else {
-      focusUser(S, u, row);
+      showUserCard(S, u);
     }
   }
   function focusUser(S, u, row) {

@@ -237,8 +237,8 @@
       var sev = e.severity ? '<span class="ef-sev">' + esc(e.severity) + '</span>' : '';
       var src = e.source_url ? '<a href="' + esc(e.source_url) + '" target="_blank" rel="noopener" class="ef-src">' + esc(e.source) + ' ↗</a>' : '<span class="ef-src">' + esc(e.source) + '</span>';
       return '<div class="ef-item">' +
-        '<div class="ef-item-top">' + sev + '<span class="ef-item-title">' + esc(e.title) + '</span></div>' +
-        (e.description ? '<div class="ef-item-desc">' + esc(e.description) + '</div>' : '') +
+        '<div class="ef-item-top">' + sev + '<span class="ef-item-title">' + esc(e.title_translated || e.title) + '</span></div>' +
+        ((e.description_translated || e.description) ? '<div class="ef-item-desc">' + esc(e.description_translated || e.description) + '</div>' : '') +
         '<div class="ef-item-meta">' + esc(fmtTime(e.timestamp)) + ' · ' + src + '</div>' +
       '</div>';
     }).join('') + '</div>';
@@ -251,7 +251,9 @@
   function latestOf(events, type) { for (var i = 0; i < events.length; i++) if (events[i].event_type === type) return events[i]; return null; }
   function allOf(events, type) { return events.filter(function (e) { return e.event_type === type; }); }
   function loadLayer(layer, cb) {
-    api('/api/external/events?layer=' + layer + '&limit=150').then(function (d) { cb((d && d.events) || []); }).catch(function () { cb(null); });
+    // C1: pass the UI language so the backend can attach title_translated /
+    // description_translated for the social layer.
+    api('/api/external/events?layer=' + layer + '&limit=150&lang=' + encodeURIComponent(lang())).then(function (d) { cb((d && d.events) || []); }).catch(function () { cb(null); });
   }
 
   // value-on-scale gauge: opts = { value, min, max, unit, zones:[{to,color,label,tag?}], note }

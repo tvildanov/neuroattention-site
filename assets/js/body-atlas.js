@@ -130,13 +130,17 @@
 
   // per-layer x-ray styling for streamed real meshes (no purple; mycelium tokens
   // + warm accents to tell vessels/organs apart)
+  // B6: each layer gets a distinct base colour so multiple open layers read
+  // apart at a glance, while the x-ray rim/glow (cyan-ish) stays for the
+  // holographic look. Palette per Nick's spec.
   var LAYER_STYLE = {
-    skin:     { color: 0xA8F7FF, opacity: 0.45, glow: 0.6, fresnelPower: 2.4 },
-    muscles:  { color: 0xC0FFE0, rim: 0x8DFFC8, opacity: 0.42, glow: 0.5, fresnelPower: 2.2 },
-    skeleton: { color: 0xE8FBFF, rim: 0xFFFFFF, opacity: 0.62, glow: 1.0, fresnelPower: 1.8 },
-    nervous:  { color: 0x8DFFC8, rim: 0xFFFFFF, opacity: 0.72, glow: 1.0, fresnelPower: 1.7 },
-    vessels:  { color: 0xFF8FA3, rim: 0xFFD6DE, opacity: 0.58, glow: 0.9, fresnelPower: 1.8 },
-    organs:   { color: 0xFFCB8D, rim: 0xFFE9CC, opacity: 0.5,  glow: 0.7, fresnelPower: 2.0 }
+    skin:     { color: 0xA8F7FF, rim: 0xCFF6FF, opacity: 0.40, glow: 0.6, fresnelPower: 2.4 }, // light blue, translucent
+    muscles:  { color: 0xFF6B6B, rim: 0xFFC2C2, opacity: 0.50, glow: 0.6, fresnelPower: 2.1 }, // coral
+    skeleton: { color: 0xFFD700, rim: 0xFFF1A8, opacity: 0.70, glow: 1.0, fresnelPower: 1.8 }, // gold/yellow
+    nervous:  { color: 0x7CFC00, rim: 0xCFFFB0, opacity: 0.60, glow: 1.0, fresnelPower: 1.7 }, // lawn green
+    vessels:  { color: 0xFF0000, rim: 0xFF9A9A, opacity: 0.50, glow: 0.9, fresnelPower: 1.9 }, // red
+    organs:   { color: 0x9B59B6, rim: 0xD9B8E8, opacity: 0.60, glow: 0.8, fresnelPower: 2.0 }, // purple
+    brain:    { color: 0xFFFFFF, rim: 0xFFFFFF, opacity: 0.78, glow: 1.2, fresnelPower: 1.6 }  // bright white
   };
 
   // ── tiny script loader (sequential, cached) ───────────────────────────────
@@ -292,6 +296,7 @@
     this._handlers = {};       // event -> [fn]
     this._layers = {};         // name -> THREE.Group
     this._layerState = {};     // name -> {visible, opacity}
+    this._regionStates = {};   // B8: regionId -> {visible, opacity} session overrides
     this._regionMeshes = [];   // hit-testable meshes (body regions + brain)
     this._raf = null;
     this._destroyed = false;
@@ -313,8 +318,10 @@
     this.camera = new T.PerspectiveCamera(38, w / h, 0.01, 100);
     this.camera.position.set(0, 0.1, 4.2);
 
-    this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    // B4: cap pixel ratio at 1.5 so retina/4K displays don't quadruple the
+    // fragment load (the x-ray shader is fill-heavy) — keeps 60fps on integrated GPUs.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.setSize(w, h);
     this.renderer.setClearColor(0x000000, 0);
     c.appendChild(this.renderer.domElement);
@@ -330,11 +337,25 @@
     // controls
     this.controls = new T.OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.controls.minDistance = 0.4;
-    this.controls.maxDistance = 9;
-    this.controls.enablePan = false;
+    this.controls.dampingFactor = 0.1;                 // B5: smooth interpolation
+    // B5: wider zoom envelope so you can actually get in close (organ/region
+    // detail) — min was 0.4 (too far). We own the wheel (B2 zoom-to-cursor), so
+    // OrbitControls' native dolly is disabled; these clamp our custom dolly.
+    this.controls.minDistance = 0.12;
+    this.controls.maxDistance = 12;
+    // enableZoom stays ON so touch pinch-zoom keeps working (toward target). The
+    // desktop WHEEL is intercepted in capture phase for zoom-to-cursor (B2).
+    this.controls.enableZoom = true;
+    // B3: panning is allowed but only takes effect once zoomed in (>1.5x), gated
+    // each frame in the render loop. screen-space panning feels natural here.
+    this.controls.enablePan = true;
+    this.controls.screenSpacePanning = true;
     this.controls.target.set(0, 0, 0);
+    this._baseDist = this.camera.position.distanceTo(this.controls.target); // reference for "zoom factor"
+    // default mouse map: left = rotate. Shift+drag temporarily becomes pan (B3).
+    if (T.MOUSE) this.controls.mouseButtons = { LEFT: T.MOUSE.ROTATE, MIDDLE: T.MOUSE.DOLLY, RIGHT: T.MOUSE.PAN };
+    // two-finger touch = pan + pinch-zoom (pinch handled by our wheel-equivalent below)
+    if (T.TOUCH) this.controls.touches = { ONE: T.TOUCH.ROTATE, TWO: T.TOUCH.DOLLY_PAN };
 
     // root group (so everything rotates/centers together)
     this.root = new T.Group();
@@ -923,6 +944,76 @@
     this.camera.position.set(0, 0.1, 4.2);
     this.controls.target.set(0, 0, 0);
     this.controls.update();
+    this.resetRegions();   // B8: "Reset view" also restores per-region overrides
+  };
+
+  // ── B8: per-region visibility / opacity overrides ──────────────────────────
+  // Region ids are the per-mesh userData.regionId (e.g. 'frontal-lobe', 'heart',
+  // 'biceps-l'). A region may be several meshes (left/right, sub-parts); all are
+  // updated together. State lives in this._regionStates so it survives repaints
+  // until resetRegions().
+  Atlas.prototype._forEachRegionMesh = function (regionId, cb) {
+    if (!this.root) return;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData) return;
+      var ud = o.userData;
+      if (ud.regionId === regionId || ud.baseSlug === regionId) cb(o);
+    });
+  };
+  Atlas.prototype._regState = function (regionId) {
+    if (!this._regionStates[regionId]) this._regionStates[regionId] = { visible: true, opacity: 1 };
+    return this._regionStates[regionId];
+  };
+  Atlas.prototype.setRegionVisible = function (regionId, visible) {
+    visible = visible !== false;
+    this._regState(regionId).visible = visible;
+    this._forEachRegionMesh(regionId, function (m) { m.visible = visible; });
+    return this;
+  };
+  // opacity is a 0..1 multiplier of the region's base x-ray opacity.
+  Atlas.prototype.setRegionOpacity = function (regionId, k) {
+    k = Math.max(0, Math.min(1, k == null ? 1 : k));
+    this._regState(regionId).opacity = k;
+    this._forEachRegionMesh(regionId, function (m) {
+      var mat = m.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
+      if (m.userData._baseOpacity == null) m.userData._baseOpacity = mat.uniforms.uOpacity.value;
+      mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
+    });
+    return this;
+  };
+  Atlas.prototype.getRegionState = function (regionId) {
+    var s = this._regionStates[regionId];
+    return { visible: s ? s.visible : true, opacity: s ? s.opacity : 1 };
+  };
+  Atlas.prototype.resetRegions = function () {
+    var self = this;
+    Object.keys(this._regionStates).forEach(function (id) {
+      self._forEachRegionMesh(id, function (m) {
+        m.visible = true;
+        var mat = m.material;
+        if (mat && mat.uniforms && mat.uniforms.uOpacity && m.userData._baseOpacity != null) {
+          mat.uniforms.uOpacity.value = m.userData._baseOpacity;
+        }
+      });
+    });
+    this._regionStates = {};
+    return this;
+  };
+  // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
+  // opacity and restore the focused ones to full. Pass null/[] to clear.
+  Atlas.prototype.focusRegions = function (ids, dim) {
+    dim = dim == null ? 0.1 : dim;
+    var set = {}; (ids || []).forEach(function (i) { set[i] = 1; });
+    var self = this;
+    if (!this.root) return this;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || !o.userData.regionId) return;
+      var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
+      if (o.userData._baseOpacity == null) o.userData._baseOpacity = mat.uniforms.uOpacity.value;
+      var on = set[o.userData.regionId] || set[o.userData.baseSlug];
+      mat.uniforms.uOpacity.value = o.userData._baseOpacity * (on ? 1 : ((ids && ids.length) ? dim : 1));
+    });
+    return this;
   };
 
   // ── brain detail mode (zoom + body fade) ────────────────────────────────────
@@ -1083,6 +1174,51 @@
     el.addEventListener('click', this._onClick);
     el.addEventListener('touchend', this._onClick);
 
+    // ── B2 + B5: zoom-to-cursor with a logarithmic curve ──────────────────────
+    // We intercept the wheel in the CAPTURE phase and stopImmediatePropagation so
+    // OrbitControls' own dolly never runs (it zooms toward target = pelvis, which
+    // was Nick's complaint). We raycast the cursor to find the world point under
+    // it and scale both camera and target about that pivot, so the point under the
+    // cursor stays fixed while everything zooms around it.
+    this._onWheel = function (e) {
+      if (!self.camera || !self.controls || self._destroyed) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      var rect = el.getBoundingClientRect();
+      var rw = rect.width || el.clientWidth, rh = rect.height || el.clientHeight;
+      var pivot;
+      if (rw > 0 && rh > 0) {
+        self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
+                        -((e.clientY - rect.top) / rh) * 2 + 1);
+        self.raycaster.setFromCamera(self._mouse, self.camera);
+        var hits = self.root ? self.raycaster.intersectObjects(self.root.children, true) : [];
+        pivot = (hits && hits.length) ? hits[0].point.clone() : self.controls.target.clone();
+      } else {
+        pivot = self.controls.target.clone();   // can't locate cursor → plain center zoom
+      }
+      var cam = self.camera.position, tgt = self.controls.target;
+      var dist = cam.distanceTo(tgt);
+      // normalise deltaY across deltaMode (pixel / line / page)
+      var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+      var scale = Math.exp(dy * 0.0012);                 // log curve, proportional to zoom
+      var newDist = Math.max(self.controls.minDistance, Math.min(self.controls.maxDistance, dist * scale));
+      scale = dist > 1e-5 ? newDist / dist : 1;
+      cam.sub(pivot).multiplyScalar(scale).add(pivot);
+      tgt.sub(pivot).multiplyScalar(scale).add(pivot);
+    };
+    el.addEventListener('wheel', this._onWheel, { capture: true, passive: false });
+
+    // ── B3: Shift+drag → pan (only effective once zoomed past 1.5x, gated in loop)
+    this._onPointerDown = function (e) {
+      var T = window.THREE;
+      if (e.shiftKey && self.controls && T && T.MOUSE) self.controls.mouseButtons.LEFT = T.MOUSE.PAN;
+    };
+    this._onPointerUp = function () {
+      var T = window.THREE;
+      if (self.controls && T && T.MOUSE) self.controls.mouseButtons.LEFT = T.MOUSE.ROTATE;
+    };
+    el.addEventListener('pointerdown', this._onPointerDown);
+    window.addEventListener('pointerup', this._onPointerUp);
+
     this._onResize = function () { self._resize(); };
     window.addEventListener('resize', this._onResize);
   };
@@ -1112,8 +1248,15 @@
     function frame() {
       if (self._destroyed) return;
       self._raf = requestAnimationFrame(frame);
-      if (self.controls) self.controls.update();
-      // gentle idle auto-rotation in full mode when user isn't interacting
+      if (self.controls) {
+        // B3: only allow panning once the user has zoomed in past 1.5x (no pan at
+        // the default overview, where it would feel like the model drifting away).
+        if (self._baseDist) {
+          var d = self.camera.position.distanceTo(self.controls.target);
+          self.controls.enablePan = d < self._baseDist / 1.5;
+        }
+        self.controls.update();
+      }
       self.renderer.render(self.scene, self.camera);
     }
     frame();
@@ -1139,14 +1282,33 @@
     this._destroyed = true;
     if (this._raf) cancelAnimationFrame(this._raf);
     var el = this.renderer && this.renderer.domElement;
-    if (el) { el.removeEventListener('mousemove', this._onMove); el.removeEventListener('click', this._onClick); el.removeEventListener('touchend', this._onClick); }
+    if (el) {
+      el.removeEventListener('mousemove', this._onMove);
+      el.removeEventListener('click', this._onClick);
+      el.removeEventListener('touchend', this._onClick);
+      if (this._onWheel) el.removeEventListener('wheel', this._onWheel, { capture: true });
+      if (this._onPointerDown) el.removeEventListener('pointerdown', this._onPointerDown);
+    }
+    if (this._onPointerUp) window.removeEventListener('pointerup', this._onPointerUp);
     window.removeEventListener('resize', this._onResize);
+    // B10: dispose every GPU resource (geometry / material / textures) before
+    // dropping the renderer, so leaving the atlas frees memory and the next tool
+    // (e.g. External Field) isn't starved / janky.
     if (this.scene) this.scene.traverse(function (o) {
       if (o.geometry) o.geometry.dispose();
-      if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) { m.dispose(); }); }
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) {
+        if (m.map) m.map.dispose();
+        for (var k in m) { var v = m[k]; if (v && v.isTexture) v.dispose(); }
+        m.dispose();
+      });
     });
-    if (this.renderer) { this.renderer.dispose(); if (el && el.parentNode) el.parentNode.removeChild(el); }
-    this.scene = this.camera = this.renderer = this.controls = null;
+    if (this.scene && this.scene.clear) this.scene.clear();
+    if (this.controls && this.controls.dispose) this.controls.dispose();
+    if (this.renderer) { this.renderer.dispose(); this.renderer.forceContextLoss && this.renderer.forceContextLoss(); if (el && el.parentNode) el.parentNode.removeChild(el); }
+    // B10: drop layer/brain caches so nothing keeps the old meshes alive.
+    this._layers = {}; this._loadedLayers = {}; this._layerState = {};
+    this._brainGroup = null; this._brainDetailMesh = null; this._brainMeshes = null;
+    this.scene = this.camera = this.renderer = this.controls = this.root = null;
   };
 
   // ── public module ────────────────────────────────────────────────────────────
