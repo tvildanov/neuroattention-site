@@ -1293,6 +1293,9 @@
         .atlas-layer-head input{accent-color:#A8F7FF;}
         .atlas-layer-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor;}
         .atlas-layer-op{width:100%;margin-top:0.45rem;accent-color:#A8F7FF;height:3px;}
+        .atlas-layer-spin{display:none;width:11px;height:11px;margin-left:auto;flex:0 0 auto;border-radius:50%;border:1.6px solid rgba(168,247,255,0.22);border-top-color:#A8F7FF;animation:ba-spin .8s linear infinite;}
+        .atlas-layer.loading .atlas-layer-spin{display:inline-block;}
+        @keyframes ba-spin{to{transform:rotate(360deg);}}
         .atlas-organ{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.1);border-radius:10px;padding:0.4rem;display:flex;flex-direction:column;align-items:center;gap:0.25rem;cursor:pointer;transition:.15s;}
         .atlas-organ:hover{background:rgba(168,247,255,0.12);transform:translateY(-1px);}
         .atlas-organ svg{width:42px;height:42px;animation:atlasSpin 9s linear infinite;}
@@ -14261,6 +14264,10 @@ window.pbMove = pbMove;
       a.on('region-click', onClick);
       a.on('brain-enter', function(){ setBrainBtn(true); });
       a.on('brain-exit',  function(){ setBrainBtn(false); atlasCloseRegion(); });
+      // per-layer streaming spinner (real GLB lazy-loads on first toggle)
+      a.on('layer-loading', function(d){ setLayerLoading(d&&d.layer, true); });
+      a.on('layer-loaded',  function(d){ setLayerLoading(d&&d.layer, false); });
+      a.on('layer-error',   function(d){ setLayerLoading(d&&d.layer, false); });
       // sync initial layer state from controls
       LAYERS.forEach(function(L){ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op/100); });
     }).catch(function(e){ console.warn('Atlas init failed', e); mounted=false;
@@ -14271,11 +14278,12 @@ window.pbMove = pbMove;
     var host = document.getElementById('atlas-layers'); if(!host) return;
     var note = host.querySelector('.atlas-schematic');
     LAYERS.forEach(function(L){
-      var el = document.createElement('div'); el.className='atlas-layer';
+      var el = document.createElement('div'); el.className='atlas-layer'; el.setAttribute('data-layer', L.key);
       el.innerHTML =
         '<label class="atlas-layer-head"><input type="checkbox" '+(L.on?'checked':'')+' onchange="atlasToggleLayer(\''+L.key+'\',this.checked)">'+
         '<span class="atlas-layer-dot" style="color:'+L.color+';background:'+L.color+'"></span>'+
-        '<span data-i18n="a.tools.anatomy_layer_'+L.key+'">'+L[lang()]+'</span></label>'+
+        '<span data-i18n="a.tools.anatomy_layer_'+L.key+'">'+L[lang()]+'</span>'+
+        '<span class="atlas-layer-spin" title="loading"></span></label>'+
         '<input type="range" class="atlas-layer-op" min="0" max="100" value="'+L.op+'" oninput="atlasSetOpacity(\''+L.key+'\',this.value)">';
       host.insertBefore(el, note);
     });
@@ -14319,6 +14327,7 @@ window.pbMove = pbMove;
     p.classList.add('open');
   }
   function setBrainBtn(on){ var b=document.getElementById('atlas-brain-btn'); if(b) b.classList.toggle('active', !!on); }
+  function setLayerLoading(key, on){ if(!key) return; var row=document.querySelector('#atlas-layers .atlas-layer[data-layer="'+key+'"]'); if(row) row.classList.toggle('loading', !!on); }
 
   window.atlasToggleLayer = function(k,v){ if(atlas) atlas.toggleLayer(k,v); var L=LAYERS.filter(function(x){return x.key===k;})[0]; if(L) L.on=v; };
   window.atlasSetOpacity = function(k,v){ if(atlas) atlas.setLayerOpacity(k, v/100); };

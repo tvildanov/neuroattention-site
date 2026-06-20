@@ -4,12 +4,13 @@
  * Vanilla JS + Three.js r128 (lazy-loaded from CDN on first use).
  *
  * Geometry sources (honest provenance — see assets/3d/CREDITS.md):
- *   • Skin layer  — REAL human mesh (Three.js examples, Xbot.glb), rendered
- *                   with a holographic x-ray wireframe shader.
- *   • Skeleton / muscles / nervous-system / brain — anatomically-faithful
- *     PROCEDURAL meshes built from standard anatomical proportions, scaled to
- *     the loaded body's bounding box. Correct topology, positions and named,
- *     hit-testable regions — schematic, not photogrammetric scans.
+ *   • Skin layer  — REAL human mesh (body-male.glb), rendered with a
+ *                   holographic x-ray wireframe shader.
+ *   • Muscles / skeleton / nervous / vessels / organs / brain-detail — REAL
+ *     Z-Anatomy (CC-BY-SA) meshes, streamed per-layer from a CDN and tagged so
+ *     every named structure is its own hit-testable region. Each system loads
+ *     lazily the first time its layer is toggled on; a spinner overlay covers
+ *     the empty stage until the first GLB arrives. No procedural fallback.
  *
  * Public API (see window.BodyAtlas at bottom):
  *   BodyAtlas.init(container, options) -> Promise<Atlas>
@@ -366,11 +367,43 @@
 
     this._bindEvents();
     this._startLoop();
+    // Empty stage + spinner until the first GLB (the body silhouette) arrives —
+    // no procedural capsule is ever shown.
+    this._showLoadingOverlay(loadingMsg());
     this._loadBody();
     this._applyMode(this.mode);
   };
 
-  // ── body load + procedural anatomy ─────────────────────────────────────────
+  // ── loading overlay (shown until the first/body GLB streams in) ─────────────
+  function loadingMsg() {
+    var l = (window.getLang && window.getLang()) || (document.documentElement.lang || 'ru');
+    l = String(l).slice(0, 2);
+    return l === 'en' ? 'Loading model…' : l === 'es' ? 'Cargando modelo…' : 'Загружаем модель…';
+  }
+  Atlas.prototype._showLoadingOverlay = function (msg) {
+    var c = this.container; if (!c) return;
+    if (!document.getElementById('ba-spin-kf')) {
+      var st = document.createElement('style'); st.id = 'ba-spin-kf';
+      st.textContent = '@keyframes ba-spin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(st);
+    }
+    var o = this._loadingOverlay;
+    if (!o) {
+      try { if (getComputedStyle(c).position === 'static') c.style.position = 'relative'; } catch (e) {}
+      o = document.createElement('div'); o.className = 'ba-loading';
+      o.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5;pointer-events:none;background:radial-gradient(60% 60% at 50% 45%,rgba(168,247,255,0.05),transparent);';
+      o.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;border:2.5px solid rgba(168,247,255,0.22);border-top-color:#A8F7FF;animation:ba-spin .8s linear infinite;"></div><div class="ba-loading-msg" style="font-size:13px;color:var(--text-muted,#9fb4bd);letter-spacing:.02em;"></div>';
+      c.appendChild(o);
+      this._loadingOverlay = o;
+    }
+    var m = o.querySelector('.ba-loading-msg'); if (m) m.textContent = msg || '';
+    o.style.display = 'flex';
+  };
+  Atlas.prototype._hideLoadingOverlay = function () {
+    if (this._loadingOverlay) this._loadingOverlay.style.display = 'none';
+  };
+
+  // ── body load ───────────────────────────────────────────────────────────────
   Atlas.prototype._loadBody = function () {
     var self = this, T = window.THREE;
     var loader = new T.GLTFLoader();
@@ -441,16 +474,14 @@
       y: function (frac) { return bb.min.y + H * frac; }
     };
 
-    // build the anatomy layers now that we have proportions
-    this._buildSkeleton();
-    this._buildMuscles();
-    this._buildNervous();
-    this._buildBrain();
-
-    // apply requested layer config
+    // No procedural anatomy layers. Each real Z-Anatomy system (muscles /
+    // skeleton / nervous / vessels / organs) streams in lazily the first time
+    // its layer is toggled on (see _loadRealLayer). Until then the scene shows
+    // only the body silhouette (skin GLB) — never a procedural capsule.
     this._applyLayerConfig();
     this._applyMode(this.mode);
     this._emit('ready', {});
+    this._hideLoadingOverlay();   // first GLB is in — drop the spinner
   };
 
   Atlas.prototype._proceduralBody = function () {
@@ -468,224 +499,6 @@
     part(CapGeo(0.12, 0.7, 6, 12), -0.13, 0.4, 0);    // leg L
     part(CapGeo(0.12, 0.7, 6, 12), 0.13, 0.4, 0);     // leg R
     return g;
-  };
-
-  // ── SKELETON (procedural, proportion-driven) ───────────────────────────────
-  Atlas.prototype._buildSkeleton = function () {
-    var T = window.THREE, M = this._metrics, g = new T.Group(); g.name = 'skeleton';
-    var boneMat = function () { return makeXrayMaterial({ color: 0xE8FBFF, rim: RIM_WHITE, opacity: 0.7, glow: 1.0, fresnelPower: 1.8 }); };
-    function add(geo, x, y, z, rx) { var m = new T.Mesh(geo, boneMat()); m.position.set(x, y, z); if (rx) m.rotation.x = rx; g.add(m); return m; }
-
-    var cx = 0, w = M.width;
-    // skull
-    add(new T.SphereGeometry(w * 0.15, 20, 16), cx, M.y(0.94), 0.01);
-    // jaw hint
-    add(new T.BoxGeometry(w * 0.14, w * 0.05, w * 0.13), cx, M.y(0.905), 0.02);
-
-    // ── vertebral column with real C/T/L/S segmentation ──
-    // each vertebra is a clickable region (cervical/thoracic/lumbar/sacrum)
-    var spine = this._buildSpine();           // returns {group, regions}
-    g.add(spine.group);
-
-    // ribcage — arcs hanging off thoracic region
-    var ribTop = M.y(0.80), ribBot = M.y(0.62);
-    for (var i = 0; i < 6; i++) {
-      var ry = ribTop - (ribTop - ribBot) * (i / 5);
-      var rw = w * (0.34 - i * 0.012);
-      var torus = new T.TorusGeometry(rw, w * 0.012, 6, 24, Math.PI * 1.15);
-      var rib = add(torus, cx, ry, -0.02); rib.rotation.x = Math.PI / 2; rib.rotation.z = Math.PI * 0.93;
-      var rib2 = add(torus, cx, ry, -0.02); rib2.rotation.x = Math.PI / 2; rib2.rotation.z = -Math.PI * 0.93 + Math.PI;
-    }
-    // sternum
-    add(new T.BoxGeometry(w * 0.05, (ribTop - ribBot) * 0.8, w * 0.02), cx, (ribTop + ribBot) / 2, M.depth * 0.32);
-
-    // pelvis
-    var pelvis = add(new T.TorusGeometry(w * 0.2, w * 0.03, 8, 20, Math.PI), cx, M.y(0.50), 0);
-    pelvis.rotation.x = Math.PI / 2;
-    // clavicles + shoulders
-    add(new T.CylinderGeometry(w*0.02, w*0.02, w*0.34, 8), cx, M.y(0.82), M.depth*0.18).rotation.z = Math.PI/2;
-
-    // limb long-bones — arms held HORIZONTALLY to match the T-pose body mesh.
-    var armY = M.y(0.82), span = M.armSpan;
-    var sx = w * 0.2;                         // shoulder joint
-    var elbowX = span * 0.26, wristX = span * 0.42;
-    this._bone(g, boneMat, -sx, armY, 0, -elbowX, armY, 0, w*0.03);  // humerus L
-    this._bone(g, boneMat,  sx, armY, 0,  elbowX, armY, 0, w*0.03);  // humerus R
-    this._bone(g, boneMat, -elbowX, armY, 0, -wristX, armY, 0, w*0.024); // forearm L
-    this._bone(g, boneMat,  elbowX, armY, 0,  wristX, armY, 0, w*0.024); // forearm R
-    var hipX = w * 0.09, kneeY = M.y(0.27), ankleY = M.y(0.04);
-    this._bone(g, boneMat, -hipX, M.y(0.50), 0, -hipX, kneeY, 0.01, w*0.03); // femur L
-    this._bone(g, boneMat,  hipX, M.y(0.50), 0,  hipX, kneeY, 0.01, w*0.03); // femur R
-    this._bone(g, boneMat, -hipX, kneeY, 0.01, -hipX, ankleY, 0.02, w*0.024); // tibia L
-    this._bone(g, boneMat,  hipX, kneeY, 0.01,  hipX, ankleY, 0.02, w*0.024); // tibia R
-
-    this.root.add(g);
-    this._layers.skeleton = g;
-    this._layerState.skeleton = { visible: false, opacity: 0.7 };
-    this._spineRegions = spine.regions;
-  };
-
-  Atlas.prototype._bone = function (parent, matFn, x1, y1, z1, x2, y2, z2, r) {
-    var T = window.THREE;
-    var a = new T.Vector3(x1, y1, z1), b = new T.Vector3(x2, y2, z2);
-    var len = a.distanceTo(b);
-    var geo = new T.CylinderGeometry(r, r * 0.85, len, 10);
-    var m = new T.Mesh(geo, matFn());
-    m.position.copy(a).add(b).multiplyScalar(0.5);
-    m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-    parent.add(m);
-    return m;
-  };
-
-  // Vertebral column — cervical(7), thoracic(12), lumbar(5), sacrum.
-  // Each segment group is hit-testable with a region id used by sensation-map.
-  Atlas.prototype._buildSpine = function () {
-    var T = window.THREE, M = this._metrics, w = M.width;
-    var group = new T.Group(); group.name = 'spine';
-    var regions = [];
-    var segs = [
-      { id: 'cervical-spine',  ru:'Шейный отдел',    en:'Cervical spine',  es:'Columna cervical',  y0:0.84, y1:0.90, n:7,  z: -M.depth*0.05 },
-      { id: 'thoracic-spine',  ru:'Грудной отдел',   en:'Thoracic spine',  es:'Columna torácica',  y0:0.62, y1:0.84, n:12, z: -M.depth*0.12 },
-      { id: 'lumbar-spine',    ru:'Поясничный отдел',en:'Lumbar spine',    es:'Columna lumbar',    y0:0.52, y1:0.62, n:5,  z: -M.depth*0.08 },
-      { id: 'sacral-spine',    ru:'Крестцовый отдел',en:'Sacrum / coccyx', es:'Sacro / cóccix',    y0:0.46, y1:0.52, n:4,  z: -M.depth*0.02 }
-    ];
-    var mat = function () { return makeXrayMaterial({ color: 0xE8FBFF, opacity: 0.75, glow: 1.0, fresnelPower: 1.7 }); };
-    segs.forEach(function (s) {
-      var sg = new T.Group();
-      sg.userData = { regionId: s.id, names: { ru: s.ru, en: s.en, es: s.es }, layer: 'skeleton' };
-      for (var i = 0; i < s.n; i++) {
-        var t = s.n > 1 ? i / (s.n - 1) : 0;
-        var y = M.y(s.y0 + (s.y1 - s.y0) * t);
-        var vert = new T.Mesh(new T.BoxGeometry(w * 0.055, (M.y(s.y1) - M.y(s.y0)) / s.n * 0.7 + 0.004, w * 0.05), mat());
-        vert.position.set(0, y, s.z);
-        sg.add(vert);
-      }
-      group.add(sg);
-      regions.push(sg);
-    });
-    return { group: group, regions: regions };
-  };
-
-  // ── MUSCLES (major groups as translucent volumes) ──────────────────────────
-  Atlas.prototype._buildMuscles = function () {
-    var T = window.THREE, M = this._metrics, g = new T.Group(); g.name = 'muscles'; var w = M.width;
-    var mat = function () { return makeXrayMaterial({ color: 0xC0FFE0, rim: NEURO_GREEN, opacity: 0.45, glow: 0.5, fresnelPower: 2.2 }); };
-    function vol(geo, x, y, z, name, ru, en, es) {
-      var m = new T.Mesh(geo, mat()); m.position.set(x, y, z);
-      if (name) m.userData = { regionId: name, names: { ru: ru, en: en, es: es }, layer: 'muscles' };
-      g.add(m); return m;
-    }
-    vol(CapGeo(w*0.26, (M.y(0.82)-M.y(0.6)), 6, 14), 0, M.y(0.71), 0, 'pectoral-abdominal', 'Грудь / пресс', 'Chest / abdominals', 'Pecho / abdominales');
-    vol(new T.SphereGeometry(w*0.13, 14, 12), -w*0.24, M.y(0.79), 0, 'deltoid-l', 'Дельтовидная (Л)', 'Deltoid (L)', 'Deltoides (Izq)');
-    vol(new T.SphereGeometry(w*0.13, 14, 12),  w*0.24, M.y(0.79), 0, 'deltoid-r', 'Дельтовидная (П)', 'Deltoid (R)', 'Deltoides (Der)');
-    vol(CapGeo(w*0.06, (M.y(0.81)-M.y(0.5))*0.45, 5, 10), -w*0.27, M.y(0.72), 0, 'biceps-l', 'Бицепс (Л)', 'Biceps (L)', 'Bíceps (Izq)');
-    vol(CapGeo(w*0.06, (M.y(0.81)-M.y(0.5))*0.45, 5, 10),  w*0.27, M.y(0.72), 0, 'biceps-r', 'Бицепс (П)', 'Biceps (R)', 'Bíceps (Der)');
-    vol(CapGeo(w*0.1, (M.y(0.5)-M.y(0.27))*0.7, 6, 12), -w*0.09, M.y(0.4), 0.01, 'quadriceps-l', 'Квадрицепс (Л)', 'Quadriceps (L)', 'Cuádriceps (Izq)');
-    vol(CapGeo(w*0.1, (M.y(0.5)-M.y(0.27))*0.7, 6, 12),  w*0.09, M.y(0.4), 0.01, 'quadriceps-r', 'Квадрицепс (П)', 'Quadriceps (R)', 'Cuádriceps (Der)');
-    vol(CapGeo(w*0.075, (M.y(0.27)-M.y(0.04))*0.65, 6, 12), -w*0.09, M.y(0.16), -0.02, 'calf-l', 'Икра (Л)', 'Calf (L)', 'Pantorrilla (Izq)');
-    vol(CapGeo(w*0.075, (M.y(0.27)-M.y(0.04))*0.65, 6, 12),  w*0.09, M.y(0.16), -0.02, 'calf-r', 'Икра (П)', 'Calf (R)', 'Pantorrilla (Der)');
-
-    this.root.add(g);
-    this._layers.muscles = g;
-    this._layerState.muscles = { visible: false, opacity: 0.45 };
-  };
-
-  // ── NERVOUS SYSTEM (spinal cord + major nerve trunks) ──────────────────────
-  Atlas.prototype._buildNervous = function () {
-    var T = window.THREE, M = this._metrics, g = new T.Group(); g.name = 'nervous'; var w = M.width;
-    var mat = new T.LineBasicMaterial({ color: NEURO_GREEN, transparent: true, opacity: 0.85, depthWrite: false });
-    var tubeMat = function () { return makeXrayMaterial({ color: NEURO_GREEN, rim: 0xFFFFFF, opacity: 0.8, glow: 1.0, fresnelPower: 1.6 }); };
-
-    // spinal cord — tube following the vertebral column
-    var cordPts = [
-      new T.Vector3(0, M.y(0.90), -M.depth*0.04),
-      new T.Vector3(0, M.y(0.82), -M.depth*0.06),
-      new T.Vector3(0, M.y(0.70), -M.depth*0.10),
-      new T.Vector3(0, M.y(0.60), -M.depth*0.10),
-      new T.Vector3(0, M.y(0.50), -M.depth*0.04)
-    ];
-    var cordCurve = new T.CatmullRomCurve3(cordPts);
-    var cord = new T.Mesh(new T.TubeGeometry(cordCurve, 40, w*0.018, 8, false), tubeMat());
-    cord.userData = { regionId: 'spinal-cord', names: { ru:'Спинной мозг', en:'Spinal cord', es:'Médula espinal' }, layer: 'nervous' };
-    g.add(cord);
-
-    // peripheral nerve trunks (curves) — arms & legs
-    function nerve(pts) {
-      var curve = new T.CatmullRomCurve3(pts.map(function (p) { return new T.Vector3(p[0], p[1], p[2]); }));
-      var geo = new T.TubeGeometry(curve, 24, w*0.006, 5, false);
-      g.add(new T.Mesh(geo, tubeMat()));
-    }
-    // brachial → arm L/R
-    nerve([[0,M.y(0.80),-0.04],[-w*0.2,M.y(0.80),0],[-w*0.27,M.y(0.66),0],[-w*0.3,M.y(0.5),0.02]]);
-    nerve([[0,M.y(0.80),-0.04],[ w*0.2,M.y(0.80),0],[ w*0.27,M.y(0.66),0],[ w*0.3,M.y(0.5),0.02]]);
-    // sciatic → leg L/R
-    nerve([[0,M.y(0.50),-0.04],[-w*0.09,M.y(0.48),-0.02],[-w*0.09,M.y(0.27),0.01],[-w*0.09,M.y(0.05),0.02]]);
-    nerve([[0,M.y(0.50),-0.04],[ w*0.09,M.y(0.48),-0.02],[ w*0.09,M.y(0.27),0.01],[ w*0.09,M.y(0.05),0.02]]);
-
-    this.root.add(g);
-    this._layers.nervous = g;
-    this._layerState.nervous = { visible: false, opacity: 0.8 };
-  };
-
-  // ── BRAIN (named, hit-testable regions) ─────────────────────────────────────
-  Atlas.prototype._buildBrain = function () {
-    var T = window.THREE, M = this._metrics, w = M.width;
-    var g = new T.Group(); g.name = 'brain';
-    // local brain frame at head center
-    var headY = M.y(0.94);
-    var R = w * 0.15;          // cerebrum radius
-    g.position.set(0, headY, w * 0.02);
-    this._brainGroup = g;
-    this._brainCenter = new T.Vector3(0, headY, w * 0.02);
-    this._brainRadius = R;
-
-    var self = this;
-    function regionMesh(id, geo, color, pos, rot, scale) {
-      var info = BRAIN_REGIONS.filter(function (r) { return r.id === id; })[0] || { id: id };
-      var m = new T.Mesh(geo, makeXrayMaterial({ color: color, rim: RIM_WHITE, opacity: 0.5, glow: 0.7, fresnelPower: 2.2 }));
-      if (pos) m.position.set(pos[0], pos[1], pos[2]);
-      if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
-      if (scale) m.scale.set(scale[0], scale[1], scale[2]);
-      m.userData = {
-        regionId: id, brain: true, layer: 'brain',
-        names: { ru: info.ru, en: info.en, es: info.es },
-        group: info.group, baseOpacity: 0.5
-      };
-      g.add(m);
-      self._regionMeshes.push(m);
-      // wireframe net on cortical lobes for the holographic look
-      if (info.group === 'cortex' || info.group === 'cerebellum') {
-        var wf = makeWireframe(geo, color, 0.16); if (pos) wf.position.copy(m.position); if (rot) wf.rotation.copy(m.rotation); if (scale) wf.scale.copy(m.scale); g.add(wf);
-      }
-      return m;
-    }
-
-    // Cerebral hemispheres split into 4 lobes (sphere octants, slightly flattened).
-    // frontal (front), parietal (top-back), temporal (low-side), occipital (back)
-    var lobeGeo = function () { return new T.SphereGeometry(R, 28, 22, 0, Math.PI*2, 0, Math.PI); };
-    regionMesh('frontal-lobe',   new T.SphereGeometry(R*0.95, 24, 18, 0, Math.PI, 0, Math.PI*0.65), COLD_CYAN, [0, R*0.15, R*0.55], [Math.PI*0.15, 0, 0], [1, 0.9, 0.9]);
-    regionMesh('parietal-lobe',  new T.SphereGeometry(R*0.9, 24, 18, 0, Math.PI, 0, Math.PI*0.55), COLD_CYAN, [0, R*0.35, -R*0.2], [-Math.PI*0.2, 0, 0], [1, 0.95, 0.95]);
-    regionMesh('occipital-lobe', new T.SphereGeometry(R*0.7, 22, 16, 0, Math.PI, 0, Math.PI*0.6), COLD_CYAN, [0, R*0.05, -R*0.75], [Math.PI*0.55, Math.PI, 0], [1, 0.85, 0.8]);
-    regionMesh('temporal-lobe',  new T.SphereGeometry(R*0.55, 20, 14), COLD_CYAN, [0, -R*0.45, R*0.15], null, [1.5, 0.55, 1.1]);
-
-    // deep / limbic structures (paired, centered)
-    regionMesh('thalamus',     new T.SphereGeometry(R*0.18, 16, 12), NEURO_GREEN, [0, -R*0.02, 0], null, [1.6, 0.9, 1.1]);
-    regionMesh('hypothalamus', new T.SphereGeometry(R*0.09, 14, 10), NEURO_GREEN, [0, -R*0.22, R*0.08], null, [1.4, 0.7, 1]);
-    regionMesh('hippocampus',  new T.TorusGeometry(R*0.16, R*0.035, 8, 20, Math.PI*1.1), NEURO_GREEN, [0, -R*0.3, -R*0.05], [Math.PI*0.5, 0, 0], [1.4, 1, 1]);
-    regionMesh('amygdala',     new T.SphereGeometry(R*0.07, 12, 10), NEURO_GREEN, [0, -R*0.32, R*0.25], null, [1.6, 1, 1]);
-    regionMesh('basal-ganglia',new T.SphereGeometry(R*0.12, 14, 12), WARM_CYAN, [0, R*0.05, R*0.1], null, [1.8, 1.1, 1.2]);
-
-    // cerebellum — posterior-inferior, textured hemisphere
-    regionMesh('cerebellum',   new T.SphereGeometry(R*0.45, 24, 16), WARM_CYAN, [0, -R*0.6, -R*0.7], null, [1.3, 0.75, 1]);
-
-    // brainstem — stacked midbrain / pons / medulla
-    regionMesh('midbrain',     new T.CylinderGeometry(R*0.1, R*0.11, R*0.18, 12), WARM_CYAN, [0, -R*0.55, R*0.0]);
-    regionMesh('pons',         new T.CylinderGeometry(R*0.12, R*0.12, R*0.2, 12), WARM_CYAN, [0, -R*0.78, R*0.02]);
-    regionMesh('medulla',      new T.CylinderGeometry(R*0.11, R*0.08, R*0.22, 12), WARM_CYAN, [0, -R*1.0, R*0.0]);
-
-    this.root.add(g);
-    this._layers.brain = g;
-    this._layerState.brain = { visible: false, opacity: 0.5 };
   };
 
   // ── real anatomical brain (Z-Anatomy) — lazy, streamed once ──────────────────
@@ -784,10 +597,12 @@
   // ── layer config / visibility / opacity ────────────────────────────────────
   Atlas.prototype._applyLayerConfig = function () {
     var requested = this.opts.layers;   // array of layer names to show, or undefined = full
-    var all = ['skin', 'muscles', 'skeleton', 'nervous', 'brain'];
+    var all = ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs', 'brain'];
     var self = this;
+    // No guard on a pre-existing group: only 'skin' exists at this point (real
+    // anatomy layers stream in on demand). toggleLayer initializes state and,
+    // when visible, triggers the lazy _loadRealLayer for that system.
     all.forEach(function (name) {
-      if (!self._layers[name]) return;
       var visible;
       if (requested) visible = requested.indexOf(name) !== -1;
       else visible = (name === 'skin');   // default: skin on, rest off (full mode reveals via UI)
@@ -1018,11 +833,12 @@
 
   // ── brain detail mode (zoom + body fade) ────────────────────────────────────
   Atlas.prototype.enterBrainDetail = function () {
-    if (!this._brainGroup) return;
+    if (!this._metrics) return;            // atlas not mounted yet
     this._brainDetail = true;
-    // procedural capsules are an instant preview; the real GLB swaps in async
-    if (this._brainRealGroup) { this._brainRealGroup.visible = true; this._brainGroup.visible = false; }
-    else this.toggleLayer('brain', true);
+    // No procedural brain preview anymore — the real Z-Anatomy brain-detail GLB
+    // is the only brain. Show it if already streamed, else kick off the lazy
+    // load; the load callback frames the camera once its bbox is known.
+    if (this._brainRealGroup) this._brainRealGroup.visible = true;
     this._loadBrainDetail();
     ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
     this._frameBrain();
