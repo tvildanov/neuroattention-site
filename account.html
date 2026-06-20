@@ -14061,9 +14061,9 @@ window.pbMove = pbMove;
     var vp = document.getElementById('atlas-viewport');
     if(!vp || !window.BodyAtlas) return;
     if(mounted){ if(atlas) atlas.render({}); return; }
-    // Access gate — anatomy-atlas may be course-locked.
+    // Access gate — human-atlas (formerly anatomy-atlas) may be course-locked.
     var token = localStorage.getItem('na_token');
-    fetch(atlasApiBase()+'/api/tools/anatomy-atlas/access', { headers:{ 'Authorization':'Bearer '+token } })
+    fetch(atlasApiBase()+'/api/tools/human-atlas/access', { headers:{ 'Authorization':'Bearer '+token } })
       .then(function(r){ return r.ok ? r.json() : {unlocked:true}; })
       .then(function(a){ if(a && a.unlocked===false){ showLocked(vp, a.unlock_course); } else { _mountAnatomyNow(); } })
       .catch(function(){ _mountAnatomyNow(); }); // network/endpoint absent → fail open (don't block)
