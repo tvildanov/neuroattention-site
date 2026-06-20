@@ -459,6 +459,24 @@
   .na-fs-body .myc-evo-head { margin-top: 1.6rem; flex-wrap: wrap; gap: 0.5rem; }
 }
 
+/* PACK 15 (desktop only): lift the profile / status / layer cards out of the
+   chart and into fixed side gutters, so the Path-of-Development map gets the
+   full centre width and the sticky layer icons inside the map are no longer
+   overlapped. The canvas is width:100% of the now-padded host, so it reflows to
+   the centre (the engine's ResizeObserver repaints). Tablet/mobile (< 1180px)
+   keep the original overlay/stacked layout untouched. */
+@media (min-width: 1280px) {
+  .myc-evo-canvas { padding-left: 236px; padding-right: 190px; }
+  /* profile card → top-left gutter */
+  .evo-user-panel  { left: 16px; top: 14px; width: 172px; }
+  /* status card → directly under the profile, left gutter */
+  .evo-char-stats  { left: 16px; top: 206px; width: 172px; }
+  /* field-view character card → left gutter */
+  .evo-char-panel  { left: 16px; width: 188px; }
+  /* External Field layers card → top-right gutter */
+  .evo-layer-toggles { right: 16px; top: 14px; width: 138px; }
+}
+
 /* ============================================================================
    External Field tool
    ============================================================================ */
