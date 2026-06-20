@@ -231,14 +231,51 @@
     return '<div class="ef-empty"><div class="ef-empty-ic">◌</div><div class="ef-empty-t">' + esc(t('noData')) + '</div>' +
       '<div class="ef-empty-r">' + esc(reason || t('awaitNext')) + '</div></div>';
   }
+  // PACK 13: the backend serves English event text (GDELT social headlines,
+  // NOAA/DONKI space-weather titles) and never fills title_translated. When the
+  // UI is RU/ES we localize the recognizable high-impact terms client-side via a
+  // dictionary; anything not in the dict (proper nouns, etc.) passes through, so
+  // we always degrade gracefully to the original English.
+  var EF_TERMS = {
+    ru: {
+      'coronal mass ejection': 'корональный выброс массы', 'geomagnetic storm': 'геомагнитная буря',
+      'solar flare': 'солнечная вспышка', 'radio blackout': 'радиозатемнение', 'solar wind': 'солнечный ветер',
+      'sunspot': 'солнечное пятно', 'natural disaster': 'стихийное бедствие', 'wildfire': 'лесной пожар',
+      'earthquake': 'землетрясение', 'flood': 'наводнение', 'hurricane': 'ураган', 'tsunami': 'цунами',
+      'eruption': 'извержение', 'volcano': 'вулкан', 'drought': 'засуха', 'famine': 'голод',
+      'conflict': 'конфликт', 'election': 'выборы', 'pandemic': 'пандемия', 'outbreak': 'вспышка',
+      'protest': 'протест', 'strike': 'забастовка', 'explosion': 'взрыв', 'attack': 'атака',
+      'disaster': 'катастрофа', 'storm': 'шторм', 'war': 'война'
+    },
+    es: {
+      'coronal mass ejection': 'eyección de masa coronal', 'geomagnetic storm': 'tormenta geomagnética',
+      'solar flare': 'erupción solar', 'radio blackout': 'apagón de radio', 'solar wind': 'viento solar',
+      'sunspot': 'mancha solar', 'natural disaster': 'desastre natural', 'wildfire': 'incendio forestal',
+      'earthquake': 'terremoto', 'flood': 'inundación', 'hurricane': 'huracán', 'tsunami': 'tsunami',
+      'eruption': 'erupción', 'volcano': 'volcán', 'drought': 'sequía', 'famine': 'hambruna',
+      'conflict': 'conflicto', 'election': 'elecciones', 'pandemic': 'pandemia', 'outbreak': 'brote',
+      'protest': 'protesta', 'strike': 'huelga', 'explosion': 'explosión', 'attack': 'ataque',
+      'disaster': 'desastre', 'storm': 'tormenta', 'war': 'guerra'
+    }
+  };
+  function efTr(text) {
+    var l = lang(); if (l === 'en' || !text) return text;
+    var dict = EF_TERMS[l]; if (!dict) return text;
+    var out = text;
+    // longest phrases first so 'coronal mass ejection' wins over 'storm' etc.
+    Object.keys(dict).sort(function (a, b) { return b.length - a.length; }).forEach(function (en) {
+      out = out.replace(new RegExp('\\b' + en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi'), dict[en]);
+    });
+    return out;
+  }
   function timeline(events, emptyReason) {
     if (!events || !events.length) return emptyState(emptyReason || t('srcEmpty'));
     return '<div class="ef-timeline">' + events.map(function (e) {
       var sev = e.severity ? '<span class="ef-sev">' + esc(e.severity) + '</span>' : '';
       var src = e.source_url ? '<a href="' + esc(e.source_url) + '" target="_blank" rel="noopener" class="ef-src">' + esc(e.source) + ' ↗</a>' : '<span class="ef-src">' + esc(e.source) + '</span>';
       return '<div class="ef-item">' +
-        '<div class="ef-item-top">' + sev + '<span class="ef-item-title">' + esc(e.title_translated || e.title) + '</span></div>' +
-        ((e.description_translated || e.description) ? '<div class="ef-item-desc">' + esc(e.description_translated || e.description) + '</div>' : '') +
+        '<div class="ef-item-top">' + sev + '<span class="ef-item-title">' + esc(e.title_translated || efTr(e.title)) + '</span></div>' +
+        ((e.description_translated || e.description) ? '<div class="ef-item-desc">' + esc(e.description_translated || efTr(e.description)) + '</div>' : '') +
         '<div class="ef-item-meta">' + esc(fmtTime(e.timestamp)) + ' · ' + src + '</div>' +
       '</div>';
     }).join('') + '</div>';
