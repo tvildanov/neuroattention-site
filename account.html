@@ -1283,9 +1283,7 @@
         .atlas-btn:hover{background:rgba(168,247,255,0.16);}
         .atlas-btn.active{background:rgba(141,255,200,0.16);border-color:rgba(141,255,200,0.4);}
         .atlas-body{display:flex;gap:0;min-height:520px;}
-        .atlas-layers,.atlas-organs{flex:0 0 188px;padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;background:rgba(0,0,0,0.18);}
-        .atlas-layers{border-right:1px solid rgba(168,247,255,0.08);}
-        .atlas-organs{border-left:1px solid rgba(168,247,255,0.08);}
+        .atlas-layers{flex:0 0 188px;padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;background:rgba(0,0,0,0.18);border-right:1px solid rgba(168,247,255,0.08);}
         .atlas-viewport{flex:1 1 auto;position:relative;min-width:0;background:radial-gradient(80% 80% at 50% 35%, rgba(168,247,255,0.05), transparent 70%);}
         .atlas-sec-title{font-size:10.5px;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-dim,#7c8896);margin:0 0 0.2rem;}
         .atlas-layer{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.09);border-radius:10px;padding:0.5rem 0.6rem;}
@@ -1296,11 +1294,6 @@
         .atlas-layer-spin{display:none;width:11px;height:11px;margin-left:auto;flex:0 0 auto;border-radius:50%;border:1.6px solid rgba(168,247,255,0.22);border-top-color:#A8F7FF;animation:ba-spin .8s linear infinite;}
         .atlas-layer.loading .atlas-layer-spin{display:inline-block;}
         @keyframes ba-spin{to{transform:rotate(360deg);}}
-        .atlas-organ{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.1);border-radius:10px;padding:0.4rem;display:flex;flex-direction:column;align-items:center;gap:0.25rem;cursor:pointer;transition:.15s;}
-        .atlas-organ:hover{background:rgba(168,247,255,0.12);transform:translateY(-1px);}
-        .atlas-organ svg{width:42px;height:42px;animation:atlasSpin 9s linear infinite;}
-        @keyframes atlasSpin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
-        .atlas-organ span{font-size:10.5px;color:var(--text-muted,#8c98a6);}
         .atlas-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11px;color:var(--text-dim,#7c8896);background:rgba(0,0,0,0.45);padding:0.3rem 0.7rem;border-radius:8px;pointer-events:none;}
         .atlas-tooltip{position:absolute;pointer-events:none;background:rgba(8,18,22,0.92);border:1px solid rgba(168,247,255,0.35);color:#A8F7FF;font-size:12px;padding:0.25rem 0.55rem;border-radius:7px;transform:translate(-50%,-130%);white-space:nowrap;display:none;z-index:5;}
         .atlas-region-panel{position:absolute;top:0;right:0;height:100%;width:280px;max-width:80%;background:rgba(6,14,18,0.94);border-left:1px solid rgba(168,247,255,0.25);padding:1.1rem;transform:translateX(105%);transition:transform .3s ease;overflow-y:auto;z-index:6;}
@@ -1310,7 +1303,7 @@
         .atlas-region-panel p{font-size:13px;line-height:1.6;color:var(--text-muted,#cdd6df);}
         .atlas-region-panel .arp-x{position:absolute;top:0.6rem;right:0.7rem;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;}
         .atlas-schematic{font-size:10px;color:var(--text-dim,#7c8896);opacity:0.8;margin-top:auto;line-height:1.4;}
-        @media(max-width:760px){.atlas-body{flex-direction:column;}.atlas-layers,.atlas-organs{flex:none;flex-direction:row;overflow-x:auto;}.atlas-organs{order:3;}.atlas-viewport{min-height:420px;order:2;}.atlas-organ svg{width:34px;height:34px;}}
+        @media(max-width:760px){.atlas-body{flex-direction:column;}.atlas-layers{flex:none;flex-direction:row;overflow-x:auto;}.atlas-viewport{min-height:420px;order:2;}}
         /* ── Human Atlas 3-tab UI (Anatomy / Functions / Conditions) ── */
         .ha-tabs{display:flex;gap:0.3rem;padding:0.55rem 0.7rem 0;border-bottom:1px solid rgba(168,247,255,0.1);flex-wrap:wrap;}
         .ha-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted,#8c98a6);font-size:13px;padding:0.45rem 0.7rem;cursor:pointer;display:inline-flex;align-items:center;gap:0.35rem;transition:.15s;border-radius:8px 8px 0 0;}
@@ -1398,10 +1391,6 @@
                 <div id="ha-detail-body"></div>
               </div>
             </div>
-            <aside class="atlas-organs" id="atlas-organs">
-              <div class="atlas-sec-title" data-i18n="a.tools.anatomy_organs">Органы</div>
-              <!-- inset organs injected by JS -->
-            </aside>
           </div>
         </div>
       </div>
@@ -14177,13 +14166,6 @@ window.pbMove = pbMove;
     { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 },
     { key:'brain',    color:'#6FE9F0', ru:'Мозг',          en:'Brain',          es:'Cerebro',         on:false, op:50 }
   ];
-  var ORGANS = [
-    { id:'brain',   ru:'Мозг',   en:'Brain',   es:'Cerebro', glyph:'M22 6c-3 0-5 2-5 4 0 0-2 0-2 3 0 2 1 3 2 3 0 2 1 4 4 4 1 2 3 3 5 3s4-1 5-3c3 0 4-2 4-4 1 0 2-1 2-3 0-3-2-3-2-3 0-2-2-4-5-4-1-1-2-2-3-2s-2 1-3 2z' },
-    { id:'heart',   ru:'Сердце', en:'Heart',   es:'Corazón', glyph:'M24 34C12 26 8 20 8 15c0-4 3-7 7-7 3 0 5 2 6 4l3 4 3-4c1-2 3-4 6-4 4 0 7 3 7 7 0 5-4 11-16 19z' },
-    { id:'lungs',   ru:'Лёгкие', en:'Lungs',   es:'Pulmones',glyph:'M24 8v14M18 14c-4 1-7 5-7 12 0 6 2 9 6 9 3 0 4-2 4-6V16c0-2-1-3-3-2zM30 14c4 1 7 5 7 12 0 6-2 9-6 9-3 0-4-2-4-6V16c0-2 1-3 3-2z' },
-    { id:'liver',   ru:'Печень', en:'Liver',   es:'Hígado',  glyph:'M10 16c8-3 20-4 28-1 2 1 2 4 1 7-2 6-7 11-14 11-6 0-12-3-15-9-1-3-2-7 0-8z' },
-    { id:'kidneys', ru:'Почки',  en:'Kidneys', es:'Riñones', glyph:'M18 12c4 0 5 4 5 8s-1 8-5 8-7-4-7-8 3-8 7-8zM30 12c-4 0-5 4-5 8s1 8 5 8 7-4 7-8-3-8-7-8z' }
-  ];
   // Short, accurate region descriptions (educational base; Nick can expand per course).
   var REGION_DESC = {
     'frontal-lobe':   { ru:'Планирование, принятие решений, контроль внимания и движений, речь.', en:'Planning, decision-making, attention control, voluntary movement, speech.', es:'Planificación, toma de decisiones, control de la atención, movimiento, habla.' },
@@ -14257,7 +14239,7 @@ window.pbMove = pbMove;
     var vp = document.getElementById('atlas-viewport');
     if(mounted){ if(atlas) atlas.render({}); return; }
     mounted = true;
-    injectLayers(); injectOrgans();
+    injectLayers();
     window.BodyAtlas.init(vp, { mode:'full' }).then(function(a){
       atlas = a; window._anatomyAtlas = a;
       a.on('region-hover', onHover);
@@ -14286,15 +14268,6 @@ window.pbMove = pbMove;
         '<span class="atlas-layer-spin" title="loading"></span></label>'+
         '<input type="range" class="atlas-layer-op" min="0" max="100" value="'+L.op+'" oninput="atlasSetOpacity(\''+L.key+'\',this.value)">';
       host.insertBefore(el, note);
-    });
-  }
-  function injectOrgans(){
-    var host = document.getElementById('atlas-organs'); if(!host) return;
-    ORGANS.forEach(function(O){
-      var el = document.createElement('div'); el.className='atlas-organ'; el.onclick=function(){ atlasFocusOrgan(O.id); };
-      el.innerHTML='<svg viewBox="0 0 48 48" fill="none" stroke="#A8F7FF" stroke-width="1.4" stroke-linejoin="round"><path d="'+O.glyph+'"/></svg>'+
-        '<span data-i18n="a.tools.anatomy_organ_'+O.id+'">'+O[lang()]+'</span>';
-      host.appendChild(el);
     });
   }
 
@@ -14470,7 +14443,6 @@ window.pbMove = pbMove;
     if(lAn) lAn.style.display = tab==='anatomy'?'':'none';
     if(lFn) lFn.style.display = tab==='functions'?'':'none';
     if(lCo) lCo.style.display = tab==='conditions'?'':'none';
-    var organs=document.getElementById('atlas-organs'); if(organs) organs.style.display = tab==='anatomy'?'':'none';
     var topbar=document.getElementById('ha-topbar'); if(topbar) topbar.style.display = tab==='anatomy'?'':'none';
     // close both detail panels on switch
     var rp=document.getElementById('atlas-region-panel'); if(rp) rp.classList.remove('open');
