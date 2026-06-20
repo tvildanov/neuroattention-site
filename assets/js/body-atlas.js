@@ -182,7 +182,10 @@
         uRim:          { value: rim },
         uFresnelPower: { value: opts.fresnelPower != null ? opts.fresnelPower : 2.4 },
         uOpacity:      { value: opts.opacity != null ? opts.opacity : 0.55 },
-        uGlow:         { value: opts.glow != null ? opts.glow : 0.6 }
+        uGlow:         { value: opts.glow != null ? opts.glow : 0.6 },
+        // PACK 8: 0 = holographic x-ray (edge-glow, see-through centre);
+        // 1 = solid fill (opaque surface) for the 100%-opacity slider position.
+        uSolid:        { value: 0.0 }
       },
       vertexShader: [
         'varying vec3 vN;', 'varying vec3 vV;',
@@ -195,14 +198,18 @@
       ].join('\n'),
       fragmentShader: [
         'uniform vec3 uColor; uniform vec3 uRim;',
-        'uniform float uFresnelPower; uniform float uOpacity; uniform float uGlow;',
+        'uniform float uFresnelPower; uniform float uOpacity; uniform float uGlow; uniform float uSolid;',
         'varying vec3 vN; varying vec3 vV;',
         'void main(){',
         '  float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));',
         '  f = pow(clamp(f,0.0,1.0), uFresnelPower);',
         '  vec3 c = mix(uColor, uRim, f*0.65);',
         '  float a = clamp(f*uOpacity + uGlow*0.06, 0.0, 1.0);',
-        '  gl_FragColor = vec4(c * (0.4 + uGlow*f), a);',
+        '  vec3 xc = c * (0.4 + uGlow*f);',                 // holographic colour
+        '  vec3 sc = mix(uColor*0.55, uRim, f*0.5);',        // solid-fill colour
+        '  vec3 outC = mix(xc, sc, uSolid);',
+        '  float outA = mix(a, 1.0, uSolid);',               // uSolid=1 → fully opaque
+        '  gl_FragColor = vec4(outC, outA);',
         '}'
       ].join('\n')
     });
@@ -704,16 +711,29 @@
 
   Atlas.prototype.setLayerOpacity = function (name, opacity) {
     var grp = this._layers[name]; if (!grp) return;
+    var T = window.THREE;
     opacity = Math.max(0, Math.min(1, opacity));
     if (this._layerState[name]) this._layerState[name].opacity = opacity;
+    // PACK 8: at the very top of the slider (100%) render the layer as a SOLID,
+    // fully-opaque surface (normal blending + depth write so it occludes); below
+    // 100% keep the holographic x-ray (additive, see-through).
+    var solid = opacity >= 0.999;
     grp.traverse(function (o) {
-      if (o.material) {
-        var mats = Array.isArray(o.material) ? o.material : [o.material];
-        mats.forEach(function (mt) {
-          if (mt.uniforms && mt.uniforms.uOpacity) mt.uniforms.uOpacity.value = opacity * ((o.userData && o.userData.baseOpacity) ? o.userData.baseOpacity * 2 : 1);
-          else { mt.opacity = opacity; mt.transparent = true; }
-        });
-      }
+      if (!o.material) return;
+      var mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(function (mt) {
+        if (mt.uniforms && mt.uniforms.uOpacity) {
+          mt.uniforms.uOpacity.value = opacity * ((o.userData && o.userData.baseOpacity) ? o.userData.baseOpacity * 2 : 1);
+          if (mt.uniforms.uSolid) mt.uniforms.uSolid.value = solid ? 1.0 : 0.0;
+          var wantBlend = solid ? T.NormalBlending : T.AdditiveBlending;
+          if (mt.blending !== wantBlend) { mt.blending = wantBlend; mt.needsUpdate = true; }
+          mt.depthWrite = solid;
+          mt.transparent = !solid;
+        } else {
+          mt.opacity = opacity;
+          mt.transparent = !solid;
+        }
+      });
     });
   };
 
@@ -835,12 +855,18 @@
   Atlas.prototype.enterBrainDetail = function () {
     if (!this._metrics) return;            // atlas not mounted yet
     this._brainDetail = true;
+    var bodyLayers = ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'];
+    // PACK 7: snapshot which body layers were on so exitBrainDetail can restore
+    // them (was previously dropping everything back to skin-only on exit).
+    var snap = {}; var self = this;
+    bodyLayers.forEach(function (n) { snap[n] = !!(self._layerState[n] && self._layerState[n].visible); });
+    this._layerStateBeforeBrainDetail = snap;
     // No procedural brain preview anymore — the real Z-Anatomy brain-detail GLB
     // is the only brain. Show it if already streamed, else kick off the lazy
     // load; the load callback frames the camera once its bbox is known.
     if (this._brainRealGroup) this._brainRealGroup.visible = true;
     this._loadBrainDetail();
-    ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach((function (n) { this.toggleLayer(n, false); }).bind(this));
+    bodyLayers.forEach(function (n) { self.toggleLayer(n, false); });
     this._frameBrain();
     this._emit('brain-enter', {});
   };
@@ -848,8 +874,17 @@
   Atlas.prototype.exitBrainDetail = function () {
     this._brainDetail = false;
     if (this._brainRealGroup) this._brainRealGroup.visible = false;
-    this.toggleLayer('skin', true);
-    this.toggleLayer('brain', false);
+    // PACK 7: restore the exact body-layer visibility from before we entered
+    // brain detail (fall back to skin-only if there's no snapshot).
+    var snap = this._layerStateBeforeBrainDetail;
+    var self = this;
+    if (snap) {
+      ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach(function (n) {
+        self.toggleLayer(n, !!snap[n]);
+      });
+    } else {
+      this.toggleLayer('skin', true);
+    }
     this.controls.minDistance = 0.4;
     this._tweenCamera(new window.THREE.Vector3(0, 0.1, 4.2), new window.THREE.Vector3(0, 0, 0));
     this._emit('brain-exit', {});
@@ -967,13 +1002,28 @@
     var self = this, el = this.renderer.domElement;
     this._onMove = function (e) {
       var pt = e.touches ? e.touches[0] : e;
-      var hit = self.hitTest(pt.clientX, pt.clientY);
-      el.style.cursor = hit ? 'pointer' : '';
-      self._highlight(hit ? hit.object : null);
-      self._emit('region-hover', hit);
+      // PACK 4: throttle the hover raycast to one per animation frame. Raycasting
+      // the dense real meshes (skeleton ~1948, muscles ~683, …) on every single
+      // mousemove event is a real source of jank; coalescing to rAF keeps it cheap.
+      self._hoverX = pt.clientX; self._hoverY = pt.clientY;
+      if (self._hoverRaf) return;
+      self._hoverRaf = requestAnimationFrame(function () {
+        self._hoverRaf = null;
+        if (self._destroyed) return;
+        var hit = self.hitTest(self._hoverX, self._hoverY);
+        el.style.cursor = hit ? 'pointer' : '';
+        self._highlight(hit ? hit.object : null);
+        self._emit('region-hover', hit);
+      });
     };
     this._onClick = function (e) {
       var pt = e.changedTouches ? e.changedTouches[0] : e;
+      // PACK 6: ignore the "click" that ends a rotate/pan drag — only a tap that
+      // barely moved counts, so the region panel never slides out on its own.
+      if (self._downX != null) {
+        var ddx = pt.clientX - self._downX, ddy = pt.clientY - self._downY;
+        if (ddx * ddx + ddy * ddy > 36) return;   // moved >6px → drag, not a tap
+      }
       var hit = self.hitTest(pt.clientX, pt.clientY);
       if (hit) {
         // clicking the head (skin) in full mode → brain detail
@@ -1026,6 +1076,9 @@
     // ── B3: Shift+drag → pan (only effective once zoomed past 1.5x, gated in loop)
     this._onPointerDown = function (e) {
       var T = window.THREE;
+      // remember where the press started so _onClick can tell a deliberate tap
+      // from the tail end of a rotate/pan drag (PACK 6: panel opens on click only)
+      self._downX = e.clientX; self._downY = e.clientY;
       if (e.shiftKey && self.controls && T && T.MOUSE) self.controls.mouseButtons.LEFT = T.MOUSE.PAN;
     };
     this._onPointerUp = function () {
@@ -1097,6 +1150,7 @@
   Atlas.prototype.destroy = function () {
     this._destroyed = true;
     if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._hoverRaf) cancelAnimationFrame(this._hoverRaf);
     var el = this.renderer && this.renderer.domElement;
     if (el) {
       el.removeEventListener('mousemove', this._onMove);
