@@ -179,21 +179,9 @@
       var stored = localStorage.getItem(STORAGE_KEY);
       if (stored && SUPPORTED.indexOf(stored) !== -1) return stored;
     } catch (e) {}
-    // 3. Auto-detect from OS / browser language settings (RU/ES override EN)
-    var browserLangs = navigator.languages || [navigator.language || 'en'];
-    for (var i = 0; i < browserLangs.length; i++) {
-      var code = browserLangs[i].toLowerCase().slice(0, 2);
-      if (SUPPORTED.indexOf(code) !== -1) {
-        // An English browser carries no RU/ES signal — still geo-eligible so a
-        // visitor physically in a RU/ES region gets upgraded.
-        if (code === 'en') geoEligible = true;
-        return code;
-      }
-    }
-    // 4. Default to English. Mark this visitor eligible for the one-time
-    //    geo-IP probe (see maybeGeoOverride) — they carried no language signal,
-    //    so their region may still upgrade them to RU/ES.
-    geoEligible = true;
+    // 3. No browser-language / geo detection. EN is always the default on a
+    //    first visit — only an explicit click (step 1) or a persisted choice
+    //    (step 2) deviates from English.
     return INITIAL_LANG;
   }
 

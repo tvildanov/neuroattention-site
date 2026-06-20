@@ -6,13 +6,7 @@
 (function(){
   var stored=localStorage.getItem("na_lang");
   var explicit=localStorage.getItem("na_lang_explicit");
-  var lang=explicit||stored;
-  if(!lang){
-    var bl=((navigator.languages&&navigator.languages[0])||navigator.language||"en").toLowerCase();
-    if(bl.indexOf("ru")===0)lang="ru";
-    else if(bl.indexOf("es")===0)lang="es";
-    else lang="en";
-  }
+  var lang=explicit||stored||"en"; // EN always default on first visit (no browser-lang detect)
   document.documentElement.lang=lang;
   if(lang!=="ru"){
     var s=document.createElement("style");
