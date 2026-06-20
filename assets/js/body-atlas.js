@@ -296,6 +296,7 @@
     this._handlers = {};       // event -> [fn]
     this._layers = {};         // name -> THREE.Group
     this._layerState = {};     // name -> {visible, opacity}
+    this._regionStates = {};   // B8: regionId -> {visible, opacity} session overrides
     this._regionMeshes = [];   // hit-testable meshes (body regions + brain)
     this._raf = null;
     this._destroyed = false;
@@ -943,6 +944,76 @@
     this.camera.position.set(0, 0.1, 4.2);
     this.controls.target.set(0, 0, 0);
     this.controls.update();
+    this.resetRegions();   // B8: "Reset view" also restores per-region overrides
+  };
+
+  // ── B8: per-region visibility / opacity overrides ──────────────────────────
+  // Region ids are the per-mesh userData.regionId (e.g. 'frontal-lobe', 'heart',
+  // 'biceps-l'). A region may be several meshes (left/right, sub-parts); all are
+  // updated together. State lives in this._regionStates so it survives repaints
+  // until resetRegions().
+  Atlas.prototype._forEachRegionMesh = function (regionId, cb) {
+    if (!this.root) return;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData) return;
+      var ud = o.userData;
+      if (ud.regionId === regionId || ud.baseSlug === regionId) cb(o);
+    });
+  };
+  Atlas.prototype._regState = function (regionId) {
+    if (!this._regionStates[regionId]) this._regionStates[regionId] = { visible: true, opacity: 1 };
+    return this._regionStates[regionId];
+  };
+  Atlas.prototype.setRegionVisible = function (regionId, visible) {
+    visible = visible !== false;
+    this._regState(regionId).visible = visible;
+    this._forEachRegionMesh(regionId, function (m) { m.visible = visible; });
+    return this;
+  };
+  // opacity is a 0..1 multiplier of the region's base x-ray opacity.
+  Atlas.prototype.setRegionOpacity = function (regionId, k) {
+    k = Math.max(0, Math.min(1, k == null ? 1 : k));
+    this._regState(regionId).opacity = k;
+    this._forEachRegionMesh(regionId, function (m) {
+      var mat = m.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
+      if (m.userData._baseOpacity == null) m.userData._baseOpacity = mat.uniforms.uOpacity.value;
+      mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
+    });
+    return this;
+  };
+  Atlas.prototype.getRegionState = function (regionId) {
+    var s = this._regionStates[regionId];
+    return { visible: s ? s.visible : true, opacity: s ? s.opacity : 1 };
+  };
+  Atlas.prototype.resetRegions = function () {
+    var self = this;
+    Object.keys(this._regionStates).forEach(function (id) {
+      self._forEachRegionMesh(id, function (m) {
+        m.visible = true;
+        var mat = m.material;
+        if (mat && mat.uniforms && mat.uniforms.uOpacity && m.userData._baseOpacity != null) {
+          mat.uniforms.uOpacity.value = m.userData._baseOpacity;
+        }
+      });
+    });
+    this._regionStates = {};
+    return this;
+  };
+  // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
+  // opacity and restore the focused ones to full. Pass null/[] to clear.
+  Atlas.prototype.focusRegions = function (ids, dim) {
+    dim = dim == null ? 0.1 : dim;
+    var set = {}; (ids || []).forEach(function (i) { set[i] = 1; });
+    var self = this;
+    if (!this.root) return this;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || !o.userData.regionId) return;
+      var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
+      if (o.userData._baseOpacity == null) o.userData._baseOpacity = mat.uniforms.uOpacity.value;
+      var on = set[o.userData.regionId] || set[o.userData.baseSlug];
+      mat.uniforms.uOpacity.value = o.userData._baseOpacity * (on ? 1 : ((ids && ids.length) ? dim : 1));
+    });
+    return this;
   };
 
   // ── brain detail mode (zoom + body fade) ────────────────────────────────────
