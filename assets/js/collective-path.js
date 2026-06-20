@@ -531,17 +531,21 @@
       e.preventDefault(); var v = S.view; if (!v) return;
       var dY = e.deltaY, dX = e.deltaX;
       if (e.ctrlKey || e.metaKey) {
-        if (Math.abs(dY) >= Math.abs(dX)) {                 // ctrl + vertical → density zoom (anchored)
-          var my = rt(e.clientY);
-          var rowUnder = (S.scrollY + (my - S._padTop)) / S.spineH;
-          S.spineH = clamp(S.spineH * Math.pow(1.0016, -dY), SPINE_MIN, SPINE_MAX);
-          S.scrollY = rowUnder * S.spineH - (my - S._padTop);
-          clampScroll(S);
-        } else {                                            // ctrl + horizontal → time zoom (anchored)
-          var ax = rl(e.clientX), tU = v.originT + (ax - v.panX - S._x0) / v.pxPerDay * DAY;
-          v.pxPerDay = clamp(v.pxPerDay * Math.pow(1.0015, -dX), MIN_PXPD, MAX_PXPD);
-          v.panX = ax - S._x0 - (tU - v.originT) / DAY * v.pxPerDay;
-        }
+        // PACK 14: ctrl/⌘ + wheel → TIME (horizontal) zoom, anchored under the
+        // cursor — same as the personal path. A plain mouse wheel only emits
+        // deltaY, so we drive the time zoom from whichever delta dominates
+        // (deltaX on a trackpad swipe, else deltaY). Previously deltaY went to
+        // density zoom, so a mouse user could never zoom the time axis.
+        var d = Math.abs(dX) > Math.abs(dY) ? dX : dY;
+        var ax = rl(e.clientX), tU = v.originT + (ax - v.panX - S._x0) / v.pxPerDay * DAY;
+        v.pxPerDay = clamp(v.pxPerDay * Math.pow(1.0015, -d), MIN_PXPD, MAX_PXPD);
+        v.panX = ax - S._x0 - (tU - v.originT) / DAY * v.pxPerDay;
+      } else if (e.shiftKey) {                              // shift + wheel → density (vertical) zoom (anchored)
+        var my = rt(e.clientY);
+        var rowUnder = (S.scrollY + (my - S._padTop)) / S.spineH;
+        S.spineH = clamp(S.spineH * Math.pow(1.0016, -dY), SPINE_MIN, SPINE_MAX);
+        S.scrollY = rowUnder * S.spineH - (my - S._padTop);
+        clampScroll(S);
       } else {
         // plain wheel → vertical scroll (+ horizontal pan from a trackpad)
         S.scrollY += dY; S.velY = dY * 0.5; clampScroll(S); startMomentum(S);
@@ -586,13 +590,14 @@
       if (tg.mode === 'pinch' && e.touches.length === 2) {
         e.preventDefault();
         var dx = Math.abs(e.touches[0].clientX - e.touches[1].clientX), dy = Math.abs(e.touches[0].clientY - e.touches[1].clientY);
-        if (dy >= dx) {                                     // vertical pinch → density zoom
+        if (dy >= dx * 1.8) {                               // STRONGLY vertical pinch → density zoom
           S.spineH = clamp(tg.startSh * ((dy || 1) / (tg.startDistY || 1)), SPINE_MIN, SPINE_MAX);
           S.scrollY = tg.anchorRow * S.spineH - (tg.anchorMy - S._padTop); clampScroll(S);
-        } else {                                            // horizontal pinch → time zoom
+        } else {                                            // PACK 14: default pinch → TIME (horizontal) zoom
+          var curDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
           var r = cv.getBoundingClientRect(), mid = (e.touches[0].clientX + e.touches[1].clientX) / 2, ax = mid - r.left;
           var tU = v.originT + (ax - v.panX - S._x0) / v.pxPerDay * DAY;
-          v.pxPerDay = clamp(tg.startPx * ((dx || 1) / (tg.startDistX || 1)), MIN_PXPD, MAX_PXPD);
+          v.pxPerDay = clamp(tg.startPx * (curDist / (tg.startDist || 1)), MIN_PXPD, MAX_PXPD);
           v.panX = ax - S._x0 - (tU - v.originT) / DAY * v.pxPerDay; v.panX += (mid - tg.lastMid); tg.lastMid = mid;
         }
         requestDraw(S);
