@@ -838,15 +838,33 @@
   // opacity and restore the focused ones to full. Pass null/[] to clear.
   Atlas.prototype.focusRegions = function (ids, dim) {
     dim = dim == null ? 0.1 : dim;
-    var set = {}; (ids || []).forEach(function (i) { set[i] = 1; });
-    var self = this;
+    // PACK 12: curated condition/function region ids are BARE anatomical slugs
+    // ('liver', 'medulla', 'stomach', 'frontal-lobe') while real mesh ids are
+    // layer-prefixed with underscores ('organs_liver', 'brain' coarseId). Match
+    // tolerantly — normalize (drop -/_/case) and also try the layer-stripped bare
+    // slug + each of its word tokens — so the affected regions light up at full
+    // opacity and only the rest dim, instead of dimming (or showing) everything.
+    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+    var set = {}; (ids || []).forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
+    var hasIds = ids && ids.length;
     if (!this.root) return this;
     this.root.traverse(function (o) {
       if (!o.isMesh || !o.userData || !o.userData.regionId) return;
       var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
       if (o.userData._baseOpacity == null) o.userData._baseOpacity = mat.uniforms.uOpacity.value;
-      var on = set[o.userData.regionId] || set[o.userData.baseSlug];
-      mat.uniforms.uOpacity.value = o.userData._baseOpacity * (on ? 1 : ((ids && ids.length) ? dim : 1));
+      var ud = o.userData;
+      var on = false;
+      // exact / coarse / layer-stripped bare candidates
+      var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
+      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare];
+      for (var ci = 0; ci < cands.length; ci++) { if (cands[ci] && set[norm(cands[ci])]) { on = true; break; } }
+      // token fallback: a focus id that is a whole word of the bare slug
+      // (≥4 chars to avoid spurious short-token hits like 'of'/'the')
+      if (!on && bare) {
+        var toks = String(bare).split('_');
+        for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) { on = true; break; } }
+      }
+      mat.uniforms.uOpacity.value = ud._baseOpacity * (on ? 1 : (hasIds ? dim : 1));
     });
     return this;
   };
