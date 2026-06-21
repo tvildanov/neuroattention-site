@@ -697,6 +697,62 @@
               o.visible = false;
               return;
             }
+            // Strip "spike" triangles: faces with an edge longer than 0.5 units
+            // (body height ≈ 2 units, so 0.5 = 25% of stature — anatomically
+            // implausible). These are the horizontal sticks Nick sees on organs/
+            // nervous/skeleton — degenerate triangles in the source GLB whose
+            // vertices were stuck at a default 0,0,0 or similar artifact.
+            (function stripSpikes() {
+              var T = window.THREE;
+              var geom = o.geometry;
+              var pos = geom.attributes.position;
+              var idx = geom.index;
+              var MAX_EDGE_SQ = 0.25;     // 0.5² (max edge length squared in atlas units)
+              var v1 = new T.Vector3(), v2 = new T.Vector3(), v3 = new T.Vector3();
+              function badTri(a, b, c) {
+                v1.fromBufferAttribute(pos, a);
+                v2.fromBufferAttribute(pos, b);
+                v3.fromBufferAttribute(pos, c);
+                return v1.distanceToSquared(v2) > MAX_EDGE_SQ
+                    || v2.distanceToSquared(v3) > MAX_EDGE_SQ
+                    || v3.distanceToSquared(v1) > MAX_EDGE_SQ;
+              }
+              var goodIdx = [];
+              if (idx) {
+                var arr = idx.array;
+                for (var i = 0; i < arr.length; i += 3) {
+                  if (!badTri(arr[i], arr[i+1], arr[i+2])) {
+                    goodIdx.push(arr[i], arr[i+1], arr[i+2]);
+                  }
+                }
+                if (goodIdx.length !== arr.length) {
+                  geom.setIndex(goodIdx);
+                  geom.computeBoundingBox();
+                  geom.computeBoundingSphere();
+                }
+              } else {
+                // non-indexed geometry: rebuild by skipping spike triangles
+                var srcPos = pos.array;
+                var stride = pos.itemSize;
+                var newPos = [];
+                for (var j = 0; j < pos.count; j += 3) {
+                  if (!badTri(j, j+1, j+2)) {
+                    for (var k = 0; k < 3; k++) {
+                      for (var c = 0; c < stride; c++) {
+                        newPos.push(srcPos[(j + k) * stride + c]);
+                      }
+                    }
+                  }
+                }
+                if (newPos.length !== srcPos.length) {
+                  geom.setAttribute('position', new T.BufferAttribute(new Float32Array(newPos), stride));
+                  if (geom.attributes.normal) geom.deleteAttribute('normal');
+                  geom.computeVertexNormals();
+                  geom.computeBoundingBox();
+                  geom.computeBoundingSphere();
+                }
+              }
+            })();
             // Force-disable wireframe on the original material (will be replaced
             // by makeXrayMaterial below, but guard belt-and-braces).
             if (o.material && !Array.isArray(o.material) && o.material.wireframe) {
