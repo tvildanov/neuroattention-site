@@ -326,12 +326,14 @@
     this.camera = new T.PerspectiveCamera(38, w / h, 0.01, 100);
     this.camera.position.set(0, 0.1, 4.2);
 
-    // PERF: on hi-DPI (retina) desktops the x-ray shader is fill-rate bound.
-    // Disable MSAA (FXAA-free anyway, the wireframe carries edge detail) and
-    // render at native 1.0 DPR — this cuts fragment work ~4× on a 2× retina.
-    var isHiDPI = (window.devicePixelRatio || 1) >= 1.5;
-    this.renderer = new T.WebGLRenderer({ antialias: !isHiDPI, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(1.0);
+    // QUALITY: keep antialias on always (MSAA is essential for the wireframe
+    // edges to read clean), and let pixelRatio go up to native devicePixelRatio
+    // (capped at 2.0 so 3× phones don't oversample). The on-demand render loop
+    // (PR #34), cached wheel pivot (PR #37) and 15Hz hover throttle (PR #37)
+    // already cut render frequency dramatically, so high-DPR frames are rare
+    // enough that quality wins over the small fragment-rate cost.
+    this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
     this.renderer.setSize(w, h);
     this.renderer.setClearColor(0x000000, 0);
     c.appendChild(this.renderer.domElement);
