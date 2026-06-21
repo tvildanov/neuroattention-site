@@ -676,6 +676,13 @@
             if (nodes) nodes.forEach(function (nd) { if (nd && nd.name) rawByClean[sanitizeNodeName(nd.name)] = nd.name; });
           } catch (e) { /* fall back to o.name below */ }
           gltf.scene.traverse(function (o) {
+            // Z-Anatomy GLBs sometimes carry stray Line / LineSegments primitives
+            // (loose edges in the source .blend that Blender exported). They
+            // render as bright thin lines sticking out of the body — hide them.
+            if (o.isLine || o.isLineSegments || o.isLineLoop) {
+              o.visible = false;
+              return;
+            }
             if (!(o.isMesh && o.geometry)) return;
             o.material = makeXrayMaterial(style);
             // Tag every named mesh as an individual hit-testable region. Recover
