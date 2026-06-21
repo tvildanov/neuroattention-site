@@ -359,10 +359,11 @@
     // OrbitControls' native dolly is disabled; these clamp our custom dolly.
     this.controls.minDistance = 0.12;
     this.controls.maxDistance = 12;
-    // Custom _onWheel owns ALL zoom (cursor-pivot math); OrbitControls' wheel
-    // dolly and touch pinch-dolly would otherwise run in parallel and double
-    // the camera move — exactly the "first pinch teleports me" mobile bug.
-    this.controls.enableZoom = false;
+    // enableZoom stays ON so touch pinch-zoom keeps working (toward target).
+    // Desktop wheel goes through our _onWheel (which calls
+    // stopImmediatePropagation) so OrbitControls' wheel dolly never runs on
+    // desktop — only the touch dolly path runs on mobile pinch.
+    this.controls.enableZoom = true;
     // B3: panning is allowed but only takes effect once zoomed in (>1.5x), gated
     // each frame in the render loop. screen-space panning feels natural here.
     this.controls.enablePan = true;
@@ -371,9 +372,7 @@
     this._baseDist = this.camera.position.distanceTo(this.controls.target); // reference for "zoom factor"
     // default mouse map: left = rotate. Shift+drag temporarily becomes pan (B3).
     if (T.MOUSE) this.controls.mouseButtons = { LEFT: T.MOUSE.ROTATE, MIDDLE: T.MOUSE.DOLLY, RIGHT: T.MOUSE.PAN };
-    // Two-finger touch = pan only. Zoom (pinch) is handled by our _onWheel via
-    // the browser-synthesised ctrl+wheel pinch events; DOLLY_PAN would double-dip.
-    if (T.TOUCH) this.controls.touches = { ONE: T.TOUCH.ROTATE, TWO: T.TOUCH.PAN };
+    if (T.TOUCH) this.controls.touches = { ONE: T.TOUCH.ROTATE, TWO: T.TOUCH.DOLLY_PAN };
 
     // root group (so everything rotates/centers together)
     this.root = new T.Group();
@@ -789,7 +788,7 @@
     if (!this.controls) return;
     if (mode === 'sensation-picker') {
       this.controls.enableRotate = false;
-      // enableZoom already permanently false (our _onWheel owns it) — no-op here
+      this.controls.enableZoom = false;
       this.camera.position.set(0, 0.1, 3.2);
       this.controls.target.set(0, 0, 0);
       // sensation-picker legacy mode: skin layer is removed, hide all anatomy
@@ -800,7 +799,7 @@
       this.enterBrainDetail();
     } else { // full
       this.controls.enableRotate = true;
-      // enableZoom stays permanently false (our _onWheel owns zoom)
+      this.controls.enableZoom = true;
     }
   };
 
