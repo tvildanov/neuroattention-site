@@ -461,6 +461,9 @@
 
     this.root.add(skin);
     this._layers.skin = skin;
+    // Skin layer is mounted for backwards-compat (_metrics computation) but
+    // hidden by default: it's no longer a UI-toggleable layer.
+    skin.visible = false;
     this._layerState.skin = { visible: true, opacity: 0.5 };
 
     // metrics for anatomy placement (in root space, body centered at origin)
@@ -603,18 +606,20 @@
 
   // ── layer config / visibility / opacity ────────────────────────────────────
   Atlas.prototype._applyLayerConfig = function () {
-    var requested = this.opts.layers;   // array of layer names to show, or undefined = full
-    var all = ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs', 'brain'];
+    var requested = this.opts.layers;
+    // Skin and brain-placeholder layers removed — atlas opens with empty stage;
+    // user toggles real anatomy layers (muscles/skeleton/nervous/vessels/organs)
+    // and uses the dedicated "Brain Detail" button for real Z-Anatomy brain.
+    var all = ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'];
     var self = this;
-    // No guard on a pre-existing group: only 'skin' exists at this point (real
-    // anatomy layers stream in on demand). toggleLayer initializes state and,
-    // when visible, triggers the lazy _loadRealLayer for that system.
     all.forEach(function (name) {
       var visible;
       if (requested) visible = requested.indexOf(name) !== -1;
-      else visible = (name === 'skin');   // default: skin on, rest off (full mode reveals via UI)
+      else visible = false;   // nothing visible by default
       self.toggleLayer(name, visible);
     });
+    // Hide skin group if it was mounted from BODY_GLB
+    if (self._layers.skin) self._layers.skin.visible = false;
   };
 
   Atlas.prototype.toggleLayer = function (name, visible) {
@@ -747,11 +752,10 @@
       this.controls.enableZoom = false;
       this.camera.position.set(0, 0.1, 3.2);
       this.controls.target.set(0, 0, 0);
-      // skin only
-      if (this._layers.skin) this.toggleLayer('skin', true);
-      ['muscles', 'skeleton', 'nervous', 'brain'].forEach(function (n) { /* hidden */ });
+      // sensation-picker legacy mode: skin layer is removed, hide all anatomy
       var self = this;
-      ['muscles', 'skeleton', 'nervous', 'vessels', 'organs', 'brain'].forEach(function (n) { if (self._layers[n]) self.toggleLayer(n, false); });
+      if (self._layers.skin) self._layers.skin.visible = false;
+      ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach(function (n) { if (self._layers[n]) self.toggleLayer(n, false); });
     } else if (mode === 'brain-detail') {
       this.enterBrainDetail();
     } else { // full
@@ -1113,7 +1117,7 @@
       var hit = self.hitTest(pt.clientX, pt.clientY);
       if (hit) {
         // clicking the head (skin) in full mode → brain detail
-        if (!self._brainDetail && hit.object === self._layers.skin) {
+        if (false) {  // skin layer removed — head-click trigger disabled; use Brain Detail button
           var localY = hit.point.y;
           if (self._metrics && localY > self._metrics.y(0.86)) { self.enterBrainDetail(); return; }
         }
