@@ -1174,7 +1174,20 @@
                         -((e.clientY - rect.top) / rh) * 2 + 1);
         self.raycaster.setFromCamera(self._mouse, self.camera);
         var hits = self.root ? self.raycaster.intersectObjects(self.root.children, true) : [];
-        pivot = (hits && hits.length) ? hits[0].point.clone() : self.controls.target.clone();
+        if (hits && hits.length) {
+          pivot = hits[0].point.clone();
+        } else {
+          // No mesh under cursor (atlas default scene is empty after skin removal).
+          // Project the cursor ray onto a plane through controls.target perpendicular
+          // to the camera view direction, so the zoom still pivots toward the visible
+          // cursor position rather than the controls.target.
+          var T = window.THREE;
+          var camDir = new T.Vector3();
+          self.camera.getWorldDirection(camDir);
+          var plane = new T.Plane(camDir.clone().multiplyScalar(-1), camDir.dot(self.controls.target));
+          var hitPt = new T.Vector3();
+          pivot = self.raycaster.ray.intersectPlane(plane, hitPt) ? hitPt.clone() : self.controls.target.clone();
+        }
       } else {
         pivot = self.controls.target.clone();   // can't locate cursor → plain center zoom
       }
