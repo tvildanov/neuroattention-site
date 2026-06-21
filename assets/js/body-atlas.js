@@ -849,9 +849,18 @@
     k = Math.max(0, Math.min(1, k == null ? 1 : k));
     this._regState(regionId).opacity = k;
     this._forEachRegionMesh(regionId, function (m) {
-      var mat = m.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
-      if (m.userData._baseOpacity == null) m.userData._baseOpacity = mat.uniforms.uOpacity.value;
-      mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
+      var mat = m.material; if (!mat || !mat.uniforms) return;
+      // Cache the baseline values on first touch so resetRegions can restore them.
+      if (mat.uniforms.uOpacity && m.userData._baseOpacity == null) {
+        m.userData._baseOpacity = mat.uniforms.uOpacity.value;
+      }
+      if (mat.uniforms.uGlow && m.userData._baseGlow == null) {
+        m.userData._baseGlow = mat.uniforms.uGlow.value;
+      }
+      // Additive-blended x-ray: opacity alone barely dims; we have to pull uGlow
+      // (which adds light directly) down with it, otherwise the slider seems dead.
+      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
+      if (mat.uniforms.uGlow)    mat.uniforms.uGlow.value    = m.userData._baseGlow    * k;
     });
     if (this._requestRender) this._requestRender();
     return this;
@@ -866,12 +875,18 @@
       self._forEachRegionMesh(id, function (m) {
         m.visible = true;
         var mat = m.material;
-        if (mat && mat.uniforms && mat.uniforms.uOpacity && m.userData._baseOpacity != null) {
-          mat.uniforms.uOpacity.value = m.userData._baseOpacity;
+        if (mat && mat.uniforms) {
+          if (mat.uniforms.uOpacity && m.userData._baseOpacity != null) {
+            mat.uniforms.uOpacity.value = m.userData._baseOpacity;
+          }
+          if (mat.uniforms.uGlow && m.userData._baseGlow != null) {
+            mat.uniforms.uGlow.value = m.userData._baseGlow;
+          }
         }
       });
     });
     this._regionStates = {};
+    if (this._requestRender) this._requestRender();
     return this;
   };
   // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
