@@ -209,7 +209,11 @@
         '  vec3 sc = mix(uColor*0.55, uRim, f*0.5);',        // solid-fill colour
         '  vec3 outC = mix(xc, sc, uSolid);',
         '  float outA = mix(a, 1.0, uSolid);',               // uSolid=1 → fully opaque
-        '  gl_FragColor = vec4(outC, outA);',
+        // PERF-D: scale the final colour by uOpacity so the per-region opacity
+        // slider actually goes to zero in additive-blended scenes (where alpha
+        // alone barely dims). uOpacity=0 → outC=0 → no additive contribution →
+        // mesh disappears even behind other meshes' glow.
+        '  gl_FragColor = vec4(outC * uOpacity, outA);',
         '}'
       ].join('\n')
     });
