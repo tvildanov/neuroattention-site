@@ -1311,6 +1311,15 @@
       // clamp per-event to avoid huge jumps from accidentally giant deltas
       dy = Math.max(-300, Math.min(300, dy));
       var scale = Math.exp(dy * 0.0012);
+      // PINCH CLAMP: a single ctrl+wheel pinch event (Chrome mobile + desktop
+      // trackpad pinch) can carry a large deltaY that maps to a 30%+ zoom in
+      // one go → 'first pinch teleports me' effect. Pinches fire many events
+      // per gesture, so clamping each one to ±3% lets the gesture accumulate
+      // smoothly without ever jumping. Plain wheel-scroll (e.ctrlKey=false)
+      // keeps the full sensitivity for desktop.
+      if (e.ctrlKey) {
+        scale = Math.max(0.97, Math.min(1.03, scale));
+      }
       var newDist = Math.max(self.controls.minDistance, Math.min(self.controls.maxDistance, dist * scale));
       scale = dist > 1e-5 ? newDist / dist : 1;
       cam.sub(pivot).multiplyScalar(scale).add(pivot);
