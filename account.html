@@ -1387,6 +1387,14 @@
                 <h4 id="arp-name">—</h4>
                 <div class="arp-group" id="arp-group"></div>
                 <div id="arp-mini" class="arp-mini"></div>
+                <div class="arp-controls" id="arp-controls" style="margin:0.6rem 0 0.85rem;display:none;">
+                  <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:0.3rem;" data-i18n="a.tools.anatomy_region_opacity">Прозрачность этой части на карте</label>
+                  <input type="range" id="arp-opacity" min="0" max="100" value="100" style="width:100%;accent-color:#A8F7FF;height:3px;" oninput="atlasRegionOpacityChange(this.value)">
+                  <label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;cursor:pointer;">
+                    <input type="checkbox" id="arp-hide" onchange="atlasRegionHideToggle(this.checked)" style="accent-color:#A8F7FF;">
+                    <span data-i18n="a.tools.anatomy_region_hide">Скрыть этот регион</span>
+                  </label>
+                </div>
                 <p id="arp-desc"></p>
                 <div id="arp-links"></div>
                 <button class="atlas-btn" id="arp-back" onclick="atlasExitBrain()" style="display:none;margin-top:0.5rem;" data-i18n="a.tools.anatomy_back_body">← Назад к телу</button>
@@ -14377,6 +14385,26 @@ window.pbMove = pbMove;
     document.getElementById('arp-back').style.display = (atlas && atlas._brainDetail) ? '' : 'none';
     var lk = document.getElementById('arp-links'); if(lk){ lk.innerHTML=''; try{ if(window.haRegionLinks) window.haRegionLinks(ud.coarseId || hit.id); }catch(e){} }
     atlasBuildMini(ud.regionId || ud.baseSlug || hit.id);   // PACK 10
+    // PACK D: store current region for the opacity slider + reset slider to
+    // the region's currently-applied opacity (or 100% if untouched).
+    var rid = ud.regionId || ud.baseSlug || hit.id;
+    window._atlasCurrentRegion = rid;
+    var ctrls = document.getElementById('arp-controls');
+    var slider = document.getElementById('arp-opacity');
+    var hide = document.getElementById('arp-hide');
+    if (ctrls) ctrls.style.display = 'block';
+    if (slider && atlas && atlas.getRegionState) {
+      var st = null; try { st = atlas.getRegionState(rid); } catch(e){}
+      slider.value = st && st.opacity != null ? Math.round(st.opacity * 100) : 100;
+    } else if (slider) {
+      slider.value = 100;
+    }
+    if (hide && atlas && atlas.getRegionState) {
+      var st2 = null; try { st2 = atlas.getRegionState(rid); } catch(e){}
+      hide.checked = !!(st2 && st2.visible === false);
+    } else if (hide) {
+      hide.checked = false;
+    }
     p.classList.add('open');
   }
   // PACK 10: a small auto-rotating 3D view of the clicked region, cloned from the
@@ -14390,6 +14418,22 @@ window.pbMove = pbMove;
     var mv=null; try{ mv = atlas.makeRegionMiniViewer(host, regionId, size); }catch(e){}
     if(mv){ _arpMini=mv; host.classList.add('has'); }
   }
+  // PACK D: per-region opacity slider — changes opacity of the selected region
+  // ON THE MAIN ATLAS (not the mini-viewer). Survives panel close/reopen, resets
+  // on page reload or "Reset view".
+  window.atlasRegionOpacityChange = function(v) {
+    if (!atlas || !atlas.setRegionOpacity) return;
+    var rid = window._atlasCurrentRegion;
+    if (!rid) return;
+    var k = Math.max(0, Math.min(100, parseInt(v, 10) || 0)) / 100;
+    try { atlas.setRegionOpacity(rid, k); } catch (e) {}
+  };
+  window.atlasRegionHideToggle = function(checked) {
+    if (!atlas || !atlas.setRegionVisible) return;
+    var rid = window._atlasCurrentRegion;
+    if (!rid) return;
+    try { atlas.setRegionVisible(rid, !checked); } catch (e) {}
+  };
   function setBrainBtn(on){ var b=document.getElementById('atlas-brain-btn'); if(b) b.classList.toggle('active', !!on); }
   function setLayerLoading(key, on){ if(!key) return; var row=document.querySelector('#atlas-layers .atlas-layer[data-layer="'+key+'"]'); if(row) row.classList.toggle('loading', !!on); }
 
@@ -14405,7 +14449,7 @@ window.pbMove = pbMove;
   window.atlasBrainDetail = function(){ if(!atlas) return; if(atlas._brainDetail) atlas.exitBrainDetail(); else atlas.enterBrainDetail(); };
   window.atlasExitBrain = function(){ if(atlas) atlas.exitBrainDetail(); };
   window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail(); atlas.resetView(); } atlasCloseRegion(); };
-  window.atlasCloseRegion = function(){ var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); atlasDestroyMini(); };
+  window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none'; window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); atlasDestroyMini(); };
   window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
 })();
 </script>
