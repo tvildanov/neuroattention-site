@@ -1048,6 +1048,8 @@
   "a.tools.anatomy_brain": "Brain detail",
   "a.tools.anatomy_reset": "Reset view",
   "a.tools.anatomy_hint": "Drag to rotate · scroll to zoom · Shift+drag to pan · click the head for detailed brain",
+  "a.tools.anatomy_region_opacity": "Opacity of this region on the map",
+  "a.tools.anatomy_region_hide": "Hide this region",
   "a.tools.anatomy_schematic_note": "Skeleton, muscles and nerves are anatomically faithful schematics (not scans).",
   "a.tools.anatomy_back_body": "← Back to body",
   "a.tools.anatomy_layer_skin": "Skin / outline",
