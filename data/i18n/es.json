@@ -1047,7 +1047,7 @@
   "a.tools.anatomy_male": "Hombre",
   "a.tools.anatomy_brain": "Cerebro en detalle",
   "a.tools.anatomy_reset": "Restablecer vista",
-  "a.tools.anatomy_hint": "Arrastra para girar · rueda para zoom · clic en la cabeza para el cerebro",
+  "a.tools.anatomy_hint": "Arrastra para rotar · rueda para zoom · Shift+arrastrar para mover · clic en la cabeza para cerebro",
   "a.tools.anatomy_schematic_note": "Esqueleto, músculos y nervios son esquemas anatómicamente fieles (no escaneos).",
   "a.tools.anatomy_back_body": "← Volver al cuerpo",
   "a.tools.anatomy_layer_skin": "Piel / contorno",
