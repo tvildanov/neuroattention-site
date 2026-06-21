@@ -827,10 +827,22 @@
   // until resetRegions().
   Atlas.prototype._forEachRegionMesh = function (regionId, cb) {
     if (!this.root) return;
+    // Match by walking UP the ancestry from each Mesh leaf — Z-Anatomy GLBs
+    // for skeleton/nervous/organs carry the anatomical name on a parent Group/
+    // SkinnedMesh root, while the visible Mesh leaves underneath are unnamed.
+    // The leaf-only match used to silently miss them; this fix touches every
+    // visible mesh that belongs (directly or by ancestry) to the region.
     this.root.traverse(function (o) {
-      if (!o.isMesh || !o.userData) return;
-      var ud = o.userData;
-      if (ud.regionId === regionId || ud.baseSlug === regionId) cb(o);
+      if (!o.isMesh) return;
+      var n = o;
+      while (n) {
+        var ud = n.userData;
+        if (ud && (ud.regionId === regionId || ud.baseSlug === regionId)) {
+          cb(o);
+          return;
+        }
+        n = n.parent;
+      }
     });
   };
   Atlas.prototype._regState = function (regionId) {
