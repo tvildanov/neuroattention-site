@@ -1107,21 +1107,22 @@
     var self = this, el = this.renderer.domElement;
     this._onMove = function (e) {
       var pt = e.touches ? e.touches[0] : e;
-      // PERF: throttle hover raycasts. The full hit-test (2.5–3k named meshes)
-      // is too expensive to do on every mousemove. We coalesce into rAF AND
-      // skip the raycast for ~120ms after any camera/wheel interaction, so
-      // rotating/zooming never competes with hover work.
       self._hoverX = pt.clientX; self._hoverY = pt.clientY;
       var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      // skip while camera is moving
       if (self._cameraBusyUntil && now < self._cameraBusyUntil) {
-        // camera is still moving — clear any tooltip but don't burn cycles raycasting
         if (self._lastHit) { self._highlight(null); self._emit('region-hover', null); self._lastHit = null; }
         return;
       }
+      // PERF: hard-throttle hover raycasts to ~15Hz. The full hit-test against
+      // 2.5–3k named meshes once every 66ms is plenty responsive for a tooltip
+      // and ~4× cheaper than running it every animation frame.
+      if (self._lastHoverAt && now - self._lastHoverAt < 66) return;
       if (self._hoverRaf) return;
       self._hoverRaf = requestAnimationFrame(function () {
         self._hoverRaf = null;
         if (self._destroyed) return;
+        self._lastHoverAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         var hit = self.hitTest(self._hoverX, self._hoverY);
         el.style.cursor = hit ? 'pointer' : '';
         self._highlight(hit ? hit.object : null);
@@ -1168,28 +1169,42 @@
       self._requestRender();
       var rect = el.getBoundingClientRect();
       var rw = rect.width || el.clientWidth, rh = rect.height || el.clientHeight;
+      // PERF: a Mac trackpad fires wheel events at 60-100Hz during a continuous
+      // scroll gesture. Raycasting 2.6k+ meshes each event was THE zoom-lag
+      // culprit. Cache the pivot for the duration of one continuous gesture
+      // (>300ms idle = new gesture → recalc) — cuts raycast frequency 20×.
       var pivot;
+      var gestureStarted = !self._lastWheelTime || (now - self._lastWheelTime > 300);
+      self._lastWheelTime = now;
       if (rw > 0 && rh > 0) {
-        self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
-                        -((e.clientY - rect.top) / rh) * 2 + 1);
-        self.raycaster.setFromCamera(self._mouse, self.camera);
-        var hits = self.root ? self.raycaster.intersectObjects(self.root.children, true) : [];
-        if (hits && hits.length) {
-          pivot = hits[0].point.clone();
-        } else {
-          // No mesh under cursor (atlas default scene is empty after skin removal).
-          // Project the cursor ray onto a plane through controls.target perpendicular
-          // to the camera view direction, so the zoom still pivots toward the visible
-          // cursor position rather than the controls.target.
-          var T = window.THREE;
-          var camDir = new T.Vector3();
-          self.camera.getWorldDirection(camDir);
-          var plane = new T.Plane(camDir.clone().multiplyScalar(-1), camDir.dot(self.controls.target));
-          var hitPt = new T.Vector3();
-          pivot = self.raycaster.ray.intersectPlane(plane, hitPt) ? hitPt.clone() : self.controls.target.clone();
+        // cursor position changes mid-gesture → invalidate cached pivot if mouse
+        // moved a lot since the gesture started
+        if (!gestureStarted && self._wheelStartCursorX != null) {
+          var dx = e.clientX - self._wheelStartCursorX;
+          var dy0 = e.clientY - self._wheelStartCursorY;
+          if (dx * dx + dy0 * dy0 > 1024) gestureStarted = true; // moved >32px → recalc
         }
+        if (gestureStarted || !self._cachedPivot) {
+          self._wheelStartCursorX = e.clientX;
+          self._wheelStartCursorY = e.clientY;
+          self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
+                          -((e.clientY - rect.top) / rh) * 2 + 1);
+          self.raycaster.setFromCamera(self._mouse, self.camera);
+          var hits = self.root ? self.raycaster.intersectObjects(self.root.children, true) : [];
+          if (hits && hits.length) {
+            self._cachedPivot = hits[0].point.clone();
+          } else {
+            var T = window.THREE;
+            var camDir = new T.Vector3();
+            self.camera.getWorldDirection(camDir);
+            var plane = new T.Plane(camDir.clone().multiplyScalar(-1), camDir.dot(self.controls.target));
+            var hitPt = new T.Vector3();
+            self._cachedPivot = self.raycaster.ray.intersectPlane(plane, hitPt) ? hitPt.clone() : self.controls.target.clone();
+          }
+        }
+        pivot = self._cachedPivot.clone();
       } else {
-        pivot = self.controls.target.clone();   // can't locate cursor → plain center zoom
+        pivot = self.controls.target.clone();
       }
       var cam = self.camera.position, tgt = self.controls.target;
       var dist = cam.distanceTo(tgt);
