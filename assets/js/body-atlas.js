@@ -1107,10 +1107,17 @@
     var self = this, el = this.renderer.domElement;
     this._onMove = function (e) {
       var pt = e.touches ? e.touches[0] : e;
-      // PACK 4: throttle the hover raycast to one per animation frame. Raycasting
-      // the dense real meshes (skeleton ~1948, muscles ~683, …) on every single
-      // mousemove event is a real source of jank; coalescing to rAF keeps it cheap.
+      // PERF: throttle hover raycasts. The full hit-test (2.5–3k named meshes)
+      // is too expensive to do on every mousemove. We coalesce into rAF AND
+      // skip the raycast for ~120ms after any camera/wheel interaction, so
+      // rotating/zooming never competes with hover work.
       self._hoverX = pt.clientX; self._hoverY = pt.clientY;
+      var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      if (self._cameraBusyUntil && now < self._cameraBusyUntil) {
+        // camera is still moving — clear any tooltip but don't burn cycles raycasting
+        if (self._lastHit) { self._highlight(null); self._emit('region-hover', null); self._lastHit = null; }
+        return;
+      }
       if (self._hoverRaf) return;
       self._hoverRaf = requestAnimationFrame(function () {
         self._hoverRaf = null;
@@ -1119,6 +1126,7 @@
         el.style.cursor = hit ? 'pointer' : '';
         self._highlight(hit ? hit.object : null);
         self._emit('region-hover', hit);
+        self._lastHit = hit;
       });
     };
     this._onClick = function (e) {
@@ -1154,6 +1162,10 @@
     this._onWheel = function (e) {
       if (!self.camera || !self.controls || self._destroyed) return;
       e.preventDefault(); e.stopImmediatePropagation();
+      // mark camera as actively moving so hover raycasts pause for 120ms
+      var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      self._cameraBusyUntil = now + 120;
+      self._requestRender();
       var rect = el.getBoundingClientRect();
       var rw = rect.width || el.clientWidth, rh = rect.height || el.clientHeight;
       var pivot;
@@ -1168,9 +1180,16 @@
       }
       var cam = self.camera.position, tgt = self.controls.target;
       var dist = cam.distanceTo(tgt);
-      // normalise deltaY across deltaMode (pixel / line / page)
-      var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
-      var scale = Math.exp(dy * 0.0012);                 // log curve, proportional to zoom
+      // normalise deltaY across deltaMode (pixel / line / page) +
+      // detect Mac trackpad (deltaMode=0 with small per-event deltaY) and boost ~6×
+      // so a single two-finger swipe actually zooms; regular mouse wheels stay calm.
+      var dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16;
+      else if (e.deltaMode === 2) dy *= 100;
+      else if (Math.abs(dy) < 50) dy *= 6;   // trackpad boost
+      // clamp per-event to avoid huge jumps from accidentally giant deltas
+      dy = Math.max(-300, Math.min(300, dy));
+      var scale = Math.exp(dy * 0.0012);
       var newDist = Math.max(self.controls.minDistance, Math.min(self.controls.maxDistance, dist * scale));
       scale = dist > 1e-5 ? newDist / dist : 1;
       cam.sub(pivot).multiplyScalar(scale).add(pivot);
@@ -1227,7 +1246,13 @@
     var self = this;
     self._needsRender = true;
     if (self.controls && self.controls.addEventListener) {
-      self.controls.addEventListener('change', function () { self._requestRender(); });
+      self.controls.addEventListener('change', function () {
+        // any controls change (rotate/pan via mouse) → camera-busy window so hover
+        // raycasts back off; cleared automatically after 120ms idle.
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        self._cameraBusyUntil = now + 120;
+        self._requestRender();
+      });
       // damping in OrbitControls makes update() return true while easing; keep
       // animating until it settles.
     }
