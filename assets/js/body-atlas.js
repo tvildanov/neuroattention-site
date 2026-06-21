@@ -676,14 +676,32 @@
             if (nodes) nodes.forEach(function (nd) { if (nd && nd.name) rawByClean[sanitizeNodeName(nd.name)] = nd.name; });
           } catch (e) { /* fall back to o.name below */ }
           gltf.scene.traverse(function (o) {
-            // Z-Anatomy GLBs sometimes carry stray Line / LineSegments primitives
-            // (loose edges in the source .blend that Blender exported). They
-            // render as bright thin lines sticking out of the body — hide them.
-            if (o.isLine || o.isLineSegments || o.isLineLoop) {
+            // Z-Anatomy GLBs carry various non-mesh primitives (loose edges,
+            // exported skeleton rig bones-as-mesh, helper points, etc.) that
+            // render as bright thin "sticks" shooting out of the body. Hide
+            // everything that isn't a real Mesh, and force wireframe off on
+            // any mesh that came in with it.
+            if (o.isLine || o.isLineSegments || o.isLineLoop || o.isPoints) {
               o.visible = false;
               return;
             }
-            if (!(o.isMesh && o.geometry)) return;
+            if (!o.isMesh || !o.geometry) {
+              // Bone / SkeletonHelper / Group are fine — they don't render.
+              return;
+            }
+            // Skip meshes whose geometry is a line set (mode 1/2/3 in glTF →
+            // Three.js may still wrap as a Mesh in some loaders) or has no
+            // index/position. Detect by checking for any non-degenerate face.
+            var posAttr = o.geometry.attributes && o.geometry.attributes.position;
+            if (!posAttr || posAttr.count < 3) {
+              o.visible = false;
+              return;
+            }
+            // Force-disable wireframe on the original material (will be replaced
+            // by makeXrayMaterial below, but guard belt-and-braces).
+            if (o.material && !Array.isArray(o.material) && o.material.wireframe) {
+              o.material.wireframe = false;
+            }
             o.material = makeXrayMaterial(style);
             // Tag every named mesh as an individual hit-testable region. Recover
             // the raw anatomical node name (with its .l/.r/.j marker) from the
