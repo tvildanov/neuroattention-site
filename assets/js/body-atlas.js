@@ -372,7 +372,10 @@
     this._baseDist = this.camera.position.distanceTo(this.controls.target); // reference for "zoom factor"
     // default mouse map: left = rotate. Shift+drag temporarily becomes pan (B3).
     if (T.MOUSE) this.controls.mouseButtons = { LEFT: T.MOUSE.ROTATE, MIDDLE: T.MOUSE.DOLLY, RIGHT: T.MOUSE.PAN };
-    if (T.TOUCH) this.controls.touches = { ONE: T.TOUCH.ROTATE, TWO: T.TOUCH.DOLLY_PAN };
+    // Our custom touchstart/touchmove handlers own 2-finger pinch (DOLLY) — see
+    // _bindEvents. OrbitControls' DOLLY_PAN had a first-event teleport bug, so
+    // we send TWO touches to PAN only; one-finger rotate stays.
+    if (T.TOUCH) this.controls.touches = { ONE: T.TOUCH.ROTATE, TWO: T.TOUCH.PAN };
 
     // root group (so everything rotates/centers together)
     this.root = new T.Group();
@@ -1403,6 +1406,62 @@
       }
     }
     frame();
+
+    // ── CUSTOM PINCH (replaces OrbitControls' DOLLY_PAN which had a first-event
+    // teleport bug on Chrome mobile: touchstart could capture pinch distance
+    // before both fingers fully registered, and the touchmove ratio divided
+    // by that near-zero → camera flew off-screen). Our handler captures state
+    // ONCE on touchstart, computes absolute ratio from initial → current pinch
+    // each move, hard-clamps the ratio to 0.3..3.0.
+    var _pinch = null;
+    this._onTouchStart = function (e) {
+      if (e.touches && e.touches.length === 2) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        var dx = e.touches[1].clientX - e.touches[0].clientX;
+        var dy = e.touches[1].clientY - e.touches[0].clientY;
+        _pinch = {
+          dist: Math.max(50, Math.hypot(dx, dy)),  // floor 50px prevents /0
+          camPos: self.camera.position.clone(),
+          target: self.controls.target.clone()
+        };
+      }
+    };
+    this._onTouchMove = function (e) {
+      if (e.touches && e.touches.length === 2 && _pinch) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        var dx = e.touches[1].clientX - e.touches[0].clientX;
+        var dy = e.touches[1].clientY - e.touches[0].clientY;
+        var curDist = Math.max(50, Math.hypot(dx, dy));
+        var ratio = curDist / _pinch.dist;
+        // hard clamp: a gesture can change zoom 0.3x .. 3x at most. Repeated
+        // gestures accumulate so user can still zoom far if they pinch many
+        // times — just no single gesture can teleport.
+        ratio = Math.max(0.3, Math.min(3.0, ratio));
+        var pivot = _pinch.target;   // pivot is target — always safe, no raycast
+        var scaleCam = 1 / ratio;    // inverse: bigger pinch = closer camera
+        // Compute new camera position relative to captured initial state, not
+        // last frame. Eliminates accumulating drift from per-frame deltas.
+        var newCam = _pinch.camPos.clone().sub(pivot).multiplyScalar(scaleCam).add(pivot);
+        // Clamp to minDistance/maxDistance
+        var newDist = newCam.distanceTo(pivot);
+        var minD = self.controls.minDistance || 0.4;
+        var maxD = self.controls.maxDistance || 20;
+        if (newDist < minD) newCam.copy(pivot).addScaledVector(newCam.clone().sub(pivot).normalize(), minD);
+        else if (newDist > maxD) newCam.copy(pivot).addScaledVector(newCam.clone().sub(pivot).normalize(), maxD);
+        self.camera.position.copy(newCam);
+        self._cameraBusyUntil = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) + 120;
+        self._requestRender();
+      }
+    };
+    this._onTouchEnd = function (e) {
+      if (!e.touches || e.touches.length < 2) _pinch = null;
+    };
+    el.addEventListener('touchstart', this._onTouchStart, { capture: true, passive: false });
+    el.addEventListener('touchmove', this._onTouchMove, { capture: true, passive: false });
+    el.addEventListener('touchend', this._onTouchEnd, { capture: true, passive: false });
+    el.addEventListener('touchcancel', this._onTouchEnd, { capture: true, passive: false });
   };
 
   Atlas.prototype._requestRender = function () {
@@ -1436,6 +1495,14 @@
       el.removeEventListener('touchend', this._onClick);
       if (this._onWheel) el.removeEventListener('wheel', this._onWheel, { capture: true });
       if (this._onPointerDown) el.removeEventListener('pointerdown', this._onPointerDown);
+      try {
+        if (this._onTouchStart) el.removeEventListener('touchstart', this._onTouchStart, { capture: true });
+        if (this._onTouchMove) el.removeEventListener('touchmove', this._onTouchMove, { capture: true });
+        if (this._onTouchEnd) {
+          el.removeEventListener('touchend', this._onTouchEnd, { capture: true });
+          el.removeEventListener('touchcancel', this._onTouchEnd, { capture: true });
+        }
+      } catch (e) {}
     }
     if (this._onPointerUp) window.removeEventListener('pointerup', this._onPointerUp);
     window.removeEventListener('resize', this._onResize);
