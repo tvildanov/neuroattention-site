@@ -827,17 +827,52 @@
   // until resetRegions().
   Atlas.prototype._forEachRegionMesh = function (regionId, cb) {
     if (!this.root) return;
-    // Match by walking UP the ancestry from each Mesh leaf — Z-Anatomy GLBs
-    // for skeleton/nervous/organs carry the anatomical name on a parent Group/
-    // SkinnedMesh root, while the visible Mesh leaves underneath are unnamed.
-    // The leaf-only match used to silently miss them; this fix touches every
-    // visible mesh that belongs (directly or by ancestry) to the region.
+    // Skeleton/organs GLBs tag the region on parent Groups OR descendants OR
+    // siblings with various id flavours (regionId / baseSlug / coarseId /
+    // originalName). Match all of them and use the cheap normalised form so
+    // case/separators differences don't bite us.
+    function norm(s) { return String(s == null ? '' : s).toLowerCase().replace(/[-_\s]+/g, ''); }
+    var target = norm(regionId);
+    function udMatch(ud) {
+      if (!ud) return false;
+      if (norm(ud.regionId) === target) return true;
+      if (norm(ud.baseSlug) === target) return true;
+      if (norm(ud.coarseId) === target) return true;
+      if (norm(ud.originalName) === target) return true;
+      return false;
+    }
+    // First pass: collect every root node (Mesh or Group) whose own userData
+    // matches the target — this includes "regionId on a parent Group" cases.
+    var roots = [];
+    this.root.traverse(function (o) {
+      if (udMatch(o.userData)) roots.push(o);
+    });
+    // Then walk down each matched root and call cb for every Mesh descendant
+    // (covers "regionId on parent" + Mesh leaves under it).
+    var seen = new Set ? new Set() : null;
+    function visitDown(node) {
+      if (node.isMesh) {
+        if (seen) {
+          if (seen.has(node)) return;
+          seen.add(node);
+        }
+        cb(node);
+      }
+      if (node.children && node.children.length) {
+        for (var i = 0; i < node.children.length; i++) visitDown(node.children[i]);
+      }
+    }
+    roots.forEach(visitDown);
+    // Finally walk UP from each Mesh leaf (in case the named ancestor is several
+    // levels above but the descendant pass above missed it because the matching
+    // userData lives on a sibling-of-ancestor in some exotic GLB layout).
     this.root.traverse(function (o) {
       if (!o.isMesh) return;
-      var n = o;
+      if (seen && seen.has(o)) return;
+      var n = o.parent;
       while (n) {
-        var ud = n.userData;
-        if (ud && (ud.regionId === regionId || ud.baseSlug === regionId)) {
+        if (udMatch(n.userData)) {
+          if (seen) seen.add(o);
           cb(o);
           return;
         }
