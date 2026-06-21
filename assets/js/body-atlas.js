@@ -618,8 +618,10 @@
       else visible = false;   // nothing visible by default
       self.toggleLayer(name, visible);
     });
-    // Hide skin group if it was mounted from BODY_GLB
+    // Hide skin group if it was mounted from BODY_GLB, and sync state so
+    // snapshot/restore in enterBrainDetail/exitBrainDetail doesn't revive it.
     if (self._layers.skin) self._layers.skin.visible = false;
+    if (self._layerState.skin) self._layerState.skin.visible = false;
   };
 
   Atlas.prototype.toggleLayer = function (name, visible) {
@@ -945,7 +947,7 @@
   Atlas.prototype.enterBrainDetail = function () {
     if (!this._metrics) return;            // atlas not mounted yet
     this._brainDetail = true;
-    var bodyLayers = ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'];
+    var bodyLayers = ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'];
     // PACK 7: snapshot which body layers were on so exitBrainDetail can restore
     // them (was previously dropping everything back to skin-only on exit).
     var snap = {}; var self = this;
@@ -969,12 +971,15 @@
     var snap = this._layerStateBeforeBrainDetail;
     var self = this;
     if (snap) {
-      ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach(function (n) {
+      ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach(function (n) {
         self.toggleLayer(n, !!snap[n]);
       });
     } else {
-      this.toggleLayer('skin', true);
+      // skin layer is removed — nothing to restore by default
     }
+    // Hard-ensure skin stays hidden (legacy mount initializes _layerState.skin.visible=true)
+    if (self._layers.skin) self._layers.skin.visible = false;
+    if (self._layerState && self._layerState.skin) self._layerState.skin.visible = false;
     this.controls.minDistance = 0.4;
     this._tweenCamera(new window.THREE.Vector3(0, 0.1, 4.2), new window.THREE.Vector3(0, 0, 0));
     this._emit('brain-exit', {});
