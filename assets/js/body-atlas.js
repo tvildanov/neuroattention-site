@@ -326,10 +326,12 @@
     this.camera = new T.PerspectiveCamera(38, w / h, 0.01, 100);
     this.camera.position.set(0, 0.1, 4.2);
 
-    this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    // B4: cap pixel ratio at 1.5 so retina/4K displays don't quadruple the
-    // fragment load (the x-ray shader is fill-heavy) — keeps 60fps on integrated GPUs.
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    // PERF: on hi-DPI (retina) desktops the x-ray shader is fill-rate bound.
+    // Disable MSAA (FXAA-free anyway, the wireframe carries edge detail) and
+    // render at native 1.0 DPR — this cuts fragment work ~4× on a 2× retina.
+    var isHiDPI = (window.devicePixelRatio || 1) >= 1.5;
+    this.renderer = new T.WebGLRenderer({ antialias: !isHiDPI, alpha: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(1.0);
     this.renderer.setSize(w, h);
     this.renderer.setClearColor(0x000000, 0);
     c.appendChild(this.renderer.domElement);
@@ -627,6 +629,7 @@
     // procedural capsule (if any) stays visible until the GLB swaps in.
     if (visible) this._loadRealLayer(name);
     this._emit('layer-change', { layer: name, visible: visible });
+    if (this._requestRender) this._requestRender();
   };
 
   // ── real model streaming (lazy, per layer) ─────────────────────────────────
@@ -687,6 +690,7 @@
           grp.add(gltf.scene);
           self._swapRealLayer(name, grp);
           self._emit('layer-loaded', { layer: name, regions: tagged });
+          if (self._requestRender) self._requestRender();
           resolve(grp);
         }, undefined, function (err) {
           console.warn('[BodyAtlas] real layer load failed: ' + name, err);
@@ -735,6 +739,7 @@
         }
       });
     });
+    if (this._requestRender) this._requestRender();
   };
 
   // ── modes ──────────────────────────────────────────────────────────────────
@@ -803,6 +808,7 @@
     visible = visible !== false;
     this._regState(regionId).visible = visible;
     this._forEachRegionMesh(regionId, function (m) { m.visible = visible; });
+    if (this._requestRender) this._requestRender();
     return this;
   };
   // opacity is a 0..1 multiplier of the region's base x-ray opacity.
@@ -814,6 +820,7 @@
       if (m.userData._baseOpacity == null) m.userData._baseOpacity = mat.uniforms.uOpacity.value;
       mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
     });
+    if (this._requestRender) this._requestRender();
     return this;
   };
   Atlas.prototype.getRegionState = function (regionId) {
@@ -866,6 +873,7 @@
       }
       mat.uniforms.uOpacity.value = ud._baseOpacity * (on ? 1 : (hasIds ? dim : 1));
     });
+    if (this._requestRender) this._requestRender();
     return this;
   };
 
@@ -954,6 +962,7 @@
     this._loadBrainDetail();
     bodyLayers.forEach(function (n) { self.toggleLayer(n, false); });
     this._frameBrain();
+    if (this._requestRender) this._requestRender();
     this._emit('brain-enter', {});
   };
 
@@ -973,6 +982,7 @@
     }
     this.controls.minDistance = 0.4;
     this._tweenCamera(new window.THREE.Vector3(0, 0.1, 4.2), new window.THREE.Vector3(0, 0, 0));
+    if (this._requestRender) this._requestRender();
     this._emit('brain-exit', {});
   };
 
@@ -1188,6 +1198,9 @@
       this._hlPrev = obj.material.uniforms.uGlow.value;
       obj.material.uniforms.uGlow.value = 2.2;
     }
+    // PERF/on-demand: the hover glow is a scene mutation — without a render
+    // request the highlight (and its clear) wouldn't paint until the next event.
+    if (this._requestRender) this._requestRender();
   };
 
   Atlas.prototype._resize = function () {
@@ -1195,26 +1208,41 @@
     var w = this.container.clientWidth || 600, h = this.container.clientHeight || 600;
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this._requestRender();
   };
 
-  // ── render loop ───────────────────────────────────────────────────────────────
+  // ── render loop (on-demand) ──────────────────────────────────────────────────
+  // PERF: render only when something actually changes — camera control update,
+  // layer toggle, region focus, resize, GLB load, etc. Static scenes cost 0 GPU.
   Atlas.prototype._startLoop = function () {
     var self = this;
+    self._needsRender = true;
+    if (self.controls && self.controls.addEventListener) {
+      self.controls.addEventListener('change', function () { self._requestRender(); });
+      // damping in OrbitControls makes update() return true while easing; keep
+      // animating until it settles.
+    }
     function frame() {
       if (self._destroyed) return;
       self._raf = requestAnimationFrame(frame);
+      var dirty = false;
       if (self.controls) {
-        // B3: only allow panning once the user has zoomed in past 1.5x (no pan at
-        // the default overview, where it would feel like the model drifting away).
         if (self._baseDist) {
           var d = self.camera.position.distanceTo(self.controls.target);
           self.controls.enablePan = d < self._baseDist / 1.5;
         }
-        self.controls.update();
+        if (self.controls.update()) dirty = true;
       }
-      self.renderer.render(self.scene, self.camera);
+      if (self._needsRender || dirty) {
+        self._needsRender = false;
+        self.renderer.render(self.scene, self.camera);
+      }
     }
     frame();
+  };
+
+  Atlas.prototype._requestRender = function () {
+    this._needsRender = true;
   };
 
   // ── reconfigure (render) ─────────────────────────────────────────────────────
