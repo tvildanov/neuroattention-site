@@ -1171,40 +1171,25 @@
       self._requestRender();
       var rect = el.getBoundingClientRect();
       var rw = rect.width || el.clientWidth, rh = rect.height || el.clientHeight;
-      // PERF: a Mac trackpad fires wheel events at 60-100Hz during a continuous
-      // scroll gesture. Raycasting 2.6k+ meshes each event was THE zoom-lag
-      // culprit. Cache the pivot for the duration of one continuous gesture
-      // (>300ms idle = new gesture → recalc) — cuts raycast frequency 20×.
+      // PIVOT: project the cursor ray onto a plane through controls.target
+      // perpendicular to the view direction. Deterministic ("zoom into the
+      // pixel under the cursor"), no expensive 2.5k-mesh raycast (Mac trackpad
+      // fires wheel at 60-100Hz so the math has to be cheap), and works
+      // identically with an empty stage or a fully-loaded body.
       var pivot;
-      var gestureStarted = !self._lastWheelTime || (now - self._lastWheelTime > 300);
-      self._lastWheelTime = now;
       if (rw > 0 && rh > 0) {
-        // cursor position changes mid-gesture → invalidate cached pivot if mouse
-        // moved a lot since the gesture started
-        if (!gestureStarted && self._wheelStartCursorX != null) {
-          var dx = e.clientX - self._wheelStartCursorX;
-          var dy0 = e.clientY - self._wheelStartCursorY;
-          if (dx * dx + dy0 * dy0 > 1024) gestureStarted = true; // moved >32px → recalc
-        }
-        if (gestureStarted || !self._cachedPivot) {
-          self._wheelStartCursorX = e.clientX;
-          self._wheelStartCursorY = e.clientY;
-          self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
-                          -((e.clientY - rect.top) / rh) * 2 + 1);
-          self.raycaster.setFromCamera(self._mouse, self.camera);
-          var hits = self.root ? self.raycaster.intersectObjects(self.root.children, true) : [];
-          if (hits && hits.length) {
-            self._cachedPivot = hits[0].point.clone();
-          } else {
-            var T = window.THREE;
-            var camDir = new T.Vector3();
-            self.camera.getWorldDirection(camDir);
-            var plane = new T.Plane(camDir.clone().multiplyScalar(-1), camDir.dot(self.controls.target));
-            var hitPt = new T.Vector3();
-            self._cachedPivot = self.raycaster.ray.intersectPlane(plane, hitPt) ? hitPt.clone() : self.controls.target.clone();
-          }
-        }
-        pivot = self._cachedPivot.clone();
+        self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
+                        -((e.clientY - rect.top) / rh) * 2 + 1);
+        self.raycaster.setFromCamera(self._mouse, self.camera);
+        var T = window.THREE;
+        var camDir = new T.Vector3();
+        self.camera.getWorldDirection(camDir);                 // unit vector from camera into scene
+        var plane = new T.Plane(camDir.clone().multiplyScalar(-1),  // normal points back at camera
+                                camDir.dot(self.controls.target));  // constant so plane passes through target
+        var hitPt = new T.Vector3();
+        pivot = self.raycaster.ray.intersectPlane(plane, hitPt)
+          ? hitPt.clone()
+          : self.controls.target.clone();
       } else {
         pivot = self.controls.target.clone();
       }
