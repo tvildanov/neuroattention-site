@@ -11744,7 +11744,6 @@ function cpDisposeHumanAtlas(){
 window.cpDisposeHumanAtlas = cpDisposeHumanAtlas;
 
 var CP_HA_LAYERS = [
-  { key:'skin',     ru:'Кожа',   en:'Skin',     es:'Piel',      on:true,  op:0.5 },
   { key:'muscles',  ru:'Мышцы',  en:'Muscles',  es:'Músculos',  on:false, op:0.5 },
   { key:'skeleton', ru:'Скелет', en:'Skeleton', es:'Esqueleto', on:false, op:0.7 },
   { key:'nervous',  ru:'Нервы',  en:'Nerves',   es:'Nervios',   on:false, op:0.8 },
@@ -14240,13 +14239,11 @@ window.pbMove = pbMove;
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
   var LAYERS = [
-    { key:'skin',     color:'#A8F7FF', ru:'Кожа / контур', en:'Skin / outline', es:'Piel / contorno', on:true,  op:50 },
     { key:'muscles',  color:'#8DFFC8', ru:'Мышцы',         en:'Muscles',        es:'Músculos',        on:false, op:45 },
     { key:'skeleton', color:'#E8FBFF', ru:'Скелет',        en:'Skeleton',       es:'Esqueleto',       on:false, op:70 },
     { key:'nervous',  color:'#8DFFC8', ru:'Нервная система',en:'Nervous system',es:'Sistema nervioso',on:false, op:80 },
     { key:'vessels',  color:'#FF8FA3', ru:'Сосуды',        en:'Vessels',        es:'Vasos',           on:false, op:60 },
-    { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 },
-    { key:'brain',    color:'#6FE9F0', ru:'Мозг',          en:'Brain',          es:'Cerebro',         on:false, op:50 }
+    { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 }
   ];
   // Short, accurate region descriptions (educational base; Nick can expand per course).
   var REGION_DESC = {
