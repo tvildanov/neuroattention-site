@@ -1268,19 +1268,33 @@
       // fires wheel at 60-100Hz so the math has to be cheap), and works
       // identically with an empty stage or a fully-loaded body.
       var pivot;
+      var T = window.THREE;
       if (rw > 0 && rh > 0) {
         self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
                         -((e.clientY - rect.top) / rh) * 2 + 1);
         self.raycaster.setFromCamera(self._mouse, self.camera);
-        var T = window.THREE;
         var camDir = new T.Vector3();
         self.camera.getWorldDirection(camDir);                 // unit vector from camera into scene
         var plane = new T.Plane(camDir.clone().multiplyScalar(-1),  // normal points back at camera
                                 camDir.dot(self.controls.target));  // constant so plane passes through target
         var hitPt = new T.Vector3();
-        pivot = self.raycaster.ray.intersectPlane(plane, hitPt)
-          ? hitPt.clone()
-          : self.controls.target.clone();
+        var hit = self.raycaster.ray.intersectPlane(plane, hitPt);
+        if (hit) {
+          // Sanity check: body is ≈ 2 units tall, centred at origin. A legit
+          // pivot lives within ~5 units of origin. On mobile, the first pinch
+          // event sometimes arrives before getBoundingClientRect has stabilised
+          // — clientX/Y can be (0,0) which casts a ray out into the void and
+          // returns a pivot far off-screen. Falling back to controls.target in
+          // that case prevents the "first zoom teleports me to the moon" bug.
+          var distFromOrigin = hitPt.length();
+          if (distFromOrigin < 5.0 && isFinite(distFromOrigin)) {
+            pivot = hitPt.clone();
+          } else {
+            pivot = self.controls.target.clone();
+          }
+        } else {
+          pivot = self.controls.target.clone();
+        }
       } else {
         pivot = self.controls.target.clone();
       }
