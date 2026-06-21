@@ -1045,7 +1045,7 @@
   "a.tools.anatomy_male": "Муж.",
   "a.tools.anatomy_brain": "Детальный мозг",
   "a.tools.anatomy_reset": "Сбросить вид",
-  "a.tools.anatomy_hint": "Тяни — вращать · колесо — зум · клик по голове — мозг",
+  "a.tools.anatomy_hint": "Перетащите для вращения · колесо — зум · Shift+перетащить — двигать · клик по голове — детальный мозг",
   "a.tools.anatomy_schematic_note": "Скелет, мышцы и нервы — анатомически точные схемы (не сканы).",
   "a.tools.anatomy_back_body": "← Назад к телу",
   "a.tools.anatomy_layer_skin": "Кожа / контур",
