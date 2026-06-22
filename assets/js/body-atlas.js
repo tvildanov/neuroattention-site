@@ -1550,6 +1550,7 @@
         var midX = (t0.clientX + t1.clientX) / 2, midY = (t0.clientY + t1.clientY) / 2;
         _pinch = {
           dist: Math.max(50, Math.hypot(dx, dy)),  // floor 50px prevents /0
+          midX: midX, midY: midY,                  // screen midpoint at start (for pan)
           camPos: self.camera.position.clone(),
           target: self.controls.target.clone(),
           pivot: self._pivotFromScreen(midX, midY)
@@ -1560,25 +1561,39 @@
       if (e.touches && e.touches.length === 2 && _pinch) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        var dx = e.touches[1].clientX - e.touches[0].clientX;
-        var dy = e.touches[1].clientY - e.touches[0].clientY;
+        var T = window.THREE;
+        var t0 = e.touches[0], t1 = e.touches[1];
+        var dx = t1.clientX - t0.clientX, dy = t1.clientY - t0.clientY;
         var curDist = Math.max(50, Math.hypot(dx, dy));
-        // hard clamp: a single gesture can change zoom 0.3x..3x at most (repeated
-        // gestures still accumulate). Prevents the first-event teleport.
+        var curMidX = (t0.clientX + t1.clientX) / 2, curMidY = (t0.clientY + t1.clientY) / 2;
+        // ── ZOOM: distance ratio → scale the captured (camera,target) pair about
+        // the finger-midpoint pivot. Absolute from the start state → no drift.
+        // hard clamp 0.3x..3x prevents the first-event teleport.
         var ratio = Math.max(0.3, Math.min(3.0, curDist / _pinch.dist));
-        var pivot = _pinch.pivot;    // finger-midpoint world point
-        var scale = 1 / ratio;       // inverse: bigger pinch = closer camera
-        // clamp by camera↔target distance, measured from the captured start state
-        // (absolute, not per-frame → no accumulating drift)
+        var pivot = _pinch.pivot;
+        var scale = 1 / ratio;
         var startDist = _pinch.camPos.distanceTo(_pinch.target);
         var minD = self.controls.minDistance || 0.4, maxD = self.controls.maxDistance || 20;
         var newDist = Math.max(minD, Math.min(maxD, startDist * scale));
         scale = startDist > 1e-5 ? newDist / startDist : 1;
-        // scale the captured (camera, target) pair about the finger pivot — same
-        // math as the wheel handler. Moving the target toward the pivot too means
-        // subsequent rotations orbit around what the user zoomed into.
-        self.camera.position.copy(_pinch.camPos).sub(pivot).multiplyScalar(scale).add(pivot);
-        self.controls.target.copy(_pinch.target).sub(pivot).multiplyScalar(scale).add(pivot);
+        var cam = _pinch.camPos.clone().sub(pivot).multiplyScalar(scale).add(pivot);
+        var tgt = _pinch.target.clone().sub(pivot).multiplyScalar(scale).add(pivot);
+        // ── PAN: midpoint screen-delta → world translation along the camera's
+        // right/up axes, applied to BOTH camera and target (two-finger pan, the
+        // standard 3D-viewer gesture). Absolute from the captured start midpoint.
+        var rect = el.getBoundingClientRect();
+        var vh = rect.height || el.clientHeight || 1;
+        var fov = (self.camera.fov || 38) * Math.PI / 180;
+        var worldPerPx = (2 * startDist * Math.tan(fov / 2)) / vh;   // world units per screen pixel at the target plane
+        var dxS = curMidX - _pinch.midX, dyS = curMidY - _pinch.midY; // screen delta (dyS>0 = fingers moved DOWN)
+        var right = new T.Vector3().setFromMatrixColumn(self.camera.matrix, 0);
+        var up = new T.Vector3().setFromMatrixColumn(self.camera.matrix, 1);
+        // camera follows the fingers: fingers up → camera up (view rises toward the
+        // head, the waist drops to the bottom of the screen).
+        var pan = right.multiplyScalar(dxS * worldPerPx).add(up.multiplyScalar(-dyS * worldPerPx));
+        cam.add(pan); tgt.add(pan);
+        self.camera.position.copy(cam);
+        self.controls.target.copy(tgt);
         self._cameraBusyUntil = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) + 120;
         self._requestRender();
       }
