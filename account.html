@@ -1345,6 +1345,22 @@
         .ha-sev.variable{background:rgba(168,247,255,0.13);color:#A8F7FF;}
         .ha-nd{display:inline-block;font-size:9.5px;border-radius:6px;padding:0.1rem 0.45rem;margin-left:0.4rem;background:rgba(141,255,200,0.12);color:#8DFFC8;vertical-align:middle;}
         @media(max-width:760px){.ha-side{width:100%;max-width:100%;}.ha-list{max-height:300px;}}
+        /* C: Functions/Conditions left panel on mobile — stack vertically. The
+           generic .atlas-layers mobile rule (flex-direction:row;overflow-x:auto)
+           squashes search + category chips + list into a cramped horizontal row.
+           Override per-id to a full-width vertical feed: search on top, a
+           horizontal-scroll chip strip, then a full-width list, with the 3D
+           viewport below it. */
+        @media(max-width:720px){
+          #ha-left-functions, #ha-left-conditions{ flex-direction:column; overflow:visible; width:100%; flex:none; gap:0.55rem; padding:0.75rem 0.85rem; }
+          #ha-left-functions .ha-search, #ha-left-conditions .ha-search{ width:100%; box-sizing:border-box; }
+          #ha-left-functions .ha-cats, #ha-left-conditions .ha-cats{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.2rem; scrollbar-width:none; }
+          #ha-left-functions .ha-cats::-webkit-scrollbar, #ha-left-conditions .ha-cats::-webkit-scrollbar{ display:none; }
+          #ha-left-functions .ha-cat, #ha-left-conditions .ha-cat{ flex:0 0 auto; }
+          #ha-left-functions .ha-list, #ha-left-conditions .ha-list{ max-height:40vh; }
+          /* keep the 3D viewport tall enough to be usable under the feed */
+          .ha-tab[id^="ha-tab"]{ font-size:12px; padding:0.4rem 0.5rem; }
+        }
       </style>
       <div class="dash-card glass-card-elevated" style="padding:1.25rem;">
         <h3 style="margin:0 0 0.4rem;" data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
