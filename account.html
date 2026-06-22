@@ -1291,6 +1291,13 @@
         .atlas-layer-head input{accent-color:#A8F7FF;}
         .atlas-layer-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor;}
         .atlas-layer-op{width:100%;margin-top:0.45rem;accent-color:#A8F7FF;height:3px;}
+        .atlas-sub{margin-top:0.4rem;}
+        .atlas-sub>summary{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim,#7c8896);cursor:pointer;list-style:none;user-select:none;opacity:0.75;}
+        .atlas-sub>summary::-webkit-details-marker{display:none;}
+        .atlas-sub>summary::before{content:'▸ ';}
+        .atlas-sub[open]>summary::before{content:'▾ ';}
+        .atlas-subtoggle{display:flex;align-items:center;gap:0.35rem;font-size:11px;color:var(--text-muted,#cdd6df);margin:0.25rem 0 0 0.3rem;cursor:pointer;}
+        .atlas-subtoggle input{accent-color:#A8F7FF;width:12px;height:12px;}
         .atlas-layer-spin{display:none;width:11px;height:11px;margin-left:auto;flex:0 0 auto;border-radius:50%;border:1.6px solid rgba(168,247,255,0.22);border-top-color:#A8F7FF;animation:ba-spin .8s linear infinite;}
         .atlas-layer.loading .atlas-layer-spin{display:inline-block;}
         @keyframes ba-spin{to{transform:rotate(360deg);}}
@@ -1375,7 +1382,6 @@
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
             <div class="atlas-actions">
               <button class="atlas-btn" id="atlas-sex-toggle" onclick="atlasToggleSex()" title="Male / Female">⚥ <span id="atlas-sex-label" data-i18n="a.tools.anatomy_male">Муж.</span></button>
-              <button class="atlas-btn" onclick="atlasBrainDetail()" id="atlas-brain-btn">🧠 <span data-i18n="a.tools.anatomy_brain">Детальный мозг</span></button>
               <button class="atlas-btn" onclick="atlasResetView()">⟲ <span data-i18n="a.tools.anatomy_reset">Сбросить вид</span></button>
             </div>
           </div>
@@ -1383,7 +1389,7 @@
             <aside class="atlas-layers" id="atlas-layers">
               <div class="atlas-sec-title" data-i18n="a.tools.anatomy_layers">Слои</div>
               <!-- layers injected by JS -->
-              <div class="atlas-schematic" data-i18n="a.tools.anatomy_schematic_note">Скелет, мышцы и нервы — анатомически точные схемы (не сканы).</div>
+              <div class="atlas-schematic" id="atlas-help"></div>
             </aside>
             <aside class="atlas-layers" id="ha-left-functions" style="display:none;">
               <input class="ha-search" id="ha-fn-search" oninput="haFnSearch(this.value)" data-i18n-ph="a.ha.fn_search" placeholder="Поиск функции…" autocomplete="off">
@@ -1397,7 +1403,6 @@
             </aside>
             <div class="atlas-viewport" id="atlas-viewport">
               <div class="atlas-tooltip" id="atlas-tooltip"></div>
-              <div class="atlas-hint" id="atlas-hint" data-i18n="a.tools.anatomy_hint">Перетащите для вращения · колесо — зум · Shift+перетащить — двигать · клик по голове — детальный мозг</div>
               <div class="atlas-region-panel" id="atlas-region-panel">
                 <button class="arp-x" onclick="atlasCloseRegion()">×</button>
                 <h4 id="arp-name">—</h4>
@@ -1413,7 +1418,6 @@
                 </div>
                 <p id="arp-desc"></p>
                 <div id="arp-links"></div>
-                <button class="atlas-btn" id="arp-back" onclick="atlasExitBrain()" style="display:none;margin-top:0.5rem;" data-i18n="a.tools.anatomy_back_body">← Назад к телу</button>
               </div>
               <div class="ha-side" id="ha-detail-panel">
                 <button class="ha-x" onclick="haCloseDetail()">×</button>
@@ -14258,7 +14262,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=16"></script>
+<script src="assets/js/body-atlas.js?v=17"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14269,6 +14273,15 @@ window.pbMove = pbMove;
     { key:'vessels',  color:'#FF8FA3', ru:'Сосуды',        en:'Vessels',        es:'Vasos',           on:false, op:60 },
     { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 }
   ];
+  // Sub-layers (organ groups) rendered as collapsible mini-toggles inside a layer
+  // card. organ keys match userData.organ tags set from SEED_REGION_INFO.
+  var SUBLAYERS = {
+    nervous:  [ {o:'brain',ru:'Мозг',en:'Brain',es:'Cerebro'}, {o:'spinal-cord',ru:'Спинной мозг',en:'Spinal cord',es:'Médula espinal'} ],
+    vessels:  [ {o:'heart',ru:'Сердце',en:'Heart',es:'Corazón'} ],
+    organs:   [ {o:'gi-tract',ru:'ЖКТ',en:'GI tract',es:'Tracto GI'}, {o:'liver',ru:'Печень',en:'Liver',es:'Hígado'}, {o:'lungs',ru:'Лёгкие',en:'Lungs',es:'Pulmones'}, {o:'kidneys',ru:'Почки',en:'Kidneys',es:'Riñones'}, {o:'pancreas',ru:'Поджелудочная',en:'Pancreas',es:'Páncreas'}, {o:'endocrine',ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'}, {o:'airway',ru:'Дых. пути',en:'Airway',es:'Vías aéreas'} ],
+    skeleton: [ {o:'spine',ru:'Позвоночник',en:'Spine',es:'Columna'}, {o:'hip',ru:'Таз/бедро',en:'Hip',es:'Cadera'} ]
+  };
+  window.atlasToggleSubLayer = function(layer, organ, on){ if(window._anatomyAtlas && window._anatomyAtlas.toggleSubLayer){ try{ window._anatomyAtlas.toggleSubLayer(layer, organ, on); }catch(e){} } };
   // Short, accurate region descriptions (educational base; Nick can expand per course).
   var REGION_DESC = {
     'frontal-lobe':   { ru:'Планирование, принятие решений, контроль внимания и движений, речь.', en:'Planning, decision-making, attention control, voluntary movement, speech.', es:'Planificación, toma de decisiones, control de la atención, movimiento, habla.' },
@@ -14347,8 +14360,6 @@ window.pbMove = pbMove;
       atlas = a; window._anatomyAtlas = a;
       a.on('region-hover', onHover);
       a.on('region-click', onClick);
-      a.on('brain-enter', function(){ setBrainBtn(true); });
-      a.on('brain-exit',  function(){ setBrainBtn(false); atlasCloseRegion(); });
       // per-layer streaming spinner (real GLB lazy-loads on first toggle)
       a.on('layer-loading', function(d){ setLayerLoading(d&&d.layer, true); });
       a.on('layer-loaded',  function(d){ setLayerLoading(d&&d.layer, false);
@@ -14370,14 +14381,33 @@ window.pbMove = pbMove;
     var note = host.querySelector('.atlas-schematic');
     LAYERS.forEach(function(L){
       var el = document.createElement('div'); el.className='atlas-layer'; el.setAttribute('data-layer', L.key);
+      var subs = SUBLAYERS[L.key];
+      var subHtml = '';
+      if(subs && subs.length){
+        subHtml = '<details class="atlas-sub"><summary>'+(lang()==='en'?'parts':lang()==='es'?'partes':'части')+'</summary>'+
+          subs.map(function(s){
+            return '<label class="atlas-subtoggle"><input type="checkbox" checked onchange="atlasToggleSubLayer(\''+L.key+'\',\''+s.o+'\',this.checked)"> '+esc(s[lang()]||s.ru)+'</label>';
+          }).join('')+'</details>';
+      }
       el.innerHTML =
         '<label class="atlas-layer-head"><input type="checkbox" '+(L.on?'checked':'')+' onchange="atlasToggleLayer(\''+L.key+'\',this.checked)">'+
         '<span class="atlas-layer-dot" style="color:'+L.color+';background:'+L.color+'"></span>'+
         '<span data-i18n="a.tools.anatomy_layer_'+L.key+'">'+L[lang()]+'</span>'+
         '<span class="atlas-layer-spin" title="loading"></span></label>'+
-        '<input type="range" class="atlas-layer-op" min="0" max="100" value="'+L.op+'" oninput="atlasSetOpacity(\''+L.key+'\',this.value)">';
+        '<input type="range" class="atlas-layer-op" min="0" max="100" value="'+L.op+'" oninput="atlasSetOpacity(\''+L.key+'\',this.value)">'+
+        subHtml;
       host.insertBefore(el, note);
     });
+    // compact controls help (replaces the old "not scans" note; keeps the 3D
+    // viewport free of overlays)
+    var help = document.getElementById('atlas-help');
+    if(help){
+      var L = lang();
+      var lines = L==='en' ? ['Shift+drag — move the view','Double-click — select whole region','Single-click — specific detail','Two fingers: pinch to zoom, drag to move (mobile)']
+                : L==='es' ? ['Shift+arrastrar — mover la vista','Doble clic — seleccionar región completa','Clic simple — detalle específico','Dos dedos: pellizcar para zoom, arrastrar para mover (móvil)']
+                : ['Shift+перетаскивание — переместить вид','Двойной клик — выбрать регион целиком','Одинарный клик — конкретная деталь','Два пальца: щипок — зум, перетаскивание — перемещение (моб.)'];
+      help.innerHTML = lines.map(function(t){ return esc(t); }).join('<br>');
+    }
   }
 
   function onHover(hit){
@@ -14404,7 +14434,6 @@ window.pbMove = pbMove;
     var d = REGION_DESC[ud.coarseId] || REGION_DESC[hit.id];
     var ph = lang()==='en' ? 'Description coming soon.' : lang()==='es' ? 'Descripción próximamente.' : 'Описание скоро появится.';
     document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : ph;
-    document.getElementById('arp-back').style.display = (atlas && atlas._brainDetail) ? '' : 'none';
     var lk = document.getElementById('arp-links'); if(lk){ lk.innerHTML=''; try{ if(window.haRegionLinks) window.haRegionLinks(ud.coarseId || hit.id); }catch(e){} }
     atlasBuildMini(ud.regionId || ud.baseSlug || hit.id);   // PACK 10
     // PACK D: store current region for the opacity slider + reset slider to
@@ -14624,11 +14653,9 @@ window.pbMove = pbMove;
     // close both detail panels on switch
     var rp=document.getElementById('atlas-region-panel'); if(rp) rp.classList.remove('open');
     haCloseDetail();
-    var hint=document.getElementById('atlas-hint');
-    if(tab==='anatomy'){ syncAnatomyLayers(); if(hint){ hint.style.display=''; } }
+    if(tab==='anatomy'){ syncAnatomyLayers(); }
     else {
       clearFocus();
-      if(hint){ hint.textContent = tr(tab==='functions'?T.tip_fn:T.tip_cond); hint.style.display=''; }
       ensureData(function(){ tab==='functions' ? renderFnPanel() : renderCondPanel(); });
     }
   };
