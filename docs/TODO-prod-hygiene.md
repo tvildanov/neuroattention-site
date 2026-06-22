@@ -45,3 +45,24 @@ To re-introduce sex switching we need a **female GLB source** (per-layer:
 muscles/skeleton/nervous/vessels/organs + brain-detail), normalized to the same
 atlas frame, then wire `setSex()` to swap layer URLs in `anatomy-models.json`.
 Until that asset exists, keep the toggle removed.
+
+## Atlas: female reproductive meshes — NOT in current GLBs (content gap)
+
+Investigation (#69, F): the Z-Anatomy GLBs we ship are male-only. Searched every
+loaded GLB for `uterus|ovary|vagina|breast|mammary|fallopian|clitoris|vulva` —
+**zero matches**. Only male reproductive meshes exist (penis, testis, prostate,
+epididymis, seminal_gland, ductus_deferens) in organs.glb + vessels.glb.
+
+So a male↔female *swap* (testes/prostate/penis → uterus/ovaries/vagina/breasts)
+CANNOT be built from current assets — it needs a **new female-organ GLB source**
+(uterus, ovaries, fallopian tubes, vagina, mammary glands), normalized to the
+atlas frame. Once that asset exists, tag the male repro meshes userData.sex='male'
+and the new female ones 'female', wire setSex() to toggle visibility, and restore
+the UI button. Until then the Male/Female toggle stays removed.
+
+## Atlas: unused Z-Anatomy GLBs (joints / lymph / regions) — see /tmp/zanatomy-inventory.md
+
+`anatomy-models.json.extra` already references joints.glb (413 meshes —
+ligaments + joint capsules), lymph.glb (220 — lymphatic system + thymus + nodes),
+regions.glb (298 — surface landmarks). None are loaded. Adding `joints` + `lymph`
+as toggleable layers is a contained follow-up (Tahir to prioritize).
