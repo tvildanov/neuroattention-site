@@ -1063,12 +1063,31 @@
     'lungs':           { layer: 'organs', organ: 'lungs', parent: null, aliases: ['lungs'] },
     'kidneys':         { layer: 'organs', organ: 'kidneys', parent: null, aliases: ['kidney'] },
 
+    // ── GI tract (sub-layer 'gi-tract' of 'organs') — all aliases verified present
+    //    in the organs GLB (see /tmp/organs-inventory.json). 'esophagus'/'ileum'
+    //    have no mesh (only 'oesophagus'; small bowel is duodenum+jejunum) — kept
+    //    as harmless spelling/intent aliases.
+    'stomach':         { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['stomach'] },
+    'oesophagus':      { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['oesophagus', 'esophagus'] },
+    'small-intestine': { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['small_intestine', 'duodenum', 'jejunum', 'ileum'], descendants: ['duodenum', 'jejunum'] },
+    'duodenum':        { layer: 'organs', organ: 'gi-tract', parent: 'small-intestine', aliases: ['duodenum'] },
+    'jejunum':         { layer: 'organs', organ: 'gi-tract', parent: 'small-intestine', aliases: ['jejunum'] },
+    'large-intestine': { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['large_intestine', 'colon', 'ascending_colon', 'descending_colon', 'transverse_colon', 'sigmoid_colon'] },
+    'gallbladder':     { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['gallbladder'] },
+    'pancreas':        { layer: 'organs', organ: 'pancreas', parent: null, aliases: ['pancreas'] },
+    'thyroid-gland':   { layer: 'organs', organ: 'endocrine', parent: null, aliases: ['thyroid_gland'] },
+    'nose':            { layer: 'organs', organ: 'airway', parent: null, aliases: ['nose'] },
+
     // ── spine (sub-layer 'spine' of layer 'skeleton') ──
     'spine':           { layer: 'skeleton', organ: 'spine', parent: null, aliases: [], descendants: ['cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacral-spine'] },
     'cervical-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['cervical_vertebrae', 'cervical_vertebra'] },
     'thoracic-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['thoracic_vertebrae', 'thoracic_vertebra'] },
     'lumbar-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['lumbar_vertebrae', 'lumbar_vertebra'] },
-    'sacral-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['sacrum'] }
+    'sacral-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['sacrum'] },
+
+    // ── hip joint (sub-layer 'hip' of 'skeleton') — the articulating surfaces.
+    //    NOTE: the GLB mesh is 'head_of_femur' (not 'femur_head' as first spec'd).
+    'hip':             { layer: 'skeleton', organ: 'hip', parent: null, aliases: ['hip_bone', 'acetabulum', 'head_of_femur'] }
   };
   Atlas.SEED_REGION_INFO = SEED_REGION_INFO;   // expose for tooling / account.html
 

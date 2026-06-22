@@ -938,6 +938,24 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_slug ON human_conditions(slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_cat ON human_conditions(category)`;
 
+    // ── Migration 019: fix medically-wrong anatomy seed regions (mirrors
+    //    migrations/019_fix_anatomy_seed_regions.sql). GI used 'liver' as a
+    //    placeholder; endocrine missed pancreas/thyroid; rhinitis→lungs; hip-OA→
+    //    spine. Targets organ/skeleton sub-layer regions now in SEED_REGION_INFO.
+    //    Idempotent UPDATE … WHERE slug — only the 11 listed rows; correct rows
+    //    (brain/cardio/neuro/psych/cirrhosis/asthma/copd) untouched.
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['stomach','medulla']::text[] WHERE slug = 'gastritis'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['oesophagus','stomach','medulla']::text[] WHERE slug = 'gerd'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['small-intestine','large-intestine']::text[] WHERE slug = 'crohns'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['large-intestine','medulla']::text[] WHERE slug = 'ibs'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','hypothalamus','liver']::text[] WHERE slug = 'type1-diabetes'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','hypothalamus','liver','kidneys']::text[] WHERE slug = 'type2-diabetes'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['thyroid-gland']::text[] WHERE slug = 'hyperthyroidism'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['thyroid-gland']::text[] WHERE slug = 'hypothyroidism'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['nose']::text[] WHERE slug = 'allergic-rhinitis'`;
+    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['hip']::text[] WHERE slug = 'hip-osteoarthritis'`;
+    await sql`UPDATE anatomy_functions SET region_ids = ARRAY['stomach','small-intestine','large-intestine','medulla','hypothalamus','liver']::text[] WHERE slug = 'digestion'`;
+
     await sql`CREATE TABLE IF NOT EXISTS course_blocks (
       id SERIAL PRIMARY KEY,
       course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
