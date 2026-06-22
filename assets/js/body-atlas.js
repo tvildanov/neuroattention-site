@@ -704,6 +704,22 @@
     return this;
   };
 
+  // ISOLATE semantics for the layer-card subtoggles: given the set of *checked*
+  // organs, show only meshes of those organs (everything else in the layer hidden).
+  // No organs checked → the whole layer is visible (default). Collision-hidden
+  // nervous brain-duplicates stay hidden either way.
+  Atlas.prototype.setSubLayerIsolation = function (layer, organs) {
+    var set = {}, isolate = !!(organs && organs.length);
+    (organs || []).forEach(function (o) { set[o] = 1; });
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || o.userData.layer !== layer) return;
+      if (o.userData._brainDupeHidden) return;     // keep duplicates the brain-detail GLB replaces hidden
+      o.visible = isolate ? !!set[o.userData.organ || ''] : true;
+    });
+    if (this._requestRender) this._requestRender();
+    return this;
+  };
+
   // The nearest registered (SEED_REGION_INFO) named region containing a mesh —
   // used by double-click to select the whole region from a fine sub-mesh
   // (e.g. a precentral-gyrus mesh → 'frontal-lobe'). Never returns empty.
@@ -766,6 +782,43 @@
     this._emit('layer-change', { layer: name, visible: visible });
     if (this._requestRender) this._requestRender();
   };
+
+  // ── organ (sub-layer) tagging — single source of truth ──────────────────────
+  // Maps a mesh's baseSlug + its layer to an organ group, by token match. Used for
+  // EVERY GLB-layer mesh at load (not just brain-detail) so the layer-card
+  // subtoggles isolate the WHOLE organ (all internal nuclei, every vertebra, both
+  // lung lobes, kidneys+adrenals), not just the surface meshes. Token lists were
+  // derived from the full mesh inventory (see /tmp/organ-tagging-report.md).
+  // Returns null for meshes that belong to no named organ (generic bones,
+  // peripheral nerves, plain vessels).
+  function assignOrganTag(baseSlug, layer) {
+    var n = String(baseSlug == null ? '' : baseSlug).toLowerCase();
+    if (layer === 'nervous') {
+      if (/spinal_cord/.test(n)) return 'spinal-cord';
+      if (/brain|cortex|cerebrum|cerebell|medulla|\bpons\b|midbrain|thalamus|hypothalam|hippocamp|amygdal|fornix|callosum|cingulate|insula|putamen|caudate|frontal|parietal|temporal|occipital|basal_ganglia|globus_pallidus|gyrus|gyri|sulcus|\blobe\b|lobule|ventricle|olive|colliculus|substantia|red_nucleus|geniculate|mamillary|septal|septum_pellucidum|lentiform|pallidus|tegmentum|tectum|peduncle|commissure|optic_chiasm|optic_tract|habenula|cuneus|precuneus|operculum|uvula|lingula|culmen|declive|nodule|tonsil_of_cerebellum|vermis|flocculus|salivatory|ambiguus|solitary|aqueduct|interpeduncular|stria_|amygdaloid|paracentral|precentral|postcentral|angular_gyrus|supramarginal/.test(n)) return 'brain';
+      return null;
+    }
+    if (layer === 'skeleton') {
+      if (/vertebra|sacrum|coccyx|vertebral_column|intervertebral/.test(n)) return 'spine';
+      if (/hip_bone|acetabul|head_of_femur|ala_of_ilium|body_of_ilium|\bilium\b|ischium|pubis|pelvic_girdle|bony_pelvis/.test(n)) return 'hip';
+      return null;
+    }
+    if (layer === 'vessels') {
+      if (/atrium|ventricle|\bheart\b|cardiac|coronary|myocard|aortic_valve|mitral|tricuspid|papillary_muscle|chordae|sinus_venarum|interventricular|interatrial|trabeculae/.test(n)) return 'heart';
+      return null;
+    }
+    if (layer === 'organs') {
+      if (/lung|pulmon/.test(n)) return 'lungs';
+      if (/kidney|renal|suprarenal|adrenal/.test(n)) return 'kidneys';
+      if (/liver|hepat/.test(n)) return 'liver';
+      if (/pancreas|pancreat/.test(n)) return 'pancreas';
+      if (/thyroid|parathyroid/.test(n)) return 'endocrine';
+      if (/\bnose\b|nasal|nasopharynx|paranasal/.test(n)) return 'airway';
+      if (/stomach|gastric|oesophag|esophag|duoden|jejun|ileum|intestin|colon|caecum|cecum|vermiform_appendix|rectum|pylor|\bcardia\b|bile|gallbladder|omentum|mesocolon|mesentery|taenia|haustr/.test(n)) return 'gi-tract';
+      return null;
+    }
+    return null;
+  }
 
   // ── real model streaming (lazy, per layer) ─────────────────────────────────
   // GLBs are pre-normalized to the atlas frame (centered, height ≈ 2.0), so they
@@ -844,7 +897,7 @@
             // tag the sub-layer (organ) from the registry so toggleSubLayer can
             // filter this mesh (e.g. organs_stomach → organ 'gi-tract'). Untagged
             // meshes (generic bones / peripheral nerves) stay in the layer default.
-            try { var _seed = self._meshNamedRegion(o.userData); var _info = _seed && SEED_REGION_INFO[_seed]; if (_info && _info.organ) o.userData.organ = _info.organ; } catch (e) {}
+            var _organ = assignOrganTag(p.baseSlug, name); if (_organ) o.userData.organ = _organ;
             // nervous CNS (brain/brainstem/cerebellum/cord nuclei) is the parallel
             // brain-detail session's domain — render it, but don't hit-test it here.
             if (name === 'nervous' && cns[rawName]) o.userData.isBrain = true;
@@ -1481,13 +1534,14 @@
       self._lastClickAt = now;
       if (hit) {
         if (isDouble) {
-          // DOUBLE click → select the whole containing named region (all its
-          // meshes) and orbit-fit the camera onto it.
+          // DOUBLE click → orbit-fit the camera onto the whole containing named
+          // region. NO dim/opacity change — the layer slider stays in control, so
+          // there is no sticky darkness. (Any focus already applied from the
+          // Functions/Conditions tabs is left as-is; double-click won't add dim.)
           var ud = hit.object && hit.object.userData ? hit.object.userData : {};
           var region = self._meshNamedRegion(ud) || hit.id;
           var meshes = [];
           self._forEachRegionMesh(region, function (m) { if (m.isMesh) meshes.push(m); });
-          try { self.focusRegions([region], 0.12); } catch (e) {}
           self.focusCameraOnMeshes(meshes);
           self._emit('region-click', { id: region, names: hit.names, object: hit.object, point: hit.point, layer: hit.layer, level: 'region' });
         } else {
