@@ -656,6 +656,78 @@
     if (this.controls) this.controls.minDistance = this._brainRadius * 1.1;
   };
 
+  // Orbit-fit the camera onto the bounding box of an arbitrary mesh set (used by
+  // the double-click "select whole region" gesture). Generalises _frameBrain.
+  Atlas.prototype.focusCameraOnMeshes = function (meshes) {
+    var T = window.THREE;
+    if (!T || !this.controls || !meshes || !meshes.length) return;
+    var box = new T.Box3();
+    meshes.forEach(function (m) {
+      if (!m.geometry) return;
+      m.updateWorldMatrix(true, false);
+      var b = new T.Box3().setFromObject(m);
+      if (isFinite(b.min.x) && isFinite(b.max.x)) box.union(b);
+    });
+    if (box.isEmpty()) return;
+    var c = box.getCenter(new T.Vector3()), size = box.getSize(new T.Vector3());
+    var radius = Math.max(size.x, size.y, size.z) * 0.5 || 0.3;
+    var fov = ((this.camera && this.camera.fov) || 38) * Math.PI / 180;
+    var dist = (radius / Math.sin(fov / 2)) * 1.6;
+    this.controls.minDistance = Math.min(this.controls.minDistance || 0.4, radius * 0.5);
+    // keep the current view DIRECTION, just re-centre on the region at `dist`.
+    // Instant set + update() (OrbitControls recomputes its spherical from the new
+    // position) — avoids the damping/tween fight that left off-centre targets stuck.
+    var dir = new T.Vector3().subVectors(this.camera.position, this.controls.target);
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
+    dir.normalize().multiplyScalar(dist);
+    this.controls.target.copy(c);
+    this.camera.position.copy(c).add(dir);
+    this.camera.updateProjectionMatrix();
+    this.controls.update();
+    if (this._requestRender) this._requestRender();
+  };
+
+  // Toggle a sub-layer (organ group) within a layer — hides/shows only the meshes
+  // tagged userData.layer===layer && userData.organ===organ, leaving the rest of
+  // the layer untouched. Powers the layer-card subtoggles (Мозг / Спинной мозг /
+  // Сердце / ЖКТ / …). For vessels, organ===null means "vessels proper" (no organ tag).
+  Atlas.prototype.toggleSubLayer = function (layer, organ, on) {
+    on = on !== false;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || o.userData.layer !== layer) return;
+      var og = o.userData.organ || null;
+      if (og === organ) o.visible = on;
+    });
+    if (!this._subLayerState) this._subLayerState = {};
+    this._subLayerState[layer + '/' + (organ || '')] = on;
+    if (this._requestRender) this._requestRender();
+    return this;
+  };
+
+  // The nearest registered (SEED_REGION_INFO) named region containing a mesh —
+  // used by double-click to select the whole region from a fine sub-mesh
+  // (e.g. a precentral-gyrus mesh → 'frontal-lobe'). Never returns empty.
+  Atlas.prototype._meshNamedRegion = function (ud) {
+    if (!ud) return null;
+    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+    // 1) brain meshes carry coarseId = the seed slug ('frontal-lobe', 'medulla'…)
+    if (ud.coarseId && SEED_REGION_INFO[ud.coarseId]) return ud.coarseId;
+    // 2) match the layer-stripped slug against any seed key / alias / descendant
+    var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : (ud.baseSlug || ud.slug);
+    if (bare) {
+      var nb = norm(bare);
+      for (var k in SEED_REGION_INFO) {
+        if (norm(k) === nb) return k;
+        var info = SEED_REGION_INFO[k];
+        var al = info.aliases || [], de = info.descendants || [], i;
+        for (i = 0; i < al.length; i++) if (norm(al[i]) === nb) return k;
+        for (i = 0; i < de.length; i++) if (norm(de[i]) === nb) return k;
+      }
+    }
+    // 3) fallback — never empty
+    return ud.coarseId || ud.baseSlug || ud.regionId || null;
+  };
+
   // ── layer config / visibility / opacity ────────────────────────────────────
   Atlas.prototype._applyLayerConfig = function () {
     var requested = this.opts.layers;
@@ -769,6 +841,10 @@
             o.userData.side = p.side;
             o.userData.originalName = rawName;
             o.userData.layer = name;
+            // tag the sub-layer (organ) from the registry so toggleSubLayer can
+            // filter this mesh (e.g. organs_stomach → organ 'gi-tract'). Untagged
+            // meshes (generic bones / peripheral nerves) stay in the layer default.
+            try { var _seed = self._meshNamedRegion(o.userData); var _info = _seed && SEED_REGION_INFO[_seed]; if (_info && _info.organ) o.userData.organ = _info.organ; } catch (e) {}
             // nervous CNS (brain/brainstem/cerebellum/cord nuclei) is the parallel
             // brain-detail session's domain — render it, but don't hit-test it here.
             if (name === 'nervous' && cns[rawName]) o.userData.isBrain = true;
@@ -1400,13 +1476,24 @@
         if (ddx * ddx + ddy * ddy > 36) return;   // moved >6px → drag, not a tap
       }
       var hit = self.hitTest(pt.clientX, pt.clientY);
+      var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      var isDouble = !!(self._lastClickAt && (now - self._lastClickAt) < 300);
+      self._lastClickAt = now;
       if (hit) {
-        // clicking the head (skin) in full mode → brain detail
-        if (false) {  // skin layer removed — head-click trigger disabled; use Brain Detail button
-          var localY = hit.point.y;
-          if (self._metrics && localY > self._metrics.y(0.86)) { self.enterBrainDetail(); return; }
+        if (isDouble) {
+          // DOUBLE click → select the whole containing named region (all its
+          // meshes) and orbit-fit the camera onto it.
+          var ud = hit.object && hit.object.userData ? hit.object.userData : {};
+          var region = self._meshNamedRegion(ud) || hit.id;
+          var meshes = [];
+          self._forEachRegionMesh(region, function (m) { if (m.isMesh) meshes.push(m); });
+          try { self.focusRegions([region], 0.12); } catch (e) {}
+          self.focusCameraOnMeshes(meshes);
+          self._emit('region-click', { id: region, names: hit.names, object: hit.object, point: hit.point, layer: hit.layer, level: 'region' });
+        } else {
+          // SINGLE click → the specific mesh under the cursor.
+          self._emit('region-click', hit);
         }
-        self._emit('region-click', hit);
       } else {
         self._emit('empty-click', { x: pt.clientX, y: pt.clientY });
       }
