@@ -14258,7 +14258,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=15"></script>
+<script src="assets/js/body-atlas.js?v=16"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14351,7 +14351,13 @@ window.pbMove = pbMove;
       a.on('brain-exit',  function(){ setBrainBtn(false); atlasCloseRegion(); });
       // per-layer streaming spinner (real GLB lazy-loads on first toggle)
       a.on('layer-loading', function(d){ setLayerLoading(d&&d.layer, true); });
-      a.on('layer-loaded',  function(d){ setLayerLoading(d&&d.layer, false); });
+      a.on('layer-loaded',  function(d){ setLayerLoading(d&&d.layer, false);
+        // re-apply the active focus the moment a lazily-streamed layer lands, so the
+        // first click on a function/condition dims correctly instead of showing the
+        // whole layer (focusRegions had run against an empty scaffold).
+        if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.12); }catch(e){} }
+      });
+      a.on('brain-loaded', function(){ if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.12); }catch(e){} } });
       a.on('layer-error',   function(d){ setLayerLoading(d&&d.layer, false); });
       // sync initial layer state from controls
       LAYERS.forEach(function(L){ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op/100); });
@@ -14584,10 +14590,16 @@ window.pbMove = pbMove;
       // skin included (need never contains 'skin').
       ['skin','muscles','skeleton','nervous','vessels','organs'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
     }catch(e){}
-    var apply=function(){ try{ a.focusRegions(ids, 0.12); }catch(e){} };
-    apply(); setTimeout(apply, 350); setTimeout(apply, 900); // catch lazy-loaded GLB meshes
+    // Remember the active focus so the layer-loaded handler (wired once in
+    // _mountAnatomyNow) re-applies it the moment a lazily-streamed GLB lands —
+    // the first click on a diagnosis used to highlight the whole layer because
+    // focusRegions ran against an empty scaffold. Timeouts are a belt-and-braces
+    // fallback for layers that were already cached (no layer-loaded fires).
+    window.__currentFocusIds = ids;
+    var apply=function(){ if(window.__currentFocusIds!==ids) return; try{ a.focusRegions(ids, 0.12); }catch(e){} };
+    apply(); setTimeout(apply, 350); setTimeout(apply, 900); setTimeout(apply, 2000);
   }
-  function clearFocus(){ var a=window._anatomyAtlas; if(a){ try{ a.resetRegions&&a.resetRegions(); }catch(e){} } }
+  function clearFocus(){ window.__currentFocusIds=null; var a=window._anatomyAtlas; if(a){ try{ a.resetRegions&&a.resetRegions(); }catch(e){} } }
   function syncAnatomyLayers(){
     var a=window._anatomyAtlas; if(!a) return;
     try{ a.resetRegions&&a.resetRegions(); }catch(e){}
@@ -14723,7 +14735,9 @@ window.pbMove = pbMove;
     h+=ids.map(function(id){
       return '<span class="ha-chip'+(asLinks?' link':'')+'" onclick="haFocusList(\''+id+'\')">'+esc(regionLabel(id))+'</span>';
     }).join('');
-    h+='<div style="margin-top:0.4rem;"><span class="ha-chip link" onclick="haGoRegionMulti(\''+ids.join(',')+'\')">'+esc(tr(T.open_anatomy))+' →</span></div>';
+    // (Removed the "Show in Anatomy →" button — it kicked the user off the active
+    //  Functions/Conditions tab. Focus now highlights in place; the region chips
+    //  above re-focus on tap without leaving the tab.)
     return h;
   }
   window.haFocusList=function(csv){ var ids=(csv||'').split(',').filter(Boolean); focus(ids); };
