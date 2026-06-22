@@ -320,6 +320,23 @@ app.post('/api/run-migrations', async (req, res) => {
       await sql`UPDATE anatomy_functions SET region_ids = ARRAY['stomach','small-intestine','large-intestine','medulla','hypothalamus','liver']::text[] WHERE slug = 'digestion'`;
     } catch (e) { console.error('migration 019 (anatomy seed fix):', e.message); }
 
+    // ── Migration 020: strip stray central/brain regions from NON-neuro
+    //    conditions (mirrors migrations/020_strip_brain_from_nonbrain.sql). The
+    //    affected_region_ids should be the locally affected organs only — medulla/
+    //    hypothalamus are autonomic regulators, not the lesion. Run BEFORE the
+    //    tools rename (which throws on re-run). Idempotent; only these 8 rows.
+    //    Neuro/psych conditions keep their brain regions (untouched).
+    try {
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['stomach']::text[] WHERE slug = 'gastritis'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['oesophagus','stomach']::text[] WHERE slug = 'gerd'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['large-intestine']::text[] WHERE slug = 'ibs'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['lungs']::text[] WHERE slug = 'asthma'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['lungs']::text[] WHERE slug = 'copd'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','liver']::text[] WHERE slug = 'type1-diabetes'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','liver','kidneys']::text[] WHERE slug = 'type2-diabetes'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['heart','kidneys']::text[] WHERE slug = 'hypertension'`;
+    } catch (e) { console.error('migration 020 (strip brain from non-neuro):', e.message); }
+
     // ── External Field tool (objective environmental signals) ──
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lon DOUBLE PRECISION`;
