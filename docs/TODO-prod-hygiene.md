@@ -36,3 +36,12 @@ Until then: leftover throwaway users accumulate and need manual cleanup.
 - `atlas-mobile-1782110607406@test.local` (id `62b171ea-8935-4979-9a61-5e7fb0bbd341`)
 
 Verify cleared: `GET /api/admin/users?search=atlas-mobile` → empty (superadmin token).
+
+## Atlas: female anatomy model (separate issue)
+
+The Male/Female toggle was removed (#68) — the Z-Anatomy GLBs are male-only
+(`assets/3d/body/body-male.glb`; `atlas.setSex()` is a documented no-op stub).
+To re-introduce sex switching we need a **female GLB source** (per-layer:
+muscles/skeleton/nervous/vessels/organs + brain-detail), normalized to the same
+atlas frame, then wire `setSex()` to swap layer URLs in `anatomy-models.json`.
+Until that asset exists, keep the toggle removed.
