@@ -687,6 +687,34 @@
     if (this._requestRender) this._requestRender();
   };
 
+  // Nearest VISIBLE named mesh to a world point — used when a double-click misses
+  // every mesh, so the gesture still zooms toward the closest region.
+  Atlas.prototype._nearestVisibleMesh = function (worldPt) {
+    var T = window.THREE; if (!T || !this.root) return null;
+    function vis(o) { var n = o; while (n) { if (n.visible === false) return false; n = n.parent; } return true; }
+    var best = null, bestD = Infinity, c = new T.Vector3();
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || !o.userData.regionId || !o.geometry || !vis(o)) return;
+      if (!o.geometry.boundingSphere) { try { o.geometry.computeBoundingSphere(); } catch (e) { return; } }
+      if (!o.geometry.boundingSphere) return;
+      c.copy(o.geometry.boundingSphere.center); o.updateWorldMatrix(true, false); c.applyMatrix4(o.matrixWorld);
+      var d = c.distanceTo(worldPt); if (d < bestD) { bestD = d; best = o; }
+    });
+    return best;
+  };
+
+  // Scale the camera+target about a world pivot (generic zoom-in fallback).
+  Atlas.prototype._zoomTowardPivot = function (pivot, scale) {
+    if (!this.controls) return;
+    var cam = this.camera.position, tgt = this.controls.target, dist = cam.distanceTo(tgt);
+    var newDist = Math.max(this.controls.minDistance || 0.4, Math.min(this.controls.maxDistance || 20, dist * scale));
+    scale = dist > 1e-5 ? newDist / dist : 1;
+    cam.sub(pivot).multiplyScalar(scale).add(pivot);
+    tgt.sub(pivot).multiplyScalar(scale).add(pivot);
+    this.controls.update();
+    if (this._requestRender) this._requestRender();
+  };
+
   // Toggle a sub-layer (organ group) within a layer — hides/shows only the meshes
   // tagged userData.layer===layer && userData.organ===organ, leaving the rest of
   // the layer untouched. Powers the layer-card subtoggles (Мозг / Спинной мозг /
@@ -741,6 +769,9 @@
       }
     }
     // 3) fallback — never empty
+    // sub-layer organ groups (muscle regions, spinal-cord …) are the named region
+    // for meshes not in SEED_REGION_INFO — so double-click selects the whole group.
+    if (ud.organ) return ud.organ;
     return ud.coarseId || ud.baseSlug || ud.regionId || null;
   };
 
@@ -799,7 +830,7 @@
       return null;
     }
     if (layer === 'skeleton') {
-      if (/vertebra|sacrum|coccyx|vertebral_column|intervertebral/.test(n)) return 'spine';
+      if (/vertebra|sacrum|coccyx|vertebral_column|intervertebral|cervical|atlas|axis|dens/.test(n)) return 'spine';
       if (/hip_bone|acetabul|head_of_femur|ala_of_ilium|body_of_ilium|\bilium\b|ischium|pubis|pelvic_girdle|bony_pelvis/.test(n)) return 'hip';
       return null;
     }
@@ -815,6 +846,19 @@
       if (/thyroid|parathyroid/.test(n)) return 'endocrine';
       if (/\bnose\b|nasal|nasopharynx|paranasal/.test(n)) return 'airway';
       if (/stomach|gastric|oesophag|esophag|duoden|jejun|ileum|intestin|colon|caecum|cecum|vermiform_appendix|rectum|pylor|\bcardia\b|bile|gallbladder|omentum|mesocolon|mesentery|taenia|haustr/.test(n)) return 'gi-tract';
+      return null;
+    }
+    if (layer === 'muscles') {
+      // skip pure connective tissue (fascia / retinaculum / bursa / septum /
+      // aponeurosis / tendon …) — it stays untagged (shown in the whole-muscles
+      // view, never isolated as a "muscle group").
+      if (/fascia|retinaculum|bursa|septum|aponeurosis|ligament|tendon|sheath|raphe|trochlea|capsule|arch/.test(n)) return null;
+      if (/pectoralis|intercostal|serratus_anterior|subclavius|transversus_thoracis/.test(n)) return 'chest-muscles';
+      if (/trapezius|latissimus|rhomboid|erector_spinae|\bspinae\b|splenius|semispinalis|multifidus|levator_scapulae|infraspinatus|supraspinatus|teres_major|teres_minor/.test(n)) return 'back-muscles';
+      if (/rectus_abdominis|external_oblique|internal_oblique|transversus_abdominis|quadratus_lumborum|psoas|iliacus|diaphragm/.test(n)) return 'core-muscles';
+      if (/biceps_brachii|triceps_brachii|deltoid|brachialis|brachioradialis|coracobrachialis|anconeus|pronator|supinator|flexor_carpi|extensor_carpi|flexor_digitorum|extensor_digitorum|palmaris|flexor_pollicis|extensor_pollicis|abductor_pollicis/.test(n)) return 'arm-muscles';
+      if (/vastus|rectus_femoris|biceps_femoris|semitendinosus|semimembranosus|gluteus|sartorius|gracilis|adductor_longus|adductor_brevis|adductor_magnus|gastrocnemius|soleus|tibialis|fibularis|peroneus|popliteus|plantaris/.test(n)) return 'leg-muscles';
+      if (/masseter|temporalis_muscle|orbicularis|zygomatic|buccinator|sternocleidomastoid|platysma|mentalis|frontalis|occipitofrontalis|scalene|omohyoid|sternohyoid|sternothyroid|mylohyoid|digastric|stylohyoid|thyrohyoid|risorius|nasalis|levator_labii|depressor_(labii|anguli)|corrugator|procerus/.test(n)) return 'face-neck-muscles';
       return null;
     }
     return null;
@@ -1033,6 +1077,7 @@
       if (targets[norm(ud.baseSlug)]) return true;
       if (targets[norm(ud.coarseId)]) return true;
       if (targets[norm(ud.originalName)]) return true;
+      if (targets[norm(ud.organ)]) return true;   // sub-layer organ groups (muscles, spinal-cord)
       return false;
     }
     // First pass: collect every root node (Mesh or Group) whose own userData
@@ -1435,15 +1480,17 @@
     this.raycaster.setFromCamera(this._mouse, this.camera);
     var targets = this._hittableMeshes();
     var hits = this.raycaster.intersectObjects(targets, true);
+    function isVis(m) { var nn = m; while (nn) { if (nn.visible === false) return false; nn = nn.parent; } return true; }
     for (var i = 0; i < hits.length; i++) {
       var o = hits[i].object;
-      while (o && (!o.userData || !o.userData.regionId)) o = o.parent;
-      if (o && o.userData && o.userData.regionId) {
-        // CNS meshes are non-interactive outside brain-detail (their geometry is
-        // still ray-hit, so skip them here and let the loop continue past).
-        if (o.userData.isBrain && !this._brainDetail) continue;
-        return { id: o.userData.regionId, names: this._regionNames(o.userData), object: o, point: hits[i].point, layer: o.userData.layer };
-      }
+      var node = o;
+      while (node && (!node.userData || !node.userData.regionId)) node = node.parent;
+      if (!node || !node.userData || !node.userData.regionId) continue;
+      // FRONT-MOST wins: return the nearest hit whose mesh + named ancestor are
+      // VISIBLE. Hidden meshes (isolation, brain duplicates) aren't clickable, and
+      // we never skip a visible front mesh in favour of a deeper "named" one.
+      if (!isVis(o) || !isVis(node)) continue;
+      return { id: node.userData.regionId, names: this._regionNames(node.userData), object: node, point: hits[i].point, layer: node.userData.layer };
     }
     return null;
   };
@@ -1484,6 +1531,12 @@
         if (o.userData && o.userData.regionId) arr.push(o);
       });
     });
+    // brain-detail GLB is a permanent (visible) sub-layer of nervous — include its
+    // meshes so the brain itself is clickable in the normal body view (it lives in
+    // _brainRealGroup, not in _layers).
+    if (this._brainRealGroup && this._brainRealGroup.visible) {
+      this._brainRealGroup.traverse(function (o) { if (o.isMesh && o.userData && o.userData.regionId) arr.push(o); });
+    }
     // skin head → brain entry (procedural skin has no per-mesh regions)
     if (this._layers.skin && this._layers.skin.visible) arr.push(this._layers.skin);
     return arr;
@@ -1532,25 +1585,33 @@
       var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       var isDouble = !!(self._lastClickAt && (now - self._lastClickAt) < 300);
       self._lastClickAt = now;
-      if (hit) {
-        if (isDouble) {
-          // DOUBLE click → orbit-fit the camera onto the whole containing named
-          // region. NO dim/opacity change — the layer slider stays in control, so
-          // there is no sticky darkness. (Any focus already applied from the
-          // Functions/Conditions tabs is left as-is; double-click won't add dim.)
-          var ud = hit.object && hit.object.userData ? hit.object.userData : {};
-          var region = self._meshNamedRegion(ud) || hit.id;
-          var meshes = [];
-          self._forEachRegionMesh(region, function (m) { if (m.isMesh) meshes.push(m); });
-          self.focusCameraOnMeshes(meshes);
-          self._emit('region-click', { id: region, names: hit.names, object: hit.object, point: hit.point, layer: hit.layer, level: 'region' });
-        } else {
-          // SINGLE click → the specific mesh under the cursor.
-          self._emit('region-click', hit);
+      if (isDouble) {
+        // DOUBLE click → orbit-fit the camera onto the whole containing named
+        // region. NO dim/opacity change — the layer slider stays in control, so no
+        // sticky darkness. A miss still zooms: toward the nearest visible region,
+        // or a generic zoom-in toward the cursor if nothing is near.
+        var target = hit;
+        if (!target) {
+          var pivot = self._pivotFromScreen(pt.clientX, pt.clientY);
+          var near = self._nearestVisibleMesh(pivot);
+          if (near) {
+            target = { object: near, id: near.userData.regionId, names: self._regionNames(near.userData), point: pivot, layer: near.userData.layer };
+          } else {
+            self._zoomTowardPivot(pivot, 1 / 1.3);   // generic zoom-in toward cursor
+            return;
+          }
         }
-      } else {
-        self._emit('empty-click', { x: pt.clientX, y: pt.clientY });
+        var ud = target.object && target.object.userData ? target.object.userData : {};
+        var region = self._meshNamedRegion(ud) || target.id;
+        var meshes = [];
+        self._forEachRegionMesh(region, function (m) { if (m.isMesh) meshes.push(m); });
+        self.focusCameraOnMeshes(meshes.length ? meshes : (target.object ? [target.object] : []));
+        self._emit('region-click', { id: region, names: target.names, object: target.object, point: target.point, layer: target.layer, level: 'region' });
+        return;
       }
+      // SINGLE click → the specific mesh under the cursor (or empty space).
+      if (hit) self._emit('region-click', hit);
+      else self._emit('empty-click', { x: pt.clientX, y: pt.clientY });
     };
     el.addEventListener('mousemove', this._onMove);
     el.addEventListener('click', this._onClick);

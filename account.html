@@ -14262,7 +14262,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=18"></script>
+<script src="assets/js/body-atlas.js?v=19"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14276,6 +14276,7 @@ window.pbMove = pbMove;
   // Sub-layers (organ groups) rendered as collapsible mini-toggles inside a layer
   // card. organ keys match userData.organ tags set from SEED_REGION_INFO.
   var SUBLAYERS = {
+    muscles:  [ {o:'chest-muscles',ru:'Грудные',en:'Chest',es:'Pecho'}, {o:'back-muscles',ru:'Спина',en:'Back',es:'Espalda'}, {o:'core-muscles',ru:'Кор/живот',en:'Core',es:'Core'}, {o:'arm-muscles',ru:'Руки',en:'Arms',es:'Brazos'}, {o:'leg-muscles',ru:'Ноги',en:'Legs',es:'Piernas'}, {o:'face-neck-muscles',ru:'Лицо/шея',en:'Face/neck',es:'Cara/cuello'} ],
     nervous:  [ {o:'brain',ru:'Мозг',en:'Brain',es:'Cerebro'}, {o:'spinal-cord',ru:'Спинной мозг',en:'Spinal cord',es:'Médula espinal'} ],
     vessels:  [ {o:'heart',ru:'Сердце',en:'Heart',es:'Corazón'} ],
     organs:   [ {o:'gi-tract',ru:'ЖКТ',en:'GI tract',es:'Tracto GI'}, {o:'liver',ru:'Печень',en:'Liver',es:'Hígado'}, {o:'lungs',ru:'Лёгкие',en:'Lungs',es:'Pulmones'}, {o:'kidneys',ru:'Почки',en:'Kidneys',es:'Riñones'}, {o:'pancreas',ru:'Поджелудочная',en:'Pancreas',es:'Páncreas'}, {o:'endocrine',ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'}, {o:'airway',ru:'Дых. пути',en:'Airway',es:'Vías aéreas'} ],
@@ -14431,8 +14432,11 @@ window.pbMove = pbMove;
   }
   function onClick(hit){
     if(!hit) return;
+    // level:'region' (double-click) → the panel describes the whole ANCESTOR
+    // region, and its opacity slider drives every mesh of that region.
+    var isRegion = hit.level === 'region';
     var p = document.getElementById('atlas-region-panel');
-    document.getElementById('arp-name').textContent = fmtName(hit.names) || hit.id;
+    document.getElementById('arp-name').textContent = isRegion ? regionLabel(hit.id) : (fmtName(hit.names) || hit.id);
     var ud = hit.object && hit.object.userData ? hit.object.userData : {};
     // brain procedural regions carry a sub-group (cortex/limbic/…); real layers
     // show their layer name (muscles / skeleton / vessels / organs / nervous).
@@ -14440,14 +14444,15 @@ window.pbMove = pbMove;
     document.getElementById('arp-group').textContent = grp;
     // description keyed by the coarse brain region (the ~124 fine meshes share
     // one) → fall back to the fine id for body regions that key REGION_DESC.
-    var d = REGION_DESC[ud.coarseId] || REGION_DESC[hit.id];
+    var d = isRegion ? (REGION_DESC[hit.id] || REGION_DESC[ud.coarseId]) : (REGION_DESC[ud.coarseId] || REGION_DESC[hit.id]);
     var ph = lang()==='en' ? 'Description coming soon.' : lang()==='es' ? 'Descripción próximamente.' : 'Описание скоро появится.';
     document.getElementById('arp-desc').textContent = d ? (d[lang()]||d.ru) : ph;
     var lk = document.getElementById('arp-links'); if(lk){ lk.innerHTML=''; try{ if(window.haRegionLinks) window.haRegionLinks(ud.coarseId || hit.id); }catch(e){} }
-    atlasBuildMini(ud.regionId || ud.baseSlug || hit.id);   // PACK 10
+    atlasBuildMini(isRegion ? hit.id : (ud.regionId || ud.baseSlug || hit.id));   // PACK 10
     // PACK D: store current region for the opacity slider + reset slider to
-    // the region's currently-applied opacity (or 100% if untouched).
-    var rid = ud.regionId || ud.baseSlug || hit.id;
+    // the region's currently-applied opacity (or 100% if untouched). For a
+    // double-click region, rid is the ancestor id so the slider drives ALL its meshes.
+    var rid = isRegion ? hit.id : (ud.regionId || ud.baseSlug || hit.id);
     window._atlasCurrentRegion = rid;
     var ctrls = document.getElementById('arp-controls');
     var slider = document.getElementById('arp-opacity');
