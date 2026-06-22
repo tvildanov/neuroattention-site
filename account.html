@@ -14242,7 +14242,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=9"></script>
+<script src="assets/js/body-atlas.js?v=10"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14542,17 +14542,30 @@ window.pbMove = pbMove;
   function catsOf(rows){ var seen={}; rows.forEach(function(r){ if(r.category) seen[r.category]=1; }); return Object.keys(CAT).filter(function(c){ return seen[c]; }); }
 
   /* ── 3D focus helpers ───────────────────────────────────────────────────── */
-  function regionLayer(id){ if(BRAIN[id]) return 'brain'; if(ORGANS[id]) return 'organs'; if(SPINE[id]) return id==='spinal-cord'?'nervous':'skeleton'; return null; }
+  // Engine (SEED_REGION_INFO) is the single source of truth for which GLB layer a
+  // seed-id lives in; the local BRAIN/ORGANS/SPINE dicts are only a fallback for
+  // ids not registered there (or before the atlas script has loaded).
+  function regionLayer(id){
+    var a = window._anatomyAtlas;
+    if(a && a.layersForSeedIds){ var L = a.layersForSeedIds([id]); if(L && L.length) return L[0]; }
+    if(BRAIN[id]) return 'nervous';                  // brain meshes live in the nervous layer
+    if(ORGANS[id]) return id==='heart' ? 'vessels' : 'organs';
+    if(SPINE[id]) return id==='spinal-cord' ? 'nervous' : 'skeleton';
+    return null;
+  }
   function focus(ids){
     var a = window._anatomyAtlas; if(!a) return;
     ids = (ids||[]).filter(Boolean);
     try{ if(a._brainDetail && a.exitBrainDetail) a.exitBrainDetail(); }catch(e){}
-    var need={}; ids.forEach(function(id){ var L=regionLayer(id); if(L) need[L]=1; });
-    if(!Object.keys(need).length) need.brain=1; // most functions are neural
+    // which layers do these seed-ids need? (engine first, then local fallback)
+    var need={};
+    if(a.layersForSeedIds){ a.layersForSeedIds(ids).forEach(function(l){ need[l]=1; }); }
+    ids.forEach(function(id){ var L=regionLayer(id); if(L) need[L]=1; });
+    if(!Object.keys(need).length) need.nervous=1; // most seeds are neural
     try{
       a.toggleLayer('skin', true); a.setLayerOpacity('skin', 0.05);
-      ['muscles','vessels'].forEach(function(l){ a.toggleLayer(l,false); });
-      ['brain','organs','skeleton','nervous'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
+      // enable exactly the needed real layers (incl. vessels for heart) and hide the rest
+      ['muscles','skeleton','nervous','vessels','organs'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
     }catch(e){}
     var apply=function(){ try{ a.focusRegions(ids, 0.12); }catch(e){} };
     apply(); setTimeout(apply, 350); setTimeout(apply, 900); // catch lazy-loaded GLB meshes
