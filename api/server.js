@@ -910,9 +910,13 @@ app.post('/api/run-migrations', async (req, res) => {
       ('diary','Дневник','Diary','Diario','Дневник нейроресурса.','Neuro-resource diary.','Diario de neurorrecurso.',TRUE,3),
       ('point-ab','Точка А → B','Point A → B','Punto A → B','Карта перехода из точки А в точку B.','Map your shift from point A to B.','Mapa de tu cambio de A a B.',TRUE,4),
       ('external-field','External Field','External Field','External Field','Объективные сигналы внешней среды.','Objective environmental signals.','Señales objetivas del entorno.',TRUE,5),
-      ('evolution-path','Путь развития','Evolution Path','Camino de evolución','Ваш персональный путь развития.','Your personal evolution path.','Tu camino de evolución personal.',TRUE,6),
-      ('anatomy-atlas','Анатомический атлас','Anatomy Atlas','Atlas anatómico','Интерактивное 3D-тело: слои, мозг, органы.','Interactive 3D body: layers, brain, organs.','Cuerpo 3D interactivo: capas, cerebro, órganos.',FALSE,7)
+      ('evolution-path','Путь развития','Evolution Path','Camino de evolución','Ваш персональный путь развития.','Your personal evolution path.','Tu camino de evolución personal.',TRUE,6)
       ON CONFLICT (code) DO NOTHING`;
+    // NOTE: legacy 'anatomy-atlas' is intentionally NOT seeded here — it is renamed
+    // to 'human-atlas' below (id/grants preserved) and the canonical 'human-atlas'
+    // row is inserted right after. Re-seeding it made the runner non-idempotent:
+    // on re-run it re-created 'anatomy-atlas', then the rename below collided with
+    // the existing 'human-atlas' (duplicate key) and aborted every later migration.
     // PACK F: consolidate into ONE tool "Human Atlas" with 3 in-app tabs
     // (Anatomy / Human Functions / Conditions). Rename the existing anatomy-atlas
     // in place (id preserved → course grants survive); never a separate tool.
@@ -921,10 +925,14 @@ app.post('/api/run-migrations', async (req, res) => {
       description_ru = 'Единый 3D-атлас: анатомия, функции человека и состояния.',
       description_en = 'Unified 3D atlas: anatomy, human functions and conditions.',
       description_es = 'Atlas 3D unificado: anatomia, funciones humanas y estados.'
-      WHERE code = 'anatomy-atlas'`;
+      WHERE code = 'anatomy-atlas' AND NOT EXISTS (SELECT 1 FROM tools WHERE code = 'human-atlas')`;
     await sql`INSERT INTO tools (code, name_ru, name_en, name_es, description_ru, description_en, description_es, is_free_default, order_idx) VALUES
       ('human-atlas','Атлас человека','Human Atlas','Atlas humano','Единый 3D-атлас: анатомия, функции человека и состояния.','Unified 3D atlas: anatomy, human functions and conditions.','Atlas 3D unificado: anatomia, funciones humanas y estados.',FALSE,7)
       ON CONFLICT (code) DO NOTHING`;
+    // Clean up any stray 'anatomy-atlas' a previous non-idempotent run may have
+    // re-inserted (it carries no course grants — those live on the renamed
+    // 'human-atlas' row). Only ever runs when 'human-atlas' already exists.
+    await sql`DELETE FROM tools WHERE code = 'anatomy-atlas' AND EXISTS (SELECT 1 FROM tools WHERE code = 'human-atlas')`;
 
     // PACK F1 / B9: Body-Functions library + region relations + named circuits.
     // Tables created on boot; the rich seed lives in migrations/018 (run via the
@@ -2526,6 +2534,22 @@ app.post('/api/admin/users/:id/soft-delete', requireAuth, async (req, res) => {
     try { await sql`INSERT INTO audit_log (actor_user_id, action, target_user_id, detail) VALUES (${caller.id}, 'user.soft_delete', ${targetId}, ${JSON.stringify({ email: target.email })}::jsonb)`; } catch (e) {}
     res.json({ success: true, deleted_at: u.deleted_at });
   } catch (err) { console.error('soft-delete:', err); res.status(500).json({ error: 'Internal error' }); }
+});
+// POST /api/admin/cleanup-test-users — superadmin only. Soft-deletes every
+// non-superadmin user whose email ends in @test.local (QA throwaways the
+// verification harness registers). Idempotent; the 1h cron then hard-deletes.
+app.post('/api/admin/cleanup-test-users', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const rows = await sql`UPDATE users SET deleted_at = now()
+      WHERE lower(email) LIKE '%@test.local'
+        AND role <> 'superadmin'
+        AND id <> ${caller.id}
+        AND deleted_at IS NULL
+      RETURNING id, email`;
+    try { await sql`INSERT INTO audit_log (actor_user_id, action, target_user_id, detail) VALUES (${caller.id}, 'user.cleanup_test', NULL, ${JSON.stringify({ count: rows.length, emails: rows.map(r => r.email) })}::jsonb)`; } catch (e) {}
+    res.json({ success: true, soft_deleted: rows.length, emails: rows.map(r => r.email) });
+  } catch (err) { console.error('cleanup-test-users:', err); res.status(500).json({ error: 'Internal error' }); }
 });
 // POST /api/admin/users/:id/restore — only within the 1h grace window.
 app.post('/api/admin/users/:id/restore', requireAuth, async (req, res) => {
