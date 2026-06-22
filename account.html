@@ -14262,7 +14262,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=19"></script>
+<script src="assets/js/body-atlas.js?v=20"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14324,6 +14324,12 @@ window.pbMove = pbMove;
   // Tooltip / panel format: "Latin/English — localized" when a translation exists
   // and differs from the Latin term; otherwise the Latin term alone (honest — no
   // fake translation for the long tail of Z-Anatomy regions).
+  // Title-case a region slug ('frontal-lobe' → 'Frontal Lobe'). A double-click resolves
+  // to an ancestor region id, and onClick (this IIFE) labels the panel with it. NOTE:
+  // the other regionLabel lives in a SEPARATE IIFE and is NOT in scope here — referencing
+  // it threw a ReferenceError on every double-click (the #65-class scope trap), so we keep
+  // a local copy.
+  function regionLabel(id){ return (id||'').replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
   function fmtName(names){
     if(!names) return '';
     var en = names.en || names.ru || '';
