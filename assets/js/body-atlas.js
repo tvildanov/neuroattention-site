@@ -1433,7 +1433,7 @@
     };
     el.addEventListener('wheel', this._onWheel, { capture: true, passive: false });
 
-    // ── B3: Shift+drag → pan (only effective once zoomed past 1.5x, gated in loop)
+    // ── B3: Shift+drag → pan (pan is always enabled; see _startLoop)
     this._onPointerDown = function (e) {
       var T = window.THREE;
       // remember where the press started so _onClick can tell a deliberate tap
@@ -1497,10 +1497,9 @@
       self._raf = requestAnimationFrame(frame);
       var dirty = false;
       if (self.controls) {
-        if (self._baseDist) {
-          var d = self.camera.position.distanceTo(self.controls.target);
-          self.controls.enablePan = d < self._baseDist / 1.5;
-        }
+        // pan is always enabled (enablePan set true at init) — the user must be
+        // able to drag from leg to head at any zoom level. (Previously gated to
+        // d < baseDist/1.5, which silently disabled pan at the default overview.)
         if (self.controls.update()) dirty = true;
       }
       if (self._needsRender || dirty) {

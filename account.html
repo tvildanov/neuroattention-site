@@ -14242,7 +14242,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=10"></script>
+<script src="assets/js/body-atlas.js?v=11"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14563,9 +14563,10 @@ window.pbMove = pbMove;
     ids.forEach(function(id){ var L=regionLayer(id); if(L) need[L]=1; });
     if(!Object.keys(need).length) need.nervous=1; // most seeds are neural
     try{
-      a.toggleLayer('skin', true); a.setLayerOpacity('skin', 0.05);
-      // enable exactly the needed real layers (incl. vessels for heart) and hide the rest
-      ['muscles','skeleton','nervous','vessels','organs'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
+      // Functions/Conditions never show the skin contour — enable exactly the
+      // needed real layers (incl. vessels for heart) and hide everything else,
+      // skin included (need never contains 'skin').
+      ['skin','muscles','skeleton','nervous','vessels','organs'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
     }catch(e){}
     var apply=function(){ try{ a.focusRegions(ids, 0.12); }catch(e){} };
     apply(); setTimeout(apply, 350); setTimeout(apply, 900); // catch lazy-loaded GLB meshes
