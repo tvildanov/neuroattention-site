@@ -840,13 +840,18 @@
     // originalName). Match all of them and use the cheap normalised form so
     // case/separators differences don't bite us.
     function norm(s) { return String(s == null ? '' : s).toLowerCase().replace(/[-_\s]+/g, ''); }
-    var target = norm(regionId);
+    // Expand a seed-id (e.g. 'heart','kidneys','lumbar-spine') into its real mesh
+    // tokens via SEED_REGION_INFO so per-region ops (setRegionVisible/Opacity, the
+    // mini-viewer) hit the same meshes focusRegions does. Unregistered ids match
+    // only themselves.
+    var targets = {};
+    this._expandSeedIds([regionId]).forEach(function (t) { var k = norm(t); if (k) targets[k] = 1; });
     function udMatch(ud) {
       if (!ud) return false;
-      if (norm(ud.regionId) === target) return true;
-      if (norm(ud.baseSlug) === target) return true;
-      if (norm(ud.coarseId) === target) return true;
-      if (norm(ud.originalName) === target) return true;
+      if (targets[norm(ud.regionId)]) return true;
+      if (targets[norm(ud.baseSlug)]) return true;
+      if (targets[norm(ud.coarseId)]) return true;
+      if (targets[norm(ud.originalName)]) return true;
       return false;
     }
     // First pass: collect every root node (Mesh or Group) whose own userData
@@ -944,10 +949,108 @@
     if (this._requestRender) this._requestRender();
     return this;
   };
+  // ── canonical seed-id registry ──────────────────────────────────────────────
+  // Single source of truth mapping the human-readable seed ids stored in the API
+  // (function.region_ids / condition.affected_region_ids) to the real Z-Anatomy
+  // mesh tokens + the layer / organ (sub-layer) they live in, plus a region
+  // hierarchy (parent / descendants). The engine — focusRegions, layersForSeedIds,
+  // _forEachRegionMesh (→ mini-viewer) — all read from here, so the DB and
+  // account.html stay free of any Z-Anatomy naming.
+  //
+  // Model: Layer → Sub-layer (organ) → Region.  e.g. nervous → brain → frontal-lobe.
+  // `layer`        the GLB layer the region's meshes render in
+  // `organ`        sub-layer grouping inside that layer (drives layer-panel subtoggles)
+  // `parent`       parent seed-id in the hierarchy (null for a top-level region)
+  // `aliases`      real mesh tokens to match (focusRegions normalises -/_/case)
+  // `descendants`  child seed-ids; _expandSeedIds walks them recursively
+  //
+  // NOTE: the brain-detail GLB already tags every fine mesh with coarseId === the
+  // seed slug (e.g. coarseId:'frontal-lobe'), so focusRegions matches those via the
+  // coarseId candidate without per-mesh descendants — `descendants` here is the
+  // seed-id hierarchy (for grouping / future tree-view), not a mesh list.
+  var SEED_REGION_INFO = {
+    // ── brain (sub-layer 'brain' of layer 'nervous') ──
+    'cortex':          { layer: 'nervous', organ: 'brain', parent: null, aliases: [], descendants: ['frontal-lobe', 'parietal-lobe', 'temporal-lobe', 'occipital-lobe', 'cingulate', 'insula'] },
+    'frontal-lobe':    { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['frontal_lobe'] },
+    'parietal-lobe':   { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['parietal_lobe'] },
+    'temporal-lobe':   { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['temporal_lobe'] },
+    'occipital-lobe':  { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['occipital_lobe'] },
+    'cingulate':       { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['cingulate'] },
+    'insula':          { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['insula'] },
+
+    'brainstem':       { layer: 'nervous', organ: 'brain', parent: null, aliases: [], descendants: ['midbrain', 'pons', 'medulla'] },
+    'midbrain':        { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['midbrain'] },
+    'pons':            { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['pons'] },
+    'medulla':         { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['medulla_oblongata'] },
+
+    'subcortical':     { layer: 'nervous', organ: 'brain', parent: null, aliases: [], descendants: ['thalamus', 'hypothalamus', 'hippocampus', 'amygdala', 'basal-ganglia', 'fornix', 'corpus-callosum'] },
+    'thalamus':        { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['thalamus'] },
+    'hypothalamus':    { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['hypothalamus'] },
+    'hippocampus':     { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['hippocampus'] },
+    'amygdala':        { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['amygdala', 'amygdaloid_body'] },
+    'basal-ganglia':   { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['putamen', 'caudate', 'septal_nuclei', 'globus_pallidus'] },
+    'fornix':          { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['fornix'] },
+    'corpus-callosum': { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['corpus_callosum'] },
+    'cerebellum':      { layer: 'nervous', organ: 'brain', parent: null, aliases: ['cerebellum'] },
+
+    // ── spinal cord (sub-layer 'spinal-cord' of layer 'nervous') ──
+    'spinal-cord':     { layer: 'nervous', organ: 'spinal-cord', parent: null, aliases: ['spinal_cord'] },
+
+    // ── heart (sub-layer 'heart' of layer 'vessels' — the heart is modelled as
+    //    chambers in the vessels GLB; there is no single heart organ mesh) ──
+    'heart':           { layer: 'vessels', organ: 'heart', parent: null, aliases: [], descendants: ['right-atrium', 'left-atrium', 'right-ventricle', 'left-ventricle'] },
+    'right-atrium':    { layer: 'vessels', organ: 'heart', parent: 'heart', aliases: ['right_atrium'] },
+    'left-atrium':     { layer: 'vessels', organ: 'heart', parent: 'heart', aliases: ['left_atrium'] },
+    'right-ventricle': { layer: 'vessels', organ: 'heart', parent: 'heart', aliases: ['right_ventricle'] },
+    'left-ventricle':  { layer: 'vessels', organ: 'heart', parent: 'heart', aliases: ['left_ventricle'] },
+
+    // ── organs ──
+    'liver':           { layer: 'organs', organ: 'liver', parent: null, aliases: ['liver'] },
+    'lungs':           { layer: 'organs', organ: 'lungs', parent: null, aliases: ['lungs'] },
+    'kidneys':         { layer: 'organs', organ: 'kidneys', parent: null, aliases: ['kidney'] },
+
+    // ── spine (sub-layer 'spine' of layer 'skeleton') ──
+    'spine':           { layer: 'skeleton', organ: 'spine', parent: null, aliases: [], descendants: ['cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacral-spine'] },
+    'cervical-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['cervical_vertebrae', 'cervical_vertebra'] },
+    'thoracic-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['thoracic_vertebrae', 'thoracic_vertebra'] },
+    'lumbar-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['lumbar_vertebrae', 'lumbar_vertebra'] },
+    'sacral-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['sacrum'] }
+  };
+  Atlas.SEED_REGION_INFO = SEED_REGION_INFO;   // expose for tooling / account.html
+
+  // Expand seed-id(s) into the full set of matching keys: each id itself, its
+  // mesh-token aliases, and (recursively) its descendant seed-ids. Unknown ids
+  // pass through unchanged so the tolerant matcher can still try them.
+  Atlas.prototype._expandSeedIds = function (ids) {
+    var seen = {}, out = [];
+    function visit(i) {
+      if (i == null || seen[i]) return;
+      seen[i] = 1; out.push(i);
+      var info = SEED_REGION_INFO[i];
+      if (!info) return;
+      (info.aliases || []).forEach(function (a) { if (!seen[a]) { seen[a] = 1; out.push(a); } });
+      (info.descendants || []).forEach(visit);
+    }
+    (ids || []).forEach(visit);
+    return out;
+  };
+
+  // Which GLB layers are needed to show this set of seed-ids (so account.html can
+  // toggle exactly those layers on before focusing). Empty for unregistered ids.
+  Atlas.prototype.layersForSeedIds = function (ids) {
+    var seen = {};
+    this._expandSeedIds(ids).forEach(function (i) {
+      var info = SEED_REGION_INFO[i];
+      if (info && info.layer) seen[info.layer] = 1;
+    });
+    return Object.keys(seen);
+  };
+
   // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
   // opacity and restore the focused ones to full. Pass null/[] to clear.
   Atlas.prototype.focusRegions = function (ids, dim) {
     dim = dim == null ? 0.1 : dim;
+    var expanded = this._expandSeedIds(ids);   // seed-ids → ids + aliases + descendants
     // PACK 12: curated condition/function region ids are BARE anatomical slugs
     // ('liver', 'medulla', 'stomach', 'frontal-lobe') while real mesh ids are
     // layer-prefixed with underscores ('organs_liver', 'brain' coarseId). Match
@@ -955,7 +1058,7 @@
     // slug + each of its word tokens — so the affected regions light up at full
     // opacity and only the rest dim, instead of dimming (or showing) everything.
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
-    var set = {}; (ids || []).forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
+    var set = {}; expanded.forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
     var hasIds = ids && ids.length;
     if (!this.root) return this;
     this.root.traverse(function (o) {
