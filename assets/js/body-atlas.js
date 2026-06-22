@@ -1404,44 +1404,9 @@
       var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       self._cameraBusyUntil = now + 120;
       self._requestRender();
-      var rect = el.getBoundingClientRect();
-      var rw = rect.width || el.clientWidth, rh = rect.height || el.clientHeight;
-      // PIVOT: project the cursor ray onto a plane through controls.target
-      // perpendicular to the view direction. Deterministic ("zoom into the
-      // pixel under the cursor"), no expensive 2.5k-mesh raycast (Mac trackpad
-      // fires wheel at 60-100Hz so the math has to be cheap), and works
-      // identically with an empty stage or a fully-loaded body.
-      var pivot;
-      var T = window.THREE;
-      if (rw > 0 && rh > 0) {
-        self._mouse.set(((e.clientX - rect.left) / rw) * 2 - 1,
-                        -((e.clientY - rect.top) / rh) * 2 + 1);
-        self.raycaster.setFromCamera(self._mouse, self.camera);
-        var camDir = new T.Vector3();
-        self.camera.getWorldDirection(camDir);                 // unit vector from camera into scene
-        var plane = new T.Plane(camDir.clone().multiplyScalar(-1),  // normal points back at camera
-                                camDir.dot(self.controls.target));  // constant so plane passes through target
-        var hitPt = new T.Vector3();
-        var hit = self.raycaster.ray.intersectPlane(plane, hitPt);
-        if (hit) {
-          // Sanity check: body is ≈ 2 units tall, centred at origin. A legit
-          // pivot lives within ~5 units of origin. On mobile, the first pinch
-          // event sometimes arrives before getBoundingClientRect has stabilised
-          // — clientX/Y can be (0,0) which casts a ray out into the void and
-          // returns a pivot far off-screen. Falling back to controls.target in
-          // that case prevents the "first zoom teleports me to the moon" bug.
-          var distFromOrigin = hitPt.length();
-          if (distFromOrigin < 5.0 && isFinite(distFromOrigin)) {
-            pivot = hitPt.clone();
-          } else {
-            pivot = self.controls.target.clone();
-          }
-        } else {
-          pivot = self.controls.target.clone();
-        }
-      } else {
-        pivot = self.controls.target.clone();
-      }
+      // PIVOT: world point under the cursor (plane through target ⟂ view) — shared
+      // with the pinch handler so desktop wheel and mobile pinch zoom identically.
+      var pivot = self._pivotFromScreen(e.clientX, e.clientY);
       var cam = self.camera.position, tgt = self.controls.target;
       var dist = cam.distanceTo(tgt);
       // normalise deltaY across deltaMode (pixel / line / page) +
@@ -1558,12 +1523,17 @@
       if (e.touches && e.touches.length === 2) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        var dx = e.touches[1].clientX - e.touches[0].clientX;
-        var dy = e.touches[1].clientY - e.touches[0].clientY;
+        var t0 = e.touches[0], t1 = e.touches[1];
+        var dx = t1.clientX - t0.clientX, dy = t1.clientY - t0.clientY;
+        // PIVOT: the world point under the MIDPOINT between the two fingers, via
+        // the same plane projection desktop wheel uses — so pinch zooms toward
+        // where the fingers are, not the model centre.
+        var midX = (t0.clientX + t1.clientX) / 2, midY = (t0.clientY + t1.clientY) / 2;
         _pinch = {
           dist: Math.max(50, Math.hypot(dx, dy)),  // floor 50px prevents /0
           camPos: self.camera.position.clone(),
-          target: self.controls.target.clone()
+          target: self.controls.target.clone(),
+          pivot: self._pivotFromScreen(midX, midY)
         };
       }
     };
@@ -1574,23 +1544,22 @@
         var dx = e.touches[1].clientX - e.touches[0].clientX;
         var dy = e.touches[1].clientY - e.touches[0].clientY;
         var curDist = Math.max(50, Math.hypot(dx, dy));
-        var ratio = curDist / _pinch.dist;
-        // hard clamp: a gesture can change zoom 0.3x .. 3x at most. Repeated
-        // gestures accumulate so user can still zoom far if they pinch many
-        // times — just no single gesture can teleport.
-        ratio = Math.max(0.3, Math.min(3.0, ratio));
-        var pivot = _pinch.target;   // pivot is target — always safe, no raycast
-        var scaleCam = 1 / ratio;    // inverse: bigger pinch = closer camera
-        // Compute new camera position relative to captured initial state, not
-        // last frame. Eliminates accumulating drift from per-frame deltas.
-        var newCam = _pinch.camPos.clone().sub(pivot).multiplyScalar(scaleCam).add(pivot);
-        // Clamp to minDistance/maxDistance
-        var newDist = newCam.distanceTo(pivot);
-        var minD = self.controls.minDistance || 0.4;
-        var maxD = self.controls.maxDistance || 20;
-        if (newDist < minD) newCam.copy(pivot).addScaledVector(newCam.clone().sub(pivot).normalize(), minD);
-        else if (newDist > maxD) newCam.copy(pivot).addScaledVector(newCam.clone().sub(pivot).normalize(), maxD);
-        self.camera.position.copy(newCam);
+        // hard clamp: a single gesture can change zoom 0.3x..3x at most (repeated
+        // gestures still accumulate). Prevents the first-event teleport.
+        var ratio = Math.max(0.3, Math.min(3.0, curDist / _pinch.dist));
+        var pivot = _pinch.pivot;    // finger-midpoint world point
+        var scale = 1 / ratio;       // inverse: bigger pinch = closer camera
+        // clamp by camera↔target distance, measured from the captured start state
+        // (absolute, not per-frame → no accumulating drift)
+        var startDist = _pinch.camPos.distanceTo(_pinch.target);
+        var minD = self.controls.minDistance || 0.4, maxD = self.controls.maxDistance || 20;
+        var newDist = Math.max(minD, Math.min(maxD, startDist * scale));
+        scale = startDist > 1e-5 ? newDist / startDist : 1;
+        // scale the captured (camera, target) pair about the finger pivot — same
+        // math as the wheel handler. Moving the target toward the pivot too means
+        // subsequent rotations orbit around what the user zoomed into.
+        self.camera.position.copy(_pinch.camPos).sub(pivot).multiplyScalar(scale).add(pivot);
+        self.controls.target.copy(_pinch.target).sub(pivot).multiplyScalar(scale).add(pivot);
         self._cameraBusyUntil = ((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) + 120;
         self._requestRender();
       }
@@ -1606,6 +1575,32 @@
 
   Atlas.prototype._requestRender = function () {
     this._needsRender = true;
+  };
+
+  // Project a screen point (clientX/clientY) onto a world pivot: the plane through
+  // controls.target perpendicular to the view direction. Shared by the desktop
+  // wheel and the mobile pinch so both "zoom toward the point under the
+  // cursor/fingers" identically. Falls back to controls.target if the ray misses
+  // or lands implausibly far from the model (>5 units from origin — guards the
+  // mobile "first event before getBoundingClientRect settles" teleport bug).
+  Atlas.prototype._pivotFromScreen = function (clientX, clientY) {
+    var T = window.THREE;
+    var fallback = this.controls.target.clone();
+    var el = this.renderer && this.renderer.domElement;
+    if (!T || !el) return fallback;
+    var rect = el.getBoundingClientRect();
+    var rw = rect.width || el.clientWidth, rh = rect.height || el.clientHeight;
+    if (!(rw > 0 && rh > 0)) return fallback;
+    this._mouse.set(((clientX - rect.left) / rw) * 2 - 1, -((clientY - rect.top) / rh) * 2 + 1);
+    this.raycaster.setFromCamera(this._mouse, this.camera);
+    var camDir = new T.Vector3();
+    this.camera.getWorldDirection(camDir);                       // unit vector camera → scene
+    var plane = new T.Plane(camDir.clone().multiplyScalar(-1),   // normal points back at camera
+                            camDir.dot(this.controls.target));   // passes through target
+    var hitPt = new T.Vector3();
+    if (!this.raycaster.ray.intersectPlane(plane, hitPt)) return fallback;
+    var d = hitPt.length();
+    return (d < 5.0 && isFinite(d)) ? hitPt.clone() : fallback;
   };
 
   // ── reconfigure (render) ─────────────────────────────────────────────────────
