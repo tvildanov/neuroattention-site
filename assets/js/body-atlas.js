@@ -1414,6 +1414,7 @@
     // ONCE on touchstart, computes absolute ratio from initial → current pinch
     // each move, hard-clamps the ratio to 0.3..3.0.
     var _pinch = null;
+    var el = self.renderer.domElement;
     this._onTouchStart = function (e) {
       if (e.touches && e.touches.length === 2) {
         e.preventDefault();
