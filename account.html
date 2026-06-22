@@ -14386,7 +14386,7 @@ window.pbMove = pbMove;
       if(subs && subs.length){
         subHtml = '<details class="atlas-sub"><summary>'+(lang()==='en'?'parts':lang()==='es'?'partes':'части')+'</summary>'+
           subs.map(function(s){
-            return '<label class="atlas-subtoggle"><input type="checkbox" checked onchange="atlasToggleSubLayer(\''+L.key+'\',\''+s.o+'\',this.checked)"> '+esc(s[lang()]||s.ru)+'</label>';
+            return '<label class="atlas-subtoggle"><input type="checkbox" checked onchange="atlasToggleSubLayer(\''+L.key+'\',\''+s.o+'\',this.checked)"> '+(s[lang()]||s.ru)+'</label>';
           }).join('')+'</details>';
       }
       el.innerHTML =
@@ -14406,7 +14406,7 @@ window.pbMove = pbMove;
       var lines = L==='en' ? ['Shift+drag — move the view','Double-click — select whole region','Single-click — specific detail','Two fingers: pinch to zoom, drag to move (mobile)']
                 : L==='es' ? ['Shift+arrastrar — mover la vista','Doble clic — seleccionar región completa','Clic simple — detalle específico','Dos dedos: pellizcar para zoom, arrastrar para mover (móvil)']
                 : ['Shift+перетаскивание — переместить вид','Двойной клик — выбрать регион целиком','Одинарный клик — конкретная деталь','Два пальца: щипок — зум, перетаскивание — перемещение (моб.)'];
-      help.innerHTML = lines.map(function(t){ return esc(t); }).join('<br>');
+      help.innerHTML = lines.join('<br>');
     }
   }
 
