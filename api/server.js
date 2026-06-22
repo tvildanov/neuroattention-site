@@ -12,6 +12,20 @@ const BCRYPT_ROUNDS = 10;
 const TOKEN_EXPIRY = '30d';
 const SUPERADMIN_EMAILS = (process.env.SUPERADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 const SUPERADMIN_LIMIT = 2;
+
+// ── MONAD read-only service token (GET-only) ──
+const MONAD_READONLY_TOKEN = process.env.MONAD_READONLY_TOKEN || '';
+let _monadPrincipal = null;
+async function getMonadPrincipal() {
+  if (_monadPrincipal) return _monadPrincipal;
+  const rows = await sql`
+    SELECT id, email FROM users
+    WHERE role IN ('superadmin','founder')
+    ORDER BY created_at ASC LIMIT 1
+  `;
+  if (rows.length) _monadPrincipal = { id: rows[0].id, email: rows[0].email };
+  return _monadPrincipal;
+}
 const EMAIL_FROM = process.env.EMAIL_FROM || 'NeuroAttention Lab <info@neuroattention.org>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://neuroattention.org';
 
@@ -1297,13 +1311,26 @@ app.post('/api/run-migrations', async (req, res) => {
 
 // ── AUTH MIDDLEWARE ──
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authorization required' });
   }
+  const token = authHeader.slice(7);
+
+  // MONAD read-only: only GET, mapped to a privileged read principal
+  if (MONAD_READONLY_TOKEN && token === MONAD_READONLY_TOKEN) {
+    if (req.method !== 'GET') {
+      return res.status(403).json({ error: 'MONAD token is read-only' });
+    }
+    const principal = await getMonadPrincipal();
+    if (!principal) return res.status(503).json({ error: 'No admin principal' });
+    req.user = { id: principal.id, email: principal.email };
+    req.monadReadonly = true;
+    return next();
+  }
+
   try {
-    const token = authHeader.slice(7);
     const payload = jwt.verify(token, JWT_SECRET);
     req.user = { id: payload.sub, email: payload.email };
     next();
