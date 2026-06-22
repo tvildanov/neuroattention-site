@@ -574,7 +574,9 @@
               slug: slug, coarseId: coarseId,
               regionName: tag ? tag.regionName : o.name,
               names: brainNames(dict, slug, side),          // localized {en,ru,es} fine name
-              group: info ? info.group : '', layer: 'brain', brain: true, baseOpacity: 0.5
+              // brain-detail is a permanent sub-layer of 'nervous': tag layer/organ
+              // so layer toggling, focus and sub-layer filtering treat it correctly.
+              group: info ? info.group : '', layer: 'nervous', organ: 'brain', brain: true, baseOpacity: 0.5
             };
             meshes.push(o);
           });
@@ -590,9 +592,14 @@
           self._brainRadius = Math.max(size.x, size.y, size.z) * 0.5 || self._brainRadius;
           // hide the procedural preview now that the real mesh is in
           if (self._brainGroup) self._brainGroup.visible = false;
-          grp.visible = !!self._brainDetail;
+          // brain-detail is a permanent sub-layer of nervous: visible whenever the
+          // nervous layer is on. Hide the duplicate brain structures the nervous
+          // GLB also carries so we never render two brains.
+          var nervOn = !!(self._layerState['nervous'] && self._layerState['nervous'].visible);
+          grp.visible = nervOn;
+          self._hideNervousBrainDupes();
           self._emit('brain-loaded', { regions: meshes.length });
-          // re-frame if we're already inside brain-detail
+          // if a "brain detail" camera zoom was requested before the GLB landed, fit now
           if (self._brainDetail) self._frameBrain();
           resolve(grp);
         }, undefined, function (err) {
@@ -603,6 +610,39 @@
       });
     });
     return this._brainDetailReq;
+  };
+
+  // Hide the brain structures the nervous GLB carries that the brain-detail GLB
+  // now provides in finer detail, so we never render two overlapping brains.
+  // Precise (not regex): a nervous mesh is a duplicate only if its bare slug
+  // EXACTLY matches a brain-detail mesh slug OR a brain-region whole-structure
+  // alias (e.g. 'frontal_lobe','medulla_oblongata'). White-matter tracts
+  // (spinothalamic/spinocerebellar) and peripheral nerves keep their own names,
+  // so they are never matched and stay visible. Idempotent + reversible.
+  Atlas.prototype._hideNervousBrainDupes = function () {
+    var nerv = this._layers && this._layers['nervous'];
+    var brainMeshes = this._brainRealMeshes;
+    if (!nerv || !brainMeshes || !brainMeshes.length) return;
+    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+    // keys = every brain-detail mesh slug + every brain-organ whole-structure alias
+    var keys = {};
+    brainMeshes.forEach(function (m) { var s = m.userData && m.userData.slug; if (s) keys[norm(s)] = 1; });
+    Object.keys(SEED_REGION_INFO).forEach(function (id) {
+      var info = SEED_REGION_INFO[id];
+      if (!info || info.organ !== 'brain') return;
+      keys[norm(id)] = 1;
+      (info.aliases || []).forEach(function (a) { keys[norm(a)] = 1; });
+    });
+    var hidden = 0;
+    nerv.traverse(function (o) {
+      if (!o.isMesh || !o.userData) return;
+      var ud = o.userData;
+      if (ud.organ === 'brain') return;                 // never touch the brain-detail group
+      var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
+      if (bare && keys[norm(bare)]) { o.visible = false; ud._brainDupeHidden = true; hidden++; }
+    });
+    if (hidden && window.console) console.log('[BodyAtlas] hid ' + hidden + ' nervous brain-duplicate meshes (brain-detail provides them)');
+    if (this._requestRender) this._requestRender();
   };
 
   Atlas.prototype._frameBrain = function () {
@@ -645,6 +685,12 @@
     // Stream the real Z-Anatomy mesh the first time a layer is shown; the
     // procedural capsule (if any) stays visible until the GLB swaps in.
     if (visible) this._loadRealLayer(name);
+    // brain-detail GLB is a permanent sub-layer of 'nervous': stream it eagerly the
+    // first time nervous turns on, and tie the brain group's visibility to nervous.
+    if (name === 'nervous') {
+      if (visible) this._loadBrainDetail();
+      if (this._brainRealGroup) this._brainRealGroup.visible = visible;
+    }
     this._emit('layer-change', { layer: name, visible: visible });
     if (this._requestRender) this._requestRender();
   };
@@ -753,6 +799,12 @@
     var st = this._layerState[name] || { visible: false, opacity: (LAYER_STYLE[name] && LAYER_STYLE[name].opacity) || 0.5 };
     grp.visible = !!st.visible;
     this.setLayerOpacity(name, st.opacity != null ? st.opacity : 0.5);
+    // nervous GLB just landed — if the brain-detail GLB is already in, re-run the
+    // duplicate-hide (it may have loaded first) and sync the brain group to nervous.
+    if (name === 'nervous') {
+      this._hideNervousBrainDupes();
+      if (this._brainRealGroup) this._brainRealGroup.visible = !!st.visible;
+    }
   };
 
   Atlas.prototype.setLayerOpacity = function (name, opacity) {
@@ -970,28 +1022,30 @@
   // seed-id hierarchy (for grouping / future tree-view), not a mesh list.
   var SEED_REGION_INFO = {
     // ── brain (sub-layer 'brain' of layer 'nervous') ──
+    // descendants are real brain-detail GLB mesh slugs (coarseId-grouped), filled
+    // statically from the mesh inventory — they give the Region→mesh hierarchy.
     'cortex':          { layer: 'nervous', organ: 'brain', parent: null, aliases: [], descendants: ['frontal-lobe', 'parietal-lobe', 'temporal-lobe', 'occipital-lobe', 'cingulate', 'insula'] },
-    'frontal-lobe':    { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['frontal_lobe'] },
-    'parietal-lobe':   { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['parietal_lobe'] },
-    'temporal-lobe':   { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['temporal_lobe'] },
-    'occipital-lobe':  { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['occipital_lobe'] },
-    'cingulate':       { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['cingulate'] },
-    'insula':          { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['insula'] },
+    'frontal-lobe':    { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['frontal_lobe'], descendants: ['central_sulcus', 'inferior_frontal_sulcus', 'lat_fis_ant_horizont', 'lat_fis_ant_vertical', 'lat_fis_post', 'middle_frontal_gyrus', 'olfactory_sulcus', 'opercular_part_of_inferior_frontal_gyrus', 'orbital_gyri', 'orbital_gyri_frontomarginal_gyrus_and_sulcus', 'orbital_part_of_inferior_frontal_gyrus', 'orbital_sulci_h_shaped_orbital_sulci', 'orbital_sulci_lateral_orbital_sulcus', 'precentral_gyrus', 'precentral_sulcus_inferior_part', 'precentral_sulcus_superior_part', 'straight_gyrus_gyrus_rectus', 'sulcus_interm_prim_jensen', 'superior_frontal_gyrus', 'superior_frontal_sulcus', 'transverse_frontopolar_gyrus_and_sulcus', 'triangular_part_of_inferior_frontal_gyrus'] },
+    'parietal-lobe':   { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['parietal_lobe'], descendants: ['angular_gyrus', 'intraparietal_sulcus', 'paracentral_gyrus_and_sulcus', 'paracentral_sulcus', 'postcentral_gyrus', 'postcentral_sulcus', 'precuneus', 'subparietal_sulcus', 'superior_parietal_lobule', 'supramarginal_gyrus'] },
+    'temporal-lobe':   { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['temporal_lobe'], descendants: ['collateral_sulcus', 'inferior_temporal_gyrus', 'inferior_temporal_sulcus', 'lateral_occipitotemporal_gyrus', 'middle_temporal_gyrus', 'occipitotemporal_sulcus_lateral_part', 'posterior_transverse_collateral_sulcus', 'superior_temporal_gyrus_lateral_part', 'superior_temporal_sulcus', 'temporal_plane', 'temporal_pole', 'transverse_temporal_gyri'] },
+    'occipital-lobe':  { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['occipital_lobe'], descendants: ['anterior_occipital_sulcus', 'calcarine_sulcus', 'cuneus', 'inferior_occipital_gyrus_and_sulcus', 'lateral_occipital_gyrus_middle_occipital_gyrus', 'lingual_gyrus', 'lunate_sulcus', 'occipital_pole', 'parieto_occipital_sulcus', 'superior_occipital_gyri', 'transverse_occipital_sulcus'] },
+    'cingulate':       { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['cingulate'], descendants: ['cingulate_gyrus_and_sulcus_middle_anterior_part', 'cingulate_gyrus_and_sulcus_middle_posterior_part', 'cingulate_gyrus_and_sulcus_posterior_dorsal_part', 'cingulate_gyrus_posteroventral_part', 'cingulate_sulcus_marginal_part'] },
+    'insula':          { layer: 'nervous', organ: 'brain', parent: 'cortex', aliases: ['insula'], descendants: ['circular_sulcus_of_insula', 'insula_subcentral_gyrus_and_ant_and_post_sulci'] },
 
     'brainstem':       { layer: 'nervous', organ: 'brain', parent: null, aliases: [], descendants: ['midbrain', 'pons', 'medulla'] },
-    'midbrain':        { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['midbrain'] },
-    'pons':            { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['pons'] },
-    'medulla':         { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['medulla_oblongata'] },
+    'midbrain':        { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['midbrain'], descendants: ['aqueduct_of_midbrain', 'base_of_peduncle', 'inferior_colliculus', 'interpeduncular_fossa', 'midbrain', 'peduncle_of_flocculus', 'red_nucleus', 'superior_colliculus'] },
+    'pons':            { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['pons'], descendants: ['pons'] },
+    'medulla':         { layer: 'nervous', organ: 'brain', parent: 'brainstem', aliases: ['medulla_oblongata'], descendants: ['inferior_salivatory_nucleus', 'medulla_oblongata', 'nucleus_ambiguus', 'nucleus_of_solitary_tract', 'olive', 'pyramid_of_medulla_oblongata', 'superior_salivatory_nucleus'] },
 
     'subcortical':     { layer: 'nervous', organ: 'brain', parent: null, aliases: [], descendants: ['thalamus', 'hypothalamus', 'hippocampus', 'amygdala', 'basal-ganglia', 'fornix', 'corpus-callosum'] },
-    'thalamus':        { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['thalamus'] },
-    'hypothalamus':    { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['hypothalamus'] },
-    'hippocampus':     { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['hippocampus'] },
-    'amygdala':        { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['amygdala', 'amygdaloid_body'] },
-    'basal-ganglia':   { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['putamen', 'caudate', 'septal_nuclei', 'globus_pallidus'] },
-    'fornix':          { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['fornix'] },
-    'corpus-callosum': { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['corpus_callosum'] },
-    'cerebellum':      { layer: 'nervous', organ: 'brain', parent: null, aliases: ['cerebellum'] },
+    'thalamus':        { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['thalamus'], descendants: ['habenula', 'lateral_geniculate_body', 'medial_geniculate_body', 'stria_medullaris_thalami', 'stria_terminalis', 'thalamus'] },
+    'hypothalamus':    { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['hypothalamus'], descendants: ['hypothalamus', 'mamillary_body', 'optic_chiasm', 'optic_tract'] },
+    'hippocampus':     { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['hippocampus'], descendants: ['hippocampal_commissure', 'hippocampus', 'medial_occipitotemporal_gyrus_parahippocampal'] },
+    'amygdala':        { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['amygdala', 'amygdaloid_body'], descendants: ['amygdaloid_body'] },
+    'basal-ganglia':   { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['putamen', 'caudate', 'septal_nuclei', 'globus_pallidus'], descendants: ['caudate_nucleus', 'globus_pallidus', 'lentiform_nucleus', 'putamen', 'septal_nuclei', 'septum_pellucidum'] },
+    'fornix':          { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['fornix'], descendants: ['fornix'] },
+    'corpus-callosum': { layer: 'nervous', organ: 'brain', parent: 'subcortical', aliases: ['corpus_callosum'], descendants: ['anterior_commissure', 'corpus_callosum', 'posterior_commissure'] },
+    'cerebellum':      { layer: 'nervous', organ: 'brain', parent: null, aliases: ['cerebellum'], descendants: ['anterior_quadrangular_lobule', 'biventral_lobule', 'central_lobule', 'culmen', 'declive', 'flocculus', 'folium_of_vermis', 'gracile_lobule', 'inferior_semilunar_lobule', 'lingula_of_cerebellum', 'nodule_of_vermis', 'posterior_quadrangular_lobule', 'pyramis_of_vermis', 'superior_cerebellar_peduncle', 'superior_semilunar_lobule', 'tonsil_of_cerebellum', 'tuber_of_vermis', 'uvula_of_vermis', 'wing_of_central_lobule'] },
 
     // ── spinal cord (sub-layer 'spinal-cord' of layer 'nervous') ──
     'spinal-cord':     { layer: 'nervous', organ: 'spinal-cord', parent: null, aliases: ['spinal_cord'] },
@@ -1152,44 +1206,27 @@
   };
 
   // ── brain detail mode (zoom + body fade) ────────────────────────────────────
+  // Brain-detail is no longer a separate mode — the brain lives permanently in the
+  // 'nervous' sub-layer. enterBrainDetail/exitBrainDetail are kept as a public
+  // camera helper (same signatures + 'brain-enter'/'brain-exit' events) so the
+  // «Детальный мозг» button, the click-on-head gesture and the course-player's
+  // _haAtlas keep working WITHOUT code changes on their side. They no longer
+  // switch layers — they just zoom the camera onto / away from the brain.
   Atlas.prototype.enterBrainDetail = function () {
     if (!this._metrics) return;            // atlas not mounted yet
     this._brainDetail = true;
-    var bodyLayers = ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'];
-    // PACK 7: snapshot which body layers were on so exitBrainDetail can restore
-    // them (was previously dropping everything back to skin-only on exit).
-    var snap = {}; var self = this;
-    bodyLayers.forEach(function (n) { snap[n] = !!(self._layerState[n] && self._layerState[n].visible); });
-    this._layerStateBeforeBrainDetail = snap;
-    // No procedural brain preview anymore — the real Z-Anatomy brain-detail GLB
-    // is the only brain. Show it if already streamed, else kick off the lazy
-    // load; the load callback frames the camera once its bbox is known.
-    if (this._brainRealGroup) this._brainRealGroup.visible = true;
+    this.toggleLayer('nervous', true);     // ensure nervous on → brain group visible + eager-loaded
     this._loadBrainDetail();
-    bodyLayers.forEach(function (n) { self.toggleLayer(n, false); });
-    this._frameBrain();
+    this._frameBrain();                    // orbit-fit on the brain bbox (load callback re-fits once known)
     if (this._requestRender) this._requestRender();
     this._emit('brain-enter', {});
   };
 
   Atlas.prototype.exitBrainDetail = function () {
+    // Zoom the camera back to the body overview. The brain stays in the scene as
+    // part of nervous — no layer restore needed (we never hid layers on enter).
     this._brainDetail = false;
-    if (this._brainRealGroup) this._brainRealGroup.visible = false;
-    // PACK 7: restore the exact body-layer visibility from before we entered
-    // brain detail (fall back to skin-only if there's no snapshot).
-    var snap = this._layerStateBeforeBrainDetail;
-    var self = this;
-    if (snap) {
-      ['muscles', 'skeleton', 'nervous', 'vessels', 'organs'].forEach(function (n) {
-        self.toggleLayer(n, !!snap[n]);
-      });
-    } else {
-      // skin layer is removed — nothing to restore by default
-    }
-    // Hard-ensure skin stays hidden (legacy mount initializes _layerState.skin.visible=true)
-    if (self._layers.skin) self._layers.skin.visible = false;
-    if (self._layerState && self._layerState.skin) self._layerState.skin.visible = false;
-    this.controls.minDistance = 0.4;
+    if (this.controls) this.controls.minDistance = 0.4;
     this._tweenCamera(new window.THREE.Vector3(0, 0.1, 4.2), new window.THREE.Vector3(0, 0, 0));
     if (this._requestRender) this._requestRender();
     this._emit('brain-exit', {});
