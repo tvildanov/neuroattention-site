@@ -1291,11 +1291,12 @@
         .atlas-layer-head input{accent-color:#A8F7FF;}
         .atlas-layer-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor;}
         .atlas-layer-op{width:100%;margin-top:0.45rem;accent-color:#A8F7FF;height:3px;}
-        .atlas-sub{margin-top:0.4rem;}
-        .atlas-sub>summary{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim,#7c8896);cursor:pointer;list-style:none;user-select:none;opacity:0.75;}
+        .atlas-sub{margin-top:0.45rem;border-top:1px dashed rgba(168,247,255,0.16);padding-top:0.4rem;}
+        .atlas-sub>summary{display:flex;align-items:center;gap:0.3rem;font-size:11.5px;font-weight:600;letter-spacing:0.01em;color:var(--accent-cyan,#A8F7FF);cursor:pointer;list-style:none;user-select:none;padding:0.1rem 0;}
+        .atlas-sub>summary:hover{text-decoration:underline;}
         .atlas-sub>summary::-webkit-details-marker{display:none;}
-        .atlas-sub>summary::before{content:'▸ ';}
-        .atlas-sub[open]>summary::before{content:'▾ ';}
+        .atlas-sub>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--accent-cyan,#A8F7FF);}
+        .atlas-sub[open]>summary::before{transform:rotate(90deg);}
         .atlas-subtoggle{display:flex;align-items:center;gap:0.35rem;font-size:11px;color:var(--text-muted,#cdd6df);margin:0.25rem 0 0 0.3rem;cursor:pointer;}
         .atlas-subtoggle input{accent-color:#A8F7FF;width:12px;height:12px;}
         .atlas-layer-spin{display:none;width:11px;height:11px;margin-left:auto;flex:0 0 auto;border-radius:50%;border:1.6px solid rgba(168,247,255,0.22);border-top-color:#A8F7FF;animation:ba-spin .8s linear infinite;}
@@ -1381,7 +1382,6 @@
           <div class="atlas-topbar" id="ha-topbar">
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
             <div class="atlas-actions">
-              <button class="atlas-btn" id="atlas-sex-toggle" onclick="atlasToggleSex()" title="Male / Female">⚥ <span id="atlas-sex-label" data-i18n="a.tools.anatomy_male">Муж.</span></button>
               <button class="atlas-btn" onclick="atlasResetView()">⟲ <span data-i18n="a.tools.anatomy_reset">Сбросить вид</span></button>
             </div>
           </div>
@@ -14262,7 +14262,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=17"></script>
+<script src="assets/js/body-atlas.js?v=18"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14281,7 +14281,16 @@ window.pbMove = pbMove;
     organs:   [ {o:'gi-tract',ru:'ЖКТ',en:'GI tract',es:'Tracto GI'}, {o:'liver',ru:'Печень',en:'Liver',es:'Hígado'}, {o:'lungs',ru:'Лёгкие',en:'Lungs',es:'Pulmones'}, {o:'kidneys',ru:'Почки',en:'Kidneys',es:'Riñones'}, {o:'pancreas',ru:'Поджелудочная',en:'Pancreas',es:'Páncreas'}, {o:'endocrine',ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'}, {o:'airway',ru:'Дых. пути',en:'Airway',es:'Vías aéreas'} ],
     skeleton: [ {o:'spine',ru:'Позвоночник',en:'Spine',es:'Columna'}, {o:'hip',ru:'Таз/бедро',en:'Hip',es:'Cadera'} ]
   };
-  window.atlasToggleSubLayer = function(layer, organ, on){ if(window._anatomyAtlas && window._anatomyAtlas.toggleSubLayer){ try{ window._anatomyAtlas.toggleSubLayer(layer, organ, on); }catch(e){} } };
+  // ISOLATE semantics: gather the CHECKED organ subtoggles for a layer and show
+  // only those (none checked → whole layer). Checking one auto-enables the layer.
+  window.atlasSubChange = function(layer){
+    var a = window._anatomyAtlas; if(!a || !a.setSubLayerIsolation) return;
+    var card = document.querySelector('.atlas-layer[data-layer='+layer+']'); if(!card) return;
+    var organs = [];
+    card.querySelectorAll('.atlas-subtoggle input:checked').forEach(function(cb){ var o=cb.getAttribute('data-organ'); if(o) organs.push(o); });
+    if(organs.length){ try{ var hcb=card.querySelector('.atlas-layer-head input'); if(hcb&&!hcb.checked){ hcb.checked=true; a.toggleLayer(layer, true); } }catch(e){} }
+    a.setSubLayerIsolation(layer, organs);
+  };
   // Short, accurate region descriptions (educational base; Nick can expand per course).
   var REGION_DESC = {
     'frontal-lobe':   { ru:'Планирование, принятие решений, контроль внимания и движений, речь.', en:'Planning, decision-making, attention control, voluntary movement, speech.', es:'Planificación, toma de decisiones, control de la atención, movimiento, habla.' },
@@ -14384,9 +14393,9 @@ window.pbMove = pbMove;
       var subs = SUBLAYERS[L.key];
       var subHtml = '';
       if(subs && subs.length){
-        subHtml = '<details class="atlas-sub"><summary>'+(lang()==='en'?'parts':lang()==='es'?'partes':'части')+'</summary>'+
+        subHtml = '<details class="atlas-sub"><summary>'+(lang()==='en'?'Isolate parts':lang()==='es'?'Aislar partes':'Изолировать части')+'</summary>'+
           subs.map(function(s){
-            return '<label class="atlas-subtoggle"><input type="checkbox" checked onchange="atlasToggleSubLayer(\''+L.key+'\',\''+s.o+'\',this.checked)"> '+(s[lang()]||s.ru)+'</label>';
+            return '<label class="atlas-subtoggle"><input type="checkbox" data-organ="'+s.o+'" onchange="atlasSubChange(\''+L.key+'\')"> '+(s[lang()]||s.ru)+'</label>';
           }).join('')+'</details>';
       }
       el.innerHTML =
@@ -14631,7 +14640,12 @@ window.pbMove = pbMove;
   function clearFocus(){ window.__currentFocusIds=null; var a=window._anatomyAtlas; if(a){ try{ a.resetRegions&&a.resetRegions(); }catch(e){} } }
   function syncAnatomyLayers(){
     var a=window._anatomyAtlas; if(!a) return;
+    // Clear any focus dim left over from the Functions/Conditions tabs. resetRegions
+    // only undoes per-region slider changes; focusRegions([]) restores every mesh's
+    // base opacity so the Anatomy tab never opens with sticky darkness.
+    window.__currentFocusIds=null;
     try{ a.resetRegions&&a.resetRegions(); }catch(e){}
+    try{ a.focusRegions&&a.focusRegions([]); }catch(e){}
     document.querySelectorAll('#atlas-layers .atlas-layer').forEach(function(el){
       var cb=el.querySelector('input[type=checkbox]'); var rg=el.querySelector('input[type=range]');
       var oc=cb&&cb.getAttribute('onchange'); var m=oc&&oc.match(/'([^']+)'/); if(!m) return;
