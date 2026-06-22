@@ -299,6 +299,27 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_kind TEXT`;
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_config JSONB DEFAULT '{}'::jsonb`;
 
+    // ── Migration 019: fix medically-wrong anatomy seed regions (mirrors
+    //    migrations/019_fix_anatomy_seed_regions.sql). Run FIRST — a pre-existing
+    //    tools rename further down throws a duplicate-key on re-run and aborts the
+    //    rest of the pipeline, so these must apply before that point. Wrapped in
+    //    try/catch: idempotent UPDATE…WHERE slug, no-op if the anatomy tables
+    //    aren't seeded yet (fresh DB) — never aborts the run. Only the 11 listed
+    //    rows; medically-correct rows (brain/cardio/neuro/psych/…) untouched.
+    try {
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['stomach','medulla']::text[] WHERE slug = 'gastritis'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['oesophagus','stomach','medulla']::text[] WHERE slug = 'gerd'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['small-intestine','large-intestine']::text[] WHERE slug = 'crohns'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['large-intestine','medulla']::text[] WHERE slug = 'ibs'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','hypothalamus','liver']::text[] WHERE slug = 'type1-diabetes'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','hypothalamus','liver','kidneys']::text[] WHERE slug = 'type2-diabetes'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['thyroid-gland']::text[] WHERE slug = 'hyperthyroidism'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['thyroid-gland']::text[] WHERE slug = 'hypothyroidism'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['nose']::text[] WHERE slug = 'allergic-rhinitis'`;
+      await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['hip']::text[] WHERE slug = 'hip-osteoarthritis'`;
+      await sql`UPDATE anatomy_functions SET region_ids = ARRAY['stomach','small-intestine','large-intestine','medulla','hypothalamus','liver']::text[] WHERE slug = 'digestion'`;
+    } catch (e) { console.error('migration 019 (anatomy seed fix):', e.message); }
+
     // ── External Field tool (objective environmental signals) ──
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS location_lon DOUBLE PRECISION`;
@@ -938,23 +959,9 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_slug ON human_conditions(slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_cat ON human_conditions(category)`;
 
-    // ── Migration 019: fix medically-wrong anatomy seed regions (mirrors
-    //    migrations/019_fix_anatomy_seed_regions.sql). GI used 'liver' as a
-    //    placeholder; endocrine missed pancreas/thyroid; rhinitis→lungs; hip-OA→
-    //    spine. Targets organ/skeleton sub-layer regions now in SEED_REGION_INFO.
-    //    Idempotent UPDATE … WHERE slug — only the 11 listed rows; correct rows
-    //    (brain/cardio/neuro/psych/cirrhosis/asthma/copd) untouched.
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['stomach','medulla']::text[] WHERE slug = 'gastritis'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['oesophagus','stomach','medulla']::text[] WHERE slug = 'gerd'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['small-intestine','large-intestine']::text[] WHERE slug = 'crohns'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['large-intestine','medulla']::text[] WHERE slug = 'ibs'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','hypothalamus','liver']::text[] WHERE slug = 'type1-diabetes'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['pancreas','hypothalamus','liver','kidneys']::text[] WHERE slug = 'type2-diabetes'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['thyroid-gland']::text[] WHERE slug = 'hyperthyroidism'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['thyroid-gland']::text[] WHERE slug = 'hypothyroidism'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['nose']::text[] WHERE slug = 'allergic-rhinitis'`;
-    await sql`UPDATE human_conditions SET affected_region_ids = ARRAY['hip']::text[] WHERE slug = 'hip-osteoarthritis'`;
-    await sql`UPDATE anatomy_functions SET region_ids = ARRAY['stomach','small-intestine','large-intestine','medulla','hypothalamus','liver']::text[] WHERE slug = 'digestion'`;
+    // (Migration 019 anatomy-seed fixes moved to the TOP of this runner — a
+    //  pre-existing tools rename below throws a duplicate-key on re-run and aborts
+    //  everything after it, so the fixes must run before that point.)
 
     await sql`CREATE TABLE IF NOT EXISTS course_blocks (
       id SERIAL PRIMARY KEY,
