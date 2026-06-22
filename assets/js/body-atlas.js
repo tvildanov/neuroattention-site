@@ -956,7 +956,9 @@
     if (this._requestRender) this._requestRender();
     return this;
   };
-  // opacity is a 0..1 multiplier of the region's base x-ray opacity.
+  // opacity slider: k is the ABSOLUTE region opacity 0..1 (k=1 → fully opaque,
+  // independent of the layer slider). uGlow still scales from its base so the
+  // additive x-ray actually dims.
   Atlas.prototype.setRegionOpacity = function (regionId, k) {
     k = Math.max(0, Math.min(1, k == null ? 1 : k));
     this._regState(regionId).opacity = k;
@@ -971,7 +973,7 @@
       }
       // Additive-blended x-ray: opacity alone barely dims; we have to pull uGlow
       // (which adds light directly) down with it, otherwise the slider seems dead.
-      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
+      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = k;                       // absolute: k=1 → 1.0
       if (mat.uniforms.uGlow)    mat.uniforms.uGlow.value    = m.userData._baseGlow    * k;
     });
     if (this._requestRender) this._requestRender();
@@ -1150,7 +1152,10 @@
         var toks = String(bare).split('_');
         for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) { on = true; break; } }
       }
-      mat.uniforms.uOpacity.value = ud._baseOpacity * (on ? 1 : (hasIds ? dim : 1));
+      // Focused regions render at full opacity (1.0) regardless of the layer
+      // slider, so the highlight is always crisp; everything else dims to
+      // baseOpacity*dim (or stays at baseOpacity when nothing is focused).
+      mat.uniforms.uOpacity.value = on ? 1.0 : (hasIds ? (ud._baseOpacity * dim) : ud._baseOpacity);
     });
     if (this._requestRender) this._requestRender();
     return this;
@@ -1588,9 +1593,9 @@
         var dxS = curMidX - _pinch.midX, dyS = curMidY - _pinch.midY; // screen delta (dyS>0 = fingers moved DOWN)
         var right = new T.Vector3().setFromMatrixColumn(self.camera.matrix, 0);
         var up = new T.Vector3().setFromMatrixColumn(self.camera.matrix, 1);
-        // camera follows the fingers: fingers up → camera up (view rises toward the
-        // head, the waist drops to the bottom of the screen).
-        var pan = right.multiplyScalar(dxS * worldPerPx).add(up.multiplyScalar(-dyS * worldPerPx));
+        // "Grab the model" (Google-Maps style): the content follows the fingers —
+        // drag up → the model moves UP on screen (camera moves the opposite way).
+        var pan = right.multiplyScalar(-dxS * worldPerPx).add(up.multiplyScalar(dyS * worldPerPx));
         cam.add(pan); tgt.add(pan);
         self.camera.position.copy(cam);
         self.controls.target.copy(tgt);
