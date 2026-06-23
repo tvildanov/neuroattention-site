@@ -9304,8 +9304,24 @@ function deletePractice(id) {
 }
 
 // ── Service Worker registration ──
+// updateViaCache:'none' makes the browser revalidate sw.js from the network on every
+// update check (never the HTTP cache), and reg.update() forces that check on load — so a
+// user stuck on the buggy v1 SW (which broke the 3D atlas's cross-origin DRACO/GLB loads
+// → infinite layer spinner) picks up the safe v3 worker immediately. When the new worker
+// takes over (controllerchange), reload ONCE so the current page re-fetches its atlas
+// assets under the fixed worker. Guarded so a brand-new visitor (no prior controller)
+// isn't reloaded on first install.
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(function(){});
+  var __hadSWController = !!navigator.serviceWorker.controller;
+  var __swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(__swReloaded || !__hadSWController) return;
+    __swReloaded = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){
+    try { reg.update(); } catch(e){}
+  }).catch(function(){});
 }
 </script>
 <!-- Fullscreen NeuroMap overlay -->
