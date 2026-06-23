@@ -468,6 +468,19 @@
    normal dashboard width. The fullscreen overlay re-mounts elsewhere, so this rule
    doesn't touch it. */
 #evo-path { width: 100vw; margin-left: calc(50% - 50vw); padding: 0 16px; box-sizing: border-box; }
+/* PR: the centre stage is now a framed "Evolution Path" panel — a dark rounded
+   rectangle holding the header (title + mode/period controls, relocated here in
+   paint()), the snake, and the time axis. flex:1 already stretches it wall-to-wall
+   between the profile rail (left) and the layers rail (right); the frame just makes
+   that span read as one panel instead of a snake floating in black. Scoped to
+   #evo-path so the fullscreen overlay and the collective path keep their own look. */
+#evo-path .evo-stage {
+  background: rgba(5,9,14,0.40);
+  border: 1px solid var(--myc-line-muted);
+  border-radius: 16px;
+  overflow: hidden;
+}
+#evo-path .evo-stage > .myc-evo-head { margin: 0; padding: 14px 18px 0; }
 /* empty / loading / error states are a lone child of the flex shell — let them
    span the full width and stay centred instead of hugging the left rail edge */
 .myc-evo-canvas > .myc-empty { flex: 1 1 100%; width: 100%; }
