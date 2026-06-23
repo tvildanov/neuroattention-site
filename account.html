@@ -1306,6 +1306,11 @@
         .atlas-tooltip{position:absolute;pointer-events:none;background:rgba(8,18,22,0.92);border:1px solid rgba(168,247,255,0.35);color:#A8F7FF;font-size:12px;padding:0.25rem 0.55rem;border-radius:7px;transform:translate(-50%,-130%);white-space:nowrap;display:none;z-index:5;}
         .atlas-region-panel{position:absolute;top:0;right:0;height:100%;width:280px;max-width:80%;background:rgba(6,14,18,0.94);border-left:1px solid rgba(168,247,255,0.25);padding:1.1rem;transform:translateX(105%);transition:transform .3s ease;overflow-y:auto;z-index:6;}
         .atlas-region-panel.open{transform:translateX(0);}
+        /* Item 2: when a function/condition detail is open, stack the two side panels
+           vertically (function on top, clicked-region card below) so both stay visible
+           instead of the region card covering the function. */
+        .atlas-viewport.region-stacked #ha-detail-panel.open{height:52%;}
+        .atlas-viewport.region-stacked .atlas-region-panel.open{top:auto;bottom:0;height:48%;width:300px;border-top:1px solid rgba(168,247,255,0.3);}
         .atlas-region-panel h4{margin:0 0 0.3rem;color:#A8F7FF;font-size:15px;}
         .atlas-region-panel .arp-group{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim,#7c8896);margin-bottom:0.8rem;}
         .atlas-region-panel p{font-size:13px;line-height:1.6;color:var(--text-muted,#cdd6df);}
@@ -14287,7 +14292,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=20"></script>
+<script src="assets/js/body-atlas.js?v=21"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14296,7 +14301,9 @@ window.pbMove = pbMove;
     { key:'skeleton', color:'#E8FBFF', ru:'Скелет',        en:'Skeleton',       es:'Esqueleto',       on:false, op:70 },
     { key:'nervous',  color:'#8DFFC8', ru:'Нервная система',en:'Nervous system',es:'Sistema nervioso',on:false, op:80 },
     { key:'vessels',  color:'#FF8FA3', ru:'Сосуды',        en:'Vessels',        es:'Vasos',           on:false, op:60 },
-    { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 }
+    { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 },
+    { key:'joints',   color:'#E6E2F0', ru:'Связки и суставы',en:'Joints & ligaments',es:'Articulaciones y ligamentos', on:false, op:50 },
+    { key:'lymph',    color:'#C9A6FF', ru:'Лимфа',          en:'Lymphatic',      es:'Linfático',       on:false, op:50 }
   ];
   // Sub-layers (organ groups) rendered as collapsible mini-toggles inside a layer
   // card. organ keys match userData.organ tags set from SEED_REGION_INFO.
@@ -14407,9 +14414,9 @@ window.pbMove = pbMove;
         // re-apply the active focus the moment a lazily-streamed layer lands, so the
         // first click on a function/condition dims correctly instead of showing the
         // whole layer (focusRegions had run against an empty scaffold).
-        if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.12); }catch(e){} }
+        if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.35); }catch(e){} }
       });
-      a.on('brain-loaded', function(){ if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.12); }catch(e){} } });
+      a.on('brain-loaded', function(){ if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.35); }catch(e){} } });
       a.on('layer-error',   function(d){ setLayerLoading(d&&d.layer, false); });
       // sync initial layer state from controls
       LAYERS.forEach(function(L){ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op/100); });
@@ -14502,6 +14509,13 @@ window.pbMove = pbMove;
       hide.checked = false;
     }
     p.classList.add('open');
+    // Item 2: when a function/condition detail is already open (Functions/Conditions
+    // tab), STACK the region card below it instead of overlaying — both stay visible.
+    // #ha-detail-panel.open is the cross-IIFE-safe signal (it's closed in the Anatomy
+    // tab, so Anatomy keeps the normal full-height overlay).
+    var vp = document.getElementById('atlas-viewport');
+    var fnOpen = (function(){ var d=document.getElementById('ha-detail-panel'); return d && d.classList.contains('open'); })();
+    if (vp) vp.classList.toggle('region-stacked', !!fnOpen);
   }
   // PACK 10: a small auto-rotating 3D view of the clicked region, cloned from the
   // main scene (no extra GLB). Rebuilt per click, disposed when the panel closes.
@@ -14544,8 +14558,12 @@ window.pbMove = pbMove;
   };
   window.atlasBrainDetail = function(){ if(!atlas) return; if(atlas._brainDetail) atlas.exitBrainDetail(); else atlas.enterBrainDetail(); };
   window.atlasExitBrain = function(){ if(atlas) atlas.exitBrainDetail(); };
-  window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail(); atlas.resetView(); } atlasCloseRegion(); };
-  window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none'; window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); atlasDestroyMini(); };
+  window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail();
+    // Clear any Functions/Conditions focus dim too — resetView()/resetRegions() only undo
+    // per-region slider overrides, NOT the focusRegions() dim, so it used to stay stuck.
+    window.__currentFocusIds=null; try{ atlas.focusRegions&&atlas.focusRegions([]); }catch(e){}
+    atlas.resetView(); } atlasCloseRegion(); };
+  window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none'; window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); var vp=document.getElementById('atlas-viewport'); if(vp) vp.classList.remove('region-stacked'); atlasDestroyMini(); };
   window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
 })();
 </script>
@@ -14670,7 +14688,7 @@ window.pbMove = pbMove;
     // focusRegions ran against an empty scaffold. Timeouts are a belt-and-braces
     // fallback for layers that were already cached (no layer-loaded fires).
     window.__currentFocusIds = ids;
-    var apply=function(){ if(window.__currentFocusIds!==ids) return; try{ a.focusRegions(ids, 0.12); }catch(e){} };
+    var apply=function(){ if(window.__currentFocusIds!==ids) return; try{ a.focusRegions(ids, 0.35); }catch(e){} };
     apply(); setTimeout(apply, 350); setTimeout(apply, 900); setTimeout(apply, 2000);
   }
   function clearFocus(){ window.__currentFocusIds=null; var a=window._anatomyAtlas; if(a){ try{ a.resetRegions&&a.resetRegions(); }catch(e){} } }
@@ -14701,7 +14719,7 @@ window.pbMove = pbMove;
     if(lCo) lCo.style.display = tab==='conditions'?'':'none';
     var topbar=document.getElementById('ha-topbar'); if(topbar) topbar.style.display = tab==='anatomy'?'':'none';
     // close both detail panels on switch
-    var rp=document.getElementById('atlas-region-panel'); if(rp) rp.classList.remove('open');
+    if(window.atlasCloseRegion) window.atlasCloseRegion();   // closes region panel + clears stacked state + mini
     haCloseDetail();
     if(tab==='anatomy'){ syncAnatomyLayers(); }
     else {
@@ -14841,8 +14859,8 @@ window.pbMove = pbMove;
   window.haGoRegionMulti=function(csv){ var ids=(csv||'').split(',').filter(Boolean); haSwitchTab('anatomy'); setTimeout(function(){ focus(ids); },40); };
 
   /* ── detail panel ───────────────────────────────────────────────────────── */
-  function openDetail(html){ var p=document.getElementById('ha-detail-panel'); var b=document.getElementById('ha-detail-body'); if(b) b.innerHTML=html; if(p) p.classList.add('open'); }
-  window.haCloseDetail=function(){ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); };
+  function openDetail(html){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* drop a stale stacked region card from the previous selection */ var p=document.getElementById('ha-detail-panel'); var b=document.getElementById('ha-detail-body'); if(b) b.innerHTML=html; if(p) p.classList.add('open'); }
+  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); };
 
   /* ── static label localization (tabs, placeholders, headers) ────────────── */
   function localize(){
