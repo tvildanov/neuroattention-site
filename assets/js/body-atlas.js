@@ -1298,7 +1298,9 @@
   // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
   // opacity and restore the focused ones to full. Pass null/[] to clear.
   Atlas.prototype.focusRegions = function (ids, dim) {
-    dim = dim == null ? 0.1 : dim;
+    // dim = opacity multiplier for the NON-focused meshes. 0.35 keeps the rest of the
+    // body legibly visible (de-emphasised, not black) behind the highlighted regions.
+    dim = dim == null ? 0.35 : dim;
     var expanded = this._expandSeedIds(ids);   // seed-ids → ids + aliases + descendants
     // PACK 12: curated condition/function region ids are BARE anatomical slugs
     // ('liver', 'medulla', 'stomach', 'frontal-lobe') while real mesh ids are
