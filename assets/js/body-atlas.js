@@ -1136,20 +1136,54 @@
   Atlas.prototype.setRegionOpacity = function (regionId, k) {
     k = Math.max(0, Math.min(1, k == null ? 1 : k));
     this._regState(regionId).opacity = k;
+    var T = window.THREE;
+    // At the very top of the per-region slider render the region as a SOLID, fully
+    // opaque surface (PACK 8 / PACK D) — the absolute uOpacity is k regardless of where
+    // the LAYER slider sits, so a region can read 100% "плотно" even on a 50% layer.
+    var solid = k >= 0.999;
     this._forEachRegionMesh(regionId, function (m) {
       var mat = m.material; if (!mat || !mat.uniforms) return;
-      // Cache the baseline values on first touch so resetRegions can restore them.
-      if (mat.uniforms.uOpacity && m.userData._baseOpacity == null) {
-        m.userData._baseOpacity = mat.uniforms.uOpacity.value;
+      var ud = m.userData;
+      // Cache the baseline values + the layer-driven render state on first touch so
+      // resetRegions / clearRegionOverride can restore them exactly.
+      if (mat.uniforms.uOpacity && ud._baseOpacity == null) ud._baseOpacity = mat.uniforms.uOpacity.value;
+      if (mat.uniforms.uGlow && ud._baseGlow == null) ud._baseGlow = mat.uniforms.uGlow.value;
+      if (ud._baseSolid == null) {
+        ud._baseSolid = (mat.uniforms.uSolid ? mat.uniforms.uSolid.value : 0);
+        ud._baseBlend = mat.blending;
+        ud._baseDepthWrite = mat.depthWrite;
+        ud._baseTransparent = mat.transparent;
       }
-      if (mat.uniforms.uGlow && m.userData._baseGlow == null) {
-        m.userData._baseGlow = mat.uniforms.uGlow.value;
-      }
-      // Additive-blended x-ray: opacity alone barely dims; we have to pull uGlow
-      // (which adds light directly) down with it, otherwise the slider seems dead.
-      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = k;                       // absolute: k=1 → 1.0
-      if (mat.uniforms.uGlow)    mat.uniforms.uGlow.value    = m.userData._baseGlow    * k;
+      // Absolute opacity (k=1 → 1.0). uGlow scales with k so the additive x-ray actually dims.
+      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = k;
+      if (mat.uniforms.uGlow)    mat.uniforms.uGlow.value    = ud._baseGlow * k;
+      // Solid at the top → NormalBlending + depthWrite so it reads opaque, not see-through.
+      if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = solid ? 1.0 : 0.0;
+      if (T) { var wantBlend = solid ? T.NormalBlending : T.AdditiveBlending; if (mat.blending !== wantBlend) { mat.blending = wantBlend; mat.needsUpdate = true; } }
+      mat.depthWrite = solid;
+      mat.transparent = !solid;
     });
+    if (this._requestRender) this._requestRender();
+    return this;
+  };
+  // Restore a single region's meshes to their layer-driven baseline (opacity, glow AND
+  // render mode) and drop its override — used when the region sub-card closes so a
+  // bumped-to-opaque region doesn't stay stuck above its layer.
+  Atlas.prototype.clearRegionOverride = function (regionId) {
+    var T = window.THREE;
+    this._forEachRegionMesh(regionId, function (m) {
+      var mat = m.material; if (!mat || !mat.uniforms) return;
+      var ud = m.userData;
+      if (mat.uniforms.uOpacity && ud._baseOpacity != null) mat.uniforms.uOpacity.value = ud._baseOpacity;
+      if (mat.uniforms.uGlow && ud._baseGlow != null) mat.uniforms.uGlow.value = ud._baseGlow;
+      if (ud._baseSolid != null) {
+        if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = ud._baseSolid;
+        if (T && mat.blending !== ud._baseBlend) { mat.blending = ud._baseBlend; mat.needsUpdate = true; }
+        mat.depthWrite = ud._baseDepthWrite;
+        mat.transparent = ud._baseTransparent;
+      }
+    });
+    if (this._regionStates) delete this._regionStates[regionId];
     if (this._requestRender) this._requestRender();
     return this;
   };
@@ -1162,13 +1196,16 @@
     Object.keys(this._regionStates).forEach(function (id) {
       self._forEachRegionMesh(id, function (m) {
         m.visible = true;
-        var mat = m.material;
+        var mat = m.material; var ud = m.userData; var T = window.THREE;
         if (mat && mat.uniforms) {
-          if (mat.uniforms.uOpacity && m.userData._baseOpacity != null) {
-            mat.uniforms.uOpacity.value = m.userData._baseOpacity;
-          }
-          if (mat.uniforms.uGlow && m.userData._baseGlow != null) {
-            mat.uniforms.uGlow.value = m.userData._baseGlow;
+          if (mat.uniforms.uOpacity && ud._baseOpacity != null) mat.uniforms.uOpacity.value = ud._baseOpacity;
+          if (mat.uniforms.uGlow && ud._baseGlow != null) mat.uniforms.uGlow.value = ud._baseGlow;
+          // restore the layer-driven render mode a per-region "solid" bump may have changed
+          if (ud._baseSolid != null) {
+            if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = ud._baseSolid;
+            if (T && mat.blending !== ud._baseBlend) { mat.blending = ud._baseBlend; mat.needsUpdate = true; }
+            mat.depthWrite = ud._baseDepthWrite;
+            mat.transparent = ud._baseTransparent;
           }
         }
       });
