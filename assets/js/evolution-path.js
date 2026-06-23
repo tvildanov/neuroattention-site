@@ -940,33 +940,18 @@
     var n = ov.layers.length, zoneTop = ov.top, zoneBot = ov.bot, trackH = (zoneBot - zoneTop) / n;
     ctx.textBaseline = 'middle';
     ctx.font = '12px Inter, system-ui, sans-serif';
-    // D1: the status card stack (user panel + XP/emotion/state) sits in the LEFT
-    // padding gutter and, in the short embedded view, reaches down into the bottom
-    // overlay zone — so left-pinned glyphs were hidden behind it. On desktop we now
-    // pin the labels to the RIGHT gutter (right-aligned). That gutter only holds the
-    // top-anchored layer-toggle box, which ends well above the bottom overlay zone,
-    // so the glyphs clear both cards. On mobile the panels are in normal flow (no
-    // canvas overlap), so the compact left glyph is kept.
-    if (T.isMobile) {
-      ctx.textAlign = 'left';
-      var lx = 2;
-      for (var mi = 0; mi < n; mi++) {
-        var ML = ov.layers[mi], mcy = zoneTop + trackH * mi + trackH / 2;
-        ctx.fillStyle = C.textDim;
-        ctx.fillText(ML.icon, lx, mcy);
-      }
-    } else {
-      ctx.textAlign = 'right';
-      var rx = (T.W || (T.x1 + 150)) - 8;
-      for (var li = 0; li < n; li++) {
-        var L = ov.layers[li], cyT = zoneTop + trackH * li + trackH / 2;
-        var llab = OVERLAY_LABEL[L.key] ? (OVERLAY_LABEL[L.key][lang] || OVERLAY_LABEL[L.key].ru) : L.key;
-        var text = L.icon + ' ' + llab;
-        var w = ctx.measureText(text).width;
-        ctx.fillStyle = 'rgba(6,9,14,0.72)'; ctx.fillRect(rx - w - 3, cyT - 8, w + 6, 16);
-        ctx.fillStyle = C.textDim;
-        ctx.fillText(text, rx, cyT);
-      }
+    // PR #82: ICON-ONLY left-pinned glyph (no "☀ Sun" word label). Since PR #81 the
+    // status cards live in the left/right RAILS (outside the canvas), so the left
+    // gutter is free again and the labels no longer collide. The full Sun/Moon/Earth
+    // names already live in the right-rail layer-toggle card; drawing them again on
+    // the canvas read as a duplicate list sitting next to that card. Keeping just the
+    // ☀/☾/⊕ track glyph identifies each overlay track without the repetition.
+    ctx.textAlign = 'left';
+    var lx = 2;
+    for (var li = 0; li < n; li++) {
+      var L = ov.layers[li], cy = zoneTop + trackH * li + trackH / 2;
+      ctx.fillStyle = C.textDim;
+      ctx.fillText(L.icon, lx, cy);
     }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
