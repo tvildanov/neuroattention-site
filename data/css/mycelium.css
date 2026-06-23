@@ -455,9 +455,19 @@
    over the canvas. The collective path keeps its own `cp-wrap` layout, untouched. */
 .myc-evo-canvas { display: flex; align-items: flex-start; gap: 16px; }
 .evo-rail { flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
-.evo-rail-l { width: 184px; }
-.evo-rail-r { width: 150px; }
+.evo-rail-l { width: 200px; }
+.evo-rail-r { width: 172px; }
 .evo-stage { flex: 1 1 0%; min-width: 0; align-self: stretch; position: relative; }
+
+/* PR #82: the personal Evolution Path breaks out of the dashboard's centred
+   1440/1520 column to a full-bleed strip so the snake actually fills the screen
+   (the profile rail hugs the left edge, the layers rail the right edge) instead of
+   being squeezed into the middle with wide black gutters. html/body already clip
+   horizontal overflow, so 100vw can't introduce a sideways scrollbar. Scoped to
+   #evo-path only — the collective path (#collective-path / cp-wrap) keeps the
+   normal dashboard width. The fullscreen overlay re-mounts elsewhere, so this rule
+   doesn't touch it. */
+#evo-path { width: 100vw; margin-left: calc(50% - 50vw); padding: 0 16px; box-sizing: border-box; }
 /* empty / loading / error states are a lone child of the flex shell — let them
    span the full width and stay centred instead of hugging the left rail edge */
 .myc-evo-canvas > .myc-empty { flex: 1 1 100%; width: 100%; }
