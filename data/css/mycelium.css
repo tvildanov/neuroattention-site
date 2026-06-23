@@ -446,35 +446,41 @@
 .myc-evo-canvas canvas.evo-2d { display: block; touch-action: none; cursor: grab; }
 .myc-evo-canvas canvas.evo-2d:active { cursor: grabbing; }
 
-@media (max-width: 720px) {
-  /* #1: side panels stack below the chart instead of reserving horizontal field
-     space (which had crushed the timeline into a narrow vertical strip). */
-  .evo-user-panel, .evo-layer-toggles { position: static; width: auto; display: inline-flex; margin: 6px 6px 0 0; }
-  .evo-char-panel, .evo-char-stats { position: static; transform: none; width: auto; margin: 8px 0; }
-  .evo-layer-toggles { flex-wrap: wrap; gap: 4px 12px; max-width: 100%; }
+/* PR #81: Evolution Path personal layout — a 3-column flex shell that replaces the
+   old absolute-overlay + ≥1280 padding-gutter hack (which left a black third and
+   pushed the snake off-centre in fullscreen, and overlapped the field between
+   720–1280px). The profile/stats cards live in a left rail, the layer toggles in a
+   right rail, and the field renders into the centre `.evo-stage` (1fr) so the snake
+   fills the whole gap between the rails at every width. The cards no longer float
+   over the canvas. The collective path keeps its own `cp-wrap` layout, untouched. */
+.myc-evo-canvas { display: flex; align-items: flex-start; gap: 16px; }
+.evo-rail { flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.evo-rail-l { width: 184px; }
+.evo-rail-r { width: 150px; }
+.evo-stage { flex: 1 1 0%; min-width: 0; align-self: stretch; position: relative; }
+/* empty / loading / error states are a lone child of the flex shell — let them
+   span the full width and stay centred instead of hugging the left rail edge */
+.myc-evo-canvas > .myc-empty { flex: 1 1 100%; width: 100%; }
+/* cards now flow inside their rail — neutralise the legacy absolute coordinates */
+.evo-rail .evo-user-panel,
+.evo-rail .evo-layer-toggles,
+.evo-rail .evo-char-panel,
+.evo-rail .evo-char-stats {
+  position: static; left: auto; right: auto; top: auto; bottom: auto; transform: none;
+  box-sizing: border-box; width: 100%; z-index: auto; margin: 0;
+}
+
+@media (max-width: 760px) {
+  /* phone: collapse the 3 columns into one — profile → snake → layers (source
+     order), each spanning the full width, so the field gets full width instead of
+     a crushed vertical strip. align-items:stretch (vs the desktop flex-start) lets
+     the rails fill the row width. */
+  .myc-evo-canvas { flex-direction: column; align-items: stretch; gap: 10px; overflow-x: hidden; }
+  .evo-rail, .evo-rail-l, .evo-rail-r { width: auto; }
   .evo-char-stats { font-size: 11px; }
-  .myc-evo-canvas { overflow-x: hidden; }
   /* mobile fullscreen: push the mode/period controls below the overlay's own
      title so they don't overlap it */
   .na-fs-body .myc-evo-head { margin-top: 1.6rem; flex-wrap: wrap; gap: 0.5rem; }
-}
-
-/* PACK 15 (desktop only): lift the profile / status / layer cards out of the
-   chart and into fixed side gutters, so the Path-of-Development map gets the
-   full centre width and the sticky layer icons inside the map are no longer
-   overlapped. The canvas is width:100% of the now-padded host, so it reflows to
-   the centre (the engine's ResizeObserver repaints). Tablet/mobile (< 1180px)
-   keep the original overlay/stacked layout untouched. */
-@media (min-width: 1280px) {
-  .myc-evo-canvas { padding-left: 236px; padding-right: 190px; }
-  /* profile card → top-left gutter */
-  .evo-user-panel  { left: 16px; top: 14px; width: 172px; }
-  /* status card → directly under the profile, left gutter */
-  .evo-char-stats  { left: 16px; top: 206px; width: 172px; }
-  /* field-view character card → left gutter */
-  .evo-char-panel  { left: 16px; width: 188px; }
-  /* External Field layers card → top-right gutter */
-  .evo-layer-toggles { right: 16px; top: 14px; width: 138px; }
 }
 
 /* ============================================================================

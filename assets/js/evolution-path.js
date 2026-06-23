@@ -120,22 +120,29 @@
     return { c: 'var(--myc-line-secondary)', o: 0.72 };
   }
   function tms(t) { var d = new Date(t); return isNaN(d) ? 0 : d.getTime(); }
-  // Robust width measurement. The container is laid out before the inner canvas
-  // settles, and on tab-activation (display:none→block) the canvas can briefly
-  // measure ~0/narrow — which used to cram every event into a thin column at the
-  // edge. Take the MAX of every width candidate so a momentary narrow canvas can
-  // never win over the real container width.
-  function measureW(canvas, container) {
-    var cands = [];
-    try { cands.push(canvas.getBoundingClientRect().width); } catch (e) {}
-    cands.push(canvas.clientWidth || 0);
-    if (container) {
-      cands.push(container.clientWidth || 0);
-      try { cands.push(container.getBoundingClientRect().width); } catch (e) {}
-      if (container.parentElement) cands.push(container.parentElement.clientWidth || 0);
+  // Robust width measurement. PR #81: the field now lives in the centre `.evo-stage`
+  // cell of a 3-column flex layout (left profile rail · stage · right layers rail),
+  // so we must measure the STAGE's own width — NOT the max of every ancestor, which
+  // would return the full layout width and make the canvas overflow under the rails.
+  // The stage is a flex item with min-width:0, so its rect is the true centre width.
+  // A momentary 0 (tab display:none→block) self-heals: the ResizeObserver repaints
+  // once the container gains real width. Container/ parent only seed a fallback.
+  function measureW(el, container) {
+    var w = 0;
+    try { w = Math.round((el && el.getBoundingClientRect().width) || 0); } catch (e) {}
+    if (!w && el) w = Math.round(el.clientWidth || 0);
+    if (!w && container) {
+      try { w = Math.round(container.getBoundingClientRect().width || 0); } catch (e) {}
+      if (!w) w = Math.round(container.clientWidth || 0);
     }
-    var w = Math.max.apply(null, cands.map(function (x) { return Math.round(x || 0); }).concat([0]));
     return Math.max(360, w || 1100);
+  }
+  // Resolve the centre stage element that hosts the canvas/svg/overlays. Falls back
+  // to the legacy `.myc-evo-canvas` box (and the container) so the empty/loading
+  // states — which never build the rail skeleton — keep working.
+  function stageOf(container) {
+    return (container && (container.querySelector('.evo-stage') ||
+            container.querySelector('.myc-evo-canvas'))) || container;
   }
   function newSvg(W) {
     var s = el('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H,
@@ -333,7 +340,7 @@
 
   function showDetailCard(container, ev, lang) {
     closeDetailCard(container);
-    var canvas = container.querySelector('.myc-evo-canvas');
+    var canvas = stageOf(container);
     if (!canvas) return;
     var card = document.createElement('div');
     card.className = 'evo-detail-card';
@@ -619,7 +626,7 @@
   function rgbaFromRgb(rgb, a) { var m = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/); return m ? 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')' : rgb; }
 
   function renderTunnel(W, data, container, lang, st) {
-    var host = container.querySelector('.myc-evo-canvas');
+    var host = stageOf(container);
     var oldSvg = host.querySelector('svg'); if (oldSvg) oldSvg.remove();
     var cv = host.querySelector('canvas.evo-2d');
     if (!cv) { cv = document.createElement('canvas'); cv.className = 'evo-2d'; cv.style.cssText = 'display:block;width:100%;'; host.insertBefore(cv, host.firstChild); }
@@ -1050,7 +1057,7 @@
     showSharedTip(clientX, clientY, buildOverlayPhrase(hit.ev, hit.layer, lang), hit.color);
   }
   function showOverlayCard(container, marker, lang) {
-    var host = container.querySelector('.myc-evo-canvas') || container;
+    var host = stageOf(container);
     var old = host.querySelector('.evo-ov-card'); if (old) old.remove();
     var ev = marker.ev, lab = OVERLAY_LABEL[marker.layer] ? (OVERLAY_LABEL[marker.layer][lang] || OVERLAY_LABEL[marker.layer].ru) : marker.layer;
     var icon = OVERLAY_ICON[marker.layer] || '•';
@@ -1169,7 +1176,7 @@
 
   // ── canvas pan/zoom: just update the view and redraw the (cheap) visible slice ──
   function wireCanvasPanZoom(container, st, lang) {
-    var target = container.querySelector('.myc-evo-canvas') || container;
+    var target = stageOf(container);
     if (target._evoCZ) { var s = target._evoCZ; s.st = st; s.lang = lang; return; }
     var S = { st: st, lang: lang, panVel: 0, raf: null, dragging: false, lastX: 0, moved: false, cursorX: null, hapticAcc: 0, gestIdle: null };
     target._evoCZ = S;
@@ -1376,7 +1383,7 @@
      denser at higher zoom and over node clusters (2.4). */
   function wirePanZoom(svg, world, st, container, lang, x0, x1) {
     // attach gestures to the canvas (the path area), not the whole chrome/panels.
-    var target = container.querySelector('.myc-evo-canvas') || container;
+    var target = stageOf(container);
     if (target._evoPZ) { var s = target._evoPZ; s.x0 = x0; s.x1 = x1; s.lang = lang; s.st = st; s.renderedPPD = st.view.pxPerDay; s.targetPPD = st.view.pxPerDay; s.liveScale = 1; applyWorldTransform2(s); return; }
     var S = { x0: x0, x1: x1, lang: lang, st: st, panVel: 0, cursorX: null, raf: null,
               dragging: false, lastClientX: 0, hapticAcc: 0,
@@ -1545,7 +1552,7 @@
   function openMiniNeuromap(container, ev, lang, st) {
     closeMiniNeuromap(container);
     closeDetailCard(container);
-    var canvas = container.querySelector('.myc-evo-canvas');
+    var canvas = stageOf(container);
     if (!canvas) return;
 
     // gather the clicked event + its 1-hop linked neighbours (real journey_links)
@@ -1792,7 +1799,7 @@
         var debounced = function () {
           clearTimeout(st._roTimer);
           st._roTimer = setTimeout(function () {
-            var cv = container.querySelector('.myc-evo-canvas');
+            var cv = stageOf(container);
             if (!cv || !st.data) return;
             var w = measureW(cv, container);
             if (Math.abs(w - (st._w || 0)) > 24) { st.view = null; paint(container, st, lang); }
@@ -1965,7 +1972,7 @@
       if (typeof ResizeObserver === 'function') {
         var ro = new ResizeObserver(function () {
           if (!ost.data) return;
-          var w = measureW(container.querySelector('.myc-evo-canvas'), container);
+          var w = measureW(stageOf(container), container);
           var h = computeH(container, ost);
           if (Math.abs(w - (ost._w || 0)) > 40 || Math.abs(h - (H || 0)) > 24) paint(container, ost, lang);
         });
@@ -2025,35 +2032,46 @@
   }
 
   function paint(container, st, lang) {
-    var canvas = container.querySelector('.myc-evo-canvas');
-    canvas.innerHTML = '';
+    var box = container.querySelector('.myc-evo-canvas');
+    box.innerHTML = '';
     POS = {};
     var data = st.data;
     var totalEvents = Object.keys(data.totals || {}).reduce(function (s, k) { return k === 'xp_total' ? s : s + (data.totals[k] || 0); }, 0);
     if (!totalEvents) {
-      canvas.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">✦</div><div class="myc-empty-text">' + L(STR.empty, lang) + '</div></div>';
+      box.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">✦</div><div class="myc-empty-text">' + L(STR.empty, lang) + '</div></div>';
       return;
     }
     // recompute the logical height for this paint (fullscreen → taller field)
     H = computeH(container, st);
-    canvas.style.minHeight = H + 'px';
-    var W = measureW(canvas, container);
+    box.style.minHeight = H + 'px';
+    // PR #81: 3-column flex skeleton — profile/stats rail · centre stage · layers
+    // rail. The field renders into `.evo-stage` (the 1fr centre cell) so it fills
+    // the gap between the rails at every width instead of overlapping them with
+    // absolutely-positioned cards. Rails go empty in modes that have no cards.
+    box.innerHTML =
+      '<div class="evo-rail evo-rail-l"></div>' +
+      '<div class="evo-stage" style="position:relative;min-height:' + H + 'px;"></div>' +
+      '<div class="evo-rail evo-rail-r"></div>';
+    var stage = box.querySelector('.evo-stage');
+    var railL = box.querySelector('.evo-rail-l');
+    var railR = box.querySelector('.evo-rail-r');
+    var W = measureW(stage, container);
     st._w = W;
 
     if (st.mode === 'layers') {
       var svg = newSvg(W);
-      canvas.appendChild(svg);
+      stage.appendChild(svg);
       renderLayers(svg, W, data, lang, container, st);
-      addLayerToggles(container, canvas, st, lang);
+      addLayerToggles(container, railR, st, lang);
     } else {
-      renderTunnel(W, data, container, lang, st);   // canvas — manages its own <canvas>
-      addUserPanel(canvas, st, lang);
+      renderTunnel(W, data, container, lang, st);   // renders into `.evo-stage`
+      addUserPanel(railL, st, lang);
       // D п.17: stat-card (Уровень / Рост XP / Эмоция / Состояние / Активность)
       // relocated here from the removed «Персонаж» mode.
-      addCharacterStats(canvas, st, data, data.aggregates || {}, lang);
-      addLayerToggles(container, canvas, st, lang);
+      addCharacterStats(railL, st, data, data.aggregates || {}, lang);
+      addLayerToggles(container, railR, st, lang);
     }
-    if (st.isDemo) addDemoBadge(canvas, lang);
+    if (st.isDemo) addDemoBadge(stage, lang);
   }
 
   // field mode adds a time-cursor + a character stat card; no module grid/axis
