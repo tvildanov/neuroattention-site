@@ -11,12 +11,12 @@
     "skeleton": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/skeleton.glb",
     "nervous":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/nervous.glb",
     "vessels":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/vessels.glb",
-    "organs":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/organs.glb"
+    "organs":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/organs.glb",
+    "joints":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/joints.glb",
+    "lymph":    "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/lymph.glb"
   },
   "brainDetail": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@e480b7ce98b75b47c5c6e79160d0664ea7a76b76/brain-detail.glb",
   "extra": {
-    "joints":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/joints.glb",
-    "lymph":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/lymph.glb",
     "regions": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/regions.glb"
   }
 }
