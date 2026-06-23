@@ -899,23 +899,35 @@
     if (this._requestRender) this._requestRender();
     return this;
   };
-  // opacity is a 0..1 multiplier of the region's base x-ray opacity.
+  // PR #80: the per-region slider sets uOpacity DIRECTLY to its 0..1 value, fully
+  // decoupled from the layer slider — so a part can reach a true, dense 1.0 even
+  // when its layer is dimmed to 50%. (The old code multiplied by a _baseOpacity
+  // captured AFTER the layer slider had already dimmed it, capping the per-region
+  // slider at the layer's value — e.g. a rib could never exceed the skeleton
+  // layer's 50%.) At the very top of the slider we mirror setLayerOpacity's 100%
+  // path — a SOLID, fully-opaque, depth-writing surface — so the part reads as a
+  // dense object rather than a faint additive glow.
   Atlas.prototype.setRegionOpacity = function (regionId, k) {
     k = Math.max(0, Math.min(1, k == null ? 1 : k));
     this._regState(regionId).opacity = k;
+    var T = window.THREE;
+    var solid = k >= 0.999;
     this._forEachRegionMesh(regionId, function (m) {
       var mat = m.material; if (!mat || !mat.uniforms) return;
-      // Cache the baseline values on first touch so resetRegions can restore them.
-      if (mat.uniforms.uOpacity && m.userData._baseOpacity == null) {
-        m.userData._baseOpacity = mat.uniforms.uOpacity.value;
-      }
-      if (mat.uniforms.uGlow && m.userData._baseGlow == null) {
-        m.userData._baseGlow = mat.uniforms.uGlow.value;
-      }
-      // Additive-blended x-ray: opacity alone barely dims; we have to pull uGlow
-      // (which adds light directly) down with it, otherwise the slider seems dead.
-      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = m.userData._baseOpacity * k;
-      if (mat.uniforms.uGlow)    mat.uniforms.uGlow.value    = m.userData._baseGlow    * k;
+      var ud = m.userData;
+      // Cache the GLOW baseline once so resetRegion can restore the layer's glow.
+      if (mat.uniforms.uGlow && ud._baseGlow == null) ud._baseGlow = mat.uniforms.uGlow.value;
+      // Set the per-region opacity straight from the slider — NOT multiplied by
+      // the (possibly layer-dimmed) current value. uOpacity drives both the fill
+      // colour and alpha in the x-ray shader, so this alone makes 100% truly 1.0.
+      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = k;
+      // Glow still tracks the slider so dimming below 100% feels responsive.
+      if (mat.uniforms.uGlow)    mat.uniforms.uGlow.value    = (ud._baseGlow != null ? ud._baseGlow : 1) * k;
+      if (mat.uniforms.uSolid)   mat.uniforms.uSolid.value   = solid ? 1.0 : 0.0;
+      var wantBlend = solid ? T.NormalBlending : T.AdditiveBlending;
+      if (mat.blending !== wantBlend) { mat.blending = wantBlend; mat.needsUpdate = true; }
+      mat.depthWrite = solid;
+      mat.transparent = !solid;
     });
     if (this._requestRender) this._requestRender();
     return this;
@@ -924,21 +936,43 @@
     var s = this._regionStates[regionId];
     return { visible: s ? s.visible : true, opacity: s ? s.opacity : 1 };
   };
+  // Restore a single mesh to whatever its LAYER slider currently dictates — the
+  // value the layer slider would produce (layerOpacity × design-base × solid
+  // state). Used on sub-card close / chip release so a per-region override never
+  // sticks, and re-derives from the LIVE layer state (not a stale cache) so it's
+  // correct even if the layer slider moved while the part was overridden.
+  Atlas.prototype._restoreRegionMeshToLayer = function (m) {
+    var T = window.THREE, mat = m.material; if (!mat) return;
+    var ud = m.userData;
+    m.visible = true;
+    var lst = this._layerState[ud.layer];
+    var lop = lst && lst.opacity != null ? lst.opacity : 0.5;
+    var solid = lop >= 0.999;
+    if (mat.uniforms) {
+      if (mat.uniforms.uOpacity) mat.uniforms.uOpacity.value = lop * (ud.baseOpacity ? ud.baseOpacity * 2 : 1);
+      if (mat.uniforms.uGlow && ud._baseGlow != null) mat.uniforms.uGlow.value = ud._baseGlow;
+      if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = solid ? 1.0 : 0.0;
+      var wantBlend = solid ? T.NormalBlending : T.AdditiveBlending;
+      if (mat.blending !== wantBlend) { mat.blending = wantBlend; mat.needsUpdate = true; }
+      mat.depthWrite = solid;
+      mat.transparent = !solid;
+    } else {
+      mat.opacity = lop;
+    }
+    ud._baseGlow = null;
+  };
+  // Restore one region's meshes to layer opacity and drop its override state.
+  Atlas.prototype.resetRegion = function (regionId) {
+    var self = this;
+    this._forEachRegionMesh(regionId, function (m) { self._restoreRegionMeshToLayer(m); });
+    if (this._regionStates[regionId]) delete this._regionStates[regionId];
+    if (this._requestRender) this._requestRender();
+    return this;
+  };
   Atlas.prototype.resetRegions = function () {
     var self = this;
     Object.keys(this._regionStates).forEach(function (id) {
-      self._forEachRegionMesh(id, function (m) {
-        m.visible = true;
-        var mat = m.material;
-        if (mat && mat.uniforms) {
-          if (mat.uniforms.uOpacity && m.userData._baseOpacity != null) {
-            mat.uniforms.uOpacity.value = m.userData._baseOpacity;
-          }
-          if (mat.uniforms.uGlow && m.userData._baseGlow != null) {
-            mat.uniforms.uGlow.value = m.userData._baseGlow;
-          }
-        }
-      });
+      self._forEachRegionMesh(id, function (m) { self._restoreRegionMeshToLayer(m); });
     });
     this._regionStates = {};
     if (this._requestRender) this._requestRender();

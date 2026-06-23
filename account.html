@@ -14242,7 +14242,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=9"></script>
+<script src="assets/js/body-atlas.js?v=27"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14388,6 +14388,9 @@ window.pbMove = pbMove;
     // PACK D: store current region for the opacity slider + reset slider to
     // the region's currently-applied opacity (or 100% if untouched).
     var rid = ud.regionId || ud.baseSlug || hit.id;
+    // PR #80: release any prior region's opacity override before switching, so a
+    // part you cranked to 100% then clicked away from snaps back to layer opacity.
+    try { if (atlas && atlas.resetRegion && window._atlasCurrentRegion && window._atlasCurrentRegion !== rid) atlas.resetRegion(window._atlasCurrentRegion); } catch (e) {}
     window._atlasCurrentRegion = rid;
     var ctrls = document.getElementById('arp-controls');
     var slider = document.getElementById('arp-opacity');
@@ -14449,7 +14452,16 @@ window.pbMove = pbMove;
   window.atlasBrainDetail = function(){ if(!atlas) return; if(atlas._brainDetail) atlas.exitBrainDetail(); else atlas.enterBrainDetail(); };
   window.atlasExitBrain = function(){ if(atlas) atlas.exitBrainDetail(); };
   window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail(); atlas.resetView(); } atlasCloseRegion(); };
-  window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none'; window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); atlasDestroyMini(); };
+  window.atlasCloseRegion = function(){
+    // PR #80: release the per-region opacity override so the part snaps back to
+    // whatever its layer slider dictates — a 100%-cranked rib must not stay solid
+    // once the sub-card closes.
+    try { if (atlas && atlas.resetRegion && window._atlasCurrentRegion) atlas.resetRegion(window._atlasCurrentRegion); } catch (e) {}
+    var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none';
+    window._atlasCurrentRegion = null;
+    var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open');
+    atlasDestroyMini();
+  };
   window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
 })();
 </script>
