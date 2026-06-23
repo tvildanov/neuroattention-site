@@ -14292,7 +14292,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=26"></script>
+<script src="assets/js/body-atlas.js?v=27"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14563,7 +14563,10 @@ window.pbMove = pbMove;
     // per-region slider overrides, NOT the focusRegions() dim, so it used to stay stuck.
     window.__currentFocusIds=null; try{ atlas.focusRegions&&atlas.focusRegions([]); }catch(e){}
     atlas.resetView(); } atlasCloseRegion(); };
-  window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none'; window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); var vp=document.getElementById('atlas-viewport'); if(vp) vp.classList.remove('region-stacked'); atlasDestroyMini(); };
+  window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none';
+    // restore the region to its layer-driven opacity/render-mode so a slider bump doesn't stick
+    try { if (atlas && atlas.clearRegionOverride && window._atlasCurrentRegion) atlas.clearRegionOverride(window._atlasCurrentRegion); } catch(e){}
+    window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); var vp=document.getElementById('atlas-viewport'); if(vp) vp.classList.remove('region-stacked'); atlasDestroyMini(); };
   window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
   // Item 3: open the region detail sub-card for a region id WITHOUT a 3D click — used
   // when the user taps a region chip in a function/condition card. Builds the same
