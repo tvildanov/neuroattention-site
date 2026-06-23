@@ -31,7 +31,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=11" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=12" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -10613,6 +10613,15 @@ function _cpPlural(n, forms){
   if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
   return forms[2];
 }
+// Localized "N blocks" label for course cards. RU uses proper plural forms; en/es
+// use the i18n template so the count never shows a hardcoded Russian word. (#4A)
+function cpBlocksLabel(n){
+  n = parseInt(n, 10) || 0;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  if (lang === 'ru') return n + ' ' + _cpPlural(n, ['блок', 'блока', 'блоков']);
+  return t('a.courses.cp_blocks_count', '{n} blocks').replace('{n}', n);
+}
+window.cpBlocksLabel = cpBlocksLabel;
 
 function courseSaveMeta(){
   if (!courseState.currentCourse) return;
@@ -11320,7 +11329,7 @@ function loadStudentCourses(){
              + adminBadge
              + '<h3 style="font-size:14px;margin:0 0 0.4rem;color:var(--text-primary);">' + nm + '</h3>'
              + (desc ? '<p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:0;">' + desc + '</p>' : '')
-             + '<p style="font-size:10px;color:var(--text-dim);margin:0.6rem 0 0;font-family:JetBrains Mono,monospace;">' + (c.block_count||0) + ' блоков</p>'
+             + '<p style="font-size:10px;color:var(--text-dim);margin:0.6rem 0 0;font-family:JetBrains Mono,monospace;">' + cpBlocksLabel(c.block_count||0) + '</p>'
              + '</div>';
       }).join('');
     })
@@ -11482,6 +11491,21 @@ function cpBlockTitle(block, uiLang){
       || (p.practice_name ? String(p.practice_name).trim() : '') || '';
 }
 
+// Display title for the player heading + section playlist. (#4B) For tool_task
+// blocks we prefer an explicit title in the UI language; when the author left the
+// UI-language title empty we show the LOCALIZED tool label (e.g. "Neuromap ·
+// emotion") instead of falling back to the Russian author title.
+function cpBlockDisplayTitle(block, uiLang){
+  if (!block) return '';
+  if (block.block_type === 'tool_task') {
+    var own = block['title_' + uiLang];
+    own = (own == null ? '' : String(own)).trim();
+    if (own && CP_TITLE_PLACEHOLDERS.indexOf(own) === -1) return own;
+    return cpToolLabel(block.tool_kind || 'sensation_map');
+  }
+  return cpBlockTitle(block, uiLang);
+}
+
 function cpRenderBlock(){
   cpCancelAutoAdvance();   // clear any pending auto-advance toast on (re)render
   cpDisposeHumanAtlas();   // PACK 9: tear down any inline 3D atlas from the prior block
@@ -11513,7 +11537,7 @@ function cpRenderBlock(){
   document.getElementById('cp-next-btn').style.display = '';
   coursePlayer.blockResponse = null;
   var p = block.payload || {};
-  var title = cpBlockTitle(block, lang) || (block.block_type === 'section' ? t('a.courses.cp_block_untitled','(без названия)') : '');
+  var title = cpBlockDisplayTitle(block, lang) || (block.block_type === 'section' ? t('a.courses.cp_block_untitled','(без названия)') : '');
   var titleHtml = title ? '<h3 style="font-size:16px;margin:0 0 1rem;color:var(--text-primary);">' + title + '</h3>' : '';
   var body = '';
   switch (block.block_type) {
@@ -11526,7 +11550,7 @@ function cpRenderBlock(){
       var kids = (coursePlayer.blocks || []).filter(function(x){ return x.parent_block_id === block.id; });
       var kidsList = kids.map(function(k, ki){
         var kIdx = coursePlayer.blocks.indexOf(k);
-        var kt = cpBlockTitle(k, lang) || _cpTypeLabel(k.block_type);
+        var kt = cpBlockDisplayTitle(k, lang) || _cpTypeLabel(k.block_type);
         var isDone = !!(coursePlayer.progress && coursePlayer.progress[k.id]);
         var isCur = (kIdx === coursePlayer.currentIdx);
         var marker = isDone ? '✓' : (isCur ? '▶' : (ki+1)+'.');
@@ -11663,6 +11687,11 @@ function cpRenderBlock(){
     } else if (bt === 'tool_task' && (block.tool_kind || 'sensation_map') === 'sensation_map') {
       // B п.3: mount the real mini Sensation Map (silhouettes + regions) inline.
       setTimeout(cpMountSensationMap, 40);
+    } else if (bt === 'tool_task' && /^neuromap_/.test(block.tool_kind || '')) {
+      // PR#86 п.1/#4: ensure the Neuromap vocabulary is loaded so emotion/thought/
+      // area chips show localized (not Russian) labels even if the course opens
+      // before the page-init load finished.
+      setTimeout(cpMountNeuromap, 30);
     }
     // 3.5: when we LAND here via auto-advance, start the next audio/video itself
     // (give the DOM ~0.6s to mount the element). If the browser blocks autoplay,
@@ -11744,6 +11773,13 @@ function cpRenderToolTask(block, p, lang){
   // B п.1: sensation_map mounts the REAL mini Sensation Map (silhouettes + regions),
   // not a textarea. Mounted by the post-render hook (cpMountSensationMap).
   if (kind === 'sensation_map') return cpRenderSensationMap(block, p, lang);
+  // PR#86 п.1: every Neuromap kind + Point A→B + Diary render their own inline
+  // mini-tool (real vocabulary chips / structured fields) instead of a textarea
+  // stub. Each tool's Save button builds a structured response and finalises the
+  // block via _cpFinalize → /complete (which logs the correct Evolution Path layer).
+  if (kind === 'neuromap_emotion' || kind === 'neuromap_event' || kind === 'neuromap_thought') return cpRenderNeuromap(block, p, lang, kind);
+  if (kind === 'point_ab') return cpRenderPointAB(block, p, lang);
+  if (kind === 'diary') return cpRenderDiary(block, p, lang);
   var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || { icon:'🛠', label_ru:'Инструмент' };
   var label = cpToolLabel(kind);
   var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
@@ -11775,6 +11811,242 @@ function cpRenderToolTask(block, p, lang){
 }
 window.cpRenderToolTask = cpRenderToolTask;
 
+// ── PR#86 п.1: inline mini-tools for Neuromap / Point A→B / Diary ─────────────
+// These replace the old textarea stub. Each renders the REAL instrument's inputs
+// (vocabulary chips, structured fields) and, on Save, builds a structured response
+// and calls _cpFinalize → /api/courses/:id/blocks/:bid/complete. That endpoint
+// already logs the correct Evolution Path layer per tool_kind (emotion / event /
+// thought / insight), so the result lands on the path exactly like a standalone
+// entry — with no double-logging.
+function _cpEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+var _CP_INSTYLE = 'width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;';
+var _CP_CHIP = 'padding:0.35rem 0.65rem;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02);color:#cdcdd6;font-size:12px;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:5px;';
+// task-prefix header card (cyan), shared by the inline tools
+function _cpTaskCard(kind, instr, lang){
+  var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || { icon:'🛠' };
+  var label = cpToolLabel(kind);
+  return '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;margin-bottom:0.9rem;">'
+       + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">'
+       +   meta.icon + ' ' + t('a.courses.cp_task_prefix','Задание') + ' · ' + label + '</div>'
+       + (instr ? '<div style="font-size:13px;line-height:1.6;color:var(--text-secondary);white-space:pre-wrap;">' + _cpEsc(instr) + '</div>' : '')
+       + '</div>';
+}
+// tone selector row (used by thought / event)
+function _cpToneRow(lang){
+  return '<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.6rem;font-size:12px;color:var(--text-muted);">'
+       + '<span>' + t('a.courses.cp_tone','Тон:') + '</span>'
+       + '<select id="cp-tool-valence" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.3rem 0.5rem;font-size:12px;">'
+       +   '<option value="neutral">' + t('a.courses.cp_tone_neutral','нейтральный') + '</option>'
+       +   '<option value="positive">' + t('a.courses.cp_tone_positive','позитивный') + '</option>'
+       +   '<option value="negative">' + t('a.courses.cp_tone_negative','напряжённый') + '</option>'
+       + '</select></div>';
+}
+// Save button + status row, shared
+function _cpSaveRow(onclickFn){
+  return '<div style="display:flex;gap:0.7rem;align-items:center;margin-top:0.9rem;">'
+       + '<button class="btn btn-solid cp-accent-btn" id="cp-tool-save" onclick="' + onclickFn + '" style="font-size:13px;padding:0.55rem 1.2rem;">' + t('a.courses.cp_save_continue','Сохранить и продолжить') + '</button>'
+       + '<span id="cp-tool-status" style="font-size:12px;color:var(--text-muted);"></span>'
+       + '</div>';
+}
+// build chips from a list of canonical RU labels, localized via nmTranslate
+function _cpNmChips(list, grp){
+  var EM = grp==='emo'?EMOJI_EMOTIONS:grp==='tho'?EMOJI_THOUGHTS:grp==='area'?EMOJI_AREAS:{};
+  return (list||[]).map(function(label){
+    var loc = (typeof nmTranslate==='function') ? nmTranslate(label) : label;
+    var ico = EM[label] || '';
+    return '<div class="cp-nm-chip" data-grp="'+grp+'" data-label="'+_cpEsc(label)+'" onclick="cpNmChipToggle(this)" style="'+_CP_CHIP+'">'+(ico?ico+' ':'')+'<span>'+_cpEsc(loc)+'</span></div>';
+  }).join('');
+}
+function cpNmChipToggle(el){
+  var grp = el.getAttribute('data-grp');
+  // emotion is single-select (one emotion per entry); thoughts/areas multi-select
+  if (grp === 'emo'){
+    var on = !el.classList.contains('active');
+    el.parentNode.querySelectorAll('.cp-nm-chip').forEach(function(c){ c.classList.remove('active'); _cpChipStyle(c,false); });
+    el.classList.toggle('active', on); _cpChipStyle(el, on);
+  } else {
+    var on2 = el.classList.toggle('active'); _cpChipStyle(el, on2);
+  }
+}
+window.cpNmChipToggle = cpNmChipToggle;
+function _cpChipStyle(c, on){
+  c.style.background = on ? 'rgba(0,224,255,0.12)' : 'rgba(255,255,255,0.02)';
+  c.style.borderColor = on ? 'rgba(0,224,255,0.6)' : 'rgba(255,255,255,0.12)';
+  c.style.color = on ? '#fff' : '#cdcdd6';
+}
+
+// 💗📍💭 inline Neuromap (emotion / event / thought)
+function cpRenderNeuromap(block, p, lang, kind){
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  window.CP_NM = { kind: kind };
+  var LBL = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.35rem;';
+  var WRAP = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.8rem;';
+  var h = _cpTaskCard(kind, instr, lang);
+  if (kind === 'neuromap_emotion'){
+    h += '<div style="'+LBL+'">' + t('a.courses.cp_nm_emotion_label','Выбери эмоцию') + '</div>'
+       + '<div style="'+WRAP+'">' + _cpNmChips(NM_ALL_EMOTIONS, 'emo') + '</div>'
+       + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_emotion','Назови эмоцию и опиши её…') + '" style="'+_CP_INSTYLE+'"></textarea>';
+  } else if (kind === 'neuromap_thought'){
+    h += '<div style="'+LBL+'">' + t('a.courses.cp_nm_thought_label','Выбери или запиши мысль') + '</div>'
+       + '<div style="'+WRAP+'">' + _cpNmChips(NM_THOUGHTS, 'tho') + '</div>'
+       + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_thought','Запиши мысль…') + '" style="'+_CP_INSTYLE+'"></textarea>'
+       + _cpToneRow(lang);
+  } else { // neuromap_event
+    h += '<div style="'+LBL+'">' + t('a.courses.cp_nm_event_label','Что произошло') + '</div>'
+       + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_event','Опиши событие…') + '" style="'+_CP_INSTYLE+'"></textarea>'
+       + '<div style="'+LBL+'margin-top:0.7rem;">' + t('a.courses.cp_nm_area_label','Сфера жизни (по желанию)') + '</div>'
+       + '<div style="'+WRAP+'">' + _cpNmChips(NM_AREAS, 'area') + '</div>'
+       + _cpToneRow(lang);
+  }
+  h += _cpSaveRow('cpNmSave()');
+  return h;
+}
+window.cpRenderNeuromap = cpRenderNeuromap;
+
+// Ensure the vocabulary is present, then relocalize chip labels. nmTranslate
+// returns the Russian canonical until _translations is loaded, so a course opened
+// before page-init finished could briefly show RU chips — this repairs them.
+function cpMountNeuromap(){
+  function relabel(){
+    if (typeof nmTranslate !== 'function') return;
+    var area = document.getElementById('cp-block-area'); if (!area) return;
+    area.querySelectorAll('.cp-nm-chip').forEach(function(c){
+      var raw = c.getAttribute('data-label'); var span = c.querySelector('span');
+      if (raw && span) span.textContent = nmTranslate(raw);
+    });
+  }
+  if (!window.nmVocabulary && typeof nmLoadVocabulary === 'function'){
+    try { var pr = nmLoadVocabulary(); if (pr && pr.then) pr.then(relabel); else setTimeout(relabel, 400); } catch(e){ }
+  } else { relabel(); }
+}
+window.cpMountNeuromap = cpMountNeuromap;
+
+function cpNmSave(){
+  var block = coursePlayer.blocks[coursePlayer.idx]; if (!block) return;
+  var kind = (window.CP_NM && window.CP_NM.kind) || block.tool_kind;
+  var status = document.getElementById('cp-tool-status');
+  var area = document.getElementById('cp-block-area');
+  var commentEl = document.getElementById('cp-response');
+  var comment = commentEl ? commentEl.value.trim() : '';
+  function activeLabels(grp){ return Array.from(area.querySelectorAll('.cp-nm-chip.active[data-grp="'+grp+'"]')).map(function(c){ return c.getAttribute('data-label'); }); }
+  function loc(label){ return (typeof nmTranslate==='function') ? nmTranslate(label) : label; }
+  var valSel = document.getElementById('cp-tool-valence');
+  var label = '', valence = valSel ? valSel.value : 'neutral', nm = {};
+  if (kind === 'neuromap_emotion'){
+    var emo = activeLabels('emo')[0] || null;
+    if (emo){ valence = isNegEmotion(emo) ? 'negative' : 'positive'; label = loc(emo) + (comment ? ' — ' + comment : ''); nm.emotion = emo; }
+    else label = comment;
+  } else if (kind === 'neuromap_thought'){
+    var th = activeLabels('tho');
+    if (th.length){ nm.thoughts = th; if (!valSel) valence = (th.some(function(x){ return NM_THOUGHTS.indexOf(x) < 15; })) ? 'negative' : 'positive'; }
+    label = (th.map(loc).join(' · ') || comment);
+    if (th.length && comment) label += ' — ' + comment;
+  } else { // event
+    var ar = activeLabels('area'); if (ar.length) nm.areas = ar;
+    label = comment || ar.map(loc).join(' · ');
+  }
+  if (!label && !comment){ if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_nm_empty','Сначала выбери или опиши что-нибудь'); } return; }
+  var response = {
+    text: comment || label, label: String(label || comment).slice(0, 80),
+    valence: valence, comment: comment, tool_kind: kind, neuromap: nm
+  };
+  coursePlayer.blockResponse = response;
+  var btn = document.getElementById('cp-tool-save'); if (btn) btn.disabled = true;
+  if (status){ status.style.color = '#0e9'; status.textContent = t('a.courses.cp_sm_saved','✓ Сохранено в Путь развития'); }
+  if (coursePlayer.previewMode){ setTimeout(function(){ cpNext(); }, 600); return; }
+  setTimeout(function(){ _cpFinalize(block, response); }, 700);
+}
+window.cpNmSave = cpNmSave;
+
+// 🅰 inline Point A → B
+function cpRenderPointAB(block, p, lang){
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var LBL = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:0.7rem 0 0.35rem;';
+  var h = _cpTaskCard('point_ab', instr, lang)
+    + '<div style="'+LBL+'margin-top:0;">' + t('a.courses.cp_pab_a_label','Точка А — где ты сейчас') + '</div>'
+    + '<textarea id="cp-pab-a" rows="2" placeholder="' + t('a.courses.cp_pab_ph_a','Где ты сейчас…') + '" style="'+_CP_INSTYLE+'"></textarea>'
+    + '<div style="'+LBL+'">' + t('a.courses.cp_pab_b_label','Точка B — куда хочешь прийти') + '</div>'
+    + '<textarea id="cp-pab-b" rows="2" placeholder="' + t('a.courses.cp_pab_ph_b','Куда хочешь прийти…') + '" style="'+_CP_INSTYLE+'"></textarea>'
+    + '<div style="'+LBL+'">' + t('a.courses.cp_pab_reasons_label',"Что мешает (по желанию)") + '</div>'
+    + '<textarea id="cp-response" rows="2" placeholder="' + t('a.courses.cp_pab_ph_reasons','Что тебя останавливает…') + '" style="'+_CP_INSTYLE+'"></textarea>'
+    + _cpSaveRow('cpPabSave()');
+  return h;
+}
+window.cpRenderPointAB = cpRenderPointAB;
+
+function cpPabSave(){
+  var block = coursePlayer.blocks[coursePlayer.idx]; if (!block) return;
+  var status = document.getElementById('cp-tool-status');
+  var a = (document.getElementById('cp-pab-a')||{}).value || '';
+  var b = (document.getElementById('cp-pab-b')||{}).value || '';
+  var reasons = (document.getElementById('cp-response')||{}).value || '';
+  a = a.trim(); b = b.trim(); reasons = reasons.trim();
+  if (!a && !b){ if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_nm_empty','Сначала выбери или опиши что-нибудь'); } return; }
+  var label = (a && b) ? (a + ' → ' + b) : (a || b);
+  var response = {
+    text: label + (reasons ? ('\n' + reasons) : ''), label: String(label).slice(0, 80),
+    valence: 'neutral', comment: reasons, tool_kind: 'point_ab',
+    point_a: a, point_b: b, reasons: reasons
+  };
+  coursePlayer.blockResponse = response;
+  var btn = document.getElementById('cp-tool-save'); if (btn) btn.disabled = true;
+  if (status){ status.style.color = '#0e9'; status.textContent = t('a.courses.cp_sm_saved','✓ Сохранено в Путь развития'); }
+  if (coursePlayer.previewMode){ setTimeout(function(){ cpNext(); }, 600); return; }
+  setTimeout(function(){ _cpFinalize(block, response); }, 700);
+}
+window.cpPabSave = cpPabSave;
+
+// 📓 inline Neuro-resource Diary
+function cpRenderDiary(block, p, lang){
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var LBL = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:0.7rem 0 0.35rem;';
+  var IMP = 'padding:0.4rem 0.8rem;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02);color:#cdcdd6;font-size:13px;cursor:pointer;user-select:none;';
+  var h = _cpTaskCard('diary', instr, lang)
+    + '<div style="'+LBL+'margin-top:0;">' + t('a.courses.cp_diary_event_label','Событие') + '</div>'
+    + '<textarea id="cp-response" rows="2" placeholder="' + t('a.courses.cp_ph_diary','Запиши, что заметил(а) — мысли, состояние, наблюдение…') + '" style="'+_CP_INSTYLE+'"></textarea>'
+    + '<div style="'+LBL+'">' + t('a.courses.cp_diary_comment_label','Комментарий (по желанию)') + '</div>'
+    + '<textarea id="cp-diary-comment" rows="2" placeholder="" style="'+_CP_INSTYLE+'"></textarea>'
+    + '<div style="'+LBL+'">' + t('a.courses.cp_diary_impact','Как это повлияло на ресурс') + '</div>'
+    + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">'
+    +   '<div class="cp-diary-imp" data-val="negative" onclick="cpDiaryPick(this)" style="'+IMP+'">— ' + t('a.courses.cp_diary_worse','хуже') + '</div>'
+    +   '<div class="cp-diary-imp" data-val="neutral" onclick="cpDiaryPick(this)" style="'+IMP+'">○ ' + t('a.courses.cp_tone_neutral','нейтральный') + '</div>'
+    +   '<div class="cp-diary-imp" data-val="positive" onclick="cpDiaryPick(this)" style="'+IMP+'">+ ' + t('a.courses.cp_diary_better','лучше') + '</div>'
+    + '</div>'
+    + _cpSaveRow('cpDiarySave()');
+  return h;
+}
+window.cpRenderDiary = cpRenderDiary;
+
+function cpDiaryPick(el){
+  el.parentNode.querySelectorAll('.cp-diary-imp').forEach(function(c){
+    c.classList.remove('active'); c.style.background='rgba(255,255,255,0.02)'; c.style.borderColor='rgba(255,255,255,0.12)'; c.style.color='#cdcdd6';
+  });
+  el.classList.add('active'); el.style.background='rgba(0,224,255,0.12)'; el.style.borderColor='rgba(0,224,255,0.6)'; el.style.color='#fff';
+}
+window.cpDiaryPick = cpDiaryPick;
+
+function cpDiarySave(){
+  var block = coursePlayer.blocks[coursePlayer.idx]; if (!block) return;
+  var status = document.getElementById('cp-tool-status');
+  var area = document.getElementById('cp-block-area');
+  var ev = (document.getElementById('cp-response')||{}).value || '';
+  var comment = (document.getElementById('cp-diary-comment')||{}).value || '';
+  ev = ev.trim(); comment = comment.trim();
+  var impEl = area.querySelector('.cp-diary-imp.active');
+  var valence = impEl ? impEl.getAttribute('data-val') : 'neutral';
+  if (!ev && !comment){ if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_nm_empty','Сначала выбери или опиши что-нибудь'); } return; }
+  var response = {
+    text: ev || comment, label: String(ev || comment).slice(0, 80),
+    valence: valence, comment: comment, tool_kind: 'diary'
+  };
+  coursePlayer.blockResponse = response;
+  var btn = document.getElementById('cp-tool-save'); if (btn) btn.disabled = true;
+  if (status){ status.style.color = '#0e9'; status.textContent = t('a.courses.cp_sm_saved','✓ Сохранено в Путь развития'); }
+  if (coursePlayer.previewMode){ setTimeout(function(){ cpNext(); }, 600); return; }
+  setTimeout(function(){ _cpFinalize(block, response); }, 700);
+}
+window.cpDiarySave = cpDiarySave;
+
 // ── B п.1–5: inline mini Sensation Map for course tool_task (kind='sensation_map') ──
 // Renders the REAL instrument: 2D silhouettes + clickable regions (via the shared
 // window.mountBodyPicker, same engine as the standalone tool) + compact sensation
@@ -11800,12 +12072,15 @@ function cpRenderSensationMap(block, p, lang){
         +   (instr ? instr.replace(/</g,'&lt;') : t('a.courses.cp_sm_pick_hint','Выберите области на теле и опишите ощущения')) + '</div>'
         + (regionFocus ? '<div style="font-size:12px;color:var(--accent-cyan);margin-top:0.4rem;">' + t('a.courses.cp_sm_region_focus','Фокус:') + ' ' + String(regionFocus).replace(/</g,'&lt;') + '</div>' : '')
         + '</div>'
-        // silhouettes (front/back) + clickable regions — mounted by cpMountSensationMap
+        // B п.A: sensation TYPE first, then where on the body (matches standalone)
+        + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:0.55rem;">' + t('a.courses.cp_sm_order_hint','Сначала выбери тип ощущения, потом — где ты его чувствуешь на теле') + '</div>'
+        // 1) compact sensation chips
+        + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">' + t('a.courses.cp_sm_sensations','Ощущения') + '</div>'
+        + '<div id="cp-sm-sens" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.9rem;"></div>'
+        // 2) where on the body — silhouettes + clickable regions (mounted by cpMountSensationMap)
+        + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">' + t('a.courses.cp_sm_where','Где на теле') + '</div>'
         + '<div id="cp-sm-picker" style="min-height:240px;margin-bottom:0.6rem;"></div>'
         + '<div id="cp-sm-selected" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.6rem;"></div>'
-        // compact sensation chips
-        + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">' + t('a.courses.cp_sm_sensations','Ощущения') + '</div>'
-        + '<div id="cp-sm-sens" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.8rem;"></div>'
         + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_sensation','Опиши свои ощущения и где ты их чувствуешь…') + '" style="' + inStyle + '"></textarea>'
         // intensity + tone row
         + '<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:0.6rem;font-size:12px;color:var(--text-muted);">'
@@ -11883,7 +12158,18 @@ function cpSensRenderSelected(){
 }
 function cpSensUnselect(slug){
   delete window.CP_SM.sel[slug]; cpSensRenderSelected();
-  try { document.querySelectorAll('#cp-sm-picker .bp-sub.picked').forEach(function(b){ if(b.getAttribute('data-slug')===slug) b.classList.remove('picked'); }); } catch(e){}
+  try {
+    // zone-level slugs (bp_zone_<view>_<region>) live on a .bp-region; sub-region
+    // slugs live on a .bp-sub button — clear whichever holds this slug.
+    if (slug.indexOf('bp_zone_') === 0) {
+      var parts = slug.split('_'); var view = parts[2], rk = parts.slice(3).join('_');
+      document.querySelectorAll('#cp-sm-picker .bp-region.picked').forEach(function(b){
+        if (b.getAttribute('data-view') === view && b.getAttribute('data-region') === rk) b.classList.remove('picked');
+      });
+    } else {
+      document.querySelectorAll('#cp-sm-picker .bp-sub.picked').forEach(function(b){ if(b.getAttribute('data-slug')===slug) b.classList.remove('picked'); });
+    }
+  } catch(e){}
 }
 window.cpSensUnselect = cpSensUnselect;
 
@@ -11952,66 +12238,77 @@ function cpRenderHumanAtlas(block, p, lang){
   var cfg = block.tool_config || {};
   var mode = cfg.mode || 'anatomy';
   var pl = cfg.payload || {};
-  var key = pl.region_id || pl.function_slug || pl.condition_slug || '';
+  // PR#86 п.3: accept the several key spellings authors use (condition_id /
+  // condition_slug / condition, function_id / function_slug, region_id / region).
+  var key = (mode==='function') ? (pl.function_slug||pl.function_id||pl.function||pl.slug||'')
+          : (mode==='condition') ? (pl.condition_slug||pl.condition_id||pl.condition||pl.slug||'')
+          : (pl.region_id||pl.region_slug||pl.region||pl.slug||'');
+  key = String(key||'').trim();
   var modeLabel = mode==='function' ? (lang==='en'?'Human function':lang==='es'?'Función':'Функция человека')
                : mode==='condition' ? (lang==='en'?'Condition':lang==='es'?'Estado':'Состояние')
                : (lang==='en'?'Anatomy':lang==='es'?'Anatomía':'Анатомия');
-  var fallbackTitle = mode==='anatomy' ? key.replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}) : key;
+  var fallbackTitle = mode==='anatomy' ? key.replace(/[-_]/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}) : key;
   var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
   var openLbl = lang==='en'?'Open in the full Atlas ↗':lang==='es'?'Abrir en el Atlas completo ↗':'Открыть в полном Атласе ↗';
   var cfgJson = encodeURIComponent(JSON.stringify({ mode: mode, payload: pl }));
-  // PACK 9: stash the block config so the post-render hook (cpMountHumanAtlas)
-  // can mount the real 3D atlas INLINE — the student never leaves the course.
+  // stash the (normalised) block config so the post-render hook (cpMountHumanAtlas)
+  // can mount the real 3D atlas INLINE and apply the condition/function/region focus.
   coursePlayer._haCfg = { mode: mode, payload: pl, key: key, lang: lang };
   var loadingLbl = lang==='en'?'Loading 3D…':lang==='es'?'Cargando 3D…':'Загружаем 3D…';
-  var h = '<div style="padding:0.9rem 1rem;background:rgba(141,255,200,0.06);border:1px solid rgba(141,255,200,0.22);border-radius:10px;margin-bottom:0.7rem;">'
-        + '<div style="font-size:10px;color:#8DFFC8;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">🧬 ' + modeLabel + '</div>'
-        + '<div id="ha-cp-title" style="font-size:16px;color:var(--text-primary);font-weight:600;margin-bottom:0.3rem;">' + fallbackTitle.replace(/</g,'&lt;') + '</div>'
-        + '<div id="ha-cp-desc" style="font-size:13px;line-height:1.6;color:var(--text-muted);"></div>'
+  // Atlas-style layout: layer rail (left) · 3D canvas (center) · info panel (right).
+  // Layers used to sit cramped below the canvas; the player is full-width now, so
+  // the rails use the empty side space exactly like the main Human Atlas tool.
+  var h = '<div class="cp-ha-grid" style="display:flex;gap:0.6rem;align-items:stretch;flex-wrap:wrap;margin-bottom:0.7rem;">'
+        // LEFT: layer toggles (vertical rail) + Reset view
+        + '<div style="flex:0 0 132px;display:flex;flex-direction:column;gap:0.4rem;min-width:120px;">'
+        +   '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;">' + t('a.courses.cp_ha_layers','Слои') + '</div>'
+        +   '<div id="cp-ha-layers" style="display:flex;flex-direction:column;gap:0.35rem;"></div>'
+        +   '<button type="button" id="cp-ha-reset" onclick="cpHaReset()" style="margin-top:0.4rem;font-size:11px;padding:0.35rem 0.5rem;border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.04);color:var(--text-muted);">' + t('a.courses.cp_ha_reset','⟲ Сбросить вид') + '</button>'
         + '</div>'
-        // inline 3D embed — mounted by cpMountHumanAtlas after the DOM settles
-        + '<div id="cp-ha-embed" style="position:relative;width:100%;height:380px;background:radial-gradient(80% 80% at 50% 35%,rgba(141,255,200,0.05),transparent 70%);border:1px solid rgba(141,255,200,0.16);border-radius:12px;overflow:hidden;margin-bottom:0.5rem;touch-action:none;">'
+        // CENTER: inline 3D embed
+        + '<div id="cp-ha-embed" style="position:relative;flex:1 1 300px;min-width:260px;height:440px;background:radial-gradient(80% 80% at 50% 35%,rgba(141,255,200,0.05),transparent 70%);border:1px solid rgba(141,255,200,0.16);border-radius:12px;overflow:hidden;touch-action:none;">'
         +   '<div id="cp-ha-embed-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;">' + loadingLbl + '</div>'
         + '</div>'
-        + '<div id="cp-ha-layers" style="display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;margin-bottom:0.6rem;"></div>'
-        + '<div style="text-align:right;margin-bottom:0.7rem;"><a href="#" onclick="haOpenTool(decodeURIComponent(\'' + cfgJson + '\'));return false;" style="font-size:11.5px;color:var(--text-dim);text-decoration:none;">' + openLbl + '</a></div>'
+        // RIGHT: info panel (name, description, affected regions)
+        + '<div style="flex:0 0 220px;min-width:180px;display:flex;flex-direction:column;gap:0.5rem;">'
+        +   '<div style="font-size:10px;color:#8DFFC8;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">🧬 ' + modeLabel + '</div>'
+        +   '<div id="ha-cp-title" style="font-size:15px;color:var(--text-primary);font-weight:600;">' + fallbackTitle.replace(/</g,'&lt;') + '</div>'
+        +   '<div id="ha-cp-desc" style="font-size:12.5px;line-height:1.55;color:var(--text-muted);"></div>'
+        +   '<div id="ha-cp-regions" style="display:flex;flex-wrap:wrap;gap:0.3rem;"></div>'
+        +   '<div style="margin-top:auto;"><a href="#" onclick="haOpenTool(decodeURIComponent(\'' + cfgJson + '\'));return false;" style="font-size:11px;color:var(--text-dim);text-decoration:none;">' + openLbl + '</a></div>'
+        + '</div>'
+        + '</div>'
         + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.7rem;">' + instr.replace(/</g,'&lt;') + '</div>' : '')
         + '<textarea id="cp-response" rows="4" placeholder="' + (lang==='en'?'Your notes…':lang==='es'?'Tus notas…':'Твои заметки…') + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
-  // async: resolve the real localized name + description for function/condition
-  if (mode !== 'anatomy' && key) {
-    var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
-    var url = mode==='function' ? '/api/anatomy/functions/'+key : '/api/anatomy/conditions/'+key;
-    setTimeout(function(){
-      fetch(base+url).then(function(r){return r.ok?r.json():null;}).then(function(d){
-        if(!d) return; var row = d.function||d.condition; if(!row) return;
-        var t=document.getElementById('ha-cp-title'); var ds=document.getElementById('ha-cp-desc');
-        if(t) t.textContent = row['name_'+lang]||row.name_ru||row.name_en||fallbackTitle;
-        if(ds) ds.textContent = row['description_'+lang]||row.description_en||row.description_ru||'';
-      }).catch(function(){});
-    }, 0);
-  }
   return h;
 }
 window.cpRenderHumanAtlas = cpRenderHumanAtlas;
 
-// PACK 9: inline 3D atlas lifecycle inside the course player ─────────────────
+// PACK 9 / PR#86: inline 3D atlas lifecycle inside the course player ──────────
 // A dedicated BodyAtlas instance lives in #cp-ha-embed for the duration of a
 // human-atlas block. It is its OWN instance (not window._anatomyAtlas) and is
-// fully disposed when the block changes or the player closes, so the heavy GPU
-// resources never leak. Completion stays on the normal "Далее →" (cpNext) flow.
+// fully disposed when the block changes or the player closes. On mount we resolve
+// the configured condition/function/region to its affected region ids and apply
+// the SAME focus the main Atlas uses: enable exactly the needed layers, dim the
+// rest, and isolate the affected meshes — so the student lands on the condition
+// visualization (e.g. gastritis → stomach lit, organs layer on), not an empty body.
 function cpDisposeHumanAtlas(){
   try{ if(coursePlayer._haAtlas){ coursePlayer._haAtlas.destroy(); } }catch(e){}
   coursePlayer._haAtlas = null;
+  coursePlayer._haState = null;
 }
 window.cpDisposeHumanAtlas = cpDisposeHumanAtlas;
 
 var CP_HA_LAYERS = [
-  { key:'muscles',  ru:'Мышцы',  en:'Muscles',  es:'Músculos',  on:false, op:0.5 },
-  { key:'skeleton', ru:'Скелет', en:'Skeleton', es:'Esqueleto', on:false, op:0.7 },
-  { key:'nervous',  ru:'Нервы',  en:'Nerves',   es:'Nervios',   on:false, op:0.8 },
-  { key:'vessels',  ru:'Сосуды', en:'Vessels',  es:'Vasos',     on:false, op:0.6 },
-  { key:'organs',   ru:'Органы', en:'Organs',   es:'Órganos',   on:false, op:0.55 }
+  { key:'muscles',  ru:'Мышцы',  en:'Muscles',  es:'Músculos',  op:0.5 },
+  { key:'skeleton', ru:'Скелет', en:'Skeleton', es:'Esqueleto', op:0.7 },
+  { key:'nervous',  ru:'Нервы',  en:'Nerves',   es:'Nervios',   op:0.8 },
+  { key:'vessels',  ru:'Сосуды', en:'Vessels',  es:'Vasos',     op:0.6 },
+  { key:'organs',   ru:'Органы', en:'Organs',   es:'Órganos',   op:0.55 }
 ];
+var _CP_HA_BRAIN_RE = /front|pariet|tempor|occip|thalam|hypothal|hippocamp|amygdal|cerebell|brain|cortex|limbic|insula|cingul|midbrain|pons|medulla/i;
+function _cpHaOp(key){ for(var i=0;i<CP_HA_LAYERS.length;i++){ if(CP_HA_LAYERS[i].key===key) return CP_HA_LAYERS[i].op; } return 0.6; }
+
 function cpMountHumanAtlas(){
   var cfg = coursePlayer._haCfg || {};
   var lang = cfg.lang || ((typeof getLang==='function') ? getLang() : 'ru');
@@ -12019,36 +12316,117 @@ function cpMountHumanAtlas(){
   if(!vp) return;
   if(!window.BodyAtlas){ var m0=document.getElementById('cp-ha-embed-msg'); if(m0) m0.textContent='3D engine unavailable'; return; }
   cpDisposeHumanAtlas();
-  var reveal = cfg.mode==='anatomy' ? (cfg.key||'') : '';
   window.BodyAtlas.init(vp, { mode:'full' }).then(function(a){
     if(!document.getElementById('cp-ha-embed')){ try{ a.destroy(); }catch(e){} return; } // block already changed
     coursePlayer._haAtlas = a;
-    a.on('ready', function(){ var m=document.getElementById('cp-ha-embed-msg'); if(m) m.style.display='none'; });
-    cpHaInjectLayers(a, lang);
-    // best-effort focus: if the block targets a brain structure, zoom into the brain
     a.on('ready', function(){
-      try{
-        if(cfg.mode==='anatomy' && /front|pariet|tempor|occip|thalam|hypothal|hippocamp|amygdal|cerebell|brain|cortex|limbic|insula|cingul|midbrain|pons|medulla/i.test(reveal)){
-          a.enterBrainDetail();
-        }
-      }catch(e){}
+      var m=document.getElementById('cp-ha-embed-msg'); if(m) m.style.display='none';
+      cpHaResolveAndFocus(a, cfg, lang);
     });
   }).catch(function(){ var m=document.getElementById('cp-ha-embed-msg'); if(m) m.textContent=(lang==='en'?'3D failed to load':lang==='es'?'Error al cargar 3D':'3D не загрузился'); });
 }
 window.cpMountHumanAtlas = cpMountHumanAtlas;
 
-function cpHaInjectLayers(a, lang){
+// Resolve the block config → region ids, then drive the focus + info panel.
+function cpHaResolveAndFocus(a, cfg, lang){
+  var mode = cfg.mode, key = cfg.key;
+  if(mode === 'anatomy'){
+    cpHaSetState(a, key ? [key] : [], lang);
+    return;
+  }
+  if(!key){ cpHaInjectLayers(a, lang, {}); return; }
+  var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+  cpHaFetchEntity(base, mode, key).then(function(row){
+    if(!row){ cpHaInjectLayers(a, lang, {}); return; }
+    var ids = (mode==='function' ? row.region_ids : row.affected_region_ids) || [];
+    var ti=document.getElementById('ha-cp-title'); var ds=document.getElementById('ha-cp-desc');
+    if(ti) ti.textContent = row['name_'+lang]||row.name_ru||row.name_en||cfg.key;
+    if(ds) ds.textContent = row['description_'+lang]||row.description_en||row.description_ru||'';
+    cpHaRenderRegions(ids, lang);
+    cpHaSetState(a, ids, lang);
+  }).catch(function(){ cpHaInjectLayers(a, lang, {}); });
+}
+
+// Fetch a condition/function row; on a 404 (e.g. author typed 'gastrit' for the
+// 'gastritis' slug) fall back to the list endpoint and match by slug prefix/name.
+function cpHaFetchEntity(base, mode, key){
+  var single = mode==='function' ? '/api/anatomy/functions/' : '/api/anatomy/conditions/';
+  var listUrl = mode==='function' ? '/api/anatomy/functions' : '/api/anatomy/conditions';
+  var rowKey = mode==='function' ? 'function' : 'condition';
+  var listKey = mode==='function' ? 'functions' : 'conditions';
+  return fetch(base + single + encodeURIComponent(key)).then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if(d && d[rowKey]) return d[rowKey];
+      var k = String(key).toLowerCase();
+      return fetch(base + listUrl).then(function(r){ return r.ok ? r.json() : null; }).then(function(ld){
+        var list = (ld && (ld[listKey] || ld.items)) || [];
+        var hit = list.filter(function(x){ var s=String(x.slug||'').toLowerCase(); return s===k || s.indexOf(k)===0 || k.indexOf(s)===0; })[0];
+        if(!hit) hit = list.filter(function(x){ return ['name_en','name_ru','name_es'].some(function(f){ return String(x[f]||'').toLowerCase()===k; }); })[0];
+        return hit || null;
+      });
+    });
+}
+
+// Compute which layers the ids need, store the curated state (for Reset), apply
+// the focus, and (re)render the layer rail reflecting the active layers.
+function cpHaSetState(a, ids, lang){
+  ids = (ids||[]).filter(Boolean);
+  var need = {};
+  try{ if(a.layersForSeedIds) a.layersForSeedIds(ids).forEach(function(l){ need[l]=1; }); }catch(e){}
+  if(!Object.keys(need).length) need.organs = 1; // sensible default when unknown
+  coursePlayer._haState = { a: a, ids: ids, need: need, lang: lang };
+  cpHaApplyFocus(a, ids, need);
+  cpHaInjectLayers(a, lang, need);
+}
+
+// Mirror of the main Atlas focus(): exit brain detail, toggle exactly the needed
+// layers (skin off), then isolate the affected regions — retried across the lazy
+// GLB streams so it still lands once a just-enabled layer finishes loading.
+function cpHaApplyFocus(a, ids, need){
+  try{ if(a._brainDetail && a.exitBrainDetail) a.exitBrainDetail(); }catch(e){}
+  ['skin','muscles','skeleton','nervous','vessels','organs'].forEach(function(l){
+    try{ a.toggleLayer(l, !!need[l]); if(need[l]) a.setLayerOpacity(l, _cpHaOp(l)); }catch(e){}
+  });
+  if(!ids.length) return;
+  // brain structures read best in brain-detail; everything else stays full-body
+  var brainy = ids.some(function(id){ return _CP_HA_BRAIN_RE.test(String(id)); });
+  if(brainy && ids.length===1){ try{ a.enterBrainDetail(); }catch(e){} }
+  var apply = function(){ try{ a.focusRegions(ids); }catch(e){} };
+  apply(); setTimeout(apply, 350); setTimeout(apply, 900); setTimeout(apply, 2000);
+}
+
+// Reset View → restore the curated condition view (camera + focus + layers).
+function cpHaReset(){
+  var s = coursePlayer._haState; if(!s || !s.a) return;
+  try{ s.a.resetView(); }catch(e){}
+  setTimeout(function(){ cpHaApplyFocus(s.a, s.ids, s.need); cpHaInjectLayers(s.a, s.lang, s.need); }, 60);
+}
+window.cpHaReset = cpHaReset;
+
+// Affected-region chips in the info panel (prettified slugs).
+function cpHaRenderRegions(ids, lang){
+  var host = document.getElementById('ha-cp-regions'); if(!host) return;
+  ids = (ids||[]).filter(Boolean);
+  if(!ids.length){ host.innerHTML=''; return; }
+  var CH = 'font-size:11px;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(141,255,200,0.35);background:rgba(141,255,200,0.08);color:#bdf6da;';
+  host.innerHTML = '<div style="width:100%;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.1rem;">' + t('a.courses.cp_ha_affected','Затронутые области') + '</div>'
+    + ids.map(function(id){ var nm=String(id).replace(/[-_]/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); return '<span style="'+CH+'">'+_cpEsc(nm)+'</span>'; }).join('');
+}
+
+function cpHaInjectLayers(a, lang, activeMap){
   var host = document.getElementById('cp-ha-layers'); if(!host) return;
+  activeMap = activeMap || {};
   host.innerHTML='';
   CP_HA_LAYERS.forEach(function(L){
+    var on = !!activeMap[L.key];
     var chip = document.createElement('button'); chip.type='button';
-    chip.textContent = L[lang]||L.en; chip.dataset.layer = L.key; chip.dataset.on = L.on?'1':'';
-    function setStyle(on){ chip.style.cssText='font-size:11.5px;padding:0.28rem 0.6rem;border-radius:999px;cursor:pointer;border:1px solid '+(on?'rgba(141,255,200,0.5)':'rgba(255,255,255,0.12)')+';background:'+(on?'rgba(141,255,200,0.16)':'rgba(255,255,255,0.04)')+';color:'+(on?'#8DFFC8':'var(--text-muted)')+';transition:.15s;'; }
-    setStyle(L.on);
-    try{ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op); }catch(e){}
+    chip.textContent = L[lang]||L.en; chip.dataset.layer = L.key; chip.dataset.on = on?'1':'';
+    function setStyle(s){ chip.style.cssText='font-size:11.5px;padding:0.3rem 0.55rem;border-radius:8px;cursor:pointer;text-align:left;border:1px solid '+(s?'rgba(141,255,200,0.5)':'rgba(255,255,255,0.12)')+';background:'+(s?'rgba(141,255,200,0.16)':'rgba(255,255,255,0.04)')+';color:'+(s?'#8DFFC8':'var(--text-muted)')+';transition:.15s;'; }
+    setStyle(on);
+    try{ a.toggleLayer(L.key, on); if(on) a.setLayerOpacity(L.key, L.op); }catch(e){}
     chip.addEventListener('click', function(){
-      var on = !(chip.dataset.on==='1'); chip.dataset.on = on?'1':''; setStyle(on);
-      try{ a.toggleLayer(L.key, on); }catch(e){}
+      var nx = !(chip.dataset.on==='1'); chip.dataset.on = nx?'1':''; setStyle(nx);
+      try{ a.toggleLayer(L.key, nx); if(nx) a.setLayerOpacity(L.key, L.op); }catch(e){}
     });
     host.appendChild(chip);
   });
@@ -14487,7 +14865,7 @@ window.pbMove = pbMove;
 
 <script src="assets/js/media.js" defer></script>
 <script src="assets/js/sensation-icons.js?v=3"></script>
-<script src="assets/js/body-picker.js?v=2"></script>
+<script src="assets/js/body-picker.js?v=3"></script>
 <script src="assets/js/registration-location.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/typography.js?v=2" defer></script>
