@@ -632,7 +632,13 @@
     if (!cv) { cv = document.createElement('canvas'); cv.className = 'evo-2d'; cv.style.cssText = 'display:block;width:100%;'; host.insertBefore(cv, host.firstChild); }
     var dpr = Math.min(2, window.devicePixelRatio || 1);   // retina, but never >2 (no double-render)
     var isMobile = W <= 560;
-    var padL = isMobile ? 14 : 168, padR = isMobile ? 14 : 150, padTop = isMobile ? 64 : 50, padBot = 34;
+    // PR: padL/padR used to reserve 168/150px inside the canvas for the profile +
+    // layer-toggle cards that floated OVER the field. Since PR #81 those cards live
+    // in the flanking rails (.evo-rail-l / -r), so that reservation is now dead
+    // space — the snake was stranded in a narrow central band with black corridors
+    // either side. Drop it to a small symmetric gutter so the spine fills the stage
+    // wall-to-wall between the rails.
+    var padL = isMobile ? 14 : 28, padR = isMobile ? 14 : 28, padTop = isMobile ? 64 : 28, padBot = 34;
     var x0 = padL, x1 = W - padR, fieldTop = padTop;
     // ── PR5: split the viewport into a chains zone (top ~70%) and an External
     // Field overlay zone (bottom ~30%). Overlay layers are only those the user
@@ -1624,7 +1630,9 @@
   /* ── view: LAYERS (horizontal lanes, wavy baselines) ────────────────────── */
   function renderLayers(svg, W, data, lang, container, st) {
     var dom = domain(data);
-    var padL = 96, padR = 150, padTop = 46, padBot = 30;
+    // PR: keep just enough left gutter for the lane labels (drawn at x:10); drop the
+    // old 150px right reservation so the lanes span the stage between the rails.
+    var padL = 64, padR = 28, padTop = 46, padBot = 30;
     var x0 = padL, x1 = W - padR;
     var hidden = st.hidden || {};
     var lanes = LAYERS.filter(function (l) { return !hidden[l.key]; });
@@ -2018,6 +2026,14 @@
 
   function paint(container, st, lang) {
     var box = container.querySelector('.myc-evo-canvas');
+    // PR: the header (title + mode/period controls) is relocated INTO the centre
+    // stage so the framed panel reads as one dark rectangle — title · snake · axis —
+    // filling the gap between the profile rail and the layers rail. Before clearing
+    // the box, pull the head back out to the container so neither innerHTML reset
+    // below destroys it (its wired listeners survive the move). Skipped for the
+    // fullscreen overlay, whose own chrome already shows the title.
+    var headEl = (!st._isOverlay) ? container.querySelector('.myc-evo-head') : null;
+    if (headEl && headEl.parentNode !== container) container.insertBefore(headEl, box);
     box.innerHTML = '';
     POS = {};
     var data = st.data;
@@ -2057,6 +2073,8 @@
       addLayerToggles(container, railR, st, lang);
     }
     if (st.isDemo) addDemoBadge(stage, lang);
+    // drop the relocated header in at the top of the framed stage (above the snake)
+    if (headEl) stage.insertBefore(headEl, stage.firstChild);
   }
 
   // field mode adds a time-cursor + a character stat card; no module grid/axis
