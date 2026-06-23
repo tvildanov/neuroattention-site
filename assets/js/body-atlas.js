@@ -1244,23 +1244,23 @@
     //    in the organs GLB (see /tmp/organs-inventory.json). 'esophagus'/'ileum'
     //    have no mesh (only 'oesophagus'; small bowel is duodenum+jejunum) — kept
     //    as harmless spelling/intent aliases.
-    'stomach':         { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['stomach'] },
+    'stomach':         { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['stomach', 'cardia', 'cardiac_notch', 'pyloric_antrum', 'pyloric_part'] },
     'oesophagus':      { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['oesophagus', 'esophagus'] },
     'small-intestine': { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['small_intestine', 'duodenum', 'jejunum', 'ileum'], descendants: ['duodenum', 'jejunum'] },
     'duodenum':        { layer: 'organs', organ: 'gi-tract', parent: 'small-intestine', aliases: ['duodenum'] },
     'jejunum':         { layer: 'organs', organ: 'gi-tract', parent: 'small-intestine', aliases: ['jejunum'] },
-    'large-intestine': { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['large_intestine', 'colon', 'ascending_colon', 'descending_colon', 'transverse_colon', 'sigmoid_colon'] },
+    'large-intestine': { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['large_intestine', 'colon', 'ascending_colon', 'descending_colon', 'transverse_colon', 'sigmoid_colon', 'caecum', 'appendix', 'vermiform_appendix', 'rectum'] },
     'gallbladder':     { layer: 'organs', organ: 'gi-tract', parent: null, aliases: ['gallbladder'] },
     'pancreas':        { layer: 'organs', organ: 'pancreas', parent: null, aliases: ['pancreas'] },
     'thyroid-gland':   { layer: 'organs', organ: 'endocrine', parent: null, aliases: ['thyroid_gland'] },
-    'nose':            { layer: 'organs', organ: 'airway', parent: null, aliases: ['nose'] },
+    'nose':            { layer: 'organs', organ: 'airway', parent: null, aliases: ['nose', 'nasal', 'paranasal'] },
 
     // ── spine (sub-layer 'spine' of layer 'skeleton') ──
     'spine':           { layer: 'skeleton', organ: 'spine', parent: null, aliases: [], descendants: ['cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacral-spine'] },
-    'cervical-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['cervical_vertebrae', 'cervical_vertebra'] },
-    'thoracic-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['thoracic_vertebrae', 'thoracic_vertebra'] },
-    'lumbar-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['lumbar_vertebrae', 'lumbar_vertebra'] },
-    'sacral-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['sacrum'] },
+    'cervical-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['cervical_vertebrae', 'cervical_vertebra', 'atlas', 'axis_c2', 'dens', 'vertebra_c3', 'vertebra_c4', 'vertebra_c5', 'vertebra_c6', 'vertebra_c7'] },
+    'thoracic-spine':  { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['thoracic_vertebrae', 'thoracic_vertebra', 'vertebra_t1', 'vertebra_t2', 'vertebra_t3', 'vertebra_t4', 'vertebra_t5', 'vertebra_t6', 'vertebra_t7', 'vertebra_t8', 'vertebra_t9', 'vertebra_t10', 'vertebra_t11', 'vertebra_t12'] },
+    'lumbar-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['lumbar_vertebrae', 'lumbar_vertebra', 'vertebra_l1', 'vertebra_l2', 'vertebra_l3', 'vertebra_l4', 'vertebra_l5'] },
+    'sacral-spine':    { layer: 'skeleton', organ: 'spine', parent: 'spine', aliases: ['sacrum', 'sacral', 'coccyx', 'coccygeal'] },
 
     // ── hip joint (sub-layer 'hip' of 'skeleton') — the articulating surfaces.
     //    NOTE: the GLB mesh is 'head_of_femur' (not 'femur_head' as first spec'd).
@@ -1339,7 +1339,12 @@
       if (ud._baseOpacity == null) ud._baseOpacity = mat.uniforms.uOpacity.value;
       var on = false;
       var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
-      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare];
+      // ud.organ lets an organ-level seed ('lungs','kidneys','liver','pancreas','heart',
+      // 'spinal-cord','hip','spine') match EVERY mesh of that organ — assignOrganTag
+      // already tags all 65 lung lobes/segments as 'lungs', etc. — so the whole organ
+      // lights up, not just the single coarse mesh. Sub-organ seeds whose name ≠ the
+      // organ tag (stomach→gi-tract, nose→airway, cervical-spine→spine) don't over-match.
+      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ];
       for (var ci = 0; ci < cands.length; ci++) { if (cands[ci] && set[norm(cands[ci])]) { on = true; break; } }
       if (!on && bare) {
         var toks = String(bare).split('_');
