@@ -70,14 +70,52 @@
   }
 
   var TYPE_LABEL = {
-    section: 'Модуль', module: 'Модуль',
-    practice: 'Практика', audio: 'Практика',
-    text: 'Текст', video: 'Видео', image: 'Изображение',
-    link: 'Ссылка', sensation_prompt: 'Запрос ощущений',
-    question_branch: 'Ветвление', sound_cue: 'Сигнал', break: 'Пауза',
-    student_audio: 'Голос', student_text: 'Ответ', tool_task: 'Задание из инструмента'
+    ru: {
+      section: 'Модуль', module: 'Модуль',
+      practice: 'Практика', audio: 'Практика',
+      text: 'Текст', video: 'Видео', image: 'Изображение',
+      link: 'Ссылка', sensation_prompt: 'Запрос ощущений',
+      question_branch: 'Ветвление', sound_cue: 'Сигнал', break: 'Пауза',
+      student_audio: 'Голос', student_text: 'Ответ', tool_task: 'Задание из инструмента'
+    },
+    en: {
+      section: 'Module', module: 'Module',
+      practice: 'Practice', audio: 'Practice',
+      text: 'Text', video: 'Video', image: 'Image',
+      link: 'Link', sensation_prompt: 'Sensation prompt',
+      question_branch: 'Branch', sound_cue: 'Cue', break: 'Break',
+      student_audio: 'Voice', student_text: 'Answer', tool_task: 'Tool task'
+    },
+    es: {
+      section: 'Módulo', module: 'Módulo',
+      practice: 'Práctica', audio: 'Práctica',
+      text: 'Texto', video: 'Vídeo', image: 'Imagen',
+      link: 'Enlace', sensation_prompt: 'Pregunta de sensación',
+      question_branch: 'Ramificación', sound_cue: 'Señal', break: 'Pausa',
+      student_audio: 'Voz', student_text: 'Respuesta', tool_task: 'Tarea de herramienta'
+    }
   };
-  var STATUS_LABEL = { done: 'Пройдено', current: 'Текущий шаг', open: 'Доступно', locked: 'Закрыто' };
+  var STATUS_LABEL = {
+    ru: { done: 'Пройдено', current: 'Текущий шаг', open: 'Доступно', locked: 'Закрыто' },
+    en: { done: 'Completed', current: 'Current step', open: 'Available', locked: 'Locked' },
+    es: { done: 'Completado', current: 'Paso actual', open: 'Disponible', locked: 'Bloqueado' }
+  };
+  // legend dot captions (lowercase) per language
+  var LEGEND_LABEL = {
+    ru: ['пройдено', 'текущий', 'доступно', 'закрыто'],
+    en: ['completed', 'current', 'available', 'locked'],
+    es: ['completado', 'actual', 'disponible', 'bloqueado']
+  };
+  var EMPTY_LABEL = {
+    ru: 'Путь курса появится здесь, когда в курсе будут шаги. Пока структура пуста.',
+    en: 'The course path will appear here once the course has steps. The structure is still empty.',
+    es: 'El camino del curso aparecerá aquí cuando el curso tenga pasos. La estructura aún está vacía.'
+  };
+  var LOADING_LABEL = { ru: 'Загрузка световой карты курса…', en: 'Loading course light-map…', es: 'Cargando el mapa de luz del curso…' };
+  var FAIL_LABEL = { ru: 'Не удалось загрузить карту курса.', en: 'Could not load the course map.', es: 'No se pudo cargar el mapa del curso.' };
+  var RESIZE_LABEL = { ru: 'Потяните, чтобы изменить размер · двойной клик — на весь экран', en: 'Drag to resize · double-click for fullscreen', es: 'Arrastra para redimensionar · doble clic para pantalla completa' };
+  var BACK_TITLE_LABEL = { ru: 'К моему текущему шагу', en: 'To my current step', es: 'A mi paso actual' };
+  function _pvL(map){ return map[_LANG] || map.ru; }
   var HERE_LABEL = { ru: 'Вы здесь', en: 'You are here', es: 'Aquí estás' };
 
   /* — classify a raw block into our node model — */
@@ -106,7 +144,7 @@
         i: i, block: b, isModule: isModule, secret: locked,
         status: status, shape: shape,
         points: parseInt(b.points, 10) || 0,
-        title: pick(b, 'title', _LANG) || (TYPE_LABEL[b.block_type] || b.block_type)
+        title: pick(b, 'title', _LANG) || (_pvL(TYPE_LABEL)[b.block_type] || b.block_type)
       });
     });
     return { nodes: nodes, curIdx: curIdx };
@@ -145,8 +183,7 @@
     if (!blocks.length) {
       container.innerHTML =
         '<div class="myc-empty"><div class="myc-empty-glyph">✦</div>' +
-        '<div class="myc-empty-text">Путь курса появится здесь, когда в курсе будут шаги. ' +
-        'Пока структура пуста.</div></div>';
+        '<div class="myc-empty-text">' + _pvL(EMPTY_LABEL) + '</div></div>';
       return;
     }
 
@@ -199,7 +236,7 @@
     /* corner handle: visual affordance + dbl-click fullscreen */
     var handle = document.createElement('div');
     handle.className = 'myc-resize-handle';
-    handle.title = 'Потяните, чтобы изменить размер · двойной клик — на весь экран';
+    handle.title = _pvL(RESIZE_LABEL);
     handle.innerHTML = '<svg viewBox="0 0 12 12"><path d="M11 1 L1 11 M11 5 L5 11 M11 9 L9 11" ' +
       'stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>';
     handle.addEventListener('dblclick', function (e) {
@@ -412,11 +449,12 @@
     /* — chrome: legend + hint + hover card — */
     var legend = document.createElement('div');
     legend.className = 'myc-legend';
+    var _lg = _pvL(LEGEND_LABEL);
     legend.innerHTML =
-      '<span><i style="background:var(--myc-green);box-shadow:0 0 6px var(--myc-green)"></i>пройдено</span>' +
-      '<span><i style="background:var(--myc-cyan);box-shadow:0 0 6px var(--myc-cyan)"></i>текущий</span>' +
-      '<span><i style="background:var(--myc-line-secondary)"></i>доступно</span>' +
-      '<span><i style="background:var(--myc-line-muted)"></i>закрыто</span>';
+      '<span><i style="background:var(--myc-green);box-shadow:0 0 6px var(--myc-green)"></i>' + _lg[0] + '</span>' +
+      '<span><i style="background:var(--myc-cyan);box-shadow:0 0 6px var(--myc-cyan)"></i>' + _lg[1] + '</span>' +
+      '<span><i style="background:var(--myc-line-secondary)"></i>' + _lg[2] + '</span>' +
+      '<span><i style="background:var(--myc-line-muted)"></i>' + _lg[3] + '</span>';
     container.appendChild(legend);
 
     var hint = document.createElement('div');
@@ -433,9 +471,9 @@
       card.innerHTML =
         '<div class="myc-card-title">' + escapeHtml(n.title) + '</div>' +
         '<div class="myc-card-meta">' + (n.isModule ? '◆ ' : '') +
-          (TYPE_LABEL[n.block.block_type] || n.block.block_type) + '</div>' +
+          (_pvL(TYPE_LABEL)[n.block.block_type] || n.block.block_type) + '</div>' +
         '<div class="myc-card-row"><span class="myc-card-dot ' + st + '"></span>' +
-          (STATUS_LABEL[st] || st) + '</div>' +
+          (_pvL(STATUS_LABEL)[st] || st) + '</div>' +
         (n.points ? '<div class="myc-card-row">✦ ' + n.points + ' XP</div>' : '');
       // position relative to container, accounting for zoom + scroll
       var scale = svg.clientWidth / contentW;
@@ -504,7 +542,7 @@
       backBtn.className = 'myc-back-current';
       backBtn.type = 'button';
       backBtn.textContent = (_LANG === 'en') ? '↺ My progress' : (_LANG === 'es') ? '↺ Mi progreso' : '↺ К прогрессу';
-      backBtn.setAttribute('title', 'К моему текущему шагу');
+      backBtn.setAttribute('title', _pvL(BACK_TITLE_LABEL));
       backBtn.style.cssText = 'position:absolute;bottom:10px;right:10px;z-index:20;' +
         'font-size:11px;line-height:1;padding:6px 10px;border-radius:8px;cursor:pointer;' +
         'color:var(--myc-cyan,#39d3c3);background:rgba(5,9,14,0.7);' +
@@ -529,6 +567,7 @@
     var apiBase = opts.apiBase || window.AUTH_API || '';
     var lang = opts.lang || (typeof window.getLang === 'function' ? window.getLang() : 'ru');
     opts.lang = lang;
+    _LANG = lang;   // so the loading/fail chrome below localizes before render() runs
 
     // #3: stash the current horizontal scroll BEFORE we wipe the container with
     // the loading state, so render() can restore it (a node click re-mounts us and
@@ -539,7 +578,7 @@
     // loading state
     container.classList.add('myc-root');
     container.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">✦</div>' +
-      '<div class="myc-empty-text">Загрузка световой карты курса…</div></div>';
+      '<div class="myc-empty-text">' + _pvL(LOADING_LABEL) + '</div></div>';
 
     if (source && typeof source === 'object') {
       try { render(container, source, opts); }
@@ -561,7 +600,7 @@
 
   function fail(container) {
     container.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">⊘</div>' +
-      '<div class="myc-empty-text">Не удалось загрузить карту курса.</div></div>';
+      '<div class="myc-empty-text">' + _pvL(FAIL_LABEL) + '</div></div>';
   }
 
   window.mountCoursePathView = mountCoursePathView;
