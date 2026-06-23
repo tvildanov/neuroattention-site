@@ -210,54 +210,113 @@
       container.querySelectorAll('.bp-label.show').forEach(function (l) { l.classList.remove('show'); l.textContent = ''; });
     }
 
-    function openRegion(regionEl) {
+    // Track selected slugs (zone-level + sub-level) so the visual .picked state and
+    // the re-opened panel buttons stay in sync across hover / open cycles.
+    var pickedSet = {};
+
+    // Hover (desktop): show the zone label near the region centroid. Crucially this
+    // does NOT open the sub-region panel — that was the source of the cascade where
+    // moving the mouse toward a far-below popup crossed neighbouring regions and
+    // re-triggered them (B п.B). The CSS :hover glow gives the highlight feedback
+    // (B п.C); the label just names what a click would select.
+    function showLabel(regionEl) {
       var view = regionEl.getAttribute('data-view'), rk = regionEl.getAttribute('data-region');
       var reg = regionsFor(view)[rk]; if (!reg) return;
-      closePanels();
-      regionEl.classList.add('active');
       var stage = regionEl.closest('.bp-stage');
       var label = stage.querySelector('.bp-label');
       label.textContent = L(reg.label, lang); label.classList.add('show');
-      // position label near the region centroid
       var bb = regionEl.getBBox(), svg = regionEl.ownerSVGElement, sr = svg.getBoundingClientRect(), str = stage.getBoundingClientRect();
       var cx = (bb.x + bb.width / 2) / 120 * sr.width + (sr.left - str.left);
       var cyTop = bb.y / 300 * sr.height + (sr.top - str.top);
       label.style.left = cx + 'px'; label.style.top = Math.max(2, cyTop - 18) + 'px';
-      // build sub-button panel
+    }
+    function hideLabel(stage) { if (!stage) return; var l = stage.querySelector('.bp-label'); if (l) { l.classList.remove('show'); l.textContent = ''; } }
+
+    // Single click → toggle the WHOLE zone as one selection (B п.B). Emits a synthetic
+    // zone slug ('bp_zone_<view>_<region>') so the save path records the coarse area
+    // without forcing the user through the sub-region list.
+    function selectZone(regionEl) {
+      var view = regionEl.getAttribute('data-view'), rk = regionEl.getAttribute('data-region');
+      var reg = regionsFor(view)[rk]; if (!reg) return;
+      var slug = 'bp_zone_' + view + '_' + rk;
+      var picked = !regionEl.classList.contains('picked');
+      regionEl.classList.toggle('picked', picked);
+      if (picked) pickedSet[slug] = 1; else delete pickedSet[slug];
+      if (typeof onSelect === 'function') onSelect(slug, { ru: reg.label.ru, en: reg.label.en, es: reg.label.es }, picked);
+    }
+
+    // Double-click / long-press → open the sub-region list right AT the cursor, so
+    // reaching it never crosses another region (B п.B). The panel flips above the
+    // pointer if it would overflow the bottom of the stage.
+    function openSubs(regionEl, clientX, clientY) {
+      var view = regionEl.getAttribute('data-view'), rk = regionEl.getAttribute('data-region');
+      var reg = regionsFor(view)[rk]; if (!reg) return;
+      closePanels();
+      regionEl.classList.add('active');
+      var stage = regionEl.closest('.bp-stage'); var str = stage.getBoundingClientRect();
       var panel = stage.querySelector('.bp-panel');
       panel.innerHTML = reg.sub.map(function (s) {
-        return '<button type="button" class="bp-sub" data-slug="' + esc(s.slug) + '">' + esc(L(s, lang)) + '</button>';
+        var on = pickedSet[s.slug] ? ' picked' : '';
+        return '<button type="button" class="bp-sub' + on + '" data-slug="' + esc(s.slug) + '">' + esc(L(s, lang)) + '</button>';
       }).join('');
-      panel.style.left = Math.min(Math.max(8, cx - 70), str.width - 150) + 'px';
-      panel.style.top = (cyTop + bb.height / 300 * sr.height + 6) + 'px';
+      var px = (clientX != null) ? (clientX - str.left + 6) : (str.width / 2 - 70);
+      var py = (clientY != null) ? (clientY - str.top + 6) : 20;
+      panel.style.left = Math.min(Math.max(6, px), Math.max(6, str.width - 156)) + 'px';
+      panel.style.top = Math.max(4, py) + 'px';
       panel.classList.add('open');
+      var ph = panel.offsetHeight || 0;
+      if (py + ph > str.height && py - ph > 0) panel.style.top = Math.max(4, py - ph - 12) + 'px';
       panel.querySelectorAll('.bp-sub').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
           e.stopPropagation();
           var slug = btn.getAttribute('data-slug');
           var sub = reg.sub.filter(function (x) { return x.slug === slug; })[0];
-          btn.classList.toggle('picked');
-          if (typeof onSelect === 'function' && sub) onSelect(slug, { ru: sub.ru, en: sub.en, es: sub.es }, btn.classList.contains('picked'));
+          var on = btn.classList.toggle('picked');
+          if (on) pickedSet[slug] = 1; else delete pickedSet[slug];
+          if (typeof onSelect === 'function' && sub) onSelect(slug, { ru: sub.ru, en: sub.en, es: sub.es }, on);
         });
       });
     }
 
     // event delegation
     container.querySelectorAll('.bp-svg').forEach(function (svg) {
-      // A click on the body that misses every region path dismisses the current
-      // overlay (1.5) — on touch (open-on-tap) and desktop alike. Clicking an
-      // empty area between regions or on the silhouette wire should not leave the
-      // sub-part panel stuck blocking the next pick.
+      var clickTimer = null;   // desktop: debounce single-click vs double-click
+      var press = null;        // touch: long-press timer
+      var suppressClick = false; // touch: swallow the click that ends a long-press
       svg.addEventListener('click', function (e) {
         var r = e.target.closest('.bp-region');
-        if (r) { if (isTouch) { e.stopPropagation(); openRegion(r); } }
-        else { closePanels(); }
+        if (!r) { closePanels(); return; }
+        if (isTouch) {
+          e.stopPropagation();
+          if (suppressClick) { suppressClick = false; return; }
+          selectZone(r);
+          return;
+        }
+        // desktop: wait briefly so a double-click opens subs instead of toggling twice
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+        var rr = r;
+        clickTimer = setTimeout(function () { clickTimer = null; selectZone(rr); }, 200);
+      });
+      svg.addEventListener('dblclick', function (e) {
+        var r = e.target.closest('.bp-region'); if (!r) return;
+        if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+        e.preventDefault();
+        openSubs(r, e.clientX, e.clientY);
       });
       if (!isTouch) {
-        svg.addEventListener('mouseover', function (e) { var r = e.target.closest('.bp-region'); if (r) openRegion(r); });
+        svg.addEventListener('mouseover', function (e) { var r = e.target.closest('.bp-region'); if (r) showLabel(r); });
+        svg.addEventListener('mouseout', function (e) { var r = e.target.closest('.bp-region'); if (r) hideLabel(r.closest('.bp-stage')); });
+      } else {
+        svg.addEventListener('touchstart', function (e) {
+          var t0 = e.touches && e.touches[0]; var r = e.target.closest('.bp-region'); if (!r || !t0) return;
+          var cx = t0.clientX, cy = t0.clientY;
+          press = setTimeout(function () { press = null; suppressClick = true; openSubs(r, cx, cy); }, 500);
+        }, { passive: true });
+        svg.addEventListener('touchend', function () { if (press) { clearTimeout(press); press = null; } });
+        svg.addEventListener('touchmove', function () { if (press) { clearTimeout(press); press = null; } }, { passive: true });
       }
     });
-    // click outside closes
+    // click outside closes the sub panel (does NOT clear selected zones)
     if (!container.__bpOutside) {
       container.__bpOutside = function (e) { if (!e.target.closest('.bp-stage')) closePanels(); };
       document.addEventListener('click', container.__bpOutside);

@@ -741,6 +741,8 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .bp-stage { position: relative; height: 300px; }
 .bp-region { cursor: pointer; transition: fill 0.15s ease, stroke 0.15s ease, transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
 .bp-region:hover, .bp-region.active { fill: rgba(120,210,255,0.18); stroke: rgba(180,235,255,0.95); stroke-width: 1.4; filter: drop-shadow(0 0 7px rgba(120,210,255,0.85)); transform: scale(1.03); }
+/* persistent highlight for a directly-selected whole zone (single-click) */
+.bp-region.picked { fill: rgba(94,224,255,0.26); stroke: rgba(150,238,255,1); stroke-width: 1.5; filter: drop-shadow(0 0 7px rgba(94,224,255,0.85)); }
 .bp-label { position: absolute; transform: translateX(-50%); padding: 2px 8px; background: rgba(10,14,20,0.95); border: 1px solid rgba(120,210,255,0.4); border-radius: 8px; font-size: 11px; color: #dff2ff; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; z-index: 12; }
 .bp-label.show { opacity: 1; }
 .bp-panel { position: absolute; z-index: 20; display: none; flex-wrap: wrap; gap: 0.3rem; max-width: 200px; padding: 0.5rem; background: rgba(10,13,19,0.98); border: 1px solid rgba(120,210,255,0.25); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
