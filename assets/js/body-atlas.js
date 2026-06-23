@@ -1298,40 +1298,50 @@
   // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
   // opacity and restore the focused ones to full. Pass null/[] to clear.
   Atlas.prototype.focusRegions = function (ids, dim) {
-    // NO dimming of the non-focused meshes (Tahir): the focused regions pop to full
-    // opacity (1.0 → their colour reads bright) and EVERYTHING ELSE keeps its normal
-    // layer opacity (ud._baseOpacity) — the rest of the body must never go dark/black.
-    // `dim` is kept only for signature compatibility; it no longer scales opacity.
+    // ISOLATE (Tahir): the focused regions render at full opacity (1.0 → bright) and
+    // EVERYTHING ELSE is hidden — uOpacity AND uGlow pulled to ~0 so only the relevant
+    // structures show ("only the needed parts visible"). dim is the multiplier for the
+    // hidden meshes; default 0 = fully invisible. When ids is empty, restore all.
+    // We must zero uGlow too: the additive x-ray adds uGlow*0.06 even at uOpacity 0, so
+    // opacity alone would leave a faint ghost.
+    dim = dim == null ? 0 : dim;
     var expanded = this._expandSeedIds(ids);   // seed-ids → ids + aliases + descendants
     // PACK 12: curated condition/function region ids are BARE anatomical slugs
     // ('liver', 'medulla', 'stomach', 'frontal-lobe') while real mesh ids are
     // layer-prefixed with underscores ('organs_liver', 'brain' coarseId). Match
     // tolerantly — normalize (drop -/_/case) and also try the layer-stripped bare
-    // slug + each of its word tokens — so the affected regions light up at full
-    // opacity and only the rest dim, instead of dimming (or showing) everything.
+    // slug + each of its word tokens — so the affected regions light up and only the
+    // rest hides, instead of hiding (or showing) everything.
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
     var set = {}; expanded.forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
+    var hasIds = !!(ids && ids.length);
     if (!this.root) return this;
+    // Pass 1: classify every region mesh + cache its base opacity/glow.
+    var items = [], matchCount = 0;
     this.root.traverse(function (o) {
       if (!o.isMesh || !o.userData || !o.userData.regionId) return;
       var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
-      if (o.userData._baseOpacity == null) o.userData._baseOpacity = mat.uniforms.uOpacity.value;
       var ud = o.userData;
+      if (ud._baseOpacity == null) ud._baseOpacity = mat.uniforms.uOpacity.value;
+      if (mat.uniforms.uGlow && ud._baseGlow == null) ud._baseGlow = mat.uniforms.uGlow.value;
       var on = false;
-      // exact / coarse / layer-stripped bare candidates
       var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
       var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare];
       for (var ci = 0; ci < cands.length; ci++) { if (cands[ci] && set[norm(cands[ci])]) { on = true; break; } }
-      // token fallback: a focus id that is a whole word of the bare slug
-      // (≥4 chars to avoid spurious short-token hits like 'of'/'the')
       if (!on && bare) {
         var toks = String(bare).split('_');
         for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) { on = true; break; } }
       }
-      // Focused regions render at full opacity (1.0) regardless of the layer slider,
-      // so the highlight is always crisp; everything else KEEPS its normal layer
-      // opacity (no dim) so the rest of the body stays fully visible.
-      mat.uniforms.uOpacity.value = on ? 1.0 : ud._baseOpacity;
+      if (on) matchCount++;
+      items.push({ mat: mat, ud: ud, on: on });
+    });
+    // Guard: if a focus was requested but NOTHING matched (region ids didn't resolve to
+    // any loaded mesh), don't blank the whole scene — fall back to "restore all".
+    var isolate = hasIds && matchCount > 0;
+    items.forEach(function (it) {
+      var mult = isolate ? (it.on ? 1 : dim) : 1;          // restore (mult 1) when not isolating
+      it.mat.uniforms.uOpacity.value = (isolate && it.on) ? 1.0 : (it.ud._baseOpacity * mult);
+      if (it.mat.uniforms.uGlow) it.mat.uniforms.uGlow.value = it.ud._baseGlow * mult;
     });
     if (this._requestRender) this._requestRender();
     return this;
