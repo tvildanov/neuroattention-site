@@ -1298,9 +1298,10 @@
   // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
   // opacity and restore the focused ones to full. Pass null/[] to clear.
   Atlas.prototype.focusRegions = function (ids, dim) {
-    // dim = opacity multiplier for the NON-focused meshes. 0.35 keeps the rest of the
-    // body legibly visible (de-emphasised, not black) behind the highlighted regions.
-    dim = dim == null ? 0.35 : dim;
+    // NO dimming of the non-focused meshes (Tahir): the focused regions pop to full
+    // opacity (1.0 → their colour reads bright) and EVERYTHING ELSE keeps its normal
+    // layer opacity (ud._baseOpacity) — the rest of the body must never go dark/black.
+    // `dim` is kept only for signature compatibility; it no longer scales opacity.
     var expanded = this._expandSeedIds(ids);   // seed-ids → ids + aliases + descendants
     // PACK 12: curated condition/function region ids are BARE anatomical slugs
     // ('liver', 'medulla', 'stomach', 'frontal-lobe') while real mesh ids are
@@ -1310,7 +1311,6 @@
     // opacity and only the rest dim, instead of dimming (or showing) everything.
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
     var set = {}; expanded.forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
-    var hasIds = ids && ids.length;
     if (!this.root) return this;
     this.root.traverse(function (o) {
       if (!o.isMesh || !o.userData || !o.userData.regionId) return;
@@ -1328,10 +1328,10 @@
         var toks = String(bare).split('_');
         for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) { on = true; break; } }
       }
-      // Focused regions render at full opacity (1.0) regardless of the layer
-      // slider, so the highlight is always crisp; everything else dims to
-      // baseOpacity*dim (or stays at baseOpacity when nothing is focused).
-      mat.uniforms.uOpacity.value = on ? 1.0 : (hasIds ? (ud._baseOpacity * dim) : ud._baseOpacity);
+      // Focused regions render at full opacity (1.0) regardless of the layer slider,
+      // so the highlight is always crisp; everything else KEEPS its normal layer
+      // opacity (no dim) so the rest of the body stays fully visible.
+      mat.uniforms.uOpacity.value = on ? 1.0 : ud._baseOpacity;
     });
     if (this._requestRender) this._requestRender();
     return this;
