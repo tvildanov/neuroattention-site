@@ -31,7 +31,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=9" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=10" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -45,7 +45,13 @@
 .auth-hint code { background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace; }
 
 /* ── Dashboard layout ── */
-.dashboard { max-width:1100px;margin:6rem auto 4rem;padding:0 1.5rem;display:none; }
+/* PR #82: the dashboard used to cap at 1100px while every other page (.container)
+   runs 1440/1520px, so the dashboard looked inset with wide black gutters. Match
+   the site-wide content width so Profile/Courses/Tools/etc. read full-width like
+   the rest of the site. (The personal Evolution Path breaks out to full-bleed on
+   top of this — see #evo-path in mycelium.css.) */
+.dashboard { max-width:1440px;margin:6rem auto 4rem;padding:0 2.5rem;display:none; }
+@media(min-width:1600px){ .dashboard { max-width:1520px; } }
 .dash-header { display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem; }
 .dash-title { font-family:'Unbounded',sans-serif;font-weight:500;font-size:1.8rem;color:var(--text-primary);margin:0; }
 .dash-role { display:inline-flex;align-items:center;gap:0.5rem;padding:0.4rem 0.85rem;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.7); }
@@ -308,8 +314,10 @@
     border-bottom:none;border-top:2px solid transparent;
   }
   .dash-tab.active { border-top-color:var(--accent-cyan);border-bottom-color:transparent; }
-  /* Add padding at bottom of page so content isn't hidden behind bottom-nav */
-  .dashboard { padding-bottom:56px!important; }
+  /* Add padding at bottom of page so content isn't hidden behind bottom-nav.
+     PR #82: keep side padding tight on phones (matches .container's 1.25rem) now
+     that the base rule runs the wider 2.5rem desktop gutter. */
+  .dashboard { padding-left:1.25rem!important;padding-right:1.25rem!important;padding-bottom:56px!important; }
   /* Fullscreen header: fixed at top on mobile */
   .nm-fullscreen-overlay .nm-fs-header {
     position:fixed;top:0;left:0;right:0;z-index:10002;
@@ -14289,7 +14297,7 @@ window.pbMove = pbMove;
 <script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js"></script>
-<script src="assets/js/evolution-path.js?v=10"></script>
+<script src="assets/js/evolution-path.js?v=11"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
 <script src="assets/js/body-atlas.js?v=27"></script>
