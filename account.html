@@ -14292,7 +14292,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=21"></script>
+<script src="assets/js/body-atlas.js?v=22"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14414,9 +14414,9 @@ window.pbMove = pbMove;
         // re-apply the active focus the moment a lazily-streamed layer lands, so the
         // first click on a function/condition dims correctly instead of showing the
         // whole layer (focusRegions had run against an empty scaffold).
-        if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.35); }catch(e){} }
+        if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds); }catch(e){} }
       });
-      a.on('brain-loaded', function(){ if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds, 0.35); }catch(e){} } });
+      a.on('brain-loaded', function(){ if(window.__currentFocusIds){ try{ a.focusRegions(window.__currentFocusIds); }catch(e){} } });
       a.on('layer-error',   function(d){ setLayerLoading(d&&d.layer, false); });
       // sync initial layer state from controls
       LAYERS.forEach(function(L){ a.toggleLayer(L.key, L.on); a.setLayerOpacity(L.key, L.op/100); });
@@ -14688,7 +14688,7 @@ window.pbMove = pbMove;
     // focusRegions ran against an empty scaffold. Timeouts are a belt-and-braces
     // fallback for layers that were already cached (no layer-loaded fires).
     window.__currentFocusIds = ids;
-    var apply=function(){ if(window.__currentFocusIds!==ids) return; try{ a.focusRegions(ids, 0.35); }catch(e){} };
+    var apply=function(){ if(window.__currentFocusIds!==ids) return; try{ a.focusRegions(ids); }catch(e){} };
     apply(); setTimeout(apply, 350); setTimeout(apply, 900); setTimeout(apply, 2000);
   }
   function clearFocus(){ window.__currentFocusIds=null; var a=window._anatomyAtlas; if(a){ try{ a.resetRegions&&a.resetRegions(); }catch(e){} } }
