@@ -14292,7 +14292,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=9"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=22"></script>
+<script src="assets/js/body-atlas.js?v=23"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14565,6 +14565,17 @@ window.pbMove = pbMove;
     atlas.resetView(); } atlasCloseRegion(); };
   window.atlasCloseRegion = function(){ var ctrls = document.getElementById('arp-controls'); if (ctrls) ctrls.style.display = 'none'; window._atlasCurrentRegion = null; var p=document.getElementById('atlas-region-panel'); if(p) p.classList.remove('open'); var vp=document.getElementById('atlas-viewport'); if(vp) vp.classList.remove('region-stacked'); atlasDestroyMini(); };
   window.atlasFocusOrgan = function(id){ if(!atlas) return; if(id==='brain'){ atlas.enterBrainDetail(); } else { atlas.focusOrgan(id); } };
+  // Item 3: open the region detail sub-card for a region id WITHOUT a 3D click — used
+  // when the user taps a region chip in a function/condition card. Builds the same
+  // synthetic region "hit" a double-click would and routes it through onClick, so the
+  // card content, mini-viewer, opacity slider and stacking are identical to a 3D click.
+  window.atlasOpenRegionCard = function(regionId){
+    if(!regionId || !atlas) return;
+    var mesh=null;
+    try{ if(atlas._forEachRegionMesh){ atlas._forEachRegionMesh(regionId, function(m){ if(!mesh && m.isMesh) mesh=m; }); } }catch(e){}
+    var ud = mesh && mesh.userData ? mesh.userData : {};
+    onClick({ id: regionId, object: mesh||null, names: ud.names||null, point: null, layer: ud.layer||'', level: 'region' });
+  };
 })();
 </script>
 <script>
@@ -14828,7 +14839,7 @@ window.pbMove = pbMove;
     ids=(ids||[]).filter(Boolean); if(!ids.length) return '';
     var h='<div class="ha-side-h">'+esc(tr(label))+'</div>';
     h+=ids.map(function(id){
-      return '<span class="ha-chip'+(asLinks?' link':'')+'" onclick="haFocusList(\''+id+'\')">'+esc(regionLabel(id))+'</span>';
+      return '<span class="ha-chip'+(asLinks?' link':'')+'" onclick="haRegionChip(\''+id+'\')">'+esc(regionLabel(id))+'</span>';
     }).join('');
     // (Removed the "Show in Anatomy →" button — it kicked the user off the active
     //  Functions/Conditions tab. Focus now highlights in place; the region chips
@@ -14836,6 +14847,10 @@ window.pbMove = pbMove;
     return h;
   }
   window.haFocusList=function(csv){ var ids=(csv||'').split(',').filter(Boolean); focus(ids); };
+  // Item 3: tapping a region chip in a function/condition card opens that region's
+  // detail sub-card (stacked below the function card) — same flow as a 3D click,
+  // without disturbing the current function focus.
+  window.haRegionChip=function(id){ if(window.atlasOpenRegionCard) window.atlasOpenRegionCard(id); };
 
   /* ── Anatomy region cross-links (populates #arp-links) ──────────────────── */
   window.haRegionLinks=function(regionId){
