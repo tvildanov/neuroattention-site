@@ -723,6 +723,7 @@
     on = on !== false;
     this.root.traverse(function (o) {
       if (!o.isMesh || !o.userData || o.userData.layer !== layer) return;
+      if (o.userData._neverVisible) return;     // degenerate stick — never re-show
       var og = o.userData.organ || null;
       if (og === organ) o.visible = on;
     });
@@ -742,6 +743,7 @@
     this.root.traverse(function (o) {
       if (!o.isMesh || !o.userData || o.userData.layer !== layer) return;
       if (o.userData._brainDupeHidden) return;     // keep duplicates the brain-detail GLB replaces hidden
+      if (o.userData._neverVisible) return;        // degenerate stick — never re-show
       o.visible = isolate ? !!set[o.userData.organ || ''] : true;
     });
     if (this._requestRender) this._requestRender();
@@ -904,8 +906,11 @@
             // render as bright thin "sticks" shooting out of the body. Hide
             // everything that isn't a real Mesh, and force wireframe off on
             // any mesh that came in with it.
+            // _neverVisible: a permanent "this must never render" flag. Every later
+            // visibility path (focusRegions, sub-layer isolation, layer toggle) honours
+            // it, so a hidden stick can't be brought back by any interaction.
             if (o.isLine || o.isLineSegments || o.isLineLoop || o.isPoints) {
-              o.visible = false;
+              o.visible = false; o.userData._neverVisible = true;
               return;
             }
             if (!o.isMesh || !o.geometry) {
@@ -917,9 +922,25 @@
             // index/position. Detect by checking for any non-degenerate face.
             var posAttr = o.geometry.attributes && o.geometry.attributes.position;
             if (!posAttr || posAttr.count < 3) {
-              o.visible = false;
+              o.visible = false; o.userData._neverVisible = true;
               return;
             }
+            // Degenerate "stick" meshes — e.g. the 48 lymph node-groups exported as flat
+            // 1-D strips (bbox aspect ratio in the hundreds, ~24 verts) — render as bright
+            // black/coloured threads shooting sideways out of the body. Hide them for good.
+            // Guard with a low vertex count so genuine long-thin tubes (vessels, nerves —
+            // hundreds of verts) are never caught.
+            try {
+              o.geometry.computeBoundingBox();
+              var _bb = o.geometry.boundingBox, _sz = new window.THREE.Vector3(); _bb.getSize(_sz);
+              var _d = [_sz.x, _sz.y, _sz.z].sort(function (a, b) { return b - a; });
+              var _minNZ = _d[2] > 1e-6 ? _d[2] : (_d[1] > 1e-6 ? _d[1] : _d[0]);
+              var _aspect = _minNZ > 0 ? _d[0] / _minNZ : 9999;
+              if (_aspect > 100 && posAttr.count < 64) {
+                o.visible = false; o.userData._neverVisible = true;
+                return;
+              }
+            } catch (e) { /* bbox failure → keep the mesh */ }
             // Force-disable wireframe on the original material (will be replaced
             // by makeXrayMaterial below, but guard belt-and-braces).
             if (o.material && !Array.isArray(o.material) && o.material.wireframe) {
@@ -1174,6 +1195,7 @@
       });
     });
     this._regionStates = {};
+    this._clearFocusState();   // also undo any focus isolate (visibility + opacity boost)
     if (this._requestRender) this._requestRender();
     return this;
   };
@@ -1297,33 +1319,44 @@
 
   // Hybrid focus (powers PACK F): dim every region except `ids` to `dim`
   // opacity and restore the focused ones to full. Pass null/[] to clear.
+  // Undo whatever the last focusRegions did: un-hide the meshes it hid (back to the
+  // visibility they had BEFORE the focus, never un-hiding a _neverVisible degenerate)
+  // and drop the opacity boost off the meshes it brightened.
+  Atlas.prototype._clearFocusState = function () {
+    if (this._focusHidden) {
+      this._focusHidden.forEach(function (m) { if (!(m.userData && m.userData._neverVisible)) m.visible = true; });
+    }
+    if (this._focusBoosted) {
+      this._focusBoosted.forEach(function (o) {
+        var mat = o.material;
+        if (mat && mat.uniforms && mat.uniforms.uOpacity && o.userData._baseOpacity != null) mat.uniforms.uOpacity.value = o.userData._baseOpacity;
+      });
+    }
+    this._focusHidden = [];
+    this._focusBoosted = [];
+  };
   Atlas.prototype.focusRegions = function (ids, dim) {
-    // ISOLATE (Tahir): the focused regions render at full opacity (1.0 → bright) and
-    // EVERYTHING ELSE is hidden — uOpacity AND uGlow pulled to ~0 so only the relevant
-    // structures show ("only the needed parts visible"). dim is the multiplier for the
-    // hidden meshes; default 0 = fully invisible. When ids is empty, restore all.
-    // We must zero uGlow too: the additive x-ray adds uGlow*0.06 even at uOpacity 0, so
-    // opacity alone would leave a faint ghost.
-    dim = dim == null ? 0 : dim;
-    var expanded = this._expandSeedIds(ids);   // seed-ids → ids + aliases + descendants
-    // PACK 12: curated condition/function region ids are BARE anatomical slugs
-    // ('liver', 'medulla', 'stomach', 'frontal-lobe') while real mesh ids are
-    // layer-prefixed with underscores ('organs_liver', 'brain' coarseId). Match
-    // tolerantly — normalize (drop -/_/case) and also try the layer-stripped bare
-    // slug + each of its word tokens — so the affected regions light up and only the
-    // rest hides, instead of hiding (or showing) everything.
-    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
-    var set = {}; expanded.forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
-    var hasIds = !!(ids && ids.length);
+    // ISOLATE (Tahir): focused regions render at full opacity; EVERYTHING ELSE is
+    // REMOVED FROM RENDER via mesh.visible=false — NOT dimmed via opacity. A non-focused
+    // mesh kept at uOpacity 0 still occupies the z-buffer (and SOLID-mode meshes ignore
+    // uOpacity entirely), so it shows as a black silhouette that occludes the focused
+    // regions. visible=false renders nothing at all → no occlusion, no black shapes.
+    // When ids is empty, restore. A degenerate mesh tagged _neverVisible stays hidden.
     if (!this.root) return this;
-    // Pass 1: classify every region mesh + cache its base opacity/glow.
+    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+    // Always undo the previous focus first (so re-focusing / clearing is clean).
+    this._clearFocusState();
+    var hasIds = !!(ids && ids.length);
+    if (!hasIds) { if (this._requestRender) this._requestRender(); return this; }
+    var expanded = this._expandSeedIds(ids);   // seed-ids → ids + aliases + descendants
+    var set = {}; expanded.forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
+    // Pass 1: classify every region mesh (curated ids are bare slugs; match tolerantly).
     var items = [], matchCount = 0;
     this.root.traverse(function (o) {
       if (!o.isMesh || !o.userData || !o.userData.regionId) return;
       var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
       var ud = o.userData;
       if (ud._baseOpacity == null) ud._baseOpacity = mat.uniforms.uOpacity.value;
-      if (mat.uniforms.uGlow && ud._baseGlow == null) ud._baseGlow = mat.uniforms.uGlow.value;
       var on = false;
       var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
       var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare];
@@ -1333,16 +1366,23 @@
         for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) { on = true; break; } }
       }
       if (on) matchCount++;
-      items.push({ mat: mat, ud: ud, on: on });
+      items.push({ o: o, mat: mat, ud: ud, on: on });
     });
-    // Guard: if a focus was requested but NOTHING matched (region ids didn't resolve to
-    // any loaded mesh), don't blank the whole scene — fall back to "restore all".
-    var isolate = hasIds && matchCount > 0;
+    // Guard: focus requested but NOTHING matched (ids didn't resolve to a loaded mesh) →
+    // don't blank the scene; leave everything as-is.
+    if (matchCount === 0) { if (this._requestRender) this._requestRender(); return this; }
+    var hidden = [], boosted = [];
     items.forEach(function (it) {
-      var mult = isolate ? (it.on ? 1 : dim) : 1;          // restore (mult 1) when not isolating
-      it.mat.uniforms.uOpacity.value = (isolate && it.on) ? 1.0 : (it.ud._baseOpacity * mult);
-      if (it.mat.uniforms.uGlow) it.mat.uniforms.uGlow.value = it.ud._baseGlow * mult;
+      if (it.ud._neverVisible) { it.o.visible = false; return; }   // degenerate stick: never show
+      if (it.on) {
+        it.mat.uniforms.uOpacity.value = 1.0; boosted.push(it.o);   // bright highlight
+        it.o.visible = true;
+      } else if (it.o.visible) {
+        it.o.visible = false; hidden.push(it.o);                    // remove from render entirely
+      }
     });
+    this._focusHidden = hidden;
+    this._focusBoosted = boosted;
     if (this._requestRender) this._requestRender();
     return this;
   };
