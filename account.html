@@ -10594,14 +10594,17 @@ function cpLinearizeBlocks(blocks){
 window.cpLinearizeBlocks = cpLinearizeBlocks;
 
 // Human label for a block type (used in section contents preview).
-function _cpTypeLabel(t){
-  var map = {
+// NB: the param is named `bt` (not `t`) so it doesn't shadow the global i18n t().
+function _cpTypeLabel(bt){
+  var T = (typeof window.t === 'function') ? window.t : function(k,f){ return f; };
+  var fb = {
     section:'Раздел', practice:'Практика', text:'Текст', video:'Видео', audio:'Аудио',
     image:'Изображение', link:'Ссылка', sensation_prompt:'Вопрос об ощущениях', break:'Перерыв',
     student_audio:'Аудио-ответ', student_text:'Текстовый ответ', question_branch:'Вопрос с ветвлением',
     sound_cue:'Звуковой сигнал', tool_task:'Задание из инструмента'
   };
-  return map[t] || t || '(без названия)';
+  if (bt && fb[bt] != null) return T('a.courses.cp_block_' + bt, fb[bt]);
+  return bt || T('a.courses.cp_block_untitled', '(без названия)');
 }
 // Russian plural picker: forms = [one, few, many].
 function _cpPlural(n, forms){
@@ -10677,6 +10680,13 @@ window.TOOL_TASK_META = {
   neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' },
   'human-atlas':    { tool: 'anatomy',   title_ru: 'Задание · Атлас человека', icon: '🧬', label_ru: 'Атлас человека' }
 };
+// Localized instrument label for a tool_task kind. Falls back to label_ru.
+function cpToolLabel(kind){
+  var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || {};
+  var T = (typeof window.t === 'function') ? window.t : function(k,f){ return f; };
+  return T('a.courses.tt_label_' + kind, meta.label_ru || 'Инструмент');
+}
+window.cpToolLabel = cpToolLabel;
 
 // Picker: "Добавить задание из инструмента" → choose which instrument (🅱 п.3).
 function courseAddToolTask(parentBlockId){
@@ -11489,21 +11499,21 @@ function cpRenderBlock(){
   }
   if (!block) {
     area.innerHTML = '<div style="text-align:center;padding:3rem 1rem;">'
-      + '<h3 style="font-size:18px;">🎉 Курс завершён!</h3>'
-      + '<p style="color:var(--text-muted);margin:0.5rem 0 1.25rem;">Спасибо за участие.</p>'
-      + '<button class="btn btn-solid" onclick="cpClose(); if(typeof switchTab===\'function\') switchTab(\'courses\');" style="font-size:13px;padding:0.6rem 1.25rem;">← Назад в Курсы</button>'
+      + '<h3 style="font-size:18px;">' + t('a.courses.cp_complete_title','🎉 Курс завершён!') + '</h3>'
+      + '<p style="color:var(--text-muted);margin:0.5rem 0 1.25rem;">' + t('a.courses.cp_complete_sub','Спасибо за участие.') + '</p>'
+      + '<button class="btn btn-solid" onclick="cpClose(); if(typeof switchTab===\'function\') switchTab(\'courses\');" style="font-size:13px;padding:0.6rem 1.25rem;">' + t('a.courses.cp_back_to_courses','← Назад в Курсы') + '</button>'
       + '</div>';
     document.getElementById('cp-next-btn').style.display = 'none';
     document.getElementById('cp-prev-btn').style.display = coursePlayer.history.length ? '' : 'none';
     document.getElementById('cp-progress-text').textContent = coursePlayer.blocks.length + ' / ' + coursePlayer.blocks.length;
     return;
   }
-  document.getElementById('cp-progress-text').textContent = (coursePlayer.idx + 1) + ' / ' + coursePlayer.blocks.length + ' · ' + block.block_type;
+  document.getElementById('cp-progress-text').textContent = (coursePlayer.idx + 1) + ' / ' + coursePlayer.blocks.length + ' · ' + _cpTypeLabel(block.block_type);
   document.getElementById('cp-prev-btn').style.display = coursePlayer.history.length ? '' : 'none';
   document.getElementById('cp-next-btn').style.display = '';
   coursePlayer.blockResponse = null;
   var p = block.payload || {};
-  var title = cpBlockTitle(block, lang) || (block.block_type === 'section' ? '(без названия)' : '');
+  var title = cpBlockTitle(block, lang) || (block.block_type === 'section' ? t('a.courses.cp_block_untitled','(без названия)') : '');
   var titleHtml = title ? '<h3 style="font-size:16px;margin:0 0 1rem;color:var(--text-primary);">' + title + '</h3>' : '';
   var body = '';
   switch (block.block_type) {
@@ -11532,13 +11542,18 @@ function cpRenderBlock(){
              + '<span style="font-size:13px;color:var(--course-accent,var(--accent-cyan));">▶</span>'
              + '</li>';
       }).join('');
+      var _kw = lang === 'en' ? (kids.length === 1 ? 'item' : 'items')
+              : lang === 'es' ? (kids.length === 1 ? 'elemento' : 'elementos')
+              : _cpPlural(kids.length, ['элемент','элемента','элементов']);
+      var _kcount = t('a.courses.cp_section_count','В этом разделе {n} {w} — нажмите, чтобы открыть:')
+                      .replace('{n}', kids.length).replace('{w}', _kw);
       body = '<div style="border-left:3px solid #fc0;padding-left:0.9rem;">'
-           + '<div style="font-size:10px;color:#fc0;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">📦 Раздел · плейлист</div>'
+           + '<div style="font-size:10px;color:#fc0;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">' + t('a.courses.cp_section_playlist','📦 Раздел · плейлист') + '</div>'
            + (secDesc ? '<div style="font-size:14px;line-height:1.7;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.75rem;">' + secDesc + '</div>' : '')
            + (kids.length
-               ? '<div style="font-size:11px;color:var(--text-muted);margin:0.5rem 0 0.4rem;">В этом разделе ' + kids.length + ' ' + _cpPlural(kids.length, ['элемент','элемента','элементов']) + ' — нажмите, чтобы открыть:</div>'
+               ? '<div style="font-size:11px;color:var(--text-muted);margin:0.5rem 0 0.4rem;">' + _kcount + '</div>'
                  + '<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.35rem;">' + kidsList + '</ul>'
-               : '<div style="font-size:13px;color:var(--text-dim);font-style:italic;">Раздел пока пуст.</div>')
+               : '<div style="font-size:13px;color:var(--text-dim);font-style:italic;">' + t('a.courses.cp_section_empty','Раздел пока пуст.') + '</div>')
            + '</div>';
       break;
     case 'text':
@@ -11564,8 +11579,8 @@ function cpRenderBlock(){
       var prSlug = p.practice_slug || '';
       var prAudio = p.audio_url || '';
       body = '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;">'
-           + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">🧠 Практика</div>'
-           + '<div style="font-size:15px;color:var(--text-primary);font-weight:600;">' + (prName || '(практика не выбрана)') + '</div>'
+           + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">' + t('a.courses.cp_practice_label','🧠 Практика') + '</div>'
+           + '<div style="font-size:15px;color:var(--text-primary);font-weight:600;">' + (prName || t('a.courses.cp_practice_none','(практика не выбрана)')) + '</div>'
            + (prSlug ? '<div style="font-size:11px;color:var(--text-muted);font-family:JetBrains Mono,monospace;margin-top:2px;">' + prSlug + (p.practice_lang ? ' · ' + p.practice_lang : '') + '</div>' : '')
            + '</div>'
            + (prAudio ? '<audio controls style="width:100%;margin-top:0.75rem;"><source src="'+prAudio+'"></audio>' : '');
@@ -11575,15 +11590,15 @@ function cpRenderBlock(){
            + (p['caption_'+lang] ? '<p style="font-size:12px;color:var(--text-muted);margin:0.5rem 0 0;text-align:center;">'+p['caption_'+lang]+'</p>' : '');
       break;
     case 'link':
-      body = '<a href="'+(p.url||'#')+'" target="_blank" style="display:inline-block;background:rgba(0,229,255,0.1);color:var(--accent-cyan);padding:0.6rem 1.2rem;border-radius:8px;text-decoration:none;font-size:14px;">'+(p['label_'+lang]||p.label_ru||p.url||'Открыть')+'</a>';
+      body = '<a href="'+(p.url||'#')+'" target="_blank" style="display:inline-block;background:rgba(0,229,255,0.1);color:var(--accent-cyan);padding:0.6rem 1.2rem;border-radius:8px;text-decoration:none;font-size:14px;">'+(p['label_'+lang]||p.label_ru||p.url||t('a.courses.cp_link_open','Открыть'))+'</a>';
       break;
     case 'sensation_prompt':
       body = '<p style="font-size:14px;color:var(--text-secondary);margin:0 0 1rem;">'+(p['prompt_'+lang]||p.prompt_ru||'')+'</p>'
-           + '<textarea id="cp-response" rows="4" placeholder="Опишите ощущения…" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+           + '<textarea id="cp-response" rows="4" placeholder="' + t('a.courses.cp_ph_sensation_prompt','Опишите ощущения…') + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
       break;
     case 'break':
       var sec = parseInt(p.duration_seconds,10) || 60;
-      body = '<div style="text-align:center;padding:2rem 1rem;"><div style="font-size:48px;font-family:JetBrains Mono,monospace;color:var(--accent-cyan);" id="cp-break-timer">'+sec+'</div><p style="color:var(--text-muted);margin-top:1rem;">Перерыв. Можно продолжить когда будете готовы.</p></div>';
+      body = '<div style="text-align:center;padding:2rem 1rem;"><div style="font-size:48px;font-family:JetBrains Mono,monospace;color:var(--accent-cyan);" id="cp-break-timer">'+sec+'</div><p style="color:var(--text-muted);margin-top:1rem;">'+t('a.courses.cp_break_note','Перерыв. Можно продолжить когда будете готовы.')+'</p></div>';
       // start countdown
       setTimeout(function(){ var el=document.getElementById('cp-break-timer'); if(!el) return; var n=sec; var t=setInterval(function(){ n--; if(!document.getElementById('cp-break-timer')){clearInterval(t);return;} if(n<=0){clearInterval(t); el.textContent='0';} else el.textContent=n; }, 1000); }, 100);
       break;
@@ -11591,14 +11606,14 @@ function cpRenderBlock(){
       var maxSec = parseInt(p.max_duration_seconds,10) || 120;
       body = '<p style="font-size:14px;color:var(--text-secondary);margin:0 0 1rem;">'+(p['prompt_'+lang]||p.prompt_ru||'')+'</p>'
            + '<div style="text-align:center;padding:1rem 0;">'
-           +   '<button id="cp-rec-btn" class="btn btn-solid" onclick="cpRecToggle('+maxSec+')" style="font-size:13px;padding:0.6rem 1.2rem;">🎙 Начать запись</button>'
-           +   '<div id="cp-rec-status" style="margin-top:0.5rem;font-size:11px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">Готов. Макс. ' + maxSec + ' сек.</div>'
+           +   '<button id="cp-rec-btn" class="btn btn-solid" onclick="cpRecToggle('+maxSec+')" style="font-size:13px;padding:0.6rem 1.2rem;">' + t('a.courses.cp_rec_start','🎙 Начать запись') + '</button>'
+           +   '<div id="cp-rec-status" style="margin-top:0.5rem;font-size:11px;color:var(--text-muted);font-family:JetBrains Mono,monospace;">' + t('a.courses.cp_rec_ready','Готов. Макс. {n} сек.').replace('{n}', maxSec) + '</div>'
            +   '<audio id="cp-rec-playback" controls style="display:none;margin-top:0.75rem;width:100%;"></audio>'
            + '</div>';
       break;
     case 'student_text':
       body = '<p style="font-size:14px;color:var(--text-secondary);margin:0 0 1rem;">'+(p['prompt_'+lang]||p.prompt_ru||'')+'</p>'
-           + '<textarea id="cp-response" rows="6" placeholder="Ваш ответ…" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+           + '<textarea id="cp-response" rows="6" placeholder="' + t('a.courses.cp_ph_your_answer','Ваш ответ…') + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
       break;
     case 'question_branch':
       var qopts = Array.isArray(p.options) ? p.options : [];
@@ -11611,13 +11626,13 @@ function cpRenderBlock(){
       document.getElementById('cp-next-btn').style.display = 'none';
       break;
     case 'sound_cue':
-      body = '<div style="text-align:center;padding:1.5rem 1rem;"><p style="font-size:14px;color:var(--text-muted);">🔔 Звуковой сигнал</p><audio autoplay controls style="margin-top:1rem;"><source src="'+(p.audio_url||'')+'"></audio></div>';
+      body = '<div style="text-align:center;padding:1.5rem 1rem;"><p style="font-size:14px;color:var(--text-muted);">' + t('a.courses.cp_sound_cue','🔔 Звуковой сигнал') + '</p><audio autoplay controls style="margin-top:1rem;"><source src="'+(p.audio_url||'')+'"></audio></div>';
       break;
     case 'tool_task':
       body = cpRenderToolTask(block, p, lang);
       break;
     default:
-      body = '<p style="color:var(--text-muted);">Тип блока «'+block.block_type+'» пока не отображается.</p>';
+      body = '<p style="color:var(--text-muted);">'+t('a.courses.cp_unsupported','Тип блока «{t}» пока не отображается.').replace('{t}', block.block_type)+'</p>';
   }
   area.innerHTML = titleHtml + body;
 
@@ -11637,7 +11652,7 @@ function cpRenderBlock(){
     } else if (bt === 'text') {
       var wrap = document.createElement('div');
       wrap.style.cssText = 'margin-top:1.1rem;';
-      wrap.innerHTML = '<button id="cp-text-read" class="btn btn-solid" style="font-size:13px;padding:0.5rem 1.1rem;">Прочитано ✓</button>';
+      wrap.innerHTML = '<button id="cp-text-read" class="btn btn-solid" style="font-size:13px;padding:0.5rem 1.1rem;">' + t('a.courses.cp_read_done','Прочитано ✓') + '</button>';
       area.appendChild(wrap);
       var rb = document.getElementById('cp-text-read');
       if (rb) rb.addEventListener('click', function(){ rb.disabled = true; rb.style.opacity = '0.6'; cpScheduleAutoAdvance(); });
@@ -11645,6 +11660,9 @@ function cpRenderBlock(){
       // PACK 9: mount the real 3D atlas INLINE inside the player (no tab switch).
       // Give the DOM a tick so the embed container has its size before WebGL init.
       setTimeout(cpMountHumanAtlas, 40);
+    } else if (bt === 'tool_task' && (block.tool_kind || 'sensation_map') === 'sensation_map') {
+      // B п.3: mount the real mini Sensation Map (silhouettes + regions) inline.
+      setTimeout(cpMountSensationMap, 40);
     }
     // 3.5: when we LAND here via auto-advance, start the next audio/video itself
     // (give the DOM ~0.6s to mount the element). If the browser blocks autoplay,
@@ -11672,7 +11690,7 @@ function cpShowPlayHint(){
   var t = document.createElement('div');
   t.id = 'cp-play-hint';
   t.style.cssText = 'position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:60;background:rgba(7,11,18,0.97);border:1px solid var(--accent-cyan,#00e5ff);border-radius:12px;padding:0.55rem 0.9rem;font-size:13px;color:var(--text-primary);backdrop-filter:blur(8px);box-shadow:0 12px 34px rgba(0,0,0,0.55);';
-  t.textContent = 'Нажмите ▶ для продолжения';
+  t.textContent = (typeof window.t === 'function' ? window.t('a.courses.cp_play_hint','Нажмите ▶ для продолжения') : 'Нажмите ▶ для продолжения');
   modal.appendChild(t);
   setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, 4000);
 }
@@ -11697,9 +11715,10 @@ function cpScheduleAutoAdvance(){
   var toast = document.createElement('div');
   toast.id = 'cp-autoadvance-toast';
   toast.style.cssText = 'position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:0.6rem;background:rgba(7,11,18,0.97);border:1px solid var(--accent-cyan,#00e5ff);border-radius:12px;padding:0.55rem 0.8rem;box-shadow:0 12px 34px rgba(0,0,0,0.55);font-size:13px;color:var(--text-primary);backdrop-filter:blur(8px);max-width:92%;';
-  toast.innerHTML = '<span>Следующий блок через <b id="cp-aa-count" style="font-family:JetBrains Mono,monospace;color:var(--accent-cyan,#00e5ff);">' + secs + '</b> сек…</span>'
-    + '<button id="cp-aa-cancel" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text-secondary);border-radius:8px;padding:0.3rem 0.65rem;font-size:12px;cursor:pointer;white-space:nowrap;">✕ Отменить</button>'
-    + '<button id="cp-aa-now" style="background:var(--accent-cyan,#00e5ff);border:none;color:#001016;border-radius:8px;padding:0.3rem 0.7rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Далее →</button>';
+  var _T = (typeof window.t === 'function') ? window.t : function(k,f){ return f; };
+  toast.innerHTML = '<span>' + _T('a.courses.cp_next_in','Следующий блок через') + ' <b id="cp-aa-count" style="font-family:JetBrains Mono,monospace;color:var(--accent-cyan,#00e5ff);">' + secs + '</b> ' + _T('a.courses.cp_seconds','сек') + '…</span>'
+    + '<button id="cp-aa-cancel" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text-secondary);border-radius:8px;padding:0.3rem 0.65rem;font-size:12px;cursor:pointer;white-space:nowrap;">' + _T('a.courses.cp_cancel','✕ Отменить') + '</button>'
+    + '<button id="cp-aa-now" style="background:var(--accent-cyan,#00e5ff);border:none;color:#001016;border-radius:8px;padding:0.3rem 0.7rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">' + _T('a.courses.btn_next','Далее →') + '</button>';
   modal.appendChild(toast);
   var remain = secs;
   var tick = setInterval(function(){ remain--; var c = document.getElementById('cp-aa-count'); if (c) c.textContent = Math.max(0, remain); }, 1000);
@@ -11722,35 +11741,209 @@ window.cpCancelAutoAdvance = cpCancelAutoAdvance;
 function cpRenderToolTask(block, p, lang){
   var kind = block.tool_kind || 'sensation_map';
   if (kind === 'human-atlas') return cpRenderHumanAtlas(block, p, lang);
+  // B п.1: sensation_map mounts the REAL mini Sensation Map (silhouettes + regions),
+  // not a textarea. Mounted by the post-render hook (cpMountSensationMap).
+  if (kind === 'sensation_map') return cpRenderSensationMap(block, p, lang);
   var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META[kind]) || { icon:'🛠', label_ru:'Инструмент' };
+  var label = cpToolLabel(kind);
   var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
   var emotionLike = (kind === 'neuromap_emotion' || kind === 'sensation_map' || kind === 'diary');
-  var ph = kind === 'point_ab' ? 'Опиши, где ты сейчас (точка А) и куда хочешь прийти (точка B)…'
-         : kind === 'diary' ? 'Запиши, что заметил(а) — мысли, состояние, наблюдение…'
-         : kind === 'neuromap_event' ? 'Опиши событие…'
-         : kind === 'neuromap_thought' ? 'Запиши мысль…'
-         : kind === 'neuromap_emotion' ? 'Назови эмоцию и опиши её…'
-         : 'Опиши свои ощущения и где ты их чувствуешь…';
+  var ph = kind === 'point_ab' ? t('a.courses.cp_ph_point_ab','Опиши, где ты сейчас (точка А) и куда хочешь прийти (точка B)…')
+         : kind === 'diary' ? t('a.courses.cp_ph_diary','Запиши, что заметил(а) — мысли, состояние, наблюдение…')
+         : kind === 'neuromap_event' ? t('a.courses.cp_ph_event','Опиши событие…')
+         : kind === 'neuromap_thought' ? t('a.courses.cp_ph_thought','Запиши мысль…')
+         : kind === 'neuromap_emotion' ? t('a.courses.cp_ph_emotion','Назови эмоцию и опиши её…')
+         : t('a.courses.cp_ph_sensation','Опиши свои ощущения и где ты их чувствуешь…');
   var h = '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;margin-bottom:0.9rem;">'
         + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">'
-        +   meta.icon + ' Задание · ' + meta.label_ru + '</div>'
+        +   meta.icon + ' ' + t('a.courses.cp_task_prefix','Задание') + ' · ' + label + '</div>'
         + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;">' + instr.replace(/</g,'&lt;') + '</div>'
-                 : '<div style="font-size:13px;color:var(--text-muted);">Выполни инструмент и опиши результат — он сохранится в твоём ' + meta.label_ru + ' и на пути развития.</div>')
+                 : '<div style="font-size:13px;color:var(--text-muted);">' + t('a.courses.cp_task_default_instr','Выполни инструмент и опиши результат — он сохранится в твоём {label} и на пути развития.').replace('{label}', label) + '</div>')
         + '</div>'
         + '<textarea id="cp-response" rows="5" placeholder="' + ph + '" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
   // emotion / sensation / diary get a valence picker so the event lands with tone
   if (emotionLike) {
     h += '<div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.6rem;font-size:12px;color:var(--text-muted);">'
-       + '<span>Тон:</span>'
+       + '<span>' + t('a.courses.cp_tone','Тон:') + '</span>'
        + '<select id="cp-tool-valence" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.3rem 0.5rem;font-size:12px;">'
-       +   '<option value="neutral">нейтральный</option>'
-       +   '<option value="positive">позитивный</option>'
-       +   '<option value="negative">напряжённый</option>'
+       +   '<option value="neutral">' + t('a.courses.cp_tone_neutral','нейтральный') + '</option>'
+       +   '<option value="positive">' + t('a.courses.cp_tone_positive','позитивный') + '</option>'
+       +   '<option value="negative">' + t('a.courses.cp_tone_negative','напряжённый') + '</option>'
        + '</select></div>';
   }
   return h;
 }
 window.cpRenderToolTask = cpRenderToolTask;
+
+// ── B п.1–5: inline mini Sensation Map for course tool_task (kind='sensation_map') ──
+// Renders the REAL instrument: 2D silhouettes + clickable regions (via the shared
+// window.mountBodyPicker, same engine as the standalone tool) + compact sensation
+// chips + comment + intensity + tone. Saving POSTs to the SAME endpoint the
+// standalone uses (/api/neuromap/sensation), then marks the course block complete
+// and advances — the result lands on the Evolution Path just like the standalone.
+window.CP_SM = window.CP_SM || { sel: {}, labels: {}, sens: [] };
+function cpRenderSensationMap(block, p, lang){
+  var cfg = block.tool_config || {};
+  // p.4: author config — config.prompt (custom instruction) + config.region_focus (hint)
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en
+            || cfg.prompt || (cfg.payload && cfg.payload.prompt) || '';
+  var regionFocus = cfg.region_focus || (cfg.payload && cfg.payload.region_focus) || p.region_focus || '';
+  var meta = (window.TOOL_TASK_META && window.TOOL_TASK_META.sensation_map) || { icon:'🗺' };
+  var label = cpToolLabel('sensation_map');
+  // reset per-mount selection so a re-opened block starts clean
+  window.CP_SM = { sel: {}, labels: {}, sens: [] };
+  var inStyle = 'width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;';
+  var h = '<div style="padding:0.9rem 1rem;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.22);border-radius:10px;margin-bottom:0.9rem;">'
+        + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.3rem;">'
+        +   meta.icon + ' ' + t('a.courses.cp_task_prefix','Задание') + ' · ' + label + '</div>'
+        + '<div style="font-size:13px;line-height:1.6;color:var(--text-secondary);white-space:pre-wrap;">'
+        +   (instr ? instr.replace(/</g,'&lt;') : t('a.courses.cp_sm_pick_hint','Выберите области на теле и опишите ощущения')) + '</div>'
+        + (regionFocus ? '<div style="font-size:12px;color:var(--accent-cyan);margin-top:0.4rem;">' + t('a.courses.cp_sm_region_focus','Фокус:') + ' ' + String(regionFocus).replace(/</g,'&lt;') + '</div>' : '')
+        + '</div>'
+        // silhouettes (front/back) + clickable regions — mounted by cpMountSensationMap
+        + '<div id="cp-sm-picker" style="min-height:240px;margin-bottom:0.6rem;"></div>'
+        + '<div id="cp-sm-selected" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.6rem;"></div>'
+        // compact sensation chips
+        + '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;">' + t('a.courses.cp_sm_sensations','Ощущения') + '</div>'
+        + '<div id="cp-sm-sens" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.8rem;"></div>'
+        + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_sensation','Опиши свои ощущения и где ты их чувствуешь…') + '" style="' + inStyle + '"></textarea>'
+        // intensity + tone row
+        + '<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-top:0.6rem;font-size:12px;color:var(--text-muted);">'
+        +   '<label style="display:flex;align-items:center;gap:0.4rem;">' + t('a.courses.cp_sm_intensity','Интенсивность')
+        +     ' <input type="range" id="cp-sm-intensity" min="1" max="10" value="5" style="vertical-align:middle;"><b id="cp-sm-intensity-v" style="color:var(--accent-cyan);font-family:JetBrains Mono,monospace;">5</b></label>'
+        +   '<label style="display:flex;align-items:center;gap:0.4rem;">' + t('a.courses.cp_tone','Тон:')
+        +     ' <select id="cp-tool-valence" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--text-primary);padding:0.3rem 0.5rem;font-size:12px;">'
+        +       '<option value="neutral">' + t('a.courses.cp_tone_neutral','нейтральный') + '</option>'
+        +       '<option value="positive">' + t('a.courses.cp_tone_positive','позитивный') + '</option>'
+        +       '<option value="negative">' + t('a.courses.cp_tone_negative','напряжённый') + '</option>'
+        +     '</select></label>'
+        + '</div>'
+        // save → POST sensation → mark complete → confirmation
+        + '<div style="display:flex;gap:0.7rem;align-items:center;margin-top:0.9rem;">'
+        +   '<button class="btn btn-solid cp-accent-btn" id="cp-sm-save" onclick="cpSensSave()" style="font-size:13px;padding:0.55rem 1.2rem;">' + t('a.courses.cp_sm_save','Сохранить') + '</button>'
+        +   '<span id="cp-sm-status" style="font-size:12px;color:var(--text-muted);"></span>'
+        + '</div>';
+  return h;
+}
+window.cpRenderSensationMap = cpRenderSensationMap;
+
+// Mount the body picker + load compact sensation chips into the inline block.
+function cpMountSensationMap(){
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  // 1) silhouettes + regions via the shared body picker engine
+  var host = document.getElementById('cp-sm-picker');
+  if (host && typeof window.mountBodyPicker === 'function'){
+    var gender = (window.currentUser && window.currentUser.gender) || null;
+    try { window.mountBodyPicker(host, cpSensBodySelect, { lang: lang, gender: gender }); } catch(e){ console.warn('cpMountSensationMap picker:', e); }
+  }
+  // 2) compact sensation vocabulary chips (same source as the standalone tool)
+  var sbox = document.getElementById('cp-sm-sens');
+  if (sbox && typeof AUTH_API !== 'undefined'){
+    fetch(AUTH_API + '/api/vocab/sensation').then(function(r){ return r.json(); }).then(function(d){
+      var list = (d && (d.terms || d.vocab || d.items)) || (Array.isArray(d) ? d : []);
+      window.CP_SM.sens = list;
+      var CHIP = 'padding:0.35rem 0.65rem;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02);color:#cdcdd6;font-size:12px;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:5px;';
+      function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+      sbox.innerHTML = list.map(function(v){
+        var lbl = v['label_'+lang] || v.label_ru || v.label_en || v.slug;
+        var ico = (v.icon && window.ICON_BY_KEY) ? window.ICON_BY_KEY(v.icon) : (window.SENS_ICON ? window.SENS_ICON(v.slug) : '');
+        return '<div class="cp-sm-chip" data-slug="' + esc(v.slug) + '" style="' + CHIP + '">' + ico + '<span>' + esc(lbl) + '</span></div>';
+      }).join('');
+      sbox.querySelectorAll('.cp-sm-chip').forEach(function(c){
+        c.addEventListener('click', function(){
+          var on = c.classList.toggle('active');
+          c.style.background = on ? 'rgba(0,224,255,0.12)' : 'rgba(255,255,255,0.02)';
+          c.style.borderColor = on ? 'rgba(0,224,255,0.6)' : 'rgba(255,255,255,0.12)';
+          c.style.color = on ? '#fff' : '#cdcdd6';
+        });
+      });
+    }).catch(function(){});
+  }
+  // 3) intensity live readout
+  var ri = document.getElementById('cp-sm-intensity'), rv = document.getElementById('cp-sm-intensity-v');
+  if (ri && rv) ri.addEventListener('input', function(){ rv.textContent = ri.value; });
+}
+window.cpMountSensationMap = cpMountSensationMap;
+
+// body-picker callback → mirror the standalone tool's selection model
+function cpSensBodySelect(slug, labels, picked){
+  window.CP_SM.labels[slug] = labels;
+  if (picked) window.CP_SM.sel[slug] = labels; else delete window.CP_SM.sel[slug];
+  cpSensRenderSelected();
+}
+function cpSensRenderSelected(){
+  var strip = document.getElementById('cp-sm-selected'); if (!strip) return;
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  var st = 'padding:0.3rem 0.55rem;border-radius:16px;border:1px solid rgba(94,224,255,0.4);background:rgba(94,224,255,0.1);color:#eafaff;font-size:12px;display:inline-flex;align-items:center;gap:6px;';
+  strip.innerHTML = Object.keys(window.CP_SM.sel).map(function(slug){
+    var lab = window.CP_SM.sel[slug]; var txt = (lab && (lab[lang]||lab.ru)) || slug;
+    return '<span style="' + st + '">' + esc(txt) + ' <button type="button" onclick="cpSensUnselect(\'' + esc(slug) + '\')" style="background:none;border:none;color:#9cf;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button></span>';
+  }).join('');
+}
+function cpSensUnselect(slug){
+  delete window.CP_SM.sel[slug]; cpSensRenderSelected();
+  try { document.querySelectorAll('#cp-sm-picker .bp-sub.picked').forEach(function(b){ if(b.getAttribute('data-slug')===slug) b.classList.remove('picked'); }); } catch(e){}
+}
+window.cpSensUnselect = cpSensUnselect;
+
+// Save the inline Sensation Map: POST to the shared endpoint, then complete the block.
+function cpSensSave(){
+  var block = coursePlayer.blocks[coursePlayer.idx]; if (!block) return;
+  var status = document.getElementById('cp-sm-status');
+  var btn = document.getElementById('cp-sm-save');
+  var lang = (typeof getLang === 'function') ? getLang() : 'ru';
+  var locSel = Object.keys(window.CP_SM.sel);
+  var sensSel = Array.from(document.querySelectorAll('#cp-sm-sens .cp-sm-chip.active')).map(function(c){ return c.dataset.slug; });
+  var commentEl = document.getElementById('cp-response');
+  var comment = commentEl ? commentEl.value.trim() : '';
+  if (!locSel.length && !sensSel.length && !comment){
+    if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_sm_empty','Выбери область или опиши ощущение'); }
+    return;
+  }
+  var token = localStorage.getItem('na_token'); if (!token) return;
+  if (coursePlayer.previewMode){
+    // admin preview: don't write, just confirm + advance locally
+    if (status){ status.style.color = '#0e9'; status.textContent = t('a.courses.cp_sm_saved','✓ Сохранено в Путь развития'); }
+    setTimeout(function(){ cpNext(); }, 700);
+    return;
+  }
+  var intEl = document.getElementById('cp-sm-intensity');
+  var intensity = intEl ? parseInt(intEl.value, 10) : null;
+  var valEl = document.getElementById('cp-tool-valence');
+  var loc_labels = {};
+  locSel.forEach(function(slug){ if (window.CP_SM.labels[slug]) loc_labels[slug] = window.CP_SM.labels[slug].ru; });
+  if (status){ status.style.color = 'var(--text-muted)'; status.textContent = t('a.courses.cp_sm_saving','Сохранение…'); }
+  if (btn) btn.disabled = true;
+  fetch(AUTH_API + '/api/neuromap/sensation', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sensations: sensSel, body_locations: locSel, comment: comment, intensity: intensity, loc_labels: loc_labels })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.ok){
+      if (status){ status.style.color = '#0e9'; status.textContent = t('a.courses.cp_sm_saved','✓ Сохранено в Путь развития'); }
+      // mark the course block complete (response already persisted to Evolution Path
+      // via the sensation endpoint — pass a summary + flag so we don't double-log).
+      var summary = comment || (sensSel.concat(locSel)).slice(0,6).join(', ');
+      coursePlayer.blockResponse = {
+        text: summary, label: summary.slice(0,80),
+        valence: valEl ? valEl.value : 'neutral',
+        tool_kind: 'sensation_map', sensation_logged: true
+      };
+      setTimeout(function(){ _cpFinalize(block, coursePlayer.blockResponse); }, 900);
+    } else {
+      if (btn) btn.disabled = false;
+      if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_sm_error','Ошибка сохранения') + ': ' + ((d && d.error) || 'unknown'); }
+    }
+  })
+  .catch(function(err){
+    if (btn) btn.disabled = false;
+    if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_sm_error','Ошибка сохранения') + ': ' + err.message; }
+  });
+}
+window.cpSensSave = cpSensSave;
 
 // 🧬 human-atlas course block — informative card + deep-link into the full 3D
 // atlas (preselected tab + entity). The 3D engine is heavy, so the player shows a
@@ -11903,7 +12096,7 @@ function cpRecToggle(maxSec){
     cpRec.recorder.stop();
     return;
   }
-  if (!navigator.mediaDevices || !window.MediaRecorder) { alert('Запись не поддерживается этим браузером.'); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { alert(t('a.courses.cp_rec_unsupported','Запись не поддерживается этим браузером.')); return; }
   navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
     cpRec.stream = stream;
     cpRec.chunks = [];
@@ -11916,22 +12109,22 @@ function cpRecToggle(maxSec){
       var blob = new Blob(cpRec.chunks, { type: mime });
       var url = URL.createObjectURL(blob);
       pb.src = url; pb.style.display = '';
-      btn.textContent = '🎙 Записать заново';
-      status.textContent = 'Готово (' + Math.round(blob.size/1024) + ' KB). Жми «Далее» чтобы сохранить.';
+      btn.textContent = t('a.courses.cp_rec_again','🎙 Записать заново');
+      status.textContent = t('a.courses.cp_rec_done','Готово ({kb} KB). Жми «Далее» чтобы сохранить.').replace('{kb}', Math.round(blob.size/1024));
       if (cpRec.timerId) { clearInterval(cpRec.timerId); cpRec.timerId = null; }
       // Save blob for cpNext to upload
       coursePlayer.recBlob = blob; coursePlayer.recMime = mime;
     };
     mr.start();
-    btn.textContent = '⏹ Остановить';
+    btn.textContent = t('a.courses.cp_rec_stop','⏹ Остановить');
     var t0 = Date.now();
     cpRec.timerId = setInterval(function(){
       var sec = Math.floor((Date.now()-t0)/1000);
-      status.textContent = 'Запись… ' + sec + 's / ' + maxSec + 's';
+      status.textContent = t('a.courses.cp_rec_recording','Запись… {s}s / {max}s').replace('{s}', sec).replace('{max}', maxSec);
       if (sec >= maxSec) { try { mr.stop(); } catch(e){} }
     }, 250);
   }).catch(function(e){
-    status.textContent = 'Нет доступа к микрофону: ' + e.message;
+    status.textContent = t('a.courses.cp_rec_nomic','Нет доступа к микрофону: ') + e.message;
   });
 }
 window.cpRecToggle = cpRecToggle;
@@ -12071,7 +12264,7 @@ function cpNext(){
       coursePlayer.recBlob = null; coursePlayer.recMime = null;
       _cpFinalize(block, response);
     })
-    .catch(function(e){ alert('Не удалось загрузить запись: ' + e.message); });
+    .catch(function(e){ alert(t('a.courses.cp_upload_fail','Не удалось загрузить запись: ') + e.message); });
     return;
   }
   _cpFinalize(block, response);
@@ -14299,7 +14492,7 @@ window.pbMove = pbMove;
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
-<script src="assets/js/course-path-view.js"></script>
+<script src="assets/js/course-path-view.js?v=2"></script>
 <script src="assets/js/evolution-path.js?v=12"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
