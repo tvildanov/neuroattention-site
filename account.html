@@ -9322,6 +9322,15 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){
     try { reg.update(); } catch(e){}
   }).catch(function(){});
+  // Belt-and-suspenders: force an update-check on EVERY existing registration (any
+  // scope), so a client still controlled by a stale worker re-fetches sw.js from the
+  // network and installs the current one immediately, instead of waiting for the
+  // browser's own ~24h update cadence.
+  try {
+    navigator.serviceWorker.getRegistrations().then(function(rs){
+      rs.forEach(function(r){ try { r.update(); } catch(e){} });
+    }).catch(function(){});
+  } catch(e){}
 }
 </script>
 <!-- Fullscreen NeuroMap overlay -->
