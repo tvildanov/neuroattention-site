@@ -61,6 +61,7 @@
     level:   { ru: 'Уровень', en: 'Level', es: 'Nivel' },
     module:  { ru: 'Модуль', en: 'Module', es: 'Módulo' },
     layersTitle: { ru: 'Слои', en: 'Layers', es: 'Capas' },
+    emptyPeriod: { ru: 'Нет событий за выбранный период', en: 'No events in the selected period', es: 'Sin eventos en el periodo' },
     openProfile: { ru: 'Открыть профиль', en: 'Open profile', es: 'Abrir perfil' },
     demoBadge: { ru: 'демо', en: 'demo', es: 'demo' }
   };
@@ -202,6 +203,21 @@
     if (to <= from) to = from + 1;
     return { from: from, to: to, span: to - from };
   }
+  // Layers view crops to the selected period (anchored at "now"), so Day/Week/
+  // Month/3mo/Year actually change what's shown. The tunnel mode re-zooms via
+  // ensureView() instead; the layers SVG has no pan/zoom, so it windows the
+  // domain here. 'all' falls back to the full registration→now range.
+  var PERIOD_DAYS = { day: 1, week: 7, month: 30, '3months': 90, year: 365 };
+  function layersDomain(data, st) {
+    var full = domain(data);
+    var pd = PERIOD_DAYS[st && st.period];
+    if (!pd) return full;                       // 'all' (or unknown) → full span
+    var to = full.to;
+    var from = Math.max(full.from, to - pd * 864e5);
+    if (to <= from) to = from + 1;
+    return { from: from, to: to, span: to - from };
+  }
+  function inWindow(t, dom) { var ms = tms(t); return ms >= dom.from && ms <= dom.to; }
   function recompute(events) {
     var emo = events.filter(function (e) { return e.layer === 'emotion'; });
     var pos = emo.filter(function (e) { return e.valence === 'positive'; }).length;
@@ -1629,7 +1645,7 @@
 
   /* ── view: LAYERS (horizontal lanes, wavy baselines) ────────────────────── */
   function renderLayers(svg, W, data, lang, container, st) {
-    var dom = domain(data);
+    var dom = layersDomain(data, st);
     // PR: keep just enough left gutter for the lane labels (drawn at x:10); drop the
     // old 150px right reservation so the lanes span the stage between the rails.
     var padL = 64, padR = 28, padTop = 46, padBot = 30;
@@ -1644,8 +1660,10 @@
     // module sections across the top
     drawModuleHeaders(g, st, dom, lang, x0, x1, padTop);
 
-    var allEv = allEvents(data);
+    // only events inside the selected period window — so period buttons crop the view
+    var allEv = allEvents(data).filter(function (e) { return inWindow(e.t, dom); });
     indexEvents(allEv);
+    var windowCount = 0;
 
     lanes.forEach(function (ly, li) {
       var cyL = padTop + laneH * li + laneH / 2;
@@ -1677,6 +1695,8 @@
       }
       var laneNodes = el('g');
       (data.layers[ly.key] || []).forEach(function (e, i) {
+        if (!inWindow(e.t, dom)) return;          // crop to the selected period window
+        windowCount++;
         var stl = ly.key === 'insight' ? { c: 'var(--myc-cyan)', o: 0.95 } : valStyle(e.valence);
         var r = (ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
         var px = xOf(e.t);
@@ -1692,6 +1712,14 @@
 
     drawFilaments(g, data, allEv);
     drawTimeAxis(g, dom, lang, x0, x1);
+    // empty-in-window hint: lanes still render (so the structure is visible) but
+    // tell the user nothing landed in this period rather than leaving it blank.
+    if (!windowCount) {
+      var note = el('text', { x: ((x0 + x1) / 2).toFixed(1), y: (padTop + (H - padTop - padBot) / 2).toFixed(1),
+        'text-anchor': 'middle', 'class': 'evo-axis-label', opacity: '0.7' });
+      note.textContent = L(STR.emptyPeriod, lang);
+      g.appendChild(note);
+    }
     svg.appendChild(g);
   }
 
@@ -1772,6 +1800,8 @@
     var evoUrl = regIso
       ? '/api/users/me/evolution?from=' + encodeURIComponent(new Date(regIso).toISOString()) + '&to=' + encodeURIComponent(new Date().toISOString())
       : '/api/users/me/evolution?period=all';
+    // PR91: optional subject scope (dependent:<id> | team:<id>) for child/team path view
+    if (opts.subject) evoUrl += '&subject=' + encodeURIComponent(opts.subject);
     Promise.all([
       jget(evoUrl),
       st.user ? Promise.resolve(null) : jget('/api/users/me/xp'),

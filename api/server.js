@@ -983,6 +983,47 @@ app.post('/api/run-migrations', async (req, res) => {
         ON CONFLICT (slug) DO NOTHING`;
       await sql`UPDATE anatomy_functions SET region_ids = ARRAY['uterus','placenta','ovaries','breasts','hypothalamus','pituitary','thyroid-gland','cervix']::text[], category = 'reproductive' WHERE slug = 'pregnancy'`;
     } catch (e) { console.error('migration 021 (pregnancy function):', e.message); }
+
+    // ── Migration 022: Family & Team (Phase 2A) ── mirrors
+    //    migrations/022_family_dependents.sql. Families/teams already live in the
+    //    `teams` table (kind='family'/'team'); here we add only the new pieces:
+    //    dependent_profiles (non-user children), team_invites (join-by-link tokens),
+    //    and journey_events.dependent_id (so events can be attributed to a dependent).
+    //    Idempotent. Wrapped so a fresh DB without `teams` yet never aborts the run.
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS dependent_profiles (
+        id BIGSERIAL PRIMARY KEY,
+        owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        family_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
+        name TEXT NOT NULL,
+        sex TEXT,
+        birth_date DATE,
+        expected_due_date DATE,
+        track_from DATE,
+        relation TEXT,
+        diagnoses_ids INTEGER[] DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now(),
+        deleted_at TIMESTAMPTZ,
+        CONSTRAINT dependent_has_date CHECK (birth_date IS NOT NULL OR expected_due_date IS NOT NULL)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_dependents_owner ON dependent_profiles(owner_user_id) WHERE deleted_at IS NULL`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_dependents_family ON dependent_profiles(family_id)`;
+      await sql`CREATE TABLE IF NOT EXISTS team_invites (
+        token TEXT PRIMARY KEY,
+        team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        role TEXT DEFAULT 'member',
+        max_uses INTEGER,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        expires_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_team_invites_team ON team_invites(team_id)`;
+      await sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS dependent_id BIGINT`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_journey_events_dependent ON journey_events(dependent_id) WHERE dependent_id IS NOT NULL`;
+    } catch (e) { console.error('migration 022 (family/dependents):', e.message); }
+
     // Conditions / states (internal field) — tab 3 of Human Atlas.
     await sql`CREATE TABLE IF NOT EXISTS human_conditions (
       id SERIAL PRIMARY KEY,
@@ -5710,6 +5751,221 @@ app.patch('/api/teams/:id/leader', requireAuth, async (req, res) => {
   } catch (err) { console.error('team leader transfer:', err); res.status(500).json({ error: err.message }); }
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// PR91 — Family & Team (Phase 2A). Invite links (family + team), team search,
+// dependent profiles (children/etc. who are not platform users).
+// ───────────────────────────────────────────────────────────────────────────
+
+// GET /api/teams/search?q=… — discover public teams to request joining. Returns
+// only public, non-family teams the caller is not already a member of.
+app.get('/api/teams/search', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const q = String(req.query.q || '').trim().toLowerCase();
+    if (q.length < 2) return res.json({ teams: [] });
+    const like = '%' + q + '%';
+    const rows = await sql`
+      SELECT t.id, t.name, t.description, t.slug,
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) AS member_count,
+             EXISTS(SELECT 1 FROM team_members WHERE team_id = t.id AND user_id = ${me}) AS is_member
+      FROM teams t
+      WHERE t.kind = 'team' AND t.is_public = TRUE
+        AND (lower(t.name) LIKE ${like} OR lower(coalesce(t.description,'')) LIKE ${like})
+      ORDER BY member_count DESC, t.created_at DESC
+      LIMIT 25`;
+    res.json({ teams: rows });
+  } catch (err) { console.error('GET teams/search:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/teams/:id/invite — owner generates a shareable invite token/link.
+// Works for both family and team. Body: { role?, max_uses?, expires_in_days? }.
+app.post('/api/teams/:id/invite', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT owner_user_id, kind FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (String(t.owner_user_id) !== String(me)) return res.status(403).json({ error: 'Owner only' });
+    const b = req.body || {};
+    const role = (t.kind === 'family' && FAMILY_ROLES.includes(b.role)) ? b.role : 'member';
+    const maxUses = (b.max_uses != null && !isNaN(parseInt(b.max_uses, 10))) ? Math.max(1, parseInt(b.max_uses, 10)) : null;
+    const days = (b.expires_in_days != null && !isNaN(parseInt(b.expires_in_days, 10))) ? parseInt(b.expires_in_days, 10) : 30;
+    const expiresAt = days > 0 ? new Date(Date.now() + days * 86400000).toISOString() : null;
+    const token = crypto.randomBytes(18).toString('base64url');
+    await sql`INSERT INTO team_invites (token, team_id, created_by, role, max_uses, expires_at)
+              VALUES (${token}, ${tid}, ${me}, ${role}, ${maxUses}, ${expiresAt})`;
+    res.status(201).json({ ok: true, token, team_id: tid, kind: t.kind, role, expires_at: expiresAt });
+  } catch (err) { console.error('POST team invite:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/teams/join/:token — preview an invite (no membership change yet).
+app.get('/api/teams/join/:token', requireAuth, async (req, res) => {
+  try {
+    const [inv] = await sql`SELECT i.*, t.name AS team_name, t.kind AS team_kind, t.description
+                            FROM team_invites i JOIN teams t ON t.id = i.team_id
+                            WHERE i.token = ${req.params.token}`;
+    if (!inv) return res.status(404).json({ error: 'Invite not found' });
+    const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
+    const exhausted = inv.max_uses != null && inv.use_count >= inv.max_uses;
+    res.json({ ok: true, valid: !expired && !exhausted, expired: !!expired, exhausted: !!exhausted,
+               team_id: inv.team_id, team_name: inv.team_name, kind: inv.team_kind, description: inv.description, role: inv.role });
+  } catch (err) { console.error('GET join preview:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/teams/join/:token — accept an invite and become a member.
+app.post('/api/teams/join/:token', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [inv] = await sql`SELECT * FROM team_invites WHERE token = ${req.params.token}`;
+    if (!inv) return res.status(404).json({ error: 'Invite not found' });
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) return res.status(410).json({ error: 'Invite expired' });
+    if (inv.max_uses != null && inv.use_count >= inv.max_uses) return res.status(410).json({ error: 'Invite already used up' });
+    const [t] = await sql`SELECT id, name FROM teams WHERE id = ${inv.team_id}`;
+    if (!t) return res.status(404).json({ error: 'Team no longer exists' });
+    const [already] = await sql`SELECT 1 FROM team_members WHERE team_id = ${inv.team_id} AND user_id = ${me}`;
+    if (!already) {
+      await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${inv.team_id}, ${me}, ${inv.role}) ON CONFLICT DO NOTHING`;
+      await sql`UPDATE team_invites SET use_count = use_count + 1 WHERE token = ${inv.token}`;
+      try { await notifyUser(inv.created_by, 'team_joined', { team_id: inv.team_id, team_name: t.name, joiner: me }); } catch (e) {}
+    }
+    res.json({ ok: true, team_id: inv.team_id, already_member: !!already });
+  } catch (err) { console.error('POST join:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/teams/:id/join — directly join a PUBLIC team (no invite needed).
+// Public teams are discoverable via /api/teams/search and open to join. Families
+// and private teams still require an invite link or owner add.
+app.post('/api/teams/:id/join', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const tid = parseInt(req.params.id, 10);
+    const [t] = await sql`SELECT id, name, kind, is_public, owner_user_id FROM teams WHERE id = ${tid}`;
+    if (!t) return res.status(404).json({ error: 'Not found' });
+    if (t.kind === 'family' || !t.is_public) return res.status(403).json({ error: 'This team requires an invite' });
+    const [already] = await sql`SELECT 1 FROM team_members WHERE team_id = ${tid} AND user_id = ${me}`;
+    if (!already) {
+      await sql`INSERT INTO team_members (team_id, user_id, role) VALUES (${tid}, ${me}, 'member') ON CONFLICT DO NOTHING`;
+      try { await notifyUser(t.owner_user_id, 'team_joined', { team_id: tid, team_name: t.name, joiner: me }); } catch (e) {}
+    }
+    res.json({ ok: true, team_id: tid, already_member: !!already });
+  } catch (err) { console.error('POST team join:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Dependent profiles (children / family members without their own account) ──
+
+// Compute a life phase from birth_date / expected_due_date. Returns the phase
+// label plus, for the prenatal case, the gestational age in weeks.
+function dependentPhase(dep) {
+  const now = Date.now();
+  if (!dep.birth_date && dep.expected_due_date) {
+    const due = new Date(dep.expected_due_date).getTime();
+    const weeks = Math.max(0, Math.min(42, Math.round(40 - (due - now) / (7 * 86400000))));
+    return { phase: 'prenatal', gestation_weeks: weeks };
+  }
+  if (!dep.birth_date) return { phase: 'unknown' };
+  const ageYears = (now - new Date(dep.birth_date).getTime()) / (365.25 * 86400000);
+  let phase = 'adult';
+  if (ageYears < 1) phase = 'infant';
+  else if (ageYears < 3) phase = 'toddler';
+  else if (ageYears < 12) phase = 'child';
+  else if (ageYears < 18) phase = 'adolescent';
+  return { phase, age_years: Math.floor(ageYears) };
+}
+function shapeDependent(dep) {
+  return Object.assign({}, dep, dependentPhase(dep));
+}
+
+// POST /api/dependents — create a child/dependent owned by the caller.
+app.post('/api/dependents', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const b = req.body || {};
+    const name = String(b.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'name required' });
+    const sex = ['male', 'female', 'other'].includes(b.sex) ? b.sex : null;
+    const birthDate = b.birth_date ? String(b.birth_date).slice(0, 10) : null;
+    const dueDate = b.expected_due_date ? String(b.expected_due_date).slice(0, 10) : null;
+    if (!birthDate && !dueDate) return res.status(400).json({ error: 'birth_date or expected_due_date required' });
+    const trackFrom = b.track_from ? String(b.track_from).slice(0, 10) : null;
+    const relation = b.relation ? String(b.relation).slice(0, 40) : null;
+    const diagnoses = Array.isArray(b.diagnoses_ids) ? b.diagnoses_ids.map(n => parseInt(n, 10)).filter(n => !isNaN(n)) : [];
+    // family_id: validate the caller owns/belongs to that family team
+    let familyId = null;
+    if (b.family_id != null) {
+      const fid = parseInt(b.family_id, 10);
+      const [fm] = await sql`SELECT 1 FROM team_members WHERE team_id = ${fid} AND user_id = ${me}`;
+      if (fm) familyId = fid;
+    }
+    const [dep] = await sql`INSERT INTO dependent_profiles
+      (owner_user_id, family_id, name, sex, birth_date, expected_due_date, track_from, relation, diagnoses_ids)
+      VALUES (${me}, ${familyId}, ${name}, ${sex}, ${birthDate}, ${dueDate}, ${trackFrom}, ${relation}, ${diagnoses}::int[])
+      RETURNING *`;
+    res.status(201).json({ ok: true, dependent: shapeDependent(dep) });
+  } catch (err) { console.error('POST dependents:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/dependents — list the caller's dependents.
+app.get('/api/dependents', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const rows = await sql`SELECT * FROM dependent_profiles
+      WHERE owner_user_id = ${me} AND deleted_at IS NULL ORDER BY created_at ASC`;
+    res.json({ ok: true, dependents: rows.map(shapeDependent) });
+  } catch (err) { console.error('GET dependents:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/dependents/:id — one dependent (owner only).
+app.get('/api/dependents/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [dep] = await sql`SELECT * FROM dependent_profiles
+      WHERE id = ${parseInt(req.params.id, 10)} AND owner_user_id = ${me} AND deleted_at IS NULL`;
+    if (!dep) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, dependent: shapeDependent(dep) });
+  } catch (err) { console.error('GET dependent:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/dependents/:id — update fields (owner only).
+app.patch('/api/dependents/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id, 10);
+    const [dep] = await sql`SELECT * FROM dependent_profiles WHERE id = ${id} AND owner_user_id = ${me} AND deleted_at IS NULL`;
+    if (!dep) return res.status(404).json({ error: 'Not found' });
+    const b = req.body || {};
+    const name = b.name != null ? String(b.name).trim() : null;
+    const sex = (b.sex != null) ? (['male', 'female', 'other'].includes(b.sex) ? b.sex : null) : undefined;
+    const birthDate = b.birth_date !== undefined ? (b.birth_date ? String(b.birth_date).slice(0, 10) : null) : undefined;
+    const dueDate = b.expected_due_date !== undefined ? (b.expected_due_date ? String(b.expected_due_date).slice(0, 10) : null) : undefined;
+    const trackFrom = b.track_from !== undefined ? (b.track_from ? String(b.track_from).slice(0, 10) : null) : undefined;
+    const relation = b.relation !== undefined ? (b.relation ? String(b.relation).slice(0, 40) : null) : undefined;
+    const diagnoses = Array.isArray(b.diagnoses_ids) ? b.diagnoses_ids.map(n => parseInt(n, 10)).filter(n => !isNaN(n)) : undefined;
+    const [updated] = await sql`UPDATE dependent_profiles SET
+      name = COALESCE(${name}, name),
+      sex = ${sex === undefined ? dep.sex : sex},
+      birth_date = ${birthDate === undefined ? dep.birth_date : birthDate}::date,
+      expected_due_date = ${dueDate === undefined ? dep.expected_due_date : dueDate}::date,
+      track_from = ${trackFrom === undefined ? dep.track_from : trackFrom}::date,
+      relation = ${relation === undefined ? dep.relation : relation},
+      diagnoses_ids = ${diagnoses === undefined ? dep.diagnoses_ids : diagnoses}::int[],
+      updated_at = now()
+      WHERE id = ${id} RETURNING *`;
+    res.json({ ok: true, dependent: shapeDependent(updated) });
+  } catch (err) { console.error('PATCH dependent:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/dependents/:id — soft-delete (owner only).
+app.delete('/api/dependents/:id', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id, 10);
+    const [dep] = await sql`SELECT 1 FROM dependent_profiles WHERE id = ${id} AND owner_user_id = ${me} AND deleted_at IS NULL`;
+    if (!dep) return res.status(404).json({ error: 'Not found' });
+    await sql`UPDATE dependent_profiles SET deleted_at = now() WHERE id = ${id}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE dependent:', err); res.status(500).json({ error: err.message }); }
+});
+
 // ── Pack 29: User journey + admin path-map grid ──
 
 // GET /api/users/me/journey — full progress + XP for the calling user
@@ -5839,10 +6095,50 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     const safe = (p) => p.then(r => r).catch(() => []);
     const clamp01 = (n) => Math.max(0, Math.min(1, n));
 
-    const [je, cbp, nm, cal, diary] = await Promise.all([
-      safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
-               WHERE user_id = ${me} AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
-               ORDER BY occurred_at ASC`),
+    // PR91: ?subject=dependent:<id> | team:<id> — read another scope's path (GET
+    // only; events are still WRITTEN against the authenticated user). Default
+    // scope is the caller's own journey. dependent → journey_events attributed to
+    // that dependent_id (owner-gated); team → all members' events. Legacy fallback
+    // sources (neuromap/calendar/diary/course-blocks) are user-only so they're
+    // skipped for non-self scopes.
+    let depId = null, teamUserIds = null, scopeValid = true;
+    const subject = String(req.query.subject || '').trim();
+    if (subject.startsWith('dependent:')) {
+      const id = parseInt(subject.slice(10), 10);
+      if (!isNaN(id)) {
+        const [dep] = await safe(sql`SELECT id FROM dependent_profiles WHERE id = ${id} AND owner_user_id = ${me} AND deleted_at IS NULL`).then(r => [r[0]]).catch(() => [null]);
+        if (dep) depId = id; else scopeValid = false;
+      } else scopeValid = false;
+    } else if (subject.startsWith('team:')) {
+      const id = parseInt(subject.slice(5), 10);
+      if (!isNaN(id)) {
+        const mem = await safe(sql`SELECT 1 FROM team_members WHERE team_id = ${id} AND user_id = ${me}`);
+        if (mem.length) {
+          const rows = await safe(sql`SELECT user_id FROM team_members WHERE team_id = ${id}`);
+          teamUserIds = rows.map(r => r.user_id);
+        } else scopeValid = false;
+      } else scopeValid = false;
+    }
+    if (!scopeValid) return res.status(403).json({ error: 'Subject not accessible' });
+
+    const selfScope = !depId && !teamUserIds;
+    let je;
+    if (depId) {
+      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+                          WHERE dependent_id = ${depId} AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
+                          ORDER BY occurred_at ASC`);
+    } else if (teamUserIds) {
+      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+                          WHERE user_id = ANY(${teamUserIds}::uuid[]) AND dependent_id IS NULL
+                            AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
+                          ORDER BY occurred_at ASC`);
+    } else {
+      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+                          WHERE user_id = ${me} AND dependent_id IS NULL
+                            AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
+                          ORDER BY occurred_at ASC`);
+    }
+    const [cbp, nm, cal, diary] = selfScope ? await Promise.all([
       safe(sql`SELECT cbp.points_earned, cbp.completed_at, cb.block_type
                FROM course_block_progress cbp LEFT JOIN course_blocks cb ON cb.id = cbp.block_id
                WHERE cbp.user_id = ${me} AND cbp.completed_at >= ${fromIso} AND cbp.completed_at <= ${toIso}
@@ -5856,7 +6152,7 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
       safe(sql`SELECT id, text, comment, plus_count, minus_count, date_key, created_at FROM neuro_resource_diary
                WHERE user_id = ${me} AND created_at >= ${fromIso} AND created_at <= ${toIso}
                ORDER BY created_at ASC`)
-    ]);
+    ]) : [[], [], [], []];
 
     // journey_links among the in-range events → per-event link list + flat list
     const idSet = new Set(je.map(e => String(e.id)));
