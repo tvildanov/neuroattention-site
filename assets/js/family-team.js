@@ -86,6 +86,17 @@
     err:          { ru: 'Ошибка', en: 'Error', es: 'Error' },
     confirmDelete:{ ru: 'Удалить?', en: 'Remove?', es: '¿Eliminar?' },
     viewPath:     { ru: 'Смотреть путь', en: 'View path', es: 'Ver camino' },
+    edit:         { ru: 'Изменить', en: 'Edit', es: 'Editar' },
+    editChild:    { ru: 'Изменить ребёнка', en: 'Edit child', es: 'Editar hijo' },
+    addChildTitle:{ ru: 'Добавить ребёнка', en: 'Add a child', es: 'Añadir un hijo' },
+    born:         { ru: 'Родился', en: 'Born', es: 'Nacido' },
+    bornStatus:   { ru: 'Статус', en: 'Status', es: 'Estado' },
+    years:        { ru: 'лет', en: 'y.o.', es: 'años' },
+    weeksPregnant:{ ru: 'недель беременности', en: 'weeks pregnant', es: 'semanas de embarazo' },
+    dueIn:        { ru: 'до родов', en: 'until due', es: 'hasta el parto' },
+    days:         { ru: 'дн.', en: 'days', es: 'días' },
+    childPathSub: { ru: 'Личная линия развития ребёнка', en: 'The child’s personal evolution line', es: 'La línea de evolución del niño' },
+    noEventsYet:  { ru: 'Событий пока нет — они появятся, когда вы начнёте отмечать состояния для ребёнка.', en: 'No events yet — they appear once you start logging states for the child.', es: 'Aún no hay eventos — aparecerán cuando empieces a registrar estados.' },
     joinAccept:   { ru: 'Принять приглашение', en: 'Accept invite', es: 'Aceptar invitación' },
     invitedTo:    { ru: 'Вас пригласили в', en: 'You were invited to', es: 'Te invitaron a' },
     phase: {
@@ -119,6 +130,40 @@
     var due = new Date(dueIso).getTime();
     if (isNaN(due)) return null;
     return Math.max(0, Math.min(42, Math.round(40 - (due - Date.now()) / (7 * 864e5))));
+  }
+  // gestational age as { weeks, days } (more precise than the rounded week count)
+  function gestationWD(dueIso) {
+    if (!dueIso) return null;
+    var due = new Date(dueIso).getTime();
+    if (isNaN(due)) return null;
+    var totalDays = Math.max(0, Math.min(294, Math.round(280 - (due - Date.now()) / 864e5)));
+    return { weeks: Math.floor(totalDays / 7), days: totalDays % 7, totalDays: totalDays };
+  }
+  // human one-liner for a dependent card: "32 weeks pregnant" / "4 y.o. · Child"
+  function depSummary(d) {
+    if (d.phase === 'prenatal') {
+      var wd = gestationWD(d.expected_due_date);
+      var w = wd ? wd.weeks : (d.gestation_weeks != null ? d.gestation_weeks : null);
+      return (w != null) ? (w + ' ' + L(T.weeksPregnant)) : L(T.phase.prenatal);
+    }
+    var phaseLbl = L(T.phase[d.phase] || T.phase.unknown);
+    if (d.age_years != null) return d.age_years + ' ' + L(T.years) + ' · ' + phaseLbl;
+    return phaseLbl;
+  }
+  // pregnancy milestone copy by week (kept short; shown in the path view)
+  function pregMilestone(weeks) {
+    var M = [
+      { w: 0,  ru: 'Зачатие и имплантация', en: 'Conception & implantation', es: 'Concepción e implantación' },
+      { w: 8,  ru: 'Формируются органы и черты лица', en: 'Organs and facial features form', es: 'Se forman órganos y rasgos' },
+      { w: 12, ru: 'Конец первого триместра', en: 'End of the first trimester', es: 'Fin del primer trimestre' },
+      { w: 18, ru: 'Появляются первые шевеления', en: 'First movements felt', es: 'Primeros movimientos' },
+      { w: 24, ru: 'Порог жизнеспособности', en: 'Viability threshold', es: 'Umbral de viabilidad' },
+      { w: 28, ru: 'Третий триместр, открываются глаза', en: 'Third trimester, eyes open', es: 'Tercer trimestre, ojos abiertos' },
+      { w: 37, ru: 'Доношенная беременность', en: 'Full term', es: 'A término' }
+    ];
+    var pick = M[0];
+    for (var i = 0; i < M.length; i++) { if (weeks >= M[i].w) pick = M[i]; }
+    return L({ ru: pick.ru, en: pick.en, es: pick.es });
   }
   function ensureStyles() {
     if (document.getElementById('ft-styles')) return;
@@ -155,7 +200,30 @@
       '.ft-diag-item{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13px;cursor:pointer;border-radius:6px;}',
       '.ft-diag-item:hover{background:rgba(255,255,255,0.04);}',
       '.ft-note{font-size:12px;color:var(--accent-cyan);margin-top:6px;}',
-      '.ft-linkbox{display:flex;gap:8px;margin-top:10px;}.ft-linkbox input{flex:1;}'
+      '.ft-linkbox{display:flex;gap:8px;margin-top:10px;}.ft-linkbox input{flex:1;}',
+      // dependent card: clickable meta + small action buttons
+      '.ft-card .ft-meta.ft-clickable{cursor:pointer;}',
+      '.ft-card .ft-meta.ft-clickable:hover .ft-name{color:var(--accent-cyan);}',
+      '.ft-iconbtn{background:transparent;border:1px solid var(--glass-border,rgba(255,255,255,0.12));color:var(--text-muted);border-radius:9px;padding:6px 9px;font-size:13px;cursor:pointer;flex:0 0 auto;line-height:1;transition:all .15s;}',
+      '.ft-iconbtn:hover{color:var(--accent-cyan);border-color:rgba(0,224,255,0.4);background:rgba(0,224,255,0.08);}',
+      '.ft-iconbtn.ft-danger{color:var(--accent-rose,#ff6b8b);border-color:rgba(255,107,139,0.3);}',
+      '.ft-iconbtn.ft-danger:hover{background:rgba(255,107,139,0.12);}',
+      // born-status radio row
+      '.ft-form .ft-radio{display:flex;gap:16px;margin-top:6px;}',
+      '.ft-form .ft-radio label{display:flex;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--text,#e8f0f4);cursor:pointer;}',
+      '.ft-form .ft-radio input{width:auto;}',
+      // wide path modal + pregnancy strip
+      '.ft-modal.ft-modal-wide{max-width:1000px;}',
+      '@media(max-width:1040px){.ft-modal.ft-modal-wide{max-width:96vw;}}',
+      '.ft-path-head{display:flex;align-items:center;gap:12px;margin:0 0 10px;}',
+      '.ft-path-head .ft-av{width:46px;height:46px;font-size:22px;}',
+      '.ft-preg{background:rgba(0,224,255,0.06);border:1px solid var(--glass-border,rgba(255,255,255,0.08));border-radius:12px;padding:12px 14px;margin:0 0 12px;}',
+      '.ft-preg .ft-preg-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--text-muted);}',
+      '.ft-preg .ft-preg-week{font-size:20px;font-weight:700;color:var(--text,#e8f0f4);}',
+      '.ft-preg-bar{height:8px;border-radius:999px;background:rgba(255,255,255,0.08);margin:9px 0 6px;overflow:hidden;}',
+      '.ft-preg-bar>span{display:block;height:100%;background:linear-gradient(90deg,#56F2A6,#00e0ff);border-radius:999px;}',
+      '.ft-preg-milestone{font-size:12px;color:var(--accent-cyan);}',
+      '.ft-path-box{min-height:300px;}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -211,13 +279,18 @@
       html += '<button class="ft-btn ft-primary" id="ft-create-family">' + esc(L(T.createFamily)) + '</button>';
     } else {
       html += '<p class="ft-secsub">' + esc(fam.name) + '</p>';
-      // adult members (invited platform users) — shown with their kin role
+      // adult members (invited platform users) — shown with their kin role. The
+      // caller themselves appears here too (they're a member of their own family),
+      // tagged "(you)" so it doesn't read as a separate person.
       var roleLbl = function (rv) { var r = ROLES.filter(function (x) { return x.v === rv; })[0]; return r ? L(r.o) : (rv || L(T.member)); };
+      var meId = (typeof window.currentUser !== 'undefined' && window.currentUser) ? String(window.currentUser.id) : null;
+      var youLbl = L({ ru: 'вы', en: 'you', es: 'tú' });
       (state.members || []).forEach(function (mem) {
+        var isMe = meId && String(mem.id) === meId;
         html += '<div class="ft-card">' +
                 '<div class="ft-av">🧑</div>' +
-                '<div class="ft-meta"><div class="ft-name">' + esc(mem.display_name || mem.email || '—') + '</div>' +
-                '<div class="ft-tags">' + esc(roleLbl(mem.role)) + (mem.role === 'owner' || (fam && String(mem.id) === String(fam.owner_user_id)) ? '' : '') + '</div></div>' +
+                '<div class="ft-meta"><div class="ft-name">' + esc(mem.display_name || mem.email || '—') + (isMe ? ' <span class="ft-chip">' + esc(youLbl) + '</span>' : '') + '</div>' +
+                '<div class="ft-tags">' + esc(roleLbl(mem.role)) + '</div></div>' +
                 '</div>';
       });
       // dependents
@@ -225,17 +298,16 @@
         html += '<div class="ft-empty">' + esc(L(T.noChildren)) + '</div>';
       } else {
         state.dependents.forEach(function (d) {
-          var phaseLbl = L(T.phase[d.phase] || T.phase.unknown);
-          var sub = phaseLbl;
-          if (d.phase === 'prenatal' && d.gestation_weeks != null) sub += ' · ' + d.gestation_weeks + ' ' + L(T.weeks);
-          else if (d.age_years != null) sub += ' · ' + d.age_years + (lang() === 'ru' ? ' г.' : ' y');
+          var sub = depSummary(d);
           var emoji = d.phase === 'prenatal' ? '🤰' : (d.sex === 'female' ? '👧' : d.sex === 'male' ? '👦' : '🧒');
+          var diagN = Array.isArray(d.diagnoses_ids) ? d.diagnoses_ids.length : 0;
           html += '<div class="ft-card" data-dep="' + d.id + '">' +
                   '<div class="ft-av">' + emoji + '</div>' +
-                  '<div class="ft-meta"><div class="ft-name">' + esc(d.name) + '</div>' +
-                  '<div class="ft-tags">' + esc(sub) + (Array.isArray(d.diagnoses_ids) && d.diagnoses_ids.length ? ' · ' + d.diagnoses_ids.length + ' ' + esc(L(T.diagnoses).toLowerCase()) : '') + '</div></div>' +
-                  '<button class="ft-btn ft-ghost ft-view-path" data-dep="' + d.id + '" data-name="' + esc(d.name) + '" title="' + esc(L(T.viewPath)) + '">📈</button>' +
-                  '<button class="ft-btn ft-danger ft-del-dep" data-dep="' + d.id + '">✕</button>' +
+                  '<div class="ft-meta ft-clickable ft-dep-open" data-dep="' + d.id + '" title="' + esc(L(T.viewPath)) + '"><div class="ft-name">' + esc(d.name) + '</div>' +
+                  '<div class="ft-tags">' + esc(sub) + (diagN ? ' · ' + diagN + ' ' + esc(L(T.diagnoses).toLowerCase()) : '') + '</div></div>' +
+                  '<button class="ft-iconbtn ft-view-path" data-dep="' + d.id + '" data-name="' + esc(d.name) + '" title="' + esc(L(T.viewPath)) + '">📈</button>' +
+                  '<button class="ft-iconbtn ft-edit-dep" data-dep="' + d.id + '" title="' + esc(L(T.edit)) + '">✎</button>' +
+                  '<button class="ft-iconbtn ft-danger ft-del-dep" data-dep="' + d.id + '" title="' + esc(L(T.confirmDelete)) + '">✕</button>' +
                   '</div>';
         });
       }
@@ -280,14 +352,26 @@
     if (q('ft-create-team')) q('ft-create-team').onclick = function () { openCreateTeam(reload); };
     if (q('ft-find-team')) q('ft-find-team').onclick = function () { openFindTeam(reload); };
 
+    var depById = {};
+    (state.dependents || []).forEach(function (d) { depById[String(d.id)] = d; });
+
     container.querySelectorAll('.ft-del-dep').forEach(function (b) {
       b.onclick = function () {
         if (!confirm(L(T.confirmDelete))) return;
         api('/api/dependents/' + b.getAttribute('data-dep'), { method: 'DELETE' }).then(reload);
       };
     });
-    container.querySelectorAll('.ft-view-path').forEach(function (b) {
-      b.onclick = function () { openDependentPath(b.getAttribute('data-dep'), b.getAttribute('data-name')); };
+    container.querySelectorAll('.ft-view-path, .ft-dep-open').forEach(function (b) {
+      b.onclick = function () {
+        var d = depById[String(b.getAttribute('data-dep'))];
+        openDependentPath(b.getAttribute('data-dep'), d ? d.name : b.getAttribute('data-name'), d);
+      };
+    });
+    container.querySelectorAll('.ft-edit-dep').forEach(function (b) {
+      b.onclick = function () {
+        var d = depById[String(b.getAttribute('data-dep'))];
+        if (d) openAddChild(fam, reload, d);
+      };
     });
   }
 
@@ -315,43 +399,72 @@
   function roleOptions(sel) {
     return ROLES.map(function (r) { return '<option value="' + r.v + '"' + (r.v === sel ? ' selected' : '') + '>' + esc(L(r.o)) + '</option>'; }).join('');
   }
+  // Adults only — children belong in the dependent flow (+ Add child), so we drop
+  // son/daughter/grandchild here to stop people creating a "child" as a member
+  // card (which shows the owner's name, no DOB/diagnoses).
+  function roleOptionsAdult(sel) {
+    var skip = { son: 1, daughter: 1, grandchild: 1 };
+    return ROLES.filter(function (r) { return !skip[r.v]; })
+      .map(function (r) { return '<option value="' + r.v + '"' + (r.v === sel ? ' selected' : '') + '>' + esc(L(r.o)) + '</option>'; }).join('');
+  }
 
-  // ── Add child / dependent ──
-  function openAddChild(fam, reload) {
+  // ── Add / edit child (dependent) — a standalone form, NOT the relationship
+  // picker (that's Add family member). `existing` switches the form to edit mode
+  // (prefill + PATCH). For a child we collect name / sex / born-status / DOB|due /
+  // diagnoses / track-from — every field is shown and never auto-filled with the
+  // owner's name. ──
+  function openAddChild(fam, reload, existing) {
+    var isEdit = !!(existing && existing.id);
     var body = document.createElement('div');
     body.className = 'ft-form';
     var today = new Date().toISOString().slice(0, 10);
+    // prefill values (edit) / sensible defaults (create)
+    var pName = isEdit ? (existing.name || '') : '';
+    var pSex = isEdit ? (existing.sex || 'other') : 'male';
+    var pRel = isEdit ? (existing.relation || 'son') : 'son';
+    var notBornInit = isEdit ? (!existing.birth_date && !!existing.expected_due_date) : false;
+    var pDob = (isEdit && existing.birth_date) ? String(existing.birth_date).slice(0, 10) : today;
+    var pDue = (isEdit && existing.expected_due_date) ? String(existing.expected_due_date).slice(0, 10) : '';
+    var pTrack = (isEdit && existing.track_from) ? String(existing.track_from).slice(0, 10) : today;
+    var selOpt = function (v, cur) { return v === cur ? ' selected' : ''; };
     body.innerHTML =
-      '<label>' + esc(L(T.name)) + '</label><input type="text" id="ac-name">' +
+      '<label>' + esc(L(T.name)) + '</label><input type="text" id="ac-name" value="' + esc(pName) + '" placeholder="' + esc(L({ru:'Имя ребёнка',en:'Child’s name',es:'Nombre del niño'})) + '">' +
       '<div class="ft-row"><div><label>' + esc(L(T.sex)) + '</label><select id="ac-sex">' +
-        '<option value="male">' + esc(L(T.male)) + '</option><option value="female">' + esc(L(T.female)) + '</option><option value="other">' + esc(L(T.other)) + '</option></select></div>' +
-        '<div><label>' + esc(L(T.relation)) + '</label><select id="ac-rel"><option value="son">' + esc(L({ru:'Сын',en:'Son',es:'Hijo'})) + '</option><option value="daughter">' + esc(L({ru:'Дочь',en:'Daughter',es:'Hija'})) + '</option><option value="other">' + esc(L(T.other)) + '</option></select></div></div>' +
-      '<label class="ft-check"><input type="checkbox" id="ac-notborn"> ' + esc(L(T.notBorn)) + '</label>' +
-      '<div id="ac-dob-wrap"><label>' + esc(L(T.dob)) + '</label><input type="date" id="ac-dob" max="' + today + '" value="' + today + '"></div>' +
-      '<div id="ac-due-wrap" style="display:none;"><label>' + esc(L(T.dueDate)) + '</label><input type="date" id="ac-due"><div class="ft-note" id="ac-gest"></div></div>' +
+        '<option value="male"' + selOpt('male', pSex) + '>' + esc(L(T.male)) + '</option><option value="female"' + selOpt('female', pSex) + '>' + esc(L(T.female)) + '</option><option value="other"' + selOpt('other', pSex) + '>' + esc(L(T.other)) + '</option></select></div>' +
+        '<div><label>' + esc(L(T.relation)) + '</label><select id="ac-rel"><option value="son"' + selOpt('son', pRel) + '>' + esc(L({ru:'Сын',en:'Son',es:'Hijo'})) + '</option><option value="daughter"' + selOpt('daughter', pRel) + '>' + esc(L({ru:'Дочь',en:'Daughter',es:'Hija'})) + '</option><option value="grandchild"' + selOpt('grandchild', pRel) + '>' + esc(L({ru:'Внук/внучка',en:'Grandchild',es:'Nieto/a'})) + '</option><option value="other"' + selOpt('other', pRel) + '>' + esc(L(T.other)) + '</option></select></div></div>' +
+      '<label>' + esc(L(T.bornStatus)) + '</label><div class="ft-radio">' +
+        '<label><input type="radio" name="ac-born" value="born"' + (notBornInit ? '' : ' checked') + '> ' + esc(L(T.born)) + '</label>' +
+        '<label><input type="radio" name="ac-born" value="unborn"' + (notBornInit ? ' checked' : '') + '> ' + esc(L(T.notBorn)) + '</label></div>' +
+      '<div id="ac-dob-wrap"><label>' + esc(L(T.dob)) + '</label><input type="date" id="ac-dob" max="' + today + '" value="' + esc(pDob) + '"></div>' +
+      '<div id="ac-due-wrap" style="display:none;"><label>' + esc(L(T.dueDate)) + '</label><input type="date" id="ac-due" value="' + esc(pDue) + '"><div class="ft-note" id="ac-gest"></div></div>' +
       '<label>' + esc(L(T.diagnoses)) + '</label><div class="ft-secsub" style="margin:0;">' + esc(L(T.diagnosesHint)) + '</div>' +
       '<input type="text" id="ac-diag-search" placeholder="🔍" style="margin-top:6px;"><div class="ft-diag-list" id="ac-diag-list"></div>' +
-      '<label>' + esc(L(T.trackFrom)) + '</label><input type="date" id="ac-track" value="' + today + '">' +
+      '<label>' + esc(L(T.trackFrom)) + '</label><input type="date" id="ac-track" value="' + esc(pTrack) + '">' +
       '<div class="ft-actions"><button class="ft-btn ft-primary" id="ac-save">' + esc(L(T.save)) + '</button>' +
       '<button class="ft-btn ft-ghost" id="ac-cancel">' + esc(L(T.cancel)) + '</button></div>';
-    var m = modal(T.addChild, body);
-    var notBorn = body.querySelector('#ac-notborn');
+    var m = modal(isEdit ? T.editChild : T.addChildTitle, body);
+    var bornRadios = body.querySelectorAll('input[name="ac-born"]');
     var dobWrap = body.querySelector('#ac-dob-wrap'), dueWrap = body.querySelector('#ac-due-wrap');
-    var dueInput = body.querySelector('#ac-due'), gestNote = body.querySelector('#ac-gest');
+    var dueInput = body.querySelector('#ac-due'), gestNote = body.querySelector('#ac-gest'), trackInput = body.querySelector('#ac-track');
+    function isNotBorn() { return body.querySelector('input[name="ac-born"]:checked').value === 'unborn'; }
     function updateGest() {
       var w = gestationWeeks(dueInput.value);
       gestNote.textContent = (w != null) ? (L(T.gestation) + ': ~' + w + ' ' + L(T.weeks)) : '';
     }
-    notBorn.onchange = function () {
-      var nb = notBorn.checked;
+    function syncBorn() {
+      var nb = isNotBorn();
       dobWrap.style.display = nb ? 'none' : '';
       dueWrap.style.display = nb ? '' : 'none';
-      if (nb && !dueInput.value) { var d = new Date(Date.now() + 140 * 864e5); dueInput.value = d.toISOString().slice(0, 10); updateGest(); }
-    };
+      if (nb && !dueInput.value) { var d = new Date(Date.now() + 140 * 864e5); dueInput.value = d.toISOString().slice(0, 10); }
+      if (nb) updateGest();
+    }
+    bornRadios.forEach(function (r) { r.onchange = syncBorn; });
     dueInput.oninput = updateGest;
+    syncBorn();
 
-    // diagnoses (lazy load condition library)
+    // diagnoses (lazy load condition library); prefill selected in edit mode
     var selected = {};
+    if (isEdit && Array.isArray(existing.diagnoses_ids)) existing.diagnoses_ids.forEach(function (id) { selected[id] = 1; });
     var listEl = body.querySelector('#ac-diag-list');
     var allConds = [];
     api('/api/anatomy/conditions?limit=500').then(function (r) {
@@ -376,22 +489,32 @@
     body.querySelector('#ac-diag-search').oninput = function (e) { renderDiag(e.target.value); };
 
     body.querySelector('#ac-cancel').onclick = m.close;
-    body.querySelector('#ac-save').onclick = function () {
+    var saveBtn = body.querySelector('#ac-save');
+    saveBtn.onclick = function () {
       var name = body.querySelector('#ac-name').value.trim();
       if (!name) { body.querySelector('#ac-name').focus(); return; }
-      var nb = notBorn.checked;
+      var nb = isNotBorn();
       var payload = {
         name: name,
         sex: body.querySelector('#ac-sex').value,
         relation: body.querySelector('#ac-rel').value,
-        track_from: body.querySelector('#ac-track').value || null,
-        diagnoses_ids: Object.keys(selected).map(Number),
-        family_id: fam ? fam.id : null
+        track_from: trackInput.value || null,
+        diagnoses_ids: Object.keys(selected).map(Number)
       };
-      if (nb) payload.expected_due_date = dueInput.value || null;
-      else payload.birth_date = body.querySelector('#ac-dob').value || null;
-      if (!payload.birth_date && !payload.expected_due_date) { alert(L(T.err)); return; }
-      api('/api/dependents', { method: 'POST', body: payload }).then(function (r) {
+      // exactly one of birth_date / expected_due_date is set; null the other so an
+      // edit that flips born-status clears the stale field server-side.
+      if (nb) { payload.expected_due_date = dueInput.value || null; payload.birth_date = null; }
+      else { payload.birth_date = body.querySelector('#ac-dob').value || null; payload.expected_due_date = null; }
+      if (!payload.birth_date && !payload.expected_due_date) {
+        (nb ? dueInput : body.querySelector('#ac-dob')).focus(); return;
+      }
+      if (!isEdit) payload.family_id = fam ? fam.id : null;
+      saveBtn.disabled = true;
+      var req = isEdit
+        ? api('/api/dependents/' + existing.id, { method: 'PATCH', body: payload })
+        : api('/api/dependents', { method: 'POST', body: payload });
+      req.then(function (r) {
+        saveBtn.disabled = false;
         if (!r.ok) return alert(L(T.err) + ': ' + (r.data.error || r.status));
         m.close(); reload();
       });
@@ -404,8 +527,9 @@
     var body = document.createElement('div');
     body.className = 'ft-form';
     body.innerHTML =
+      '<p class="ft-secsub" style="margin:0 0 4px;">' + esc(L({ ru: 'Для взрослых. Чтобы добавить ребёнка — «+ Добавить ребёнка».', en: 'For adults. To add a child use “+ Add child”.', es: 'Para adultos. Para un hijo usa «+ Añadir hijo».' })) + '</p>' +
       '<label>' + esc(L(T.email)) + '</label><input type="email" id="am-email" placeholder="name@example.com">' +
-      '<label>' + esc(L(T.relation)) + '</label><select id="am-role">' + roleOptions('partner') + '</select>' +
+      '<label>' + esc(L(T.relation)) + '</label><select id="am-role">' + roleOptionsAdult('partner') + '</select>' +
       '<div class="ft-actions"><button class="ft-btn ft-primary" id="am-send">' + esc(L(T.sendInvite)) + '</button>' +
       '<button class="ft-btn ft-ghost" id="am-link">' + esc(L(T.genLink)) + '</button>' +
       '<button class="ft-btn ft-ghost" id="am-cancel">' + esc(L(T.cancel)) + '</button></div>' +
@@ -431,7 +555,7 @@
     var body = document.createElement('div');
     body.className = 'ft-form';
     body.innerHTML = '<p class="ft-secsub">' + esc(L({ ru: 'Поделитесь ссылкой — присоединившийся станет членом семьи.', en: 'Share the link — whoever opens it joins your family.', es: 'Comparte el enlace para unir a alguien a tu familia.' })) + '</p>' +
-      '<label>' + esc(L(T.relation)) + '</label><select id="iv-role">' + roleOptions('partner') + '</select>' +
+      '<label>' + esc(L(T.relation)) + '</label><select id="iv-role">' + roleOptionsAdult('partner') + '</select>' +
       '<div class="ft-actions"><button class="ft-btn ft-primary" id="iv-gen">' + esc(L(T.genLink)) + '</button>' +
       '<button class="ft-btn ft-ghost" id="iv-cancel">' + esc(L(T.cancel)) + '</button></div><div id="iv-out"></div>';
     var m = modal(T.inviteLink, body);
@@ -513,18 +637,40 @@
     };
   }
 
-  // ── Dependent path (read-only twin timeline preview) ──
-  function openDependentPath(depId, name) {
+  // ── Dependent path — the child's own single timeline. Opens a wide modal with
+  // the same spine visualisation as the Personal Path, scoped via
+  // ?subject=dependent:<id>. For a not-yet-born child we add a pregnancy header
+  // (current term + progress + week milestone) above the (initially empty) line. ──
+  function openDependentPath(depId, name, dep) {
+    var emoji = dep && dep.phase === 'prenatal' ? '🤰' : (dep && dep.sex === 'female' ? '👧' : dep && dep.sex === 'male' ? '👦' : '🧒');
     var body = document.createElement('div');
-    body.innerHTML = '<p class="ft-secsub">' + esc(name || '') + '</p><div id="ft-dp-box" style="min-height:160px;"></div>';
+    var head = '<div class="ft-path-head"><div class="ft-av">' + emoji + '</div>' +
+               '<div><div class="ft-name" style="font-size:16px;">' + esc(name || '') + '</div>' +
+               '<div class="ft-secsub" style="margin:0;">' + esc(dep ? depSummary(dep) : '') + ' · ' + esc(L(T.childPathSub)) + '</div></div></div>';
+    var pregHtml = '';
+    if (dep && dep.phase === 'prenatal') {
+      var wd = gestationWD(dep.expected_due_date);
+      var w = wd ? wd.weeks : (dep.gestation_weeks || 0);
+      var dd = wd ? wd.days : 0;
+      var pct = Math.max(0, Math.min(100, Math.round(((wd ? wd.totalDays : w * 7) / 280) * 100)));
+      var daysLeft = Math.max(0, Math.round((new Date(dep.expected_due_date).getTime() - Date.now()) / 864e5));
+      pregHtml = '<div class="ft-preg"><div class="ft-preg-top">' +
+        '<span><span class="ft-preg-week">' + w + '</span> ' + esc(L(T.weeks)) + (dd ? ' ' + dd + ' ' + esc(L(T.days)) : '') + '</span>' +
+        '<span>' + daysLeft + ' ' + esc(L(T.days)) + ' ' + esc(L(T.dueIn)) + '</span></div>' +
+        '<div class="ft-preg-bar"><span style="width:' + pct + '%"></span></div>' +
+        '<div class="ft-preg-milestone">📍 ' + esc(pregMilestone(w)) + '</div></div>';
+    }
+    body.innerHTML = head + pregHtml + '<div class="ft-path-box" id="ft-dp-box"></div>';
     var m = modal(T.viewPath, body);
+    m.box.classList.add('ft-modal-wide');
     var box = body.querySelector('#ft-dp-box');
     if (typeof window.mountEvolutionPath === 'function') {
-      // mountEvolutionPath reads its own user; pass subject so the GET is scoped.
+      // mountEvolutionPath reads its own user; pass subject so the GET is scoped to
+      // the dependent's journey_events (owner-gated server-side).
       box.setAttribute('data-subject', 'dependent:' + depId);
-      window.mountEvolutionPath(box, { subject: 'dependent:' + depId });
+      window.mountEvolutionPath(box, { subject: 'dependent:' + depId, lang: lang() });
     } else {
-      box.innerHTML = '<div class="ft-empty">—</div>';
+      box.innerHTML = '<div class="ft-empty">' + esc(L(T.noEventsYet)) + '</div>';
     }
   }
 
