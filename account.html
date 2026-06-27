@@ -860,9 +860,11 @@ a.dash-tab:hover { text-decoration:none; }
     <div class="dash-tabs" id="evo-subtabs" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
       <button class="dash-tab active" id="evo-subtab-personal" onclick="evoSwitchSub('personal')" data-i18n="a.evo.personal_path">Личный путь</button>
       <button class="dash-tab" id="evo-subtab-collective" onclick="evoSwitchSub('collective')" style="display:none;" data-i18n="a.evo.collective_path">Коллективный путь</button>
+      <button class="dash-tab" id="evo-subtab-family" onclick="evoSwitchSub('family')" data-i18n="a.evo.family_team">Семья и команда</button>
     </div>
     <div id="evo-path"></div>
     <div id="collective-path" style="display:none;"></div>
+    <div id="family-team" style="display:none;"></div>
   </div>
 
   <!-- TAB: DOMunity — community layer -->
@@ -2782,6 +2784,14 @@ function onLogin(user){
         }).catch(function(){});
     }
   } catch(e){ console.warn('location modal error:', e); }
+
+  // PR91: an invite link (account.html?join=<token>) lands here — jump straight
+  // to Evolution → Family & Team so the join-confirmation modal can appear.
+  try {
+    if (new URLSearchParams(location.search).get('join')) {
+      setTimeout(function(){ switchTab('evolution'); if (typeof evoSwitchSub==='function') evoSwitchSub('family'); }, 300);
+    }
+  } catch(e){ console.warn('join-link nav error:', e); }
 }
 
 // Re-render greeting/role when i18n.js loads (it fires 'langchange' on init)
@@ -4625,14 +4635,17 @@ function evoMaybeShowCollective(){
     .catch(function(){ btn.style.display='none'; });
 }
 function evoSwitchSub(which){
-  var pers=document.getElementById('evo-subtab-personal'), coll=document.getElementById('evo-subtab-collective');
-  var personalBox=document.getElementById('evo-path'), collBox=document.getElementById('collective-path');
-  var isColl = which==='collective';
-  if(pers) pers.classList.toggle('active', !isColl);
+  var pers=document.getElementById('evo-subtab-personal'), coll=document.getElementById('evo-subtab-collective'), fam=document.getElementById('evo-subtab-family');
+  var personalBox=document.getElementById('evo-path'), collBox=document.getElementById('collective-path'), famBox=document.getElementById('family-team');
+  var isColl = which==='collective', isFam = which==='family', isPers = !isColl && !isFam;
+  if(pers) pers.classList.toggle('active', isPers);
   if(coll) coll.classList.toggle('active', isColl);
-  if(personalBox) personalBox.style.display = isColl ? 'none' : '';
+  if(fam) fam.classList.toggle('active', isFam);
+  if(personalBox) personalBox.style.display = isPers ? '' : 'none';
   if(collBox) collBox.style.display = isColl ? '' : 'none';
+  if(famBox) famBox.style.display = isFam ? '' : 'none';
   if(isColl){ try{ if(window.mountCollectivePath) mountCollectivePath(collBox); }catch(e){ console.warn('collective mount:', e); } }
+  else if(isFam){ try{ if(window.mountFamilyTeam) mountFamilyTeam(famBox); }catch(e){ console.warn('family mount:', e); } }
   else { try{ if(window.mountEvolutionPath) mountEvolutionPath(personalBox); }catch(e){} }
 }
 window.evoSwitchSub = evoSwitchSub;
@@ -14987,8 +15000,9 @@ window.pbMove = pbMove;
 <script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=12"></script>
+<script src="assets/js/evolution-path.js?v=13"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
+<script src="assets/js/family-team.js?v=1"></script>
 <script src="assets/js/external-field.js?v=6"></script>
 <script src="assets/js/body-atlas.js?v=30"></script>
 <script>
