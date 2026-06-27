@@ -12468,9 +12468,12 @@ function cpHaSetState(a, ids, lang){
 // GLB streams so it still lands once a just-enabled layer finishes loading.
 function cpHaApplyFocus(a, ids, need){
   try{ if(a._brainDetail && a.exitBrainDetail) a.exitBrainDetail(); }catch(e){}
-  ['skin','muscles','skeleton','nervous','vessels','organs'].forEach(function(l){
+  ['skin','muscles','skeleton','nervous','vessels','organs','female_reproductive','placenta'].forEach(function(l){
     try{ a.toggleLayer(l, !!need[l]); if(need[l]) a.setLayerOpacity(l, _cpHaOp(l)); }catch(e){}
   });
+  // female anatomy is sex-gated — show 'both' when a reproductive/placenta layer is in
+  // focus (e.g. a Pregnancy function block) so its meshes are visible to focusRegions.
+  if(need.female_reproductive || need.placenta){ try{ a.setSex('both'); }catch(e){} }
   if(!ids.length) return;
   // brain structures read best in brain-detail; everything else stays full-body
   var brainy = ids.some(function(id){ return _CP_HA_BRAIN_RE.test(String(id)); });
@@ -15349,6 +15352,7 @@ window.pbMove = pbMove;
     autonomic:{ru:'Вегетативные',en:'Autonomic',es:'Autónomas'},
     emotional:{ru:'Эмоциональные',en:'Emotional',es:'Emocionales'},
     language:{ru:'Речь и язык',en:'Language',es:'Lenguaje'},
+    reproductive:{ru:'Репродуктивные',en:'Reproductive',es:'Reproductivas'},
     neurodegenerative:{ru:'Нейродегенеративные',en:'Neurodegenerative',es:'Neurodegenerativas'},
     neurodevelopmental:{ru:'Нейроотличия',en:'Neurodevelopmental',es:'Neurodesarrollo'},
     psychiatric:{ru:'Психиатрические',en:'Psychiatric',es:'Psiquiátricas'},
@@ -15420,9 +15424,13 @@ window.pbMove = pbMove;
     if(!Object.keys(need).length) need.nervous=1; // most seeds are neural
     try{
       // Functions/Conditions never show the skin contour — enable exactly the
-      // needed real layers (incl. vessels for heart) and hide everything else,
-      // skin included (need never contains 'skin').
-      ['skin','muscles','skeleton','nervous','vessels','organs'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
+      // needed real layers (incl. vessels for heart, female_reproductive/placenta for
+      // pregnancy) and hide everything else, skin included (need never contains 'skin').
+      ['skin','muscles','skeleton','nervous','vessels','organs','female_reproductive','placenta'].forEach(function(l){ a.toggleLayer(l, !!need[l]); });
+      // female anatomy is sex-gated (default male hides it). A function/condition that
+      // touches the reproductive/placenta layers (e.g. Pregnancy) must show 'both' so
+      // the uterus/breasts/placenta meshes are visible to focusRegions.
+      if(need.female_reproductive || need.placenta){ try{ a.setSex('both'); }catch(e){} }
     }catch(e){}
     // Remember the active focus so the layer-loaded handler (wired once in
     // _mountAnatomyNow) re-applies it the moment a lazily-streamed GLB lands —
