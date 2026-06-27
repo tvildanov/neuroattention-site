@@ -48,13 +48,24 @@
     <button onclick="A.focusOrgan('heart')">Heart</button>
     <button onclick="A.focusOrgan('liver')">Liver</button>
     <button onclick="A.focusOrgan('kidneys')">Kidneys</button>
+    <hr style="border-color:rgba(255,255,255,.1)">
+    <div class="row">Sex:</div>
+    <button onclick="A.setSex('male')">Male</button>
+    <button onclick="A.setSex('female')">Female</button>
+    <button onclick="A.setSex('both')">Both</button>
+    <div class="row">Female focus:</div>
+    <button onclick="A.focusRegions(['uterus'])">Uterus</button>
+    <button onclick="A.focusRegions(['ovaries'])">Ovaries</button>
+    <button onclick="A.focusRegions(['fallopian-tubes'])">Tubes</button>
+    <button onclick="A.focusRegions(['breasts'])">Breasts</button>
+    <button onclick="A.focusRegions([])">Clear focus</button>
   </div>
   <div id="vp"><div id="log">loading…</div></div>
 </div>
-<script src="assets/js/body-atlas.js?v=27"></script>
+<script src="assets/js/body-atlas.js?v=29"></script>
 <script>
 var A;
-var LAYERS=[['skin','#A8F7FF',true,50],['muscles','#8DFFC8',false,45],['skeleton','#E8FBFF',false,70],['nervous','#8DFFC8',false,80],['vessels','#FF8FA3',false,60],['organs','#FFCB8D',false,55],['brain','#6FE9F0',false,50]];
+var LAYERS=[['skin','#A8F7FF',true,50],['muscles','#8DFFC8',false,45],['skeleton','#E8FBFF',false,70],['nervous','#8DFFC8',false,80],['vessels','#FF8FA3',false,60],['organs','#FFCB8D',false,55],['brain','#6FE9F0',false,50],['female_reproductive','#FF9FD6',false,60],['breasts','#FFC2DD',false,55],['placenta','#FF7A5C',false,60]];
 function buildControls(){
   var h=document.getElementById('layers');
   LAYERS.forEach(function(L){
