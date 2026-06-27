@@ -8,3 +8,4 @@ data/anatomy/regions-index.json
 
 # python bytecode
 tools/__pycache__/
+scripts/node_modules/
