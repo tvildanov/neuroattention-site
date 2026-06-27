@@ -1694,19 +1694,44 @@
         return;
       }
       var laneNodes = el('g');
-      (data.layers[ly.key] || []).forEach(function (e, i) {
+      // First pass: keep only in-window events with their x (events are sorted by
+      // time so px is monotonic). Many real entries share a timestamp — a whole
+      // NeuroMap chain or a sensation set is logged in one session — so without
+      // fanning they stack on a single point and "много" reads as one dot. Cluster
+      // by near-equal x and spread each cluster VERTICALLY within the lane band so
+      // every event stays individually visible and clickable.
+      var laneEv = [];
+      (data.layers[ly.key] || []).forEach(function (e) {
         if (!inWindow(e.t, dom)) return;          // crop to the selected period window
-        windowCount++;
-        var stl = ly.key === 'insight' ? { c: 'var(--myc-cyan)', o: 0.95 } : valStyle(e.valence);
-        var r = (ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
-        var px = xOf(e.t);
-        var ev = normEvent(e, ly.key);
-        var vis = el('circle', { cx: px.toFixed(1), cy: baseY(px).toFixed(1), r: r.toFixed(1), fill: stl.c, opacity: stl.o });
-        if (stl.c.indexOf('green') > -1 || stl.c.indexOf('cyan') > -1) vis.setAttribute('filter', 'url(#evoGlow)');
-        vis.appendChild(titleNode(ev, lang));
-        registerNode(e.id, px, parseFloat(baseY(px).toFixed(1)));
-        laneNodes.appendChild(interactiveNode(vis, ev, container, lang, 18));
+        laneEv.push({ e: e, px: xOf(e.t) });
       });
+      var CLUSTER_DX = 8;                          // px: closer than this = same cluster
+      var halfBand = laneH * 0.42;                 // vertical room each side of baseline
+      var ci = 0;
+      while (ci < laneEv.length) {
+        var cj = ci + 1;
+        while (cj < laneEv.length && (laneEv[cj].px - laneEv[ci].px) <= CLUSTER_DX) cj++;
+        var n = cj - ci;
+        // spacing: ~6px ideal, compressed so the column fits the lane band
+        var spacing = n > 1 ? Math.min(6.5, (2 * halfBand) / (n - 1)) : 0;
+        for (var k = ci; k < cj; k++) {
+          var item = laneEv[k];
+          var e = item.e;
+          windowCount++;
+          var stl = ly.key === 'insight' ? { c: 'var(--myc-cyan)', o: 0.95 } : valStyle(e.valence);
+          var r = (ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
+          var px = item.px;
+          var yOff = (k - ci - (n - 1) / 2) * spacing;     // centre the fan on the baseline
+          var cy = baseY(px) + yOff;
+          var ev = normEvent(e, ly.key);
+          var vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: stl.c, opacity: stl.o });
+          if (stl.c.indexOf('green') > -1 || stl.c.indexOf('cyan') > -1) vis.setAttribute('filter', 'url(#evoGlow)');
+          vis.appendChild(titleNode(ev, lang));
+          registerNode(e.id, px, parseFloat(cy.toFixed(1)));
+          laneNodes.appendChild(interactiveNode(vis, ev, container, lang, 14));
+        }
+        ci = cj;
+      }
       g.appendChild(laneNodes);
     });
 
