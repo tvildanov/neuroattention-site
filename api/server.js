@@ -966,6 +966,23 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_slug ON anatomy_functions(slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_tags ON anatomy_functions USING GIN(tags)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_anatomy_functions_cat ON anatomy_functions(category)`;
+
+    // ── Migration 021: Pregnancy as an anatomy_function (Phase 1, reproductive) ──
+    //    Mirrors migrations/021_pregnancy_function.sql. region_ids use real SEED ids so
+    //    focusRegions highlights the meshes (female_reproductive + placenta + endocrine).
+    //    Idempotent: insert-if-missing, then refresh region_ids/category on re-run.
+    try {
+      await sql`INSERT INTO anatomy_functions (slug, name_en, name_ru, name_es, description_en, description_ru, description_es, category, region_ids, tags)
+        VALUES ('pregnancy', 'Pregnancy', 'Беременность', 'Embarazo',
+          'The physiological process of fetal development in the womb, accompanied by changes across the reproductive, endocrine and metabolic systems.',
+          'Физиологический процесс развития плода в материнской утробе, сопровождается изменениями репродуктивной, эндокринной и метаболической систем.',
+          'El proceso fisiologico de desarrollo del feto en el utero, acompanado de cambios en los sistemas reproductivo, endocrino y metabolico.',
+          'reproductive',
+          ARRAY['uterus','placenta','ovaries','breasts','hypothalamus','pituitary','thyroid-gland','cervix']::text[],
+          ARRAY['pregnancy','gestation','beremennost','embarazo']::text[])
+        ON CONFLICT (slug) DO NOTHING`;
+      await sql`UPDATE anatomy_functions SET region_ids = ARRAY['uterus','placenta','ovaries','breasts','hypothalamus','pituitary','thyroid-gland','cervix']::text[], category = 'reproductive' WHERE slug = 'pregnancy'`;
+    } catch (e) { console.error('migration 021 (pregnancy function):', e.message); }
     // Conditions / states (internal field) — tab 3 of Human Atlas.
     await sql`CREATE TABLE IF NOT EXISTS human_conditions (
       id SERIAL PRIMARY KEY,
