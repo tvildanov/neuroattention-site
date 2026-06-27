@@ -5586,6 +5586,28 @@ app.get('/api/teams', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET teams:', err); res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/teams/search?q=… — discover public teams to join. Returns only
+// public, non-family teams. MUST be registered before /api/teams/:id so the
+// literal 'search' segment isn't captured as an :id. (PR91)
+app.get('/api/teams/search', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const q = String(req.query.q || '').trim().toLowerCase();
+    if (q.length < 2) return res.json({ teams: [] });
+    const like = '%' + q + '%';
+    const rows = await sql`
+      SELECT t.id, t.name, t.description, t.slug,
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) AS member_count,
+             EXISTS(SELECT 1 FROM team_members WHERE team_id = t.id AND user_id = ${me}) AS is_member
+      FROM teams t
+      WHERE t.kind = 'team' AND t.is_public = TRUE
+        AND (lower(t.name) LIKE ${like} OR lower(coalesce(t.description,'')) LIKE ${like})
+      ORDER BY member_count DESC, t.created_at DESC
+      LIMIT 25`;
+    res.json({ teams: rows });
+  } catch (err) { console.error('GET teams/search:', err); res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/teams/:id — team detail with members
 app.get('/api/teams/:id', requireAuth, async (req, res) => {
   try {
@@ -5755,27 +5777,6 @@ app.patch('/api/teams/:id/leader', requireAuth, async (req, res) => {
 // PR91 — Family & Team (Phase 2A). Invite links (family + team), team search,
 // dependent profiles (children/etc. who are not platform users).
 // ───────────────────────────────────────────────────────────────────────────
-
-// GET /api/teams/search?q=… — discover public teams to request joining. Returns
-// only public, non-family teams the caller is not already a member of.
-app.get('/api/teams/search', requireAuth, async (req, res) => {
-  try {
-    const me = req.user.sub || req.user.id;
-    const q = String(req.query.q || '').trim().toLowerCase();
-    if (q.length < 2) return res.json({ teams: [] });
-    const like = '%' + q + '%';
-    const rows = await sql`
-      SELECT t.id, t.name, t.description, t.slug,
-             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) AS member_count,
-             EXISTS(SELECT 1 FROM team_members WHERE team_id = t.id AND user_id = ${me}) AS is_member
-      FROM teams t
-      WHERE t.kind = 'team' AND t.is_public = TRUE
-        AND (lower(t.name) LIKE ${like} OR lower(coalesce(t.description,'')) LIKE ${like})
-      ORDER BY member_count DESC, t.created_at DESC
-      LIMIT 25`;
-    res.json({ teams: rows });
-  } catch (err) { console.error('GET teams/search:', err); res.status(500).json({ error: err.message }); }
-});
 
 // POST /api/teams/:id/invite — owner generates a shareable invite token/link.
 // Works for both family and team. Body: { role?, max_uses?, expires_in_days? }.
