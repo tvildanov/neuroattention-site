@@ -5909,6 +5909,9 @@ function buildLiveGraph(){
   var emptyMsg=document.getElementById('nm-live-empty');
   if(!canvas) return;
   var rect=canvas.parentElement.getBoundingClientRect();
+  // Skip drawing while the canvas has no layout size (e.g. host still hidden) —
+  // a 0-width canvas yields negative arc radii and throws (PR#87).
+  if(!rect.width || !rect.height) return;
   canvas.width=rect.width*2; canvas.height=rect.height*2;
   var ctx=canvas.getContext('2d');
 
