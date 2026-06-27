@@ -141,7 +141,11 @@
     nervous:  { color: 0x7CFC00, rim: 0xCFFFB0, opacity: 0.60, glow: 1.0, fresnelPower: 1.7 }, // lawn green
     vessels:  { color: 0xFF0000, rim: 0xFF9A9A, opacity: 0.50, glow: 0.9, fresnelPower: 1.9 }, // red
     organs:   { color: 0x9B59B6, rim: 0xD9B8E8, opacity: 0.60, glow: 0.8, fresnelPower: 2.0 }, // purple
-    brain:    { color: 0xFFFFFF, rim: 0xFFFFFF, opacity: 0.78, glow: 1.2, fresnelPower: 1.6 }  // bright white
+    brain:    { color: 0xFFFFFF, rim: 0xFFFFFF, opacity: 0.78, glow: 1.2, fresnelPower: 1.6 }, // bright white
+    // female-anatomy layers (HuBMAP-derived) — warm pinks to read apart from organs
+    female_reproductive: { color: 0xFF5FA8, rim: 0xFFC2DD, opacity: 0.62, glow: 0.9, fresnelPower: 1.9 }, // magenta-pink
+    breasts:  { color: 0xFF9FC6, rim: 0xFFD6E6, opacity: 0.42, glow: 0.6, fresnelPower: 2.3 }, // soft pink, translucent
+    placenta: { color: 0xFF7A5C, rim: 0xFFC9B5, opacity: 0.60, glow: 0.9, fresnelPower: 1.9 }  // warm coral (pregnancy overlay)
   };
 
   // ── tiny script loader (sequential, cached) ───────────────────────────────
@@ -861,6 +865,37 @@
       if (/masseter|temporalis_muscle|orbicularis|zygomatic|buccinator|sternocleidomastoid|platysma|mentalis|frontalis|occipitofrontalis|scalene|omohyoid|sternohyoid|sternothyroid|mylohyoid|digastric|stylohyoid|thyrohyoid|risorius|nasalis|levator_labii|depressor_(labii|anguli)|corrugator|procerus/.test(n)) return 'face-neck-muscles';
       return null;
     }
+    // female reproductive (HuBMAP VH-Female) — organ value MUST equal the SEED_REGION_INFO
+    // id so focusRegions/_forEachRegionMesh match via the ud.organ tag. cervix before
+    // uterus so the cervix sub-mesh isolates separately.
+    if (layer === 'female_reproductive') {
+      if (/cervi/.test(n)) return 'cervix';
+      if (/uter|womb/.test(n)) return 'uterus';
+      if (/ovar/.test(n)) return 'ovaries';
+      if (/fallopian|salping|uterine_tube/.test(n)) return 'fallopian-tubes';
+      if (/vagin/.test(n)) return 'vagina';
+      if (/placent/.test(n)) return 'placenta';
+      return null;
+    }
+    if (layer === 'placenta') {
+      if (/placent|umbilic|chorion|amnion/.test(n)) return 'placenta';
+      return null;
+    }
+    if (layer === 'breasts') {
+      if (/breast|mammar/.test(n)) return 'breasts';
+      return null;
+    }
+    return null;
+  }
+
+  // Tag a mesh with the biological sex it belongs to, so setSex() can filter sexed
+  // anatomy. Female-only layers are entirely female; male reproductive meshes (in the
+  // existing organs/vessels GLBs) are matched by name token. Unsexed meshes return null
+  // and are NEVER hidden by setSex — only reproductive anatomy is sex-gated.
+  function assignSexTag(baseSlug, layer) {
+    if (layer === 'female_reproductive' || layer === 'breasts' || layer === 'placenta') return 'female';
+    var n = String(baseSlug == null ? '' : baseSlug).toLowerCase();
+    if (/prostat|testis|testicl|penis|scrotum|seminal_vesicle|epididym|ductus_deferens|vas_deferens|spermatic|glans|corpus_cavernosum|corpus_spongiosum|ejaculatory/.test(n)) return 'male';
     return null;
   }
 
@@ -942,6 +977,7 @@
             // filter this mesh (e.g. organs_stomach → organ 'gi-tract'). Untagged
             // meshes (generic bones / peripheral nerves) stay in the layer default.
             var _organ = assignOrganTag(p.baseSlug, name); if (_organ) o.userData.organ = _organ;
+            var _sex = assignSexTag(p.baseSlug, name); if (_sex) o.userData.sex = _sex;
             // nervous CNS (brain/brainstem/cerebellum/cord nuclei) is the parallel
             // brain-detail session's domain — render it, but don't hit-test it here.
             if (name === 'nervous' && cns[rawName]) o.userData.isBrain = true;
@@ -950,6 +986,7 @@
           console.log('[BodyAtlas] ' + name + ': ' + tagged + ' named regions');
           grp.add(gltf.scene);
           self._swapRealLayer(name, grp);
+          self._applySexVisibility();   // hide sexed meshes that the current sex mode excludes
           self._emit('layer-loaded', { layer: name, regions: tagged });
           if (self._requestRender) self._requestRender();
           resolve(grp);
@@ -1301,7 +1338,20 @@
 
     // ── hip joint (sub-layer 'hip' of 'skeleton') — the articulating surfaces.
     //    NOTE: the GLB mesh is 'head_of_femur' (not 'femur_head' as first spec'd).
-    'hip':             { layer: 'skeleton', organ: 'hip', parent: null, aliases: ['hip_bone', 'acetabulum', 'head_of_femur'] }
+    'hip':             { layer: 'skeleton', organ: 'hip', parent: null, aliases: ['hip_bone', 'acetabulum', 'head_of_femur'] },
+
+    // ── female reproductive (layer 'female_reproductive', HuBMAP VH-Female) ──
+    'uterus':          { layer: 'female_reproductive', organ: 'uterus', parent: null, aliases: ['uterus', 'womb'], descendants: ['cervix'] },
+    'cervix':          { layer: 'female_reproductive', organ: 'cervix', parent: 'uterus', aliases: ['cervix', 'cervical_os'] },
+    'ovaries':         { layer: 'female_reproductive', organ: 'ovaries', parent: null, aliases: ['ovary', 'ovaries', 'ovari'] },
+    'fallopian-tubes': { layer: 'female_reproductive', organ: 'fallopian-tubes', parent: null, aliases: ['fallopian', 'fallopian_tube', 'uterine_tube', 'salpinx', 'salping'] },
+    'vagina':          { layer: 'female_reproductive', organ: 'vagina', parent: null, aliases: ['vagina', 'vaginal'] },
+
+    // ── breasts / mammary glands (layer 'breasts', HuBMAP VH-Female) ──
+    'breasts':         { layer: 'breasts', organ: 'breasts', parent: null, aliases: ['breast', 'breasts', 'mammary', 'mammar', 'mammary_gland'] },
+
+    // ── placenta (layer 'placenta' — pregnancy overlay, Phase 1) ──
+    'placenta':        { layer: 'placenta', organ: 'placenta', parent: null, aliases: ['placenta', 'placent', 'umbilical'] }
   };
   Atlas.SEED_REGION_INFO = SEED_REGION_INFO;   // expose for tooling / account.html
 
@@ -1956,9 +2006,32 @@
     return this;
   };
 
+  // Biological-sex filter. 'male' shows male (hides female) reproductive anatomy,
+  // 'female' the reverse, 'both' shows all. Only meshes carrying userData.sex are
+  // touched — all general anatomy (skeleton, muscles, organs, brain…) is unaffected,
+  // so the long-standing male model renders identically when sex is left at 'male'.
   Atlas.prototype.setSex = function (sex) {
-    this.sex = sex;   // single mesh available; hook kept for female asset when added
+    if (sex !== 'male' && sex !== 'female' && sex !== 'both') sex = 'male';
+    this.sex = sex;
+    this._applySexVisibility();
     this._emit('sex-change', { sex: sex });
+    return this;
+  };
+  Atlas.prototype._sexAllows = function (meshSex) {
+    if (!meshSex) return true;            // unsexed → always visible
+    if (this.sex === 'both') return true;
+    return meshSex === this.sex;
+  };
+  Atlas.prototype._applySexVisibility = function () {
+    if (!this.root) return;
+    var self = this;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || !o.userData.sex) return;
+      var allow = self._sexAllows(o.userData.sex);
+      if (!allow) { o.userData._sexHidden = true; o.visible = false; }
+      else if (o.userData._sexHidden) { o.userData._sexHidden = false; o.visible = true; }
+    });
+    if (this._requestRender) this._requestRender();
   };
 
   Atlas.prototype.destroy = function () {

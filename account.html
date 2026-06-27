@@ -31,7 +31,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=12" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=13" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -1351,6 +1351,11 @@ a.dash-tab:hover { text-decoration:none; }
         .arp-mini canvas{display:block;margin:0 auto;}
         @media(max-width:760px){.arp-mini.has{height:150px;}}
         .atlas-schematic{font-size:10px;color:var(--text-dim,#7c8896);opacity:0.8;margin-top:auto;line-height:1.4;}
+        .atlas-sex{margin-bottom:0.7rem;}
+        .atlas-sex-row{display:flex;gap:0.25rem;}
+        .atlas-sex-btn{flex:1;background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.14);color:var(--text-muted,#8c98a6);font-size:12px;padding:0.35rem 0.2rem;border-radius:8px;cursor:pointer;transition:.15s;}
+        .atlas-sex-btn:hover{color:var(--text-primary,#e8edf2);background:rgba(168,247,255,0.08);}
+        .atlas-sex-btn.active{color:#0b0f14;background:#FF9FD6;border-color:#FF9FD6;font-weight:600;}
         @media(max-width:760px){.atlas-body{flex-direction:column;}.atlas-layers{flex:none;flex-direction:row;overflow-x:auto;}.atlas-viewport{min-height:420px;order:2;}}
         /* ── Human Atlas 3-tab UI (Anatomy / Functions / Conditions) ── */
         .ha-tabs{display:flex;gap:0.3rem;padding:0.55rem 0.7rem 0;border-bottom:1px solid rgba(168,247,255,0.1);flex-wrap:wrap;}
@@ -14982,7 +14987,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=12"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=28"></script>
+<script src="assets/js/body-atlas.js?v=29"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14993,7 +14998,9 @@ window.pbMove = pbMove;
     { key:'vessels',  color:'#FF8FA3', ru:'Сосуды',        en:'Vessels',        es:'Vasos',           on:false, op:60 },
     { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 },
     { key:'joints',   color:'#E6E2F0', ru:'Связки и суставы',en:'Joints & ligaments',es:'Articulaciones y ligamentos', on:false, op:50 },
-    { key:'lymph',    color:'#C9A6FF', ru:'Лимфоузлы',      en:'Lymph nodes',    es:'Ganglios linfáticos', on:false, op:50 }
+    { key:'lymph',    color:'#C9A6FF', ru:'Лимфоузлы',      en:'Lymph nodes',    es:'Ganglios linfáticos', on:false, op:50 },
+    { key:'female_reproductive', color:'#FF9FD6', ru:'Репродуктивная система', en:'Reproductive system', es:'Sistema reproductor', on:false, op:60, sex:'female' },
+    { key:'breasts',  color:'#FFC2DD', ru:'Молочные железы', en:'Breasts',       es:'Mamas',           on:false, op:55, sex:'female' }
   ];
   // Sub-layers (organ groups) rendered as collapsible mini-toggles inside a layer
   // card. organ keys match userData.organ tags set from SEED_REGION_INFO.
@@ -15002,7 +15009,8 @@ window.pbMove = pbMove;
     nervous:  [ {o:'brain',ru:'Мозг',en:'Brain',es:'Cerebro'}, {o:'spinal-cord',ru:'Спинной мозг',en:'Spinal cord',es:'Médula espinal'} ],
     vessels:  [ {o:'heart',ru:'Сердце',en:'Heart',es:'Corazón'} ],
     organs:   [ {o:'gi-tract',ru:'ЖКТ',en:'GI tract',es:'Tracto GI'}, {o:'liver',ru:'Печень',en:'Liver',es:'Hígado'}, {o:'lungs',ru:'Лёгкие',en:'Lungs',es:'Pulmones'}, {o:'kidneys',ru:'Почки',en:'Kidneys',es:'Riñones'}, {o:'pancreas',ru:'Поджелудочная',en:'Pancreas',es:'Páncreas'}, {o:'endocrine',ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'}, {o:'airway',ru:'Дых. пути',en:'Airway',es:'Vías aéreas'} ],
-    skeleton: [ {o:'spine',ru:'Позвоночник',en:'Spine',es:'Columna'}, {o:'hip',ru:'Таз/бедро',en:'Hip',es:'Cadera'} ]
+    skeleton: [ {o:'spine',ru:'Позвоночник',en:'Spine',es:'Columna'}, {o:'hip',ru:'Таз/бедро',en:'Hip',es:'Cadera'} ],
+    female_reproductive: [ {o:'uterus',ru:'Матка',en:'Uterus',es:'Útero'}, {o:'cervix',ru:'Шейка матки',en:'Cervix',es:'Cuello uterino'}, {o:'ovaries',ru:'Яичники',en:'Ovaries',es:'Ovarios'}, {o:'fallopian-tubes',ru:'Маточные трубы',en:'Fallopian tubes',es:'Trompas de Falopio'}, {o:'vagina',ru:'Влагалище',en:'Vagina',es:'Vagina'} ]
   };
   // ISOLATE semantics: gather the CHECKED organ subtoggles for a layer and show
   // only those (none checked → whole layer). Checking one auto-enables the layer.
@@ -15038,7 +15046,14 @@ window.pbMove = pbMove;
     'thoracic-spine': { ru:'Грудной отдел (T1–T12): иннервация туловища и внутренних органов.', en:'Thoracic (T1–T12): innervates trunk and internal organs.', es:'Torácica (T1–T12): inerva tronco y órganos.' },
     'lumbar-spine':   { ru:'Поясничный отдел (L1–L5): иннервация ног, частые боли в пояснице.', en:'Lumbar (L1–L5): innervates legs; common low-back pain site.', es:'Lumbar (L1–L5): inerva piernas; dolor lumbar común.' },
     'sacral-spine':   { ru:'Крестцовый отдел: таз, мочевой пузырь, нижние конечности.', en:'Sacral: pelvis, bladder, lower limbs.', es:'Sacro: pelvis, vejiga, extremidades inferiores.' },
-    'spinal-cord':    { ru:'Спинной мозг — магистраль сигналов между телом и головным мозгом.', en:'Spinal cord — the signal highway between body and brain.', es:'Médula espinal — la vía entre el cuerpo y el cerebro.' }
+    'spinal-cord':    { ru:'Спинной мозг — магистраль сигналов между телом и головным мозгом.', en:'Spinal cord — the signal highway between body and brain.', es:'Médula espinal — la vía entre el cuerpo y el cerebro.' },
+    'uterus':         { ru:'Матка — полый мышечный орган, где развивается беременность.', en:'Uterus — the hollow muscular organ where pregnancy develops.', es:'Útero — el órgano muscular hueco donde se desarrolla el embarazo.' },
+    'cervix':         { ru:'Шейка матки — нижний узкий отдел, соединяющий матку с влагалищем.', en:'Cervix — the lower narrow part connecting the uterus to the vagina.', es:'Cuello uterino — la parte inferior que conecta el útero con la vagina.' },
+    'ovaries':        { ru:'Яичники — парные половые железы: яйцеклетки, эстроген и прогестерон.', en:'Ovaries — paired gonads producing eggs, oestrogen and progesterone.', es:'Ovarios — gónadas pares que producen óvulos, estrógeno y progesterona.' },
+    'fallopian-tubes':{ ru:'Маточные трубы — путь яйцеклетки к матке; место оплодотворения.', en:'Fallopian tubes — the egg’s path to the uterus; site of fertilisation.', es:'Trompas de Falopio — la vía del óvulo al útero; sitio de fecundación.' },
+    'vagina':         { ru:'Влагалище — мышечный канал между шейкой матки и наружными половыми органами.', en:'Vagina — the muscular canal between the cervix and the external genitals.', es:'Vagina — el canal muscular entre el cuello uterino y los genitales externos.' },
+    'breasts':        { ru:'Молочные железы — выработка молока; реагируют на гормоны цикла и беременности.', en:'Breasts — mammary glands producing milk; respond to cycle and pregnancy hormones.', es:'Mamas — glándulas mamarias que producen leche; responden a hormonas.' },
+    'placenta':       { ru:'Плацента — орган беременности: обмен кислородом и питанием между матерью и плодом.', en:'Placenta — the pregnancy organ exchanging oxygen and nutrients between mother and fetus.', es:'Placenta — el órgano del embarazo que intercambia oxígeno y nutrientes.' }
   };
 
   function lang(){ try{ return (window.currentLang||window.__lang||localStorage.getItem('na_lang')||document.documentElement.lang||'ru').slice(0,2); }catch(e){ return 'ru'; } }
@@ -15117,6 +15132,15 @@ window.pbMove = pbMove;
   function injectLayers(){
     var host = document.getElementById('atlas-layers'); if(!host) return;
     var note = host.querySelector('.atlas-schematic');
+    // ── Sex toggle (Male / Female / Both) — drives setSex + female layer visibility ──
+    if(!document.getElementById('atlas-sex')){
+      var sx = document.createElement('div'); sx.className='atlas-sex'; sx.id='atlas-sex';
+      var lg = lang();
+      function sb(m,ru,en,es){ return '<button type="button" data-sex="'+m+'" class="atlas-sex-btn'+(m==='male'?' active':'')+'" onclick="atlasSetSex(\''+m+'\')">'+(lg==='en'?en:lg==='es'?es:ru)+'</button>'; }
+      sx.innerHTML='<div class="atlas-sec-title">'+(lg==='en'?'Sex':lg==='es'?'Sexo':'Пол')+'</div>'+
+        '<div class="atlas-sex-row">'+sb('male','Муж.','Male','Hombre')+sb('female','Жен.','Female','Mujer')+sb('both','Оба','Both','Ambos')+'</div>';
+      host.insertBefore(sx, host.firstChild);
+    }
     LAYERS.forEach(function(L){
       var el = document.createElement('div'); el.className='atlas-layer'; el.setAttribute('data-layer', L.key);
       var subs = SUBLAYERS[L.key];
@@ -15237,15 +15261,30 @@ window.pbMove = pbMove;
   function setBrainBtn(on){ var b=document.getElementById('atlas-brain-btn'); if(b) b.classList.toggle('active', !!on); }
   function setLayerLoading(key, on){ if(!key) return; var row=document.querySelector('#atlas-layers .atlas-layer[data-layer="'+key+'"]'); if(row) row.classList.toggle('loading', !!on); }
 
-  window.atlasToggleLayer = function(k,v){ if(atlas) atlas.toggleLayer(k,v); var L=LAYERS.filter(function(x){return x.key===k;})[0]; if(L) L.on=v; };
-  window.atlasSetOpacity = function(k,v){ if(atlas) atlas.setLayerOpacity(k, v/100); };
-  window.atlasToggleSex = function(){
-    var lab=document.getElementById('atlas-sex-label');
-    var female = lab && lab.getAttribute('data-sex')==='female';
-    var next = female ? 'male':'female';
-    if(lab){ lab.setAttribute('data-sex', next); lab.textContent = next==='female' ? (lang()==='en'?'Female':lang()==='es'?'Mujer':'Жен.') : (lang()==='en'?'Male':lang()==='es'?'Hombre':'Муж.'); }
-    if(atlas) atlas.setSex(next);
+  window.atlasToggleLayer = function(k,v){ if(atlas) atlas.toggleLayer(k,v); var L=LAYERS.filter(function(x){return x.key===k;})[0]; if(L) L.on=v;
+    // enabling a female layer while in Male mode would render nothing (sex filter) —
+    // bump to Both so the meshes actually show.
+    if(v && L && L.sex==='female' && atlas && atlas.sex==='male'){ window.atlasSetSex('both'); }
   };
+  window.atlasSetOpacity = function(k,v){ if(atlas) atlas.setLayerOpacity(k, v/100); };
+  // 3-state sex control. Female/Both reveal the female layers; Male hides them and
+  // shows male reproductive anatomy. Keeps the segmented buttons + layer checkboxes in sync.
+  window.atlasSetSex = function(m){
+    if(m!=='male'&&m!=='female'&&m!=='both') m='male';
+    if(atlas) atlas.setSex(m);
+    var w=document.getElementById('atlas-sex');
+    if(w) w.querySelectorAll('.atlas-sex-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sex')===m); });
+    var showF = (m!=='male');
+    LAYERS.forEach(function(L){
+      if(L.sex!=='female') return;
+      L.on = showF;
+      if(atlas) atlas.toggleLayer(L.key, showF);
+      var cb=document.querySelector('#atlas-layers .atlas-layer[data-layer="'+L.key+'"] .atlas-layer-head input');
+      if(cb) cb.checked = showF;
+    });
+  };
+  // back-compat alias for the old 2-state hook (no longer wired to UI)
+  window.atlasToggleSex = function(){ var s = atlas && atlas.sex==='female' ? 'male':'female'; window.atlasSetSex(s); };
   window.atlasBrainDetail = function(){ if(!atlas) return; if(atlas._brainDetail) atlas.exitBrainDetail(); else atlas.enterBrainDetail(); };
   window.atlasExitBrain = function(){ if(atlas) atlas.exitBrainDetail(); };
   window.atlasResetView = function(){ if(atlas){ atlas.exitBrainDetail&&atlas._brainDetail&&atlas.exitBrainDetail();
