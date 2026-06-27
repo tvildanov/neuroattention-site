@@ -245,8 +245,11 @@
       if (typeof onSelect === 'function') onSelect(slug, { ru: reg.label.ru, en: reg.label.en, es: reg.label.es }, picked);
     }
 
-    // Double-click / long-press → open the sub-region list right AT the cursor, so
-    // reaching it never crosses another region (B п.B). The panel flips above the
+    // Cascade restore (PR#87 / Tahir): hover (desktop) or long-press (touch) opens
+    // the sub-region list right AT the cursor — never far below, so reaching it can't
+    // cross a neighbouring zone (that was the old "cascade of errors"). The first row
+    // is a "whole area" option so a single click selects either the coarse zone or a
+    // precise sub-region, whichever the pointer lands on. The panel flips above the
     // pointer if it would overflow the bottom of the stage.
     function openSubs(regionEl, clientX, clientY) {
       var view = regionEl.getAttribute('data-view'), rk = regionEl.getAttribute('data-region');
@@ -255,10 +258,15 @@
       regionEl.classList.add('active');
       var stage = regionEl.closest('.bp-stage'); var str = stage.getBoundingClientRect();
       var panel = stage.querySelector('.bp-panel');
-      panel.innerHTML = reg.sub.map(function (s) {
+      var zoneSlug = 'bp_zone_' + view + '_' + rk;
+      var wholeLbl = (lang === 'en' ? 'Whole area' : lang === 'es' ? 'Toda la zona' : 'Вся область');
+      var html = '<button type="button" class="bp-sub bp-sub-whole' + (pickedSet[zoneSlug] ? ' picked' : '') +
+        '" data-slug="' + esc(zoneSlug) + '" data-whole="1">◎ ' + esc(L(reg.label, lang)) + ' · ' + esc(wholeLbl) + '</button>';
+      html += reg.sub.map(function (s) {
         var on = pickedSet[s.slug] ? ' picked' : '';
         return '<button type="button" class="bp-sub' + on + '" data-slug="' + esc(s.slug) + '">' + esc(L(s, lang)) + '</button>';
       }).join('');
+      panel.innerHTML = html;
       var px = (clientX != null) ? (clientX - str.left + 6) : (str.width / 2 - 70);
       var py = (clientY != null) ? (clientY - str.top + 6) : 20;
       panel.style.left = Math.min(Math.max(6, px), Math.max(6, str.width - 156)) + 'px';
@@ -270,10 +278,18 @@
         btn.addEventListener('click', function (e) {
           e.stopPropagation();
           var slug = btn.getAttribute('data-slug');
-          var sub = reg.sub.filter(function (x) { return x.slug === slug; })[0];
           var on = btn.classList.toggle('picked');
           if (on) pickedSet[slug] = 1; else delete pickedSet[slug];
-          if (typeof onSelect === 'function' && sub) onSelect(slug, { ru: sub.ru, en: sub.en, es: sub.es }, on);
+          var labels;
+          if (btn.getAttribute('data-whole')) {
+            labels = { ru: reg.label.ru, en: reg.label.en, es: reg.label.es };
+            // keep the region-shape highlight in sync with the whole-area toggle
+            regionEl.classList.toggle('picked', on);
+          } else {
+            var sub = reg.sub.filter(function (x) { return x.slug === slug; })[0];
+            labels = sub ? { ru: sub.ru, en: sub.en, es: sub.es } : null;
+          }
+          if (typeof onSelect === 'function' && labels) onSelect(slug, labels, on);
         });
       });
     }
@@ -281,6 +297,7 @@
     // event delegation
     container.querySelectorAll('.bp-svg').forEach(function (svg) {
       var clickTimer = null;   // desktop: debounce single-click vs double-click
+      var hoverTimer = null;   // desktop: dwell before auto-opening the cascade
       var press = null;        // touch: long-press timer
       var suppressClick = false; // touch: swallow the click that ends a long-press
       svg.addEventListener('click', function (e) {
@@ -292,7 +309,8 @@
           selectZone(r);
           return;
         }
-        // desktop: wait briefly so a double-click opens subs instead of toggling twice
+        // desktop: clicking the bare region (cascade not covering this spot) selects
+        // the whole zone; sub-region clicks are handled by the panel buttons above.
         if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
         var rr = r;
         clickTimer = setTimeout(function () { clickTimer = null; selectZone(rr); }, 200);
@@ -304,7 +322,18 @@
         openSubs(r, e.clientX, e.clientY);
       });
       if (!isTouch) {
-        svg.addEventListener('mouseover', function (e) { var r = e.target.closest('.bp-region'); if (r) showLabel(r); });
+        svg.addEventListener('mouseover', function (e) {
+          var r = e.target.closest('.bp-region'); if (!r) return;
+          showLabel(r);
+          // hover → reveal the sub-region cascade pinned at the pointer. Re-open only
+          // when the hovered region actually changes (DOM .active class is the source
+          // of truth, so it stays correct across the two front/back views).
+          if (!r.classList.contains('active')) {
+            var cx = e.clientX, cy = e.clientY;
+            if (hoverTimer) clearTimeout(hoverTimer);
+            hoverTimer = setTimeout(function () { if (!r.classList.contains('active')) openSubs(r, cx, cy); }, 90);
+          }
+        });
         svg.addEventListener('mouseout', function (e) { var r = e.target.closest('.bp-region'); if (r) hideLabel(r.closest('.bp-stage')); });
       } else {
         svg.addEventListener('touchstart', function (e) {
@@ -316,6 +345,13 @@
         svg.addEventListener('touchmove', function () { if (press) { clearTimeout(press); press = null; } }, { passive: true });
       }
     });
+    // leaving a silhouette stage entirely dismisses a lingering cascade (moving onto
+    // the panel buttons stays inside .bp-stage, so it does not close prematurely)
+    if (!isTouch) {
+      container.querySelectorAll('.bp-stage').forEach(function (stage) {
+        stage.addEventListener('mouseleave', function () { closePanels(); });
+      });
+    }
     // click outside closes the sub panel (does NOT clear selected zones)
     if (!container.__bpOutside) {
       container.__bpOutside = function (e) { if (!e.target.closest('.bp-stage')) closePanels(); };
