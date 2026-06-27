@@ -1303,6 +1303,7 @@
   "a.courses.cp_sm_where": "Dónde en el cuerpo",
   "a.courses.cp_ha_reset": "⟲ Restablecer vista",
   "a.courses.cp_ha_affected": "Regiones afectadas",
+  "a.courses.cp_nm_embed_hint": "Recorre la cadena y pulsa Guardar — la entrada se añade a tu NeuroMapa y cuenta para el curso.",
   "a.courses.cp_ha_layers": "Capas",
   "a.courses.cp_ha_focus_hint": "Mueve los controles de capas para explorar. Restablecer vista vuelve a la vista general.",
   "a.tabs.domunity": "DOMunity",
