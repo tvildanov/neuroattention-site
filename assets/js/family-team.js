@@ -668,7 +668,7 @@
       // mountEvolutionPath reads its own user; pass subject so the GET is scoped to
       // the dependent's journey_events (owner-gated server-side).
       box.setAttribute('data-subject', 'dependent:' + depId);
-      window.mountEvolutionPath(box, { subject: 'dependent:' + depId, lang: lang() });
+      window.mountEvolutionPath(box, { subject: 'dependent:' + depId, lang: lang(), mode: 'layers', alwaysStructure: true });
     } else {
       box.innerHTML = '<div class="ft-empty">' + esc(L(T.noEventsYet)) + '</div>';
     }

@@ -80,9 +80,11 @@ await click('#family-team .ft-view-path'); await sleep(2500);
 out.steps.viewPath = await page.evaluate(() => {
   const wide = document.querySelector('.ft-modal.ft-modal-wide');
   const preg = document.querySelector('.ft-preg');
-  const evo = document.querySelector('#ft-dp-box .myc-root, #ft-dp-box svg');
+  // child path mounts in layers mode w/ alwaysStructure → lane labels present even at 0 events
+  const lanes = document.querySelectorAll('#ft-dp-box .myc-lane-label').length;
+  const chrome = !!document.querySelector('#ft-dp-box .myc-controls, #ft-dp-box .myc-seg');
   return { wideModal: !!wide, pregHeader: !!preg, pregText: preg ? preg.textContent.replace(/\s+/g, ' ').trim() : '',
-    evoMounted: !!evo, milestone: (document.querySelector('.ft-preg-milestone') || {}).textContent || '' };
+    evoMounted: lanes >= 6 || chrome, lanes, milestone: (document.querySelector('.ft-preg-milestone') || {}).textContent || '' };
 });
 try { await page.screenshot({ path: '/tmp/pr92-viewpath.png' }); out.shotViewPath = '/tmp/pr92-viewpath.png'; } catch (e) {}
 // close modal

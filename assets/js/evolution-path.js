@@ -1802,6 +1802,7 @@
     var token = opts.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('na_token') : '');
     var st = container.__evo || { mode: opts.mode || 'tunnel', period: opts.period || 'month', cursor: 1, hidden: {} };
     if (st.mode === 'field') st.mode = 'tunnel'; // D п.17: «Персонаж» mode retired
+    if (opts.alwaysStructure) st._alwaysStructure = true; // child/dependent path: keep lanes when empty
     container.__evo = st;
 
     container.classList.add('myc-root');
@@ -2093,10 +2094,14 @@
     POS = {};
     var data = st.data;
     var totalEvents = Object.keys(data.totals || {}).reduce(function (s, k) { return k === 'xp_total' ? s : s + (data.totals[k] || 0); }, 0);
-    if (!totalEvents) {
+    if (!totalEvents && !st._alwaysStructure) {
       box.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">✦</div><div class="myc-empty-text">' + L(STR.empty, lang) + '</div></div>';
       return;
     }
+    // alwaysStructure (child/dependent path): show the lane structure even with no
+    // events yet — Layers renders the lanes + an "empty period" hint, so the user
+    // sees a real timeline frame ("строка как у Personal") rather than blank text.
+    if (!totalEvents && st._alwaysStructure) st.mode = 'layers';
     // recompute the logical height for this paint (fullscreen → taller field)
     H = computeH(container, st);
     box.style.minHeight = H + 'px';
