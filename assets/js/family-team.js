@@ -184,9 +184,14 @@
       var deps = (res[1].data && res[1].data.dependents) || [];
       var families = teams.filter(function (t) { return t.kind === 'family'; });
       var workTeams = teams.filter(function (t) { return t.kind !== 'family'; });
-      render(container, { families: families, teams: workTeams, dependents: deps });
-      // process a pending ?join=<token> invite, if any
-      handlePendingJoin(container);
+      var primary = families[0];
+      // load the primary family's adult members (invited users) so they show as cards
+      var memProm = primary ? api('/api/teams/' + primary.id) : Promise.resolve({ data: {} });
+      memProm.then(function (mr) {
+        var members = (mr.data && mr.data.members) || [];
+        render(container, { families: families, teams: workTeams, dependents: deps, members: members });
+        handlePendingJoin(container);
+      });
     }).catch(function (e) {
       container.innerHTML = '<div class="ft-empty">' + esc(L(T.err)) + ': ' + esc(e.message || '') + '</div>';
     });
@@ -206,6 +211,15 @@
       html += '<button class="ft-btn ft-primary" id="ft-create-family">' + esc(L(T.createFamily)) + '</button>';
     } else {
       html += '<p class="ft-secsub">' + esc(fam.name) + '</p>';
+      // adult members (invited platform users) — shown with their kin role
+      var roleLbl = function (rv) { var r = ROLES.filter(function (x) { return x.v === rv; })[0]; return r ? L(r.o) : (rv || L(T.member)); };
+      (state.members || []).forEach(function (mem) {
+        html += '<div class="ft-card">' +
+                '<div class="ft-av">🧑</div>' +
+                '<div class="ft-meta"><div class="ft-name">' + esc(mem.display_name || mem.email || '—') + '</div>' +
+                '<div class="ft-tags">' + esc(roleLbl(mem.role)) + (mem.role === 'owner' || (fam && String(mem.id) === String(fam.owner_user_id)) ? '' : '') + '</div></div>' +
+                '</div>';
+      });
       // dependents
       if (!state.dependents.length) {
         html += '<div class="ft-empty">' + esc(L(T.noChildren)) + '</div>';
