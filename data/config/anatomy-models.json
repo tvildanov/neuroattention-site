@@ -14,11 +14,16 @@
     "organs":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/organs.glb",
     "joints":   "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/joints.glb",
     "lymph":    "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/lymph.glb",
-    "female_reproductive": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v2/female-reproductive.glb",
-    "breasts":  "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v2/breasts.glb",
+    "female_reproductive": {
+      "url": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v2/female-reproductive.glb",
+      "merge": [
+        { "url": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v2/breasts.glb", "translate": [0, 0.12, 0.01], "style": "breasts", "organ": "breasts" }
+      ]
+    },
     "placenta": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v2/placenta.glb"
   },
   "female_source": "Female layers derived from HuBMAP CCF 3D Reference Object Library (VH-Female v1.2 reproductive+placenta, v1.3 mammary), CC-BY 4.0 — Browne, Schlehlein, Herr, Quardokus, Bueckle, Börner (2022). Rigidly aligned to the Z-Anatomy frame (uniform scale 0.97 + translation) via a pelvis bounding-box match.",
+  "female_breasts_note": "Mammary glands are folded into the female_reproductive layer (merge source) rather than a standalone layer, and raised +0.12 in Y (and +0.01 in Z) at load time to sit at the chest (over the mid ribcage / pectoral level) instead of near the belly. Offset calibrated against the pectoralis (chest-muscles) bbox and the ribcage. They keep organ tag 'breasts' so the 'Грудь' isolate subtoggle and pregnancy focus still target them.",
   "brainDetail": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@e480b7ce98b75b47c5c6e79160d0664ea7a76b76/brain-detail.glb",
   "extra": {
     "regions": "https://cdn.jsdelivr.net/gh/tvildanov/neuroattention-anatomy@v1/regions.glb"

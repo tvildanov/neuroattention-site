@@ -1314,14 +1314,14 @@ a.dash-tab:hover { text-decoration:none; }
         .atlas-btn:hover{background:rgba(168,247,255,0.16);}
         .atlas-btn.active{background:rgba(141,255,200,0.16);border-color:rgba(141,255,200,0.4);}
         .atlas-body{display:flex;gap:0;min-height:520px;}
-        .atlas-layers{flex:0 0 188px;padding:0.9rem;display:flex;flex-direction:column;gap:0.6rem;background:rgba(0,0,0,0.18);border-right:1px solid rgba(168,247,255,0.08);}
+        .atlas-layers{flex:0 0 188px;padding:0.9rem;display:flex;flex-direction:column;gap:0.4rem;background:rgba(0,0,0,0.18);border-right:1px solid rgba(168,247,255,0.08);}
         .atlas-viewport{flex:1 1 auto;position:relative;min-width:0;background:radial-gradient(80% 80% at 50% 35%, rgba(168,247,255,0.05), transparent 70%);touch-action:none;}
         .atlas-sec-title{font-size:10.5px;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-dim,#7c8896);margin:0 0 0.2rem;}
-        .atlas-layer{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.09);border-radius:10px;padding:0.5rem 0.6rem;}
-        .atlas-layer-head{display:flex;align-items:center;gap:0.45rem;font-size:12.5px;cursor:pointer;}
-        .atlas-layer-head input{accent-color:#A8F7FF;}
-        .atlas-layer-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor;}
-        .atlas-layer-op{width:100%;margin-top:0.45rem;accent-color:#A8F7FF;height:3px;}
+        .atlas-layer{background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.09);border-radius:9px;padding:0.3rem 0.55rem;}
+        .atlas-layer-head{display:flex;align-items:center;gap:0.4rem;font-size:12px;line-height:1.2;cursor:pointer;}
+        .atlas-layer-head input{accent-color:#A8F7FF;width:13px;height:13px;}
+        .atlas-layer-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor;}
+        .atlas-layer-op{width:100%;margin-top:0.28rem;accent-color:#A8F7FF;height:3px;}
         .atlas-sub{margin-top:0.45rem;border-top:1px dashed rgba(168,247,255,0.16);padding-top:0.4rem;}
         .atlas-sub>summary{display:flex;align-items:center;gap:0.3rem;font-size:11.5px;font-weight:600;letter-spacing:0.01em;color:var(--accent-cyan,#A8F7FF);cursor:pointer;list-style:none;user-select:none;padding:0.1rem 0;}
         .atlas-sub>summary:hover{text-decoration:underline;}
@@ -14987,7 +14987,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=12"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=29"></script>
+<script src="assets/js/body-atlas.js?v=30"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -14999,8 +14999,7 @@ window.pbMove = pbMove;
     { key:'organs',   color:'#FFCB8D', ru:'Органы',        en:'Organs',         es:'Órganos',         on:false, op:55 },
     { key:'joints',   color:'#E6E2F0', ru:'Связки и суставы',en:'Joints & ligaments',es:'Articulaciones y ligamentos', on:false, op:50 },
     { key:'lymph',    color:'#C9A6FF', ru:'Лимфоузлы',      en:'Lymph nodes',    es:'Ganglios linfáticos', on:false, op:50 },
-    { key:'female_reproductive', color:'#FF9FD6', ru:'Репродуктивная система', en:'Reproductive system', es:'Sistema reproductor', on:false, op:60, sex:'female' },
-    { key:'breasts',  color:'#FFC2DD', ru:'Молочные железы', en:'Breasts',       es:'Mamas',           on:false, op:55, sex:'female' }
+    { key:'female_reproductive', color:'#FF9FD6', ru:'Репродуктивная система', en:'Reproductive system', es:'Sistema reproductor', on:false, op:60, sex:'female' }
   ];
   // Sub-layers (organ groups) rendered as collapsible mini-toggles inside a layer
   // card. organ keys match userData.organ tags set from SEED_REGION_INFO.
@@ -15010,7 +15009,7 @@ window.pbMove = pbMove;
     vessels:  [ {o:'heart',ru:'Сердце',en:'Heart',es:'Corazón'} ],
     organs:   [ {o:'gi-tract',ru:'ЖКТ',en:'GI tract',es:'Tracto GI'}, {o:'liver',ru:'Печень',en:'Liver',es:'Hígado'}, {o:'lungs',ru:'Лёгкие',en:'Lungs',es:'Pulmones'}, {o:'kidneys',ru:'Почки',en:'Kidneys',es:'Riñones'}, {o:'pancreas',ru:'Поджелудочная',en:'Pancreas',es:'Páncreas'}, {o:'endocrine',ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'}, {o:'airway',ru:'Дых. пути',en:'Airway',es:'Vías aéreas'} ],
     skeleton: [ {o:'spine',ru:'Позвоночник',en:'Spine',es:'Columna'}, {o:'hip',ru:'Таз/бедро',en:'Hip',es:'Cadera'} ],
-    female_reproductive: [ {o:'uterus',ru:'Матка',en:'Uterus',es:'Útero'}, {o:'cervix',ru:'Шейка матки',en:'Cervix',es:'Cuello uterino'}, {o:'ovaries',ru:'Яичники',en:'Ovaries',es:'Ovarios'}, {o:'fallopian-tubes',ru:'Маточные трубы',en:'Fallopian tubes',es:'Trompas de Falopio'}, {o:'vagina',ru:'Влагалище',en:'Vagina',es:'Vagina'} ]
+    female_reproductive: [ {o:'uterus',ru:'Матка',en:'Uterus',es:'Útero'}, {o:'cervix',ru:'Шейка матки',en:'Cervix',es:'Cuello uterino'}, {o:'ovaries',ru:'Яичники',en:'Ovaries',es:'Ovarios'}, {o:'fallopian-tubes',ru:'Маточные трубы',en:'Fallopian tubes',es:'Trompas de Falopio'}, {o:'vagina',ru:'Влагалище',en:'Vagina',es:'Vagina'}, {o:'breasts',ru:'Грудь',en:'Breasts',es:'Mamas'} ]
   };
   // ISOLATE semantics: gather the CHECKED organ subtoggles for a layer and show
   // only those (none checked → whole layer). Checking one auto-enables the layer.

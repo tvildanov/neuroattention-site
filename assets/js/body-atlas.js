@@ -874,6 +874,7 @@
       if (/ovar/.test(n)) return 'ovaries';
       if (/fallopian|salping|uterine_tube/.test(n)) return 'fallopian-tubes';
       if (/vagin/.test(n)) return 'vagina';
+      if (/breast|mammar/.test(n)) return 'breasts';   // breasts.glb merged into this layer
       if (/placent/.test(n)) return 'placenta';
       return null;
     }
@@ -911,7 +912,15 @@
       var cfg = arr[0], anat = arr[1];
       if (anat) self._anat = anat;     // {ru, es, cns} cached for name resolution
       if (!cfg || !cfg.layers || !cfg.layers[name]) return null;   // no real source → keep procedural
-      var url = cfg.layers[name];
+      // A layer source is either a plain URL string, or a composite object
+      // { url, merge:[{url, translate:[x,y,z], style, organ}] } that folds several
+      // GLBs into one layer — e.g. breasts.glb merged into female_reproductive and
+      // raised in Y so the mammary glands sit at the chest, not the belly.
+      var src = cfg.layers[name];
+      var primaryUrl = (typeof src === 'string') ? src : (src && src.url);
+      var mergeList  = (src && typeof src === 'object' && src.merge) ? src.merge : [];
+      if (!primaryUrl) return null;
+      var cns = (self._anat && self._anat.cns) || {};
       return new Promise(function (resolve) {
         var loader = new T.GLTFLoader();
         try {
@@ -922,10 +931,15 @@
           }
         } catch (e) { /* draco optional */ }
         self._emit('layer-loading', { layer: name });
-        loader.load(url, function (gltf) {
-          var grp = new T.Group(); grp.name = name + '-real';
-          var style = LAYER_STYLE[name] || { color: COLD_CYAN, opacity: 0.5, glow: 0.7 };
-          var cns = (self._anat && self._anat.cns) || {};
+        var grp = new T.Group(); grp.name = name + '-real';
+
+        // Replace materials with the x-ray shader and tag every named mesh of one
+        // loaded GLB into `grp`. `opts.style` overrides the layer palette (so merged
+        // breasts keep their soft-pink look) and `opts.translate` shifts the whole
+        // sub-model (the breast Y-raise) by parenting it under an offset group.
+        function processGltf(gltf, opts) {
+          opts = opts || {};
+          var style = LAYER_STYLE[opts.style] || LAYER_STYLE[name] || { color: COLD_CYAN, opacity: 0.5, glow: 0.7 };
           var tagged = 0;
           // sanitized→raw node-name map, so we can undo GLTFLoader's name mangling
           var rawByClean = {};
@@ -976,24 +990,68 @@
             // tag the sub-layer (organ) from the registry so toggleSubLayer can
             // filter this mesh (e.g. organs_stomach → organ 'gi-tract'). Untagged
             // meshes (generic bones / peripheral nerves) stay in the layer default.
-            var _organ = assignOrganTag(p.baseSlug, name); if (_organ) o.userData.organ = _organ;
+            // organ tag from the registry (e.g. organs_stomach → 'gi-tract'); for a
+            // merged source the config carries an explicit `organ` hint as fallback.
+            var _organ = assignOrganTag(p.baseSlug, name) || opts.organ; if (_organ) o.userData.organ = _organ;
             var _sex = assignSexTag(p.baseSlug, name); if (_sex) o.userData.sex = _sex;
             // nervous CNS (brain/brainstem/cerebellum/cord nuclei) is the parallel
             // brain-detail session's domain — render it, but don't hit-test it here.
             if (name === 'nervous' && cns[rawName]) o.userData.isBrain = true;
             tagged++;
           });
-          console.log('[BodyAtlas] ' + name + ': ' + tagged + ' named regions');
-          grp.add(gltf.scene);
+          console.log('[BodyAtlas] ' + name + (opts.style ? ' (' + opts.style + ')' : '') + ': ' + tagged + ' named regions');
+          if (opts.translate && (opts.translate[0] || opts.translate[1] || opts.translate[2])) {
+            // parent the sub-model under an offset group rather than baking into
+            // each mesh — keeps the source GLB reusable and the shift reversible.
+            var sub = new T.Group();
+            sub.name = name + '-merge';
+            sub.position.set(opts.translate[0] || 0, opts.translate[1] || 0, opts.translate[2] || 0);
+            sub.add(gltf.scene);
+            grp.add(sub);
+          } else {
+            grp.add(gltf.scene);
+          }
+          return tagged;
+        }
+
+        // Load one GLB into grp via processGltf; resolves to the tagged count, or
+        // -1 if the fetch/parse failed so the caller can tell a real miss apart.
+        function loadOne(url, opts) {
+          return new Promise(function (res) {
+            loader.load(url, function (gltf) {
+              var n = 0;
+              try { n = processGltf(gltf, opts); }
+              catch (e) { console.warn('[BodyAtlas] process failed: ' + url, e); }
+              res(n);
+            }, undefined, function (err) {
+              console.warn('[BodyAtlas] real source load failed: ' + url, err);
+              res(-1);
+            });
+          });
+        }
+
+        // Load the primary source first, then each merge source in sequence, all
+        // into the same group; swap the layer in once everything has landed.
+        var chain = loadOne(primaryUrl, null).then(function (n) { return n; });
+        mergeList.forEach(function (m) {
+          chain = chain.then(function (acc) {
+            return loadOne(m.url, { translate: m.translate, style: m.style, organ: m.organ }).then(function (n) {
+              if (acc < 0 && n < 0) return -1;     // nothing has loaded yet → still a miss
+              return (acc < 0 ? 0 : acc) + (n < 0 ? 0 : n);
+            });
+          });
+        });
+        chain.then(function (total) {
+          if (total < 0) {     // primary failed and no merge succeeded
+            self._emit('layer-error', { layer: name });
+            resolve(null);
+            return;
+          }
           self._swapRealLayer(name, grp);
           self._applySexVisibility();   // hide sexed meshes that the current sex mode excludes
-          self._emit('layer-loaded', { layer: name, regions: tagged });
+          self._emit('layer-loaded', { layer: name, regions: total });
           if (self._requestRender) self._requestRender();
           resolve(grp);
-        }, undefined, function (err) {
-          console.warn('[BodyAtlas] real layer load failed: ' + name, err);
-          self._emit('layer-error', { layer: name });
-          resolve(null);
         });
       });
     });
@@ -1347,8 +1405,9 @@
     'fallopian-tubes': { layer: 'female_reproductive', organ: 'fallopian-tubes', parent: null, aliases: ['fallopian', 'fallopian_tube', 'uterine_tube', 'salpinx', 'salping'] },
     'vagina':          { layer: 'female_reproductive', organ: 'vagina', parent: null, aliases: ['vagina', 'vaginal'] },
 
-    // ── breasts / mammary glands (layer 'breasts', HuBMAP VH-Female) ──
-    'breasts':         { layer: 'breasts', organ: 'breasts', parent: null, aliases: ['breast', 'breasts', 'mammary', 'mammar', 'mammary_gland'] },
+    // ── breasts / mammary glands (folded INTO the female_reproductive layer via a
+    //    merge source, raised +Y to the chest; organ tag drives the 'Грудь' isolate) ──
+    'breasts':         { layer: 'female_reproductive', organ: 'breasts', parent: null, aliases: ['breast', 'breasts', 'mammary', 'mammar', 'mammary_gland'] },
 
     // ── placenta (layer 'placenta' — pregnancy overlay, Phase 1) ──
     'placenta':        { layer: 'placenta', organ: 'placenta', parent: null, aliases: ['placenta', 'placent', 'umbilical'] }
