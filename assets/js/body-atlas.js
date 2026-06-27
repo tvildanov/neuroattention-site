@@ -1339,13 +1339,24 @@
   // visibility it had before (so a mesh hidden by sub-layer isolation stays hidden, not
   // forced back to true), and drop the opacity boost off the meshes it brightened.
   Atlas.prototype._clearFocusState = function () {
+    var T = window.THREE;
     if (this._focusVis) {
       this._focusVis.forEach(function (it) { it.mesh.visible = it.prior; });
     }
     if (this._focusBoosted) {
       this._focusBoosted.forEach(function (o) {
-        var mat = o.material;
-        if (mat && mat.uniforms && mat.uniforms.uOpacity && o.userData._baseOpacity != null) mat.uniforms.uOpacity.value = o.userData._baseOpacity;
+        var mat = o.material, ud = o.userData;
+        if (!mat || !mat.uniforms) return;
+        if (mat.uniforms.uOpacity && ud._baseOpacity != null) mat.uniforms.uOpacity.value = ud._baseOpacity;
+        // restore the solid/blend state captured when the region was boosted
+        if (ud._baseSolid != null) {
+          if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = ud._baseSolid;
+          if (mat.uniforms.uGlow && ud._baseGlow != null) mat.uniforms.uGlow.value = ud._baseGlow;
+          if (T && mat.blending !== ud._baseBlend) { mat.blending = ud._baseBlend; mat.needsUpdate = true; }
+          mat.depthWrite = ud._baseDepthWrite;
+          mat.transparent = ud._baseTransparent;
+          ud._baseSolid = null; ud._baseBlend = null; ud._baseDepthWrite = null; ud._baseTransparent = null;
+        }
       });
     }
     this._focusVis = [];
@@ -1393,10 +1404,27 @@
     // Guard: focus requested but NOTHING matched (ids didn't resolve to a loaded mesh) →
     // don't blank the scene; leave everything as-is.
     if (matchCount === 0) { if (this._requestRender) this._requestRender(); return this; }
+    var T = window.THREE;
     var visChanges = [], boosted = [];
     items.forEach(function (it) {
       if (it.on) {
-        it.mat.uniforms.uOpacity.value = 1.0; boosted.push(it.o);            // bright highlight
+        var mat = it.mat, ud = it.ud;
+        // Dense, fully-opaque focus (Tahir / PR#87): a focused region must read at a
+        // true 1.0 — solid surface, not the see-through additive x-ray. Cache the
+        // layer-driven render state so _clearFocusState can restore it exactly.
+        if (ud._baseSolid == null) {
+          ud._baseSolid = (mat.uniforms.uSolid ? mat.uniforms.uSolid.value : 0);
+          ud._baseBlend = mat.blending;
+          ud._baseDepthWrite = mat.depthWrite;
+          ud._baseTransparent = mat.transparent;
+          if (mat.uniforms.uGlow) ud._baseGlow = mat.uniforms.uGlow.value;
+        }
+        mat.uniforms.uOpacity.value = 1.0;
+        if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 1.0;
+        if (T && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
+        mat.depthWrite = true;
+        mat.transparent = false;
+        boosted.push(it.o);                                                  // bright solid highlight
         if (it.o.visible !== true) { visChanges.push({ mesh: it.o, prior: it.o.visible }); it.o.visible = true; }
       } else if (it.o.visible !== false) {
         visChanges.push({ mesh: it.o, prior: it.o.visible }); it.o.visible = false;   // remove from render
