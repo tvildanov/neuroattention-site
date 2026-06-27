@@ -1301,6 +1301,7 @@
   "a.courses.cp_sm_where": "Где на теле",
   "a.courses.cp_ha_reset": "⟲ Сбросить вид",
   "a.courses.cp_ha_affected": "Затронутые области",
+  "a.courses.cp_nm_embed_hint": "Пройди цепочку и нажми «Сохранить» — запись добавится на твою НейроКарту и зачтётся в курсе.",
   "a.courses.cp_ha_layers": "Слои",
   "a.courses.cp_ha_focus_hint": "Двигай слайдеры слоёв, чтобы исследовать. «Сбросить вид» вернёт общий обзор.",
   "a.tabs.domunity": "DOMunity",

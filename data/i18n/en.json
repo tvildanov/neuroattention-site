@@ -1303,6 +1303,7 @@
   "a.courses.cp_sm_where": "Where on the body",
   "a.courses.cp_ha_reset": "⟲ Reset view",
   "a.courses.cp_ha_affected": "Affected regions",
+  "a.courses.cp_nm_embed_hint": "Walk through the chain and hit Save — the entry is added to your NeuroMap and counts toward the course.",
   "a.courses.cp_ha_layers": "Layers",
   "a.courses.cp_ha_focus_hint": "Push the layer sliders to explore. Reset view returns to the overview.",
   "a.tabs.domunity": "DOMunity",
