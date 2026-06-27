@@ -61,7 +61,8 @@
 
 /* ── Tabs ── */
 .dash-tabs { display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:2rem; }
-.dash-tab { padding:0.75rem 1.25rem;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.25s;background:none;border-top:none;border-left:none;border-right:none; }
+.dash-tab { padding:0.75rem 1.25rem;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.25s;background:none;border-top:none;border-left:none;border-right:none;text-decoration:none;display:inline-block; }
+a.dash-tab:hover { text-decoration:none; }
 .dash-tab:hover { color:var(--text-secondary); }
 .dash-tab.active { color:var(--accent-cyan);border-bottom-color:var(--accent-cyan); }
 .tab-panel { display:none; }
@@ -362,6 +363,17 @@
 @media (max-width:720px){
   #coursePlayerModal .cp-content #cp-grid{ grid-template-columns:1fr !important; }
   #coursePlayerModal #cp-path-view{ height:150px; }
+}
+/* Inline (in-course) NeuroMap (PR#87): the standalone survey panel is relocated
+   into the course block on mount; shrink it from the 1100px modal layout to fit. */
+.cp-nm-embed > div{ width:100%!important; max-width:100%!important; max-height:none!important; gap:1rem!important; align-items:stretch!important; }
+.cp-nm-embed .modal-box{ flex:1 1 320px!important; max-width:none!important; padding:0!important; background:none!important; border:none!important; box-shadow:none!important; }
+.cp-nm-embed .modal-close{ display:none!important; }
+.cp-nm-embed > div > div:last-child{ flex:1 1 320px!important; min-height:360px; }
+.cp-nm-embed #nm-nav-btns{ position:static!important; background:none!important; border:none!important; padding:0!important; backdrop-filter:none!important; }
+@media (max-width:760px){
+  .cp-nm-embed > div{ flex-direction:column!important; }
+  .cp-nm-embed > div > div:last-child{ min-height:280px; }
 }
 /* Mobile: sub-tab bars that overflow (Инструменты had 5 tabs + Раскрыть, the
    last ones — incl. External Field — were off-screen and unreachable). Make the
@@ -670,14 +682,17 @@
   <button id="back-to-admin-btn" class="btn btn-ghost" style="display:none;margin-bottom:1rem;font-size:12px;" onclick="backToAdmin()" data-i18n="a.admin.back_to_admin">← Вернуться в панель управления</button>
 
   <!-- Tabs -->
+  <!-- Nav tabs are real <a href="#tab"> anchors (PR#87): a normal click is handled
+       by the SPA listener (switchTab); middle-click / cmd-click / right-click →
+       "Open in new tab" opens account.html#tab, which applyHashTabs restores. -->
   <div class="dash-tabs">
-    <button class="dash-tab active" data-tab="overview" data-i18n="a.tabs.profile">Профиль</button>
-    <button class="dash-tab" data-tab="courses" data-i18n="a.tabs.courses">Курсы</button>
-    <button class="dash-tab" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</button>
-    <button class="dash-tab" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></button>
-    <button class="dash-tab" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</button>
-    <button class="dash-tab" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</button>
-    <button class="dash-tab" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</button>
+    <a class="dash-tab active" href="#overview" data-tab="overview" data-i18n="a.tabs.profile">Профиль</a>
+    <a class="dash-tab" href="#courses" data-tab="courses" data-i18n="a.tabs.courses">Курсы</a>
+    <a class="dash-tab" href="#evolution" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</a>
+    <a class="dash-tab" href="#domunity" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></a>
+    <a class="dash-tab" href="#tools" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</a>
+    <a class="dash-tab" href="#enroll" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</a>
+    <a class="dash-tab" href="#administration" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</a>
   </div>
 
   <!-- TAB: Overview -->
@@ -1046,6 +1061,13 @@
         </div>
         <!-- Mycelium Stage 1: light-map of the course path -->
         <div id="cp-path-view"></div>
+        <!-- Back/Next live in the (non-scrolling) top strip, between the progress
+             map and the task content, so they are always reachable without scrolling
+             and the student never reaches for the browser Back button (PR#87). -->
+        <div class="cp-nav cp-nav-top" style="display:flex;gap:0.5rem;justify-content:space-between;align-items:center;margin-top:0.55rem;">
+          <button class="btn btn-ghost" onclick="cpPrev()" id="cp-prev-btn" style="font-size:12px;padding:0.5rem 1rem;" data-i18n="a.courses.btn_prev">← Назад</button>
+          <button class="btn btn-solid cp-accent-btn" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
+        </div>
       </div>
       <!-- bottom: scrollable practice content -->
       <div class="cp-content">
@@ -1066,10 +1088,6 @@
           </div>
         </div>
       </div>
-      <div class="cp-nav" style="display:flex;gap:0.5rem;justify-content:space-between;margin-top:1rem;">
-        <button class="btn btn-ghost" onclick="cpPrev()" id="cp-prev-btn" style="font-size:12px;padding:0.5rem 1rem;" data-i18n="a.courses.btn_prev">← Назад</button>
-        <button class="btn btn-solid cp-accent-btn" onclick="cpNext()" id="cp-next-btn" style="font-size:12px;padding:0.5rem 1.25rem;" data-i18n="a.courses.btn_next">Далее →</button>
-      </div>
       </div><!-- /cp-content -->
     </div><!-- /cp-shell -->
   </div><!-- /coursePlayerModal -->
@@ -1078,13 +1096,15 @@
   <div class="tab-panel" id="tab-tools">
     <!-- Sub-tabs: NeuroMap / Календарь / Дневник -->
     <div class="tools-subtabs na-mobile-scroll" style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
-      <button class="dash-tab dash-subtab active" id="tools-mode-nm" onclick="setToolsMode('nm')" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.tools.neuromap">NeuroMap</button>
+      <!-- Tool sub-tabs are <a href="?tool=…"> anchors (PR#87) so each tool can be
+           opened in a new tab via right-click / cmd-click; a normal click stays SPA. -->
+      <a class="dash-tab dash-subtab active" id="tools-mode-nm" href="?tool=nm" onclick="event.preventDefault();setToolsMode('nm');" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.tools.neuromap">NeuroMap</a>
       <!-- Calendar sub-tab removed (17.3) — DB table kept for future migration -->
-      <button class="dash-tab dash-subtab" id="tools-mode-diary" onclick="setToolsMode('diary')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-sensation" onclick="setToolsMode('sensation')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-pointab" onclick="setToolsMode('pointab')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-external" onclick="setToolsMode('external')" style="border:none;border-bottom:2px solid transparent;">External Field</button>
-      <button class="dash-tab dash-subtab" id="tools-mode-anatomy" onclick="setToolsMode('anatomy')" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.anatomy">Анатомия</button>
+      <a class="dash-tab dash-subtab" id="tools-mode-diary" href="?tool=diary" onclick="event.preventDefault();setToolsMode('diary');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-sensation" href="?tool=sensation" onclick="event.preventDefault();setToolsMode('sensation');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-pointab" href="?tool=pointab" onclick="event.preventDefault();setToolsMode('pointab');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;">External Field</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=anatomy" onclick="event.preventDefault();setToolsMode('anatomy');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.anatomy">Анатомия</a>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -5889,6 +5909,9 @@ function buildLiveGraph(){
   var emptyMsg=document.getElementById('nm-live-empty');
   if(!canvas) return;
   var rect=canvas.parentElement.getBoundingClientRect();
+  // Skip drawing while the canvas has no layout size (e.g. host still hidden) —
+  // a 0-width canvas yields negative arc radii and throws (PR#87).
+  if(!rect.width || !rect.height) return;
   canvas.width=rect.width*2; canvas.height=rect.height*2;
   var ctx=canvas.getContext('2d');
 
@@ -6232,6 +6255,10 @@ function nmSaveSurvey(){
   buildNmGraph();
   // Show success toast
   nmShowToast(Object.keys(nmData).length<=1 && nmData[key] && nmData[key].length===1);
+  // PR#87: if this survey was embedded inside a course block, also finalize the block.
+  if(window.coursePlayer && coursePlayer._nmEmbed && typeof cpNmEmbedFinalize==='function'){
+    try { cpNmEmbedFinalize(entry); } catch(e){ console.warn('cp neuromap finalize:', e); }
+  }
 }
 
 // ── NeuroMap Success Toast ──
@@ -11324,20 +11351,33 @@ function loadStudentCourses(){
         // Admin override: backend returns every course (incl. drafts) for admin roles.
         // Show a badge so it's clear access is via admin rights, and flag unpublished drafts.
         var adminBadge = c._admin_override ? '<span style="display:inline-block;font-size:9px;font-family:JetBrains Mono,monospace;color:var(--accent-green,#6ee7a8);border:1px solid var(--accent-green,#6ee7a8);border-radius:6px;padding:1px 5px;margin-bottom:0.5rem;">ADMIN' + (c.is_published === false ? ' · DRAFT' : '') + '</span><br>' : '';
-        return '<div class="lab-card in-view" onclick="cpOpenCourse(\''+c.slug+'\')" style="cursor:pointer;">'
+        // Real <a href="?course=…"> so a course opens in a new tab via right-click /
+        // cmd-click; a normal click stays SPA (preventDefault → cpOpenCourse). PR#87.
+        return '<a class="lab-card in-view" href="?course='+encodeURIComponent(c.slug)+'" onclick="event.preventDefault();cpOpenCourse(\''+c.slug+'\');return false;" style="cursor:pointer;display:block;text-decoration:none;color:inherit;">'
              + cover
              + adminBadge
              + '<h3 style="font-size:14px;margin:0 0 0.4rem;color:var(--text-primary);">' + nm + '</h3>'
              + (desc ? '<p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin:0;">' + desc + '</p>' : '')
              + '<p style="font-size:10px;color:var(--text-dim);margin:0.6rem 0 0;font-family:JetBrains Mono,monospace;">' + cpBlocksLabel(c.block_count||0) + '</p>'
-             + '</div>';
+             + '</a>';
       }).join('');
     })
     .catch(function(e){ console.warn('loadStudentCourses:', e); });
 }
 window.loadStudentCourses = loadStudentCourses;
 
-function cpOpenCourse(slug){
+// PR#87: reflect the open course (and lesson) in the URL so the page is shareable
+// and reopens in a new tab. replaceState keeps it out of the history stack.
+function cpSetUrl(slug, idx){
+  try{
+    var q = '?course=' + encodeURIComponent(slug) + ((typeof idx === 'number' && idx > 0) ? ('&block=' + idx) : '');
+    history.replaceState(null, '', location.pathname + q);
+  }catch(e){}
+}
+function cpClearUrl(){
+  try{ history.replaceState(null, '', location.pathname + '#courses'); }catch(e){}
+}
+function cpOpenCourse(slug, startIdx){
   var token = localStorage.getItem('na_token'); if (!token) return;
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   fetch(AUTH_API + '/api/courses/' + encodeURIComponent(slug) + '?lang=' + encodeURIComponent(lang), { headers: { 'Authorization': 'Bearer ' + token } })
@@ -11353,8 +11393,11 @@ function cpOpenCourse(slug){
       // Find first uncompleted block, else start from 0
       var firstIdx = coursePlayer.blocks.findIndex(function(b){ return !coursePlayer.progress[b.id]; });
       coursePlayer.idx = firstIdx < 0 ? 0 : firstIdx;
+      // Deep-link to a specific lesson when ?block=N was supplied (clamped to range).
+      if (typeof startIdx === 'number' && startIdx >= 0 && startIdx < coursePlayer.blocks.length) coursePlayer.idx = startIdx;
       coursePlayer.currentIdx = coursePlayer.idx;
       coursePlayer.history = [];
+      cpSetUrl(slug, coursePlayer.idx);
       var lang = (typeof getLang === 'function') ? getLang() : 'ru';
       document.getElementById('cp-course-name').textContent = courseTitle(d.course, lang);
       cpApplyAccent(d.course);
@@ -11405,6 +11448,7 @@ function cpGoToBlock(idx){
   if (idx === coursePlayer.idx) return;
   coursePlayer.history.push(coursePlayer.idx);
   coursePlayer.idx = idx;
+  if (coursePlayer.course && coursePlayer.course.slug && !coursePlayer.previewMode) cpSetUrl(coursePlayer.course.slug, idx);
   cpRenderBlock();
   cpMountPathView();
 }
@@ -11433,6 +11477,7 @@ function cpEscHandler(e){ if (e.key === 'Escape') cpClose(); }
 function cpClose(){
   if (typeof cpCancelAutoAdvance === 'function') cpCancelAutoAdvance();
   cpDisposeHumanAtlas();   // PACK 9: free the inline 3D atlas GPU resources on close
+  cpDisposeNeuromap();     // PR#87: restore the relocated NeuroMap survey panel
   var modal = document.getElementById('coursePlayerModal');
   if (modal){ modal.style.display='none'; modal.classList.remove('cp-fullscreen','cp-minimized'); }
   document.removeEventListener('keydown', cpEscHandler);
@@ -11443,6 +11488,7 @@ function cpClose(){
   if (cpJoint.pollTimer) { clearInterval(cpJoint.pollTimer); cpJoint.pollTimer = null; }
   cpJoint.sessionId = null;
   var jp = document.getElementById('cp-joint-panel'); if (jp) jp.style.display='none';
+  cpClearUrl(); // drop ?course=… so a refresh lands back on the Courses list (PR#87)
 }
 window.cpClose = cpClose;
 // Minimize — hide the overlay but keep player state; a restore pill brings it back.
@@ -11509,6 +11555,7 @@ function cpBlockDisplayTitle(block, uiLang){
 function cpRenderBlock(){
   cpCancelAutoAdvance();   // clear any pending auto-advance toast on (re)render
   cpDisposeHumanAtlas();   // PACK 9: tear down any inline 3D atlas from the prior block
+  cpDisposeNeuromap();     // PR#87: return the relocated NeuroMap survey to its modal
   var area = document.getElementById('cp-block-area');
   var lang = (typeof getLang === 'function') ? getLang() : 'ru';
   var block = coursePlayer.blocks[coursePlayer.idx];
@@ -11875,51 +11922,83 @@ function _cpChipStyle(c, on){
   c.style.color = on ? '#fff' : '#cdcdd6';
 }
 
-// 💗📍💭 inline Neuromap (emotion / event / thought)
+// 💗 inline Neuromap (PR#87): the FULL standalone mapping survey embedded in-course.
+// We don't ship a bespoke "simplified" picker — instead the real standalone survey
+// panel (the same multi-step chain + live node-graph) is relocated into this host on
+// mount and moved back on teardown, so the in-course experience is byte-for-byte the
+// standalone process, just sized to fit the block.
 function cpRenderNeuromap(block, p, lang, kind){
   var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
   window.CP_NM = { kind: kind };
-  var LBL = 'font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.35rem;';
-  var WRAP = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.8rem;';
   var h = _cpTaskCard(kind, instr, lang);
-  if (kind === 'neuromap_emotion'){
-    h += '<div style="'+LBL+'">' + t('a.courses.cp_nm_emotion_label','Выбери эмоцию') + '</div>'
-       + '<div style="'+WRAP+'">' + _cpNmChips(NM_ALL_EMOTIONS, 'emo') + '</div>'
-       + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_emotion','Назови эмоцию и опиши её…') + '" style="'+_CP_INSTYLE+'"></textarea>';
-  } else if (kind === 'neuromap_thought'){
-    h += '<div style="'+LBL+'">' + t('a.courses.cp_nm_thought_label','Выбери или запиши мысль') + '</div>'
-       + '<div style="'+WRAP+'">' + _cpNmChips(NM_THOUGHTS, 'tho') + '</div>'
-       + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_thought','Запиши мысль…') + '" style="'+_CP_INSTYLE+'"></textarea>'
-       + _cpToneRow(lang);
-  } else { // neuromap_event
-    h += '<div style="'+LBL+'">' + t('a.courses.cp_nm_event_label','Что произошло') + '</div>'
-       + '<textarea id="cp-response" rows="3" placeholder="' + t('a.courses.cp_ph_event','Опиши событие…') + '" style="'+_CP_INSTYLE+'"></textarea>'
-       + '<div style="'+LBL+'margin-top:0.7rem;">' + t('a.courses.cp_nm_area_label','Сфера жизни (по желанию)') + '</div>'
-       + '<div style="'+WRAP+'">' + _cpNmChips(NM_AREAS, 'area') + '</div>'
-       + _cpToneRow(lang);
-  }
-  h += _cpSaveRow('cpNmSave()');
+  h += '<div id="cp-nm-embed" class="cp-nm-embed"></div>';
+  h += '<div id="cp-nm-hint" style="font-size:11px;color:var(--text-dim);margin-top:0.6rem;line-height:1.5;">'
+     + t('a.courses.cp_nm_embed_hint','Пройди цепочку и нажми «Сохранить» — запись добавится на твою НейроКарту и зачтётся в курсе.')
+     + '</div>';
   return h;
 }
 window.cpRenderNeuromap = cpRenderNeuromap;
 
-// Ensure the vocabulary is present, then relocalize chip labels. nmTranslate
-// returns the Russian canonical until _translations is loaded, so a course opened
-// before page-init finished could briefly show RU chips — this repairs them.
+// Relocate the standalone survey panel into the course block and start a fresh
+// survey (without the modal overlay). Reuses renderNmStep/buildLiveGraph verbatim.
 function cpMountNeuromap(){
-  function relabel(){
-    if (typeof nmTranslate !== 'function') return;
-    var area = document.getElementById('cp-block-area'); if (!area) return;
-    area.querySelectorAll('.cp-nm-chip').forEach(function(c){
-      var raw = c.getAttribute('data-label'); var span = c.querySelector('span');
-      if (raw && span) span.textContent = nmTranslate(raw);
-    });
+  var host = document.getElementById('cp-nm-embed'); if(!host) return;
+  function mount(){
+    var modal = document.getElementById('nmSurveyModal');
+    var panel = modal && modal.firstElementChild;
+    if(!panel){ host.innerHTML = '<p style="color:var(--text-dim);font-size:13px;">NeuroMap unavailable</p>'; return; }
+    coursePlayer._nmPanelHome = modal;
+    coursePlayer._nmEmbed = true;
+    modal.classList.remove('open');       // we render inline, not as an overlay
+    host.appendChild(panel);
+    // fresh survey state (mirror of openNmSurvey, minus the modal .open toggle)
+    nmCurrentStep = 0;
+    nmSurveyState = { emotions:[], emotionChains:[], intensity:5, context:'' };
+    nmLivePrevPos = {};
+    var navBtns = document.getElementById('nm-nav-btns'); if(navBtns) navBtns.style.display='flex';
+    try { renderNmStep(); } catch(e){ console.warn('cp neuromap render:', e); }
+    setTimeout(function(){ try { buildLiveGraph(); } catch(e){} }, 140);
   }
   if (!window.nmVocabulary && typeof nmLoadVocabulary === 'function'){
-    try { var pr = nmLoadVocabulary(); if (pr && pr.then) pr.then(relabel); else setTimeout(relabel, 400); } catch(e){ }
-  } else { relabel(); }
+    try { var pr = nmLoadVocabulary(); if (pr && pr.then) pr.then(mount); else setTimeout(mount, 300); } catch(e){ mount(); }
+  } else { mount(); }
 }
 window.cpMountNeuromap = cpMountNeuromap;
+
+// Move the relocated survey panel back to its modal home so the standalone NeuroMap
+// keeps working. Called at the top of cpRenderBlock (block change) and on cpClose.
+function cpDisposeNeuromap(){
+  if(!coursePlayer || !coursePlayer._nmEmbed) return;
+  coursePlayer._nmEmbed = false;
+  try{
+    var modal = coursePlayer._nmPanelHome || document.getElementById('nmSurveyModal');
+    var host = document.getElementById('cp-nm-embed');
+    var panel = host && host.firstElementChild;
+    if(modal && panel) modal.appendChild(panel);
+    if(modal) modal.classList.remove('open');
+  }catch(e){}
+  coursePlayer._nmPanelHome = null;
+}
+window.cpDisposeNeuromap = cpDisposeNeuromap;
+
+// When the embedded survey saves, also finalize the course block (the standalone
+// save to /api/neuromap already ran inside nmSaveSurvey, so the NeuroMap is updated).
+function cpNmEmbedFinalize(entry){
+  if(!coursePlayer || !coursePlayer._nmEmbed) return;
+  var block = coursePlayer.blocks[coursePlayer.idx]; if(!block) return;
+  var emos = (nmSurveyState.emotions||[]).filter(Boolean);
+  var anyNeg = emos.some(function(e){ return isNegEmotion(e); });
+  var label = emos.map(function(e){ return (typeof nmTranslate==='function'?nmTranslate(e):e); }).join(', ').slice(0,80);
+  var response = {
+    text: (entry && entry.context) || label,
+    label: label || 'NeuroMap',
+    valence: emos.length ? (anyNeg ? 'negative' : 'positive') : 'neutral',
+    tool_kind: block.tool_kind,
+    neuromap: { chains: (entry && entry.chains) || [], intensity: (entry && entry.intensity) || 5 }
+  };
+  if (typeof _cpFinalize === 'function') _cpFinalize(block, response);
+}
+window.cpNmEmbedFinalize = cpNmEmbedFinalize;
 
 function cpNmSave(){
   var block = coursePlayer.blocks[coursePlayer.idx]; if (!block) return;
@@ -12342,7 +12421,6 @@ function cpHaResolveAndFocus(a, cfg, lang){
     var ti=document.getElementById('ha-cp-title'); var ds=document.getElementById('ha-cp-desc');
     if(ti) ti.textContent = row['name_'+lang]||row.name_ru||row.name_en||cfg.key;
     if(ds) ds.textContent = row['description_'+lang]||row.description_en||row.description_ru||'';
-    cpHaRenderRegions(ids, lang);
     cpHaSetState(a, ids, lang);
   }).catch(function(){ cpHaInjectLayers(a, lang, {}); });
 }
@@ -12377,6 +12455,7 @@ function cpHaSetState(a, ids, lang){
   coursePlayer._haState = { a: a, ids: ids, need: need, lang: lang };
   cpHaApplyFocus(a, ids, need);
   cpHaInjectLayers(a, lang, need);
+  cpHaRenderRegions(ids, lang); // per-region opacity sliders (all modes: condition/function/anatomy)
 }
 
 // Mirror of the main Atlas focus(): exit brain detail, toggle exactly the needed
@@ -12403,15 +12482,44 @@ function cpHaReset(){
 }
 window.cpHaReset = cpHaReset;
 
-// Affected-region chips in the info panel (prettified slugs).
+// Affected-region list in the info panel — each region gets its OWN opacity slider
+// (PR#87 / Tahir): focused regions mount at a true, solid 1.0; the slider drives
+// a.setRegionOpacity(id, k) so the student can dial any single region down/up, with
+// the far-right stop landing on exactly 1.0 (fully opaque) over the dimmed layer.
 function cpHaRenderRegions(ids, lang){
   var host = document.getElementById('ha-cp-regions'); if(!host) return;
   ids = (ids||[]).filter(Boolean);
+  coursePlayer._haRegionIds = ids;
   if(!ids.length){ host.innerHTML=''; return; }
-  var CH = 'font-size:11px;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(141,255,200,0.35);background:rgba(141,255,200,0.08);color:#bdf6da;';
-  host.innerHTML = '<div style="width:100%;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.1rem;">' + t('a.courses.cp_ha_affected','Затронутые области') + '</div>'
-    + ids.map(function(id){ var nm=String(id).replace(/[-_]/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); return '<span style="'+CH+'">'+_cpEsc(nm)+'</span>'; }).join('');
+  var html = '<div style="width:100%;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.25rem;">' + t('a.courses.cp_ha_affected','Затронутые области') + '</div>';
+  html += '<div style="width:100%;display:flex;flex-direction:column;gap:0.5rem;">';
+  ids.forEach(function(id, i){
+    var nm = String(id).replace(/[-_]/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();});
+    html += '<div style="width:100%;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:#bdf6da;margin-bottom:2px;gap:6px;">'
+      +   '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_cpEsc(nm)+'</span>'
+      +   '<span id="ha-cp-op-'+i+'" style="font-family:\'JetBrains Mono\',monospace;color:var(--text-dim);font-size:10px;">100%</span>'
+      + '</div>'
+      + '<input type="range" min="0" max="100" value="100" oninput="cpHaRegionOpacity('+i+',this.value)" '
+      +   'style="width:100%;accent-color:#8DFFC8;cursor:pointer;" '
+      +   'aria-label="'+_cpEsc(nm)+'">'
+      + '</div>';
+  });
+  html += '</div>';
+  host.innerHTML = html;
 }
+
+// Per-region opacity slider handler (inline Human Atlas). Drives the shared atlas
+// setRegionOpacity; k=1.0 → solid/opaque, lower → translucent x-ray.
+function cpHaRegionOpacity(idx, val){
+  var s = coursePlayer._haState; if(!s || !s.a) return;
+  var ids = coursePlayer._haRegionIds || [];
+  var id = ids[idx]; if(id == null) return;
+  var k = Math.max(0, Math.min(1, (parseFloat(val)||0)/100));
+  try{ s.a.setRegionOpacity(id, k); }catch(e){}
+  var lab = document.getElementById('ha-cp-op-'+idx); if(lab) lab.textContent = Math.round(k*100)+'%';
+}
+window.cpHaRegionOpacity = cpHaRegionOpacity;
 
 function cpHaInjectLayers(a, lang, activeMap){
   var host = document.getElementById('cp-ha-layers'); if(!host) return;
@@ -14865,7 +14973,7 @@ window.pbMove = pbMove;
 
 <script src="assets/js/media.js" defer></script>
 <script src="assets/js/sensation-icons.js?v=3"></script>
-<script src="assets/js/body-picker.js?v=3"></script>
+<script src="assets/js/body-picker.js?v=4"></script>
 <script src="assets/js/registration-location.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/typography.js?v=2" defer></script>
@@ -14874,7 +14982,7 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=12"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/external-field.js?v=6"></script>
-<script src="assets/js/body-atlas.js?v=27"></script>
+<script src="assets/js/body-atlas.js?v=28"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -15507,6 +15615,34 @@ window.pbMove = pbMove;
       } else if(tries > 80){ // ~20s safety cap
         clearInterval(timer);
       }
+    }, 250);
+  })();
+
+  // PR#87 deep-links: ?course=<slug>[&block=N] opens the course player (and lesson);
+  // ?tool=<nm|diary|sensation|pointab|external|anatomy> opens that tool. Lets a
+  // right-click "Open in new tab" on a course card / tool sub-tab land correctly.
+  (function(){
+    var q; try { q = new URLSearchParams(window.location.search); } catch(e){ return; }
+    var course = q.get('course');
+    var tool = q.get('tool');
+    if(!course && !tool) return;
+    var blockN = parseInt(q.get('block'), 10);
+    var tries = 0;
+    var timer = setInterval(function(){
+      tries++;
+      var dash = document.getElementById('client-dashboard');
+      var ready = dash && dash.style.display !== 'none' && typeof switchTab === 'function';
+      if(ready){
+        clearInterval(timer);
+        try {
+          if(course && typeof cpOpenCourse === 'function'){
+            switchTab('courses');
+            cpOpenCourse(course, isNaN(blockN) ? undefined : blockN);
+          } else if(tool && typeof setToolsMode === 'function'){
+            switchTab('tools'); setToolsMode(tool);
+          }
+        } catch(e){ console.warn('deep-link:', e); }
+      } else if(tries > 80){ clearInterval(timer); } // ~20s safety cap
     }, 250);
   })();
 
