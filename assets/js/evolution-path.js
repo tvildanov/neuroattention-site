@@ -2427,7 +2427,9 @@
     var labStyle = 'display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--myc-text-dim,#8c98a6);height:' + labelH + 'px;padding:0 6px;letter-spacing:0.02em;';
     var paneStyle = 'position:relative;width:100%;height:' + paneH + 'px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.01);';
     var stageStyle = 'position:relative;height:' + paneH + 'px;';
-    var html = '';
+    // `.myc-evo-canvas` is display:flex (row) — wrap the stacked panes in ONE
+    // full-width flex-column child so the spines sit top-over-bottom, not side-by-side.
+    var html = '<div class="evo-dual-wrap" style="display:flex;flex-direction:column;width:100%;flex:1 1 100%;min-width:0;gap:6px;">';
     if (!childOnly) {
       html += '<div style="' + labStyle + '"><span>👤 ' + meName + '</span></div>';
       html += '<div class="evo-dual-top" style="' + paneStyle + '"><div class="evo-stage" style="' + stageStyle + '"></div></div>';
@@ -2435,6 +2437,7 @@
     }
     html += '<div style="' + labStyle + '"><span>🧒 ' + childLabel + '</span>' + picker + '</div>';
     html += '<div class="evo-dual-bot" style="' + paneStyle + '"><div class="evo-stage" style="' + stageStyle + '"></div></div>';
+    html += '</div>';
     box.innerHTML = html;
 
     H = paneH;   // both spines render at this height; pan/zoom redraws read the same module H
