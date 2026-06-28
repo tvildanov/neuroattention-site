@@ -86,8 +86,11 @@
     backfill_neuromap: { ru: 'Нейромап (импорт)', en: 'NeuroMap (import)', es: 'NeuroMapa (import.)' },
     neuromap:        { ru: 'Нейромап', en: 'NeuroMap', es: 'NeuroMapa' },
     neuromap_legacy: { ru: 'Нейромап', en: 'NeuroMap', es: 'NeuroMapa' },
-    block_done:      { ru: 'Курс · блок завершён', en: 'Course · block done', es: 'Curso · bloque hecho' },
-    practice_done:   { ru: 'Практика завершена', en: 'Practice done', es: 'Práctica hecha' },
+    block_done:      { ru: 'Завершён блок курса', en: 'Course block completed', es: 'Bloque de curso completado' },
+    practice_done:   { ru: 'Практика завершена', en: 'Practice completed', es: 'Práctica completada' },
+    audio_done:      { ru: 'Аудиосессия завершена', en: 'Audio session completed', es: 'Sesión de audio completada' },
+    tool_task_done:  { ru: 'Задание инструмента выполнено', en: 'Tool task completed', es: 'Tarea de herramienta completada' },
+    course_done:     { ru: 'Курс завершён', en: 'Course completed', es: 'Curso completado' },
     practice:        { ru: 'Практика', en: 'Practice', es: 'Práctica' },
     course_block:    { ru: 'Курс', en: 'Course', es: 'Curso' },
     emotion:         { ru: 'Эмоция', en: 'Emotion', es: 'Emoción' },
@@ -210,6 +213,15 @@
   var PERIOD_DAYS = { day: 1, week: 7, month: 30, '3months': 90, year: 365 };
   function layersDomain(data, st) {
     var full = domain(data);
+    // PR93 (5a): a live wheel/pinch zoom overrides the period crop. Clamp the
+    // window inside the real data span (with a little margin) and a 1-minute floor.
+    if (st && st._layView && st._layView.span > 0) {
+      var lo = full.from - full.span * 0.1, hi = full.to + full.span * 0.1;
+      var span = Math.max(60 * 1000, Math.min(st._layView.span, (full.span || 60 * 1000) * 1.2));
+      var from = Math.max(lo, Math.min(st._layView.from, hi - span));
+      st._layView.from = from; st._layView.span = span;     // write back the clamped values
+      return { from: from, to: from + span, span: span };
+    }
     var pd = PERIOD_DAYS[st && st.period];
     if (!pd) return full;                       // 'all' (or unknown) → full span
     var to = full.to;
@@ -406,6 +418,13 @@
   }
   function prettyTitle(ev, lang) {
     var p = ev.payload || {};
+    // PR93: course-linked events (block_done) carry resolved titles in course_ctx —
+    // show "Блок N: <title>" instead of a bare technical id / meta-label.
+    var ctx = p.course_ctx;
+    if (ctx && (ctx.block || ctx.course)) {
+      var bt = ctx.block || ctx.course;
+      return (ctx.index ? (L({ ru: 'Блок', en: 'Block', es: 'Bloque' }, lang) + ' ' + ctx.index + ': ') : '') + bt;
+    }
     return ev.label || p.title || p.text || humanLabel(ev.kind || ev.layer, lang);
   }
   function kv(k, v) {
@@ -914,11 +933,40 @@
     // chains zone — at deep zoom branches fan out to fill the available height.
     var vCombined = Math.min((half - 6) / T._maxAbsLy, vS * Math.max(1, Z * 0.7));
     st._vScale = vCombined;
+    // PR93 (item 3): a NeuroMap chain logged in one session lands on near-identical
+    // timestamps; once split into separate components (MAX_CHAIN_NODES / emotion
+    // breaks) they collapse onto one x and stack into a single un-tappable dot —
+    // even at max time-zoom (zoom can't separate same-instant events). Fan such
+    // clustered components apart VERTICALLY so each keeps a ≥~28px touch target;
+    // the fan gap grows with zoom-in and is capped to the chains zone.
+    var compOff = {};
+    (function fanSameTimeClusters() {
+      var vis = [];
+      for (var vi = 0; vi < comps.length; vi++) {
+        var axv = sx(comps[vi].anchorT);
+        if (axv < x0 - 30 || axv > x1 + 30) continue;
+        vis.push({ i: vi, ax: axv });
+      }
+      vis.sort(function (a, b) { return a.ax - b.ax; });
+      var TOL = 18;                                   // px: anchors closer than this = one cluster
+      var ki = 0;
+      while (ki < vis.length) {
+        var kj = ki + 1;
+        while (kj < vis.length && (vis[kj].ax - vis[ki].ax) <= TOL) kj++;
+        var cnt = kj - ki;
+        if (cnt > 1) {
+          var bandCap = (2 * Math.max(12, half - 6)) / (cnt - 1);
+          var gap = Math.max(22, Math.min(40 * Math.max(1, Z * 0.6), bandCap));
+          for (var q = ki; q < kj; q++) compOff[vis[q].i] = (q - ki - (cnt - 1) / 2) * gap;
+        }
+        ki = kj;
+      }
+    })();
     for (var ci = 0; ci < comps.length; ci++) {
       var comp = comps[ci];
       var ax = sx(comp.anchorT);
       if (ax + comp.maxX * Z < x0 - 30 || ax > x1 + 30) continue;     // virtualize whole branch (scaled extent)
-      var ay = syAt(ax);
+      var ay = syAt(ax) + (compOff[ci] || 0);
       st._visComps.push({ comp: comp, ax: ax, ay: ay });
       // edges — white nerve-fibre base + thin coloured stripe over it
       for (var si = 0; si < comp.segs.length; si++) {
@@ -1677,12 +1725,16 @@
         var lbl = el('text', { x: p.x.toFixed(1), y: (p.y + r + 13).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-label' });
         lbl.textContent = truncate(prettyTitle(e, lang), 22);
         g.appendChild(lbl);
-        // type caption (Эмоция / Событие / Мысль …)
+        // type caption — for course events show the course name (📚) instead of the
+        // generic "completed" meta-label; otherwise the type name (Эмоция / Мысль …).
+        var ectx = (e.payload || {}).course_ctx;
         var typ = el('text', { x: p.x.toFixed(1), y: (p.y + r + 24).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-typecap' });
-        typ.textContent = humanLabel(e.kind || e.layer, lang);
+        typ.textContent = (ectx && ectx.course) ? ('📚 ' + truncate(ectx.course, 22)) : humanLabel(e.kind || e.layer, lang);
         g.appendChild(typ);
-        // native tooltip with full content + time
-        var tt = el('title'); tt.textContent = prettyTitle(e, lang) + ' · ' + humanLabel(e.kind || e.layer, lang) + (e.t ? ' · ' + fmtAxis(e.t, lang) : '');
+        // native tooltip with full content + course + time
+        var tt = el('title');
+        tt.textContent = prettyTitle(e, lang) + ' · ' + humanLabel(e.kind || e.layer, lang) +
+          (ectx && ectx.course ? ' · 📚 ' + ectx.course : '') + (e.t ? ' · ' + fmtAxis(e.t, lang) : '');
         g.appendChild(tt);
         if (!p.center) {
           g.style.cursor = 'pointer';
@@ -1745,6 +1797,7 @@
       g.appendChild(el('path', { d: d, fill: 'none', stroke: 'var(--myc-line-faint)', 'stroke-width': '1' }));
       var lab = el('text', { x: 10, y: (cyL + 3).toFixed(1), 'class': 'myc-lane-label' });
       lab.textContent = L(ly.label, lang);
+      if (ly.key !== 'xp_gain') lab.setAttribute('fill', nmTypeColor({ layer: ly.key }));   // PR93 (5b): colour-coded lane label
       g.appendChild(lab);
       var baseY = function (px) { return cyL + Math.sin(px * 0.012 + li) * 3.2; };
 
@@ -1787,14 +1840,21 @@
           var item = laneEv[k];
           var e = item.e;
           windowCount++;
-          var stl = ly.key === 'insight' ? { c: 'var(--myc-cyan)', o: 0.95 } : valStyle(e.valence);
+          var ev = normEvent(e, ly.key);
+          // PR93 (5b): fill by LAYER type using the standalone-NeuroMap palette, not
+          // by valence — so each lane reads as its own colour.
+          var fill = nmTypeColor(ev);
           var r = (ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
           var px = item.px;
           var yOff = (k - ci - (n - 1) / 2) * spacing;     // centre the fan on the baseline
           var cy = baseY(px) + yOff;
-          var ev = normEvent(e, ly.key);
-          var vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: stl.c, opacity: stl.o });
-          if (stl.c.indexOf('green') > -1 || stl.c.indexOf('cyan') > -1) vis.setAttribute('filter', 'url(#evoGlow)');
+          // PR93 (5c): valence ring — green=positive, red/wine=negative, none=neutral.
+          if (e.valence === 'positive' || e.valence === 'negative') {
+            laneNodes.appendChild(el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: (r + 2.3).toFixed(1),
+              fill: 'none', stroke: e.valence === 'positive' ? 'rgba(120,240,170,0.85)' : 'rgba(240,110,90,0.92)',
+              'stroke-width': '1.3', 'pointer-events': 'none' }));
+          }
+          var vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: fill, opacity: '0.96', filter: 'url(#evoGlow)' });
           vis.appendChild(titleNode(ev, lang));
           registerNode(e.id, px, parseFloat(cy.toFixed(1)));
           laneNodes.appendChild(interactiveNode(vis, ev, container, lang, 14));
@@ -1814,7 +1874,58 @@
       note.textContent = L(STR.emptyPeriod, lang);
       g.appendChild(note);
     }
+    // PR93 (5a): zoom hint + a "fit" pill when zoomed in
+    var hint = el('text', { x: (x1).toFixed(1), y: (padTop - 30).toFixed(1), 'text-anchor': 'end', 'class': 'evo-axis-label', opacity: '0.5' });
+    hint.textContent = L({ ru: 'колесо / щипок — зум · 2× клик — сброс', en: 'wheel / pinch to zoom · dbl-click to reset', es: 'rueda / pellizco para zoom · doble clic para reiniciar' }, lang);
+    g.appendChild(hint);
     svg.appendChild(g);
+    attachLayersZoom(svg, W, data, dom, x0, x1, container, st, lang);
+  }
+
+  // PR93 (5a): wheel / pinch / double-click zoom for the Layers view. Mutates
+  // st._layView (time window) and repaints. The svg is rebuilt every paint, so we
+  // bind fresh each time — no listener accumulation.
+  function attachLayersZoom(svg, W, data, dom, x0, x1, container, st, lang) {
+    var full = domain(data);
+    var timeAt = function (clientX) {
+      var rect = svg.getBoundingClientRect(); if (!rect.width) return null;
+      var lx = (clientX - rect.left) * (W / rect.width);
+      lx = Math.max(x0, Math.min(x1, lx));
+      return { frac: (lx - x0) / (x1 - x0) };
+    };
+    var zoomTo = function (frac, factor) {
+      var tUnder = dom.from + frac * dom.span;
+      var newSpan = Math.max(60 * 1000, Math.min((full.span || 60 * 1000) * 1.2, dom.span * factor));
+      st._layView = { from: tUnder - frac * newSpan, span: newSpan };
+      paint(container, st, lang);
+    };
+    svg.addEventListener('wheel', function (e2) {
+      e2.preventDefault();
+      var p = timeAt(e2.clientX); if (!p) return;
+      zoomTo(p.frac, e2.deltaY > 0 ? 1.2 : 1 / 1.2);   // down/away = zoom out
+    }, { passive: false });
+    svg.addEventListener('dblclick', function (e2) {
+      e2.preventDefault();
+      st._layView = null; paint(container, st, lang);  // fit back to the period crop
+    });
+    var tD = function (ts) { var dx = ts[0].clientX - ts[1].clientX, dy = ts[0].clientY - ts[1].clientY; return Math.hypot(dx, dy); };
+    var tMidX = function (ts) { return (ts[0].clientX + ts[1].clientX) / 2; };
+    var pinch = null;
+    svg.addEventListener('touchstart', function (e2) {
+      if (e2.touches.length === 2) { pinch = { d: tD(e2.touches) || 1, from: dom.from, span: dom.span }; }
+    }, { passive: false });
+    svg.addEventListener('touchmove', function (e2) {
+      if (e2.touches.length === 2 && pinch) {
+        e2.preventDefault();
+        var d = tD(e2.touches) || 1;
+        var p = timeAt(tMidX(e2.touches)); if (!p) return;
+        var tUnder = pinch.from + p.frac * pinch.span;
+        var newSpan = Math.max(60 * 1000, Math.min((full.span || 60 * 1000) * 1.2, pinch.span * (pinch.d / d)));
+        st._layView = { from: tUnder - p.frac * newSpan, span: newSpan };
+        paint(container, st, lang);
+      }
+    }, { passive: false });
+    svg.addEventListener('touchend', function (e2) { if (e2.touches.length < 2) pinch = null; });
   }
 
   function normEvent(p, layer) {
@@ -1895,6 +2006,7 @@
     var evoUrl = regIso
       ? '/api/users/me/evolution?from=' + encodeURIComponent(new Date(regIso).toISOString()) + '&to=' + encodeURIComponent(new Date().toISOString())
       : '/api/users/me/evolution?period=all';
+    evoUrl += '&lang=' + encodeURIComponent(lang || 'ru');   // PR93: localized event labels (block titles, meta-labels)
     // PR91: optional subject scope (dependent:<id> | team:<id>) for child/team path view
     if (opts.subject) evoUrl += '&subject=' + encodeURIComponent(opts.subject);
     Promise.all([
@@ -2123,6 +2235,7 @@
             if (st.data) {
               segEl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-active', x === b); });
               st.view = null;            // force ensureView() to recompute zoom/centre
+              st._layView = null;        // PR93 (5a): period click resets the Layers zoom
               paint(container, st, lang); return;
             }
           }

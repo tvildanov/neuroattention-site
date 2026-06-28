@@ -6175,28 +6175,64 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
 
     const layers = { practice:[], emotion:[], event:[], thought:[], sensation:[], insight:[], xp_gain:[] };
 
+    // PR93: resolve course/block titles for course-linked events (block_done +
+    // tool_task) so the timeline never shows a raw 'block_done' id. Caller's UI
+    // language picks which title column to use.
+    const uiLang = ['ru','en','es'].includes(String(req.query.lang || '')) ? String(req.query.lang) : 'ru';
+    const pick = (ru, en, es) => (uiLang === 'en' ? (en || ru) : uiLang === 'es' ? (es || ru) : ru) || en || es || '';
+    let blockMap = {};
+    const blockIds = [...new Set(je.map(e => e.payload && e.payload.block_id).filter(v => v != null))];
+    if (blockIds.length) {
+      const brows = await safe(sql`SELECT b.id, b.order_idx, b.title_ru, b.title_en, b.title_es,
+                                          c.name_ru, c.name_en, c.name_es
+                                   FROM course_blocks b LEFT JOIN courses c ON c.id = b.course_id
+                                   WHERE b.id = ANY(${blockIds}::bigint[])`);
+      brows.forEach(b => { blockMap[String(b.id)] = b; });
+    }
+    function courseCtx(p) {
+      const b = p && p.block_id != null ? blockMap[String(p.block_id)] : null;
+      if (!b) return null;
+      return {
+        course: pick(b.name_ru, b.name_en, b.name_es),
+        block: pick(b.title_ru, b.title_en, b.title_es),
+        index: (b.order_idx != null ? b.order_idx + 1 : null)
+      };
+    }
+
     // Derive a human label for a journey event from its payload + kind.
     function jeLabel(e) {
       const p = e.payload || {};
       if (e.kind === 'sensation') {
-        const s = (p.sensation_labels || []).join(', ');
+        // PR93: neuromap 'area' nodes store p.label (not sensation_labels) — fall
+        // back to it so a sensation never collapses to the bare word "ощущение".
+        const s = (p.sensation_labels || []).join(', ') || p.label || '';
         const loc = (p.body_locations || []).join(', ');
         return (s || 'ощущение') + (loc ? ' @ ' + loc : '');
       }
-      if (e.kind === 'practice') return p.practice_name || ('Практика: ' + (p.block_type || ''));
-      if (e.kind === 'insight') return String(p.text || 'инсайт').slice(0, 90);
+      if (e.kind === 'practice') return p.practice_name || p.label || ('Практика' + (p.block_type ? ': ' + p.block_type : ''));
+      if (e.kind === 'insight') return String(p.text || p.label || 'инсайт').slice(0, 90);
       if (e.kind === 'xp_gain') return '+' + (p.points || 0) + ' XP';
       if (e.kind === 'achievement') return p.title || 'достижение';
+      if (e.kind === 'block_done') {
+        // PR93: prefer the real block/course title; empty → frontend renders the
+        // i18n meta-label ("Завершён блок курса"), never the raw kind.
+        const ctx = courseCtx(p);
+        if (ctx && ctx.block) return ctx.block;
+        if (ctx && ctx.course) return ctx.course;
+        return p.label || p.title || '';
+      }
       return p.label || p.title || e.kind;
     }
     function jeItem(e) {
       const p = e.payload || {};
+      const ctx = courseCtx(p);
       return {
         id: String(e.id), kind: e.kind, layer: e.layer, source: p.source || e.kind,
         occurred_at: e.occurred_at, t: e.occurred_at,
         label: jeLabel(e), valence: p.valence || 'neutral',
         weight: p.weight || p.count || p.points || p.intensity || 1,
-        payload: p, links: linksByEvent[String(e.id)] || []
+        payload: ctx ? Object.assign({}, p, { course_ctx: ctx }) : p,
+        links: linksByEvent[String(e.id)] || []
       };
     }
 
