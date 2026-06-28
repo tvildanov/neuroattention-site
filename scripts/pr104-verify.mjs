@@ -122,6 +122,10 @@ const slugs = async (cat, n) => {
   // #4: mobile — live-graph inset visible (not display:none) when «Заполнить эмоцию» opens.
   await page.setViewport({ width:360, height:780, isMobile:true, hasTouch:true });
   await sleep(400);
+  // #nmSurveyModal is nested inside the Tools tab panel; ensure it's the active tab
+  // (so the modal isn't inside a display:none subtree) before opening the survey.
+  await page.evaluate(()=>{ try{ window.switchTab('tools'); }catch(e){} });
+  await sleep(300);
   await page.evaluate(()=>{ try{ window.openNmSurvey(); }catch(e){} });
   await sleep(900);
   const mobileInset = await page.evaluate(()=>{
