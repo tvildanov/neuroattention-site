@@ -8626,18 +8626,26 @@ function nmSimulate(canvas, initAlpha){
   // bubbles spread evenly instead of collapsing onto one point (a pure-repulsion
   // spread degenerates when nodes coincide: dx=dy=0 → no separating force).
   var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; n._ringIdx=0; n._ringTot=0; });
+  // Pass 1: choose ONE anchor per sensation (prefer a body-location 'area' parent),
+  // so the bubble hugs the body part rather than an emotion/cause.
   nmLinks.forEach(function(l){
-    var s=_nmById[l.source], t=_nmById[l.target];
     l._sticky=false;
+    var s=_nmById[l.source], t=_nmById[l.target];
     if(!s||!t) return;
     var sIsSens=(s.type==='sensation'), tIsSens=(t.type==='sensation');
     if(sIsSens===tIsSens) return;          // need exactly one sensation endpoint
     var sens=sIsSens?s:t, anchor=sIsSens?t:s;
-    l._sticky=true;                        // slot-pinned to its anchor; drawn glued
-    // Prefer a body-location ('area') anchor when a sensation has several parents,
-    // so the bubble hugs the body part, not an emotion/cause.
     var prev=sens._anchorId?_nmById[sens._anchorId]:null;
     if(!prev || (anchor.type==='area' && prev.type!=='area')) sens._anchorId=anchor.id;
+  });
+  // Pass 2: mark ONLY the link to the chosen anchor sticky (slot-pinned, drawn glued).
+  // A sensation's links to OTHER parents keep the normal spring → a connected
+  // (~120px) strand, not a free-floating node.
+  nmLinks.forEach(function(l){
+    var s=_nmById[l.source], t=_nmById[l.target];
+    if(!s||!t) return;
+    if(s.type==='sensation' && s._anchorId===t.id) l._sticky=true;
+    else if(t.type==='sensation' && t._anchorId===s.id) l._sticky=true;
   });
   // Assign each bonded sensation a slot index within its anchor's bubble ring.
   var _slot={};
