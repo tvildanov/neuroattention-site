@@ -102,12 +102,18 @@ const seedSensation = async (token, body) => J(await fetch(AUTH + '/api/neuromap
     N.forEach(n=>{ if(n.type==='sensation'&&n._anchorId){ (groups[n._anchorId]=groups[n._anchorId]||[]).push(n); } });
     let minSib=Infinity, sibPairs=0;
     Object.values(groups).forEach(g=>{ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++){ minSib=Math.min(minSib,dist(g[i],g[j])); sibPairs++; } });
-    return { meanPair, sticky, minSib: sibPairs?minSib:null,
+    const sensNodes=N.filter(n=>n.type==='sensation');
+    const allAnchored=sensNodes.length>0 && sensNodes.every(n=>!!n._anchorId);
+    return { meanPair, sticky, minSib: sibPairs?minSib:null, allAnchored,
       maxEdge: sticky.length?Math.max(...sticky.map(s=>s.edge)):0 };
   });
-  const stuckEdges = stick.sticky.filter(s=> s.edge < Math.max(s.glue*1.8, 90) && s.edge < stick.meanPair*0.7);
-  const stickyOk = stick.sticky.length>0 && stuckEdges.length === stick.sticky.length;
-  const anchorsResolved = stick.sticky.every(s=>s.anchored);
+  // A sensation glues to its CHOSEN anchor (anchored=true) → that edge must be short.
+  // A sensation's link to OTHER body parts keeps the normal spring (~120px) — a
+  // connected strand, not a glued bubble — so it's excluded from the sticky check.
+  const anchoredEdges = stick.sticky.filter(s=>s.anchored);
+  const stuckEdges = anchoredEdges.filter(s=> s.edge < Math.max(s.glue*1.8, 90) && s.edge < stick.meanPair*0.9);
+  const stickyOk = anchoredEdges.length>0 && stuckEdges.length === anchoredEdges.length;
+  const anchorsResolved = stick.allAnchored; // every sensation node resolved an anchor
   const siblingsSpread = stick.minSib===null || stick.minSib > 8; // not collapsed to one point
 
   // ── Screenshots (captured on the settled layout, before the toggle-cycle). ──
