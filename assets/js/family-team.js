@@ -85,6 +85,8 @@
     noChildren:   { ru: 'Пока нет добавленных детей или зависимых.', en: 'No children or dependents added yet.', es: 'Aún no hay hijos o dependientes.' },
     err:          { ru: 'Ошибка', en: 'Error', es: 'Error' },
     confirmDelete:{ ru: 'Удалить?', en: 'Remove?', es: '¿Eliminar?' },
+    removeMember: { ru: 'Убрать из семьи', en: 'Remove from family', es: 'Quitar de la familia' },
+    confirmRemoveMember:{ ru: 'Убрать %s из семьи?', en: 'Remove %s from the family?', es: '¿Quitar a %s de la familia?' },
     viewPath:     { ru: 'Смотреть путь', en: 'View path', es: 'Ver camino' },
     edit:         { ru: 'Изменить', en: 'Edit', es: 'Editar' },
     editChild:    { ru: 'Изменить ребёнка', en: 'Edit child', es: 'Editar hijo' },
@@ -285,12 +287,19 @@
       var roleLbl = function (rv) { var r = ROLES.filter(function (x) { return x.v === rv; })[0]; return r ? L(r.o) : (rv || L(T.member)); };
       var meId = (typeof window.currentUser !== 'undefined' && window.currentUser) ? String(window.currentUser.id) : null;
       var youLbl = L({ ru: 'вы', en: 'you', es: 'tú' });
+      // PR93: the family owner can remove any adult member except themselves. This
+      // is the only way to clear a legacy "member" added through the old relationship
+      // picker (e.g. a "son" card created before Add Child existed).
+      var iOwnFamily = fam && fam.my_role === 'owner';
       (state.members || []).forEach(function (mem) {
         var isMe = meId && String(mem.id) === meId;
         html += '<div class="ft-card">' +
                 '<div class="ft-av">🧑</div>' +
                 '<div class="ft-meta"><div class="ft-name">' + esc(mem.display_name || mem.email || '—') + (isMe ? ' <span class="ft-chip">' + esc(youLbl) + '</span>' : '') + '</div>' +
                 '<div class="ft-tags">' + esc(roleLbl(mem.role)) + '</div></div>' +
+                (iOwnFamily && !isMe
+                  ? '<button class="ft-iconbtn ft-danger ft-del-mem" data-mid="' + esc(String(mem.id)) + '" data-name="' + esc(mem.display_name || mem.email || '') + '" title="' + esc(L(T.removeMember)) + '">✕</button>'
+                  : '') +
                 '</div>';
       });
       // dependents
@@ -359,6 +368,15 @@
       b.onclick = function () {
         if (!confirm(L(T.confirmDelete))) return;
         api('/api/dependents/' + b.getAttribute('data-dep'), { method: 'DELETE' }).then(reload);
+      };
+    });
+    // PR93: owner removes a legacy adult member (team_members row).
+    container.querySelectorAll('.ft-del-mem').forEach(function (b) {
+      b.onclick = function () {
+        if (!fam) return;
+        var nm = b.getAttribute('data-name') || '';
+        if (!confirm(L(T.confirmRemoveMember).replace('%s', nm))) return;
+        api('/api/teams/' + fam.id + '/members/' + b.getAttribute('data-mid'), { method: 'DELETE' }).then(reload);
       };
     });
     container.querySelectorAll('.ft-view-path, .ft-dep-open').forEach(function (b) {

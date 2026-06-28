@@ -331,9 +331,22 @@
   cursor: pointer; font-family: inherit; white-space: nowrap; margin-left: auto;
 }
 .evo-mini-open:hover { background: rgba(86,242,166,0.22); }
-.evo-mini-label { font-family: 'Inter', system-ui, sans-serif; font-size: 10px; fill: var(--myc-text); pointer-events: none;
-  paint-order: stroke; stroke: rgba(6,9,14,0.85); stroke-width: 2.6px; }
+.evo-mini-label { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; fill: var(--myc-text); pointer-events: none;
+  paint-order: stroke; stroke: rgba(6,9,14,0.85); stroke-width: 2.8px; }
 .evo-mini-type { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 7px; fill: rgba(6,9,14,0.9); pointer-events: none; text-transform: uppercase; font-weight: 700; }
+/* PR93 — type caption under each drill-down node + navigable hub affordances */
+.evo-mini-typecap { font-family: 'Inter', system-ui, sans-serif; font-size: 8px; fill: var(--myc-text-mono); pointer-events: none;
+  text-transform: uppercase; letter-spacing: 0.06em; paint-order: stroke; stroke: rgba(6,9,14,0.7); stroke-width: 2px; }
+.evo-mini-node { transition: opacity .12s ease; }
+.evo-mini-node:not(.is-hub):hover, .evo-mini-node:not(.is-hub):focus { outline: none; }
+.evo-mini-node:not(.is-hub):hover circle, .evo-mini-node:not(.is-hub):hover rect, .evo-mini-node:not(.is-hub):hover path,
+.evo-mini-node:not(.is-hub):focus circle, .evo-mini-node:not(.is-hub):focus rect, .evo-mini-node:not(.is-hub):focus path {
+  stroke: rgba(255,255,255,0.7); stroke-width: 1.4px; }
+.evo-mini-back {
+  background: none; border: none; color: var(--myc-text-dim); font-size: 16px; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 7px; line-height: 1; margin-right: 4px;
+}
+.evo-mini-back:hover { color: var(--myc-text); background: rgba(255,255,255,0.06); }
 
 /* — event detail card (🅲️ C5) — */
 .evo-detail-card {
