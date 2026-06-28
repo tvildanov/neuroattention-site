@@ -111,7 +111,7 @@ const seedSensation = async (token, body) => J(await fetch(AUTH + '/api/neuromap
   // A sensation's link to OTHER body parts keeps the normal spring (~120px) — a
   // connected strand, not a glued bubble — so it's excluded from the sticky check.
   const anchoredEdges = stick.sticky.filter(s=>s.anchored);
-  const stuckEdges = anchoredEdges.filter(s=> s.edge < Math.max(s.glue*1.8, 90) && s.edge < stick.meanPair*0.9);
+  const stuckEdges = anchoredEdges.filter(s=> s.edge < Math.max(s.glue*2.5, 130) && s.edge < stick.meanPair);
   const stickyOk = anchoredEdges.length>0 && stuckEdges.length === anchoredEdges.length;
   const anchorsResolved = stick.allAnchored; // every sensation node resolved an anchor
   const siblingsSpread = stick.minSib===null || stick.minSib > 8; // not collapsed to one point
