@@ -1268,13 +1268,24 @@ a.dash-tab:hover { text-decoration:none; }
 
         <!-- Event input -->
         <div id="diary-input-form">
+          <!-- PR#95: explicit date (required, defaults today) + optional time -->
+          <div style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:120px;">
+              <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.date_label">Дата</label>
+              <input type="date" id="diary-event-date" class="nm-date-input" style="width:100%;padding:0.6rem 0.7rem;border-radius:12px;font-size:13px;box-sizing:border-box;" />
+            </div>
+            <div style="flex:1;min-width:120px;">
+              <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.time_label">Время (по желанию)</label>
+              <input type="time" id="diary-event-time" class="nm-date-input" style="width:100%;padding:0.6rem 0.7rem;border-radius:12px;font-size:13px;box-sizing:border-box;" />
+            </div>
+          </div>
           <div style="margin-bottom:1rem;">
             <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.event_label">Событие</label>
             <input type="text" id="diary-event-text" class="glass-input" placeholder="Опишите событие..." style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:14px;" data-i18n-placeholder="a.diary.event_placeholder" />
           </div>
           <div style="margin-bottom:1.25rem;">
-            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.comment_label">Комментарий (по желанию)</label>
-            <input type="text" id="diary-event-comment" class="glass-input" placeholder="Дополнительные мысли..." style="width:100%;padding:0.75rem 1rem;border-radius:12px;font-size:13px;" data-i18n-placeholder="a.diary.comment_placeholder" />
+            <label style="display:block;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem;" data-i18n="a.diary.context_label">Контекст (по желанию)</label>
+            <input type="text" id="diary-event-comment" class="glass-input" placeholder="Что происходило вокруг, детали..." style="width:100%;padding:0.75rem 1rem;border-radius:12px;font-size:13px;" data-i18n-placeholder="a.diary.context_placeholder" />
           </div>
 
           <!-- Rating step -->
@@ -1297,9 +1308,12 @@ a.dash-tab:hover { text-decoration:none; }
           </div>
 
           <!-- Action buttons -->
-          <div style="display:none;gap:0.75rem;margin-top:1.5rem;" id="diary-actions">
-            <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()" data-i18n="a.diary.btn_next_event">Следующее событие</button>
-            <button class="btn btn-solid" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndClose()" data-i18n="a.diary.btn_save_exit">Выйти и сохранить</button>
+          <div style="display:none;flex-direction:column;gap:0.6rem;margin-top:1.5rem;" id="diary-actions">
+            <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:12px;" onclick="saveAndClose()" data-i18n="a.diary.btn_save_exit">Сохранить и выйти</button>
+            <div style="display:flex;gap:0.6rem;">
+              <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()" data-i18n="a.diary.btn_add_more">Добавить ещё событие</button>
+              <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;border:1px dashed rgba(0,224,255,0.3);" onclick="nmDiaryLinkStub()" data-i18n="a.diary.btn_link">Привязать к эмоции / ощущению</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1607,14 +1621,37 @@ a.dash-tab:hover { text-decoration:none; }
           </div>
         </div>
       </div>
-      <!-- Right panel -->
+      <!-- Right panel (PR#95 Phase 3.1: NeuroMap as hub — 3 entry buttons + mini-calendar) -->
       <div class="dash-card glass-card-elevated span-4">
         <h3 style="margin:0 0 0.25rem;" data-i18n="a.tools.day_map">Карта дня</h3>
         <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;" data-i18n="a.tools.day_map_desc">Отслеживайте, какие эмоции сегодня и как они связаны с событиями.</p>
-        <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:13px;" onclick="openNmSurvey()" data-i18n="a.tools.fill_day_map">
-          <span data-i18n="a.tools.fill_day_map">Заполнить карту дня</span>
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
+        <!-- Three hub actions -->
+        <div style="display:flex;flex-direction:column;gap:0.55rem;">
+          <button class="btn btn-solid" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;" onclick="openNmSurvey()">
+            <span data-i18n="a.tools.fill_emotion_map">Заполнить карту эмоций / переживаний</span>
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;border:1px solid rgba(0,224,255,0.18);" onclick="nmOpenSensationOverlay()">
+            <span data-i18n="a.tools.fill_sensation_map">Заполнить карту ощущений</span>
+            <svg class="icon" viewBox="0 0 24 24" style="stroke:rgba(0,224,255,0.85);"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-2 5 5 0 0 1 9 2c-2 4.5-9 9-9 9z"/></svg>
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;border:1px solid rgba(255,255,255,0.12);" onclick="nmOpenDiaryOverlay()">
+            <span data-i18n="a.tools.add_diary_event">Добавить событие в дневник</span>
+            <svg class="icon" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg>
+          </button>
+        </div>
+
+        <!-- Mini-calendar widget (PR#95): days with diary events, coloured by resource balance -->
+        <div style="margin-top:1.5rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <button class="nm-view-btn" style="padding:0.15rem 0.5rem;" onclick="nmMiniCalNav(-1)" aria-label="‹">‹</button>
+            <span id="nm-minical-title" style="font-size:12px;color:var(--text-muted);font-weight:500;">—</span>
+            <button class="nm-view-btn" style="padding:0.15rem 0.5rem;" onclick="nmMiniCalNav(1)" aria-label="›">›</button>
+          </div>
+          <div id="nm-minical-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+          <div id="nm-minical-day" style="margin-top:0.75rem;"></div>
+        </div>
+
         <!-- Today entries -->
         <div style="margin-top:1.5rem;">
           <p style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.75rem;" data-i18n="a.tools.emotions_today">Эмоции сегодня</p>
@@ -5205,7 +5242,7 @@ function setToolsMode(mode){
   if(mode==='nm'){
     if(btnNm){ btnNm.classList.add('active'); btnNm.style.borderBottomColor='var(--accent-cyan)'; }
     if(nmContent) nmContent.style.display='';
-    setTimeout(function(){ try { buildNmGraph(); } catch(e){} }, 50);
+    setTimeout(function(){ try { buildNmGraph(); } catch(e){} try { renderNmMiniCal(); } catch(e){} }, 50);
   } else if(mode==='cal'){
     // Calendar tab removed — redirect to diary
     mode='diary';
@@ -5274,6 +5311,165 @@ function toolsExpandActive(){
   });
 }
 window.toolsExpandActive = toolsExpandActive;
+
+/* ============================================================================
+   PR#95 — Phase 3.1: NeuroMap as hub. The right panel offers three flows that
+   open ON TOP of the NeuroMap (no tab switch): the existing 6-step emotion
+   walkthrough, the full Sensation Map (as an overlay), and a diary event entry.
+   Sensation Map & Diary reuse their standalone DOM/handlers via relocation — no
+   duplication. The standalone Tools→Карта ощущений / Дневник tabs are untouched.
+   ========================================================================== */
+function _pr95t(k,f){ return (typeof t==='function') ? t(k,f) : f; }
+
+// ── Sensation Map overlay (relocates #tools-sensation-wrap into a fullscreen
+//    overlay, restores it on close, then refreshes the NeuroMap graph so the
+//    freshly-saved cyan sensation nodes appear). ──
+var _nmSensState = null;
+function nmOpenSensationOverlay(){
+  if (typeof window.mountFullscreenOverlay !== 'function') return;
+  var src = document.getElementById('tools-sensation-wrap');
+  if (!src) return;
+  if (_nmSensState) return; // already open
+  var placeholder = document.createComment('na-nm-sens');
+  src.parentNode.insertBefore(placeholder, src);
+  var prevDisplay = src.style.display;
+  var refreshed = false;
+  function refreshGraph(){ if(refreshed) return; refreshed=true; try{ nmLoadV2Graph(); }catch(e){} }
+  var handle = window.mountFullscreenOverlay(function(body){
+    body.style.padding = '20px 24px 96px';
+    src.style.display = '';
+    body.appendChild(src);
+    if (typeof loadSensationMap === 'function') { try{ loadSensationMap(); }catch(e){} }
+    // Overlay footer: «Сохранить и выйти» (default) + «Привязать к эмоции» (stub).
+    var footer = document.createElement('div');
+    footer.style.cssText = 'position:absolute;left:0;right:0;bottom:0;display:flex;gap:0.6rem;padding:0.85rem 1.1rem;background:rgba(8,10,14,0.92);border-top:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(10px);z-index:6;flex-wrap:wrap;justify-content:flex-end;';
+    footer.innerHTML =
+      '<button class="btn btn-ghost" id="nm-sens-link-stub" style="font-size:13px;border:1px dashed rgba(0,224,255,0.3);">'+_pr95t('a.tools.sensation_link_emotion','Привязать к эмоции')+'</button>'+
+      '<button class="btn btn-solid" id="nm-sens-save-exit" style="font-size:13px;">'+_pr95t('a.tools.sensation_save_exit','Сохранить и выйти')+'</button>';
+    body.appendChild(footer);
+    footer.querySelector('#nm-sens-save-exit').addEventListener('click', function(){
+      submitSensationMap(function(){ refreshGraph(); handle.close(); });
+    });
+    footer.querySelector('#nm-sens-link-stub').addEventListener('click', function(){
+      // Phase 3.3 — chain a sensation into the emotion walkthrough. Stub for now.
+      submitSensationMap(function(){
+        refreshGraph();
+        nmToast(_pr95t('a.tools.link_soon','Связывание с эмоцией появится в следующем обновлении'));
+        handle.close();
+      });
+    });
+  }, {
+    title: _pr95t('a.tools.fill_sensation_map','Заполнить карту ощущений'),
+    accent: '#00e0ff',
+    onClose: function(){
+      if (placeholder.parentNode){ placeholder.parentNode.insertBefore(src, placeholder); placeholder.parentNode.removeChild(placeholder); }
+      src.style.display = prevDisplay;
+      _nmSensState = null;
+      refreshGraph();
+    }
+  });
+  _nmSensState = handle;
+}
+window.nmOpenSensationOverlay = nmOpenSensationOverlay;
+
+// ── Diary event overlay — reuses the standalone diary modal (now with a
+//    date+time picker). Diary save already feeds the NeuroMap v2 graph. ──
+function nmOpenDiaryOverlay(prefillDate){
+  openDiaryInput(prefillDate);
+}
+window.nmOpenDiaryOverlay = nmOpenDiaryOverlay;
+
+// Phase 3.3 cross-link stub for the diary flow.
+function nmDiaryLinkStub(){
+  if(saveDiaryEvent()){
+    nmToast(_pr95t('a.tools.link_soon','Связывание с эмоцией появится в следующем обновлении'));
+    closeDiaryInput();
+    try { nmLoadV2Graph(); }catch(e){}
+  }
+}
+window.nmDiaryLinkStub = nmDiaryLinkStub;
+
+// Tiny ephemeral toast for stub actions.
+function nmToast(msg){
+  var el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:9000;background:rgba(10,14,20,0.96);border:1px solid rgba(0,224,255,0.4);color:#dff;padding:0.7rem 1.1rem;border-radius:12px;font-size:13px;max-width:80vw;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.5);';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 400); }, 2600);
+}
+window.nmToast = nmToast;
+
+// ── Mini-calendar widget (right panel) — diary events by day, coloured by
+//    resource balance; click a day to see its events inline. ──
+var nmMiniMonth = (new Date()).getMonth();
+var nmMiniYear  = (new Date()).getFullYear();
+var nmMiniSelKey = null;
+function nmMiniCalNav(dir){
+  nmMiniMonth += dir;
+  if(nmMiniMonth<0){ nmMiniMonth=11; nmMiniYear--; }
+  if(nmMiniMonth>11){ nmMiniMonth=0; nmMiniYear++; }
+  nmMiniSelKey = null;
+  renderNmMiniCal();
+}
+window.nmMiniCalNav = nmMiniCalNav;
+function renderNmMiniCal(){ try{
+  var grid = document.getElementById('nm-minical-grid'); if(!grid) return;
+  var titleEl = document.getElementById('nm-minical-title');
+  if(titleEl) titleEl.textContent = (typeof getMonthNameCap==='function'? getMonthNameCap(nmMiniMonth) : (nmMiniMonth+1))+' '+nmMiniYear;
+  grid.innerHTML = '';
+  var dayNames = (typeof getDayNames==='function') ? getDayNames() : ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  dayNames.forEach(function(d){ var h=document.createElement('div'); h.textContent=d; h.style.cssText='font-size:9px;color:var(--text-dim);text-align:center;padding:2px 0;'; grid.appendChild(h); });
+  var first = new Date(nmMiniYear, nmMiniMonth, 1).getDay(); first = first===0?6:first-1;
+  var days = new Date(nmMiniYear, nmMiniMonth+1, 0).getDate();
+  var today = new Date();
+  for(var i=0;i<first;i++){ var e=document.createElement('div'); grid.appendChild(e); }
+  for(var d=1;d<=days;d++){
+    var key = nmMiniYear+'-'+String(nmMiniMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var cell = document.createElement('div');
+    cell.textContent = d;
+    var base='font-size:11px;text-align:center;padding:4px 0;border-radius:6px;cursor:pointer;color:var(--text-muted);transition:all .15s;border:1px solid transparent;';
+    var entries = (typeof diaryData!=='undefined' && diaryData) ? diaryData[key] : null;
+    if(entries && entries.length){
+      var score=0; entries.forEach(function(ev){ score += (ev.plusCount||0)-(ev.minusCount||0); });
+      if(score>0) base+='background:rgba(100,255,150,0.14);color:rgba(140,255,170,1);';
+      else if(score<0) base+='background:rgba(255,100,100,0.14);color:rgba(255,140,140,1);';
+      else base+='background:rgba(140,180,255,0.14);color:rgba(160,195,255,1);';
+    }
+    if(nmMiniYear===today.getFullYear() && nmMiniMonth===today.getMonth() && d===today.getDate()) base+='font-weight:700;';
+    if(nmMiniSelKey===key) base+='border-color:var(--accent-cyan);box-shadow:0 0 0 1px var(--accent-cyan);';
+    cell.style.cssText = base;
+    (function(k,dd){ cell.addEventListener('click', function(){ nmMiniCalSelectDay(k,dd); }); })(key,d);
+    grid.appendChild(cell);
+  }
+}catch(e){ console.warn('renderNmMiniCal:', e); }}
+window.renderNmMiniCal = renderNmMiniCal;
+function nmMiniCalSelectDay(key, d){
+  nmMiniSelKey = key;
+  renderNmMiniCal();
+  var box = document.getElementById('nm-minical-day'); if(!box) return;
+  var entries = (typeof diaryData!=='undefined' && diaryData && diaryData[key]) ? diaryData[key] : [];
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">'+
+    '<span style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;">'+d+' '+(typeof getMonthNameCap==='function'?getMonthNameCap(nmMiniMonth):(nmMiniMonth+1))+'</span>'+
+    '<button class="nm-view-btn" style="padding:0.1rem 0.5rem;font-size:10px;" onclick="nmOpenDiaryOverlay(\''+key+'\')">+ '+_pr95t('a.tools.add_event_short','Событие')+'</button>'+
+  '</div>';
+  if(!entries.length){
+    box.innerHTML = head+'<p style="font-size:12px;color:var(--text-muted);margin:0;">'+_pr95t('a.tools.no_records','Нет записей')+'</p>';
+    return;
+  }
+  var rows = entries.map(function(ev){
+    var p=ev.plusCount||0, m=ev.minusCount||0;
+    var r=''; if(p>0) r+='+'.repeat(p); if(m>0) r+=(p>0?' ':'')+'−'.repeat(m); if(!r) r='±';
+    var col = (p>0&&m>0)?'rgba(140,180,255,0.9)':(m>0?'rgba(255,120,120,0.9)':'rgba(120,255,160,0.9)');
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+    return '<div style="padding:0.4rem 0.55rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);margin-bottom:0.35rem;">'+
+      '<div style="font-size:12px;color:var(--text-primary);">'+esc(ev.text)+'</div>'+
+      (ev.comment?'<div style="font-size:11px;color:var(--text-muted);">'+esc(ev.comment)+'</div>':'')+
+      '<div style="font-size:10px;color:'+col+';font-family:\'JetBrains Mono\',monospace;">'+r+(ev.time?(' · '+esc(ev.time)):'')+'</div>'+
+    '</div>';
+  }).join('');
+  box.innerHTML = head+rows;
+}
+window.nmMiniCalSelectDay = nmMiniCalSelectDay;
 
 function setCalMode(mode){
   // Legacy wrapper — now delegates to setToolsMode
@@ -5363,8 +5559,11 @@ function updateTodaySummary(){
 }
 
 // Diary modal
-function openDiaryInput(){
+function openDiaryInput(prefillDate){
   document.getElementById('diaryModal').classList.add('open');
+  // Reset the date to today (or a caller-supplied YYYY-MM-DD) on every fresh open.
+  var dEl=document.getElementById('diary-event-date');
+  if(dEl) dEl.value = prefillDate || '';
   resetDiaryForm();
 }
 function closeDiaryInput(){
@@ -5374,6 +5573,11 @@ function closeDiaryInput(){
 function resetDiaryForm(){
   document.getElementById('diary-event-text').value='';
   document.getElementById('diary-event-comment').value='';
+  // PR#95: default date = today, time empty (optional). Keep any date the caller
+  // pre-set (e.g. mini-calendar day click) — only fill when blank.
+  var dEl=document.getElementById('diary-event-date');
+  if(dEl && !dEl.value){ var n=new Date(); dEl.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); }
+  var tEl=document.getElementById('diary-event-time'); if(tEl) tEl.value='';
   document.getElementById('rating-step').style.display='none';
   document.getElementById('diary-actions').style.display='none';
   currentPlusCount=0;
@@ -5478,14 +5682,20 @@ function saveDiaryEvent(){
   if(!text) return false;
   var comment = document.getElementById('diary-event-comment').value.trim();
   var today = new Date();
-  var key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  // PR#95: honour the user-chosen date (required, defaults today) + optional time.
+  var dEl=document.getElementById('diary-event-date');
+  var tEl=document.getElementById('diary-event-time');
+  var key = (dEl && /^\d{4}-\d{2}-\d{2}$/.test(dEl.value)) ? dEl.value
+          : today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var time = (tEl && /^\d{2}:\d{2}/.test(tEl.value)) ? tEl.value
+          : today.getHours()+':'+String(today.getMinutes()).padStart(2,'0');
   if(!diaryData[key]) diaryData[key]=[];
   var entry={
     text: text,
     comment: comment,
     plusCount: currentPlusCount,
     minusCount: currentMinusCount,
-    time: today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
+    time: time
   };
   diaryData[key].push(entry);
   // Persist to API + localStorage cache
@@ -5497,6 +5707,7 @@ function saveDiaryEvent(){
   renderDiaryCalendar();
   if(selectedDiaryDay===key) renderDayColumns(key);
   updateTodaySummary();
+  try { renderNmMiniCal(); } catch(e){}
   return true;
 }
 
@@ -6529,6 +6740,7 @@ async function diaryLoadFromAPI(){
       diaryCacheToLocal();
       renderDiaryCalendar();
       updateTodaySummary();
+      try { renderNmMiniCal(); } catch(e){}
     }
   } catch(err){ console.warn('Diary load failed:',err); }
 }
@@ -9732,7 +9944,7 @@ function loadSmRecent(){
     })
     .catch(function(){});
 }
-function submitSensationMap(){
+function submitSensationMap(onSaved){
   var sensSel = Array.from(document.querySelectorAll('#sm-sens-chips .sm-chip.active')).map(function(c){return c.dataset.slug;});
   var locSel = Array.from(document.querySelectorAll('#sm-loc-chips .sm-chip.active')).map(function(c){return c.dataset.slug;});
   var comment = document.getElementById('sm-comment').value.trim();
@@ -9782,6 +9994,8 @@ function submitSensationMap(){
       document.getElementById('sm-comment').value = '';
       loadSmRecent();
       setTimeout(function(){ document.getElementById('sm-status').textContent = ''; }, 3000);
+      // PR#95: notify caller (overlay «Сохранить и выйти») after a successful save.
+      if (typeof onSaved === 'function') { try { onSaved(d); } catch(e){} }
     } else {
       document.getElementById('sm-status').style.color = '#ff8a8a';
       document.getElementById('sm-status').textContent = 'Ошибка: ' + (d.error || 'unknown');
