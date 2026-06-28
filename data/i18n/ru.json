@@ -1643,5 +1643,14 @@
   "a.admin.trash_col_name": "Имя",
   "a.admin.trash_col_deleted": "Удалён",
   "a.admin.trash_restore": "Восстановить",
-  "a.admin.trash_empty": "Корзина пуста"
+  "a.admin.trash_empty": "Корзина пуста",
+  "a.tools.target_label": "Сохранить для",
+  "a.tools.target_me": "Меня",
+  "a.tools.target_for": "Для: {name}",
+  "a.tools.target_tracking_term": "Для: {name}, срок: {w} нед.",
+  "a.evo.view_single": "Я",
+  "a.evo.view_dual": "Я + ребёнок",
+  "a.evo.view_child": "Только ребёнок",
+  "a.evo.dual_me": "Я",
+  "a.evo.dual_pick_child": "Выберите ребёнка"
 }

@@ -1654,5 +1654,14 @@
   "a.admin.trash_col_name": "Nombre",
   "a.admin.trash_col_deleted": "Eliminado",
   "a.admin.trash_restore": "Restaurar",
-  "a.admin.trash_empty": "La papelera está vacía"
+  "a.admin.trash_empty": "La papelera está vacía",
+  "a.tools.target_label": "Guardar para",
+  "a.tools.target_me": "Mí",
+  "a.tools.target_for": "Para: {name}",
+  "a.tools.target_tracking_term": "Para: {name}, semana: {w}",
+  "a.evo.view_single": "Yo",
+  "a.evo.view_dual": "Yo + hijo",
+  "a.evo.view_child": "Solo el hijo",
+  "a.evo.dual_me": "Yo",
+  "a.evo.dual_pick_child": "Elige un hijo"
 }

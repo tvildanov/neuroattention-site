@@ -49,6 +49,15 @@
     { key: '3months', label: { ru: '3 мес',  en: '3 mo',  es: '3 m' } },
     { key: 'year',    label: { ru: 'Год',    en: 'Year',  es: 'Año' } }
   ];
+  // PR#99 (Phase 2B): view-type switcher — shown only when the user has dependents
+  // and this is their OWN path (not a subject-scoped child/team view). "dual" stacks
+  // the parent spine over a selected child's spine on a shared time axis; "child"
+  // shows the child's spine alone.
+  var VIEW_TYPES = [
+    { key: 'single', label: { ru: 'Я',             en: 'Me',         es: 'Yo' } },
+    { key: 'dual',   label: { ru: 'Я + ребёнок',   en: 'Me + child', es: 'Yo + hijo' } },
+    { key: 'child',  label: { ru: 'Ребёнок',       en: 'Child',      es: 'Hijo' } }
+  ];
   var STR = {
     title:   { ru: 'Путь развития', en: 'Evolution Path', es: 'Camino de evolución' },
     sub:     { ru: 'Твой путь развития по времени', en: 'Your development over time', es: 'Tu desarrollo en el tiempo' },
@@ -1030,6 +1039,9 @@
     // hang in the leftmost part of the visible area at any zoom/scroll (1.2),
     // mirroring the collective path's "sticky — outside the scroll clip" tracks.
     if (T.overlay) drawOverlayIcons(ctx, T, C, lang);
+    // PR#99 (Phase 2B): dual-timeline pan/zoom sync hook. Set only on the two
+    // sub-states of the dual view so panning/zooming one spine mirrors the other.
+    if (st._onDraw) { try { st._onDraw(st); } catch (e) {} }
   }
 
   // ── 1.2: sticky left-gutter icons for each External Field overlay layer. Kept
@@ -2034,6 +2046,8 @@
     var st = container.__evo || { mode: opts.mode || 'tunnel', period: opts.period || 'month', cursor: 1, hidden: {} };
     if (st.mode === 'field') st.mode = 'tunnel'; // D п.17: «Персонаж» mode retired
     if (opts.alwaysStructure) st._alwaysStructure = true; // child/dependent path: keep lanes when empty
+    st._isSubject = !!opts.subject; // PR#99: subject-scoped views never show the dual switcher
+    if (!st.viewType) st.viewType = 'single'; // PR#99 (Phase 2B)
     container.__evo = st;
 
     container.classList.add('myc-root');
@@ -2049,6 +2063,7 @@
     // fetch evolution + user xp + (best-effort) course modules in parallel
     var hdr = token ? { 'Authorization': 'Bearer ' + token } : {};
     var jget = function (url) { return fetch(apiBase + url, { headers: hdr }).then(function (r) { return r.json(); }).catch(function () { return null; }); };
+    st._jget = jget; // PR#99: reused by ensureDualChild to fetch a dependent's path
 
     // #2: load the FULL journey (registration→now) once, not just the last year —
     // the period buttons only re-zoom this pool client-side. Bounded by account age.
@@ -2063,7 +2078,9 @@
     Promise.all([
       jget(evoUrl),
       st.user ? Promise.resolve(null) : jget('/api/users/me/xp'),
-      st.modules ? Promise.resolve(null) : fetchModules(jget)
+      st.modules ? Promise.resolve(null) : fetchModules(jget),
+      // PR#99 (Phase 2B): list dependents so the dual switcher can appear (own path only)
+      opts.subject ? Promise.resolve(null) : jget('/api/dependents')
     ]).then(function (res) {
       var data = res[0];
       if (!data || data.error) throw new Error(data && data.error || 'no data');
@@ -2071,6 +2088,20 @@
       if (!st.user) st.user = buildUser(null);
       if (res[2]) st.modules = res[2];
       st.data = maybeDemo(data, st, lang);
+      // PR#99: once dependents are known, rebuild the chrome so the view switcher
+      // (Me / Me+child / Child) appears, then re-wire its controls.
+      st._deps = (res[3] && res[3].dependents) || [];
+      if (st._deps.length && !opts.subject && !st._isOverlay) {
+        try {
+          var oldHead = container.querySelector('.myc-evo-head');
+          if (oldHead) {
+            var wrap = document.createElement('div'); wrap.innerHTML = buildChrome(st, lang);
+            var nh = wrap.firstElementChild;
+            oldHead.parentNode.replaceChild(nh, oldHead);
+            wireChrome(container, st, lang, function () { mountEvolutionPath(container, opts); });
+          }
+        } catch (e) {}
+      }
       requestAnimationFrame(function () { paint(container, st, lang); });
       // Repaint when the canvas width actually changes (layout race, tab/window
       // resize, mobile mount, orientation change). Debounced ~120ms so it never
@@ -2227,9 +2258,12 @@
       ? ''
       : '<div><h3 class="myc-evo-title">' + L(STR.title, lang) + '</h3>' +
         '<p class="myc-evo-sub">' + L(STR.sub, lang) + '</p></div>';
+    // PR#99 (Phase 2B): view-type switcher (Me / Me+child / Child) — only on the
+    // user's OWN path and only once dependents are known.
+    var viewSeg = (st._deps && st._deps.length && !st._isSubject) ? seg(VIEW_TYPES, st.viewType || 'single', 'viewType') : '';
     return '<div class="myc-evo-head"' + (st._isOverlay ? ' style="justify-content:flex-end;"' : '') + '>' +
       titleBlock +
-      '<div class="myc-controls">' + seg(MODES, st.mode, 'mode') + seg(PERIODS, st.period, 'period') + expandBtn + '</div></div>';
+      '<div class="myc-controls">' + seg(MODES, st.mode, 'mode') + seg(PERIODS, st.period, 'period') + viewSeg + expandBtn + '</div></div>';
   }
 
   // Open the path in a shared fullscreen overlay, reusing already-fetched data.
@@ -2270,7 +2304,17 @@
       segEl.querySelectorAll('button').forEach(function (b) {
         b.addEventListener('click', function () {
           var val = b.getAttribute('data-val');
-          if (kind === 'mode') {
+          if (kind === 'viewType') {
+            // PR#99 (Phase 2B): switch between single / dual / child-only spines.
+            if (st.viewType === val) return;
+            st.viewType = val;
+            segEl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-active', x === b); });
+            if (val === 'single') { st.view = null; paint(container, st, lang); return; }
+            var cid = st._dualChildId || (st._deps && st._deps[0] && st._deps[0].id);
+            st._dualChildId = cid;
+            ensureDualChild(st, cid, lang, function () { paint(container, st, lang); });
+            return;
+          } else if (kind === 'mode') {
             if (st.mode === val) return;
             st.mode = val;
             if (st.data) {
@@ -2313,6 +2357,127 @@
     return Math.max(H_BASE, Math.min(960, avail));
   }
 
+  /* ── PR#99 (Phase 2B): dual / child-only timeline ─────────────────────────
+     Reuses the single-spine canvas renderer twice — parent on top, child on the
+     bottom — and forces both onto ONE unified time window so a given x-pixel is
+     the same absolute moment on both. Pan/zoom on either spine mirrors the other
+     via the _onDraw hook (guarded by st._dualSyncing against re-entrancy). */
+  function depToUser(dep) {
+    if (!dep) return { name: '', level: 1, xp: 0 };
+    var created = dep.track_from || dep.birth_date || null;
+    if (!created && dep.expected_due_date) {
+      var due = tms(dep.expected_due_date);
+      if (due) { try { created = new Date(due - 280 * DAY_MS).toISOString(); } catch (e) {} }
+    }
+    return { name: dep.name || '', avatar: '', level: 1, xp: 0, createdAt: created, _dep: dep };
+  }
+  function depTermLabel(dep, lang) {
+    var fallback = L({ ru: 'Ребёнок', en: 'Child', es: 'Hijo' }, lang);
+    if (!dep) return fallback;
+    var nm = dep.name || fallback;
+    if (dep.phase === 'prenatal' && dep.gestation_weeks != null) {
+      var u = lang === 'en' ? 'wk' : (lang === 'es' ? 'sem' : 'нед');
+      return nm + ' · ' + dep.gestation_weeks + ' ' + u;
+    }
+    if (dep.age_years != null) {
+      var yu = lang === 'en' ? 'y' : (lang === 'es' ? 'a' : 'г');
+      return nm + ' · ' + dep.age_years + ' ' + yu;
+    }
+    return nm;
+  }
+  // Fetch (once, cached) the selected child's evolution data, then run cb().
+  function ensureDualChild(st, childId, lang, cb) {
+    childId = String(childId);
+    if (st._dual && String(st._dual.childId) === childId && st._dual.data) { cb(); return; }
+    var dep = (st._deps || []).filter(function (d) { return String(d.id) === childId; })[0];
+    var jget = st._jget;
+    var empty = { ok: true, totals: {}, aggregates: {}, layers: {}, events: [], links: [] };
+    if (!jget || !dep) { st._dual = { childId: childId, data: empty, user: depToUser(dep) }; cb(); return; }
+    jget('/api/users/me/evolution?subject=dependent:' + encodeURIComponent(childId) + '&period=all&lang=' + encodeURIComponent(lang || 'ru'))
+      .then(function (data) {
+        if (!data || data.error) data = empty;
+        st._dual = { childId: childId, data: data, user: depToUser(dep) };
+        cb();
+      }).catch(function () { st._dual = { childId: childId, data: empty, user: depToUser(dep) }; cb(); });
+  }
+  function renderDualPane(paneEl, data, user, parentSt, lang) {
+    var sub = { period: parentSt.period, hidden: parentSt.hidden || {}, user: user,
+                modules: parentSt.modules, data: data, isDemo: false,
+                _alwaysStructure: true, mode: 'tunnel' };
+    var stageEl = paneEl.querySelector('.evo-stage');
+    var W = measureW(stageEl, paneEl);
+    sub._w = W;
+    renderTunnel(W, data, paneEl, lang, sub);   // host = stageOf(paneEl) = this pane's .evo-stage
+    return sub;
+  }
+  function renderDual(box, container, st, lang) {
+    var childOnly = (st.viewType === 'child');
+    var dep = (st._dual.user && st._dual.user._dep) || null;
+    var labelH = 28, axisH = 1;
+    var avail = Math.max(300, H);
+    var paneH = childOnly ? (avail - labelH - 8) : Math.floor((avail - labelH * 2 - axisH - 16) / 2);
+    if (paneH < 150) paneH = 150;
+    var meName = escapeHtml((st.user && st.user.name) || L({ ru: 'Я', en: 'Me', es: 'Yo' }, lang));
+    var childLabel = escapeHtml(depTermLabel(dep, lang));
+    var picker = '';
+    if ((st._deps || []).length > 1) {
+      picker = '<select class="myc-dual-child" style="margin-left:8px;background:rgba(10,14,20,0.7);border:1px solid rgba(255,255,255,0.14);color:var(--myc-text,#cdd);border-radius:6px;height:24px;font-size:12px;cursor:pointer;">' +
+        st._deps.map(function (d) { return '<option value="' + d.id + '"' + (String(d.id) === String(st._dualChildId) ? ' selected' : '') + '>' + escapeHtml(d.name) + '</option>'; }).join('') + '</select>';
+    }
+    var labStyle = 'display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--myc-text-dim,#8c98a6);height:' + labelH + 'px;padding:0 6px;letter-spacing:0.02em;';
+    var paneStyle = 'position:relative;width:100%;height:' + paneH + 'px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.01);';
+    var stageStyle = 'position:relative;height:' + paneH + 'px;';
+    var html = '';
+    if (!childOnly) {
+      html += '<div style="' + labStyle + '"><span>👤 ' + meName + '</span></div>';
+      html += '<div class="evo-dual-top" style="' + paneStyle + '"><div class="evo-stage" style="' + stageStyle + '"></div></div>';
+      html += '<div style="height:' + axisH + 'px;"></div>';
+    }
+    html += '<div style="' + labStyle + '"><span>🧒 ' + childLabel + '</span>' + picker + '</div>';
+    html += '<div class="evo-dual-bot" style="' + paneStyle + '"><div class="evo-stage" style="' + stageStyle + '"></div></div>';
+    box.innerHTML = html;
+
+    H = paneH;   // both spines render at this height; pan/zoom redraws read the same module H
+    var subTop = childOnly ? null : renderDualPane(box.querySelector('.evo-dual-top'), st.data, st.user, st, lang);
+    var subBot = renderDualPane(box.querySelector('.evo-dual-bot'), st._dual.data, st._dual.user, st, lang);
+
+    // Unify the time window so an x-pixel maps to the same absolute moment on both.
+    var x0 = subBot._tunnel.x0, x1 = subBot._tunnel.x1;
+    var originT = subBot.view.originT, nowT = subBot.view.nowT;
+    if (subTop) { originT = Math.min(originT, subTop.view.originT); nowT = Math.max(nowT, subTop.view.nowT); }
+    if (nowT <= originT) nowT = originT + DAY_MS;
+    var spanDays = (nowT - originT) / DAY_MS;
+    var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
+    var pxPerDay = (x1 - x0) / days;
+    var panX = (x1 - 40) - (nowT - originT) / DAY_MS * pxPerDay;
+    var subs = subTop ? [subTop, subBot] : [subBot];
+    subs.forEach(function (s) {
+      s.view.originT = originT; s.view.nowT = nowT; s.view.pxPerDay = pxPerDay;
+      s.view._basePxPerDay = pxPerDay; s.view.panX = panX; s.view._fieldW = (x1 - x0);
+    });
+    if (subTop) {
+      var mkSync = function (srcS, dstS) {
+        return function () {
+          if (st._dualSyncing) return;
+          if (dstS.view.panX === srcS.view.panX && dstS.view.pxPerDay === srcS.view.pxPerDay) return;
+          st._dualSyncing = true;
+          dstS.view.panX = srcS.view.panX; dstS.view.pxPerDay = srcS.view.pxPerDay;
+          try { drawTunnel(dstS); } catch (e) {}
+          st._dualSyncing = false;
+        };
+      };
+      subTop._onDraw = mkSync(subTop, subBot);
+      subBot._onDraw = mkSync(subBot, subTop);
+    }
+    subs.forEach(function (s) { try { drawTunnel(s); } catch (e) {} });
+
+    var pk = box.querySelector('.myc-dual-child');
+    if (pk) pk.addEventListener('change', function () {
+      st._dualChildId = this.value;
+      ensureDualChild(st, this.value, lang, function () { paint(container, st, lang); });
+    });
+  }
+
   function paint(container, st, lang) {
     var box = container.querySelector('.myc-evo-canvas');
     // PR: the header (title + mode/period controls) is relocated INTO the centre
@@ -2326,6 +2491,15 @@
     box.innerHTML = '';
     POS = {};
     var data = st.data;
+    // PR#99 (Phase 2B): dual / child-only view — two spines (or the child's alone)
+    // on a shared time axis. Falls through to the normal single render until the
+    // child's data has loaded (wireChrome triggers the fetch before re-painting).
+    if ((st.viewType === 'dual' || st.viewType === 'child') && st._dual && st._dual.data) {
+      H = computeH(container, st);
+      box.style.minHeight = H + 'px';
+      renderDual(box, container, st, lang);
+      return;
+    }
     var totalEvents = Object.keys(data.totals || {}).reduce(function (s, k) { return k === 'xp_total' ? s : s + (data.totals[k] || 0); }, 0);
     if (!totalEvents && !st._alwaysStructure) {
       box.innerHTML = '<div class="myc-empty"><div class="myc-empty-glyph">✦</div><div class="myc-empty-text">' + L(STR.empty, lang) + '</div></div>';

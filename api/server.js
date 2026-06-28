@@ -2146,6 +2146,29 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
     // Optional backdating: caller may pass occurred_at (ISO) to log this chain in the past.
     const occurredAt = req.body && req.body.occurred_at ? req.body.occurred_at : null;
 
+    // PR#99 (Phase 2B): "For: [child]" — when a valid dependent_id is passed, route
+    // this chain to the dependent's path ONLY (journey_events with dependent_id) and
+    // skip the caller's own NeuroMap graph (nm_nodes/nm_links/session bridge) so the
+    // parent's personal map isn't polluted with the child's entries.
+    const depId = await resolveDependentId(userId, req.body && req.body.dependent_id);
+    if (depId) {
+      const depJourneyIds = [];
+      for (const item of chain) {
+        if (!item || !item.type || !item.label) continue;
+        const { kind, layer } = nmTypeToJourney(item.type);
+        const jid = await logJourney(userId, kind, layer, {
+          label: item.label, valence: item.valence || 'neutral', nm_type: item.type,
+          source: 'neuromap', dependent: true,
+          coords: (item.metadata && item.metadata.coords) || null
+        }, occurredAt, depId);
+        if (jid) depJourneyIds.push(jid);
+      }
+      for (let i = 0; i < depJourneyIds.length - 1; i++) {
+        await linkJourney(depJourneyIds[i], depJourneyIds[i + 1], 'sequence', 1.0);
+      }
+      return res.json({ ok: true, dependent_id: depId, journey_ids: depJourneyIds, node_ids: [], links: [] });
+    }
+
     // 1. Upsert each node (deduplicate within single call)
     for (const item of chain) {
       const { type, label, valence, metadata } = item;
@@ -2444,17 +2467,29 @@ app.post('/api/diary/save', requireAuth, async (req, res) => {
   try {
     const { date_key, text, comment, plus_count, minus_count, time } = req.body;
     if (!date_key || !text) return res.status(400).json({ error: 'date_key and text required' });
-    const rows = await sql`
-      INSERT INTO neuro_resource_diary (user_id, date_key, text, comment, plus_count, minus_count, time)
-      VALUES (${req.user.id}, ${date_key}, ${text}, ${comment || ''}, ${plus_count || 0}, ${minus_count || 0}, ${time || ''})
-      RETURNING id, date_key, created_at
-    `;
     // Journey log (Pack 31.5): a diary note becomes an insight point on the
     // Evolution Path. occurred_at honours the user-chosen date_key (+ time) so a
     // back-dated entry lands on the right day, not "now".
     const occAt = date_key ? (date_key + (time && /^\d{2}:\d{2}/.test(time) ? 'T' + time : 'T12:00')) : null;
     const valence = (plus_count || 0) > (minus_count || 0) ? 'positive'
                   : ((minus_count || 0) > (plus_count || 0) ? 'negative' : 'neutral');
+    // PR#99 (Phase 2B): "For: [child]" — a valid dependent_id routes this diary event
+    // to the dependent's path only. Skip the parent's diary store so it doesn't show
+    // in the parent's own diary list.
+    const diaryDepId = await resolveDependentId(req.user.id, req.body && req.body.dependent_id);
+    if (diaryDepId) {
+      const depJid = await logJourney(req.user.id, 'insight', 'insight', {
+        text: String(text).slice(0, 280), comment: comment || '',
+        plus_count: plus_count || 0, minus_count: minus_count || 0,
+        valence, date_key, dependent: true, source: 'diary'
+      }, occAt, diaryDepId);
+      return res.json({ ok: true, dependent_id: diaryDepId, journey_id: depJid });
+    }
+    const rows = await sql`
+      INSERT INTO neuro_resource_diary (user_id, date_key, text, comment, plus_count, minus_count, time)
+      VALUES (${req.user.id}, ${date_key}, ${text}, ${comment || ''}, ${plus_count || 0}, ${minus_count || 0}, ${time || ''})
+      RETURNING id, date_key, created_at
+    `;
     const jid = await logJourney(req.user.id, 'insight', 'insight', {
       text: String(text).slice(0, 280), comment: comment || '',
       plus_count: plus_count || 0, minus_count: minus_count || 0,
@@ -4075,7 +4110,7 @@ async function callerIsAdmin(req) {
 // the Evolution Path reader can render a real, clickable, time-accurate timeline.
 // Fault-tolerant by design: a failure here must NEVER break the instrument write
 // that called it — we log a warning and return null.
-async function logJourney(userId, kind, layer, payload, occurredAt) {
+async function logJourney(userId, kind, layer, payload, occurredAt, dependentId) {
   try {
     if (!userId || !kind) return null;
     let whenIso = null;
@@ -4083,14 +4118,32 @@ async function logJourney(userId, kind, layer, payload, occurredAt) {
       const d = new Date(occurredAt);
       if (!isNaN(d.getTime())) whenIso = d.toISOString();
     }
+    // PR#99 (Phase 2B): optional dependent scope. When set, the event is attributed
+    // to the child (journey_events.dependent_id) so it lands on the dependent's path
+    // instead of the caller's own. NULL keeps the legacy self-attribution.
+    const dep = (dependentId != null && !isNaN(parseInt(dependentId, 10))) ? parseInt(dependentId, 10) : null;
     const body = JSON.stringify(payload || {});
     const rows = whenIso
-      ? await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at)
-                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, ${whenIso}) RETURNING id`
-      : await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at)
-                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, now()) RETURNING id`;
+      ? await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at, dependent_id)
+                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, ${whenIso}, ${dep}) RETURNING id`
+      : await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at, dependent_id)
+                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, now(), ${dep}) RETURNING id`;
     return rows[0] ? rows[0].id : null;
   } catch (e) { console.warn('logJourney(' + kind + '):', e.message); return null; }
+}
+
+// PR#99 (Phase 2B): validate a client-supplied dependent_id belongs to the caller
+// (owner-gated, not soft-deleted). Returns the numeric id or null. Used by the
+// save endpoints so a parent can log an emotion/sensation/diary entry FOR a child.
+async function resolveDependentId(ownerId, raw) {
+  if (raw == null || raw === '') return null;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) return null;
+  try {
+    const rows = await sql`SELECT id FROM dependent_profiles
+      WHERE id = ${id} AND owner_user_id = ${ownerId} AND deleted_at IS NULL`;
+    return rows.length ? id : null;
+  } catch (e) { console.warn('resolveDependentId:', e.message); return null; }
 }
 
 // Link two journey events (e.g. a sensation bound to the emotion it accompanied,
@@ -4340,6 +4393,23 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
     let when = occurred_at ? new Date(occurred_at) : new Date();
     if (isNaN(when.getTime())) when = new Date();
     const dateKey = when.toISOString().slice(0, 10);
+
+    // PR#99 (Phase 2B): "For: [child]" — a valid dependent_id routes this sensation
+    // to the dependent's path only (one journey_event with dependent_id). Skip the
+    // parent's diary record + NeuroMap graph so the child's entry stays scoped.
+    const sensDepId = await resolveDependentId(userId, req.body && req.body.dependent_id);
+    if (sensDepId) {
+      const depJid = await logJourney(userId, 'sensation', 'sensation', {
+        sensation_ids: sensRows.map(s => s.slug),
+        sensation_labels: sensRows.map(s => s.label_ru),
+        body_locations: locRows.map(l => l.label_ru),
+        body_location_slugs: locRows.map(l => l.slug),
+        intensity: (typeof intensity === 'number' ? intensity : (parseInt(intensity, 10) || null)),
+        comment: comment || '', dependent: true, source: 'sensation'
+      }, when.toISOString(), sensDepId);
+      return res.json({ ok: true, dependent_id: sensDepId, journey_id: depJid,
+                        sensations: sensRows.length, locations: locRows.length });
+    }
 
     // Keep the freeform diary record (backward compat with existing recent-list UI)
     const text = `Sensation: ${sensRows.map(s => s.label_ru).join(', ')} @ ${locRows.map(l => l.label_ru).join(', ')}${comment ? ' — ' + comment : ''}`;
