@@ -231,6 +231,26 @@
     return { from: from, to: to, span: to - from };
   }
   function inWindow(t, dom) { var ms = tms(t); return ms >= dom.from && ms <= dom.to; }
+
+  // PR94 (#7): map a visible span (in days) to the closest period preset so a manual
+  // wheel/pinch zoom lights up the matching period button. Visual indication ONLY —
+  // st.period and the data window are untouched (no forced snap). Thresholds per
+  // Tahir: <8d → week, <32d → month, <100d → 3mo.
+  function periodForSpanDays(d) {
+    if (d <= 2) return 'day';
+    if (d < 8) return 'week';
+    if (d < 32) return 'month';
+    if (d < 100) return '3months';
+    return 'year';
+  }
+  function syncPeriodButtons(container, spanDays) {
+    if (!container || !(spanDays > 0)) return;
+    var seg = container.querySelector('.myc-seg[data-seg="period"]'); if (!seg) return;
+    var key = periodForSpanDays(spanDays);
+    seg.querySelectorAll('button').forEach(function (x) {
+      x.classList.toggle('is-active', x.getAttribute('data-val') === key);
+    });
+  }
   function recompute(events) {
     var emo = events.filter(function (e) { return e.layer === 'emotion'; });
     var pos = emo.filter(function (e) { return e.valence === 'positive'; }).length;
@@ -880,6 +900,7 @@
     // tooltip size and (capped to the zone) the parallel-branch spread.
     var Z = Math.max(0.6, Math.min(3.5, view.pxPerDay / (view._basePxPerDay || view.pxPerDay)));
     st._zoomScale = Z;
+    syncPeriodButtons(T.container, (x1 - x0) / view.pxPerDay);   // PR94 (#7): zoom → period highlight
     var rZ = Math.max(0.85, Math.min(2.2, Z));         // node-radius scale (gentler)
     var labelPx = Math.round(Math.max(10, Math.min(18, 10 * Z)));
     var sOrigin = sx(view.originT), sNow = sx(view.nowT);
@@ -1680,8 +1701,15 @@
       var cx = W / 2, cyc = Hm / 2 - 4;
       var positions = {}; positions[String(center.id)] = { x: cx, y: cyc, e: center, center: true };
       var R = Math.min(W, Hm) * 0.33;
-      neighbours.forEach(function (n, i) {
-        var ang = (Math.PI * 2 * i / Math.max(1, neighbours.length)) - Math.PI / 2;
+      // PR94 (#8): small chains used to stack straight top→bottom (start angle -90°),
+      // reading as "три точки сверху вниз" rather than a graph. Lay 1–2 neighbours on
+      // the HORIZONTAL axis (left/right of the hub) so a short chain reads left→right
+      // like a timeline; 3+ neighbours fan around the full ring as before.
+      var ordered = neighbours.slice().sort(function (a, b) { return tms(a.t) - tms(b.t); });
+      ordered.forEach(function (n, i) {
+        var ang;
+        if (ordered.length <= 2) { ang = (i === 0) ? Math.PI : 0; }   // earlier→left, later→right
+        else { ang = (Math.PI * 2 * i / ordered.length) - Math.PI / 2; }
         positions[String(n.id)] = { x: cx + Math.cos(ang) * R, y: cyc + Math.sin(ang) * R, e: n, center: false };
       });
 
@@ -1776,6 +1804,13 @@
   /* ── view: LAYERS (horizontal lanes, wavy baselines) ────────────────────── */
   function renderLayers(svg, W, data, lang, container, st) {
     var dom = layersDomain(data, st);
+    // PR94 (#6): how far we've zoomed into the Layers view (>1 == zoomed in). Drives
+    // the vertical cluster fan + node size so same-timestamp events SEPARATE and grow
+    // as you zoom, instead of staying a tiny fixed stack. Same-instant events share
+    // an x forever (time-zoom can't split them), so the fan is the only separator.
+    var _layFull = domain(data);
+    var zoomF = Math.max(1, (_layFull.span || 1) / Math.max(1, dom.span));
+    var rScale = Math.min(2.2, 1 + (zoomF - 1) * 0.12);
     // PR: keep just enough left gutter for the lane labels (drawn at x:10); drop the
     // old 150px right reservation so the lanes span the stage between the rails.
     var padL = 64, padR = 28, padTop = 46, padBot = 30;
@@ -1843,8 +1878,13 @@
         var cj = ci + 1;
         while (cj < laneEv.length && (laneEv[cj].px - laneEv[ci].px) <= CLUSTER_DX) cj++;
         var n = cj - ci;
-        // spacing: ~6px ideal, compressed so the column fits the lane band
-        var spacing = n > 1 ? Math.min(6.5, (2 * halfBand) / (n - 1)) : 0;
+        // PR94 (#6): ideal spacing grows with zoom (√zoom, capped) so a crowded slot
+        // visibly separates as you zoom in; still clamped so the column fits the band.
+        var idealSp = 6.5 * Math.min(4.5, Math.sqrt(zoomF));
+        var spacing = n > 1 ? Math.min(idealSp, (2 * halfBand) / (n - 1)) : 0;
+        // hit target: shrink in a tight cluster (so neighbours stay individually
+        // tappable), grow back as the fan opens up under zoom.
+        var hitR = spacing > 0 ? Math.max(8, Math.min(15, spacing * 1.15)) : 14;
         for (var k = ci; k < cj; k++) {
           var item = laneEv[k];
           var e = item.e;
@@ -1853,7 +1893,7 @@
           // PR93 (5b): fill by LAYER type using the standalone-NeuroMap palette, not
           // by valence — so each lane reads as its own colour.
           var fill = nmTypeColor(ev);
-          var r = (ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))));
+          var r = ((ly.key === 'practice') ? 3.0 : (2.2 + Math.min(2.6, Math.log(1 + (e.weight || 1))))) * rScale;
           var px = item.px;
           var yOff = (k - ci - (n - 1) / 2) * spacing;     // centre the fan on the baseline
           var cy = baseY(px) + yOff;
@@ -1866,7 +1906,7 @@
           var vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: fill, opacity: '0.96', filter: 'url(#evoGlow)' });
           vis.appendChild(titleNode(ev, lang));
           registerNode(e.id, px, parseFloat(cy.toFixed(1)));
-          laneNodes.appendChild(interactiveNode(vis, ev, container, lang, 14));
+          laneNodes.appendChild(interactiveNode(vis, ev, container, lang, hitR));
         }
         ci = cj;
       }
@@ -1888,6 +1928,7 @@
     hint.textContent = L({ ru: 'колесо / щипок — зум · 2× клик — сброс', en: 'wheel / pinch to zoom · dbl-click to reset', es: 'rueda / pellizco para zoom · doble clic para reiniciar' }, lang);
     g.appendChild(hint);
     svg.appendChild(g);
+    syncPeriodButtons(container, dom.span / DAY_MS);   // PR94 (#7): zoom → period highlight
     attachLayersZoom(svg, W, data, dom, x0, x1, container, st, lang);
   }
 

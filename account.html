@@ -211,6 +211,8 @@ a.dash-tab:hover { text-decoration:none; }
 .nm-view-btn { padding:0.35rem 0.7rem;border-radius:8px;font-size:11px;font-weight:500;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
 .nm-view-btn:hover { border-color:rgba(255,255,255,0.14);color:var(--text-muted); }
 .nm-view-btn.active { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.18);color:var(--text-primary); }
+.nm-date-input { padding:0.3rem 0.5rem;border-radius:8px;font-size:11px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);color:var(--text-muted);cursor:pointer;color-scheme:dark; }
+.nm-date-input:focus { outline:none;border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-filter-btn { padding:0.3rem 0.6rem;border-radius:6px;font-size:10px;font-weight:500;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);color:var(--text-dim);cursor:pointer;transition:all 0.2s; }
 .nm-filter-btn:hover { color:var(--text-muted);border-color:rgba(255,255,255,0.12); }
 .nm-filter-btn.active { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16);color:var(--text-primary); }
@@ -1490,6 +1492,14 @@ a.dash-tab:hover { text-decoration:none; }
             <button class="nm-view-btn" onclick="setNmView('month')" data-i18n="a.tools.view_month">Месяц</button>
             <button class="nm-view-btn" onclick="setNmView('all')" data-i18n="a.tools.view_all">Всё</button>
           </div>
+        </div>
+        <!-- PR94 (#5c): explicit date-range picker for the NeuroMap graph -->
+        <div class="nm-daterange" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0.4rem 0 0;">
+          <input type="date" id="nm-date-from" class="nm-date-input" aria-label="С даты" />
+          <span style="color:var(--text-dim);font-size:11px;">—</span>
+          <input type="date" id="nm-date-to" class="nm-date-input" aria-label="По дату" />
+          <button class="nm-view-btn" onclick="nmApplyDateRange()" data-i18n="a.tools.apply">Применить</button>
+          <button class="nm-view-btn" onclick="nmClearDateRange()" data-i18n="a.tools.reset">Сброс</button>
         </div>
         <!-- 3D toggle + Fullscreen button -->
         <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;gap:0.3rem;">
@@ -5577,6 +5587,22 @@ var nmCustomThoughts = []; // user-added thoughts persisted in session
 var nmCurrentStep = 0;
 var nmSurveyState = {}; // temp state while filling survey
 var nmCurrentView = 'day';
+// PR94 (#5c): explicit from/to range set by the date picker; when present it
+// overrides the Day/Week/Month/All preset until cleared.
+var nmCustomRange = null; // { from:ms, to:ms } | null
+function nmDayStart(offsetDays){ var d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-offsetDays); return d.getTime(); }
+// PR94 (#5d): the active time window (ms). null === no filter ('all'). This is the
+// SINGLE source of truth the v2 graph builder + legacy entries filter both consult,
+// so the period buttons actually crop the rendered graph (they were ignored for the
+// server-deduplicated v2 graph, which is the normal data path now).
+function nmViewRange(){
+  if(nmCustomRange) return nmCustomRange;
+  if(nmCurrentView==='week')  return { from: nmDayStart(6),  to: Infinity };
+  if(nmCurrentView==='month') return { from: nmDayStart(29), to: Infinity };
+  if(nmCurrentView==='day')   return { from: nmDayStart(0),  to: Infinity };
+  return null; // 'all'
+}
+function nmTsInRange(ts){ var r=nmViewRange(); if(!r) return true; return ts>=r.from && ts<=r.to; }
 var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
@@ -6680,12 +6706,33 @@ function updateNmToday(){
 // View toggle
 function setNmView(view){
   nmCurrentView=view;
-  document.querySelectorAll('.nm-view-btn').forEach(function(b){b.classList.toggle('active',b.textContent.toLowerCase().replace('всё','all').replace('день','day').replace('неделя','week').replace('месяц','month')===view);});
-  // Simpler: re-toggle by index
+  nmCustomRange=null;   // PR94 (#5c): a preset clears any custom date range + its inputs
+  var f=document.getElementById('nm-date-from'), t=document.getElementById('nm-date-to');
+  if(f) f.value=''; if(t) t.value='';
+  // toggle by index (the buttons render in day/week/month/all order)
   var btns=document.querySelectorAll('.nm-view-btn');
   var views=['day','week','month','all'];
   btns.forEach(function(b,i){ b.classList.toggle('active',views[i]===view); });
   buildNmGraph();
+}
+// PR94 (#5c): apply an explicit from/to date range from the picker. Either bound is
+// optional (open-ended). Clears the preset-button highlight while active.
+function nmApplyDateRange(){
+  var fv=(document.getElementById('nm-date-from')||{}).value||'';
+  var tv=(document.getElementById('nm-date-to')||{}).value||'';
+  if(!fv && !tv){ nmCustomRange=null; buildNmGraph(); return; }
+  var from = fv ? new Date(fv+'T00:00:00').getTime() : -Infinity;
+  var to   = tv ? new Date(tv+'T23:59:59').getTime() :  Infinity;
+  if(from>to){ var tmp=from; from=to; to=tmp; }   // tolerate swapped inputs
+  nmCustomRange={ from:from, to:to };
+  document.querySelectorAll('.nm-view-btn').forEach(function(b){ b.classList.remove('active'); });
+  buildNmGraph();
+}
+function nmClearDateRange(){
+  nmCustomRange=null;
+  var f=document.getElementById('nm-date-from'), t=document.getElementById('nm-date-to');
+  if(f) f.value=''; if(t) t.value='';
+  setNmView(nmCurrentView||'all');
 }
 
 function nmFilter(f){
@@ -7586,14 +7633,13 @@ function nmBuild3DGraph(){
 // ── Network Graph ──
 function getEntriesForView(){
   var entries=[];
-  var today=new Date();
   var keys=Object.keys(nmData).sort();
   keys.forEach(function(k){
-    var d=new Date(k);
-    var diff=Math.floor((today-d)/(86400000));
-    if(nmCurrentView==='day' && diff>0) return;
-    if(nmCurrentView==='week' && diff>6) return;
-    if(nmCurrentView==='month' && diff>29) return;
+    // PR94 (#5c/#5d): one shared window (nmViewRange) drives both the legacy entries
+    // and the v2 graph, so the custom date picker also crops this path. A day-key has
+    // no time component → compare its end-of-day so "today" isn't excluded.
+    var dayTs=new Date(k).getTime();
+    if(!isNaN(dayTs) && !nmTsInRange(dayTs + 86399000)) return;
     nmData[k].forEach(function(e){ e.dateKey=k; entries.push(e); });
   });
   return entries;
@@ -7637,6 +7683,7 @@ function buildNmGraph(){
     var now=Date.now();
     nmV2Graph.nodes.forEach(function(n){
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
+      if(!nmTsInRange(lastSeen)) return;   // PR94 (#5d/#5c): crop to the selected period / custom range
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
@@ -7704,6 +7751,18 @@ function buildNmGraph(){
     if(nmRepeatFilter && l.count<2) return;
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
+
+  // PR94 (#5d): everything filtered out for this period → show the empty state
+  // instead of a blank canvas, so the period/date controls give visible feedback.
+  if(!nmNodes.length){
+    if(empty){ empty.style.display='flex'; }
+    if(filters){ filters.style.display='none'; }
+    if(analysis){ analysis.style.display='none'; }
+    var _abw=document.getElementById('nm-analyze-btn-wrap'); if(_abw)_abw.style.display='none';
+    if(nmAnimFrame){cancelAnimationFrame(nmAnimFrame);nmAnimFrame=null;}
+    var _c=document.getElementById('nm-canvas'); if(_c){ var _cx=_c.getContext('2d'); _cx.clearRect(0,0,_c.width,_c.height); }
+    return;
+  }
 
   // Init positions — preserve existing node positions
   var canvas=document.getElementById('nm-canvas');
@@ -15000,7 +15059,7 @@ window.pbMove = pbMove;
 <script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=18"></script>
+<script src="assets/js/evolution-path.js?v=19"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=6"></script>
