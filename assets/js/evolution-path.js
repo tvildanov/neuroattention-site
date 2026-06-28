@@ -578,6 +578,20 @@
     if (layer === 'event') return 'rgb(100,220,180)';
     return valStyle(valence).c;
   }
+  // PR93: node fill keyed by NeuroMap NODE TYPE (not valence) so the drill-down
+  // mini-map reads like the standalone NeuroMap tool — emotion=amber, sensation=
+  // cyan, event=violet, thought=lavender, practice=green, insight=cyan. The spine
+  // keeps its own valence palette (cvLayerFill); only the popup uses this.
+  function nmTypeColor(e) {
+    var k = (e && (e.layer || e.kind)) || '';
+    if (k === 'emotion')   return 'rgb(240,184,96)';   // amber
+    if (k === 'sensation') return 'rgb(120,200,235)';  // cyan
+    if (k === 'event')     return 'rgb(186,150,240)';  // violet
+    if (k === 'thought')   return 'rgb(200,180,240)';  // lavender
+    if (k === 'practice')  return '#8DFFC8';            // green
+    if (k === 'insight')   return 'var(--myc-cyan)';
+    return 'rgba(255,255,255,0.55)';
+  }
 
   // compute / persist the pan-zoom view on st.view
   function ensureView(st, data, x0, x1) {
@@ -1550,11 +1564,19 @@
     chain:   { ru: 'Цепочка', en: 'Chain', es: 'Cadena' },
     single:  { ru: 'Событие', en: 'Event', es: 'Evento' },
     openNm:  { ru: 'Открыть в нейромапе', en: 'Open in NeuroMap', es: 'Abrir en NeuroMapa' },
-    noLinks: { ru: 'Связей нет — отдельная запись на спине.', en: 'No links — a standalone entry on the spine.', es: 'Sin enlaces.' }
+    noLinks: { ru: 'Связей нет — отдельная запись на спине.', en: 'No links — a standalone entry on the spine.', es: 'Sin enlaces.' },
+    walkHint:{ ru: 'Нажми на узел, чтобы пройти по цепочке →', en: 'Tap a node to walk the chain →', es: 'Toca un nodo para recorrer la cadena →' },
+    back:    { ru: 'Назад', en: 'Back', es: 'Atrás' }
   };
   function closeMiniNeuromap(container) {
     var ex = container.querySelector('.evo-mini-nm'); if (ex) ex.remove();
     if (container.__miniNmOutside) { document.removeEventListener('mousedown', container.__miniNmOutside, true); container.__miniNmOutside = null; }
+  }
+  // PR93: 1-hop neighbours of an event from the painted EVENT_INDEX (real
+  // journey_links), deduped, capped at 8 for a legible ring.
+  function miniNeighbours(ev) {
+    var ns = (ev.links || []).map(function (lk) { return EVENT_INDEX[String(lk.to != null ? lk.to : lk)]; }).filter(Boolean);
+    var seen = {}; return ns.filter(function (n) { if (seen[n.id]) return false; seen[n.id] = 1; return true; }).slice(0, 8);
   }
   function openMiniNeuromap(container, ev, lang, st) {
     closeMiniNeuromap(container);
@@ -1562,85 +1584,132 @@
     var canvas = stageOf(container);
     if (!canvas) return;
 
-    // gather the clicked event + its 1-hop linked neighbours (real journey_links)
-    var center = ev;
-    var neighbours = (ev.links || []).map(function (lk) { return EVENT_INDEX[String(lk.to != null ? lk.to : lk)]; }).filter(Boolean);
-    // dedupe
-    var seen = {}; neighbours = neighbours.filter(function (n) { if (seen[n.id]) return false; seen[n.id] = 1; return true; }).slice(0, 8);
-
     var box = document.createElement('div');
     box.className = 'evo-mini-nm';
-    var W = 460, Hm = 380;
-    var title = neighbours.length ? L(MINI_STR.chain, lang) : L(MINI_STR.single, lang);
+    var W = 480, Hm = 400;
     box.innerHTML =
-      '<div class="evo-mini-head"><span class="evo-mini-title">🧠 ' + escapeHtml(title) + '</span>' +
-      '<button class="evo-mini-x" title="' + L(CARD_STR.close, lang) + '">✕</button></div>' +
+      '<div class="evo-mini-head">' +
+        '<button class="evo-mini-back" title="' + L(MINI_STR.back, lang) + '" style="display:none;">←</button>' +
+        '<span class="evo-mini-title">🧠 <span class="evo-mini-ttl"></span></span>' +
+        '<button class="evo-mini-x" title="' + L(CARD_STR.close, lang) + '">✕</button></div>' +
       '<div class="evo-mini-body"></div>' +
       '<div class="evo-mini-foot">' +
-        '<span class="evo-mini-note">' + (neighbours.length ? '' : escapeHtml(L(MINI_STR.noLinks, lang))) + '</span>' +
+        '<span class="evo-mini-note"></span>' +
         '<button class="evo-mini-open">' + L(MINI_STR.openNm, lang) + ' →</button>' +
       '</div>';
     canvas.appendChild(box);
 
     var body = box.querySelector('.evo-mini-body');
-    var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + Hm, width: '100%', height: '100%', style: 'display:block;' });
-    svg.insertAdjacentHTML('afterbegin', defsMarkup());
-    body.appendChild(svg);
+    var ttlEl = box.querySelector('.evo-mini-ttl');
+    var noteEl = box.querySelector('.evo-mini-note');
+    var backBtn = box.querySelector('.evo-mini-back');
+    var nav = [];        // breadcrumb stack of previously-centred events
+    var current = ev;    // event currently at the hub
 
-    var cx = W / 2, cyc = Hm / 2 - 6;
-    // radial placement: center node + neighbours on a ring
-    var positions = {}; positions[String(center.id)] = { x: cx, y: cyc, e: center, center: true };
-    var R = Math.min(W, Hm) * 0.34;
-    neighbours.forEach(function (n, i) {
-      var ang = (Math.PI * 2 * i / Math.max(1, neighbours.length)) - Math.PI / 2;
-      positions[String(n.id)] = { x: cx + Math.cos(ang) * R, y: cyc + Math.sin(ang) * R, e: n, center: false };
-    });
+    // Render the graph centred on `center`: hub node + its 1-hop neighbours on a
+    // ring, with directed (chronological) links. Re-callable — clicking a satellite
+    // re-centres on it, so the user can WALK the whole web one hop at a time.
+    function draw(center) {
+      current = center;
+      var neighbours = miniNeighbours(center);
+      ttlEl.textContent = neighbours.length ? L(MINI_STR.chain, lang) : L(MINI_STR.single, lang);
+      noteEl.textContent = neighbours.length ? L(MINI_STR.walkHint, lang) : L(MINI_STR.noLinks, lang);
+      backBtn.style.display = nav.length ? '' : 'none';
+      body.innerHTML = '';
 
-    // links: center↔neighbour, plus neighbour↔neighbour if they link each other
-    var linkG = el('g');
-    function drawLink(a, b, kind) {
-      var pa = positions[String(a)], pb = positions[String(b)];
-      if (!pa || !pb) return;
-      var midX = (pa.x + pb.x) / 2, midY = (pa.y + pb.y) / 2 - 18;
-      linkG.appendChild(el('path', { d: 'M' + pa.x.toFixed(1) + ' ' + pa.y.toFixed(1) + ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) + ' ' + pb.x.toFixed(1) + ' ' + pb.y.toFixed(1),
-        fill: 'none', stroke: kind === 'correlation' ? 'rgba(120,220,255,0.5)' : 'rgba(255,255,255,0.35)', 'stroke-width': '1.2', filter: 'url(#evoGlow)' }));
+      var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + Hm, width: '100%', height: '100%', style: 'display:block;' });
+      svg.insertAdjacentHTML('afterbegin', defsMarkup());
+      // directed-link arrowhead (sits at the later-in-time end)
+      var md = el('defs');
+      md.innerHTML = '<marker id="evoArrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="rgba(255,255,255,0.55)"/></marker>';
+      svg.appendChild(md);
+      body.appendChild(svg);
+
+      var cx = W / 2, cyc = Hm / 2 - 4;
+      var positions = {}; positions[String(center.id)] = { x: cx, y: cyc, e: center, center: true };
+      var R = Math.min(W, Hm) * 0.33;
+      neighbours.forEach(function (n, i) {
+        var ang = (Math.PI * 2 * i / Math.max(1, neighbours.length)) - Math.PI / 2;
+        positions[String(n.id)] = { x: cx + Math.cos(ang) * R, y: cyc + Math.sin(ang) * R, e: n, center: false };
+      });
+
+      // links: undirected pairs, drawn once, oriented earlier→later by time so the
+      // arrow shows the chain's direction (тревога → работа → не успеваю).
+      var linkG = el('g'); var done = {};
+      function drawLink(a, b, kind) {
+        var ka = String(a), kb = String(b);
+        var pa = positions[ka], pb = positions[kb];
+        if (!pa || !pb || ka === kb) return;
+        var key = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+        if (done[key]) return; done[key] = 1;
+        // orient by time: from earlier event to later event
+        var from = pa, to = pb;
+        if (tms(pa.e.t) > tms(pb.e.t)) { from = pb; to = pa; }
+        // trim endpoints to node edges so the arrowhead lands on the rim
+        var dx = to.x - from.x, dy = to.y - from.y, len = Math.hypot(dx, dy) || 1;
+        var ux = dx / len, uy = dy / len;
+        var rFrom = from.center ? 17 : 12, rTo = to.center ? 17 : 12;
+        var x1 = from.x + ux * rFrom, y1 = from.y + uy * rFrom;
+        var x2 = to.x - ux * (rTo + 4), y2 = to.y - uy * (rTo + 4);
+        var midX = (x1 + x2) / 2, midY = (y1 + y2) / 2 - Math.min(28, len * 0.16);
+        linkG.appendChild(el('path', {
+          d: 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' Q' + midX.toFixed(1) + ' ' + midY.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1),
+          fill: 'none', stroke: kind === 'correlation' ? 'rgba(120,220,255,0.55)' : 'rgba(255,255,255,0.4)',
+          'stroke-width': '1.4', 'marker-end': 'url(#evoArrow)', filter: 'url(#evoGlow)' }));
+      }
+      (center.links || []).forEach(function (lk) { drawLink(center.id, lk.to != null ? lk.to : lk, lk.kind); });
+      neighbours.forEach(function (n) { (n.links || []).forEach(function (lk) { var to = lk.to != null ? lk.to : lk; if (positions[String(to)]) drawLink(n.id, to, lk.kind); }); });
+      svg.appendChild(linkG);
+
+      // nodes — coloured by NeuroMap type, real content as the label, type name as a
+      // dim caption. Satellites are clickable (re-centre); the hub is highlighted.
+      Object.keys(positions).forEach(function (k) {
+        var p = positions[k], e = p.e;
+        var r = p.center ? 17 : 12;
+        var g = el('g', { 'class': 'evo-mini-node' + (p.center ? ' is-hub' : ''), tabindex: '0' });
+        var node = nodeShape(e.layer, p.x, p.y, r);
+        node.setAttribute('fill', nmTypeColor(e));
+        node.setAttribute('filter', 'url(#evoGlow)');
+        node.setAttribute('opacity', '0.97');
+        if (p.center) { node.setAttribute('stroke', 'rgba(255,255,255,0.85)'); node.setAttribute('stroke-width', '1.6'); }
+        g.appendChild(node);
+        // real content (тревога / работа / не успеваю)
+        var lbl = el('text', { x: p.x.toFixed(1), y: (p.y + r + 13).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-label' });
+        lbl.textContent = truncate(prettyTitle(e, lang), 22);
+        g.appendChild(lbl);
+        // type caption (Эмоция / Событие / Мысль …)
+        var typ = el('text', { x: p.x.toFixed(1), y: (p.y + r + 24).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-typecap' });
+        typ.textContent = humanLabel(e.kind || e.layer, lang);
+        g.appendChild(typ);
+        // native tooltip with full content + time
+        var tt = el('title'); tt.textContent = prettyTitle(e, lang) + ' · ' + humanLabel(e.kind || e.layer, lang) + (e.t ? ' · ' + fmtAxis(e.t, lang) : '');
+        g.appendChild(tt);
+        if (!p.center) {
+          g.style.cursor = 'pointer';
+          var walk = function (domEv) { if (domEv) domEv.stopPropagation(); nav.push(current); draw(e); };
+          g.addEventListener('click', walk);
+          g.addEventListener('keydown', function (ev2) { if (ev2.key === 'Enter' || ev2.key === ' ') walk(ev2); });
+        }
+        svg.appendChild(g);
+      });
     }
-    (center.links || []).forEach(function (lk) { drawLink(center.id, lk.to != null ? lk.to : lk, lk.kind); });
-    neighbours.forEach(function (n) { (n.links || []).forEach(function (lk) { var to = lk.to != null ? lk.to : lk; if (positions[String(to)] && String(to) !== String(center.id)) drawLink(n.id, to, lk.kind); }); });
-    svg.appendChild(linkG);
 
-    // nodes
-    Object.keys(positions).forEach(function (k) {
-      var p = positions[k], e = p.e;
-      var r = p.center ? 16 : 11;
-      var fill = layerFill(e.layer, e.valence);
-      var node = nodeShape(e.layer, p.x, p.y, r);
-      node.setAttribute('fill', fill);
-      node.setAttribute('filter', 'url(#evoGlow)');
-      node.setAttribute('opacity', e.layer === 'emotion' ? String(valStyle(e.valence).o) : '0.96');
-      if (p.center) node.setAttribute('stroke', 'rgba(255,255,255,0.8)'), node.setAttribute('stroke-width', '1.4');
-      svg.appendChild(node);
-      var lbl = el('text', { x: p.x.toFixed(1), y: (p.y + r + 13).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-label' });
-      lbl.textContent = truncate(prettyTitle(e, lang), 20);
-      svg.appendChild(lbl);
-      var typ = el('text', { x: p.x.toFixed(1), y: (p.y + 4).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-type' });
-      typ.textContent = humanLabel(e.kind || e.layer, lang).slice(0, 3);
-      svg.appendChild(typ);
-    });
-
+    backBtn.addEventListener('click', function () { var prev = nav.pop(); if (prev) draw(prev); });
     box.querySelector('.evo-mini-x').addEventListener('click', function () { closeMiniNeuromap(container); });
-    // 5.3: open the FULL neuromap in a NEW TAB, deep-linked to this node + its chain,
-    // so the embedded path stays put. account.html reads ?focus / ?chain on load.
+    // 5.3: open the FULL neuromap in a NEW TAB, deep-linked to the CURRENT hub + its
+    // chain, so the embedded path stays put. account.html reads ?focus / ?chain.
     box.querySelector('.evo-mini-open').addEventListener('click', function () {
-      var chainIds = [center.id].concat(neighbours.map(function (n) { return n.id; }));
+      var chainIds = [current.id].concat(miniNeighbours(current).map(function (n) { return n.id; }));
       var url = '/account.html?tab=tools&subtab=neuromap' +
-                '&focus=' + encodeURIComponent(center.id) +
+                '&focus=' + encodeURIComponent(current.id) +
                 '&chain=' + encodeURIComponent(chainIds.join(','));
       window.open(url, '_blank', 'noopener,noreferrer');
     });
     // outside-click closes
     container.__miniNmOutside = function (e) { if (!box.contains(e.target) && !e.target.closest('.evo-node')) closeMiniNeuromap(container); };
     setTimeout(function () { document.addEventListener('mousedown', container.__miniNmOutside, true); }, 0);
+
+    draw(ev);
   }
 
   /* ── view: LAYERS (horizontal lanes, wavy baselines) ────────────────────── */
