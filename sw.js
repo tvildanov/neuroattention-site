@@ -4,6 +4,10 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v16: cache-bust for PR#104 (NeuroMap — default «Всё» period so historical
+//      sensations show; split overloaded 'area' into body→layer 1 / life-sphere→
+//      layer 3 "Образы"; sticky sensation bubbles draw glued, no arrow line;
+//      mobile «Заполнить эмоцию» live-graph restored as a floating 👁 inset)
 // v15: cache-bust for PR#103 (NeuroMap mobile fixes — custom-painted layer
 //      checkboxes, body-part anchors folded into layer 1, layer toggles stay
 //      visible when all layers are off, hub mini-calendar keeps its 7-col grid)
@@ -33,7 +37,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v15';
+var CACHE_NAME = 'na-practices-v16';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
