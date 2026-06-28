@@ -287,19 +287,25 @@
       var roleLbl = function (rv) { var r = ROLES.filter(function (x) { return x.v === rv; })[0]; return r ? L(r.o) : (rv || L(T.member)); };
       var meId = (typeof window.currentUser !== 'undefined' && window.currentUser) ? String(window.currentUser.id) : null;
       var youLbl = L({ ru: 'вы', en: 'you', es: 'tú' });
-      // PR93: the family owner can remove any adult member except themselves. This
-      // is the only way to clear a legacy "member" added through the old relationship
-      // picker (e.g. a "son" card created before Add Child existed).
-      // Structural owner == teams.owner_user_id. NOT my_role: a family creator's
-      // my_role is their KIN role ('parent', …), so the owner check must use the id.
-      var iOwnFamily = fam && meId && (String(fam.owner_user_id) === meId || fam.my_role === 'owner');
+      // PR94 (#3): show ✕ Remove on EVERY adult member card except the caller's own.
+      // PR93 gated this on detecting structural ownership (owner_user_id === meId),
+      // but that silently failed whenever ownership couldn't be resolved — a legacy
+      // family whose owner_user_id is someone else, or currentUser not yet loaded —
+      // so Tahir never saw the button. The DELETE endpoint enforces the real
+      // permission (owner, or any family member removing a non-owner); the button is
+      // just an affordance, so showing it broadly is safe and clears legacy "сын"
+      // cards regardless of who structurally owns the family.
+      // A self card never gets Remove (you can't remove yourself — you'd lose the
+      // family from your list); its kin-role tag is suppressed so a broken self row
+      // ("you" tagged as 'сын') doesn't masquerade as a separate person.
       (state.members || []).forEach(function (mem) {
         var isMe = meId && String(mem.id) === meId;
+        var roleTag = isMe ? '' : esc(roleLbl(mem.role));
         html += '<div class="ft-card">' +
                 '<div class="ft-av">🧑</div>' +
                 '<div class="ft-meta"><div class="ft-name">' + esc(mem.display_name || mem.email || '—') + (isMe ? ' <span class="ft-chip">' + esc(youLbl) + '</span>' : '') + '</div>' +
-                '<div class="ft-tags">' + esc(roleLbl(mem.role)) + '</div></div>' +
-                (iOwnFamily && !isMe
+                '<div class="ft-tags">' + roleTag + '</div></div>' +
+                (!isMe
                   ? '<button class="ft-iconbtn ft-danger ft-del-mem" data-mid="' + esc(String(mem.id)) + '" data-name="' + esc(mem.display_name || mem.email || '') + '" title="' + esc(L(T.removeMember)) + '">✕</button>'
                   : '') +
                 '</div>';
@@ -378,7 +384,9 @@
         if (!fam) return;
         var nm = b.getAttribute('data-name') || '';
         if (!confirm(L(T.confirmRemoveMember).replace('%s', nm))) return;
-        api('/api/teams/' + fam.id + '/members/' + b.getAttribute('data-mid'), { method: 'DELETE' }).then(reload);
+        api('/api/teams/' + fam.id + '/members/' + b.getAttribute('data-mid'), { method: 'DELETE' })
+          .then(reload)
+          .catch(function (e) { alert((L(T.err) || 'Error') + ': ' + (e && e.message || e)); });
       };
     });
     container.querySelectorAll('.ft-view-path, .ft-dep-open').forEach(function (b) {
