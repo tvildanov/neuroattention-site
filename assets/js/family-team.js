@@ -290,7 +290,9 @@
       // PR93: the family owner can remove any adult member except themselves. This
       // is the only way to clear a legacy "member" added through the old relationship
       // picker (e.g. a "son" card created before Add Child existed).
-      var iOwnFamily = fam && fam.my_role === 'owner';
+      // Structural owner == teams.owner_user_id. NOT my_role: a family creator's
+      // my_role is their KIN role ('parent', …), so the owner check must use the id.
+      var iOwnFamily = fam && meId && (String(fam.owner_user_id) === meId || fam.my_role === 'owner');
       (state.members || []).forEach(function (mem) {
         var isMe = meId && String(mem.id) === meId;
         html += '<div class="ft-card">' +
