@@ -5683,8 +5683,13 @@ function nmGetNodeColor(n){
   }
   // Practice nodes: bright white-cyan
   if(n.type==='practice') return 'rgba(220,240,255,';
+  // PR94 (#10): sensation layer (1, "Ощущения") had NO entry → fell to the dim grey
+  // fallback below and read as "тёмный/невидимый" on the black canvas. Cyan, matching
+  // the Evolution Path sensation colour.
+  if(n.type==='sensation') return 'rgba(120,200,235,';
   // Other layers: subtle neutral tones by layer
   var layerTones={
+    1:'rgba(120,200,235,', // Ощущения - cyan
     3:'rgba(140,180,255,', // Образы - blue
     4:'rgba(200,180,240,', // Понятия - lavender
     5:'rgba(200,180,140,', // Смыслы - warm
@@ -6072,13 +6077,9 @@ function buildLiveGraph(){
       var fade=(typeof n._fade==='number')?n._fade:1;
       var r=14;
       var drawR=r*fade;
-      var col;
-      if(n.type==='emotion') col=isNegEmotion(n.label)?'rgba(255,120,120,':'rgba(120,255,160,';
-      else if(n.type==='area') col='rgba(140,180,255,';
-      else if(n.type==='cause') col='rgba(255,180,100,';
-      else if(n.type==='event') col='rgba(100,220,180,';
-      else if(n.type==='practice') col='rgba(0,224,255,';
-      else col='rgba(200,160,255,';
+      // PR94 (#10): use the single nmGetNodeColor source (was inline + missing the
+      // sensation case → sensation nodes rendered the same as 'else'/thought).
+      var col=nmGetNodeColor(n);
       // Glow
       ctx.globalAlpha=fade;
       ctx.beginPath();ctx.arc(n.x,n.y,drawR+8,0,Math.PI*2);
@@ -6865,7 +6866,7 @@ function openFsMobileBottomSheet(node){
   var bs=document.getElementById('nm-fs-bottomsheet');
   var content=document.getElementById('nm-fs-bs-content');
   if(!bs||!content) return;
-  var layerColors={1:'rgba(180,200,220,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
+  var layerColors={1:'rgba(120,200,235,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
   var layerNum=nmTypeToLayer(node.type);
   var layerName=nmTypeToLayerName(node.type);
   var valTxt=node.valence<0?'утечка':'ресурс'; if(node.valence===0)valTxt='нейтрально';
@@ -7257,7 +7258,7 @@ function openFsDrilldown(node){
   var panel=document.getElementById('nm-fs-drilldown');
   if(!panel) return;
   panel.style.display='block';
-  var layerColors={1:'rgba(180,200,220,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
+  var layerColors={1:'rgba(120,200,235,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
   var layerNum=nmTypeToLayer(node.type);
   var layerName=nmTypeToLayerName(node.type);
   var badge=document.getElementById('nm-fs-dd-type-badge');
@@ -8163,7 +8164,7 @@ function openNmDrilldown(node){
   panel.style.display='block';
 
   // Type colors
-  var layerColors={1:'rgba(180,200,220,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
+  var layerColors={1:'rgba(120,200,235,0.8)',2:'rgba(255,120,120,0.8)',3:'rgba(140,180,255,0.8)',4:'rgba(200,160,255,0.8)',5:'rgba(255,180,100,0.8)',6:'rgba(100,220,180,0.8)'};
   var layerNum=nmTypeToLayer(node.type);
   var layerName=nmTypeToLayerName(node.type);
 
