@@ -1059,6 +1059,83 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_slug ON human_conditions(slug)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_human_conditions_cat ON human_conditions(category)`;
 
+    // ── Migration 023: Gynecological / pregnancy / lactation conditions (PR #100) ──
+    //    Mirrors migrations/023_gynecological_conditions.sql. Female-anatomy medical
+    //    conditions for the Human Atlas → Conditions tab. Uses ONLY region slugs that
+    //    already exist in SEED_REGION_INFO (Phase 0 female anatomy + endocrine/GI):
+    //    uterus, ovaries, fallopian-tubes, cervix, vagina, breasts, placenta,
+    //    pancreas, stomach, kidneys, hypothalamus, pituitary, medulla. New category
+    //    'gynecological' (i18n label in account.html CAT map). Idempotent: insert-if-
+    //    missing, then refresh affected_region_ids/category on re-run. Placed AFTER the
+    //    human_conditions CREATE so the table is guaranteed to exist.
+    try {
+      const GYN_CONDS = [
+        { slug:'endometriosis', name_en:'Endometriosis', name_ru:'Эндометриоз', name_es:'Endometriosis',
+          desc_en:'A condition where endometrial-like tissue grows outside the uterus, causing pain and menstrual disruption.', desc_ru:'Заболевание, при котором эндометрий растёт за пределами полости матки, вызывая боль и нарушения цикла.', desc_es:'Una afección en la que tejido similar al endometrio crece fuera del útero, causando dolor y alteraciones del ciclo.',
+          regions:['uterus','ovaries','fallopian-tubes'],
+          imp_en:'Pain, inflammation and cycle changes affect wellbeing and fertility.', imp_ru:'Боль, воспаление и нарушения цикла влияют на самочувствие и фертильность.', imp_es:'El dolor, la inflamación y los cambios del ciclo afectan el bienestar y la fertilidad.',
+          rec_en:'Gynecological care, pain management and hormonal therapy when indicated.', rec_ru:'Наблюдение гинеколога, обезболивание и гормональная терапия по показаниям.', rec_es:'Atención ginecológica, manejo del dolor y terapia hormonal cuando esté indicada.', sev:'moderate' },
+        { slug:'pcos', name_en:'Polycystic ovary syndrome', name_ru:'СПКЯ (синдром поликистозных яичников)', name_es:'Síndrome de ovario poliquístico',
+          desc_en:'An endocrine disorder with multiple ovarian cysts, hormonal imbalance and irregular cycles.', desc_ru:'Эндокринное расстройство, характеризующееся множественными кистами в яичниках, гормональным дисбалансом и нарушением цикла.', desc_es:'Un trastorno endocrino con múltiples quistes ováricos, desequilibrio hormonal y ciclos irregulares.',
+          regions:['ovaries','hypothalamus','pituitary'],
+          imp_en:'Hormonal balance, cycle, metabolism and fertility are affected.', imp_ru:'Затронуты гормональный баланс, цикл, обмен веществ и фертильность.', imp_es:'Se afectan el equilibrio hormonal, el ciclo, el metabolismo y la fertilidad.',
+          rec_en:'Nutrition, movement, weight management and endocrine care.', rec_ru:'Питание, движение, контроль веса и эндокринологическое ведение.', rec_es:'Nutrición, movimiento, control del peso y atención endocrina.', sev:'moderate' },
+        { slug:'uterine-fibroids', name_en:'Uterine fibroids', name_ru:'Миома матки', name_es:'Miomas uterinos',
+          desc_en:'Benign muscular tumours (fibroids) growing in the uterus.', desc_ru:'Доброкачественные опухоли (миомы) в матке.', desc_es:'Tumores musculares benignos (miomas) que crecen en el útero.',
+          regions:['uterus'],
+          imp_en:'May cause heavy periods, pelvic pressure and discomfort.', imp_ru:'Возможны обильные менструации, давление в тазу и дискомфорт.', imp_es:'Pueden causar menstruaciones abundantes, presión pélvica y molestias.',
+          rec_en:'Monitoring, symptom control and treatment when indicated.', rec_ru:'Наблюдение, контроль симптомов и лечение по показаниям.', rec_es:'Seguimiento, control de síntomas y tratamiento cuando esté indicado.', sev:'mild' },
+        { slug:'cervical-dysplasia', name_en:'Cervical dysplasia', name_ru:'Дисплазия шейки матки', name_es:'Displasia cervical',
+          desc_en:'Abnormal development of cervical cells, a precancerous change.', desc_ru:'Аномальное развитие клеток шейки матки, предраковое состояние.', desc_es:'Desarrollo anormal de las células del cuello uterino, una condición precancerosa.',
+          regions:['cervix'],
+          imp_en:'Early detection and follow-up reduce the risk of progression.', imp_ru:'Раннее выявление и наблюдение снижают риск прогрессирования.', imp_es:'La detección temprana y el seguimiento reducen el riesgo de progresión.',
+          rec_en:'Regular screening (Pap test), follow-up and treatment when indicated.', rec_ru:'Регулярный скрининг (Пап-тест), наблюдение и лечение по показаниям.', rec_es:'Cribado regular (Papanicolaou), seguimiento y tratamiento cuando esté indicado.', sev:'moderate' },
+        { slug:'vaginitis', name_en:'Vaginitis', name_ru:'Вагинит', name_es:'Vaginitis',
+          desc_en:'Inflammation of the vaginal lining, often from infection or irritation.', desc_ru:'Воспаление слизистой влагалища.', desc_es:'Inflamación de la mucosa vaginal, a menudo por infección o irritación.',
+          regions:['vagina'],
+          imp_en:'Discomfort, itching and discharge affect wellbeing.', imp_ru:'Дискомфорт, зуд и выделения влияют на самочувствие.', imp_es:'Las molestias, el picor y el flujo afectan el bienestar.',
+          rec_en:'Hygiene, identifying the cause and treatment as prescribed.', rec_ru:'Гигиена, выявление причины и лечение по назначению врача.', rec_es:'Higiene, identificación de la causa y tratamiento según indicación.', sev:'mild' },
+        { slug:'gestational-diabetes', name_en:'Gestational diabetes', name_ru:'Гестационный диабет', name_es:'Diabetes gestacional',
+          desc_en:'Diabetes that develops during pregnancy from altered glucose regulation.', desc_ru:'Диабет, развивающийся во время беременности.', desc_es:'Diabetes que se desarrolla durante el embarazo por una regulación alterada de la glucosa.',
+          regions:['pancreas','uterus','placenta'],
+          imp_en:'Glucose levels affect the pregnancy and fetal health.', imp_ru:'Уровень глюкозы влияет на течение беременности и здоровье плода.', imp_es:'Los niveles de glucosa afectan el embarazo y la salud fetal.',
+          rec_en:'Glucose monitoring, nutrition, movement and obstetric care.', rec_ru:'Контроль глюкозы, питание, движение и наблюдение акушера.', rec_es:'Monitoreo de glucosa, nutrición, movimiento y atención obstétrica.', sev:'moderate' },
+        { slug:'preeclampsia', name_en:'Preeclampsia', name_ru:'Преэклампсия', name_es:'Preeclampsia',
+          desc_en:'A pregnancy complication with high blood pressure and organ stress.', desc_ru:'Осложнение беременности, характеризующееся высоким давлением и повреждением органов.', desc_es:'Una complicación del embarazo con presión arterial alta y daño orgánico.',
+          regions:['placenta','kidneys','medulla','hypothalamus'],
+          imp_en:'High blood pressure strains the kidneys, brain and placenta and needs monitoring.', imp_ru:'Высокое давление нагружает почки, мозг и плаценту — требует наблюдения.', imp_es:'La presión alta sobrecarga los riñones, el cerebro y la placenta y requiere vigilancia.',
+          rec_en:'Close monitoring, blood pressure control and timely medical care.', rec_ru:'Тщательное наблюдение, контроль давления и своевременная медицинская помощь.', rec_es:'Vigilancia estrecha, control de la presión y atención médica oportuna.', sev:'severe' },
+        { slug:'hyperemesis-gravidarum', name_en:'Hyperemesis gravidarum', name_ru:'Гиперемезис беременных', name_es:'Hiperémesis gravídica',
+          desc_en:'A severe form of pregnancy nausea with persistent vomiting.', desc_ru:'Тяжёлая форма раннего токсикоза с многократной рвотой.', desc_es:'Una forma grave de náusea del embarazo con vómitos persistentes.',
+          regions:['stomach','medulla','hypothalamus'],
+          imp_en:'Persistent vomiting disrupts nutrition, hydration and wellbeing.', imp_ru:'Многократная рвота нарушает питание, гидратацию и самочувствие.', imp_es:'Los vómitos persistentes alteran la nutrición, la hidratación y el bienestar.',
+          rec_en:'Hydration, small frequent meals and medical support.', rec_ru:'Гидратация, дробное питание и медицинская поддержка.', rec_es:'Hidratación, comidas pequeñas y frecuentes y apoyo médico.', sev:'moderate' },
+        { slug:'placenta-previa', name_en:'Placenta previa', name_ru:'Предлежание плаценты', name_es:'Placenta previa',
+          desc_en:'An abnormal placental position covering or near the cervix.', desc_ru:'Аномальное расположение плаценты, перекрывающее или прилегающее к шейке матки.', desc_es:'Una posición anormal de la placenta que cubre o está cerca del cuello uterino.',
+          regions:['placenta','uterus','cervix'],
+          imp_en:'The placental position raises bleeding risk and needs monitoring.', imp_ru:'Положение плаценты повышает риск кровотечения и требует наблюдения.', imp_es:'La posición de la placenta aumenta el riesgo de sangrado y requiere vigilancia.',
+          rec_en:'Obstetric monitoring, activity limits and a delivery plan.', rec_ru:'Наблюдение акушера, ограничение нагрузок и план родоразрешения.', rec_es:'Vigilancia obstétrica, límites de actividad y un plan de parto.', sev:'severe' },
+        { slug:'mastitis', name_en:'Mastitis', name_ru:'Мастит', name_es:'Mastitis',
+          desc_en:'Inflammation of breast tissue, often during breastfeeding.', desc_ru:'Воспаление молочной железы.', desc_es:'Inflamación del tejido mamario, a menudo durante la lactancia.',
+          regions:['breasts'],
+          imp_en:'Pain, swelling and fever affect feeding and wellbeing.', imp_ru:'Боль, отёк и температура влияют на кормление и самочувствие.', imp_es:'El dolor, la hinchazón y la fiebre afectan la lactancia y el bienestar.',
+          rec_en:'Continued feeding or pumping, rest and medical care if needed.', rec_ru:'Продолжение кормления/сцеживания, отдых и медицинская помощь при необходимости.', rec_es:'Continuar la lactancia o extracción, descanso y atención médica si es necesario.', sev:'mild' },
+        { slug:'breast-engorgement', name_en:'Breast engorgement', name_ru:'Лактостаз', name_es:'Congestión mamaria',
+          desc_en:'A build-up of milk causing breast fullness and discomfort.', desc_ru:'Застой молока в груди.', desc_es:'Una acumulación de leche que causa plenitud y molestias en las mamas.',
+          regions:['breasts'],
+          imp_en:'Fullness and discomfort make feeding harder.', imp_ru:'Переполнение и дискомфорт затрудняют кормление.', imp_es:'La plenitud y las molestias dificultan la lactancia.',
+          rec_en:'Regular feeding or pumping, warm/cold compresses and gentle massage.', rec_ru:'Регулярное кормление/сцеживание, тепло/холод и мягкий массаж.', rec_es:'Lactancia o extracción regular, compresas frío/calor y masaje suave.', sev:'mild' }
+      ];
+      for (const c of GYN_CONDS) {
+        await sql`INSERT INTO human_conditions
+          (slug, name_en, name_ru, name_es, category, description_en, description_ru, description_es, affected_region_ids, impact_summary_en, impact_summary_ru, impact_summary_es, recommendations_en, recommendations_ru, recommendations_es, is_neurodevelopmental, severity_default)
+          VALUES (${c.slug}, ${c.name_en}, ${c.name_ru}, ${c.name_es}, 'gynecological', ${c.desc_en}, ${c.desc_ru}, ${c.desc_es}, ${c.regions}::text[], ${c.imp_en}, ${c.imp_ru}, ${c.imp_es}, ${c.rec_en}, ${c.rec_ru}, ${c.rec_es}, FALSE, ${c.sev})
+          ON CONFLICT (slug) DO NOTHING`;
+        // Idempotent refresh — corrects regions/category if the row pre-existed stale.
+        await sql`UPDATE human_conditions SET affected_region_ids = ${c.regions}::text[], category = 'gynecological' WHERE slug = ${c.slug}`;
+      }
+    } catch (e) { console.error('migration 023 (gynecological conditions):', e.message); }
+
     // (Migration 019 anatomy-seed fixes moved to the TOP of this runner — a
     //  pre-existing tools rename below throws a duplicate-key on re-run and aborts
     //  everything after it, so the fixes must run before that point.)
