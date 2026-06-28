@@ -498,6 +498,23 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_from ON nm_links(from_node_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_nm_links_to ON nm_links(to_node_id)`;
 
+    // Migration 035 (PR#96 Phase 3.2-3.4): cross-link sessions. Tracks which
+    // nm_nodes participated in a single cross-link flow (one Sensation/Diary/
+    // Emotion chain that the user explicitly chained together). When a later
+    // append/sensation save carries the same session_id, the new nodes get linked
+    // to every node already registered under that session — so a diary event,
+    // its emotion walkthrough chain, and any sensations all end up one connected
+    // component on the NeuroMap. Nodes are deduplicated/upserted (shared across
+    // sessions), so session membership lives here, NOT on nm_nodes.
+    await sql`CREATE TABLE IF NOT EXISTS nm_session_nodes (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      session_id TEXT NOT NULL,
+      node_id UUID NOT NULL REFERENCES nm_nodes(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      PRIMARY KEY (user_id, session_id, node_id)
+    )`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_nm_session_nodes_lookup ON nm_session_nodes(user_id, session_id)`;
+
     // Migration 010: test_results
     await sql`CREATE TABLE IF NOT EXISTS test_results (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2074,6 +2091,45 @@ app.delete('/api/neuromap/:id', requireAuth, async (req, res) => {
 
 // ── NEUROMAP V2: GRAPH NODES + LINKS ──
 
+// PR#96 (Phase 3.2-3.4): cross-link bridge. Given a set of freshly-created node
+// ids and a session_id, link every new node to every node already registered
+// under that session (in either direction is fine for an undirected graph; we
+// store existing→new to give a chronological feel), then register the new nodes
+// in the session so the NEXT save in the same flow chains onto them too. Sessions
+// are short-lived (one cross-link hop, reset on "save and exit"), so the existing
+// set is small (a diary event, a sensation pair, or a ~4-node emotion chain) and
+// the cross-product stays tiny. Returns the number of bridge links touched.
+async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso) {
+  if (!sessionId || !Array.isArray(newNodeIds) || !newNodeIds.length) return 0;
+  const sid = String(sessionId).slice(0, 80);
+  const when = whenIso || new Date().toISOString();
+  const ids = [...new Set(newNodeIds.filter(Boolean))];
+  if (!ids.length) return 0;
+  // Existing session nodes that are NOT part of this batch.
+  const existingRows = await sql`
+    SELECT DISTINCT node_id FROM nm_session_nodes
+    WHERE user_id = ${userId} AND session_id = ${sid}`;
+  const existing = existingRows.map(r => r.node_id).filter(id => !ids.includes(id));
+  let made = 0;
+  for (const eid of existing) {
+    for (const nid of ids) {
+      if (eid === nid) continue;
+      await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+                VALUES (${userId}, ${eid}, ${nid}, 1, ${when})
+                ON CONFLICT (user_id, from_node_id, to_node_id)
+                DO UPDATE SET count = nm_links.count + 1, last_seen_at = ${when}`;
+      made++;
+    }
+  }
+  // Register this batch's nodes under the session for the next hop.
+  for (const nid of ids) {
+    await sql`INSERT INTO nm_session_nodes (user_id, session_id, node_id, created_at)
+              VALUES (${userId}, ${sid}, ${nid}, ${when})
+              ON CONFLICT (user_id, session_id, node_id) DO NOTHING`;
+  }
+  return made;
+}
+
 // POST /api/neuromap/v2/append — accept a chain, upsert nodes + links
 app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
   try {
@@ -2173,7 +2229,11 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
       linkResults.push({ from: fromId, to: toId, count: rows[0].count });
     }
 
-    res.json({ ok: true, node_ids: nodeIds, journey_ids: journeyIds, links: linkResults });
+    // PR#96: cross-link bridge — if this append is part of a cross-link flow,
+    // connect its nodes to the rest of the session (and remember them).
+    const sessionLinked = await nmBridgeSession(userId, req.body && req.body.session_id, nodeIds, occurredAt);
+
+    res.json({ ok: true, node_ids: nodeIds, journey_ids: journeyIds, links: linkResults, session_linked: sessionLinked });
   } catch (err) {
     console.error('POST /api/neuromap/v2/append:', err);
     res.status(500).json({ error: 'Internal error' });
@@ -4256,7 +4316,7 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
     const { sensations = [], body_locations = [], comment, practice_block_id,
-            intensity, occurred_at, link_to } = req.body || {};
+            intensity, occurred_at, link_to, session_id } = req.body || {};
     if (!Array.isArray(sensations) || !Array.isArray(body_locations)) {
       return res.status(400).json({ error: 'sensations and body_locations must be arrays' });
     }
@@ -4376,8 +4436,13 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       }
     }
 
+    // PR#96: cross-link bridge — chain these sensation/area nodes onto any other
+    // nodes saved in the same cross-link session (e.g. an emotion walkthrough the
+    // user is linking from/to).
+    const sessionLinked = await nmBridgeSession(userId, session_id, nmNodeIds.concat(sensNodeIds), when.toISOString());
+
     res.json({ ok: true, sensations: sensRows.length, locations: locRows.length,
-               journey_id: sensationEventId, linked: linkedCount });
+               journey_id: sensationEventId, linked: linkedCount, session_linked: sessionLinked });
   } catch (err) {
     console.error('POST /api/neuromap/sensation:', err);
     res.status(500).json({ error: err.message });

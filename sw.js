@@ -4,6 +4,8 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v5: cache-bust for PR#96 (NeuroMap cross-link chains, Phase 3.2-3.4) — runtime
+//     behaviour unchanged; only the CACHE_NAME bump, to purge any stale account.html.
 // v4: cache-bust for PR#95 (NeuroMap hub right-panel) — runtime behaviour
 //     unchanged from v3; only the CACHE_NAME bump, to purge any stale account.html.
 // v3: same safe runtime behaviour as v2 — the only change is the CACHE_NAME bump.
@@ -15,7 +17,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v4';
+var CACHE_NAME = 'na-practices-v5';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
