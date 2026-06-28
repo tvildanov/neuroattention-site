@@ -1310,9 +1310,10 @@ a.dash-tab:hover { text-decoration:none; }
           <!-- Action buttons -->
           <div style="display:none;flex-direction:column;gap:0.6rem;margin-top:1.5rem;" id="diary-actions">
             <button class="btn btn-solid" style="width:100%;justify-content:center;font-size:12px;" onclick="saveAndClose()" data-i18n="a.diary.btn_save_exit">Сохранить и выйти</button>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:12px;" onclick="saveAndNext()" data-i18n="a.diary.btn_add_more">Добавить ещё событие</button>
             <div style="display:flex;gap:0.6rem;">
-              <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px;" onclick="saveAndNext()" data-i18n="a.diary.btn_add_more">Добавить ещё событие</button>
-              <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;border:1px dashed rgba(0,224,255,0.3);" onclick="nmDiaryLinkStub()" data-i18n="a.diary.btn_link">Привязать к эмоции / ощущению</button>
+              <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;border:1px dashed rgba(0,224,255,0.3);" onclick="nmDiaryLinkEmotion()" data-i18n="a.diary.btn_link_emotion">Привязать к эмоции</button>
+              <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:12px;border:1px dashed rgba(0,224,255,0.3);" onclick="nmDiaryLinkSensation()" data-i18n="a.diary.btn_link_sensation">Привязать к ощущению</button>
             </div>
           </div>
         </div>
@@ -5321,6 +5322,34 @@ window.toolsExpandActive = toolsExpandActive;
    ========================================================================== */
 function _pr95t(k,f){ return (typeof t==='function') ? t(k,f) : f; }
 
+/* ============================================================================
+   PR#96 — Phase 3.2-3.4: cross-link chains. A "session" ties together the nodes
+   created across a single chained flow (Diary→Emotion, Sensation→Emotion,
+   Emotion→Sensation). The session id is generated lazily — ONLY when the user
+   actually requests a cross-link — and is passed to every subsequent save so the
+   server links the new nodes to the prior ones. It is reset once a terminal
+   "save & exit" closes the flow (so independent saves never link by accident).
+
+   nmSessionHandoff = true means "the next overlay that opens is the continuation
+   of a cross-link — keep the session". Each flow-opener consumes the flag; if it
+   is not set, the opener clears any stale session (fresh, standalone flow).
+   ========================================================================== */
+var nmSessionId = null;
+var nmSessionHandoff = false;
+function nmGenUuid(){
+  try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){}
+  return 'nms-'+Date.now().toString(16)+'-'+Math.random().toString(16).slice(2,10);
+}
+function nmEnsureSession(){ if(!nmSessionId) nmSessionId = nmGenUuid(); return nmSessionId; }
+function nmClearSession(){ nmSessionId = null; }
+// Called at the top of every flow-opener: keep the session on a handoff, else reset.
+function nmConsumeSessionHandoff(){
+  if (nmSessionHandoff){ nmSessionHandoff = false; }
+  else { nmClearSession(); }
+}
+window.nmEnsureSession = nmEnsureSession;
+window.nmClearSession = nmClearSession;
+
 // ── Sensation Map overlay (relocates #tools-sensation-wrap into a fullscreen
 //    overlay, restores it on close, then refreshes the NeuroMap graph so the
 //    freshly-saved cyan sensation nodes appear). ──
@@ -5330,6 +5359,7 @@ function nmOpenSensationOverlay(){
   var src = document.getElementById('tools-sensation-wrap');
   if (!src) return;
   if (_nmSensState) return; // already open
+  nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
   var placeholder = document.createComment('na-nm-sens');
   src.parentNode.insertBefore(placeholder, src);
   var prevDisplay = src.style.display;
@@ -5351,11 +5381,17 @@ function nmOpenSensationOverlay(){
       submitSensationMap(function(){ refreshGraph(); handle.close(); });
     });
     footer.querySelector('#nm-sens-link-stub').addEventListener('click', function(){
-      // Phase 3.3 — chain a sensation into the emotion walkthrough. Stub for now.
+      // Phase 3.3 — chain this sensation INTO the 6-step emotion walkthrough. Open
+      // a session BEFORE saving so the sensation nodes register under it, then hand
+      // off to the emotion walkthrough (only on a successful save) so its nodes link
+      // back to these. The handoff flag is set inside the success callback so a
+      // failed/empty save leaves no stale session dangling.
+      nmEnsureSession();
       submitSensationMap(function(){
         refreshGraph();
-        nmToast(_pr95t('a.tools.link_soon','Связывание с эмоцией появится в следующем обновлении'));
+        nmSessionHandoff = true;
         handle.close();
+        setTimeout(function(){ openNmSurvey(); }, 80);
       });
     });
   }, {
@@ -5365,6 +5401,8 @@ function nmOpenSensationOverlay(){
       if (placeholder.parentNode){ placeholder.parentNode.insertBefore(src, placeholder); placeholder.parentNode.removeChild(placeholder); }
       src.style.display = prevDisplay;
       _nmSensState = null;
+      // PR#96: end the cross-link session unless we're handing off to the next overlay.
+      if(!nmSessionHandoff) nmClearSession();
       refreshGraph();
     }
   });
@@ -5379,14 +5417,29 @@ function nmOpenDiaryOverlay(prefillDate){
 }
 window.nmOpenDiaryOverlay = nmOpenDiaryOverlay;
 
-// Phase 3.3 cross-link stub for the diary flow.
-function nmDiaryLinkStub(){
+// Phase 3.4 cross-link for the diary flow. The diary event's NeuroMap node is
+// created by saveDiaryEvent()→diaryToGraph()→nmAppendV2(), which carries the
+// session id once one exists — so we open a session BEFORE saving, then hand it
+// off to the chosen next overlay (emotion walkthrough or sensation map). The new
+// nodes there link back to this event, making one connected chain on the map.
+function nmDiaryLinkTo(opener){
+  nmEnsureSession();
+  nmSessionHandoff = true;
   if(saveDiaryEvent()){
-    nmToast(_pr95t('a.tools.link_soon','Связывание с эмоцией появится в следующем обновлении'));
     closeDiaryInput();
-    try { nmLoadV2Graph(); }catch(e){}
+    setTimeout(function(){ opener(); }, 80);
+  } else {
+    // Nothing saved (empty event) — drop the session so nothing links by accident.
+    nmSessionHandoff = false;
+    nmClearSession();
   }
 }
+function nmDiaryLinkEmotion(){ nmDiaryLinkTo(openNmSurvey); }
+function nmDiaryLinkSensation(){ nmDiaryLinkTo(nmOpenSensationOverlay); }
+// Back-compat: the old single button still resolves (defaults to emotion).
+function nmDiaryLinkStub(){ nmDiaryLinkEmotion(); }
+window.nmDiaryLinkEmotion = nmDiaryLinkEmotion;
+window.nmDiaryLinkSensation = nmDiaryLinkSensation;
 window.nmDiaryLinkStub = nmDiaryLinkStub;
 
 // Tiny ephemeral toast for stub actions.
@@ -5560,6 +5613,7 @@ function updateTodaySummary(){
 
 // Diary modal
 function openDiaryInput(prefillDate){
+  nmConsumeSessionHandoff(); // PR#96: fresh diary open clears any stale session
   document.getElementById('diaryModal').classList.add('open');
   // Reset the date to today (or a caller-supplied YYYY-MM-DD) on every fresh open.
   var dEl=document.getElementById('diary-event-date');
@@ -5568,6 +5622,8 @@ function openDiaryInput(prefillDate){
 }
 function closeDiaryInput(){
   document.getElementById('diaryModal').classList.remove('open');
+  // PR#96: a plain close ends any cross-link session; a handoff keeps it.
+  if(!nmSessionHandoff) nmClearSession();
 }
 
 function resetDiaryForm(){
@@ -5990,6 +6046,7 @@ var EMOJI_THOUGHTS = {'Я не справляюсь':'😞','Мне не хва�
 
 // Survey modal
 function openNmSurvey(){
+  nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
   nmCurrentStep=0;
   nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:''};
   nmLivePrevPos={};
@@ -5998,6 +6055,9 @@ function openNmSurvey(){
 }
 function closeNmSurvey(){
   document.getElementById('nmSurveyModal').classList.remove('open');
+  // PR#96: a terminal close ends the cross-link session; a handoff (save & link)
+  // keeps it for the next overlay.
+  if(!nmSessionHandoff) nmClearSession();
 }
 
 function renderNmStepDots(){
@@ -6151,7 +6211,12 @@ function renderNmStep(){
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">'+(rpgT('nm_more_chains_better')||'Чем больше цепочек, тем точнее будет анализ')+'</p>';
     h+='<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">';
     h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">'+(rpgT('nm_add_another_emotion')||'+ Ещё эмоцию')+'</button>';
-    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">'+(rpgT('save_btn')||'Сохранить')+'</button>';
+    h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">'+_pr95t('a.tools.emotion_save_exit','Сохранить и выйти')+'</button>';
+    h+='</div>';
+    // PR#96 (Phase 3.2): cross-link option — save the chain and continue into the
+    // sensation map so the felt sensation links to this emotion.
+    h+='<div style="margin-top:0.75rem;display:flex;justify-content:center;">';
+    h+='<button class="btn btn-ghost" style="font-size:12px;border:1px dashed rgba(0,224,255,0.3);" onclick="nmSaveAndLinkSensation()">'+_pr95t('a.tools.emotion_link_sensation','Сохранить и привязать к ощущению')+'</button>';
     h+='</div></div>';
     content.innerHTML=h;
     // Hide nav buttons on choice screen
@@ -6447,6 +6512,18 @@ function nmFinishAndSave(){
   nmSaveSurvey();
 }
 
+// PR#96 (Phase 3.2): emotion walkthrough → sensation map cross-link. Open a
+// session first (so the emotion nodes are registered), save the walkthrough, then
+// hand off to the sensation overlay — its nodes link back to this emotion chain.
+function nmSaveAndLinkSensation(){
+  nmEnsureSession();
+  nmSessionHandoff = true;
+  document.getElementById('nm-nav-btns').style.display='flex';
+  nmSaveSurvey();
+  setTimeout(function(){ nmOpenSensationOverlay(); }, 80);
+}
+window.nmSaveAndLinkSensation = nmSaveAndLinkSensation;
+
 function nmPrev(){
   if(nmCurrentStep===6){
     nmCurrentStep=5;
@@ -6685,10 +6762,14 @@ function nmAppendV2(chainItems){
   var token=naGetToken();
   if(!token) return;
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  // PR#96: carry the cross-link session id (when active) so the server bridges
+  // these nodes to the rest of the chained flow.
+  var _nmBody = { chain: chainItems };
+  if (nmSessionId) _nmBody.session_id = nmSessionId;
   fetch(base+'/api/neuromap/v2/append',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body:JSON.stringify({chain:chainItems})
+    body:JSON.stringify(_nmBody)
   }).then(function(r){
     if(!r.ok) console.warn('[NM] v2/append status='+r.status);
     else return r.json();
@@ -9975,7 +10056,8 @@ function submitSensationMap(onSaved){
     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ sensations: sensSel, body_locations: locSel, comment: comment,
                            intensity: intensity, occurred_at: occurredAt, link_to: linkTo,
-                           custom_context: customContext, loc_labels: locLabels })
+                           custom_context: customContext, loc_labels: locLabels,
+                           session_id: (nmSessionId || undefined) })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
