@@ -1435,7 +1435,7 @@ app.post('/api/run-migrations', async (req, res) => {
             VALUES (${ev.user_id}, 'sensation', ${lbl}, ${norm}, 'neutral', 1, ${when.toISOString()},
                     ${JSON.stringify({ source: 'sensation', backfill: true })}::jsonb)
             ON CONFLICT (user_id, type, normalized_label, valence)
-            DO UPDATE SET last_seen_at = GREATEST(nm_nodes.last_seen_at, ${when.toISOString()})
+            DO UPDATE SET last_seen_at = nm_nodes.last_seen_at
             RETURNING id`;
           if (r[0]) { sensIds.push(r[0].id); made++; }
         }
