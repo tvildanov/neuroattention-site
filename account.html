@@ -8622,7 +8622,10 @@ function nmSimulate(canvas, initAlpha){
   // parent node reads as a bubble *glued* to that node instead of a free force node,
   // mirroring the PR#97 mini sticky-bubble pattern onto the main force layout.
   // A sensation with NO parent link stays free-floating (valid orphan fallback).
-  var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; });
+  // Each bonded sensation gets a deterministic ring slot around its anchor so the
+  // bubbles spread evenly instead of collapsing onto one point (a pure-repulsion
+  // spread degenerates when nodes coincide: dx=dy=0 → no separating force).
+  var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; n._ringIdx=0; n._ringTot=0; });
   nmLinks.forEach(function(l){
     var s=_nmById[l.source], t=_nmById[l.target];
     l._sticky=false;
@@ -8630,12 +8633,18 @@ function nmSimulate(canvas, initAlpha){
     var sIsSens=(s.type==='sensation'), tIsSens=(t.type==='sensation');
     if(sIsSens===tIsSens) return;          // need exactly one sensation endpoint
     var sens=sIsSens?s:t, anchor=sIsSens?t:s;
-    l._sticky=true;                        // short tight spring (drawn glued)
+    l._sticky=true;                        // slot-pinned to its anchor; drawn glued
     // Prefer a body-location ('area') anchor when a sensation has several parents,
-    // so repulsion-damping keeps it hugging the body part, not an emotion/cause.
+    // so the bubble hugs the body part, not an emotion/cause.
     var prev=sens._anchorId?_nmById[sens._anchorId]:null;
     if(!prev || (anchor.type==='area' && prev.type!=='area')) sens._anchorId=anchor.id;
   });
+  // Assign each bonded sensation a slot index within its anchor's bubble ring.
+  var _slot={};
+  nmNodes.forEach(function(n){
+    if(n.type==='sensation' && n._anchorId){ n._ringIdx=(_slot[n._anchorId]=(_slot[n._anchorId]||0)+1)-1; }
+  });
+  nmNodes.forEach(function(n){ if(n.type==='sensation' && n._anchorId) n._ringTot=_slot[n._anchorId]||1; });
   var ctx=canvas.getContext('2d');
   var W=canvas.width, H=canvas.height;
   var iter=0;
@@ -8666,15 +8675,26 @@ function nmSimulate(canvas, initAlpha){
       var si=nodeIdx[l.source],ti=nodeIdx[l.target];
       if(si===undefined||ti===undefined) return;
       var s=nmNodes[si],t=nmNodes[ti];
+      // PR#102: sticky links (sensation↔body part) are positioned by the ring-slot
+      // force below, not the generic spring — skip them here so the two don't fight.
+      if(l._sticky) return;
       var dx=t.x-s.x, dy=t.y-s.y;
       var d=Math.sqrt(dx*dx+dy*dy)+0.1;
-      // PR#102: sticky links (sensation↔body part) get a short rest length pinned to
-      // the two radii + a stronger spring, so the sensation glues to its area edge.
-      var rest=120, k=0.01;
-      if(l._sticky){ rest=nmNodeR(s)+nmNodeR(t)+10; k=0.06; }
-      var f=alpha*(d-rest)*k;
+      var f=alpha*(d-120)*0.01;
       s.vx+=dx*f; s.vy+=dy*f;
       t.vx-=dx*f; t.vy-=dy*f;
+    });
+    // PR#102: ring-slot force — pin each bonded sensation to a deterministic slot on
+    // a small ring around its anchor (body part), so the bubbles glue to the body
+    // location and spread evenly instead of stacking. Strong (0.22) → dominates, the
+    // bubble tracks its anchor as the anchor drifts under the rest of the layout.
+    nmNodes.forEach(function(n){
+      if(n.type!=='sensation' || !n._anchorId) return;
+      var a=nmNodes[nodeIdx[n._anchorId]]; if(!a) return;
+      var rr=nmNodeR(a)+nmNodeR(n)+12;            // ring radius: hug the anchor's edge
+      var ang=(n._ringTot>1 ? (n._ringIdx/n._ringTot)*Math.PI*2 : 0) - Math.PI/2; // 1 bubble → above
+      var tx=a.x+Math.cos(ang)*rr, ty=a.y+Math.sin(ang)*rr;
+      n.vx+=(tx-n.x)*alpha*0.22; n.vy+=(ty-n.y)*alpha*0.22;
     });
     // Center gravity + apply positions
     nmNodes.forEach(function(n){
