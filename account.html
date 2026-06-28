@@ -3,6 +3,21 @@
 <head>
 <meta charset="utf-8" />
 <script>
+/* PR101: globally guard the pre-existing "IndexSizeError: arc radius is negative"
+   canvas console error. A negative radius (from a calc going sub-zero on narrow
+   mobile viewports or empty users) THROWS and aborts the whole frame's draw.
+   Clamp every arc() radius to >=0 once at the prototype, covering account.html
+   and all canvas modules it loads (evolution-path, collective-path, neuromap). */
+(function(){
+  if(typeof CanvasRenderingContext2D==='undefined') return;
+  var P=CanvasRenderingContext2D.prototype, _arc=P.arc;
+  if(_arc && !_arc._radiusGuarded){
+    P.arc=function(x,y,r,a0,a1,ccw){
+      return _arc.call(this, x, y, (r>0?r:0), a0, a1, ccw);
+    };
+    P.arc._radiusGuarded=true;
+  }
+})();
 (function(){
   var stored=localStorage.getItem("na_lang");
   var explicit=localStorage.getItem("na_lang_explicit");
