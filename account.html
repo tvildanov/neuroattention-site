@@ -268,11 +268,37 @@ a.dash-tab:hover { text-decoration:none; }
 #nm-minical-grid { display:grid!important;grid-template-columns:repeat(7,1fr)!important; }
 @media(max-width:600px){ #nm-minical-grid > div { font-size:10px!important;padding:3px 0!important; } }
 /* ── Mobile NM Survey Modal ── */
+/* PR#104 (#4): the 👁 mini-preview toggle is mobile-only — hidden on desktop where
+   the live graph already fills the right pane. */
+#nm-live-mini-toggle { display:none; }
 @media(max-width:600px){
   #nmSurveyModal { overflow:hidden!important; }
   #nmSurveyModal > div { flex-direction:column!important;width:100%!important;max-width:100%!important;max-height:100vh!important;height:100vh;gap:0!important;box-sizing:border-box!important;padding:0!important; }
   #nmSurveyModal > div > .modal-box { max-width:100%!important;flex:1 1 auto!important;width:100%!important;border-radius:0!important;padding:1rem 1rem 5rem!important;box-sizing:border-box!important;overflow-x:hidden!important; }
-  #nmSurveyModal > div > div:last-child { display:none!important; }
+  /* PR#104 (#4): previously `display:none` — the live "карта вживую" never showed
+     while filling «Заполнить эмоцию» on mobile. Float it as a compact 150×112 inset
+     above the fixed nav bar instead, so the chain visibly grows as you answer. */
+  #nmSurveyModal > #nm-live-graph-wrap,
+  #nmSurveyModal > div > #nm-live-graph-wrap {
+    display:block!important;position:fixed!important;right:10px;bottom:72px;
+    width:150px!important;height:112px!important;min-width:0!important;flex:none!important;
+    border-radius:12px!important;z-index:1011;box-shadow:0 6px 22px rgba(0,0,0,0.55);
+    border:1px solid rgba(0,224,255,0.28)!important;
+  }
+  #nmSurveyModal #nm-live-graph-wrap.nm-mini-collapsed {
+    width:40px!important;height:40px!important;border-radius:50%!important;
+  }
+  #nmSurveyModal #nm-live-graph-wrap.nm-mini-collapsed #nm-live-canvas,
+  #nmSurveyModal #nm-live-graph-wrap.nm-mini-collapsed #nm-live-empty { display:none!important; }
+  #nm-live-mini-toggle {
+    display:flex!important;align-items:center;justify-content:center;position:absolute;
+    top:3px;right:3px;width:26px;height:26px;border-radius:8px;z-index:2;cursor:pointer;
+    background:rgba(8,10,14,0.82);border:1px solid rgba(255,255,255,0.14);
+    color:#fff;font-size:14px;line-height:1;padding:0;
+  }
+  #nmSurveyModal #nm-live-graph-wrap.nm-mini-collapsed #nm-live-mini-toggle {
+    inset:0;width:100%;height:100%;border-radius:50%;background:rgba(8,10,14,0.92);
+  }
   #nm-step-content { overflow-x:hidden;word-break:break-word; }
   #nm-step-content h3 { font-size:0.85rem!important; }
   #nm-nav-btns { position:fixed;bottom:0;left:0;right:0;padding:0.75rem 1rem;background:rgba(10,12,18,0.95);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.06);z-index:1010;box-sizing:border-box!important; }
@@ -1556,10 +1582,10 @@ a.dash-tab:hover { text-decoration:none; }
             <p style="font-size:12px;color:var(--text-muted);margin:0.25rem 0 0;" data-i18n="a.tools.neuromap_desc">Нейронный контур твоей личности. Карта мыслей, эмоций и состояний</p>
           </div>
           <div style="display:flex;gap:4px;">
-            <button class="nm-view-btn active" onclick="setNmView('day')" data-i18n="a.tools.view_day">День</button>
+            <button class="nm-view-btn" onclick="setNmView('day')" data-i18n="a.tools.view_day">День</button>
             <button class="nm-view-btn" onclick="setNmView('week')" data-i18n="a.tools.view_week">Неделя</button>
             <button class="nm-view-btn" onclick="setNmView('month')" data-i18n="a.tools.view_month">Месяц</button>
-            <button class="nm-view-btn" onclick="setNmView('all')" data-i18n="a.tools.view_all">Всё</button>
+            <button class="nm-view-btn active" onclick="setNmView('all')" data-i18n="a.tools.view_all">Всё</button>
           </div>
         </div>
         <!-- PR94 (#5c): explicit date-range picker for the NeuroMap graph -->
@@ -1636,6 +1662,7 @@ a.dash-tab:hover { text-decoration:none; }
             <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;" data-i18n="a.tools.layers">Слои:</span>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="1" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer1">1 Ощущения</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer2">2 Переживания</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer3">3 Образы</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer4">4 Понятия</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="5" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer5">5 Смыслы</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="6" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer6">6 Действия</span></label>
@@ -1761,8 +1788,10 @@ a.dash-tab:hover { text-decoration:none; }
             <button class="btn btn-solid" id="nm-next" onclick="nmNext()" style="flex:1;justify-content:center;" data-i18n="a.tools.nm_next">Далее →</button>
           </div>
         </div>
-        <!-- Right: live graph preview -->
-        <div style="flex:1;min-width:300px;border-radius:20px;overflow:hidden;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);position:relative;">
+        <!-- Right: live graph preview (PR#104 #4: shown as a compact floating inset on
+             mobile instead of display:none, with a 👁 toggle to collapse it) -->
+        <div id="nm-live-graph-wrap" style="flex:1;min-width:300px;border-radius:20px;overflow:hidden;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);position:relative;">
+          <button type="button" id="nm-live-mini-toggle" onclick="nmLiveMiniToggle()" aria-label="Превью" title="Превью">👁</button>
           <canvas id="nm-live-canvas" style="width:100%;height:100%;"></canvas>
           <div id="nm-live-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
             <p style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;margin:0;" data-i18n="a.tools.map_placeholder">Ваша карта появится по мере ответов</p>
@@ -6058,7 +6087,11 @@ var nmData = {}; // { 'YYYY-MM-DD': [ {emotions,areas,causes,thoughts,customThou
 var nmCustomThoughts = []; // user-added thoughts persisted in session
 var nmCurrentStep = 0;
 var nmSurveyState = {}; // temp state while filling survey
-var nmCurrentView = 'day';
+// PR#104 (#1): default to 'all', not 'day'. The Day window cropped the graph to
+// today's events only, so historical sensations (and every older chain) were
+// invisible until the user manually hit «Всё» — Tahir read this as "old sensations
+// aren't saved". They were; the default period was just hiding them.
+var nmCurrentView = 'all';
 // PR94 (#5c): explicit from/to range set by the date picker; when present it
 // overrides the Day/Week/Month/All preset until cleared.
 var nmCustomRange = null; // { from:ms, to:ms } | null
@@ -6100,13 +6133,13 @@ var nmV2Graph = null;     // { nodes:[], links:[] } from /api/neuromap/v2/graph
 var NM_LAYERS = {
   sensation: {num:1, name:'Ощущения', nameShort:'Ощущ.'},
   emotion:   {num:2, name:'Переживания', nameShort:'Переж.'},
-  // PR#103 #2: body-location ('area') nodes are the ANCHORS that sensation bubbles
-  // stick to. They used to live in their own layer 3 ("Образы"), so turning on only
-  // layer 1 ("Ощущения") stripped away every anchor and the bubbles had nothing to
-  // cling to. Tahir's call: body parts belong WITH sensations in layer 1 — one
-  // connected unit that appears/disappears together. So area → layer 1, and the now
-  // empty "Образы" chip is dropped from the filter bars.
-  area:      {num:1, name:'Ощущения', nameShort:'Ощущ.'},
+  // PR#103 #2 / PR#104 #2: 'area' is overloaded — body locations (Sensation Map) AND
+  // life spheres (emotion walkthrough step 2). PR#103 folded ALL into layer 1, which
+  // wrongly dragged family/work/future into "Ощущения". The split is now per-node via
+  // nmNodeLayer()/nmAreaKind(): body-location areas → layer 1 (anchors for sensation
+  // bubbles), life-sphere areas → layer 3 ("Образы"). This num is only the fallback
+  // for type-only lookups; default an unclassified area to its historical home, 3.
+  area:      {num:3, name:'Образы', nameShort:'Образы'},
   thought:   {num:4, name:'Понятия', nameShort:'Понят.'},
   cause:     {num:5, name:'Смыслы', nameShort:'Смысл'},
   context:   {num:5, name:'Смыслы', nameShort:'Смысл'},
@@ -6116,6 +6149,24 @@ var NM_LAYERS = {
 };
 function nmTypeToLayer(type){ return NM_LAYERS[type] ? NM_LAYERS[type].num : 0; }
 function nmTypeToLayerName(type){ return NM_LAYERS[type] ? NM_LAYERS[type].name : type; }
+// PR#104 (#2): the 'area' type is OVERLOADED — the Sensation Map stores body
+// locations (рука/спина/голова) as type='area', and the emotion 6-step walkthrough
+// (step 2) stores LIFE SPHERES (семья/работа/будущее) as type='area' too. PR#103
+// folded ALL of them into layer 1 ("Ощущения"), so life-spheres polluted the
+// sensations layer. Split them back by metadata.area_kind: body → layer 1 (lives
+// with sensations as their anchor); sphere → layer 3 ("Образы", where they were
+// before PR#103). Falls back to metadata.source==='sensation' for pre-migration
+// rows, else treats an area as a sphere.
+function nmAreaKind(n){
+  var m = (n && n.metadata) || {};
+  if(m.area_kind === 'body' || m.area_kind === 'sphere') return m.area_kind;
+  if(m.source === 'sensation') return 'body';
+  return 'sphere';
+}
+function nmNodeLayer(n){
+  if(n && n.type === 'area') return nmAreaKind(n) === 'body' ? 1 : 3;
+  return nmTypeToLayer(n ? n.type : null);
+}
 
 // P1.B — Polarity-based color system
 var NM_POLARITY_MAP = {}; // emotion_name -> polarity_strength, built from vocabulary
@@ -6165,9 +6216,13 @@ function nmGetNodeColor(n){
   // fallback below and read as "тёмный/невидимый" on the black canvas. Cyan, matching
   // the Evolution Path sensation colour.
   if(n.type==='sensation') return 'rgba(120,200,235,';
-  // PR#103 #2: body-location anchors now share layer 1 with sensations, but keep a
-  // distinct blue so the central body part reads apart from its cyan bubbles.
-  if(n.type==='area') return 'rgba(140,180,255,';
+  // PR#103 #2 / PR#104 #2: body-location anchors share layer 1 with sensations (blue,
+  // distinct from the cyan bubbles); life-sphere areas live in layer 3 ("Образы") and
+  // get a lavender tone so the two area kinds read apart on the map.
+  if(n.type==='area'){
+    var _ak = (n._layer===3 || (typeof nmAreaKind==='function' && nmAreaKind(n)==='sphere' && n._layer!==1));
+    return _ak ? 'rgba(175,150,240,' : 'rgba(140,180,255,';
+  }
   // Other layers: subtle neutral tones by layer
   var layerTones={
     1:'rgba(120,200,235,', // Ощущения - cyan
@@ -6444,6 +6499,16 @@ function renderNmStep(){
 // ── Live Graph Preview in Survey Modal ──
 var nmLiveAnimFrame=null;
 var nmLivePrevPos={}; // preserve positions across rebuilds in modal
+// PR#104 (#4): collapse/expand the mobile live-preview inset. When expanding, the
+// canvas parent gains real layout size again, so re-run buildLiveGraph (it reads the
+// parent rect and skips drawing at 0×0).
+function nmLiveMiniToggle(){
+  var wrap=document.getElementById('nm-live-graph-wrap'); if(!wrap) return;
+  var nowCollapsed=wrap.classList.toggle('nm-mini-collapsed');
+  var btn=document.getElementById('nm-live-mini-toggle');
+  if(btn) btn.textContent = nowCollapsed ? '👁' : '×';
+  if(!nowCollapsed) setTimeout(function(){ try{ buildLiveGraph(); }catch(e){} }, 30);
+}
 function buildLiveGraph(){
   var canvas=document.getElementById('nm-live-canvas');
   var emptyMsg=document.getElementById('nm-live-empty');
@@ -7036,7 +7101,9 @@ function nmSaveSurvey(){
   chains.forEach(function(c){
     var emValence=c.emotion?(isNegEmotion(c.emotion)?'negative':'positive'):'neutral';
     if(c.emotion) v2Chain.push({type:'emotion',label:c.emotion,valence:emValence,metadata:{emoji:EMOJI_EMOTIONS[c.emotion]||''}});
-    if(c.area) v2Chain.push({type:'area',label:c.area,valence:'neutral',metadata:{emoji:EMOJI_AREAS[c.area]||''}});
+    // PR#104 (#2): area from the emotion walkthrough = a LIFE SPHERE (семья/работа/…),
+    // tag area_kind:'sphere' so it lands in layer 3 ("Образы"), not layer 1 sensations.
+    if(c.area) v2Chain.push({type:'area',label:c.area,valence:'neutral',metadata:{emoji:EMOJI_AREAS[c.area]||'',area_kind:'sphere'}});
     if(c.cause) v2Chain.push({type:'cause',label:c.cause,valence:emValence,metadata:{}});
     if(c.thought){
       var thNeg=NM_THOUGHTS.indexOf(c.thought)<15;
@@ -7590,6 +7657,7 @@ function nmFsBuildFilters(){
   [
     {layer:1,name:'Ощущения'},
     {layer:2,name:'Переживания'},
+    {layer:3,name:'Образы'},
     {layer:4,name:'Понятия'},
     {layer:5,name:'Смыслы'},
     {layer:6,name:'Действия'}
@@ -7608,6 +7676,7 @@ function nmFsBuildMobileFilters(){
   var layers=[
     {layer:1,name:'Ощущ.'},
     {layer:2,name:'Пережив.'},
+    {layer:3,name:'Образы'},
     {layer:4,name:'Понятия'},
     {layer:5,name:'Смыслы'},
     {layer:6,name:'Действия'}
@@ -8509,8 +8578,8 @@ function buildNmGraph(){
   var validIds={};
   Object.keys(nodeMap).forEach(function(id){
     var n=nodeMap[id];
-    n._layer=nmTypeToLayer(n.type);
-    n._layerName=nmTypeToLayerName(n.type);
+    n._layer=nmNodeLayer(n);                       // PR#104 (#2): area body→1, sphere→3
+    n._layerName=(n.type==='area') ? (n._layer===1?'Ощущения':'Образы') : nmTypeToLayerName(n.type);
     // Check if this node's layer is active
     if(!nmActiveLayers[n._layer]) return;
     // Repeat filter (AND with layer filter)
@@ -8534,7 +8603,7 @@ function buildNmGraph(){
     if(filters){ filters.style.display='block'; }   // keep the toggles reachable
     if(analysis){ analysis.style.display='none'; }
     if(emptyFiltered){
-      var _anyLayer=[1,2,4,5,6].some(function(L){ return nmActiveLayers[L]; });
+      var _anyLayer=[1,2,3,4,5,6].some(function(L){ return nmActiveLayers[L]; });
       var _msgEl=document.getElementById('nm-empty-filtered-msg');
       if(_msgEl){
         _msgEl.textContent = _anyLayer
@@ -8774,6 +8843,12 @@ function nmSimulate(canvas, initAlpha){
       var si=nodeIdx[l.source],ti=nodeIdx[l.target];
       if(si===undefined||ti===undefined) return;
       var s=nmNodes[si],t=nmNodes[ti];
+      // PR#104 (#3): a sticky sensation↔body-part bond is rendered as a bubble GLUED
+      // to the anchor's edge (the ring-slot force pins it there) — drawing a line +
+      // arrowhead on top of it made the whole thing read as "связи-стрелки" instead
+      // of stuck-on bubbles. Skip the connector entirely for sticky links; the tight
+      // ring placement already shows the bond. Non-sticky strands keep their arrows.
+      if(l._sticky) return;
       var linkFresh=1;
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
       var ec=nmGetEdgeColor(s,t);

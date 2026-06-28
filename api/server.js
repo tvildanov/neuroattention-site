@@ -1548,7 +1548,27 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 034 (sensation node backfill): processed', sensEvents.length, 'events,', made, 'sensation nodes');
     } catch (e) { console.error('migration 034 (sensation node backfill):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-034 applied successfully' });
+    // ── Migration 036 (PR#104 #2): classify the overloaded 'area' node type into
+    //    area_kind = 'body' (Sensation-Map body locations → layer 1) vs 'sphere'
+    //    (emotion-walkthrough life domains семья/работа/будущее → layer 3 "Образы").
+    //    PR#103 had folded ALL area nodes into layer 1, polluting "Ощущения" with
+    //    life spheres. Heuristic: metadata.source='sensation' came from the Sensation
+    //    Map (the ONLY producer of body-location areas) → body; everything else
+    //    (legacy/emotion-walkthrough) → sphere. Idempotent; only stamps rows missing
+    //    area_kind. try/catch — never aborts the migration run.
+    try {
+      const body = await sql`
+        UPDATE nm_nodes SET metadata = jsonb_set(COALESCE(metadata,'{}'::jsonb), '{area_kind}', '"body"')
+        WHERE type = 'area' AND metadata->>'source' = 'sensation'
+          AND (metadata->>'area_kind') IS DISTINCT FROM 'body'`;
+      const sphere = await sql`
+        UPDATE nm_nodes SET metadata = jsonb_set(COALESCE(metadata,'{}'::jsonb), '{area_kind}', '"sphere"')
+        WHERE type = 'area' AND COALESCE(metadata->>'source','') <> 'sensation'
+          AND (metadata->>'area_kind') IS NULL`;
+      console.log('migration 036 (area_kind classify): body+=', body.length ?? 0, 'sphere+=', sphere.length ?? 0);
+    } catch (e) { console.error('migration 036 (area_kind classify):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-036 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2461,7 +2481,8 @@ app.post('/api/neuromap/v2/migrate-legacy', requireAuth, async (req, res) => {
             type: 'area',
             label: chain.area,
             valence: 'neutral',
-            metadata: JSON.stringify({ source: 'legacy_migration' })
+            // PR#104 (#2): legacy emotion-chain area = life sphere → layer 3 ("Образы")
+            metadata: JSON.stringify({ source: 'legacy_migration', area_kind: 'sphere' })
           });
         }
         if (chain.cause) {
@@ -3027,7 +3048,7 @@ app.post('/api/admin/rebuild-graph', requireAuth, async (req, res) => {
           const dedupeKey = `area|${nl}|neutral`;
           if (!seenInEntry.has(dedupeKey)) {
             seenInEntry.add(dedupeKey);
-            nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy' }, entryDate));
+            nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy', area_kind: 'sphere' }, entryDate));
           } else {
             const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'area' AND normalized_label = ${nl} AND valence = 'neutral'`;
             if (existing.length) nodeIds.push(existing[0].id);
@@ -3193,7 +3214,7 @@ app.post('/api/neuromap/v2/rebuild-self', requireAuth, async (req, res) => {
           const dedupeKey = `area|${nl}|neutral`;
           if (!seenInEntry.has(dedupeKey)) {
             seenInEntry.add(dedupeKey);
-            nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy' }, entryDate));
+            nodeIds.push(await upsertNode('area', chain.area, 'neutral', { source: 'legacy', area_kind: 'sphere' }, entryDate));
           } else {
             const existing = await sql`SELECT id FROM nm_nodes WHERE user_id = ${userId} AND type = 'area' AND normalized_label = ${nl} AND valence = 'neutral'`;
             if (existing.length) nodeIds.push(existing[0].id);
@@ -4499,7 +4520,7 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       const r = await sql`
         INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
         VALUES (${userId}, 'area', ${loc.label_ru}, ${norm}, 'neutral', 1, ${when.toISOString()},
-                ${JSON.stringify({ source: 'sensation', slug: loc.slug })}::jsonb)
+                ${JSON.stringify({ source: 'sensation', slug: loc.slug, area_kind: 'body' })}::jsonb)
         ON CONFLICT (user_id, type, normalized_label, valence)
         DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()}
         RETURNING id`;
