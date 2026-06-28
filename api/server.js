@@ -1410,7 +1410,51 @@ app.post('/api/run-migrations', async (req, res) => {
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_cycles_time ON cycles(occurred_at)`;
 
-    res.json({ ok: true, message: 'Migrations 003-033 applied successfully' });
+    // ── Migration 034 (PR94 #10): backfill type='sensation' nm_nodes from existing
+    //    sensation journey_events. Before PR94 only body-location 'area' nodes were
+    //    created, so the standalone NeuroMap "Ощущения" layer (1) was empty for ALL
+    //    historical data — this populates it. Idempotent (ON CONFLICT, no count++ on
+    //    re-run). Links each sensation to the body-location 'area' nodes recorded in
+    //    the SAME event (matched by normalized label). try/catch — never aborts.
+    try {
+      const sensEvents = await sql`
+        SELECT user_id, occurred_at, payload FROM journey_events
+        WHERE kind = 'sensation' AND payload ? 'sensation_labels'`;
+      let made = 0;
+      for (const ev of sensEvents) {
+        const p = ev.payload || {};
+        const labels = Array.isArray(p.sensation_labels) ? p.sensation_labels.filter(Boolean) : [];
+        const locs = Array.isArray(p.body_locations) ? p.body_locations.filter(Boolean) : [];
+        if (!labels.length) continue;
+        const when = ev.occurred_at ? new Date(ev.occurred_at) : new Date();
+        const sensIds = [];
+        for (const lbl of labels) {
+          const norm = normalizeLabel(lbl);
+          const r = await sql`
+            INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+            VALUES (${ev.user_id}, 'sensation', ${lbl}, ${norm}, 'neutral', 1, ${when.toISOString()},
+                    ${JSON.stringify({ source: 'sensation', backfill: true })}::jsonb)
+            ON CONFLICT (user_id, type, normalized_label, valence)
+            DO UPDATE SET last_seen_at = GREATEST(nm_nodes.last_seen_at, ${when.toISOString()})
+            RETURNING id`;
+          if (r[0]) { sensIds.push(r[0].id); made++; }
+        }
+        if (sensIds.length && locs.length) {
+          const locNorms = locs.map(l => normalizeLabel(l));
+          const areaRows = await sql`
+            SELECT id FROM nm_nodes WHERE user_id = ${ev.user_id} AND type = 'area'
+              AND normalized_label = ANY(${locNorms}::text[])`;
+          for (const sid of sensIds) for (const a of areaRows) {
+            await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+                      VALUES (${ev.user_id}, ${sid}, ${a.id}, 1, ${when.toISOString()})
+                      ON CONFLICT (user_id, from_node_id, to_node_id) DO NOTHING`;
+          }
+        }
+      }
+      console.log('migration 034 (sensation node backfill): processed', sensEvents.length, 'events,', made, 'sensation nodes');
+    } catch (e) { console.error('migration 034 (sensation node backfill):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-034 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
