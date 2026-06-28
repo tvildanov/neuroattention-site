@@ -97,6 +97,7 @@
     event:           { ru: 'Событие', en: 'Event', es: 'Evento' },
     thought:         { ru: 'Мысль', en: 'Thought', es: 'Pensamiento' },
     sensation:       { ru: 'Ощущение', en: 'Sensation', es: 'Sensación' },
+    life_area:       { ru: 'Сфера жизни', en: 'Life area', es: 'Área de vida' },
     insight:         { ru: 'Инсайт', en: 'Insight', es: 'Insight' },
     xp_gain:         { ru: 'XP получен', en: 'XP gained', es: 'XP ganado' },
     achievement:     { ru: 'Достижение', en: 'Achievement', es: 'Logro' },
@@ -246,6 +247,22 @@
   // ── node-position registry (id → {x,y}) for link drawing, rebuilt every paint ──
   var POS = {};
   function registerNode(id, x, y) { if (id != null) POS[String(id)] = { x: x, y: y }; }
+
+  // PR94 (item 2): popups (mini-NeuroMap, detail card, overlay card) live INSIDE the
+  // canvas stage, which owns 1-finger pan / 2-finger pinch handlers. On mobile any
+  // slight finger move during a tap makes the stage's touchmove call preventDefault(),
+  // which suppresses the synthetic `click` on the popup's ✕ — the button flashes but
+  // never closes. Isolating the popup's own touch/pointer/wheel/mouse events from the
+  // stage gesture layer (stopPropagation) keeps taps inside the popup as real clicks
+  // and stops the popup from accidentally panning/zooming the path underneath.
+  function isolatePointer(box) {
+    if (!box) return;
+    ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointermove',
+     'pointerup', 'mousedown', 'wheel', 'click'].forEach(function (ev) {
+      box.addEventListener(ev, function (e) { e.stopPropagation(); },
+        ev === 'touchmove' || ev === 'wheel' ? { passive: true } : false);
+    });
+  }
 
   /* ── 🅲️ C4: interaction — enlarged hit target + re-entrancy lock ─────────── */
   // A visible dot plus an invisible r=24 hit circle wrapped in a <g>; clicks are
@@ -407,6 +424,7 @@
 
     card.innerHTML = rows.join('') + actions;
     canvas.appendChild(card);
+    isolatePointer(card);
     var oc = card.querySelector('.evo-close'); if (oc) oc.addEventListener('click', function () { closeDetailCard(container); });
     var op = card.querySelector('.evo-open'); if (op) op.addEventListener('click', function () { openInSource(ev); });
     card.querySelectorAll('.evo-rel').forEach(function (b) {
@@ -933,40 +951,18 @@
     // chains zone — at deep zoom branches fan out to fill the available height.
     var vCombined = Math.min((half - 6) / T._maxAbsLy, vS * Math.max(1, Z * 0.7));
     st._vScale = vCombined;
-    // PR93 (item 3): a NeuroMap chain logged in one session lands on near-identical
-    // timestamps; once split into separate components (MAX_CHAIN_NODES / emotion
-    // breaks) they collapse onto one x and stack into a single un-tappable dot —
-    // even at max time-zoom (zoom can't separate same-instant events). Fan such
-    // clustered components apart VERTICALLY so each keeps a ≥~28px touch target;
-    // the fan gap grows with zoom-in and is capped to the chains zone.
-    var compOff = {};
-    (function fanSameTimeClusters() {
-      var vis = [];
-      for (var vi = 0; vi < comps.length; vi++) {
-        var axv = sx(comps[vi].anchorT);
-        if (axv < x0 - 30 || axv > x1 + 30) continue;
-        vis.push({ i: vi, ax: axv });
-      }
-      vis.sort(function (a, b) { return a.ax - b.ax; });
-      var TOL = 18;                                   // px: anchors closer than this = one cluster
-      var ki = 0;
-      while (ki < vis.length) {
-        var kj = ki + 1;
-        while (kj < vis.length && (vis[kj].ax - vis[ki].ax) <= TOL) kj++;
-        var cnt = kj - ki;
-        if (cnt > 1) {
-          var bandCap = (2 * Math.max(12, half - 6)) / (cnt - 1);
-          var gap = Math.max(22, Math.min(40 * Math.max(1, Z * 0.6), bandCap));
-          for (var q = ki; q < kj; q++) compOff[vis[q].i] = (q - ki - (cnt - 1) / 2) * gap;
-        }
-        ki = kj;
-      }
-    })();
+    // PR94 (item 1, reverts PR93 item 3): every component branch MUST root ON the
+    // spine. PR93 fanned same-time component CLUSTERS apart by offsetting each whole
+    // branch's anchor vertically (compOff) — that detached the branch root from the
+    // spine, so events floated free ("like sperm") instead of growing out of the
+    // wavy line. The spine is for the overall shape; tapping a crowded slot opens the
+    // drill-down mini-NeuroMap (openMiniNeuromap) to separate same-instant events.
+    // So branches always anchor at syAt(ax); no per-component vertical offset.
     for (var ci = 0; ci < comps.length; ci++) {
       var comp = comps[ci];
       var ax = sx(comp.anchorT);
       if (ax + comp.maxX * Z < x0 - 30 || ax > x1 + 30) continue;     // virtualize whole branch (scaled extent)
-      var ay = syAt(ax) + (compOff[ci] || 0);
+      var ay = syAt(ax);
       st._visComps.push({ comp: comp, ax: ax, ay: ay });
       // edges — white nerve-fibre base + thin coloured stripe over it
       for (var si = 0; si < comp.segs.length; si++) {
@@ -1148,6 +1144,7 @@
         '<span style="font-size:11px;color:var(--myc-text-dim,#789);font-family:\'JetBrains Mono\',monospace;">' + escapeHtml(when) + '</span>' + src +
       '</div>';
     host.appendChild(card);
+    isolatePointer(card);
     var x = card.querySelector('.evo-ov-x'); if (x) x.addEventListener('click', function () { card.remove(); });
   }
 
@@ -1646,6 +1643,7 @@
         '<button class="evo-mini-open">' + L(MINI_STR.openNm, lang) + ' →</button>' +
       '</div>';
     canvas.appendChild(box);
+    isolatePointer(box);
 
     var body = box.querySelector('.evo-mini-body');
     var ttlEl = box.querySelector('.evo-mini-ttl');
@@ -1660,7 +1658,13 @@
     function draw(center) {
       current = center;
       var neighbours = miniNeighbours(center);
-      ttlEl.textContent = neighbours.length ? L(MINI_STR.chain, lang) : L(MINI_STR.single, lang);
+      // PR94 (item 9): show the hub's FULL content in the header (where there's room
+      // and it can wrap), not just the 22-char-truncated SVG node label. Tahir: "long
+      // text unreadable though plenty of space". The chain/single distinction moves to
+      // the foot note (walkHint / noLinks already convey it).
+      var hubTxt = prettyTitle(center, lang);
+      ttlEl.textContent = hubTxt;
+      ttlEl.setAttribute('title', hubTxt);
       noteEl.textContent = neighbours.length ? L(MINI_STR.walkHint, lang) : L(MINI_STR.noLinks, lang);
       backBtn.style.display = nav.length ? '' : 'none';
       body.innerHTML = '';
@@ -1754,8 +1758,13 @@
       var chainIds = [current.id].concat(miniNeighbours(current).map(function (n) { return n.id; }));
       var url = '/account.html?tab=tools&subtab=neuromap' +
                 '&focus=' + encodeURIComponent(current.id) +
-                '&chain=' + encodeURIComponent(chainIds.join(','));
-      window.open(url, '_blank', 'noopener,noreferrer');
+                '&chain=' + encodeURIComponent(chainIds.join(',')) +
+                '&lang=' + encodeURIComponent(lang || 'ru');
+      // PR94 (item 5a): a 3rd windowFeatures arg makes some browsers (and iOS Safari)
+      // open a detached popup WINDOW instead of a background TAB. Omit it for a real
+      // new tab; null the opener manually to keep the noopener security benefit.
+      var w = window.open(url, '_blank');
+      if (w) { try { w.opener = null; } catch (e) {} }
     });
     // outside-click closes
     container.__miniNmOutside = function (e) { if (!box.contains(e.target) && !e.target.closest('.evo-node')) closeMiniNeuromap(container); };
