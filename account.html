@@ -1126,8 +1126,12 @@ a.dash-tab:hover { text-decoration:none; }
            opened in a new tab via right-click / cmd-click; a normal click stays SPA. -->
       <a class="dash-tab dash-subtab active" id="tools-mode-nm" href="?tool=nm" onclick="event.preventDefault();setToolsMode('nm');" style="border:none;border-bottom:2px solid var(--accent-cyan);" data-i18n="a.tools.neuromap">NeuroMap</a>
       <!-- Calendar sub-tab removed (17.3) — DB table kept for future migration -->
-      <a class="dash-tab dash-subtab" id="tools-mode-diary" href="?tool=diary" onclick="event.preventDefault();setToolsMode('diary');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.diary">Дневник</a>
-      <a class="dash-tab dash-subtab" id="tools-mode-sensation" href="?tool=sensation" onclick="event.preventDefault();setToolsMode('sensation');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sensation">Карта ощущений</a>
+      <!-- PR#98 Phase 3.6: the standalone «Дневник» and «Карта ощущений» sub-tabs
+           were removed — both now live inside the NeuroMap hub as overlays (the
+           three hub buttons + mini-calendar, PR#95). Their DOM (#tools-sensation-wrap,
+           #tools-cal-diary-wrap) and JS stay in place because the overlays relocate
+           them; setToolsMode('sensation'|'diary') and ?tool= deep-links now redirect
+           to NeuroMap and pop the matching overlay. -->
       <a class="dash-tab dash-subtab" id="tools-mode-pointab" href="?tool=pointab" onclick="event.preventDefault();setToolsMode('pointab');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</a>
       <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;">External Field</a>
       <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=anatomy" onclick="event.preventDefault();setToolsMode('anatomy');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.anatomy">Анатомия</a>
@@ -4663,7 +4667,13 @@ function switchTab(id){
   }
   // When switching to tools tab, trigger correct sub-mode display
   if(id==='tools'){
-    var activeMode = document.querySelector('#tools-mode-nm.active') ? 'nm' : document.querySelector('#tools-mode-cal.active') ? 'cal' : 'diary';
+    // PR#98 Phase 3.6: default to NeuroMap (diary/sensation tabs removed) so a
+    // plain tab switch never auto-pops an overlay.
+    var activeMode = document.querySelector('#tools-mode-nm.active') ? 'nm'
+                   : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
+                   : document.querySelector('#tools-mode-external.active') ? 'external'
+                   : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
+                   : 'nm';
     setToolsMode(activeMode);
   }
   // Mycelium Stage 2: mount/refresh the Personal Evolution Path when its tab
@@ -5223,6 +5233,13 @@ function setCoursesMode(mode){
 // Legacy alias — old code/links may still call setProtoMode('pract').
 function setProtoMode(mode){ setCoursesMode('courses'); }
 function setToolsMode(mode){
+  // PR#98 Phase 3.6: Sensation Map & Diary are no longer standalone sub-tabs —
+  // they live inside the NeuroMap hub as overlays. Any legacy caller, cross-link,
+  // notification route, or ?tool=sensation / ?tool=diary deep-link is redirected
+  // to NeuroMap and pops the matching overlay so the action still completes.
+  var _overlayAfter = null;
+  if(mode==='sensation'){ _overlayAfter = window.nmOpenSensationOverlay; mode='nm'; }
+  else if(mode==='diary' || mode==='cal'){ _overlayAfter = window.nmOpenDiaryOverlay; mode='nm'; }
   var nmContent = document.getElementById('tools-nm-content');
   var calDiaryWrap = document.getElementById('tools-cal-diary-wrap');
   var calPanel = document.getElementById('cal-mode-cal');
@@ -5292,6 +5309,8 @@ function setToolsMode(mode){
     var activeSub = document.querySelector('.tools-subtabs .dash-subtab.active');
     if(activeSub && activeSub.offsetParent && activeSub.scrollIntoView) activeSub.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
   } catch(e){}
+  // PR#98 Phase 3.6: pop the redirected overlay once the NeuroMap hub is rendered.
+  if(_overlayAfter){ setTimeout(function(){ try{ _overlayAfter(); }catch(e){} }, 140); }
 }
 // Open the active Инструменты sub-tool in a shared fullscreen overlay (R1/R3).
 // Uses DOM relocation (move the live container in, restore it on close) so all
@@ -5313,7 +5332,7 @@ function toolsExpandActive(){
              : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
              : document.querySelector('#tools-mode-external.active') ? 'external'
              : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
-             : 'diary';
+             : 'nm';
   var info = map[active]; if (!info) return;
   var src = document.getElementById(info.id); if (!src) return;
   var placeholder = document.createComment('na-expand-' + info.id);
@@ -16345,8 +16364,9 @@ window.pbMove = pbMove;
   })();
 
   // PR#87 deep-links: ?course=<slug>[&block=N] opens the course player (and lesson);
-  // ?tool=<nm|diary|sensation|pointab|external|anatomy> opens that tool. Lets a
-  // right-click "Open in new tab" on a course card / tool sub-tab land correctly.
+  // ?tool=<nm|pointab|external|anatomy> opens that tool. Legacy ?tool=diary /
+  // ?tool=sensation still resolve (PR#98 setToolsMode redirects them to the NeuroMap
+  // hub and pops the matching overlay). Lets a right-click "Open in new tab" land.
   (function(){
     var q; try { q = new URLSearchParams(window.location.search); } catch(e){ return; }
     var course = q.get('course');
