@@ -1654,5 +1654,14 @@
   "a.admin.trash_col_name": "Name",
   "a.admin.trash_col_deleted": "Deleted",
   "a.admin.trash_restore": "Restore",
-  "a.admin.trash_empty": "Trash is empty"
+  "a.admin.trash_empty": "Trash is empty",
+  "a.tools.target_label": "Save for",
+  "a.tools.target_me": "Me",
+  "a.tools.target_for": "For: {name}",
+  "a.tools.target_tracking_term": "For: {name}, term: {w} wk",
+  "a.evo.view_single": "Me",
+  "a.evo.view_dual": "Me + child",
+  "a.evo.view_child": "Child only",
+  "a.evo.dual_me": "Me",
+  "a.evo.dual_pick_child": "Pick a child"
 }

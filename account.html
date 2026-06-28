@@ -1652,6 +1652,13 @@ a.dash-tab:hover { text-decoration:none; }
       <div class="dash-card glass-card-elevated span-4">
         <h3 style="margin:0 0 0.25rem;" data-i18n="a.tools.day_map">Карта дня</h3>
         <p style="font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;" data-i18n="a.tools.day_map_desc">Отслеживайте, какие эмоции сегодня и как они связаны с событиями.</p>
+        <!-- PR#99 (Phase 2B): "For: Me / [child]" target selector. Hidden until the
+             user has dependents (populated by nmLoadDependents → nmRenderTargetSelector). -->
+        <div id="nm-target-row" style="display:none;margin:0 0 0.9rem;padding:0.6rem 0.75rem;background:rgba(0,224,255,0.04);border:1px solid rgba(0,224,255,0.16);border-radius:10px;">
+          <label for="nm-target-select" style="display:block;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin:0 0 0.4rem;" data-i18n="a.tools.target_label">Сохранить для</label>
+          <select id="nm-target-select" onchange="nmSetTarget(this.value)" style="width:100%;background:rgba(10,14,20,0.7);border:1px solid rgba(255,255,255,0.14);color:var(--text-primary);border-radius:8px;height:34px;padding:0 0.6rem;font-size:13px;cursor:pointer;"></select>
+          <div id="nm-target-hint" style="display:none;font-size:11px;color:rgba(0,224,255,0.85);margin-top:0.4rem;"></div>
+        </div>
         <!-- Three hub actions -->
         <div style="display:flex;flex-direction:column;gap:0.55rem;">
           <button class="btn btn-solid" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;" onclick="openNmSurvey()">
@@ -2838,6 +2845,8 @@ function onLogin(user){
   try { nmLoadFromAPI().then(function(){ nmMigrateLegacy(); }).catch(function(e){ console.warn('nmMigrateLegacy error:', e); }); } catch(e){ console.warn('nmLoadFromAPI error:', e); }
   try { nmLoadVocabulary(); } catch(e){ console.warn('nmLoadVocabulary error:', e); }
   try { nmLoadV2Graph(); } catch(e){ console.warn('nmLoadV2Graph error:', e); }
+  // PR#99 (Phase 2B): populate the hub "For: Me / [child]" target selector.
+  try { nmLoadDependents(); } catch(e){ console.warn('nmLoadDependents error:', e); }
   try { diaryLoadFromAPI(); } catch(e){ console.warn('diaryLoadFromAPI error:', e); }
   try { calLoadFromAPI(); } catch(e){ console.warn('calLoadFromAPI error:', e); }
   try { progLoadFromAPI(); } catch(e){ console.warn('progLoadFromAPI error:', e); }
@@ -5391,6 +5400,75 @@ function nmConsumeSessionHandoff(){
 window.nmEnsureSession = nmEnsureSession;
 window.nmClearSession = nmClearSession;
 
+/* ==========================================================================
+   PR#99 (Phase 2B): "For: Me / [child]" target selector for the NeuroMap hub.
+   When the user has one or more dependents, the hub panel shows a selector above
+   the 3 entry buttons. Picking a child sets nmTargetDep; every subsequent save
+   (emotion / sensation / diary) carries dependent_id so the entry lands on the
+   CHILD's path instead of the parent's. The selection is per-flow: it resets to
+   "Me" whenever an overlay/modal closes (nmResetTarget).
+   ========================================================================== */
+var nmTargetDep = null;          // null = "Me"; else { id, name, phase, gestation_weeks, age_years }
+var nmDeps = [];                 // cached list of dependents (children)
+function nmEscHtml(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function nmTt(k, f){ return (typeof window.t === 'function') ? window.t(k, f) : f; }
+function nmLoadDependents(cb){
+  var token = naGetToken();
+  if(!token){ nmDeps = []; nmRenderTargetSelector(); if(cb) cb([]); return; }
+  fetch((window.AUTH_API || '') + '/api/dependents', { headers:{ 'Authorization':'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ nmDeps = (d && d.dependents) || []; nmRenderTargetSelector(); if(cb) cb(nmDeps); })
+    .catch(function(){ nmDeps = []; nmRenderTargetSelector(); if(cb) cb([]); });
+}
+window.nmLoadDependents = nmLoadDependents;
+// Short "for X" / pregnancy-term hint shown under the selector + as overlay subtitle.
+function nmTargetTermText(dep){
+  if(!dep) return '';
+  var nm = dep.name || '—';
+  if(dep.phase === 'prenatal' && dep.gestation_weeks != null){
+    return nmTt('a.tools.target_tracking_term','Для: {name}, срок: {w} нед.')
+      .replace('{name}', nm).replace('{w}', dep.gestation_weeks);
+  }
+  return nmTt('a.tools.target_for','Для: {name}').replace('{name}', nm);
+}
+function nmRenderTargetHint(){
+  var h = document.getElementById('nm-target-hint'); if(!h) return;
+  if(!nmTargetDep){ h.textContent = ''; h.style.display = 'none'; return; }
+  h.style.display = ''; h.textContent = nmTargetTermText(nmTargetDep);
+}
+function nmRenderTargetSelector(){
+  var row = document.getElementById('nm-target-row'); if(!row) return;
+  var sel = document.getElementById('nm-target-select');
+  if(!nmDeps.length){ row.style.display = 'none'; if(sel) sel.innerHTML = ''; return; }
+  row.style.display = '';
+  if(sel){
+    var html = '<option value="">' + nmEscHtml(nmTt('a.tools.target_me','Меня')) + '</option>';
+    nmDeps.forEach(function(d){ html += '<option value="' + d.id + '">' + nmEscHtml(d.name) + '</option>'; });
+    sel.innerHTML = html;
+    sel.value = nmTargetDep ? String(nmTargetDep.id) : '';
+  }
+  nmRenderTargetHint();
+}
+function nmSetTarget(val){
+  if(!val){ nmTargetDep = null; }
+  else {
+    var d = nmDeps.filter(function(x){ return String(x.id) === String(val); })[0];
+    nmTargetDep = d ? { id:d.id, name:d.name, phase:d.phase, gestation_weeks:d.gestation_weeks, age_years:d.age_years } : null;
+  }
+  nmRenderTargetHint();
+}
+window.nmSetTarget = nmSetTarget;
+// Reset to "Me" when a hub flow closes, so independent saves never target a child
+// by accident. Re-syncs the hub <select> back to "Меня".
+function nmResetTarget(){ nmTargetDep = null; nmRenderTargetSelector(); }
+window.nmResetTarget = nmResetTarget;
+// Reflect the current target in a fullscreen-overlay header subtitle (when one).
+function nmApplyTargetSubtitle(handle){
+  if(handle && typeof handle.setSubtitle === 'function' && nmTargetDep){
+    try { handle.setSubtitle(nmTargetTermText(nmTargetDep)); } catch(e){}
+  }
+}
+
 // ── Sensation Map overlay (relocates #tools-sensation-wrap into a fullscreen
 //    overlay, restores it on close, then refreshes the NeuroMap graph so the
 //    freshly-saved cyan sensation nodes appear). ──
@@ -5466,10 +5544,12 @@ function nmOpenSensationOverlay(){
       _nmSensState = null;
       // PR#96: end the cross-link session unless we're handing off to the next overlay.
       if(!nmSessionHandoff) nmClearSession();
+      if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
       refreshGraph();
     }
   });
   _nmSensState = handle;
+  if(typeof nmApplyTargetSubtitle === 'function') nmApplyTargetSubtitle(handle); // PR#99: "For: [child]"
 }
 window.nmOpenSensationOverlay = nmOpenSensationOverlay;
 
@@ -5700,6 +5780,7 @@ function closeDiaryInput(){
   document.getElementById('diaryModal').classList.remove('open');
   // PR#96: a plain close ends any cross-link session; a handoff keeps it.
   if(!nmSessionHandoff) nmClearSession();
+  if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
   if(_nmDiaryMini){ try{ _nmDiaryMini.destroy(); }catch(e){} _nmDiaryMini=null; }
 }
 
@@ -5836,6 +5917,12 @@ function saveDiaryEvent(){
     minusCount: currentMinusCount,
     time: time
   };
+  // PR#99 (Phase 2B): a child-targeted diary event routes to the dependent's path
+  // only — it must NOT enter the parent's diary store, graph, or calendar views.
+  if(typeof nmTargetDep !== 'undefined' && nmTargetDep){
+    diarySaveToAPI(key, entry, nmTargetDep.id);
+    return true;
+  }
   diaryData[key].push(entry);
   // Persist to API + localStorage cache
   diarySaveToAPI(key, entry);
@@ -6141,6 +6228,7 @@ function closeNmSurvey(){
   // PR#96: a terminal close ends the cross-link session; a handoff (save & link)
   // keeps it for the next overlay.
   if(!nmSessionHandoff) nmClearSession();
+  if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
 }
 
 function renderNmStepDots(){
@@ -6888,11 +6976,17 @@ function nmSaveSurvey(){
     context:nmSurveyState.context||'',
     time:today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
   };
-  nmData[key].push(entry);
-  // Persist to old API (backward compat)
-  nmSaveToAPI(key, entry);
-  // Cache to localStorage
-  nmCacheToLocal();
+  // PR#99 (Phase 2B): a child-targeted emotion save routes to the dependent's path
+  // via nmAppendV2 (which carries dependent_id). The parent's local store / legacy
+  // API / today-summary / graph must NOT change.
+  var _emoDep = (typeof nmTargetDep !== 'undefined' && nmTargetDep);
+  if(!_emoDep){
+    nmData[key].push(entry);
+    // Persist to old API (backward compat)
+    nmSaveToAPI(key, entry);
+    // Cache to localStorage
+    nmCacheToLocal();
+  }
   // Send to v2/append for graph dedup
   var v2Chain=[];
   chains.forEach(function(c){
@@ -6913,10 +7007,12 @@ function nmSaveSurvey(){
   }
   closeNmSurvey();
   if(navigator.vibrate) navigator.vibrate([20,40,20]);
-  updateNmToday();
-  buildNmGraph();
+  if(!_emoDep){
+    updateNmToday();
+    buildNmGraph();
+  }
   // Show success toast
-  nmShowToast(Object.keys(nmData).length<=1 && nmData[key] && nmData[key].length===1);
+  nmShowToast(!_emoDep && Object.keys(nmData).length<=1 && nmData[key] && nmData[key].length===1);
   // PR#87: if this survey was embedded inside a course block, also finalize the block.
   if(window.coursePlayer && coursePlayer._nmEmbed && typeof cpNmEmbedFinalize==='function'){
     try { cpNmEmbedFinalize(entry); } catch(e){ console.warn('cp neuromap finalize:', e); }
@@ -7095,6 +7191,9 @@ function nmAppendV2(chainItems){
   // these nodes to the rest of the chained flow.
   var _nmBody = { chain: chainItems };
   if (nmSessionId) _nmBody.session_id = nmSessionId;
+  // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
+  var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
+  if (_depTargeted) _nmBody.dependent_id = nmTargetDep.id;
   fetch(base+'/api/neuromap/v2/append',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -7104,8 +7203,9 @@ function nmAppendV2(chainItems){
     else return r.json();
   }).then(function(json){
     if(json&&json.ok){
-      // Reload v2 graph to get updated counts
-      nmLoadV2Graph();
+      // Reload v2 graph to get updated counts — but only for the parent's own map;
+      // a child-targeted save doesn't change the parent's graph.
+      if(!_depTargeted) nmLoadV2Graph();
     }
   }).catch(function(err){ console.warn('[NM] v2/append FAILED:',err); });
 }
@@ -7114,13 +7214,15 @@ function nmAppendV2(chainItems){
 // DIARY_API_BASE defined at top (line ~1203)
 var DIARY_LOCAL_KEY='na_diary_data';
 
-function diarySaveToAPI(dateKey, entry){
+function diarySaveToAPI(dateKey, entry, depId){
   var token=naGetToken();
   if(!token) return;
+  var b={date_key:dateKey, text:entry.text, comment:entry.comment||'', plus_count:entry.plusCount||0, minus_count:entry.minusCount||0, time:entry.time||''};
+  if(depId) b.dependent_id=depId; // PR#99: route to the child's path
   fetch(DIARY_API_BASE+'/api/diary/save',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body:JSON.stringify({date_key:dateKey, text:entry.text, comment:entry.comment||'', plus_count:entry.plusCount||0, minus_count:entry.minusCount||0, time:entry.time||''})
+    body:JSON.stringify(b)
   }).catch(function(err){ console.warn('Diary save failed:',err); });
 }
 
@@ -10386,7 +10488,8 @@ function submitSensationMap(onSaved){
     body: JSON.stringify({ sensations: sensSel, body_locations: locSel, comment: comment,
                            intensity: intensity, occurred_at: occurredAt, link_to: linkTo,
                            custom_context: customContext, loc_labels: locLabels,
-                           session_id: (nmSessionId || undefined) })
+                           session_id: (nmSessionId || undefined),
+                           dependent_id: (nmTargetDep ? nmTargetDep.id : undefined) })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
@@ -15685,7 +15788,7 @@ window.pbMove = pbMove;
 <script src="assets/js/typography.js?v=2" defer></script>
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=20"></script>
+<script src="assets/js/evolution-path.js?v=21"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=6"></script>
