@@ -1189,6 +1189,7 @@
   }
 
   function drawNodeCv(ctx, layer, cx, cy, r, fill, glow) {
+    r = Math.max(0.1, r);   // PR94: guard the pre-existing "arc radius negative" console error
     if (glow) { ctx.save(); ctx.shadowColor = fill; ctx.shadowBlur = 8; }
     ctx.beginPath();
     if (layer === 'practice') { ctx.rect(cx - r, cy - r, r * 2, r * 2); }
