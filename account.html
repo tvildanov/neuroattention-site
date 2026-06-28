@@ -286,6 +286,28 @@ a.dash-tab:hover { text-decoration:none; }
 @media(max-width:600px){
   #tab-enroll .dash-grid > div[style*="display:flex"] { flex-wrap:nowrap; }
 }
+/* ── PR#97 (Phase 3.5): live mini-Neuromap inset — a small corner panel inside the
+   Sensation / Diary overlays that previews the graph as the form is filled. Static
+   render (no RAF), reuses nmGetNodeColor. Collapsible; shrinks on touch. ── */
+.nm-mini-inset { position:absolute;right:16px;bottom:16px;width:280px;height:200px;z-index:7;
+  border-radius:14px;overflow:hidden;background:rgba(6,9,14,0.82);border:1px solid rgba(0,224,255,0.18);
+  box-shadow:0 8px 30px rgba(0,0,0,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:flex;flex-direction:column;transition:height 0.22s ease,width 0.22s ease; }
+.nm-mini-inset .nm-mini-head { display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:5px 8px 4px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(120,200,235,0.85);
+  border-bottom:1px solid rgba(255,255,255,0.05);user-select:none; }
+.nm-mini-inset .nm-mini-toggle { background:none;border:none;color:rgba(255,255,255,0.45);font-size:14px;
+  line-height:1;cursor:pointer;padding:2px 4px;border-radius:6px;min-width:24px;min-height:24px; }
+.nm-mini-inset .nm-mini-toggle:hover { color:#fff;background:rgba(255,255,255,0.06); }
+.nm-mini-inset .nm-mini-cv-wrap { flex:1;position:relative;min-height:0; }
+.nm-mini-inset canvas { display:block;width:100%;height:100%; }
+.nm-mini-inset .nm-mini-empty { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:0 14px;font-size:11px;color:rgba(255,255,255,0.22);pointer-events:none;line-height:1.5; }
+.nm-mini-inset.collapsed { height:auto!important;width:auto; }
+.nm-mini-inset.collapsed .nm-mini-cv-wrap { display:none; }
+@media(max-width:768px),(pointer:coarse){
+  .nm-mini-inset { width:200px;height:150px;right:10px;bottom:10px; }
+}
 /* ── Program cards: responsive grid (no horizontal scroll) ──
    ≥1280px: all 5 in one row · <1280px: 3-up (3+2) · 768–1024: 2-up · ≤480: stack */
 .program-cards-grid { display:grid;gap:1rem;grid-template-columns:repeat(5,1fr);align-items:stretch;padding-bottom:0.5rem; }
@@ -5341,7 +5363,7 @@ function nmGenUuid(){
   return 'nms-'+Date.now().toString(16)+'-'+Math.random().toString(16).slice(2,10);
 }
 function nmEnsureSession(){ if(!nmSessionId) nmSessionId = nmGenUuid(); return nmSessionId; }
-function nmClearSession(){ nmSessionId = null; }
+function nmClearSession(){ nmSessionId = null; if(typeof nmClearPrior==='function') nmClearPrior(); }
 // Called at the top of every flow-opener: keep the session on a handoff, else reset.
 function nmConsumeSessionHandoff(){
   if (nmSessionHandoff){ nmSessionHandoff = false; }
@@ -5354,6 +5376,7 @@ window.nmClearSession = nmClearSession;
 //    overlay, restores it on close, then refreshes the NeuroMap graph so the
 //    freshly-saved cyan sensation nodes appear). ──
 var _nmSensState = null;
+var _nmSensMiniRerender = null;
 function nmOpenSensationOverlay(){
   if (typeof window.mountFullscreenOverlay !== 'function') return;
   var src = document.getElementById('tools-sensation-wrap');
@@ -5365,11 +5388,31 @@ function nmOpenSensationOverlay(){
   var prevDisplay = src.style.display;
   var refreshed = false;
   function refreshGraph(){ if(refreshed) return; refreshed=true; try{ nmLoadV2Graph(); }catch(e){} }
+  function captureSensPrior(){ // PR#97: snapshot the sensation nodes for the next overlay's faded strip
+    try {
+      var m = nmMiniSensModel();
+      nmSetPrior(m.nodes.map(function(n){ return {type:n.type,label:n.label,valence:n.valence}; }));
+    } catch(e){}
+  }
   var handle = window.mountFullscreenOverlay(function(body){
     body.style.padding = '20px 24px 96px';
     src.style.display = '';
     body.appendChild(src);
     if (typeof loadSensationMap === 'function') { try{ loadSensationMap(); }catch(e){} }
+    // PR#97: live mini-Neuromap inset (sticky-bubble preview as the form is filled).
+    // Anchor to the fixed overlay root (not the scrolling body) so it stays in the
+    // visible corner — same trick the footer uses.
+    var miniHost = body.closest('.na-fs-overlay') || body;
+    var mini = nmMiniMakeInset(miniHost, { title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
+    if(mini) mini.el.style.bottom = '88px'; // clear the save/link footer at the bottom
+    function rerender(){ if(mini) mini.render(nmMiniSensModel()); }
+    // Re-render only on form change (no RAF). Chip clicks toggle .active on the next
+    // tick, and the body-picker syncs into #sm-body-selected, so listen broadly.
+    body.addEventListener('click', function(){ setTimeout(rerender, 0); });
+    var intEl = document.getElementById('sm-intensity');
+    if(intEl) intEl.addEventListener('input', rerender);
+    setTimeout(rerender, 120);
+    _nmSensMiniRerender = rerender; // expose so a programmatic save can refresh
     // Overlay footer: «Сохранить и выйти» (default) + «Привязать к эмоции» (stub).
     var footer = document.createElement('div');
     footer.style.cssText = 'position:absolute;left:0;right:0;bottom:0;display:flex;gap:0.6rem;padding:0.85rem 1.1rem;background:rgba(8,10,14,0.92);border-top:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(10px);z-index:6;flex-wrap:wrap;justify-content:flex-end;';
@@ -5387,6 +5430,7 @@ function nmOpenSensationOverlay(){
       // back to these. The handoff flag is set inside the success callback so a
       // failed/empty save leaves no stale session dangling.
       nmEnsureSession();
+      captureSensPrior(); // PR#97: snapshot BEFORE submit clears the chips
       submitSensationMap(function(){
         refreshGraph();
         nmSessionHandoff = true;
@@ -5425,6 +5469,9 @@ window.nmOpenDiaryOverlay = nmOpenDiaryOverlay;
 function nmDiaryLinkTo(opener){
   nmEnsureSession();
   nmSessionHandoff = true;
+  // PR#97: snapshot the diary event node BEFORE save clears the form, so the next
+  // overlay's mini-graph shows the faded prior context.
+  try { nmSetPrior(nmMiniDiaryModel().nodes.map(function(n){ return {type:n.type,label:n.label,valence:n.valence}; })); } catch(e){}
   if(saveDiaryEvent()){
     closeDiaryInput();
     setTimeout(function(){ opener(); }, 80);
@@ -5612,6 +5659,9 @@ function updateTodaySummary(){
 }
 
 // Diary modal
+var _nmDiaryMini = null;
+function nmDiaryMiniRerender(){ if(_nmDiaryMini){ try{ _nmDiaryMini.render(nmMiniDiaryModel()); }catch(e){} } }
+window.nmDiaryMiniRerender = nmDiaryMiniRerender;
 function openDiaryInput(prefillDate){
   nmConsumeSessionHandoff(); // PR#96: fresh diary open clears any stale session
   document.getElementById('diaryModal').classList.add('open');
@@ -5619,11 +5669,19 @@ function openDiaryInput(prefillDate){
   var dEl=document.getElementById('diary-event-date');
   if(dEl) dEl.value = prefillDate || '';
   resetDiaryForm();
+  // PR#97: live mini-Neuromap inset anchored to the modal backdrop's corner.
+  try {
+    var modal = document.getElementById('diaryModal');
+    if(_nmDiaryMini){ _nmDiaryMini.destroy(); _nmDiaryMini=null; }
+    _nmDiaryMini = nmMiniMakeInset(modal, { title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
+    setTimeout(nmDiaryMiniRerender, 120);
+  } catch(e){}
 }
 function closeDiaryInput(){
   document.getElementById('diaryModal').classList.remove('open');
   // PR#96: a plain close ends any cross-link session; a handoff keeps it.
   if(!nmSessionHandoff) nmClearSession();
+  if(_nmDiaryMini){ try{ _nmDiaryMini.destroy(); }catch(e){} _nmDiaryMini=null; }
 }
 
 function resetDiaryForm(){
@@ -5647,11 +5705,15 @@ function resetDiaryForm(){
   var inp = document.getElementById('diary-event-text');
   inp.removeEventListener('input', onDiaryTextInput);
   inp.addEventListener('input', onDiaryTextInput);
+  // PR#97: comment edits add/update the linked thought node in the mini-graph.
+  var cinp = document.getElementById('diary-event-comment');
+  if(cinp){ cinp.removeEventListener('input', nmDiaryMiniRerender); cinp.addEventListener('input', nmDiaryMiniRerender); }
 }
 
 function onDiaryTextInput(){
   var val = document.getElementById('diary-event-text').value.trim();
   document.getElementById('rating-step').style.display = val.length>0 ? 'block' : 'none';
+  nmDiaryMiniRerender(); // PR#97: event node appears as the name is typed
 }
 
 function addRating(type){
@@ -5683,6 +5745,7 @@ function updateRatingUI(){
     hint.textContent='Тапните + или − для оценки события';
     hint.style.opacity='0.6';
     document.getElementById('diary-actions').style.display='none';
+    nmDiaryMiniRerender(); // PR#97: reset event node to neutral when ratings cleared
     return;
   }
   if(p>0 && m>0){
@@ -5702,6 +5765,7 @@ function updateRatingUI(){
   hint.style.opacity='1';
   document.getElementById('diary-actions').style.display='flex';
   if(navigator.vibrate) navigator.vibrate(20);
+  nmDiaryMiniRerender(); // PR#97: recolour the event node by +/- balance
 }
 
 function renderRatingArea(type, count){
@@ -6341,6 +6405,19 @@ function buildLiveGraph(){
     });
     // Draw
     ctx.clearRect(0,0,W,H);
+    // PR#97: faded prior cross-link strip (nodes from the overlay we chained from).
+    var _prior=window.nmSessionPrior||[];
+    if(_prior.length){
+      var _pn=Math.min(_prior.length,6), _step=W/(_pn+1);
+      ctx.save(); ctx.globalAlpha=0.3;
+      for(var _p=0;_p<_pn;_p++){
+        var _pe=_prior[_p], _px=_step*(_p+1), _py=26;
+        var _pc=nmGetNodeColor({type:_pe.type,label:_pe.label,valence:_pe.valence,_layer:nmTypeToLayer(_pe.type)});
+        ctx.beginPath();ctx.arc(_px,_py,9,0,Math.PI*2);ctx.fillStyle=_pc+'0.7)';ctx.fill();
+        if(_p>0){ctx.beginPath();ctx.moveTo(_step*_p+9,_py);ctx.lineTo(_px-9,_py);ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=2;ctx.stroke();}
+      }
+      ctx.restore();
+    }
     links.forEach(function(l){
       var si=ni[l.source],ti=ni[l.target];
       if(si===undefined||ti===undefined)return;
@@ -6378,6 +6455,234 @@ function buildLiveGraph(){
     if(iter<200) nmLiveAnimFrame=requestAnimationFrame(tick);
   }
   tick();
+}
+
+/* ============================================================================
+   PR#97 — Phase 3.5: live mini-Neuromap inset. A small corner panel inside the
+   Sensation Map & Diary overlays that previews the graph being built AS the user
+   fills the form — nodes appear the instant a choice is made, not after save.
+
+   Design notes:
+   • Static render (re-render only on form change, never RAF) — the form changes
+     are discrete, so a force sim would be wasted cycles.
+   • Reuses nmGetNodeColor() — the single source of truth for node colours — so the
+     mini-graph reads identically to the standalone canvas. No colour duplication.
+   • Display only, NOT interactive: clicks pass through to the form behind, so the
+     inset never competes with the overlay UI.
+   • Sensation uses a "sticky bubble" layout (Tahir's ask): the body location is a
+     large central node and each sensation is a small bubble glued to its radius;
+     intensity grows the cluster; a sensation already seen in the prior cross-link
+     session grows instead of duplicating.
+   • Prior cross-link nodes (nmSessionPrior, captured at each handoff) render as a
+     faint translucent strip so the user sees the chain they're extending.
+   ========================================================================== */
+
+// Prior cross-link nodes — captured at a session handoff so the next overlay's
+// mini-graph can show the chain it's continuing. Cleared with the session.
+window.nmSessionPrior = [];
+function nmSetPrior(nodes){ window.nmSessionPrior = (nodes||[]).slice(0,8); }
+function nmClearPrior(){ window.nmSessionPrior = []; }
+window.nmSetPrior = nmSetPrior; window.nmClearPrior = nmClearPrior;
+
+// Heuristic valence for a body sensation word (the sensation vocab carries no
+// polarity). Used only to tint mini-graph bubbles: red = unpleasant, teal =
+// pleasant, grey = neutral. Best-effort substring match on RU stems.
+var NM_SENS_NEG = ['боль','напряж','тяжест','жжен','зажат','спазм','давлен','диском','тошн','дрож','озноб','покалыв','ком','стеснен','усталост','слабост','онемен'];
+var NM_SENS_POS = ['тепл','лёгк','легк','расслаб','спокой','прият','свобод','мягк','наполнен','живост','бодрост','поток','раскрыт'];
+function nmSensValence(label){
+  var s=String(label||'').toLowerCase();
+  for(var i=0;i<NM_SENS_NEG.length;i++){ if(s.indexOf(NM_SENS_NEG[i])>=0) return 'negative'; }
+  for(var j=0;j<NM_SENS_POS.length;j++){ if(s.indexOf(NM_SENS_POS[j])>=0) return 'positive'; }
+  return 'neutral';
+}
+
+// Build the inset DOM and return a handle. host = the positioned container the
+// inset lives in (overlay body / modal box). Returns { el, render(model), destroy() }.
+function nmMiniMakeInset(host, opts){
+  opts = opts || {};
+  if(!host) return null;
+  // Reuse an existing inset on the same host (overlay re-mounts) — avoid dupes.
+  var existing = host.querySelector(':scope > .nm-mini-inset');
+  if(existing && existing.parentNode===host) existing.remove();
+  var el = document.createElement('div');
+  el.className = 'nm-mini-inset';
+  var title = opts.title || _pr95t('a.tools.mini_live_map','Карта · вживую');
+  el.innerHTML =
+    '<div class="nm-mini-head"><span>'+title+'</span>'+
+      '<button type="button" class="nm-mini-toggle" title="'+_pr95t('a.tools.mini_toggle','Свернуть/развернуть')+'">▾</button></div>'+
+    '<div class="nm-mini-cv-wrap"><canvas></canvas>'+
+      '<div class="nm-mini-empty">'+_pr95t('a.tools.mini_empty','Узлы появятся по мере заполнения')+'</div></div>';
+  // Ensure host can anchor an absolutely-positioned child.
+  var hostPos = getComputedStyle(host).position;
+  if(hostPos==='static' || !hostPos) host.style.position='relative';
+  host.appendChild(el);
+  var canvas = el.querySelector('canvas');
+  var emptyEl = el.querySelector('.nm-mini-empty');
+  var toggle = el.querySelector('.nm-mini-toggle');
+  var lastModel = {nodes:[],links:[]};
+  toggle.addEventListener('click', function(){
+    var collapsed = el.classList.toggle('collapsed');
+    toggle.textContent = collapsed ? '▸' : '▾';
+    if(!collapsed) requestAnimationFrame(function(){ nmMiniDraw(canvas, lastModel); });
+  });
+  function render(model){
+    lastModel = model || {nodes:[],links:[]};
+    var hasContent = (lastModel.nodes && lastModel.nodes.length) ||
+                     (window.nmSessionPrior && window.nmSessionPrior.length);
+    if(emptyEl) emptyEl.style.display = hasContent ? 'none' : 'flex';
+    if(el.classList.contains('collapsed')) return;
+    nmMiniDraw(canvas, lastModel);
+  }
+  return { el: el, canvas: canvas, render: render,
+    destroy: function(){ if(el.parentNode) el.parentNode.removeChild(el); } };
+}
+
+// Static draw: positions are precomputed in the model (node.x/.y in 0..1 space,
+// node.r in px at base scale). Reuses nmGetNodeColor for fill. Draws prior-session
+// nodes as a faint strip first (background), then live links + nodes on top.
+function nmMiniDraw(canvas, model){
+  if(!canvas) return;
+  var wrap = canvas.parentElement;
+  var W = wrap ? wrap.clientWidth : 0, H = wrap ? wrap.clientHeight : 0;
+  if(W<10 || H<10) return; // host hidden — skip (negative radii would throw)
+  var dpr = 2;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  var nodes = (model && model.nodes) || [];
+  var links = (model && model.links) || [];
+  var idx = {}; nodes.forEach(function(n,i){ idx[n.id]=i; });
+
+  // 1) Prior cross-link nodes — faint translucent strip along the top.
+  var prior = window.nmSessionPrior || [];
+  if(prior.length){
+    var pn = Math.min(prior.length, 6);
+    var step = W/(pn+1);
+    ctx.save();
+    ctx.globalAlpha = 0.32;
+    for(var p=0;p<pn;p++){
+      var pnode = prior[p];
+      var px = step*(p+1), py = 16;
+      var pcol = nmGetNodeColor({type:pnode.type, label:pnode.label, valence:pnode.valence, _layer:nmTypeToLayer(pnode.type)});
+      ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fillStyle=pcol+'0.7)'; ctx.fill();
+      if(p>0){ ctx.beginPath(); ctx.moveTo(step*p+5,py); ctx.lineTo(px-5,py); ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+
+  // 2) Live links.
+  links.forEach(function(l){
+    var s=nodes[idx[l.source]], t=nodes[idx[l.target]];
+    if(!s||!t) return;
+    ctx.beginPath();
+    ctx.moveTo(s.x*W, s.y*H); ctx.lineTo(t.x*W, t.y*H);
+    ctx.strokeStyle = l.color || 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = l.w || 1.5;
+    ctx.stroke();
+  });
+
+  // 3) Live nodes (+ optional glow + label).
+  nodes.forEach(function(n){
+    var x=n.x*W, y=n.y*H, r=n.r||10;
+    var col = nmGetNodeColor(n);
+    // halo
+    ctx.beginPath(); ctx.arc(x,y,r+5,0,Math.PI*2); ctx.fillStyle=col+'0.15)'; ctx.fill();
+    // body
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=col+'0.85)'; ctx.fill();
+    // valence ring (for diary +/- borders & grown duplicates)
+    if(n.ring){
+      ctx.beginPath(); ctx.arc(x,y,r+2,0,Math.PI*2);
+      ctx.strokeStyle=n.ring; ctx.lineWidth=2; ctx.stroke();
+    }
+    // label
+    if(n.label){
+      ctx.fillStyle='rgba(255,255,255,0.82)';
+      ctx.font='500 10px Inter,sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      var tl = (typeof nmTranslate==='function') ? nmTranslate(n.label) : n.label;
+      var lbl = tl.length>14 ? tl.substring(0,12)+'…' : tl;
+      ctx.fillText(lbl, x, y+r+9);
+    }
+  });
+}
+
+// ── Sensation Map → sticky-bubble mini-model from the live form ──
+function nmMiniSensModel(){
+  function chipLabels(sel){
+    return Array.from(document.querySelectorAll(sel)).map(function(c){
+      var span=c.querySelector('span'); return span ? span.textContent.trim() : (c.dataset.slug||'');
+    }).filter(Boolean);
+  }
+  var lang=(typeof getLang==='function')?getLang():'ru';
+  // Locations come from two sources: the expandable text list (chips with spans)
+  // and the interactive body-picker (mirrored as hidden slug-only chips — read the
+  // human labels from SM_BODY_SEL instead of the bare slug).
+  var locs = chipLabels('#sm-loc-chips .sm-chip.active:not([data-bodyorigin])');
+  Object.keys(window.SM_BODY_SEL||{}).forEach(function(slug){
+    var lab=window.SM_BODY_SEL[slug]; locs.push((lab&&(lab[lang]||lab.ru))||slug);
+  });
+  var sens = chipLabels('#sm-sens-chips .sm-chip.active');
+  var intEl = document.getElementById('sm-intensity');
+  var intensity = intEl ? parseInt(intEl.value,10)||5 : 5;
+  var nodes=[], links=[];
+  // Grow a sensation that already exists in the prior session (same word ranks again).
+  var priorLabels={}; (window.nmSessionPrior||[]).forEach(function(p){ if(p.label) priorLabels[String(p.label).toLowerCase()]=1; });
+
+  // central body node(s). If no location yet but sensations exist, use a generic centre.
+  var centerLabel = locs[0] || (sens.length ? _pr95t('a.tools.mini_body','тело') : null);
+  if(!centerLabel) return {nodes:nodes, links:links};
+  var cR = 14 + intensity*0.9; // intensity grows the centre
+  nodes.push({ id:'c0', type:'area', label:centerLabel, valence:'neutral', _layer:3, x:0.5, y:0.52, r:cR });
+  // extra locations as smaller satellites near the centre
+  locs.slice(1,3).forEach(function(loc,i){
+    var ang = -0.6 + i*1.2;
+    nodes.push({ id:'c'+(i+1), type:'area', label:loc, valence:'neutral', _layer:3,
+      x:0.5+Math.cos(ang)*0.16, y:0.52+Math.sin(ang)*0.16, r:11 });
+    links.push({source:'c0', target:'c'+(i+1), color:'rgba(255,255,255,0.14)', w:1.5});
+  });
+
+  // sensation bubbles glued around the centre on a ring.
+  var n = sens.length;
+  sens.forEach(function(label,i){
+    var ang = (i/Math.max(n,1))*Math.PI*2 - Math.PI/2;
+    var ring = 0.30; // ring radius in normalized space
+    var grow = priorLabels[label.toLowerCase()] ? 4 : 0;
+    var br = 7 + intensity*0.35 + grow;
+    var val = nmSensValence(label);
+    nodes.push({ id:'s'+i, type:'sensation', label:label, valence:val, _layer:1,
+      x:0.5+Math.cos(ang)*ring, y:0.52+Math.sin(ang)*ring*0.85, r:br,
+      ring: grow ? 'rgba(0,224,255,0.7)' : null });
+    // sticky link — short, faint, to make the bubble read as "attached"
+    var lc = val==='negative' ? 'rgba(220,90,90,0.4)' : (val==='positive' ? 'rgba(80,220,180,0.4)' : 'rgba(160,170,190,0.3)');
+    links.push({source:'c0', target:'s'+i, color:lc, w:1.5});
+  });
+  return {nodes:nodes, links:links};
+}
+
+// ── Diary → event-node mini-model from the live form ──
+function nmMiniDiaryModel(){
+  var textEl = document.getElementById('diary-event-text');
+  var commentEl = document.getElementById('diary-event-comment');
+  var text = textEl ? textEl.value.trim() : '';
+  var comment = commentEl ? commentEl.value.trim() : '';
+  var nodes=[], links=[];
+  if(!text) return {nodes:nodes, links:links};
+  var plus = (typeof currentPlusCount==='number')?currentPlusCount:0;
+  var minus = (typeof currentMinusCount==='number')?currentMinusCount:0;
+  var net = plus - minus;
+  var valence = net>0 ? 'positive' : (net<0 ? 'negative' : 'neutral');
+  // valence border: green for +, red for −, none for neutral/unrated.
+  var ring = net>0 ? 'rgba(80,220,120,0.85)' : (net<0 ? 'rgba(220,90,90,0.85)' : null);
+  var er = 16 + Math.min(Math.abs(net),3)*2;
+  nodes.push({ id:'ev', type:'event', label:text.substring(0,40), valence:valence, _layer:6,
+    x:comment?0.4:0.5, y:0.5, r:er, ring:ring });
+  if(comment){
+    nodes.push({ id:'th', type:'thought', label:comment.substring(0,40), valence:valence, _layer:4,
+      x:0.72, y:0.5, r:11 });
+    links.push({source:'ev', target:'th', color:'rgba(255,255,255,0.14)', w:1.5});
+  }
+  return {nodes:nodes, links:links};
 }
 
 function nmToggleEmotion(el,emo){
@@ -6582,6 +6887,11 @@ function nmSaveSurvey(){
     }
   });
   if(v2Chain.length) nmAppendV2(v2Chain);
+  // PR#97: if this save hands off to another overlay (cross-link), snapshot the
+  // emotion chain so the next mini-graph shows the faded prior context.
+  if(nmSessionHandoff && v2Chain.length){
+    nmSetPrior(v2Chain.map(function(c){ return {type:c.type,label:c.label,valence:c.valence}; }));
+  }
   closeNmSurvey();
   if(navigator.vibrate) navigator.vibrate([20,40,20]);
   updateNmToday();
