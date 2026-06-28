@@ -61,19 +61,19 @@ r = await jpost('/api/neuromap/v2/append', A.token, {
   chain: [{ type: 'emotion', label: 'радость', valence: 'positive', metadata: {} }, { type: 'thought', label: 'всё хорошо', valence: 'positive', metadata: {} }],
   dependent_id: childId,
 });
-assert('emotion_dep_ok', r.status === 200 && r.d.ok && r.d.dependent_id === childId && (r.d.journey_ids || []).length >= 1 && (r.d.node_ids || []).length === 0, r);
+assert('emotion_dep_ok', r.status === 200 && r.d.ok && Number(r.d.dependent_id) === Number(childId) && (r.d.journey_ids || []).length >= 1 && (r.d.node_ids || []).length === 0, r);
 
 // ── 2) Sensation FOR the child ──
 const vocab = (await jget('/api/neuromap/vocabulary', A.token)).d || {};
 const sensSlug = ((vocab.sensations || vocab.sensation || [])[0] || {}).slug || 'tension';
 const locSlug = ((vocab.body_locations || vocab.locations || [])[0] || {}).slug || 'head';
 r = await jpost('/api/neuromap/sensation', A.token, { sensations: [sensSlug], body_locations: [locSlug], comment: 'для ребёнка', intensity: 6, dependent_id: childId });
-assert('sensation_dep_ok', r.status === 200 && r.d.ok && r.d.dependent_id === childId && r.d.journey_id, r);
+assert('sensation_dep_ok', r.status === 200 && r.d.ok && Number(r.d.dependent_id) === Number(childId) && r.d.journey_id, r);
 
 // ── 3) Diary FOR the child ──
 const dk = new Date().toISOString().slice(0, 10);
 r = await jpost('/api/diary/save', A.token, { date_key: dk, text: 'первый шаг ребёнка', comment: '', plus_count: 1, minus_count: 0, time: '12:00', dependent_id: childId });
-assert('diary_dep_ok', r.status === 200 && r.d.ok && r.d.dependent_id === childId && r.d.journey_id, r);
+assert('diary_dep_ok', r.status === 200 && r.d.ok && Number(r.d.dependent_id) === Number(childId) && r.d.journey_id, r);
 
 // ── child path now carries all three; parent path unchanged by them ──
 const child1 = await pathCount(A.token, 'dependent:' + childId);
