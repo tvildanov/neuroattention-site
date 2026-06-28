@@ -4255,6 +4255,33 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       if (r[0]) nmNodeIds.push(r[0].id);
     }
 
+    // PR94 (#10): also create 'sensation'-type nodes for each FELT sensation word
+    // (тепло, напряжение…) so the "Ощущения" layer (1) of the standalone NeuroMap
+    // actually populates. Previously only body locations were stored (as 'area'),
+    // and the sensation words were dropped entirely — so layer 1 was permanently
+    // empty and read as "тёмный/невидимый". Link each sensation to the body
+    // location(s) where it was felt (sensation ↔ where).
+    const sensNodeIds = [];
+    for (const s of sensRows) {
+      const snorm = normalizeLabel(s.label_ru);
+      const sr = await sql`
+        INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+        VALUES (${userId}, 'sensation', ${s.label_ru}, ${snorm}, 'neutral', 1, ${when.toISOString()},
+                ${JSON.stringify({ source: 'sensation', slug: s.slug })}::jsonb)
+        ON CONFLICT (user_id, type, normalized_label, valence)
+        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()}
+        RETURNING id`;
+      if (sr[0]) sensNodeIds.push(sr[0].id);
+    }
+    for (const sid of sensNodeIds) {
+      for (const aid of nmNodeIds) {
+        await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+                  VALUES (${userId}, ${sid}, ${aid}, 1, ${when.toISOString()})
+                  ON CONFLICT (user_id, from_node_id, to_node_id)
+                  DO UPDATE SET count = nm_links.count + 1, last_seen_at = ${when.toISOString()}`;
+      }
+    }
+
     // Journey log: a single sensation event carrying all chosen sensations +
     // locations + intensity + the context it was bound to (link_to).
     const linkTo = Array.isArray(link_to) ? link_to.filter(Boolean) : [];
@@ -4265,7 +4292,7 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       body_location_slugs: locRows.map(l => l.slug),
       intensity: (typeof intensity === 'number' ? intensity : (parseInt(intensity, 10) || null)),
       comment: comment || '',
-      nm_node_ids: nmNodeIds,
+      nm_node_ids: nmNodeIds.concat(sensNodeIds),
       context: { linked_to: linkTo },
       source: 'sensation'
     }, when.toISOString());
