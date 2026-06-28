@@ -4,6 +4,8 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v11-v14: cache-bust for PR#102 (standalone NeuroMap — enable the «Ощущения»
+//      layer-1 toggle + sticky sensation bubbles glued to body-location nodes)
 // v10: cache-bust for PR#101 (global arc-radius clamp — kills the pre-existing
 //      "IndexSizeError: arc radius is negative" console error; purge stale account.html)
 // v9: cache-bust for PR#99 dual-layout fix (stacked spines)
