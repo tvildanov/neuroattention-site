@@ -4,6 +4,8 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v10: cache-bust for PR#101 (global arc-radius clamp — kills the pre-existing
+//      "IndexSizeError: arc radius is negative" console error; purge stale account.html)
 // v9: cache-bust for PR#99 dual-layout fix (stacked spines)
 // v8: cache-bust for PR#99 (Phase 2B — dual-timeline Personal Path + tool-side
 //     "For: Me / [child]" target selector) — runtime behaviour unchanged; only the
@@ -26,7 +28,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v9';
+var CACHE_NAME = 'na-practices-v10';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
