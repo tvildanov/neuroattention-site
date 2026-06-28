@@ -1613,7 +1613,7 @@ a.dash-tab:hover { text-decoration:none; }
         <div id="nm-filters" style="display:none;margin-top:0.75rem;">
           <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;" data-i18n="a.tools.layers">Слои:</span>
-            <label class="nm-layer-chk" style="opacity:0.45;cursor:default;" title="Ощущения (скоро)"><input type="checkbox" data-layer="1" checked disabled><span class="nm-lbl" data-i18n="a.tools.layer1">1 Ощущения</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="1" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer1">1 Ощущения</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer2">2 Переживания</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer3">3 Образы</span></label>
             <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer4">4 Понятия</span></label>
@@ -7559,7 +7559,7 @@ function nmFsBuildFilters(){
   if(!cont) return;
   var html = '';
   [
-    {layer:1,name:'Ощущения',disabled:true},
+    {layer:1,name:'Ощущения'},
     {layer:2,name:'Переживания'},
     {layer:3,name:'Образы'},
     {layer:4,name:'Понятия'},
@@ -7578,6 +7578,7 @@ function nmFsBuildMobileFilters(){
   var cont=document.getElementById('nm-fs-mobile-filters');
   if(!cont) return;
   var layers=[
+    {layer:1,name:'Ощущ.'},
     {layer:2,name:'Пережив.'},
     {layer:3,name:'Образы'},
     {layer:4,name:'Понятия'},
@@ -8617,6 +8618,24 @@ function nmSimulate(canvas, initAlpha){
     degreeMap[l.target]=(degreeMap[l.target]||0)+1;
   });
   nmNodes.forEach(function(n){ n._degree=degreeMap[n.id]||0; });
+  // PR#102: sticky-bubble bonds — a sensation (layer 1) linked to a body-location /
+  // parent node reads as a bubble *glued* to that node instead of a free force node,
+  // mirroring the PR#97 mini sticky-bubble pattern onto the main force layout.
+  // A sensation with NO parent link stays free-floating (valid orphan fallback).
+  var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; });
+  nmLinks.forEach(function(l){
+    var s=_nmById[l.source], t=_nmById[l.target];
+    l._sticky=false;
+    if(!s||!t) return;
+    var sIsSens=(s.type==='sensation'), tIsSens=(t.type==='sensation');
+    if(sIsSens===tIsSens) return;          // need exactly one sensation endpoint
+    var sens=sIsSens?s:t, anchor=sIsSens?t:s;
+    l._sticky=true;                        // short tight spring (drawn glued)
+    // Prefer a body-location ('area') anchor when a sensation has several parents,
+    // so repulsion-damping keeps it hugging the body part, not an emotion/cause.
+    var prev=sens._anchorId?_nmById[sens._anchorId]:null;
+    if(!prev || (anchor.type==='area' && prev.type!=='area')) sens._anchorId=anchor.id;
+  });
   var ctx=canvas.getContext('2d');
   var W=canvas.width, H=canvas.height;
   var iter=0;
@@ -8633,6 +8652,9 @@ function nmSimulate(canvas, initAlpha){
         var dy=nmNodes[j].y-nmNodes[i].y;
         var d2=dx*dx+dy*dy+1;
         var f=alpha*800/d2;
+        // PR#102: dampen repulsion between a sensation and its anchor so the bubble
+        // can sit glued to the body part (siblings still repel → spread on the ring).
+        if(nmNodes[i]._anchorId===nmNodes[j].id || nmNodes[j]._anchorId===nmNodes[i].id) f*=0.12;
         nmNodes[i].vx-=dx*f; nmNodes[i].vy-=dy*f;
         nmNodes[j].vx+=dx*f; nmNodes[j].vy+=dy*f;
       }
@@ -8646,7 +8668,11 @@ function nmSimulate(canvas, initAlpha){
       var s=nmNodes[si],t=nmNodes[ti];
       var dx=t.x-s.x, dy=t.y-s.y;
       var d=Math.sqrt(dx*dx+dy*dy)+0.1;
-      var f=alpha*(d-120)*0.01;
+      // PR#102: sticky links (sensation↔body part) get a short rest length pinned to
+      // the two radii + a stronger spring, so the sensation glues to its area edge.
+      var rest=120, k=0.01;
+      if(l._sticky){ rest=nmNodeR(s)+nmNodeR(t)+10; k=0.06; }
+      var f=alpha*(d-rest)*k;
       s.vx+=dx*f; s.vy+=dy*f;
       t.vx-=dx*f; t.vy-=dy*f;
     });
