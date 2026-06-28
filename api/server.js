@@ -5720,12 +5720,25 @@ app.post('/api/teams/:id/members', requireAuth, async (req, res) => {
 // DELETE /api/teams/:id/members/:uid — owner removes a member
 app.delete('/api/teams/:id/members/:uid', requireAuth, async (req, res) => {
   try {
-    const me = req.user.sub || req.user.id;
+    const me = String(req.user.sub || req.user.id);
     const tid = parseInt(req.params.id, 10);
-    const [t] = await sql`SELECT owner_user_id FROM teams WHERE id = ${tid}`;
+    const target = String(req.params.uid);
+    const [t] = await sql`SELECT owner_user_id, kind FROM teams WHERE id = ${tid}`;
     if (!t) return res.status(404).json({ error: 'Not found' });
-    if (t.owner_user_id !== me && req.params.uid !== me) return res.status(403).json({ error: 'Owner only or self' });
-    await sql`DELETE FROM team_members WHERE team_id = ${tid} AND user_id = ${req.params.uid}`;
+    const owner = String(t.owner_user_id);
+    const isOwner = owner === me;
+    const isSelf = target === me;
+    // PR94 (#3): on a FAMILY, any member may remove another NON-owner member — this
+    // is how a legacy "сын" card gets cleared even when the caller isn't the
+    // structural owner (old families can have owner_user_id set to someone else).
+    // The owner can never be removed by others. On work TEAMS keep owner-or-self.
+    let allowed = isOwner || isSelf;
+    if (!allowed && t.kind === 'family' && target !== owner) {
+      const [mem] = await sql`SELECT 1 FROM team_members WHERE team_id = ${tid} AND user_id = ${me}`;
+      if (mem) allowed = true;
+    }
+    if (!allowed) return res.status(403).json({ error: 'Not permitted' });
+    await sql`DELETE FROM team_members WHERE team_id = ${tid} AND user_id = ${target}`;
     res.json({ ok: true });
   } catch (err) { console.error('rm member:', err); res.status(500).json({ error: err.message }); }
 });
@@ -6226,8 +6239,15 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     function jeItem(e) {
       const p = e.payload || {};
       const ctx = courseCtx(p);
+      // PR94 (#4): standalone NeuroMap 'area' nodes are LIFE AREAS (сфера жизни /
+      // Образы: relationships, work, health…), NOT body sensations. They were mapped
+      // onto the sensation layer purely for the cyan colour, so the UI mislabelled
+      // "отношения" as "Ощущение". Re-tag the KIND to 'life_area' (frontend shows
+      // "Сфера жизни") while keeping the cyan layer. Real sensations arrive via
+      // /api/neuromap/sensation (source 'sensation', sensation_labels) — untouched.
+      const kind = (e.kind === 'sensation' && p.nm_type === 'area') ? 'life_area' : e.kind;
       return {
-        id: String(e.id), kind: e.kind, layer: e.layer, source: p.source || e.kind,
+        id: String(e.id), kind, layer: e.layer, source: p.source || e.kind,
         occurred_at: e.occurred_at, t: e.occurred_at,
         label: jeLabel(e), valence: p.valence || 'neutral',
         weight: p.weight || p.count || p.points || p.intensity || 1,
@@ -6269,7 +6289,9 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
       const map = { emotion:'emotion', thought:'thought', area:'sensation', cause:'event', event:'event' };
       const lyr = map[n.type]; if (!lyr) return;
       if (haveJE[lyr]) return; // journey already covers this layer
-      layers[lyr].push({ id: 'nm_' + n.id, kind: lyr, layer: lyr, source:'neuromap_legacy', t: n.last_seen_at, occurred_at: n.last_seen_at, label: n.label, valence: n.valence, weight: n.count || 1, payload: { label: n.label, valence: n.valence, legacy: true }, links: [] });
+      // PR94 (#4): legacy 'area' nodes are life areas, not sensations — same re-tag.
+      const kind = (n.type === 'area') ? 'life_area' : lyr;
+      layers[lyr].push({ id: 'nm_' + n.id, kind, layer: lyr, source:'neuromap_legacy', t: n.last_seen_at, occurred_at: n.last_seen_at, label: n.label, valence: n.valence, weight: n.count || 1, payload: { label: n.label, valence: n.valence, nm_type: n.type, legacy: true }, links: [] });
     });
     // calendar — separate instrument, always include (not mirrored to journey)
     cal.forEach(c => layers.event.push({ id: 'cal_' + c.id, kind:'event', layer:'event', source:'calendar', t: c.created_at, occurred_at: c.created_at, label: c.title, valence:'neutral', weight: 1, payload: { title: c.title, event_type: c.event_type, date_key: c.date_key }, links: [] }));
@@ -6467,16 +6489,20 @@ app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
     }
     function jeLabel(e) {
       const p = e.payload || {};
-      if (e.kind === 'sensation') return ((p.sensation_labels || []).join(', ') || 'ощущение');
-      if (e.kind === 'practice') return p.practice_name || 'practice';
-      if (e.kind === 'insight') return String(p.text || 'insight').slice(0, 60);
+      // PR94 (#4): area-origin "sensation" rows carry their content in p.label
+      // ("отношения"); fall back to it instead of the bare "ощущение" placeholder.
+      if (e.kind === 'sensation') return ((p.sensation_labels || []).join(', ') || p.label || 'ощущение');
+      if (e.kind === 'practice') return p.practice_name || p.label || 'practice';
+      if (e.kind === 'insight') return String(p.text || p.label || 'insight').slice(0, 60);
       if (e.kind === 'xp_gain') return '+' + (p.points || 0) + ' XP';
       return p.label || p.title || e.kind;
     }
     const evByUser = {};
     evRows.forEach(e => {
       const k = String(e.user_id);
-      (evByUser[k] = evByUser[k] || []).push({ id: String(e.id), kind: e.kind, layer: e.layer,
+      const p = e.payload || {};
+      const kind = (e.kind === 'sensation' && p.nm_type === 'area') ? 'life_area' : e.kind;
+      (evByUser[k] = evByUser[k] || []).push({ id: String(e.id), kind, layer: e.layer,
         t: e.occurred_at, occurred_at: e.occurred_at, label: jeLabel(e),
         valence: (e.payload && e.payload.valence) || 'neutral' });
     });
