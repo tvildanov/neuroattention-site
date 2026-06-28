@@ -8669,9 +8669,13 @@ function nmSimulate(canvas, initAlpha){
         var dy=nmNodes[j].y-nmNodes[i].y;
         var d2=dx*dx+dy*dy+1;
         var f=alpha*800/d2;
-        // PR#102: dampen repulsion between a sensation and its anchor so the bubble
-        // can sit glued to the body part (siblings still repel → spread on the ring).
-        if(nmNodes[i]._anchorId===nmNodes[j].id || nmNodes[j]._anchorId===nmNodes[i].id) f*=0.12;
+        // PR#102: dampen repulsion so the bubble cluster stays tight around the body
+        // part. (a) sensation↔its anchor → strong damp (the ring-slot force holds it
+        // glued). (b) sibling sensations on the SAME anchor → moderate damp; the slots
+        // already separate them by angle, so full repulsion only inflates the ring.
+        var _ai=nmNodes[i]._anchorId, _aj=nmNodes[j]._anchorId;
+        if(_ai===nmNodes[j].id || _aj===nmNodes[i].id) f*=0.12;
+        else if(_ai && _ai===_aj && nmNodes[i].type==='sensation' && nmNodes[j].type==='sensation') f*=0.3;
         nmNodes[i].vx-=dx*f; nmNodes[i].vy-=dy*f;
         nmNodes[j].vx+=dx*f; nmNodes[j].vy+=dy*f;
       }
@@ -8702,7 +8706,7 @@ function nmSimulate(canvas, initAlpha){
       var rr=nmNodeR(a)+nmNodeR(n)+12;            // ring radius: hug the anchor's edge
       var ang=(n._ringTot>1 ? (n._ringIdx/n._ringTot)*Math.PI*2 : 0) - Math.PI/2; // 1 bubble → above
       var tx=a.x+Math.cos(ang)*rr, ty=a.y+Math.sin(ang)*rr;
-      n.vx+=(tx-n.x)*alpha*0.22; n.vy+=(ty-n.y)*alpha*0.22;
+      n.vx+=(tx-n.x)*alpha*0.25; n.vy+=(ty-n.y)*alpha*0.25;
     });
     // Center gravity + apply positions
     nmNodes.forEach(function(n){
