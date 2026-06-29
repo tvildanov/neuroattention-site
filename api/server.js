@@ -2380,10 +2380,18 @@ async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso) {
   // single seam; mirror it here. Connect only the MOST RECENT prior session node to
   // the FIRST new node, so the flow reads as one chain (sensation → emotion) without
   // gluing body parts to the whole downstream chain.
+  // Prefer a NON-body prior node as the seam anchor. All nodes from one /sensation
+  // call share the same created_at, so a plain created_at tiebreak can pick a body
+  // part (позвоночник) — recreating the very body↔emotion link we're trying to kill.
+  // A body location must never be the seam to an emotion chain (Issue #2); sort body
+  // areas last so the felt sensation (the chain tail) wins, body used only as a last
+  // resort when the session has nothing else.
   const existingRows = await sql`
-    SELECT node_id FROM nm_session_nodes
-    WHERE user_id = ${userId} AND session_id = ${sid}
-    ORDER BY created_at DESC, node_id DESC`;
+    SELECT sn.node_id,
+      CASE WHEN n.type = 'area' AND n.metadata->>'area_kind' = 'body' THEN 1 ELSE 0 END AS is_body
+    FROM nm_session_nodes sn JOIN nm_nodes n ON n.id = sn.node_id
+    WHERE sn.user_id = ${userId} AND sn.session_id = ${sid}
+    ORDER BY is_body ASC, sn.created_at DESC, sn.node_id DESC`;
   const prior = existingRows.map(r => r.node_id).find(id => !ids.includes(id));
   let made = 0;
   if (prior) {
