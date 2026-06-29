@@ -1568,52 +1568,49 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 036 (area_kind classify): body+=', body.length ?? 0, 'sphere+=', sphere.length ?? 0);
     } catch (e) { console.error('migration 036 (area_kind classify):', e.message); }
 
-    // ── Migration 037 (PR#105): no sensation node should float. After 034 links every
-    //    sensation event that recorded a body location, the sensations STILL without a
-    //    body-area link are the ones whose original entry recorded no body part at all
-    //    (quick-log / course-inline allowed skipping it) — exactly Tahir's "most
-    //    sensations float separately". Anchor each remaining orphan to a per-user
-    //    «всё тело» (whole_body) body node (created if missing, deduped via the unique
-    //    constraint) so it reads as a stuck bubble. Honest best-effort: we cannot know
-    //    a body part that was never recorded, so whole_body is the truthful fallback.
-    //    Idempotent (orphan set shrinks to ∅ once linked). try/catch — never aborts.
+    // ── Migration 038 (PR#106): clean slate. Tahir wants the «всё тело» fallback gone
+    //    and every floating sensation removed — "я начну почти заново, главное чтобы
+    //    дальше такого не повторялось". This REVERSES PR#105's migration 037 (the
+    //    whole_body auto-anchor). Two deletions, ordered so step (a) creates the orphans
+    //    step (b) cleans up:
+    //      (a) delete every whole_body fallback area node (metadata.slug='whole_body')
+    //          and all its links — these are the synthetic anchors 037 / the endpoint
+    //          fallback created.
+    //      (b) delete every sensation node that has NO link to a REAL body-area node
+    //          (type='area', area_kind='body', not whole_body) — true orphans, plus the
+    //          ones that were only attached to the whole_body node just deleted.
+    //    Links are removed first so no row dangles. Idempotent: a second run finds
+    //    nothing left to delete. try/catch — never aborts the migration chain.
     try {
+      // (a) whole_body fallback nodes
+      const wb = await sql`SELECT id FROM nm_nodes
+        WHERE type = 'area' AND metadata->>'slug' = 'whole_body'`;
+      const wbIds = wb.map(r => r.id);
+      if (wbIds.length) {
+        await sql`DELETE FROM nm_links WHERE from_node_id = ANY(${wbIds}::bigint[]) OR to_node_id = ANY(${wbIds}::bigint[])`;
+        await sql`DELETE FROM nm_nodes WHERE id = ANY(${wbIds}::bigint[])`;
+      }
+      // (b) orphan sensation nodes (no link to a real body-area node)
       const orphans = await sql`
-        SELECT n.id, n.user_id, n.last_seen_at FROM nm_nodes n
+        SELECT n.id FROM nm_nodes n
         WHERE n.type = 'sensation' AND NOT EXISTS (
           SELECT 1 FROM nm_links l
           JOIN nm_nodes a ON a.id = (CASE WHEN l.from_node_id = n.id THEN l.to_node_id ELSE l.from_node_id END)
           WHERE (l.from_node_id = n.id OR l.to_node_id = n.id)
             AND a.type = 'area'
+            AND COALESCE(a.metadata->>'slug','') <> 'whole_body'
             AND COALESCE(a.metadata->>'area_kind',
                          CASE WHEN a.metadata->>'source' = 'sensation' THEN 'body' ELSE 'sphere' END) = 'body'
         )`;
-      const wbByUser = {};
-      let linked = 0;
-      for (const o of orphans) {
-        const ts = o.last_seen_at || new Date().toISOString();
-        let wbId = wbByUser[o.user_id];
-        if (!wbId) {
-          const wb = await sql`
-            INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
-            VALUES (${o.user_id}, 'area', 'всё тело', ${normalizeLabel('всё тело')}, 'neutral', 1, ${ts},
-                    ${JSON.stringify({ source: 'sensation', slug: 'whole_body', area_kind: 'body', backfill: true })}::jsonb)
-            ON CONFLICT (user_id, type, normalized_label, valence)
-            DO UPDATE SET last_seen_at = GREATEST(nm_nodes.last_seen_at, EXCLUDED.last_seen_at)
-            RETURNING id`;
-          wbId = wb[0] && wb[0].id; wbByUser[o.user_id] = wbId;
-        }
-        if (wbId) {
-          await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
-                    VALUES (${o.user_id}, ${o.id}, ${wbId}, 1, ${ts})
-                    ON CONFLICT (user_id, from_node_id, to_node_id) DO NOTHING`;
-          linked++;
-        }
+      const orphanIds = orphans.map(r => r.id);
+      if (orphanIds.length) {
+        await sql`DELETE FROM nm_links WHERE from_node_id = ANY(${orphanIds}::bigint[]) OR to_node_id = ANY(${orphanIds}::bigint[])`;
+        await sql`DELETE FROM nm_nodes WHERE id = ANY(${orphanIds}::bigint[])`;
       }
-      console.log('migration 037 (orphan sensation → whole_body anchor): orphans', orphans.length, 'linked', linked);
-    } catch (e) { console.error('migration 037 (orphan sensation anchor):', e.message); }
+      console.log('migration 038 (clean slate): whole_body nodes deleted', wbIds.length, 'orphan sensations deleted', orphanIds.length);
+    } catch (e) { console.error('migration 038 (clean slate):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-037 applied successfully' });
+    res.json({ ok: true, message: 'Migrations 003-038 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4532,15 +4529,14 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       locRows.push({ slug, label_ru: lbl });
     }
 
-    // PR#105: a sensation logged with NO body location used to create an orphan
-    // sensation node with no link → it floated free on the map (exactly Tahir's
-    // "most sensations float separately, only one is connected"). The quick-log and
-    // course-inline flows both allow skipping the body part. Anchor any such
-    // sensation to a generic «всё тело» (whole_body) body part so EVERY new
-    // sensation always reads as a stuck bubble (100% coverage for new data).
+    // PR#106: Tahir wants a clean slate — NO whole_body fallback, NO orphan
+    // sensations ever again. A sensation with no body location is rejected outright
+    // so the map only ever holds sensations that glue to a real body part. (Reverses
+    // the PR#105 «всё тело» auto-anchor, which Tahir disliked.) Frontends already
+    // require a body location; this is the authoritative backstop.
     if (sensRows.length && locRows.length === 0) {
-      const wb = await sql`SELECT slug, label_ru FROM vocab_terms WHERE category='body_location' AND slug='whole_body' LIMIT 1`;
-      locRows.push(wb[0] ? { slug: wb[0].slug, label_ru: wb[0].label_ru } : { slug: 'whole_body', label_ru: 'всё тело' });
+      return res.status(400).json({ error: 'body_part_required',
+        message: 'Сохранение ощущения требует выбора части тела' });
     }
 
     // occurred_at supports back-dating; default to now. date_key follows it.
