@@ -4,6 +4,11 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v19: cache-bust for PR#107 — (1) migration 039 label-sweeps any «всё тело» area
+//      node that 038 (slug-only) missed + re-cleans orphan sensations; (2) a dragged
+//      sensation bubble SNAPS BACK to its body part on release (can't be torn off);
+//      (3) multi-anchor BRIDGE — a sensation logged on two body parts (e.g. left+right
+//      hand) sits at their centroid and glues to both, visually bridging them.
 // v18: cache-bust for PR#106 (NeuroMap clean slate + real sticky bubbles. (a) the
 //      «всё тело» fallback is GONE — migration 038 deletes every whole_body node and
 //      every orphan sensation (no real body-edge); the server now REJECTS (400) a
@@ -52,7 +57,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v18';
+var CACHE_NAME = 'na-practices-v19';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
