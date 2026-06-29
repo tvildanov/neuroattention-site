@@ -1033,6 +1033,7 @@
       ctx.beginPath(); ctx.arc(sNow, ny, 4, 0, Math.PI * 2); ctx.fillStyle = C.cyan; ctx.fill();
       if (!gesturing) ctx.restore();
     }
+    drawMoonPhasesCv(ctx, st, view, lang, x0, x1, C);
     drawTimeAxisCv(ctx, view, lang, x0, x1, C);
     ctx.restore();
     // Sticky External Field layer icons — drawn OUTSIDE the scroll clip so they
@@ -1151,8 +1152,11 @@
   function overlayHover(S, lx, ly, clientX, clientY, lang) {
     var st = S.st, nodes = (st && st._overlayNodes) || [], hit = null;
     for (var i = 0; i < nodes.length; i++) { if (Math.hypot(nodes[i].x - lx, nodes[i].y - ly) < 9) { hit = nodes[i]; break; } }
-    if (!hit) { hideOverlayTip(); return; }
-    showSharedTip(clientX, clientY, buildOverlayPhrase(hit.ev, hit.layer, lang), hit.color);
+    if (hit) { showSharedTip(clientX, clientY, buildOverlayPhrase(hit.ev, hit.layer, lang), hit.color); return; }
+    // PR#110: lunar-phase glyphs along the axis share the same tooltip chip.
+    var marks = (st && st._moonMarks) || [];
+    for (var j = 0; j < marks.length; j++) { if (Math.hypot(marks[j].x - lx, marks[j].y - ly) < 12) { showSharedTip(clientX, clientY, marks[j].label, '#cdd6ff'); return; } }
+    hideOverlayTip();
   }
   function showOverlayCard(container, marker, lang) {
     var host = stageOf(container);
@@ -1253,6 +1257,59 @@
       var nm = truncate(s.label, 16);
       ctx.fillText(hasMods ? (nm ? ((i + 1) + ' · ' + nm) : ((lang === 'en' ? 'Module ' : lang === 'es' ? 'Módulo ' : 'Модуль ') + (i + 1))) : nm, mid, yTop - 14);
     });
+  }
+
+  // ── PR#110: significant lunar-phase day markers along the bottom axis.
+  // Astronomical (SunCalc) — independent of any External Field subscription. A
+  // calendar day gets a glyph when a principal phase moment (new 🌑 / first
+  // quarter 🌓 / full 🌕 / last quarter 🌗) falls within that local day. The
+  // "event lands in this day" test (phase crossing between 00:00 and 24:00)
+  // assigns each event to the correct calendar day regardless of the moon's
+  // varying daily speed. Quarters are dropped, then everything, as the axis
+  // compresses, so the glyphs never crowd. ──
+  var MOON_GLYPH = ['🌑', '🌓', '🌕', '🌗'];   // index = round(phase/0.25) % 4
+  var MOON_NAME = {
+    ru: ['Новолуние', 'Первая четверть', 'Полнолуние', 'Последняя четверть'],
+    en: ['New moon', 'First quarter', 'Full moon', 'Last quarter'],
+    es: ['Luna nueva', 'Cuarto creciente', 'Luna llena', 'Cuarto menguante']
+  };
+  function moonPhaseFrac(ms) { try { return window.SunCalcLite.getMoonIllumination(new Date(ms)).phase; } catch (e) { return null; } }
+  function drawMoonPhasesCv(ctx, st, view, lang, x0, x1, C) {
+    st._moonMarks = [];
+    if (!window.SunCalcLite) return;
+    if (14.8 * view.pxPerDay < 11) return;                 // axis too compressed even for new/full → skip
+    var onlyMajor = (7.4 * view.pxPerDay < 18);            // quarters would crowd → new & full only
+    var names = MOON_NAME[lang] || MOON_NAME.en;
+    var tStart = view.originT + (x0 - view.panX) / view.pxPerDay * DAY_MS;
+    var tEnd = view.originT + (x1 - view.panX) / view.pxPerDay * DAY_MS;
+    tEnd = Math.min(tEnd, view.nowT + DAY_MS);
+    var glyphY = H - 28;
+    var d = new Date(tStart); d.setHours(0, 0, 0, 0);
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '12px Inter, system-ui, sans-serif';
+    var guard = 0;
+    for (var ms = d.getTime(); ms <= tEnd + DAY_MS && guard < 800; ms += DAY_MS, guard++) {
+      var p0 = moonPhaseFrac(ms), p1 = moonPhaseFrac(ms + DAY_MS);
+      if (p0 == null || p1 == null) break;
+      var hit = -1;
+      // principal phases: new(0) full(0.5) [wrap-aware], first(0.25) last(0.75)
+      if (p0 > p1) hit = 0;                                // new moon: phase wrapped 1→0 this day
+      else if (p0 < 0.25 && 0.25 <= p1) hit = 1;
+      else if (p0 < 0.5 && 0.5 <= p1) hit = 2;
+      else if (p0 < 0.75 && 0.75 <= p1) hit = 3;
+      if (hit < 0) continue;
+      if (onlyMajor && (hit === 1 || hit === 3)) continue;
+      var X = (ms + DAY_MS / 2 - view.originT) / DAY_MS * view.pxPerDay + view.panX;   // glyph over local noon
+      if (X < x0 - 6 || X > x1 + 6) continue;
+      ctx.strokeStyle = C.lineMuted; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X, glyphY + 9); ctx.lineTo(X, H - 18); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillText(MOON_GLYPH[hit], X, glyphY);
+      var when = ''; try { when = new Date(ms + DAY_MS / 2).toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'ru-RU', { day: 'numeric', month: 'short' }); } catch (e) {}
+      st._moonMarks.push({ x: X, y: glyphY, label: MOON_GLYPH[hit] + ' ' + names[hit] + (when ? ' · ' + when : '') });
+    }
+    ctx.restore();
   }
 
   function drawTimeAxisCv(ctx, view, lang, x0, x1, C) {
