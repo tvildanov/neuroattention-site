@@ -1409,6 +1409,7 @@
   "a.tools.fill_emotion_map": "Заполнить карту эмоций / переживаний",
   "a.tools.fill_thought_map": "Заполнить мысль",
   "a.tools.thought_intro_title": "О какой мысли вы сейчас думаете?",
+  "a.tools.thought_emotion_q": "Какая эмоция связана с этой мыслью?",
   "a.tools.thought_intro_hint": "Напишите её своими словами — мысль может быть позитивной, нейтральной или негативной",
   "a.tools.thought_intro_ph": "Напишите свою мысль...",
   "a.tools.thought_need_text": "Напишите мысль",
