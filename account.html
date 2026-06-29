@@ -335,6 +335,17 @@ a.dash-tab:hover { text-decoration:none; }
 .nm-chip.pos:hover { border-color:rgba(150,225,195,0.34); }
 .nm-chip.neg { background:rgba(26,16,22,0.6);border-color:rgba(150,92,112,0.24);color:rgba(202,168,178,0.82); }
 .nm-chip.neg:hover { border-color:rgba(192,120,142,0.44); }
+/* PR#108: neutral valence chip (grey) + neutral selected state. */
+.nm-chip.neutral { background:rgba(255,255,255,0.04);border-color:rgba(200,200,210,0.2);color:rgba(205,205,214,0.85); }
+.nm-chip.neutral:hover { border-color:rgba(200,200,210,0.4); }
+.nm-chip.neutral.selected { background:rgba(200,200,210,0.1);border-color:rgba(200,200,210,0.4);color:rgba(225,225,232,1); }
+/* PR#108: a user-added (personal-library) term — a small dot marks it as yours. */
+.nm-chip.nm-uv::before { content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:0.7;margin-right:5px;vertical-align:middle; }
+/* PR#108: the 3-way valence picker chips (Positive / Neutral / Negative). */
+.nm-val-chip { display:inline-flex;align-items:center;padding:0.4rem 0.85rem;border-radius:9px;font-size:12px;cursor:pointer;transition:all 0.18s;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:var(--text-muted);user-select:none; }
+.nm-val-chip.pos.selected { background:rgba(120,255,160,0.12);border-color:rgba(120,255,160,0.5);color:rgba(150,255,180,1); }
+.nm-val-chip.neutral.selected { background:rgba(200,200,210,0.12);border-color:rgba(200,200,210,0.5);color:rgba(225,225,232,1); }
+.nm-val-chip.neg.selected { background:rgba(255,120,120,0.12);border-color:rgba(255,120,120,0.5);color:rgba(255,150,150,1); }
 .nm-slider-wrap { display:flex;align-items:center;gap:1rem;margin-top:0.75rem; }
 .nm-slider-wrap input[type=range] { flex:1;accent-color:rgba(255,255,255,0.5);height:6px; }
 .nm-slider-val { font-family:'Unbounded',sans-serif;font-size:1.4rem;color:var(--text-primary);min-width:2rem;text-align:center; }
@@ -1746,6 +1757,10 @@ a.dash-tab:hover { text-decoration:none; }
           <button class="btn btn-solid" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;" onclick="openNmSurvey()">
             <span data-i18n="a.tools.fill_emotion_map">Заполнить карту эмоций / переживаний</span>
             <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;border:1px solid rgba(200,180,240,0.22);" onclick="openNmThought()">
+            <span data-i18n="a.tools.fill_thought_map">Заполнить мысль</span>
+            <svg class="icon" viewBox="0 0 24 24" style="stroke:rgba(200,180,240,0.9);"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
           </button>
           <button class="btn btn-ghost" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;border:1px solid rgba(0,224,255,0.18);" onclick="nmOpenSensationOverlay()">
             <span data-i18n="a.tools.fill_sensation_map">Заполнить карту ощущений</span>
@@ -6116,6 +6131,31 @@ function analyzeDiary(){
 // ══════════════════════════════════════════
 var nmData = {}; // { 'YYYY-MM-DD': [ {emotions,areas,causes,thoughts,customThoughts,intensity,context} ] }
 var nmCustomThoughts = []; // user-added thoughts persisted in session
+// PR#108 (#3/#4): «Заполнить мысль» thought-first flow + personal vocabulary.
+var nmThoughtMode = false;      // true while the thought flow drives the survey
+var nmPendingConcept = null;    // {label, valence} captured in the thought intro
+// Custom values typed in any chain step persist as user_added nm_nodes. We cache a
+// label→valence map (seeded from GET /api/neuromap/user-vocab + this session's adds)
+// so the save can stamp the right valence + user_added flag, and pickers can colour
+// previously-added terms. nmUserVocab holds the fetched per-category lists for merge.
+var nmVocabValence = {};        // label → 'positive'|'neutral'|'negative' (user-added only)
+var nmUserVocab = { area: [], cause: [], thought: [], concept: [] };
+function nmLoadUserVocab(cb){
+  var token = (typeof naGetToken==='function') ? naGetToken() : localStorage.getItem('na_token');
+  if(!token){ if(cb) cb(); return; }
+  fetch((window.AUTH_API||AUTH_API||'') + '/api/neuromap/user-vocab', { headers:{ 'Authorization':'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.vocab){
+        nmUserVocab = { area:d.vocab.area||[], cause:d.vocab.cause||[], thought:d.vocab.thought||[], concept:d.vocab.concept||[] };
+        ['area','cause','thought','concept'].forEach(function(cat){
+          nmUserVocab[cat].forEach(function(it){ if(it && it.label) nmVocabValence[it.label]=it.valence||'neutral'; });
+        });
+      }
+      if(cb) cb();
+    })
+    .catch(function(){ if(cb) cb(); });
+}
 var nmCurrentStep = 0;
 var nmSurveyState = {}; // temp state while filling survey
 // PR#104 (#1): default to 'all', not 'day'. The Day window cropped the graph to
@@ -6350,11 +6390,98 @@ function openNmSurvey(){
   nmCurrentStep=0;
   nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:''};
   nmLivePrevPos={};
+  // PR#108: thought mode is active iff a concept was captured in the intro just now.
+  nmThoughtMode = !!nmPendingConcept;
+  // Pull the user's personal vocabulary so prior custom terms appear in the pickers,
+  // coloured by their saved valence. Re-render once it arrives (non-blocking).
+  nmLoadUserVocab(function(){ if(document.getElementById('nmSurveyModal').classList.contains('open')) renderNmStep(); });
   document.getElementById('nmSurveyModal').classList.add('open');
   renderNmStep();
 }
+// PR#108 (#3): «Заполнить мысль». Capture a free-text thought + its valence, then run
+// the normal emotion chain — the thought is prepended as a `concept` node on save so
+// it links into the whole chain and joins the user's personal library.
+function openNmThought(){
+  nmThoughtPromptIntro(function(label, valence){
+    nmPendingConcept = { label: label, valence: valence };
+    nmVocabValence[label] = valence; // so the picker/colour treats it as user-added
+    openNmSurvey();
+  });
+}
+window.openNmThought = openNmThought;
+// Intro modal: textarea + 3 valence chips. cb(label, valence) on confirm.
+function nmThoughtPromptIntro(cb){
+  var ov=document.createElement('div');
+  ov.className='rpg-modal-overlay'; ov.id='nm-thought-intro';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div class="rpg-modal" style="max-width:460px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">'+
+      '<h3 style="margin:0;font-size:1.05rem;">'+_pr95t('a.tools.thought_intro_title','О какой мысли вы сейчас думаете?')+'</h3>'+
+      '<button class="btn btn-ghost" style="padding:0.2rem 0.5rem;" onclick="this.closest(\'.rpg-modal-overlay\').remove()">✕</button>'+
+    '</div>'+
+    '<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">'+_pr95t('a.tools.thought_intro_hint','Напишите её своими словами — мысль может быть позитивной, нейтральной или негативной')+'</p>'+
+    '<textarea id="nm-thought-text" class="glass-input" rows="3" placeholder="'+_pr95t('a.tools.thought_intro_ph','Напишите свою мысль...')+'" style="width:100%;padding:0.75rem 0.9rem;border-radius:12px;font-size:14px;resize:vertical;"></textarea>'+
+    '<p style="font-size:11px;color:var(--text-dim);margin:0.9rem 0 0.5rem;">'+_pr95t('a.tools.valence_q','Это больше позитивное, нейтральное или негативное?')+'</p>'+
+    '<div id="nm-thought-val" style="display:flex;gap:0.4rem;flex-wrap:wrap;">'+nmValenceChips()+'</div>'+
+    '<p id="nm-thought-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0.5rem 0 0;"></p>'+
+    '<button class="btn btn-solid" style="width:100%;justify-content:center;margin-top:0.5rem;" onclick="nmThoughtIntroConfirm()">'+_pr95t('a.tools.next_btn','Далее →')+'</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  nmThoughtIntroCb = cb;
+  setTimeout(function(){ var t=document.getElementById('nm-thought-text'); if(t) t.focus(); }, 60);
+}
+var nmThoughtIntroCb = null;
+function nmThoughtIntroConfirm(){
+  var txt=document.getElementById('nm-thought-text'); var err=document.getElementById('nm-thought-err');
+  var label=(txt&&txt.value||'').trim();
+  if(!label){ if(err) err.textContent=_pr95t('a.tools.thought_need_text','Напишите мысль'); return; }
+  var picked=document.querySelector('#nm-thought-val .nm-val-chip.selected');
+  var valence=picked?picked.getAttribute('data-val'):'neutral';
+  var ov=document.getElementById('nm-thought-intro'); if(ov) ov.remove();
+  if(nmThoughtIntroCb){ var cb=nmThoughtIntroCb; nmThoughtIntroCb=null; cb(label, valence); }
+}
+window.nmThoughtIntroConfirm = nmThoughtIntroConfirm;
+// Three valence chips (Positive / Neutral / Negative). Default neutral selected.
+function nmValenceChips(sel){
+  sel = sel || 'neutral';
+  var opts=[['positive','pos',_pr95t('a.tools.valence_pos','Позитивное')],['neutral','neutral',_pr95t('a.tools.valence_neutral','Нейтральное')],['negative','neg',_pr95t('a.tools.valence_neg','Негативное')]];
+  return opts.map(function(o){
+    return '<span class="nm-val-chip '+o[1]+(o[0]===sel?' selected':'')+'" data-val="'+o[0]+'" onclick="nmValencePick(this)">'+o[2]+'</span>';
+  }).join('');
+}
+function nmValencePick(el){
+  var box=el.parentElement; if(box) box.querySelectorAll('.nm-val-chip').forEach(function(c){ c.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+window.nmValencePick = nmValencePick;
+// Generic custom-value valence prompt — used by the area/cause/thought "+ Add" inputs.
+// cb(valence) on pick. Shows the typed label so the user knows what they're tagging.
+function nmPromptValence(label, cb){
+  var ov=document.createElement('div');
+  ov.className='rpg-modal-overlay'; ov.id='nm-val-prompt';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div class="rpg-modal" style="max-width:420px;">'+
+    '<h3 style="margin:0 0 0.5rem;font-size:1rem;">«'+nmEscHtml(label)+'»</h3>'+
+    '<p style="font-size:12px;color:var(--text-muted);margin:0 0 0.85rem;">'+_pr95t('a.tools.valence_q','Это больше позитивное, нейтральное или негативное?')+'</p>'+
+    '<div id="nm-vp-chips" style="display:flex;gap:0.4rem;flex-wrap:wrap;">'+nmValenceChips()+'</div>'+
+    '<button class="btn btn-solid" style="width:100%;justify-content:center;margin-top:0.85rem;" onclick="nmPromptValenceConfirm()">'+_pr95t('a.tools.add_btn','Добавить')+'</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  nmPromptValenceCb = cb;
+}
+var nmPromptValenceCb = null;
+function nmPromptValenceConfirm(){
+  var picked=document.querySelector('#nm-vp-chips .nm-val-chip.selected');
+  var valence=picked?picked.getAttribute('data-val'):'neutral';
+  var ov=document.getElementById('nm-val-prompt'); if(ov) ov.remove();
+  if(nmPromptValenceCb){ var cb=nmPromptValenceCb; nmPromptValenceCb=null; cb(valence); }
+}
+window.nmPromptValenceConfirm = nmPromptValenceConfirm;
 function closeNmSurvey(){
   document.getElementById('nmSurveyModal').classList.remove('open');
+  // PR#108: the thought-flow concept is consumed on save/close — don't let it bleed
+  // into the next plain emotion walkthrough.
+  nmThoughtMode=false; nmPendingConcept=null;
   // PR#96: a terminal close ends the cross-link session; a handoff (save & link)
   // keeps it for the next overlay.
   if(!nmSessionHandoff) nmClearSession();
@@ -6398,6 +6525,53 @@ function renderNmBreadcrumb(){
   bc.innerHTML=chainLabel+'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:13px;font-weight:500;line-height:1.6;">'+parts.join('<span style="color:rgba(255,255,255,0.2);margin:0 2px;">→</span>')+'</div>';
 }
 
+// PR#108 (#4): render the user's previously-added custom terms for a category as
+// chips, coloured by their saved valence and marked (nm-uv) as personal. Skips any
+// label that is already a seeded option so there are no duplicates.
+function nmVocabSeededSet(cat){
+  var arr = cat==='area' ? NM_AREAS : (cat==='thought' ? NM_THOUGHTS : []);
+  var s={}; arr.forEach(function(x){ s[x]=1; }); return s;
+}
+function nmRenderVocabChips(cat, selArr, toggleName){
+  var seeded = nmVocabSeededSet(cat);
+  var lists;
+  if(cat==='thought'){
+    // fetched thoughts + concepts (prior sessions) + this session's just-added customs
+    lists = (nmUserVocab.thought||[]).concat(nmUserVocab.concept||[]);
+    nmCustomThoughts.forEach(function(lbl){ lists.push({ label:lbl, valence:nmVocabValence[lbl]||'neutral' }); });
+  } else {
+    lists = nmUserVocab[cat]||[];
+  }
+  var seen={}, h='';
+  lists.forEach(function(it){
+    if(!it || !it.label || seeded[it.label] || seen[it.label]) return;
+    seen[it.label]=1;
+    var cls = it.valence==='positive' ? 'pos' : (it.valence==='negative' ? 'neg' : 'neutral');
+    var sel = selArr.indexOf(it.label)!==-1;
+    h+='<span class="nm-chip '+cls+' nm-uv'+(sel?' selected':'')+'" onclick="'+toggleName+'(this,\''+it.label.replace(/'/g,"\\'")+'\')" title="'+_pr95t('a.tools.your_term','ваше слово')+'">'+nmEscHtml(it.label)+'</span>';
+  });
+  return h;
+}
+// Commit a typed custom value with a user-picked valence, as a real selected chip
+// (replaces the «другое» placeholder). The value persists as a user_added node on save.
+function nmAddCustomVocab(cat){
+  var inpId = cat==='area' ? 'nm-custom-area' : (cat==='cause' ? 'nm-custom-cause' : 'nm-custom-thought');
+  var inp=document.getElementById(inpId); var val=(inp&&inp.value||'').trim(); if(!val) return;
+  nmPromptValence(val, function(valence){
+    nmVocabValence[val]=valence;
+    var idx=nmSurveyState._chainIdx||0;
+    var chain=nmSurveyState.emotionChains[idx]||(nmSurveyState.emotionChains[idx]={});
+    var key = cat==='area' ? 'areas' : (cat==='cause' ? 'causes' : 'thoughts');
+    if(!chain[key]) chain[key]=[];
+    var oi=chain[key].indexOf('другое'); if(oi!==-1) chain[key].splice(oi,1);
+    if(chain[key].indexOf(val)===-1 && chain[key].length<3) chain[key].push(val);
+    if(cat==='area') chain.customArea='';
+    if(cat==='cause') chain.customCause='';
+    if(cat==='thought' && nmCustomThoughts.indexOf(val)===-1) nmCustomThoughts.push(val);
+    renderNmStep();
+  });
+}
+window.nmAddCustomVocab = nmAddCustomVocab;
 function renderNmStep(){
   renderNmStepDots();
   renderNmBreadcrumb();
@@ -6434,9 +6608,10 @@ function renderNmStep(){
       var sel=selAreas.indexOf(a)!==-1;
       h+='<span class="nm-chip'+(sel?' selected':'')+'" onclick="nmToggleArea(this,\''+a+'\')">'+nmEmoji(EMOJI_AREAS,a)+nmTranslate(a)+'</span>';
     });
+    h+=nmRenderVocabChips('area', selAreas, 'nmToggleArea'); // PR#108: prior custom spheres
     h+='</div>';
     if(selAreas.indexOf('другое')!==-1){
-      h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-area" class="glass-input" placeholder="'+(rpgT('nm_describe_area')||'Опишите область...')+'" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customArea||'')+'" oninput="nmSetCustomArea(this.value)" /></div>';
+      h+='<div style="margin-top:0.75rem;display:flex;gap:0.5rem;"><input type="text" id="nm-custom-area" class="glass-input" placeholder="'+(rpgT('nm_describe_area')||'Опишите область...')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customArea||'')+'" oninput="nmSetCustomArea(this.value)" /><button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomVocab(\'area\')">+</button></div>';
     }
     content.innerHTML=h;
   }
@@ -6460,9 +6635,10 @@ function renderNmStep(){
       var val=nmCauseValence(c);
       h+='<span class="nm-chip'+(val?' '+val:'')+(sel?' selected':'')+'" onclick="nmToggleCause(this,\''+c.replace(/'/g,"\\'")+'\')">'+nmTranslate(c)+'</span>';
     });
+    h+=nmRenderVocabChips('cause', selCauses, 'nmToggleCause'); // PR#108: prior custom causes
     h+='</div>';
     if(selCauses.indexOf('другое')!==-1){
-      h+='<div style="margin-top:0.75rem;"><input type="text" id="nm-custom-cause" class="glass-input" placeholder="'+(rpgT('nm_describe_cause')||'Опишите причину...')+'" style="width:100%;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customCause||'')+'" oninput="nmSetCustomCause(this.value)" /></div>';
+      h+='<div style="margin-top:0.75rem;display:flex;gap:0.5rem;"><input type="text" id="nm-custom-cause" class="glass-input" placeholder="'+(rpgT('nm_describe_cause')||'Опишите причину...')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customCause||'')+'" oninput="nmSetCustomCause(this.value)" /><button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomVocab(\'cause\')">+</button></div>';
     }
     content.innerHTML=h;
   }
@@ -6470,20 +6646,20 @@ function renderNmStep(){
     var idx=nmSurveyState._chainIdx||0;
     var chain=nmSurveyState.emotionChains[idx]||{};
     var emo=nmSurveyState.emotions[idx];
-    var allThoughts=NM_THOUGHTS.concat(nmCustomThoughts);
     var selThoughts=chain.thoughts||[];
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 4 '+(rpgT('nm_of_total')||'из')+' 6</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_which_thought')||'Какая мысль чаще всего сопровождала это состояние?')+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;">';
-    allThoughts.forEach(function(t){
+    NM_THOUGHTS.forEach(function(t){
       var neg=NM_THOUGHTS.indexOf(t)<15;
       var sel=selThoughts.indexOf(t)!==-1;
       h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleThought(this,\''+t.replace(/'/g,"\\'")+'\')">'+nmEmoji(EMOJI_THOUGHTS,t)+nmTranslate(t)+'</span>';
     });
+    h+=nmRenderVocabChips('thought', selThoughts, 'nmToggleThought'); // PR#108: prior + session custom thoughts, valence-coloured
     h+='</div>';
     h+='<div style="display:flex;gap:0.5rem;"><input type="text" id="nm-custom-thought" class="glass-input" placeholder="'+(rpgT('nm_add_custom_thought')||'Добавить свою мысль...')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" />';
-    h+='<button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomThought()">+</button></div>';
+    h+='<button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomVocab(\'thought\')">+</button></div>';
     content.innerHTML=h;
   }
   else if(nmCurrentStep===4){
@@ -7129,16 +7305,27 @@ function nmSaveSurvey(){
   }
   // Send to v2/append for graph dedup
   var v2Chain=[];
+  // PR#108 (#3): «Заполнить мысль» prepends the captured thought as a `concept` node
+  // so it links into the whole chain (concept→emotion→area→cause→thought) and joins
+  // the user's personal library.
+  if(nmThoughtMode && nmPendingConcept && nmPendingConcept.label){
+    v2Chain.push({type:'concept',label:nmPendingConcept.label,valence:nmPendingConcept.valence||'neutral',metadata:{user_added:true,source:'thought_flow'}});
+  }
+  // PR#108 (#4): a custom value the user typed (present in nmVocabValence) carries the
+  // valence they chose + user_added=true, so it persists in the personal library and
+  // re-appears in future pickers coloured by that valence.
+  function _uaMeta(label, base){ base=base||{}; if(nmVocabValence.hasOwnProperty(label)) base.user_added=true; return base; }
+  function _uaVal(label, fallback){ return nmVocabValence.hasOwnProperty(label) ? nmVocabValence[label] : fallback; }
   chains.forEach(function(c){
     var emValence=c.emotion?(isNegEmotion(c.emotion)?'negative':'positive'):'neutral';
     if(c.emotion) v2Chain.push({type:'emotion',label:c.emotion,valence:emValence,metadata:{emoji:EMOJI_EMOTIONS[c.emotion]||''}});
     // PR#104 (#2): area from the emotion walkthrough = a LIFE SPHERE (семья/работа/…),
     // tag area_kind:'sphere' so it lands in layer 3 ("Образы"), not layer 1 sensations.
-    if(c.area) v2Chain.push({type:'area',label:c.area,valence:'neutral',metadata:{emoji:EMOJI_AREAS[c.area]||'',area_kind:'sphere'}});
-    if(c.cause) v2Chain.push({type:'cause',label:c.cause,valence:emValence,metadata:{}});
+    if(c.area) v2Chain.push({type:'area',label:c.area,valence:_uaVal(c.area,'neutral'),metadata:_uaMeta(c.area,{emoji:EMOJI_AREAS[c.area]||'',area_kind:'sphere'})});
+    if(c.cause) v2Chain.push({type:'cause',label:c.cause,valence:_uaVal(c.cause,emValence),metadata:_uaMeta(c.cause,{})});
     if(c.thought){
       var thNeg=NM_THOUGHTS.indexOf(c.thought)<15;
-      v2Chain.push({type:'thought',label:c.thought,valence:thNeg?'negative':'positive',metadata:{emoji:EMOJI_THOUGHTS[c.thought]||''}});
+      v2Chain.push({type:'thought',label:c.thought,valence:_uaVal(c.thought,thNeg?'negative':'positive'),metadata:_uaMeta(c.thought,{emoji:EMOJI_THOUGHTS[c.thought]||''})});
     }
   });
   if(v2Chain.length) nmAppendV2(v2Chain);
