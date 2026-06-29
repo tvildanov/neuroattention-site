@@ -4795,6 +4795,35 @@ app.get('/api/neuromap/context-candidates', requireAuth, async (req, res) => {
   }
 });
 
+// PR#108 (item #4): personal vocabulary. Every custom value a user types into a
+// chain step ("Other / Describe…") is saved as a normal nm_node tagged
+// metadata.user_added=true, with the valence the user picked. Because nm_nodes
+// already dedups per (user_id, type, normalized_label, valence) and increments
+// `count`, the node table IS the personal library — no separate vocab table to
+// keep in sync. This returns the user's custom terms per chain category so the
+// frontend can merge them into future pickers, coloured by valence, busiest first.
+app.get('/api/neuromap/user-vocab', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT type, label, valence, count, last_seen_at
+      FROM nm_nodes
+      WHERE user_id = ${userId}
+        AND type IN ('area','cause','thought','concept')
+        AND COALESCE(metadata->>'user_added','') = 'true'
+      ORDER BY count DESC, last_seen_at DESC`;
+    const out = { area: [], cause: [], thought: [], concept: [] };
+    for (const r of rows) {
+      const bucket = out[r.type];
+      if (bucket) bucket.push({ label: r.label, valence: r.valence || 'neutral', count: r.count || 1 });
+    }
+    res.json({ ok: true, vocab: out });
+  } catch (err) {
+    console.error('GET /api/neuromap/user-vocab:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── PACK 20: Vocabulary (sensations / body locations / emotions) ──
 // Public read by category
 app.get('/api/vocab/:category', async (req, res) => {
