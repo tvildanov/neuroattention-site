@@ -4,6 +4,13 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v17: cache-bust for PR#105 (NeuroMap sticky bubbles — REAL fix. (a) every
+//      sensation↔body-part bond is now arrow-free in BOTH the main canvas AND the
+//      fullscreen draw loop (fsTick was the un-patched path that still drew arrows);
+//      a sensation felt on several parts glues to its strongest body part, the rest
+//      are silent cohesion pulls — no more arrow-lines to non-anchor parts. (b) a
+//      sensation logged with no body part is anchored to «всё тело» (backend default
+//      + migration 037) so it can't float free)
 // v16: cache-bust for PR#104 (NeuroMap — default «Всё» period so historical
 //      sensations show; split overloaded 'area' into body→layer 1 / life-sphere→
 //      layer 3 "Образы"; sticky sensation bubbles draw glued, no arrow line;
@@ -37,7 +44,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v16';
+var CACHE_NAME = 'na-practices-v17';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

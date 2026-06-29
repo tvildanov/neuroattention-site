@@ -7786,6 +7786,12 @@ function nmFsStartRender(){
       var si=nodeIdx[l.source],ti=nodeIdx[l.target];
       if(si===undefined||ti===undefined) return;
       var s=nmNodes[si],t=nmNodes[ti];
+      // PR#105: fullscreen is a SEPARATE draw loop that reuses the main canvas's
+      // node positions (sticky bubbles are already glued) but used to draw an
+      // arrow for EVERY link — including the sensation↔body-part bonds. PR#102/#104
+      // only patched the main-canvas nmSimulate draw, so fullscreen still showed the
+      // arrow-lines Tahir reported. Skip the connector for every body bond here too.
+      if(l._sensBody) return;
       var sx=s.x*scaleX, sy=s.y*scaleY, tx=t.x*scaleX, ty=t.y*scaleY;
       var linkFresh=1;
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
@@ -8739,26 +8745,40 @@ function nmSimulate(canvas, initAlpha){
   // bubbles spread evenly instead of collapsing onto one point (a pure-repulsion
   // spread degenerates when nodes coincide: dx=dy=0 → no separating force).
   var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; n._ringIdx=0; n._ringTot=0; });
-  // Pass 1: choose ONE anchor per sensation (prefer a body-location 'area' parent),
-  // so the bubble hugs the body part rather than an emotion/cause.
+  // PR#105: a sensation↔BODY-PART bond must NEVER render as a line+arrow — it reads
+  // as a bubble glued to the body node. PR#102/#104 only made the ONE chosen-anchor
+  // link sticky; a sensation felt on several body parts (the dedup'd node links to
+  // N body areas) kept the OTHER N-1 links as ordinary springs → every one drew a
+  // full arrow. That is exactly what Tahir saw ("most sensations connected by
+  // arrow-lines, not stuck bubbles"). Fix: mark EVERY sensation↔body-area link
+  // `_sensBody` (never sprung, never drawn); the sensation glues (ring-slot) to its
+  // STRONGEST body part (highest link count, ties → most recent). Links to
+  // life-spheres / emotions / causes are NOT body bonds and keep their normal arrows.
+  // Pass 1: collect every sensation↔body-area link, flag it _sensBody.
+  var _bodyLinksBySens={};
   nmLinks.forEach(function(l){
-    l._sticky=false;
+    l._sticky=false; l._sensBody=false;
     var s=_nmById[l.source], t=_nmById[l.target];
     if(!s||!t) return;
     var sIsSens=(s.type==='sensation'), tIsSens=(t.type==='sensation');
     if(sIsSens===tIsSens) return;          // need exactly one sensation endpoint
-    var sens=sIsSens?s:t, anchor=sIsSens?t:s;
-    var prev=sens._anchorId?_nmById[sens._anchorId]:null;
-    if(!prev || (anchor.type==='area' && prev.type!=='area')) sens._anchorId=anchor.id;
+    var sens=sIsSens?s:t, other=sIsSens?t:s;
+    if(other.type!=='area' || nmAreaKind(other)!=='body') return; // body parts only
+    l._sensBody=true;                      // never draw an arrow for a body bond
+    (_bodyLinksBySens[sens.id]=_bodyLinksBySens[sens.id]||[]).push({ l:l, anchor:other });
   });
-  // Pass 2: mark ONLY the link to the chosen anchor sticky (slot-pinned, drawn glued).
-  // A sensation's links to OTHER parents keep the normal spring → a connected
-  // (~120px) strand, not a free-floating node.
-  nmLinks.forEach(function(l){
-    var s=_nmById[l.source], t=_nmById[l.target];
-    if(!s||!t) return;
-    if(s.type==='sensation' && s._anchorId===t.id) l._sticky=true;
-    else if(t.type==='sensation' && t._anchorId===s.id) l._sticky=true;
+  // Pass 2: glue each sensation to its STRONGEST body part; only that link is _sticky
+  // (drives the ring-slot). The rest stay _sensBody (silent — neither sprung nor drawn).
+  Object.keys(_bodyLinksBySens).forEach(function(sid){
+    var arr=_bodyLinksBySens[sid];
+    arr.sort(function(a,b){
+      var dc=(b.l.count||1)-(a.l.count||1); if(dc) return dc;
+      var bt=b.l._lastSeen?new Date(b.l._lastSeen).getTime():0;
+      var at=a.l._lastSeen?new Date(a.l._lastSeen).getTime():0;
+      return bt-at;
+    });
+    var sens=_nmById[sid];
+    if(sens){ sens._anchorId=arr[0].anchor.id; arr[0].l._sticky=true; }
   });
   // Assign each bonded sensation a slot index within its anchor's bubble ring.
   var _slot={};
@@ -8800,12 +8820,16 @@ function nmSimulate(canvas, initAlpha){
       var si=nodeIdx[l.source],ti=nodeIdx[l.target];
       if(si===undefined||ti===undefined) return;
       var s=nmNodes[si],t=nmNodes[ti];
-      // PR#102: sticky links (sensation↔body part) are positioned by the ring-slot
-      // force below, not the generic spring — skip them here so the two don't fight.
+      // PR#102/#105: the CHOSEN anchor bond is positioned by the ring-slot force below,
+      // not the generic spring — skip it so the two don't fight.
       if(l._sticky) return;
       var dx=t.x-s.x, dy=t.y-s.y;
       var d=Math.sqrt(dx*dx+dy*dy)+0.1;
-      var f=alpha*(d-120)*0.01;
+      // PR#105: a sensation's OTHER body parts (felt there too, but not the glue anchor)
+      // get a WEAK, undrawn cohesion pull instead of the full spring — it gathers the
+      // related body region into one cluster without dragging the bubble off its anchor,
+      // and (being _sensBody) it is never drawn as an arrow.
+      var f = l._sensBody ? alpha*(d-170)*0.004 : alpha*(d-120)*0.01;
       s.vx+=dx*f; s.vy+=dy*f;
       t.vx-=dx*f; t.vy-=dy*f;
     });
@@ -8843,12 +8867,13 @@ function nmSimulate(canvas, initAlpha){
       var si=nodeIdx[l.source],ti=nodeIdx[l.target];
       if(si===undefined||ti===undefined) return;
       var s=nmNodes[si],t=nmNodes[ti];
-      // PR#104 (#3): a sticky sensation↔body-part bond is rendered as a bubble GLUED
-      // to the anchor's edge (the ring-slot force pins it there) — drawing a line +
-      // arrowhead on top of it made the whole thing read as "связи-стрелки" instead
-      // of stuck-on bubbles. Skip the connector entirely for sticky links; the tight
-      // ring placement already shows the bond. Non-sticky strands keep their arrows.
-      if(l._sticky) return;
+      // PR#104/#105 (#3): a sensation↔body-part bond is rendered as a bubble GLUED to
+      // the body node — drawing a line+arrowhead on top of it made the whole thing
+      // read as "связи-стрелки" instead of stuck-on bubbles. Skip the connector for
+      // EVERY body bond (_sensBody), not just the chosen anchor — a sensation felt on
+      // several parts previously drew arrows to all the non-anchor ones. Non-body
+      // strands (sensation↔emotion/cause, life-spheres) keep their arrows.
+      if(l._sensBody) return;
       var linkFresh=1;
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
       var ec=nmGetEdgeColor(s,t);

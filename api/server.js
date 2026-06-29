@@ -1568,7 +1568,52 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 036 (area_kind classify): body+=', body.length ?? 0, 'sphere+=', sphere.length ?? 0);
     } catch (e) { console.error('migration 036 (area_kind classify):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-036 applied successfully' });
+    // ── Migration 037 (PR#105): no sensation node should float. After 034 links every
+    //    sensation event that recorded a body location, the sensations STILL without a
+    //    body-area link are the ones whose original entry recorded no body part at all
+    //    (quick-log / course-inline allowed skipping it) — exactly Tahir's "most
+    //    sensations float separately". Anchor each remaining orphan to a per-user
+    //    «всё тело» (whole_body) body node (created if missing, deduped via the unique
+    //    constraint) so it reads as a stuck bubble. Honest best-effort: we cannot know
+    //    a body part that was never recorded, so whole_body is the truthful fallback.
+    //    Idempotent (orphan set shrinks to ∅ once linked). try/catch — never aborts.
+    try {
+      const orphans = await sql`
+        SELECT n.id, n.user_id, n.last_seen_at FROM nm_nodes n
+        WHERE n.type = 'sensation' AND NOT EXISTS (
+          SELECT 1 FROM nm_links l
+          JOIN nm_nodes a ON a.id = (CASE WHEN l.from_node_id = n.id THEN l.to_node_id ELSE l.from_node_id END)
+          WHERE (l.from_node_id = n.id OR l.to_node_id = n.id)
+            AND a.type = 'area'
+            AND COALESCE(a.metadata->>'area_kind',
+                         CASE WHEN a.metadata->>'source' = 'sensation' THEN 'body' ELSE 'sphere' END) = 'body'
+        )`;
+      const wbByUser = {};
+      let linked = 0;
+      for (const o of orphans) {
+        const ts = o.last_seen_at || new Date().toISOString();
+        let wbId = wbByUser[o.user_id];
+        if (!wbId) {
+          const wb = await sql`
+            INSERT INTO nm_nodes (user_id, type, label, normalized_label, valence, count, last_seen_at, metadata)
+            VALUES (${o.user_id}, 'area', 'всё тело', ${normalizeLabel('всё тело')}, 'neutral', 1, ${ts},
+                    ${JSON.stringify({ source: 'sensation', slug: 'whole_body', area_kind: 'body', backfill: true })}::jsonb)
+            ON CONFLICT (user_id, type, normalized_label, valence)
+            DO UPDATE SET last_seen_at = GREATEST(nm_nodes.last_seen_at, EXCLUDED.last_seen_at)
+            RETURNING id`;
+          wbId = wb[0] && wb[0].id; wbByUser[o.user_id] = wbId;
+        }
+        if (wbId) {
+          await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+                    VALUES (${o.user_id}, ${o.id}, ${wbId}, 1, ${ts})
+                    ON CONFLICT (user_id, from_node_id, to_node_id) DO NOTHING`;
+          linked++;
+        }
+      }
+      console.log('migration 037 (orphan sensation → whole_body anchor): orphans', orphans.length, 'linked', linked);
+    } catch (e) { console.error('migration 037 (orphan sensation anchor):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-037 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4485,6 +4530,17 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       const lbl = (locLabels && locLabels[slug]) ? String(locLabels[slug]).slice(0, 80)
                 : String(slug).replace(/__/g, ' › ').replace(/_/g, ' ');
       locRows.push({ slug, label_ru: lbl });
+    }
+
+    // PR#105: a sensation logged with NO body location used to create an orphan
+    // sensation node with no link → it floated free on the map (exactly Tahir's
+    // "most sensations float separately, only one is connected"). The quick-log and
+    // course-inline flows both allow skipping the body part. Anchor any such
+    // sensation to a generic «всё тело» (whole_body) body part so EVERY new
+    // sensation always reads as a stuck bubble (100% coverage for new data).
+    if (sensRows.length && locRows.length === 0) {
+      const wb = await sql`SELECT slug, label_ru FROM vocab_terms WHERE category='body_location' AND slug='whole_body' LIMIT 1`;
+      locRows.push(wb[0] ? { slug: wb[0].slug, label_ru: wb[0].label_ru } : { slug: 'whole_body', label_ru: 'всё тело' });
     }
 
     // occurred_at supports back-dating; default to now. date_key follows it.
