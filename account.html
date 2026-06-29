@@ -7834,18 +7834,21 @@ function nmFsStartRender(){
       // sensation bubble against its body anchor's circle (in fullscreen scaled space)
       // so its contact edge hugs the body curve with no gap.
       var _fsClipped=false;
-      if(n.type==='sensation' && n._anchorId){
-        var _an=nmNodes[nodeIdx[n._anchorId]];
-        if(_an){
-          var _ax=_an.x*scaleX, _ay=_an.y*scaleY;
-          var _ar=Math.max(nmNodeR(_an)*Math.max(scaleX,scaleY)*0.6, 8);
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(0,0,W,H);
-          ctx.arc(_ax,_ay,_ar,0,Math.PI*2,true); // CCW hole = body region
-          ctx.clip('evenodd');
-          _fsClipped=true;
+      if(n.type==='sensation' && n._anchorIds && n._anchorIds.length){
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0,0,W,H);
+        var _fsAnyHole=false;
+        for(var _fi=0;_fi<n._anchorIds.length;_fi++){
+          var _an=nmNodes[nodeIdx[n._anchorIds[_fi]]];
+          if(_an){
+            var _ax=_an.x*scaleX, _ay=_an.y*scaleY;
+            var _ar=Math.max(nmNodeR(_an)*Math.max(scaleX,scaleY)*0.6, 8);
+            ctx.arc(_ax,_ay,_ar,0,Math.PI*2,true); // CCW hole = body region
+            _fsAnyHole=true;
+          }
         }
+        if(_fsAnyHole){ ctx.clip('evenodd'); _fsClipped=true; } else { ctx.restore(); }
       }
       if(n.type==='practice'){
         var pulse=0.3+0.25*Math.sin(animT*2.5);
@@ -7957,6 +7960,18 @@ function nmFsInitEvents(){
   });
   function fsEndDrag(){
     if(!fsDragNode) return;
+    // PR#107: same snap-back as the main canvas — a released sensation bubble returns
+    // to its body part(s); fullscreen positions come from the main nmSimulate loop, so
+    // clear the pin and restart that loop to run the glue ease-back.
+    if(fsDragNode.type==='sensation' && fsDragNode._anchorIds && fsDragNode._anchorIds.length){
+      delete fsDragNode.fx; delete fsDragNode.fy;
+      fsDragNode.vx=0; fsDragNode.vy=0;
+      fsDragNode=null;
+      fsCanvas.style.cursor='';
+      var _nc=document.getElementById('nm-canvas');
+      if(_nc) nmSimulate(_nc, 0.05);
+      return;
+    }
     fsDragNode.x=fsDragNode.fx; fsDragNode.y=fsDragNode.fy;
     fsDragNode.vx=0; fsDragNode.vy=0;
     nmPrevPositions[fsDragNode.id]={x:fsDragNode.fx,y:fsDragNode.fy};
@@ -8762,7 +8777,7 @@ function nmSimulate(canvas, initAlpha){
   // Each bonded sensation gets a deterministic ring slot around its anchor so the
   // bubbles spread evenly instead of collapsing onto one point (a pure-repulsion
   // spread degenerates when nodes coincide: dx=dy=0 → no separating force).
-  var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; n._ringIdx=0; n._ringTot=0; });
+  var _nmById={}; nmNodes.forEach(function(n){ _nmById[n.id]=n; n._anchorId=null; n._anchorIds=null; n._anchorSet=null; n._coBridge=null; n._ringIdx=0; n._ringTot=0; });
   // PR#105: a sensation↔BODY-PART bond must NEVER render as a line+arrow — it reads
   // as a bubble glued to the body node. PR#102/#104 only made the ONE chosen-anchor
   // link sticky; a sensation felt on several body parts (the dedup'd node links to
@@ -8785,8 +8800,16 @@ function nmSimulate(canvas, initAlpha){
     l._sensBody=true;                      // never draw an arrow for a body bond
     (_bodyLinksBySens[sens.id]=_bodyLinksBySens[sens.id]||[]).push({ l:l, anchor:other });
   });
-  // Pass 2: glue each sensation to its STRONGEST body part; only that link is _sticky
-  // (drives the ring-slot). The rest stay _sensBody (silent — neither sprung nor drawn).
+  // Pass 2: bind each sensation to its body part(s).
+  //  • ONE body part  → glue to it via the ring-slot (PR#102/#106 squished bubble);
+  //    that single link is _sticky (positioned by the ring-slot force, not a spring).
+  //  • TWO+ body parts → PR#107 BRIDGE: the sensation sits at the CENTROID of all its
+  //    body parts and glues to every one of them (e.g. a feeling logged on the LEFT
+  //    and RIGHT hand sits between them, touching both, visually bridging the two
+  //    parts). Every body link is flagged _bridge (an undrawn touch-spring that pulls
+  //    each body part to hug the shared bubble); none is _sticky (centroid replaces the
+  //    ring-slot). _anchorId stays the strongest part for back-compat; _anchorIds holds
+  //    them all (drives centroid + multi-clip); _anchorSet is the O(1) repulsion lookup.
   Object.keys(_bodyLinksBySens).forEach(function(sid){
     var arr=_bodyLinksBySens[sid];
     arr.sort(function(a,b){
@@ -8796,14 +8819,27 @@ function nmSimulate(canvas, initAlpha){
       return bt-at;
     });
     var sens=_nmById[sid];
-    if(sens){ sens._anchorId=arr[0].anchor.id; arr[0].l._sticky=true; }
+    if(!sens) return;
+    sens._anchorId=arr[0].anchor.id;
+    sens._anchorIds=arr.map(function(x){return x.anchor.id;});
+    sens._anchorSet={}; sens._anchorIds.forEach(function(id){ sens._anchorSet[id]=true; });
+    if(arr.length>=2){
+      arr.forEach(function(x){ x.l._bridge=true; });   // all body parts hug the bubble
+      // Co-bridge: the parts sharing this bubble should NOT shove each other away with
+      // full repulsion, or they never close in to touch it — dampen the pair (below).
+      for(var _p=0;_p<arr.length;_p++){ for(var _q=0;_q<arr.length;_q++){ if(_p===_q) continue;
+        var _A=arr[_p].anchor; (_A._coBridge=_A._coBridge||{})[arr[_q].anchor.id]=true; } }
+    } else {
+      arr[0].l._sticky=true;                           // single anchor → ring-slot glue
+    }
   });
-  // Assign each bonded sensation a slot index within its anchor's bubble ring.
+  // Assign each single-anchor bonded sensation a slot index within its anchor's ring.
+  // (Bridge sensations centre on the centroid, so they take no ring slot.)
   var _slot={};
   nmNodes.forEach(function(n){
-    if(n.type==='sensation' && n._anchorId){ n._ringIdx=(_slot[n._anchorId]=(_slot[n._anchorId]||0)+1)-1; }
+    if(n.type==='sensation' && n._anchorIds && n._anchorIds.length===1){ n._ringIdx=(_slot[n._anchorId]=(_slot[n._anchorId]||0)+1)-1; }
   });
-  nmNodes.forEach(function(n){ if(n.type==='sensation' && n._anchorId) n._ringTot=_slot[n._anchorId]||1; });
+  nmNodes.forEach(function(n){ if(n.type==='sensation' && n._anchorIds && n._anchorIds.length===1) n._ringTot=_slot[n._anchorId]||1; });
   var ctx=canvas.getContext('2d');
   var W=canvas.width, H=canvas.height;
   var iter=0;
@@ -8824,8 +8860,11 @@ function nmSimulate(canvas, initAlpha){
         // part. (a) sensation↔its anchor → strong damp (the ring-slot force holds it
         // glued). (b) sibling sensations on the SAME anchor → moderate damp; the slots
         // already separate them by angle, so full repulsion only inflates the ring.
+        var _si=nmNodes[i]._anchorSet, _sj=nmNodes[j]._anchorSet;
         var _ai=nmNodes[i]._anchorId, _aj=nmNodes[j]._anchorId;
-        if(_ai===nmNodes[j].id || _aj===nmNodes[i].id) f*=0.12;
+        var _ci=nmNodes[i]._coBridge, _cj=nmNodes[j]._coBridge;
+        if((_si&&_si[nmNodes[j].id]) || (_sj&&_sj[nmNodes[i].id])) f*=0.12;  // bubble↔any of its anchors
+        else if((_ci&&_ci[nmNodes[j].id]) || (_cj&&_cj[nmNodes[i].id])) f*=0.12; // two parts sharing a bridge bubble
         else if(_ai && _ai===_aj && nmNodes[i].type==='sensation' && nmNodes[j].type==='sensation') f*=0.3;
         nmNodes[i].vx-=dx*f; nmNodes[i].vy-=dy*f;
         nmNodes[j].vx+=dx*f; nmNodes[j].vy+=dy*f;
@@ -8843,11 +8882,23 @@ function nmSimulate(canvas, initAlpha){
       if(l._sticky) return;
       var dx=t.x-s.x, dy=t.y-s.y;
       var d=Math.sqrt(dx*dx+dy*dy)+0.1;
-      // PR#105: a sensation's OTHER body parts (felt there too, but not the glue anchor)
-      // get a WEAK, undrawn cohesion pull instead of the full spring — it gathers the
-      // related body region into one cluster without dragging the bubble off its anchor,
-      // and (being _sensBody) it is never drawn as an arrow.
-      var f = l._sensBody ? alpha*(d-170)*0.004 : alpha*(d-120)*0.01;
+      var f;
+      if(l._bridge){
+        // PR#107: a bridge body part is pulled to TOUCH the shared bubble (undrawn).
+        // rest = touching edges (same press-in as the squished single bubble). The
+        // bubble itself is hard-positioned at the centroid each frame, so this force
+        // only moves the body parts → they gather around the bubble from both sides.
+        var _sens=(s.type==='sensation')?s:t, _body=(s.type==='sensation')?t:s;
+        var _rS=nmNodeR(_sens);
+        var rest=_rS+nmNodeR(_body)-_rS*0.6;   // press the part into the bubble (overlap → clip bites)
+        f=alpha*(d-rest)*0.05;                  // stiff: close the gap fully against residual repulsion
+      } else {
+        // PR#105: a sensation's OTHER body parts (felt there too, but not the glue
+        // anchor) get a WEAK, undrawn cohesion pull instead of the full spring — it
+        // gathers the related body region into one cluster without dragging the bubble
+        // off its anchor, and (being _sensBody) it is never drawn as an arrow.
+        f = l._sensBody ? alpha*(d-170)*0.004 : alpha*(d-120)*0.01;
+      }
       s.vx+=dx*f; s.vy+=dy*f;
       t.vx-=dx*f; t.vy-=dy*f;
     });
@@ -8865,6 +8916,24 @@ function nmSimulate(canvas, initAlpha){
       // edge PRESSES INTO the body sphere; the render step clips that overlap away →
       // the bubble looks squished against the rigid body (no visible gap). One bubble
       // sits straight above; siblings spread by even ring angle.
+      if(n.type==='sensation' && n._anchorIds && n._anchorIds.length>=2){
+        // PR#107 BRIDGE: sit on the centroid of all body parts so the bubble bridges
+        // them (left+right hand → between the two, touching both). The _bridge springs
+        // (above) pull the parts in to hug it; the render step clips it against each.
+        var _cx=0,_cy=0,_cn=0;
+        for(var _bi=0;_bi<n._anchorIds.length;_bi++){
+          var _ba=nmNodes[nodeIdx[n._anchorIds[_bi]]];
+          if(_ba){ _cx+=_ba.x; _cy+=_ba.y; _cn++; }
+        }
+        if(_cn){
+          _cx/=_cn; _cy/=_cn;
+          n.x+=(_cx-n.x)*0.55; n.y+=(_cy-n.y)*0.55;
+          n.vx=0; n.vy=0;
+          n.x=Math.max(40,Math.min(W-40,n.x));
+          n.y=Math.max(40,Math.min(H-40,n.y));
+          return;
+        }
+      }
       if(n.type==='sensation' && n._anchorId){
         var a=nmNodes[nodeIdx[n._anchorId]];
         if(a){
@@ -8948,16 +9017,18 @@ function nmSimulate(canvas, initAlpha){
       // circle (it is drawn unclipped on its own pass). Order-independent: works no
       // matter whether the anchor draws before or after the bubble.
       var _clipped=false;
-      if(n.type==='sensation' && n._anchorId){
-        var _an=_nmById[n._anchorId];
-        if(_an){
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(0,0,W,H);
-          ctx.arc(_an.x,_an.y,nmNodeR(_an),0,Math.PI*2,true); // CCW hole = body region
-          ctx.clip('evenodd');
-          _clipped=true;
+      if(n.type==='sensation' && n._anchorIds && n._anchorIds.length){
+        // Clip the bubble against EVERY body anchor (PR#107: a bridge bubble gets one
+        // hole per part, so it hugs both the left and the right part at once).
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0,0,W,H);
+        var _anyHole=false;
+        for(var _ci=0;_ci<n._anchorIds.length;_ci++){
+          var _an=_nmById[n._anchorIds[_ci]];
+          if(_an){ ctx.arc(_an.x,_an.y,nmNodeR(_an),0,Math.PI*2,true); _anyHole=true; } // CCW hole
         }
+        if(_anyHole){ ctx.clip('evenodd'); _clipped=true; } else { ctx.restore(); }
       }
       // Practice nodes: pulsing white glow
       if(n.type==='practice'){
@@ -9092,7 +9163,19 @@ function nmSimulate(canvas, initAlpha){
   }
   function onDragEnd(ev){
     if(!dragNode) return;
-    // Node stays fixed at drop position
+    // PR#107: a sensation bubble can be dragged anywhere, but on RELEASE it always
+    // snaps back to its body part(s) — you can't tear it off permanently. Clear the
+    // pin so the per-frame glue (ring-slot / centroid in nmSimulate) re-seats it, and
+    // restart the sim so that glue actually runs to completion (a quick ease-back).
+    if(dragNode.type==='sensation' && dragNode._anchorIds && dragNode._anchorIds.length){
+      delete dragNode.fx; delete dragNode.fy;
+      dragNode.vx=0; dragNode.vy=0;
+      dragNode=null;
+      canvas.style.cursor='';
+      nmSimulate(canvas, 0.05);
+      return;
+    }
+    // Other nodes stay fixed at the drop position (manual layout).
     dragNode.x=dragNode.fx; dragNode.y=dragNode.fy;
     dragNode.vx=0; dragNode.vy=0;
     nmPrevPositions[dragNode.id]={x:dragNode.fx,y:dragNode.fy};
