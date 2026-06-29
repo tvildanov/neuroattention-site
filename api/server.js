@@ -1610,7 +1610,47 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 038 (clean slate): whole_body nodes deleted', wbIds.length, 'orphan sensations deleted', orphanIds.length);
     } catch (e) { console.error('migration 038 (clean slate):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-038 applied successfully' });
+    // ── Migration 039 (PR#107): «всё тело» STILL on Tahir's map after 038. 038 only
+    //    matched metadata.slug='whole_body'; any «всё тело» area node whose metadata
+    //    lost/never carried that slug (older rows, hand-picked whole_body body part,
+    //    re-upserts) survived. This is the authoritative LABEL-based sweep: delete
+    //    every area node whose label reads "whole body" in ru/en/es regardless of
+    //    metadata, then re-run the orphan cleanup so the sensations that were only
+    //    hanging off it disappear too. Idempotent; try/catch — never aborts the chain.
+    try {
+      const wb2 = await sql`SELECT id FROM nm_nodes
+        WHERE type = 'area'
+          AND ( label ILIKE '%всё тело%' OR label ILIKE '%все тело%'
+             OR label ILIKE '%whole body%' OR label ILIKE '%todo el cuerpo%'
+             OR metadata->>'slug' = 'whole_body' )`;
+      const wb2Ids = wb2.map(r => r.id);
+      if (wb2Ids.length) {
+        await sql`DELETE FROM nm_links WHERE from_node_id = ANY(${wb2Ids}::bigint[]) OR to_node_id = ANY(${wb2Ids}::bigint[])`;
+        await sql`DELETE FROM nm_nodes WHERE id = ANY(${wb2Ids}::bigint[])`;
+      }
+      // re-run orphan sensation cleanup (any sensation now with no real body-area link)
+      const orphans2 = await sql`
+        SELECT n.id FROM nm_nodes n
+        WHERE n.type = 'sensation' AND NOT EXISTS (
+          SELECT 1 FROM nm_links l
+          JOIN nm_nodes a ON a.id = (CASE WHEN l.from_node_id = n.id THEN l.to_node_id ELSE l.from_node_id END)
+          WHERE (l.from_node_id = n.id OR l.to_node_id = n.id)
+            AND a.type = 'area'
+            AND a.label NOT ILIKE '%всё тело%' AND a.label NOT ILIKE '%все тело%'
+            AND a.label NOT ILIKE '%whole body%' AND a.label NOT ILIKE '%todo el cuerpo%'
+            AND COALESCE(a.metadata->>'slug','') <> 'whole_body'
+            AND COALESCE(a.metadata->>'area_kind',
+                         CASE WHEN a.metadata->>'source' = 'sensation' THEN 'body' ELSE 'sphere' END) = 'body'
+        )`;
+      const orphan2Ids = orphans2.map(r => r.id);
+      if (orphan2Ids.length) {
+        await sql`DELETE FROM nm_links WHERE from_node_id = ANY(${orphan2Ids}::bigint[]) OR to_node_id = ANY(${orphan2Ids}::bigint[])`;
+        await sql`DELETE FROM nm_nodes WHERE id = ANY(${orphan2Ids}::bigint[])`;
+      }
+      console.log('migration 039 (label sweep): whole_body-label nodes deleted', wb2Ids.length, 'orphan sensations deleted', orphan2Ids.length);
+    } catch (e) { console.error('migration 039 (label sweep):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-039 applied successfully' });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
