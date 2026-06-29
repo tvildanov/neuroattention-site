@@ -7830,6 +7830,23 @@ function nmFsStartRender(){
       var freshness=(typeof n.freshness==='number')?n.freshness:1;
       var brightness=0.2+freshness*0.7;
       ctx.globalAlpha=fade;
+      // PR#106: same squished-bubble deformation as the main canvas — clip the sticky
+      // sensation bubble against its body anchor's circle (in fullscreen scaled space)
+      // so its contact edge hugs the body curve with no gap.
+      var _fsClipped=false;
+      if(n.type==='sensation' && n._anchorId){
+        var _an=nmNodes[nodeIdx[n._anchorId]];
+        if(_an){
+          var _ax=_an.x*scaleX, _ay=_an.y*scaleY;
+          var _ar=Math.max(nmNodeR(_an)*Math.max(scaleX,scaleY)*0.6, 8);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0,0,W,H);
+          ctx.arc(_ax,_ay,_ar,0,Math.PI*2,true); // CCW hole = body region
+          ctx.clip('evenodd');
+          _fsClipped=true;
+        }
+      }
       if(n.type==='practice'){
         var pulse=0.3+0.25*Math.sin(animT*2.5);
         ctx.beginPath();ctx.arc(nx,ny,drawR+14+5*Math.sin(animT*2),0,Math.PI*2);
@@ -7840,6 +7857,7 @@ function nmFsStartRender(){
       }
       ctx.beginPath();ctx.arc(nx,ny,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
+      if(_fsClipped){ ctx.restore(); }
       // Label: show for top-N or all depending on mode
       var _fsShowLabel = (nmLabelsMode==='all') || (nmLabelsMode==='top' && nmFsTopNIds && nmFsTopNIds[n.id]);
       if(_fsShowLabel){
@@ -8833,24 +8851,33 @@ function nmSimulate(canvas, initAlpha){
       s.vx+=dx*f; s.vy+=dy*f;
       t.vx-=dx*f; t.vy-=dy*f;
     });
-    // PR#102: ring-slot force — pin each bonded sensation to a deterministic slot on
-    // a small ring around its anchor (body part), so the bubbles glue to the body
-    // location and spread evenly instead of stacking. Strong (0.22) → dominates, the
-    // bubble tracks its anchor as the anchor drifts under the rest of the layout.
-    nmNodes.forEach(function(n){
-      if(n.type!=='sensation' || !n._anchorId) return;
-      var a=nmNodes[nodeIdx[n._anchorId]]; if(!a) return;
-      var rr=nmNodeR(a)+nmNodeR(n)+12;            // ring radius: hug the anchor's edge
-      var ang=(n._ringTot>1 ? (n._ringIdx/n._ringTot)*Math.PI*2 : 0) - Math.PI/2; // 1 bubble → above
-      var tx=a.x+Math.cos(ang)*rr, ty=a.y+Math.sin(ang)*rr;
-      n.vx+=(tx-n.x)*alpha*0.25; n.vy+=(ty-n.y)*alpha*0.25;
-    });
     // Center gravity + apply positions
     nmNodes.forEach(function(n){
       // If node is fixed (dragged), lock position
       if(n.fx!==undefined && n.fy!==undefined){
         n.x=n.fx; n.y=n.fy; n.vx=0; n.vy=0;
         return;
+      }
+      // PR#106: STRONG sticky glue. A bonded sensation is placed DIRECTLY on a
+      // deterministic slot on its anchor's edge every frame (high-stiffness lerp, not
+      // a decaying spring), so it tracks the body part hard while it is dragged and
+      // never floats off. The slot radius is (rA + rS − press) so the bubble's near
+      // edge PRESSES INTO the body sphere; the render step clips that overlap away →
+      // the bubble looks squished against the rigid body (no visible gap). One bubble
+      // sits straight above; siblings spread by even ring angle.
+      if(n.type==='sensation' && n._anchorId){
+        var a=nmNodes[nodeIdx[n._anchorId]];
+        if(a){
+          var rS=nmNodeR(n);
+          var rr=nmNodeR(a)+rS - rS*0.34;          // negative gap → edges touch & press in
+          var ang=(n._ringTot>1 ? (n._ringIdx/n._ringTot)*Math.PI*2 : 0) - Math.PI/2; // 1 bubble → above
+          var tx=a.x+Math.cos(ang)*rr, ty=a.y+Math.sin(ang)*rr;
+          n.x+=(tx-n.x)*0.55; n.y+=(ty-n.y)*0.55;  // high stiffness, alpha-independent
+          n.vx=0; n.vy=0;                            // critically damped → no overshoot on drag
+          n.x=Math.max(40,Math.min(W-40,n.x));
+          n.y=Math.max(40,Math.min(H-40,n.y));
+          return;
+        }
       }
       n.vx+=(W/2-n.x)*alpha*0.01;
       n.vy+=(H/2-n.y)*alpha*0.01;
@@ -8915,6 +8942,23 @@ function nmSimulate(canvas, initAlpha){
       var freshness=(typeof n.freshness==='number')?n.freshness:1;
       var brightness=0.2+freshness*0.7;
       ctx.globalAlpha=fade;
+      // PR#106: deform a sticky sensation bubble against its body anchor. Clip away the
+      // slice that overlaps the body sphere so the bubble's contact edge follows the
+      // body's curve — the "squished magnet" contact. The body itself stays a rigid
+      // circle (it is drawn unclipped on its own pass). Order-independent: works no
+      // matter whether the anchor draws before or after the bubble.
+      var _clipped=false;
+      if(n.type==='sensation' && n._anchorId){
+        var _an=_nmById[n._anchorId];
+        if(_an){
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0,0,W,H);
+          ctx.arc(_an.x,_an.y,nmNodeR(_an),0,Math.PI*2,true); // CCW hole = body region
+          ctx.clip('evenodd');
+          _clipped=true;
+        }
+      }
       // Practice nodes: pulsing white glow
       if(n.type==='practice'){
         var pulse=0.3+0.25*Math.sin(animT*2.5);
@@ -8930,6 +8974,7 @@ function nmSimulate(canvas, initAlpha){
       // Node body
       ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
       ctx.fillStyle=col+brightness+')';ctx.fill();
+      if(_clipped){ ctx.restore(); }
       // Deep-link highlight (5.3): pulsing cyan ring around the focus node + its chain
       if(n._hl){
         var hp=0.45+0.35*Math.sin(animT*3);
@@ -10679,6 +10724,13 @@ function submitSensationMap(onSaved){
   var comment = document.getElementById('sm-comment').value.trim();
   if (sensSel.length === 0 && locSel.length === 0 && !comment) {
     document.getElementById('sm-status').textContent = (typeof t==='function'?t('a.tools.sensation_empty','Выбери хотя бы одно ощущение или локацию'):'Выбери хотя бы одно ощущение или локацию');
+    document.getElementById('sm-status').style.color = '#ff8a8a';
+    return;
+  }
+  // PR#106: a felt sensation must name where it is felt — no body part = no save
+  // (the server now rejects it too). Keeps every sensation glued to a real body part.
+  if (sensSel.length > 0 && locSel.length === 0) {
+    document.getElementById('sm-status').textContent = (typeof t==='function'?t('a.tools.sensation_need_body','Выбери часть тела, где ощущается'):'Выбери часть тела, где ощущается');
     document.getElementById('sm-status').style.color = '#ff8a8a';
     return;
   }
@@ -13287,6 +13339,11 @@ function cpSensSave(){
   var comment = commentEl ? commentEl.value.trim() : '';
   if (!locSel.length && !sensSel.length && !comment){
     if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_sm_empty','Выбери область или опиши ощущение'); }
+    return;
+  }
+  // PR#106: a felt sensation must name where it is felt (server rejects body-less ones).
+  if (sensSel.length > 0 && !locSel.length){
+    if (status){ status.style.color = '#ff8a8a'; status.textContent = t('a.courses.cp_sm_need_body','Выбери часть тела, где ощущается'); }
     return;
   }
   var token = localStorage.getItem('na_token'); if (!token) return;
