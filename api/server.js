@@ -1617,40 +1617,51 @@ app.post('/api/run-migrations', async (req, res) => {
     //    every area node whose label reads "whole body" in ru/en/es regardless of
     //    metadata, then re-run the orphan cleanup so the sensations that were only
     //    hanging off it disappear too. Idempotent; try/catch — never aborts the chain.
+    //    NB: written as PURE SUBQUERY deletes (no JS-array round-trip). The PR#106
+    //    `= ANY(${ids}::bigint[])` form silently THREW under @neondatabase/serverless
+    //    here — which is precisely why «всё тело» survived every prior run and Tahir
+    //    still saw it. Subquery form has no array param to mis-encode.
+    let mig039 = { whole_body_deleted: 0, orphans_deleted: 0 };
     try {
-      const wb2 = await sql`SELECT id FROM nm_nodes
-        WHERE type = 'area'
-          AND ( label ILIKE '%всё тело%' OR label ILIKE '%все тело%'
-             OR label ILIKE '%whole body%' OR label ILIKE '%todo el cuerpo%'
-             OR metadata->>'slug' = 'whole_body' )`;
-      const wb2Ids = wb2.map(r => r.id);
-      if (wb2Ids.length) {
-        await sql`DELETE FROM nm_links WHERE from_node_id = ANY(${wb2Ids}::bigint[]) OR to_node_id = ANY(${wb2Ids}::bigint[])`;
-        await sql`DELETE FROM nm_nodes WHERE id = ANY(${wb2Ids}::bigint[])`;
-      }
-      // re-run orphan sensation cleanup (any sensation now with no real body-area link)
-      const orphans2 = await sql`
-        SELECT n.id FROM nm_nodes n
-        WHERE n.type = 'sensation' AND NOT EXISTS (
-          SELECT 1 FROM nm_links l
-          JOIN nm_nodes a ON a.id = (CASE WHEN l.from_node_id = n.id THEN l.to_node_id ELSE l.from_node_id END)
-          WHERE (l.from_node_id = n.id OR l.to_node_id = n.id)
-            AND a.type = 'area'
-            AND a.label NOT ILIKE '%всё тело%' AND a.label NOT ILIKE '%все тело%'
-            AND a.label NOT ILIKE '%whole body%' AND a.label NOT ILIKE '%todo el cuerpo%'
-            AND COALESCE(a.metadata->>'slug','') <> 'whole_body'
-            AND COALESCE(a.metadata->>'area_kind',
-                         CASE WHEN a.metadata->>'source' = 'sensation' THEN 'body' ELSE 'sphere' END) = 'body'
-        )`;
-      const orphan2Ids = orphans2.map(r => r.id);
-      if (orphan2Ids.length) {
-        await sql`DELETE FROM nm_links WHERE from_node_id = ANY(${orphan2Ids}::bigint[]) OR to_node_id = ANY(${orphan2Ids}::bigint[])`;
-        await sql`DELETE FROM nm_nodes WHERE id = ANY(${orphan2Ids}::bigint[])`;
-      }
-      console.log('migration 039 (label sweep): whole_body-label nodes deleted', wb2Ids.length, 'orphan sensations deleted', orphan2Ids.length);
-    } catch (e) { console.error('migration 039 (label sweep):', e.message); }
+      // (a) every link touching an «всё тело» area node
+      await sql`DELETE FROM nm_links WHERE
+        from_node_id IN (SELECT id FROM nm_nodes WHERE type='area' AND (
+          label ILIKE '%всё тело%' OR label ILIKE '%все тело%' OR
+          label ILIKE '%whole body%' OR label ILIKE '%todo el cuerpo%' OR
+          metadata->>'slug'='whole_body'))
+        OR to_node_id IN (SELECT id FROM nm_nodes WHERE type='area' AND (
+          label ILIKE '%всё тело%' OR label ILIKE '%все тело%' OR
+          label ILIKE '%whole body%' OR label ILIKE '%todo el cuerpo%' OR
+          metadata->>'slug'='whole_body'))`;
+      const delWb = await sql`DELETE FROM nm_nodes WHERE type='area' AND (
+          label ILIKE '%всё тело%' OR label ILIKE '%все тело%' OR
+          label ILIKE '%whole body%' OR label ILIKE '%todo el cuerpo%' OR
+          metadata->>'slug'='whole_body') RETURNING id`;
+      mig039.whole_body_deleted = delWb.length;
+      // (b) orphan sensations — no link to a REAL body-area node. Drop their links then
+      //     the nodes (subquery is deterministic & re-evaluated identically each time).
+      await sql`DELETE FROM nm_links WHERE
+        from_node_id IN (SELECT n.id FROM nm_nodes n WHERE n.type='sensation' AND NOT EXISTS (
+          SELECT 1 FROM nm_links l JOIN nm_nodes a ON a.id=(CASE WHEN l.from_node_id=n.id THEN l.to_node_id ELSE l.from_node_id END)
+          WHERE (l.from_node_id=n.id OR l.to_node_id=n.id) AND a.type='area'
+            AND COALESCE(a.metadata->>'slug','')<>'whole_body'
+            AND COALESCE(a.metadata->>'area_kind', CASE WHEN a.metadata->>'source'='sensation' THEN 'body' ELSE 'sphere' END)='body'))
+        OR to_node_id IN (SELECT n.id FROM nm_nodes n WHERE n.type='sensation' AND NOT EXISTS (
+          SELECT 1 FROM nm_links l JOIN nm_nodes a ON a.id=(CASE WHEN l.from_node_id=n.id THEN l.to_node_id ELSE l.from_node_id END)
+          WHERE (l.from_node_id=n.id OR l.to_node_id=n.id) AND a.type='area'
+            AND COALESCE(a.metadata->>'slug','')<>'whole_body'
+            AND COALESCE(a.metadata->>'area_kind', CASE WHEN a.metadata->>'source'='sensation' THEN 'body' ELSE 'sphere' END)='body'))`;
+      const delOrph = await sql`DELETE FROM nm_nodes WHERE type='sensation' AND NOT EXISTS (
+          SELECT 1 FROM nm_links l JOIN nm_nodes a ON a.id=(CASE WHEN l.from_node_id=nm_nodes.id THEN l.to_node_id ELSE l.from_node_id END)
+          WHERE (l.from_node_id=nm_nodes.id OR l.to_node_id=nm_nodes.id) AND a.type='area'
+            AND COALESCE(a.metadata->>'slug','')<>'whole_body'
+            AND COALESCE(a.metadata->>'area_kind', CASE WHEN a.metadata->>'source'='sensation' THEN 'body' ELSE 'sphere' END)='body'
+        ) RETURNING id`;
+      mig039.orphans_deleted = delOrph.length;
+      console.log('migration 039 (label sweep): whole_body nodes deleted', mig039.whole_body_deleted, 'orphan sensations deleted', mig039.orphans_deleted);
+    } catch (e) { mig039.error = e.message; console.error('migration 039 (label sweep):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-039 applied successfully' });
+    res.json({ ok: true, message: 'Migrations 003-039 applied successfully', mig039 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
