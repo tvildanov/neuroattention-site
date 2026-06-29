@@ -244,6 +244,17 @@ a.dash-tab:hover { text-decoration:none; }
 .nm-layer-chk .nm-lbl { font-size:10px;font-weight:500;color:var(--text-dim);white-space:nowrap; }
 .nm-layer-chk:has(input:checked) { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.16); }
 .nm-layer-chk:has(input:checked) .nm-lbl { color:var(--text-muted); }
+/* PR#108: each layer's checked checkbox carries that layer's bubble colour, so the
+   toggle reads at a glance which colour it controls on the canvas. Layer 1 is a
+   split blue|cyan (body=blue + sensation=cyan). The dark ::after tick (line above)
+   stays — it has good contrast on every one of these saturated fills. The plain
+   :checked rule remains the fallback for «Повторяющиеся» (data-layer="repeat"). */
+.nm-layer-chk input[type=checkbox][data-layer="1"]:checked { background:linear-gradient(90deg, rgba(140,180,255,0.92) 0 50%, rgba(120,200,235,0.92) 50% 100%);border-color:rgba(120,200,235,0.95); }
+.nm-layer-chk input[type=checkbox][data-layer="2"]:checked { background:rgba(232,170,72,0.88);border-color:rgba(232,170,72,0.95); }
+.nm-layer-chk input[type=checkbox][data-layer="3"]:checked { background:rgba(175,150,240,0.88);border-color:rgba(175,150,240,0.95); }
+.nm-layer-chk input[type=checkbox][data-layer="4"]:checked { background:rgba(166,112,226,0.88);border-color:rgba(166,112,226,0.95); }
+.nm-layer-chk input[type=checkbox][data-layer="5"]:checked { background:rgba(112,202,132,0.88);border-color:rgba(112,202,132,0.95); }
+.nm-layer-chk input[type=checkbox][data-layer="6"]:checked { background:rgba(240,130,166,0.88);border-color:rgba(240,130,166,0.95); }
 .nm-fullscreen-overlay { display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;z-index:9999;background:rgba(5,7,10,0.97);flex-direction:column;cursor:default;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);overflow:hidden; }
 .nm-fullscreen-overlay.active { display:flex; }
 .nm-fs-header { display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.06); }
@@ -308,6 +319,15 @@ a.dash-tab:hover { text-decoration:none; }
 .nm-chip.selected { background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.2);color:var(--text-primary); }
 .nm-chip.neg.selected { background:rgba(255,120,120,0.08);border-color:rgba(255,120,120,0.25);color:rgba(255,140,140,1); }
 .nm-chip.pos.selected { background:rgba(120,255,160,0.08);border-color:rgba(120,255,160,0.25);color:rgba(140,255,170,1); }
+/* PR#108: fullscreen mobile layer chips wear their layer's bubble colour when
+   selected (the checkbox toggles do the same on desktop). Scoped to the layer-
+   filter row so emotion/valence chips elsewhere keep their pos/neg colours. */
+#nm-fs-mobile-filters .nm-chip.selected[data-layer="1"] { background:linear-gradient(90deg, rgba(140,180,255,0.16), rgba(120,200,235,0.16));border-color:rgba(120,200,235,0.5);color:rgba(150,210,240,1); }
+#nm-fs-mobile-filters .nm-chip.selected[data-layer="2"] { background:rgba(232,170,72,0.14);border-color:rgba(232,170,72,0.5);color:rgba(240,190,110,1); }
+#nm-fs-mobile-filters .nm-chip.selected[data-layer="3"] { background:rgba(175,150,240,0.14);border-color:rgba(175,150,240,0.5);color:rgba(195,175,245,1); }
+#nm-fs-mobile-filters .nm-chip.selected[data-layer="4"] { background:rgba(166,112,226,0.14);border-color:rgba(166,112,226,0.5);color:rgba(190,145,235,1); }
+#nm-fs-mobile-filters .nm-chip.selected[data-layer="5"] { background:rgba(112,202,132,0.14);border-color:rgba(112,202,132,0.5);color:rgba(140,215,160,1); }
+#nm-fs-mobile-filters .nm-chip.selected[data-layer="6"] { background:rgba(240,130,166,0.14);border-color:rgba(240,130,166,0.5);color:rgba(245,160,190,1); }
 /* Valence grouping: light = positive/neutral, dark = negative. Subtle lab-tone
    fills so the two groups read apart even before selection (.selected rules
    above win by specificity when a chip is chosen). */
@@ -5548,6 +5568,14 @@ function nmOpenSensationOverlay(){
   src.parentNode.insertBefore(placeholder, src);
   var prevDisplay = src.style.display;
   var refreshed = false;
+  // PR#108: this overlay's onClose runs 160ms LATE (fullscreen-overlay close
+  // animation). The emotion walkthrough opens at +80ms and consumes the global
+  // nmSessionHandoff flag (sets it false) BEFORE this onClose fires — so onClose
+  // used to see handoff=false and wipe the session, leaving the emotion save with
+  // no session_id (the «Привязать к эмоции» bridge silently broke). This closure
+  // flag records "this overlay handed off" independently of the racy global flag,
+  // so a late onClose never clears a session we deliberately carried forward.
+  var didHandoff = false;
   function refreshGraph(){ if(refreshed) return; refreshed=true; try{ nmLoadV2Graph(); }catch(e){} }
   function captureSensPrior(){ // PR#97: snapshot the sensation nodes for the next overlay's faded strip
     try {
@@ -5595,6 +5623,7 @@ function nmOpenSensationOverlay(){
       submitSensationMap(function(){
         refreshGraph();
         nmSessionHandoff = true;
+        didHandoff = true; // PR#108: survive this overlay's late (160ms) onClose
         handle.close();
         setTimeout(function(){ openNmSurvey(); }, 80);
       });
@@ -5607,8 +5636,10 @@ function nmOpenSensationOverlay(){
       src.style.display = prevDisplay;
       _nmSensState = null;
       // PR#96: end the cross-link session unless we're handing off to the next overlay.
-      if(!nmSessionHandoff) nmClearSession();
-      if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
+      // PR#108: also honour the closure-local didHandoff — the global flag may have
+      // already been consumed by the emotion overlay that opened before this late close.
+      if(!nmSessionHandoff && !didHandoff) nmClearSession();
+      if(!nmSessionHandoff && !didHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
       refreshGraph();
     }
   });
