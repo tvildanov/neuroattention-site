@@ -1411,6 +1411,7 @@
   "a.tools.fill_emotion_map": "Fill emotion map",
   "a.tools.fill_thought_map": "Add a thought",
   "a.tools.thought_intro_title": "What thought are you having right now?",
+  "a.tools.thought_emotion_q": "Which emotion is linked to this thought?",
   "a.tools.thought_intro_hint": "Write it in your own words — a thought can be positive, neutral or negative",
   "a.tools.thought_intro_ph": "Write your thought...",
   "a.tools.thought_need_text": "Write a thought",

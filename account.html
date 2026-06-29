@@ -6283,6 +6283,8 @@ function nmGetNodeColor(n){
   }
   // Practice nodes: bright white-cyan
   if(n.type==='practice') return 'rgba(220,240,255,';
+  // PR#109: concept (мысль from the thought flow) — violet, matching the layer palette.
+  if(n.type==='concept') return 'rgba(166,112,226,';
   // PR94 (#10): sensation layer (1, "Ощущения") had NO entry → fell to the dim grey
   // fallback below and read as "тёмный/невидимый" on the black canvas. Cyan, matching
   // the Evolution Path sensation colour.
@@ -6385,68 +6387,56 @@ var EMOJI_AREAS = {'тело и здоровье':'🏃','работа / ден�
 var EMOJI_THOUGHTS = {'Я не справляюсь':'😞','Мне не хватает сил':'🪫','Я не понимаю, что делать дальше':'🤷','Я теряю контроль':'🌀','Меня не слышат':'🔇','Я недостаточно хорош':'👤','Я слишком много отдаю':'💸','Я не успеваю':'⏰','Мне нужно всё контролировать':'🎛️','Я хочу остановиться':'🛑','Это никогда не кончится':'♾️','Я один с этим':'🚪','Я боюсь ошибиться':'😰','Мне не к кому обратиться':'📵','Я застрял':'🧱','У меня получится':'🌟','Я вижу следующий шаг':'👁️','Мне становится яснее':'💡','Я могу пройти это постепенно':'🚶','Я чувствую больше опоры':'🏔️','Я иду в правильном направлении':'🧭','Я заслуживаю отдыха':'🌴','Мне есть за что себя поблагодарить':'🙏','Я могу попросить помощь':'🤝','Я выбираю себя':'💎','Я расту через это':'🌱','Сегодня лучше, чем вчера':'📈','Мне есть на кого опереться':'🫂'};
 
 // Survey modal
+var _nmOpenThoughtMode=false; // PR#109: openNmThought sets this for the next openNmSurvey
 function openNmSurvey(){
   nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
   nmCurrentStep=0;
-  nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:''};
+  nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:'',_concept:null};
   nmLivePrevPos={};
-  // PR#108: thought mode is active iff a concept was captured in the intro just now.
-  nmThoughtMode = !!nmPendingConcept;
+  // PR#109 (#1): thought mode is requested by openNmThought — the thought becomes
+  // Step 1 of the SAME modal (no separate intro window). The concept is captured on
+  // leaving step 1 and prepended on save.
+  nmThoughtMode = (_nmOpenThoughtMode===true);
+  _nmOpenThoughtMode=false;
+  nmPendingConcept=null;
   // Pull the user's personal vocabulary so prior custom terms appear in the pickers,
   // coloured by their saved valence. Re-render once it arrives (non-blocking).
   nmLoadUserVocab(function(){ if(document.getElementById('nmSurveyModal').classList.contains('open')) renderNmStep(); });
   document.getElementById('nmSurveyModal').classList.add('open');
   renderNmStep();
 }
-// PR#108 (#3): «Заполнить мысль». Capture a free-text thought + its valence, then run
-// the normal emotion chain — the thought is prepended as a `concept` node on save so
-// it links into the whole chain and joins the user's personal library.
-function openNmThought(){
-  nmThoughtPromptIntro(function(label, valence){
-    nmPendingConcept = { label: label, valence: valence };
-    nmVocabValence[label] = valence; // so the picker/colour treats it as user-added
-    openNmSurvey();
-  });
-}
+// PR#108→#109 (#3/#1): «Заполнить мысль». Runs INSIDE the survey modal: Step 1 of 6
+// is a free-text thought + valence, with the live map active from the start. The
+// thought is prepended as a `concept` node on save (see nmSaveSurvey) so it links the
+// whole chain and joins the personal library.
+function openNmThought(){ _nmOpenThoughtMode=true; openNmSurvey(); }
 window.openNmThought = openNmThought;
-// Intro modal: textarea + 3 valence chips. cb(label, valence) on confirm.
-function nmThoughtPromptIntro(cb){
-  var ov=document.createElement('div');
-  ov.className='rpg-modal-overlay'; ov.id='nm-thought-intro';
-  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
-  ov.innerHTML='<div class="rpg-modal" style="max-width:460px;">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">'+
-      '<h3 style="margin:0;font-size:1.05rem;">'+_pr95t('a.tools.thought_intro_title','О какой мысли вы сейчас думаете?')+'</h3>'+
-      '<button class="btn btn-ghost" style="padding:0.2rem 0.5rem;" onclick="this.closest(\'.rpg-modal-overlay\').remove()">✕</button>'+
-    '</div>'+
-    '<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">'+_pr95t('a.tools.thought_intro_hint','Напишите её своими словами — мысль может быть позитивной, нейтральной или негативной')+'</p>'+
-    '<textarea id="nm-thought-text" class="glass-input" rows="3" placeholder="'+_pr95t('a.tools.thought_intro_ph','Напишите свою мысль...')+'" style="width:100%;padding:0.75rem 0.9rem;border-radius:12px;font-size:14px;resize:vertical;"></textarea>'+
-    '<p style="font-size:11px;color:var(--text-dim);margin:0.9rem 0 0.5rem;">'+_pr95t('a.tools.valence_q','Это больше позитивное, нейтральное или негативное?')+'</p>'+
-    '<div id="nm-thought-val" style="display:flex;gap:0.4rem;flex-wrap:wrap;">'+nmValenceChips()+'</div>'+
-    '<p id="nm-thought-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0.5rem 0 0;"></p>'+
-    '<button class="btn btn-solid" style="width:100%;justify-content:center;margin-top:0.5rem;" onclick="nmThoughtIntroConfirm()">'+_pr95t('a.tools.next_btn','Далее →')+'</button>'+
-  '</div>';
-  document.body.appendChild(ov);
-  nmThoughtIntroCb = cb;
-  setTimeout(function(){ var t=document.getElementById('nm-thought-text'); if(t) t.focus(); }, 60);
+// PR#109: effective emotion-chain step. Thought mode prepends a thought step
+// (raw step 0 → -1) and skips the redundant accompanying-thought step (emotion idx 3).
+function nmEffStep(){
+  if(nmThoughtMode){ if(nmCurrentStep===0) return -1; return [0,1,2,4,5][nmCurrentStep-1]; }
+  return nmCurrentStep;
 }
-var nmThoughtIntroCb = null;
-function nmThoughtIntroConfirm(){
-  var txt=document.getElementById('nm-thought-text'); var err=document.getElementById('nm-thought-err');
-  var label=(txt&&txt.value||'').trim();
-  if(!label){ if(err) err.textContent=_pr95t('a.tools.thought_need_text','Напишите мысль'); return; }
-  var picked=document.querySelector('#nm-thought-val .nm-val-chip.selected');
-  var valence=picked?picked.getAttribute('data-val'):'neutral';
-  var ov=document.getElementById('nm-thought-intro'); if(ov) ov.remove();
-  if(nmThoughtIntroCb){ var cb=nmThoughtIntroCb; nmThoughtIntroCb=null; cb(label, valence); }
+// Live-update the typed thought into survey state so the mini-map shows the concept node.
+function nmSetThoughtText(v){
+  if(!nmSurveyState._concept) nmSurveyState._concept={label:'',valence:'neutral'};
+  nmSurveyState._concept.label=v;
+  buildLiveGraph();
 }
-window.nmThoughtIntroConfirm = nmThoughtIntroConfirm;
+window.nmSetThoughtText=nmSetThoughtText;
+function nmSetThoughtValence(el){
+  nmValencePick(el);
+  if(!nmSurveyState._concept) nmSurveyState._concept={label:'',valence:'neutral'};
+  nmSurveyState._concept.valence=el.getAttribute('data-val')||'neutral';
+}
+window.nmSetThoughtValence=nmSetThoughtValence;
 // Three valence chips (Positive / Neutral / Negative). Default neutral selected.
-function nmValenceChips(sel){
-  sel = sel || 'neutral';
+// onclickName lets callers wire a state-updating handler (thought step) vs the plain picker.
+function nmValenceChips(sel, onclickName){
+  sel = sel || 'neutral'; onclickName = onclickName || 'nmValencePick';
   var opts=[['positive','pos',_pr95t('a.tools.valence_pos','Позитивное')],['neutral','neutral',_pr95t('a.tools.valence_neutral','Нейтральное')],['negative','neg',_pr95t('a.tools.valence_neg','Негативное')]];
   return opts.map(function(o){
-    return '<span class="nm-val-chip '+o[1]+(o[0]===sel?' selected':'')+'" data-val="'+o[0]+'" onclick="nmValencePick(this)">'+o[2]+'</span>';
+    return '<span class="nm-val-chip '+o[1]+(o[0]===sel?' selected':'')+'" data-val="'+o[0]+'" onclick="'+onclickName+'(this)">'+o[2]+'</span>';
   }).join('');
 }
 function nmValencePick(el){
@@ -6515,6 +6505,8 @@ function renderNmBreadcrumb(){
   var emo=nmSurveyState.emotions[idx];
   var chain=nmSurveyState.emotionChains[idx]||{};
   var parts=[];
+  // PR#109: in thought mode the concept is the chain root — show it first.
+  if(nmThoughtMode && nmSurveyState._concept && nmSurveyState._concept.label) parts.push('<span style="color:rgba(166,112,226,1);">'+nmEscHtml(nmSurveyState._concept.label)+'</span>');
   if(emo) parts.push('<span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+nmTranslate(emo)+'</span>');
   if(chain.areas&&chain.areas.length) parts.push('<span style="color:rgba(140,180,255,1);">'+chain.areas.map(function(a){return (EMOJI_AREAS[a]||'')+' '+nmTranslate(a);}).join(', ')+'</span>');
   if(chain.causes&&chain.causes.length&&nmCurrentStep>=3) parts.push('<span style="color:rgba(255,180,100,1);">'+chain.causes.map(function(c){return nmTranslate(c);}).join(', ')+'</span>');
@@ -6580,10 +6572,24 @@ function renderNmStep(){
   var next=document.getElementById('nm-next');
   prev.style.display=nmCurrentStep>0?'':'none';
   next.textContent=nmCurrentStep===5?(rpgT('save_btn')||'Сохранить'):(rpgT('next_btn')||'Далее →');
+  // PR#109 (#1): thought mode prepends a thought step (es===-1) and shifts the chain.
+  // Counter follows the raw step so it reads 1..6 in both modes.
+  var es=nmEffStep();
+  var cntTxt=(rpgT('nm_step_x_of_y')||'Шаг')+' '+(nmCurrentStep+1)+' '+(rpgT('nm_of_total')||'из')+' 6';
 
-  if(nmCurrentStep===0){
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 1 '+(rpgT('nm_of_total')||'из')+' 6</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_what_feeling')||'Что вы сейчас чувствуете?')+'</h3>';
+  if(es===-1){
+    var _c=nmSurveyState._concept||{label:'',valence:'neutral'};
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+_pr95t('a.tools.thought_intro_title','О какой мысли вы сейчас думаете?')+'</h3>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">'+_pr95t('a.tools.thought_intro_hint','Напишите её своими словами — мысль может быть позитивной, нейтральной или негативной')+'</p>';
+    h+='<textarea id="nm-thought-input" class="glass-input" rows="3" placeholder="'+_pr95t('a.tools.thought_intro_ph','Напишите свою мысль...')+'" style="width:100%;padding:0.75rem 0.9rem;border-radius:12px;font-size:14px;resize:vertical;" oninput="nmSetThoughtText(this.value)">'+nmEscHtml(_c.label||'')+'</textarea>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0.9rem 0 0.5rem;">'+_pr95t('a.tools.valence_q','Это больше позитивное, нейтральное или негативное?')+'</p>';
+    h+='<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">'+nmValenceChips(_c.valence||'neutral','nmSetThoughtValence')+'</div>';
+    content.innerHTML=h;
+  }
+  else if(es===0){
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(nmThoughtMode?_pr95t('a.tools.thought_emotion_q','Какая эмоция связана с этой мыслью?'):(rpgT('nm_what_feeling')||'Что вы сейчас чувствуете?'))+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;line-height:1.5;">'+(rpgT('nm_choose_one_emotion')||'Выберите одну эмоцию — потом можно будет добавить ещё')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
     var currentChainEmo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
@@ -6595,10 +6601,10 @@ function renderNmStep(){
     h+='</div>';
     content.innerHTML=h;
   }
-  else if(nmCurrentStep===1){
+  else if(es===1){
     var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     if(!emo){ nmNext(); return; }
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 2 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_which_area')||'В какой сфере проявилась')+' <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+nmTranslate(emo)+'</span>'+(rpgT('nm_which_area_suffix')||'?')+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+' '+(rpgT('nm_describe_area_2')||'сфер')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
@@ -6615,7 +6621,7 @@ function renderNmStep(){
     }
     content.innerHTML=h;
   }
-  else if(nmCurrentStep===2){
+  else if(es===2){
     var idx=nmSurveyState._chainIdx||0;
     var chain=nmSurveyState.emotionChains[idx]||{};
     var areas=chain.areas||[];
@@ -6626,7 +6632,7 @@ function renderNmStep(){
     if(!Object.keys(causesSet).length){ getCausesForChain('_default',emoIsNeg).forEach(function(c){causesSet[c]=true;}); }
     var causes=Object.keys(causesSet);
     var selCauses=chain.causes||[];
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 3 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_what_caused')||'Что именно вызвало это состояние?')+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
@@ -6642,12 +6648,12 @@ function renderNmStep(){
     }
     content.innerHTML=h;
   }
-  else if(nmCurrentStep===3){
+  else if(es===3){
     var idx=nmSurveyState._chainIdx||0;
     var chain=nmSurveyState.emotionChains[idx]||{};
     var emo=nmSurveyState.emotions[idx];
     var selThoughts=chain.thoughts||[];
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 4 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_which_thought')||'Какая мысль чаще всего сопровождала это состояние?')+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;">';
@@ -6662,15 +6668,15 @@ function renderNmStep(){
     h+='<button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomVocab(\'thought\')">+</button></div>';
     content.innerHTML=h;
   }
-  else if(nmCurrentStep===4){
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 5 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+  else if(es===4){
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_how_strong')||'Насколько сильным было это состояние?')+'</h3>';
     h+='<div class="nm-slider-wrap"><span style="font-size:11px;color:var(--text-dim);">1</span><input type="range" min="1" max="10" value="'+(nmSurveyState.intensity||5)+'" oninput="nmSetIntensity(this.value)" /><span style="font-size:11px;color:var(--text-dim);">10</span></div>';
     h+='<div style="text-align:center;margin-top:0.5rem;"><span class="nm-slider-val" id="nm-int-val">'+(nmSurveyState.intensity||5)+'</span><span style="font-size:11px;color:var(--text-dim);margin-left:4px;">/10</span></div>';
     content.innerHTML=h;
   }
-  else if(nmCurrentStep===5){
-    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+(rpgT('nm_step_x_of_y')||'Шаг')+' 6 '+(rpgT('nm_of_total')||'из')+' 6</p>';
+  else if(es===5){
+    var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_add_context')||'Хотите добавить контекст?')+'</h3>';
     h+='<textarea id="nm-context" class="glass-input" rows="4" placeholder="'+(rpgT('nm_free_text')||'Свободное текстовое поле...')+'" style="width:100%;padding:0.85rem 1rem;border-radius:12px;font-size:13px;resize:vertical;">'+(nmSurveyState.context||'')+'</textarea>';
     content.innerHTML=h;
@@ -6732,9 +6738,14 @@ function buildLiveGraph(){
   function addN(id,type,label){ if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,x:0,y:0,vx:0,vy:0,_fade:1}; }
   function addL(a,b){ var k=a+'||'+b; if(!linkMap[k]) linkMap[k]={source:a,target:b}; }
 
+  // PR#109 (#1): thought mode — the typed concept is the root node, shown live as
+  // the user types and linked to each emotion once chosen.
+  var _hasConcept = nmThoughtMode && nmSurveyState._concept && nmSurveyState._concept.label;
+  if(_hasConcept) addN('concept','concept',nmSurveyState._concept.label);
   nmSurveyState.emotions.forEach(function(emo,i){
     if(!emo) return;
     addN('e:'+emo,'emotion',emo);
+    if(_hasConcept) addL('concept','e:'+emo);
     var chain=nmSurveyState.emotionChains[i]||{};
     if(chain.areas) chain.areas.forEach(function(a){
       var label=a==='другое'&&chain.customArea?chain.customArea:a;
@@ -7201,14 +7212,27 @@ function nmSetIntensity(v){
 }
 
 function nmNext(){
-  // Validate current step
-  if(nmCurrentStep===0){
-    // Must have selected an emotion on this cycle
+  var es=nmEffStep();
+  // PR#109 (#1): thought step — require text, capture the concept + valence so it
+  // prepends on save and the live map already shows the concept node.
+  if(es===-1){
+    var ti=document.getElementById('nm-thought-input');
+    var lbl=(ti&&ti.value||'').trim();
+    if(!lbl) return;
+    var c=nmSurveyState._concept||{label:lbl,valence:'neutral'};
+    c.label=lbl;
+    nmSurveyState._concept=c;
+    nmPendingConcept={label:c.label,valence:c.valence||'neutral'};
+    nmVocabValence[c.label]=c.valence||'neutral';
+    nmCurrentStep++;
+    renderNmStep();
+    return;
+  }
+  // Validate the emotion step (es===0 in both modes)
+  if(es===0){
     var ci=nmSurveyState._chainIdx||0;
     if(!nmSurveyState.emotions[ci]) return;
-    // Init chain for this emotion
     if(!nmSurveyState.emotionChains[ci]) nmSurveyState.emotionChains[ci]={};
-    // Clean up undefined entries in emotions array
     nmSurveyState.emotions=nmSurveyState.emotions.filter(function(e){return e;});
     nmSurveyState._chainIdx=nmSurveyState.emotions.length-1;
   }

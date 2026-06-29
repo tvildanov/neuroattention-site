@@ -1411,6 +1411,7 @@
   "a.tools.fill_emotion_map": "Llenar mapa de emociones",
   "a.tools.fill_thought_map": "Añadir un pensamiento",
   "a.tools.thought_intro_title": "¿En qué pensamiento estás ahora?",
+  "a.tools.thought_emotion_q": "¿Qué emoción está vinculada a este pensamiento?",
   "a.tools.thought_intro_hint": "Escríbelo con tus palabras — un pensamiento puede ser positivo, neutral o negativo",
   "a.tools.thought_intro_ph": "Escribe tu pensamiento...",
   "a.tools.thought_need_text": "Escribe un pensamiento",
