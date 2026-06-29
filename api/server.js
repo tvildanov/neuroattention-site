@@ -298,6 +298,9 @@ app.post('/api/run-migrations', async (req, res) => {
     // aborts the rest of the run. Fully idempotent.
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_kind TEXT`;
     await sql`ALTER TABLE course_blocks ADD COLUMN IF NOT EXISTS tool_config JSONB DEFAULT '{}'::jsonb`;
+    // PR#109 (#3): session_id ties one fill-flow's events into a single path chain.
+    await sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS session_id TEXT`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_journey_events_session ON journey_events(user_id, session_id)`;
 
     // ── Migration 019: fix medically-wrong anatomy seed regions (mirrors
     //    migrations/019_fix_anatomy_seed_regions.sql). Run FIRST — a pre-existing
@@ -1661,7 +1664,52 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 039 (label sweep): whole_body nodes deleted', mig039.whole_body_deleted, 'orphan sensations deleted', mig039.orphans_deleted);
     } catch (e) { mig039.error = e.message; console.error('migration 039 (label sweep):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-039 applied successfully', mig039 });
+    // ── Migration 040 (PR#109 #3): retroactively merge scattered Evolution-Path
+    // events into one session chain + sweep exact duplicates. Idempotent.
+    //   (a) backfill journey_events.session_id from the NeuroMap session bridge so the
+    //       path can group a single fill-flow (sensation + emotion chain) as ONE chain;
+    //   (b) delete exact-duplicate neuromap events (same user/kind/label/instant) that
+    //       earlier double-writes left behind (the repeated «жар» circles Tahir saw).
+    // Pure subqueries only (no JS-array ::cast — neon silently throws, see mig039).
+    let mig040 = { sess_single: 0, sess_array: 0, dupes_deleted: 0 };
+    try {
+      // (a1) events carrying a single nm_node_id → take that node's session
+      const s1 = await sql`UPDATE journey_events je SET session_id = sn.session_id
+        FROM nm_session_nodes sn
+        WHERE je.session_id IS NULL
+          AND je.payload->>'nm_node_id' IS NOT NULL
+          AND je.payload->>'nm_node_id' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          AND sn.user_id = je.user_id
+          AND sn.node_id = (je.payload->>'nm_node_id')::uuid
+        RETURNING je.id`;
+      mig040.sess_single = s1.length;
+      // (a2) sensation events carry an nm_node_ids ARRAY → take the first node's session
+      const s2 = await sql`UPDATE journey_events je SET session_id = sn.session_id
+        FROM nm_session_nodes sn
+        WHERE je.session_id IS NULL
+          AND je.payload->'nm_node_ids'->>0 IS NOT NULL
+          AND je.payload->'nm_node_ids'->>0 ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          AND sn.user_id = je.user_id
+          AND sn.node_id = (je.payload->'nm_node_ids'->>0)::uuid
+        RETURNING je.id`;
+      mig040.sess_array = s2.length;
+      // (b) exact-duplicate neuromap/sensation events at the same instant → keep min id
+      const dd = await sql`DELETE FROM journey_events WHERE id IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (
+            PARTITION BY user_id, kind, occurred_at,
+              COALESCE(payload->>'label', payload->>'nm_node_id', payload->'nm_node_ids'->>0, '')
+            ORDER BY id) AS rn
+          FROM journey_events
+          WHERE COALESCE(payload->>'source','') IN ('neuromap','sensation')
+            AND COALESCE(payload->>'label', payload->>'nm_node_id', payload->'nm_node_ids'->>0, '') <> ''
+        ) d WHERE d.rn > 1)
+        RETURNING id`;
+      mig040.dupes_deleted = dd.length;
+      console.log('migration 040 (path session merge): session backfilled', mig040.sess_single + mig040.sess_array, 'dupes deleted', mig040.dupes_deleted);
+    } catch (e) { mig040.error = e.message; console.error('migration 040 (path session merge):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-040 applied successfully', mig039, mig040 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2407,23 +2455,28 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
     // Evolution Path timeline gets a real, time-accurate, clickable point for
     // every emotion / thought / sensation / event the user just added. Links
     // between consecutive nodes are mirrored into journey_links.
+    const _sid = req.body && req.body.session_id;
     const journeyIds = [];
     for (let i = 0; i < validItems.length; i++) {
       const it = validItems[i];
-      const { kind, layer } = nmTypeToJourney(it.type);
+      const { kind, layer } = nmTypeToJourney(it.type, it.metadata);
       const jid = await logJourney(userId, kind, layer, {
         label: it.label,
         valence: it.valence || 'neutral',
         nm_node_id: nodeIds[i],
         nm_type: it.type,
+        area_kind: (it.metadata && it.metadata.area_kind) || null,
         source: 'neuromap',
         coords: (it.metadata && it.metadata.coords) || null
-      }, occurredAt);
+      }, occurredAt, null, _sid);
       journeyIds.push(jid);
     }
     for (let i = 0; i < journeyIds.length - 1; i++) {
       await linkJourney(journeyIds[i], journeyIds[i + 1], 'sequence', 1.0);
     }
+    // PR#109 (#3): stitch this chain onto any earlier event of the same session
+    // (e.g. the sensation logged before "Link to Emotion") → one connected path event.
+    await bridgeJourneySession(userId, _sid, journeyIds);
 
     // 2. Create links between consecutive nodes in the chain
     const linkResults = [];
@@ -4301,7 +4354,7 @@ async function callerIsAdmin(req) {
 // the Evolution Path reader can render a real, clickable, time-accurate timeline.
 // Fault-tolerant by design: a failure here must NEVER break the instrument write
 // that called it — we log a warning and return null.
-async function logJourney(userId, kind, layer, payload, occurredAt, dependentId) {
+async function logJourney(userId, kind, layer, payload, occurredAt, dependentId, sessionId) {
   try {
     if (!userId || !kind) return null;
     let whenIso = null;
@@ -4313,14 +4366,39 @@ async function logJourney(userId, kind, layer, payload, occurredAt, dependentId)
     // to the child (journey_events.dependent_id) so it lands on the dependent's path
     // instead of the caller's own. NULL keeps the legacy self-attribution.
     const dep = (dependentId != null && !isNaN(parseInt(dependentId, 10))) ? parseInt(dependentId, 10) : null;
+    // PR#109 (#3): session_id ties every event of one fill-flow together so the path
+    // groups them into a single connected chain instead of scattered points.
+    const sid = sessionId ? String(sessionId).slice(0, 80) : null;
     const body = JSON.stringify(payload || {});
     const rows = whenIso
-      ? await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at, dependent_id)
-                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, ${whenIso}, ${dep}) RETURNING id`
-      : await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at, dependent_id)
-                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, now(), ${dep}) RETURNING id`;
+      ? await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at, dependent_id, session_id)
+                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, ${whenIso}, ${dep}, ${sid}) RETURNING id`
+      : await sql`INSERT INTO journey_events (user_id, kind, layer, payload, occurred_at, dependent_id, session_id)
+                  VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, now(), ${dep}, ${sid}) RETURNING id`;
     return rows[0] ? rows[0].id : null;
   } catch (e) { console.warn('logJourney(' + kind + '):', e.message); return null; }
+}
+
+// PR#109 (#3): connect this flow's new journey events to any earlier events of the
+// SAME session (e.g. the sensation logged just before "Link to Emotion"), so the
+// Evolution Path shows ONE connected chain instead of a sensation island sitting
+// apart from its emotion chain. Links the earliest new event to the latest prior one.
+async function bridgeJourneySession(userId, sessionId, newEventIds) {
+  try {
+    const ids = (newEventIds || []).filter(Boolean).map(String);
+    if (!sessionId || !ids.length) return 0;
+    const sid = String(sessionId).slice(0, 80);
+    // No array params (neon ANY/ALL cast silently throws — PR#107). Fetch the session's
+    // events and pick the latest one that is NOT part of this batch, in JS.
+    const rows = await sql`SELECT id FROM journey_events
+      WHERE user_id = ${userId} AND session_id = ${sid}
+      ORDER BY occurred_at DESC, id DESC`;
+    const newSet = new Set(ids);
+    const prior = rows.map(r => String(r.id)).find(id => !newSet.has(id));
+    if (!prior) return 0;
+    await linkJourney(prior, ids[0], 'sequence', 1.0);
+    return 1;
+  } catch (e) { console.warn('bridgeJourneySession:', e.message); return 0; }
 }
 
 // PR#99 (Phase 2B): validate a client-supplied dependent_id belongs to the caller
@@ -4670,7 +4748,9 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       nm_node_ids: nmNodeIds.concat(sensNodeIds),
       context: { linked_to: linkTo },
       source: 'sensation'
-    }, when.toISOString());
+    }, when.toISOString(), null, session_id); // PR#109 (#3): tag the session
+    // PR#109 (#3): if this sensation continues an existing session, stitch it on.
+    if (sensationEventId) await bridgeJourneySession(userId, session_id, [sensationEventId]);
 
     // Context binding: connect this sensation to the emotions/events/thoughts/
     // practices the user picked, in both the journey graph and (where possible)
@@ -6574,16 +6654,16 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     const selfScope = !depId && !teamUserIds;
     let je;
     if (depId) {
-      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at, session_id FROM journey_events
                           WHERE dependent_id = ${depId} AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
                           ORDER BY occurred_at ASC`);
     } else if (teamUserIds) {
-      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at, session_id FROM journey_events
                           WHERE user_id = ANY(${teamUserIds}::uuid[]) AND dependent_id IS NULL
                             AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
                           ORDER BY occurred_at ASC`);
     } else {
-      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at FROM journey_events
+      je = await safe(sql`SELECT id, kind, layer, payload, occurred_at, session_id FROM journey_events
                           WHERE user_id = ${me} AND dependent_id IS NULL
                             AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
                           ORDER BY occurred_at ASC`);
@@ -6652,11 +6732,11 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     function jeLabel(e) {
       const p = e.payload || {};
       if (e.kind === 'sensation') {
-        // PR93: neuromap 'area' nodes store p.label (not sensation_labels) — fall
-        // back to it so a sensation never collapses to the bare word "ощущение".
-        const s = (p.sensation_labels || []).join(', ') || p.label || '';
-        const loc = (p.body_locations || []).join(', ');
-        return (s || 'ощущение') + (loc ? ' @ ' + loc : '');
+        // PR#109 (#3): clean label like NeuroMap — just the sensation word(s), no
+        // "@ грудь" mash and no comma pile-up. The body location lives in payload for
+        // the tooltip. A neuromap 'area' node still falls back to its own label.
+        const s = (p.sensation_labels || []).filter(Boolean).join(' · ') || p.label || '';
+        return s || (p.body_locations || [])[0] || 'ощущение';
       }
       if (e.kind === 'practice') return p.practice_name || p.label || ('Практика' + (p.block_type ? ': ' + p.block_type : ''));
       if (e.kind === 'insight') return String(p.text || p.label || 'инсайт').slice(0, 90);
@@ -6681,12 +6761,16 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
       // "отношения" as "Ощущение". Re-tag the KIND to 'life_area' (frontend shows
       // "Сфера жизни") while keeping the cyan layer. Real sensations arrive via
       // /api/neuromap/sensation (source 'sensation', sensation_labels) — untouched.
-      const kind = (e.kind === 'sensation' && p.nm_type === 'area') ? 'life_area' : e.kind;
+      // PR#109 (#3): only a LIFE-SPHERE area is «Сфера жизни». A body-location area
+      // (area_kind:'body', e.g. грудная клетка) stays a body sensation, not "life area".
+      const kind = (e.kind === 'sensation' && p.nm_type === 'area' && p.area_kind !== 'body') ? 'life_area' : e.kind;
       return {
         id: String(e.id), kind, layer: e.layer, source: p.source || e.kind,
         occurred_at: e.occurred_at, t: e.occurred_at,
         label: jeLabel(e), valence: p.valence || 'neutral',
         weight: p.weight || p.count || p.points || p.intensity || 1,
+        session_id: e.session_id || null, // PR#109 (#3): group one flow as one chain
+        nm_type: p.nm_type || null, area_kind: p.area_kind || null, // PR#109 (#4): NeuroMap colours
         payload: ctx ? Object.assign({}, p, { course_ctx: ctx }) : p,
         links: linksByEvent[String(e.id)] || []
       };
@@ -6937,7 +7021,9 @@ app.get('/api/admin/collective-path', requireAuth, async (req, res) => {
     evRows.forEach(e => {
       const k = String(e.user_id);
       const p = e.payload || {};
-      const kind = (e.kind === 'sensation' && p.nm_type === 'area') ? 'life_area' : e.kind;
+      // PR#109 (#3): only a LIFE-SPHERE area is «Сфера жизни». A body-location area
+      // (area_kind:'body', e.g. грудная клетка) stays a body sensation, not "life area".
+      const kind = (e.kind === 'sensation' && p.nm_type === 'area' && p.area_kind !== 'body') ? 'life_area' : e.kind;
       (evByUser[k] = evByUser[k] || []).push({ id: String(e.id), kind, layer: e.layer,
         t: e.occurred_at, occurred_at: e.occurred_at, label: jeLabel(e),
         valence: (e.payload && e.payload.valence) || 'neutral' });
