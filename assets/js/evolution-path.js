@@ -707,12 +707,18 @@
     var nt = (e && e.nm_type) || p.nm_type || '';
     var ak = (e && e.area_kind) || p.area_kind || '';
     var k  = (e && (e.kind || e.layer)) || '';
+    // PR#111 (#3): resolve the UNAMBIGUOUS body/sensation types FIRST. A body
+    // location (area_kind:'body') must always be BLUE — Tahir saw «верхняя часть
+    // спины» render violet because a stray kind/layer hit the thought branch above
+    // the body check. Checking body + felt-sensation before emotion/thought removes
+    // that whole class of type-mismatch.
+    if (ak === 'body' || nt === 'body') return NMP.blue;      // body location
+    if (nt === 'sensation') return NMP.cyan;                  // felt sensation
     if (nt === 'emotion' || k === 'emotion') return NMP.amber;
     if (nt === 'concept' || nt === 'thought' || k === 'thought') return NMP.violet;
     if (nt === 'cause') return NMP.green;
-    if (ak === 'body') return NMP.blue;                       // body location
     if (nt === 'area' || k === 'life_area') return NMP.lav;   // life sphere / image
-    if (nt === 'sensation' || k === 'sensation') return NMP.cyan;
+    if (k === 'sensation') return NMP.cyan;                   // generic sensation kind
     if (k === 'practice' || nt === 'practice' || nt === 'action') return NMP.rose;
     if (k === 'insight') return NMP.cyan;
     if (k === 'event') return NMP.rose;                       // diary event / action
