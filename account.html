@@ -396,6 +396,32 @@ a.dash-tab:hover { text-decoration:none; }
 @media(max-width:768px),(pointer:coarse){
   .nm-mini-inset { width:200px;height:150px;right:10px;bottom:10px; }
 }
+/* PR#111 (#4): full-size live map — docked as a full-height right-hand panel inside
+   the Sensation/Diary form, identical to the Emotion/Thought survey (not a small
+   corner card). Used with the .nm-fs-split / .nm-diary-split flex wrappers below. */
+.nm-mini-inset.nm-mini-full { position:relative;right:auto;bottom:auto;width:100%;height:100%;
+  z-index:1;border-radius:18px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+  background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06); }
+.nm-mini-inset.nm-mini-full .nm-mini-head { font-size:11px;padding:9px 12px 7px; }
+.nm-mini-inset.nm-mini-full .nm-mini-empty { font-size:12px; }
+/* Sensation overlay: split the fullscreen body into form (left) + live map (right). */
+.nm-fs-split { display:flex;gap:1.25rem;align-items:stretch;width:100%;height:100%;
+  box-sizing:border-box;padding:1rem 1.25rem 1.25rem; }
+.nm-fs-split .nm-fs-form { flex:0 0 480px;max-width:480px;min-width:0;overflow-y:auto;
+  position:relative;padding-bottom:84px; }
+.nm-fs-split .nm-fs-live { flex:1 1 auto;min-width:280px;position:relative;height:100%; }
+/* Diary modal: same two-column layout, widened modal box. */
+#diaryModal .nm-diary-split { display:flex;gap:1.25rem;align-items:stretch; }
+#diaryModal .nm-diary-form { flex:0 0 400px;max-width:400px;min-width:0; }
+#diaryModal .nm-diary-live { flex:1 1 auto;min-width:260px;position:relative;min-height:420px; }
+@media(max-width:860px),(pointer:coarse){
+  .nm-fs-split { flex-direction:column;padding:0.75rem; }
+  .nm-fs-split .nm-fs-form { flex:1 1 auto;max-width:none;padding-bottom:84px; }
+  .nm-fs-split .nm-fs-live { flex:0 0 240px;min-height:240px; }
+  #diaryModal .nm-diary-split { flex-direction:column; }
+  #diaryModal .nm-diary-form { flex:1 1 auto;max-width:none; }
+  #diaryModal .nm-diary-live { flex:0 0 220px;min-height:220px; }
+}
 /* ── Program cards: responsive grid (no horizontal scroll) ──
    ≥1280px: all 5 in one row · <1280px: 3-up (3+2) · 768–1024: 2-up · ≤480: stack */
 .program-cards-grid { display:grid;gap:1rem;grid-template-columns:repeat(5,1fr);align-items:stretch;padding-bottom:0.5rem; }
@@ -1375,8 +1401,10 @@ a.dash-tab:hover { text-decoration:none; }
 
     <!-- DIARY INPUT MODAL -->
     <div class="modal-overlay" id="diaryModal">
-      <div class="modal-box" style="max-width:440px;">
+      <!-- PR#111 (#4): two-column layout — form (left) + FULL-SIZE live map (right). -->
+      <div class="modal-box nm-diary-split" style="max-width:880px;">
         <button class="modal-close" onclick="closeDiaryInput()">&times;</button>
+        <div class="nm-diary-form">
         <p class="eyebrow" style="margin-bottom:0.5rem;" data-i18n="a.tools.diary_title">Дневник нейроресурса</p>
         <h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 1.25rem;" data-i18n="a.diary.title">Что произошло сегодня?</h3>
 
@@ -1431,6 +1459,8 @@ a.dash-tab:hover { text-decoration:none; }
             </div>
           </div>
         </div>
+        </div><!-- /.nm-diary-form -->
+        <div class="nm-diary-live" id="diary-live-host"></div>
       </div>
     </div>
     <!-- External Field tool — objective environmental signals -->
@@ -5488,6 +5518,28 @@ function _pr95t(k,f){ return (typeof t==='function') ? t(k,f) : f; }
    ========================================================================== */
 var nmSessionId = null;
 var nmSessionHandoff = false;
+// PR#111 (#1): when the user presses «Привязать к эмоции» in the Sensation Map, the
+// body + sensation nodes already drawn on the live map must CARRY into the emotion
+// walkthrough's live map (not vanish, then reappear only as a faint prior strip).
+// We snapshot the sensation mini-model here and buildLiveGraph() re-draws them as
+// real nodes, so the emotion survey just keeps adding emotion→sphere→cause→thought
+// onto the same visible chain. Cleared when a fresh (non-handoff) survey opens.
+var nmCarriedLive = null;
+function nmSetCarriedLive(model){
+  try {
+    if(!model || !model.nodes || !model.nodes.length){ nmCarriedLive = null; return; }
+    var nodes = model.nodes.map(function(n){ return {id:n.id,type:n.type,label:n.label,valence:n.valence,_layer:n._layer}; });
+    var links = (model.links||[]).map(function(l){ return {source:l.source,target:l.target}; });
+    // tail = the last sensation node (so the first emotion attaches to the felt
+    // sensation); fall back to the last node of any kind.
+    var tail = null;
+    for(var i=nodes.length-1;i>=0;i--){ if(nodes[i].type==='sensation'){ tail=nodes[i].id; break; } }
+    if(!tail && nodes.length) tail = nodes[nodes.length-1].id;
+    nmCarriedLive = { nodes:nodes, links:links, tail:tail };
+  } catch(e){ nmCarriedLive = null; }
+}
+function nmClearCarriedLive(){ nmCarriedLive = null; }
+window.nmSetCarriedLive = nmSetCarriedLive; window.nmClearCarriedLive = nmClearCarriedLive;
 function nmGenUuid(){
   try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){}
   return 'nms-'+Date.now().toString(16)+'-'+Math.random().toString(16).slice(2,10);
@@ -5602,16 +5654,18 @@ function nmOpenSensationOverlay(){
     } catch(e){}
   }
   var handle = window.mountFullscreenOverlay(function(body){
-    body.style.padding = '20px 24px 96px';
+    // PR#111 (#4): two-column layout — form (left) + FULL-SIZE live map (right),
+    // identical to the Emotion/Thought survey. No more small corner card.
+    body.style.padding = '0';
+    var split = document.createElement('div'); split.className = 'nm-fs-split';
+    var colL = document.createElement('div'); colL.className = 'nm-fs-form';
+    var colR = document.createElement('div'); colR.className = 'nm-fs-live';
+    split.appendChild(colL); split.appendChild(colR);
+    body.appendChild(split);
     src.style.display = '';
-    body.appendChild(src);
+    colL.appendChild(src);
     if (typeof loadSensationMap === 'function') { try{ loadSensationMap(); }catch(e){} }
-    // PR#97: live mini-Neuromap inset (sticky-bubble preview as the form is filled).
-    // Anchor to the fixed overlay root (not the scrolling body) so it stays in the
-    // visible corner — same trick the footer uses.
-    var miniHost = body.closest('.na-fs-overlay') || body;
-    var mini = nmMiniMakeInset(miniHost, { title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
-    if(mini) mini.el.style.bottom = '88px'; // clear the save/link footer at the bottom
+    var mini = nmMiniMakeInset(colR, { full:true, title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
     function rerender(){ if(mini) mini.render(nmMiniSensModel()); }
     // Re-render only on form change (no RAF). Chip clicks toggle .active on the next
     // tick, and the body-picker syncs into #sm-body-selected, so listen broadly.
@@ -5620,13 +5674,13 @@ function nmOpenSensationOverlay(){
     if(intEl) intEl.addEventListener('input', rerender);
     setTimeout(rerender, 120);
     _nmSensMiniRerender = rerender; // expose so a programmatic save can refresh
-    // Overlay footer: «Сохранить и выйти» (default) + «Привязать к эмоции» (stub).
+    // Footer pinned to the bottom of the form column.
     var footer = document.createElement('div');
     footer.style.cssText = 'position:absolute;left:0;right:0;bottom:0;display:flex;gap:0.6rem;padding:0.85rem 1.1rem;background:rgba(8,10,14,0.92);border-top:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(10px);z-index:6;flex-wrap:wrap;justify-content:flex-end;';
     footer.innerHTML =
       '<button class="btn btn-ghost" id="nm-sens-link-stub" style="font-size:13px;border:1px dashed rgba(0,224,255,0.3);">'+_pr95t('a.tools.sensation_link_emotion','Привязать к эмоции')+'</button>'+
       '<button class="btn btn-solid" id="nm-sens-save-exit" style="font-size:13px;">'+_pr95t('a.tools.sensation_save_exit','Сохранить и выйти')+'</button>';
-    body.appendChild(footer);
+    colL.appendChild(footer);
     footer.querySelector('#nm-sens-save-exit').addEventListener('click', function(){
       submitSensationMap(function(){ refreshGraph(); handle.close(); });
     });
@@ -5638,6 +5692,9 @@ function nmOpenSensationOverlay(){
       // failed/empty save leaves no stale session dangling.
       nmEnsureSession();
       captureSensPrior(); // PR#97: snapshot BEFORE submit clears the chips
+      // PR#111 (#1): carry the body + sensation nodes into the emotion live map so
+      // they stay visible and the emotion chain extends them (no "blank restart").
+      try { nmSetCarriedLive(nmMiniSensModel()); } catch(e){}
       submitSensationMap(function(){
         refreshGraph();
         nmSessionHandoff = true;
@@ -5881,11 +5938,11 @@ function openDiaryInput(prefillDate){
   var dEl=document.getElementById('diary-event-date');
   if(dEl) dEl.value = prefillDate || '';
   resetDiaryForm();
-  // PR#97: live mini-Neuromap inset anchored to the modal backdrop's corner.
+  // PR#111 (#4): full-size live map docked in the right column (was a corner card).
   try {
-    var modal = document.getElementById('diaryModal');
+    var liveHost = document.getElementById('diary-live-host') || document.getElementById('diaryModal');
     if(_nmDiaryMini){ _nmDiaryMini.destroy(); _nmDiaryMini=null; }
-    _nmDiaryMini = nmMiniMakeInset(modal, { title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
+    _nmDiaryMini = nmMiniMakeInset(liveHost, { full: liveHost.id==='diary-live-host', title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
     setTimeout(nmDiaryMiniRerender, 120);
   } catch(e){}
 }
@@ -6392,7 +6449,11 @@ var EMOJI_THOUGHTS = {'Я не справляюсь':'😞','Мне не хва�
 // Survey modal
 var _nmOpenThoughtMode=false; // PR#109: openNmThought sets this for the next openNmSurvey
 function openNmSurvey(){
+  var _wasHandoff = nmSessionHandoff; // PR#111 (#1): is this a cross-link continuation?
   nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
+  // A fresh, standalone emotion survey starts with a blank map — drop any carried
+  // sensation nodes. A handoff (Sensation → «Привязать к эмоции») keeps them.
+  if(!_wasHandoff) nmClearCarriedLive();
   nmCurrentStep=0;
   nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:'',_concept:null};
   nmLivePrevPos={};
@@ -6479,6 +6540,7 @@ function closeNmSurvey(){
   // keeps it for the next overlay.
   if(!nmSessionHandoff) nmClearSession();
   if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
+  nmClearCarriedLive(); // PR#111 (#1): carried sensation nodes don't outlive the survey
 }
 
 function renderNmStepDots(){
@@ -6743,12 +6805,27 @@ function buildLiveGraph(){
 
   // PR#109 (#1): thought mode — the typed concept is the root node, shown live as
   // the user types and linked to each emotion once chosen.
+  // PR#111 (#1): carried sensation nodes (body + felt sensation) from a Sensation →
+  // «Привязать к эмоции» handoff — draw them as REAL nodes so the emotion chain
+  // visibly extends the existing map instead of starting blank.
+  var _carry = window.nmCarriedLive;
+  var _carryTail = null;
+  if(_carry && _carry.nodes && _carry.nodes.length){
+    _carry.nodes.forEach(function(cn){
+      var cid='cy:'+cn.id;
+      addN(cid, cn.type, cn.label);
+      if(nodeMap[cid]){ nodeMap[cid]._layer=cn._layer; nodeMap[cid].valence=cn.valence; }
+    });
+    (_carry.links||[]).forEach(function(cl){ addL('cy:'+cl.source,'cy:'+cl.target); });
+    if(_carry.tail) _carryTail='cy:'+_carry.tail;
+  }
   var _hasConcept = nmThoughtMode && nmSurveyState._concept && nmSurveyState._concept.label;
   if(_hasConcept) addN('concept','concept',nmSurveyState._concept.label);
   nmSurveyState.emotions.forEach(function(emo,i){
     if(!emo) return;
     addN('e:'+emo,'emotion',emo);
     if(_hasConcept) addL('concept','e:'+emo);
+    else if(_carryTail && i===0) addL(_carryTail,'e:'+emo); // attach chain to felt sensation
     var chain=nmSurveyState.emotionChains[i]||{};
     if(chain.areas) chain.areas.forEach(function(a){
       var label=a==='другое'&&chain.customArea?chain.customArea:a;
@@ -6843,7 +6920,9 @@ function buildLiveGraph(){
     // Draw
     ctx.clearRect(0,0,W,H);
     // PR#97: faded prior cross-link strip (nodes from the overlay we chained from).
-    var _prior=window.nmSessionPrior||[];
+    // PR#111 (#1): when those nodes are carried as REAL nodes (sensation→emotion),
+    // skip the faint strip so they aren't duplicated.
+    var _prior=(window.nmCarriedLive && window.nmCarriedLive.nodes && window.nmCarriedLive.nodes.length) ? [] : (window.nmSessionPrior||[]);
     if(_prior.length){
       var _pn=Math.min(_prior.length,6), _step=W/(_pn+1);
       ctx.save(); ctx.globalAlpha=0.3;
@@ -6942,7 +7021,7 @@ function nmMiniMakeInset(host, opts){
   var existing = host.querySelector(':scope > .nm-mini-inset');
   if(existing && existing.parentNode===host) existing.remove();
   var el = document.createElement('div');
-  el.className = 'nm-mini-inset';
+  el.className = 'nm-mini-inset' + (opts.full ? ' nm-mini-full' : ''); // PR#111 (#4)
   var title = opts.title || _pr95t('a.tools.mini_live_map','Карта · вживую');
   el.innerHTML =
     '<div class="nm-mini-head"><span>'+title+'</span>'+
@@ -16391,7 +16470,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=23"></script>
+<script src="assets/js/evolution-path.js?v=24"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>

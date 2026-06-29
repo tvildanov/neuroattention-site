@@ -1709,7 +1709,36 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 040 (path session merge): session backfilled', mig040.sess_single + mig040.sess_array, 'dupes deleted', mig040.dupes_deleted);
     } catch (e) { mig040.error = e.message; console.error('migration 040 (path session merge):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-040 applied successfully', mig039, mig040 });
+    // ── Migration 041 (PR#111 #2): prune the greedy session-bridge artifacts that
+    //   fused unrelated events. The old nmBridgeSession linked every prior session
+    //   node to every new node, so a BODY-location node (metadata.area_kind='body',
+    //   e.g. позвоночник) got wired directly to emotion/cause/thought nodes of the
+    //   chain. A body part is only ever entered through /sensation, which links it to
+    //   sensations — never to an emotion/cause/thought. So any body↔emotion/cause/
+    //   thought link is provably a bridge artifact and is safe to delete. This stops
+    //   phantom nodes from a past event sticking to a new chain. Pure subqueries (no
+    //   array casts — PR#107: neon ANY/ALL inside the migration try/catch silently
+    //   throws and the migration falsely reports success).
+    let mig041 = { phantom_links_deleted: 0 };
+    try {
+      const pl = await sql`DELETE FROM nm_links l
+        WHERE (
+          EXISTS (SELECT 1 FROM nm_nodes a WHERE a.id = l.from_node_id
+                    AND a.type = 'area' AND a.metadata->>'area_kind' = 'body')
+          AND EXISTS (SELECT 1 FROM nm_nodes b WHERE b.id = l.to_node_id
+                    AND b.type IN ('emotion','cause','thought'))
+        ) OR (
+          EXISTS (SELECT 1 FROM nm_nodes a WHERE a.id = l.to_node_id
+                    AND a.type = 'area' AND a.metadata->>'area_kind' = 'body')
+          AND EXISTS (SELECT 1 FROM nm_nodes b WHERE b.id = l.from_node_id
+                    AND b.type IN ('emotion','cause','thought'))
+        )
+        RETURNING id`;
+      mig041.phantom_links_deleted = pl.length;
+      console.log('migration 041 (phantom bridge prune): deleted', mig041.phantom_links_deleted, 'body↔emotion/cause/thought links');
+    } catch (e) { mig041.error = e.message; console.error('migration 041 (phantom bridge prune):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-041 applied successfully', mig039, mig040, mig041 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2343,21 +2372,26 @@ async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso) {
   const when = whenIso || new Date().toISOString();
   const ids = [...new Set(newNodeIds.filter(Boolean))];
   if (!ids.length) return 0;
-  // Existing session nodes that are NOT part of this batch.
+  // PR#111 (#2): SINGLE SEAM, not a cross-product. The old code linked EVERY prior
+  // session node to EVERY new node, so a body part (позвоночник) got wired straight
+  // to every emotion/cause/thought of the chain — and because emotion nodes are
+  // deduplicated, a shared emotion then fused two unrelated events into one rigid
+  // blob (Tahir's "phantom nodes snap back"). The journey bridge already uses a
+  // single seam; mirror it here. Connect only the MOST RECENT prior session node to
+  // the FIRST new node, so the flow reads as one chain (sensation → emotion) without
+  // gluing body parts to the whole downstream chain.
   const existingRows = await sql`
-    SELECT DISTINCT node_id FROM nm_session_nodes
-    WHERE user_id = ${userId} AND session_id = ${sid}`;
-  const existing = existingRows.map(r => r.node_id).filter(id => !ids.includes(id));
+    SELECT node_id FROM nm_session_nodes
+    WHERE user_id = ${userId} AND session_id = ${sid}
+    ORDER BY created_at DESC, node_id DESC`;
+  const prior = existingRows.map(r => r.node_id).find(id => !ids.includes(id));
   let made = 0;
-  for (const eid of existing) {
-    for (const nid of ids) {
-      if (eid === nid) continue;
-      await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
-                VALUES (${userId}, ${eid}, ${nid}, 1, ${when})
-                ON CONFLICT (user_id, from_node_id, to_node_id)
-                DO UPDATE SET count = nm_links.count + 1, last_seen_at = ${when}`;
-      made++;
-    }
+  if (prior) {
+    await sql`INSERT INTO nm_links (user_id, from_node_id, to_node_id, count, last_seen_at)
+              VALUES (${userId}, ${prior}, ${ids[0]}, 1, ${when})
+              ON CONFLICT (user_id, from_node_id, to_node_id)
+              DO UPDATE SET count = nm_links.count + 1, last_seen_at = ${when}`;
+    made = 1;
   }
   // Register this batch's nodes under the session for the next hop.
   for (const nid of ids) {
@@ -4735,22 +4769,46 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
       }
     }
 
-    // Journey log: a single sensation event carrying all chosen sensations +
-    // locations + intensity + the context it was bound to (link_to).
+    // Journey log (PR#111 #3): the sensation map used to log ONE combined event with
+    // everything mashed into the label ("sensation: мягкость @ позвоночник…"). On the
+    // Personal Path that read as a single odd node and (paired with the diary mirror)
+    // looked fragmented. Instead emit ONE journey event PER node — body locations as
+    // blue 'area' (area_kind:'body') nodes, felt sensations as cyan 'sensation' nodes —
+    // and chain them into a single sequence (body → … → sensation → …). All share the
+    // session_id so the Path groups them as ONE chain, and the NeuroMap colours match
+    // (body=синий, sensation=циан). The "Link to Emotion" bridge then continues the
+    // SAME chain (sensation → emotion) via bridgeJourneySession.
     const linkTo = Array.isArray(link_to) ? link_to.filter(Boolean) : [];
-    const sensationEventId = await logJourney(userId, 'sensation', 'sensation', {
-      sensation_ids: sensRows.map(s => s.slug),
-      sensation_labels: sensRows.map(s => s.label_ru),
-      body_locations: locRows.map(l => l.label_ru),
-      body_location_slugs: locRows.map(l => l.slug),
-      intensity: (typeof intensity === 'number' ? intensity : (parseInt(intensity, 10) || null)),
-      comment: comment || '',
-      nm_node_ids: nmNodeIds.concat(sensNodeIds),
-      context: { linked_to: linkTo },
-      source: 'sensation'
-    }, when.toISOString(), null, session_id); // PR#109 (#3): tag the session
+    const intensityVal = (typeof intensity === 'number' ? intensity : (parseInt(intensity, 10) || null));
+    const flowEventIds = [];
+    for (let bi = 0; bi < locRows.length; bi++) {
+      const loc = locRows[bi];
+      const bid = await logJourney(userId, 'sensation', 'sensation', {
+        label: loc.label_ru, nm_type: 'area', area_kind: 'body',
+        body_locations: [loc.label_ru], body_location_slugs: [loc.slug],
+        nm_node_id: nmNodeIds[bi], valence: 'neutral', source: 'sensation'
+      }, when.toISOString(), null, session_id);
+      if (bid) flowEventIds.push(bid);
+    }
+    for (let si = 0; si < sensRows.length; si++) {
+      const s = sensRows[si];
+      const sid2 = await logJourney(userId, 'sensation', 'sensation', {
+        label: s.label_ru, nm_type: 'sensation',
+        sensation_ids: [s.slug], sensation_labels: [s.label_ru],
+        body_locations: locRows.map(l => l.label_ru),
+        intensity: intensityVal, comment: comment || '',
+        nm_node_id: sensNodeIds[si], valence: 'neutral', source: 'sensation'
+      }, when.toISOString(), null, session_id);
+      if (sid2) flowEventIds.push(sid2);
+    }
+    for (let k = 0; k < flowEventIds.length - 1; k++) {
+      await linkJourney(flowEventIds[k], flowEventIds[k + 1], 'sequence', 1.0);
+    }
+    // The last sensation node is the chain's tail — context bindings + the emotion
+    // bridge attach here so "Link to Emotion" continues sensation → emotion.
+    const sensationEventId = flowEventIds.length ? flowEventIds[flowEventIds.length - 1] : null;
     // PR#109 (#3): if this sensation continues an existing session, stitch it on.
-    if (sensationEventId) await bridgeJourneySession(userId, session_id, [sensationEventId]);
+    await bridgeJourneySession(userId, session_id, flowEventIds);
 
     // Context binding: connect this sensation to the emotions/events/thoughts/
     // practices the user picked, in both the journey graph and (where possible)
@@ -6816,7 +6874,15 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     // calendar — separate instrument, always include (not mirrored to journey)
     cal.forEach(c => layers.event.push({ id: 'cal_' + c.id, kind:'event', layer:'event', source:'calendar', t: c.created_at, occurred_at: c.created_at, label: c.title, valence:'neutral', weight: 1, payload: { title: c.title, event_type: c.event_type, date_key: c.date_key }, links: [] }));
     if (!haveJE.insight) {
-      diary.forEach(d => layers.insight.push({ id: 'diary_' + d.id, kind:'insight', layer:'insight', source:'diary_legacy', t: d.created_at, occurred_at: d.created_at, label: String(d.text || '').slice(0, 90), valence: (d.plus_count > d.minus_count ? 'positive' : (d.minus_count > d.plus_count ? 'negative' : 'neutral')), weight: ((d.plus_count || 0) + (d.minus_count || 0)) || 1, payload: { text: d.text, comment: d.comment }, links: [] }));
+      diary.forEach(d => {
+        // PR#111 (#3): /api/neuromap/sensation also writes a "Sensation: … @ …" diary
+        // row (kept for the recent-list UI). It used to surface here as a duplicate
+        // INSIGHT star ("inside layer") on top of the real sensation/body nodes —
+        // exactly the fragmentation Tahir saw. The sensation already has its own
+        // journey events; skip its diary mirror so the path shows ONE chain.
+        if (/^sensation\s*:/i.test(String(d.text || ''))) return;
+        layers.insight.push({ id: 'diary_' + d.id, kind:'insight', layer:'insight', source:'diary_legacy', t: d.created_at, occurred_at: d.created_at, label: String(d.text || '').slice(0, 90), valence: (d.plus_count > d.minus_count ? 'positive' : (d.minus_count > d.plus_count ? 'negative' : 'neutral')), weight: ((d.plus_count || 0) + (d.minus_count || 0)) || 1, payload: { text: d.text, comment: d.comment }, links: [] });
+      });
     }
 
     // Keep every layer chronological
@@ -6925,9 +6991,13 @@ app.post('/api/users/me/evolution/backfill', requireAuth, async (req, res) => {
     for (const n of nodes) {
       if (haveNm.has(String(n.id))) continue;
       const { kind, layer } = nmTypeToJourney(n.type);
+      // PR#111 (#3): carry area_kind so a body location (area_kind:'body') backfills
+      // as a BLUE body node, not a lavender "life area". Without this the path
+      // mislabelled позвоночник etc. as «Сфера жизни».
+      const ak = (n.metadata && n.metadata.area_kind) || (n.type === 'area' ? 'sphere' : null);
       await logJourney(me, kind, layer, {
         label: n.label, valence: n.valence, nm_node_id: n.id, nm_type: n.type,
-        source: 'backfill_neuromap'
+        area_kind: ak, source: 'backfill_neuromap'
       }, n.last_seen_at);
       nmCount++;
     }
