@@ -755,7 +755,7 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .bp-view { background: rgba(8,12,18,0.5); border: 1px solid rgba(120,210,255,0.12); border-radius: 14px; padding: 0.5rem; }
 .bp-view-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(120,210,255,0.7); text-align: center; margin-bottom: 0.25rem; font-family: 'JetBrains Mono', monospace; }
-.bp-stage { position: relative; height: 300px; }
+.bp-stage { position: relative; height: 250px; } /* PR#109 #2: ~17% smaller so the live-map fits beside the sensation form */
 .bp-region { cursor: pointer; transition: fill 0.15s ease, stroke 0.15s ease, transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
 .bp-region:hover, .bp-region.active { fill: rgba(120,210,255,0.18); stroke: rgba(180,235,255,0.95); stroke-width: 1.4; filter: drop-shadow(0 0 7px rgba(120,210,255,0.85)); transform: scale(1.03); }
 /* persistent highlight for a directly-selected whole zone (single-click) */
@@ -795,7 +795,7 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
 .cp-fullscreen .cp-canvas-host { height: calc(100vh - 120px) !important; }
 @media (max-width: 560px) {
   .bp-grid { gap: 0.5rem; }
-  .bp-stage { height: 220px; }
+  .bp-stage { height: 185px; }
   /* mobile: sub-buttons cascade below the graphic, not as a floating popover */
   .bp-panel.open { position: static; display: flex; max-width: 100%; margin-top: 0.5rem; box-shadow: none; background: rgba(255,255,255,0.02); }
 }
