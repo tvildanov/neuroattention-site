@@ -197,7 +197,8 @@
       return data.events.map(function (e) {
         return { id: e.id, layer: e.layer, t: tms(e.t || e.occurred_at), occurred_at: e.occurred_at,
                  label: e.label, valence: e.valence, weight: e.weight || 1, kind: e.kind,
-                 source: e.source, payload: e.payload || {}, links: e.links || [] };
+                 source: e.source, session_id: e.session_id || null, nm_type: e.nm_type || null,
+                 area_kind: e.area_kind || null, payload: e.payload || {}, links: e.links || [] };
       }).sort(function (a, b) { return a.t - b.t; });
     }
     var out = [];
@@ -612,19 +613,7 @@
   var MIN_PXPD = 0.4, MAX_PXPD = 7200;
 
   function nodeShape(layer, cx, cy, r) {
-    if (layer === 'practice') {
-      var s = r * 1.0;
-      return el('rect', { x: (cx - s).toFixed(1), y: (cy - s).toFixed(1), width: (s * 2).toFixed(1), height: (s * 2).toFixed(1), rx: 1.4 });
-    }
-    if (layer === 'insight') {
-      // 4-point star
-      var R = r * 1.5, rr = r * 0.55, d = '';
-      for (var k = 0; k < 8; k++) {
-        var ang = Math.PI * k / 4 - Math.PI / 2, rad = (k % 2 === 0) ? R : rr;
-        d += (k === 0 ? 'M' : 'L') + (cx + Math.cos(ang) * rad).toFixed(1) + ' ' + (cy + Math.sin(ang) * rad).toFixed(1);
-      }
-      return el('path', { d: d + 'Z' });
-    }
+    // PR#109 (#4): always a circle — no practice squares / insight stars on the path.
     return el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1) });
   }
   // aura colour by mean emotional valence in a time slice: calm cyan at 0,
@@ -648,16 +637,8 @@
   // mini-map reads like the standalone NeuroMap tool — emotion=amber, sensation=
   // cyan, event=violet, thought=lavender, practice=green, insight=cyan. The spine
   // keeps its own valence palette (cvLayerFill); only the popup uses this.
-  function nmTypeColor(e) {
-    var k = (e && (e.layer || e.kind)) || '';
-    if (k === 'emotion')   return 'rgb(240,184,96)';   // amber
-    if (k === 'sensation') return 'rgb(120,200,235)';  // cyan
-    if (k === 'event')     return 'rgb(186,150,240)';  // violet
-    if (k === 'thought')   return 'rgb(200,180,240)';  // lavender
-    if (k === 'practice')  return '#8DFFC8';            // green
-    if (k === 'insight')   return 'var(--myc-cyan)';
-    return 'rgba(255,255,255,0.55)';
-  }
+  // PR#109 (#4): single source — the NeuroMap palette (see nmPathColor).
+  function nmTypeColor(e) { return nmPathColor(e); }
 
   // compute / persist the pan-zoom view on st.view
   function ensureView(st, data, x0, x1) {
@@ -709,16 +690,35 @@
       textMono: g('--myc-text-mono', '#5b6b7a') };
     return CV_COLORS;
   }
-  function cvLayerFill(layer, valence) {
-    var C = cvColors();
-    if (layer === 'emotion') return valence === 'positive' ? C.green : (valence === 'negative' ? 'rgb(220,90,90)' : C.lineSecondary);
-    if (layer === 'insight') return C.cyan;
-    if (layer === 'practice') return '#8DFFC8';
-    if (layer === 'thought') return 'rgb(200,180,240)';
-    if (layer === 'sensation') return 'rgb(140,180,255)';
-    if (layer === 'event') return 'rgb(100,220,180)';
-    return C.lineSecondary;
+  // PR#109 (#4): the canonical NeuroMap palette, so Personal-Path nodes read exactly
+  // like the standalone NeuroMap tool. Keyed by NeuroMap type (payload.nm_type /
+  // area_kind) first, falling back to the journey kind/layer.
+  var NMP = {
+    blue:   'rgb(140,180,255)', // body location (Layer 1 body)
+    cyan:   'rgb(120,200,235)', // sensation (Layer 1 sensation)
+    amber:  'rgb(240,184,96)',  // emotion
+    lav:    'rgb(175,150,240)', // life-sphere / image
+    green:  'rgb(112,202,132)', // cause / meaning
+    violet: 'rgb(166,112,226)', // concept / thought
+    rose:   'rgb(240,130,166)'  // action / practice / diary event
+  };
+  function nmPathColor(e) {
+    var p = (e && e.payload) || {};
+    var nt = (e && e.nm_type) || p.nm_type || '';
+    var ak = (e && e.area_kind) || p.area_kind || '';
+    var k  = (e && (e.kind || e.layer)) || '';
+    if (nt === 'emotion' || k === 'emotion') return NMP.amber;
+    if (nt === 'concept' || nt === 'thought' || k === 'thought') return NMP.violet;
+    if (nt === 'cause') return NMP.green;
+    if (ak === 'body') return NMP.blue;                       // body location
+    if (nt === 'area' || k === 'life_area') return NMP.lav;   // life sphere / image
+    if (nt === 'sensation' || k === 'sensation') return NMP.cyan;
+    if (k === 'practice' || nt === 'practice' || nt === 'action') return NMP.rose;
+    if (k === 'insight') return NMP.cyan;
+    if (k === 'event') return NMP.rose;                       // diary event / action
+    return 'rgba(255,255,255,0.55)';
   }
+  function cvLayerFill(layer, valence) { return nmPathColor({ layer: layer, valence: valence }); }
   function rgbaFromRgb(rgb, a) { var m = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/); return m ? 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')' : rgb; }
 
   function renderTunnel(W, data, container, lang, st) {
@@ -827,6 +827,15 @@
     function addEdge(a, b) { if (a == null || b == null) return; a = String(a); b = String(b); if (a === b || !byId[a] || !byId[b]) return; (adj[a] = adj[a] || {})[b] = 1; (adj[b] = adj[b] || {})[a] = 1; }
     // strong links only — correlation hubs no longer merge chains
     events.forEach(function (e) { (e.links || []).forEach(function (lk) { if (!isStrongLink(lk)) return; addEdge(e.id, lk && lk.to != null ? lk.to : lk); }); });
+    // PR#109 (#3): one fill-flow (shared session_id) is ONE chain. Connect each
+    // session's events in time order — covers historical events that predate the
+    // server-side journey bridge (only session_id was backfilled, no links).
+    var bySession = {};
+    events.forEach(function (e) { if (e.session_id) (bySession[e.session_id] = bySession[e.session_id] || []).push(e); });
+    Object.keys(bySession).forEach(function (sid) {
+      var g = bySession[sid].slice().sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+      for (var i = 0; i < g.length - 1; i++) addEdge(g[i].id, g[i + 1].id);
+    });
     var seen = {}, out = [];
     events.forEach(function (e) {
       var id = String(e.id); if (seen[id]) return;
@@ -1004,7 +1013,7 @@
       // nodes strung along the branch
       for (var ni = 0; ni < comp.nodes.length; ni++) {
         var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx * Z, ny = ay + nd.ly * vCombined, ndr = nd.r * rZ;
-        var fillN = cvLayerFill(e.layer, e.valence);
+        var fillN = nmPathColor(e); // PR#109 (#4): NeuroMap colour by node type
         var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
         drawNodeCv(ctx, e.layer, nx, ny, ndr, fillN, glow);
         st._nodes.push({ x: nx, y: ny, r: ndr, e: e });
@@ -1203,14 +1212,11 @@
   function drawNodeCv(ctx, layer, cx, cy, r, fill, glow) {
     r = Math.max(0.1, r);   // PR94: guard the pre-existing "arc radius negative" console error
     if (glow) { ctx.save(); ctx.shadowColor = fill; ctx.shadowBlur = 8; }
+    // PR#109 (#4): every node is a circle filled with its NeuroMap colour (no more
+    // practice squares / insight stars) — Tahir: «везде кружочки», как в NeuroMap.
     ctx.beginPath();
-    if (layer === 'practice') { ctx.rect(cx - r, cy - r, r * 2, r * 2); }
-    else if (layer === 'insight') {
-      var R = r * 1.5, rr = r * 0.55;
-      for (var k = 0; k < 8; k++) { var ang = Math.PI * k / 4 - Math.PI / 2, rad = (k % 2 === 0) ? R : rr; var px = cx + Math.cos(ang) * rad, py = cy + Math.sin(ang) * rad; if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
-      ctx.closePath();
-    } else { ctx.arc(cx, cy, r, 0, Math.PI * 2); }
-    ctx.fillStyle = (layer === 'insight') ? fill : 'rgba(255,255,255,0.92)'; ctx.fill();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = rgbaFromRgb(fill, 0.82); ctx.fill();
     ctx.lineWidth = 1.4; ctx.strokeStyle = fill; ctx.stroke();
     if (glow) ctx.restore();
   }
