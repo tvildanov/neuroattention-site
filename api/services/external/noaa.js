@@ -1,6 +1,6 @@
 // NOAA SWPC — solar X-ray flux (flare class), planetary Kp, solar wind, alerts.
 // No auth. Public JSON products. Sun + Earth layers.
-const { getJson, isoUtc } = require('./_util');
+const { getJson, isoUtc, iso } = require('./_util');
 
 function flareClass(flux) {
   if (!(flux > 0)) return 'A0.0';
@@ -35,6 +35,29 @@ async function fetchLatest() {
         raw_payload: last });
     }
   } catch (e) { console.warn('[ext/noaa] xray:', e.message); }
+
+  // ── Discrete X-ray flares (sun) — KEYLESS, the reliable flare feed ──────────
+  // NOAA SWPC lists every GOES-detected flare of the last 7 days here (begin /
+  // peak / end + class), no auth required. This is what populates the Sun tab's
+  // "Solar flares" list and "Last flare" — DONKI/FLR needs a NASA key and on
+  // DEMO_KEY is rate-limited to nothing, which is why both were empty. — PR#110
+  try {
+    const flr = await getJson('https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json');
+    (flr || []).forEach(function (f) {
+      const cls = f.max_class || f.current_class;
+      if (!cls || !f.begin_time) return;                 // only genuine, classified flares
+      const peak = f.max_time || f.begin_time;
+      // NOAA flare times are already ISO-8601 with a trailing Z → use iso() (not
+      // isoUtc, which appends a second Z and yields an Invalid Date → null).
+      out.push({ layer: 'sun', source: 'NOAA SWPC',
+        source_url: 'https://www.swpc.noaa.gov/products/goes-x-ray-flux',
+        event_type: 'flare', title: 'Solar flare ' + cls,
+        description: 'GOES-' + (f.satellite || '?') + ' X-ray flare · peak ' + cls,
+        timestamp: iso(peak), start_time: iso(f.begin_time), end_time: f.end_time ? iso(f.end_time) : null,
+        severity: cls, location_scope: 'global',
+        dedup_key: 'noaa:flr:' + f.begin_time, raw_payload: f });
+    });
+  } catch (e) { console.warn('[ext/noaa] flares:', e.message); }
 
   // ── Planetary Kp index + Ap (earth) ──
   try {

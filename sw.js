@@ -4,6 +4,12 @@
 //     an error: Returned response is null" that the old SW raised on POST uploads
 //     (multipart audio) to the cross-origin Railway API, where caches.match returned
 //     undefined and respondWith got null.
+// v22: cache-bust for PR#110 — External Field fixes: (1) Sun tab «Solar Flares» now
+//      fed by NOAA SWPC xray-flares-7-day (KEYLESS — DONKI needed a NASA key it
+//      didn't have, so flares + «Last flare» were empty); (2) Moon tab moonrise/
+//      moonset computed astronomically via new suncalc-lite.js (Open-Meteo omits
+//      them → were dashes), default Palm Springs CA when no location; (3) Evolution
+//      Path lunar-phase day markers (🌑🌓🌕🌗) along the time axis.
 // v19: cache-bust for PR#107 — (1) migration 039 label-sweeps any «всё тело» area
 //      node that 038 (slug-only) missed + re-cleans orphan sensations; (2) a dragged
 //      sensation bubble SNAPS BACK to its body part on release (can't be torn off);

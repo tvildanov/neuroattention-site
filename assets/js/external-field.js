@@ -29,7 +29,7 @@
         windField: 'within typical range', xrayQuiet: 'background / quiet',
         flareQuiet: 'No significant flares or CMEs recorded in the last 7 days — a quiet stretch of solar activity.' },
       moon: { phase: 'Phase', illum: 'Illumination', age: 'Lunar age', moonrise: 'Moonrise', moonset: 'Moonset', timeline: 'Lunar timeline',
-        days: 'd', computed: 'Computed astronomically (always available).',
+        days: 'd', computed: 'Computed astronomically (always available).', alwaysUp: 'up all day', alwaysDown: 'below horizon', defaultLoc: 'default location',
         phases: { 'New Moon': 'New Moon', 'Waxing Crescent': 'Waxing Crescent', 'First Quarter': 'First Quarter', 'Waxing Gibbous': 'Waxing Gibbous', 'Full Moon': 'Full Moon', 'Waning Gibbous': 'Waning Gibbous', 'Last Quarter': 'Last Quarter', 'Waning Crescent': 'Waning Crescent' } },
       earth: { kp: 'Planetary Kp', ap: 'Ap index', geomag: 'Geomagnetic field', lastQuake: 'Last earthquake',
         quiet: 'quiet', stormActive: 'storm active', seismic: 'Geomagnetic & seismic events', lastGlobalQuake: 'Latest earthquake M ≥ 4.5 worldwide (USGS)',
@@ -70,7 +70,7 @@
         windField: 'в пределах нормы', xrayQuiet: 'фон / спокойно',
         flareQuiet: 'За последние 7 дней значимых вспышек и выбросов не зафиксировано — затишье солнечной активности.' },
       moon: { phase: 'Фаза', illum: 'Освещённость', age: 'Возраст Луны', moonrise: 'Восход Луны', moonset: 'Заход Луны', timeline: 'Лунная хроника',
-        days: 'дн', computed: 'Рассчитано астрономически (доступно всегда).',
+        days: 'дн', computed: 'Рассчитано астрономически (доступно всегда).', alwaysUp: 'весь день над горизонтом', alwaysDown: 'за горизонтом', defaultLoc: 'локация по умолчанию',
         phases: { 'New Moon': 'Новолуние', 'Waxing Crescent': 'Растущий серп', 'First Quarter': 'Первая четверть', 'Waxing Gibbous': 'Растущая Луна', 'Full Moon': 'Полнолуние', 'Waning Gibbous': 'Убывающая Луна', 'Last Quarter': 'Последняя четверть', 'Waning Crescent': 'Убывающий серп' } },
       earth: { kp: 'Планетарный Kp', ap: 'Индекс Ap', geomag: 'Геомагнитное поле', lastQuake: 'Последнее землетрясение',
         quiet: 'спокойно', stormActive: 'идёт буря', seismic: 'Геомагнитные и сейсмические события', lastGlobalQuake: 'Последнее землетрясение M ≥ 4.5 в мире (USGS)',
@@ -111,7 +111,7 @@
         windField: 'dentro del rango típico', xrayQuiet: 'fondo / tranquilo',
         flareQuiet: 'No se han registrado fulguraciones ni CME significativas en los últimos 7 días — un periodo de calma solar.' },
       moon: { phase: 'Fase', illum: 'Iluminación', age: 'Edad lunar', moonrise: 'Salida de la Luna', moonset: 'Puesta de la Luna', timeline: 'Cronología lunar',
-        days: 'd', computed: 'Calculado astronómicamente (siempre disponible).',
+        days: 'd', computed: 'Calculado astronómicamente (siempre disponible).', alwaysUp: 'sobre el horizonte todo el día', alwaysDown: 'bajo el horizonte', defaultLoc: 'ubicación por defecto',
         phases: { 'New Moon': 'Luna nueva', 'Waxing Crescent': 'Creciente', 'First Quarter': 'Cuarto creciente', 'Waxing Gibbous': 'Gibosa creciente', 'Full Moon': 'Luna llena', 'Waning Gibbous': 'Gibosa menguante', 'Last Quarter': 'Cuarto menguante', 'Waning Crescent': 'Menguante' } },
       earth: { kp: 'Kp planetario', ap: 'Índice Ap', geomag: 'Campo geomagnético', lastQuake: 'Último sismo',
         quiet: 'tranquilo', stormActive: 'tormenta activa', seismic: 'Eventos geomagnéticos y sísmicos', lastGlobalQuake: 'Último sismo M ≥ 4.5 en el mundo (USGS)',
@@ -159,6 +159,16 @@
 
   var S = { active: 'sun', config: {}, user: null, container: null };
 
+  // Moonrise/moonset is astronomical — computed locally (SunCalc), never
+  // API-dependent (Open-Meteo's standard endpoint omits it, which is why it was
+  // always a dash). When the user hasn't set a location we fall back to Palm
+  // Springs, CA so the Moon tab is never blank. — PR#110
+  var DEFAULT_LOC = { lat: 33.8303, lon: -116.5453, city: 'Palm Springs, CA', tz: 'America/Los_Angeles', isDefault: true };
+  function effectiveLoc() {
+    if (hasLocation()) return { lat: S.user.location_lat, lon: S.user.location_lon, city: S.user.location_city || null, tz: null, isDefault: false };
+    return DEFAULT_LOC;
+  }
+
   function api(path, opts) {
     var token = localStorage.getItem('na_token');
     return fetch((window.AUTH_API || '') + path, Object.assign({
@@ -167,7 +177,7 @@
   }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function fmtTime(ts) { var d = new Date(ts); if (isNaN(d)) return ''; try { return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return d.toISOString().slice(0, 16).replace('T', ' '); } }
-  function fmtHM(ts) { var d = new Date(ts); if (isNaN(d)) return '—'; try { return d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }); } catch (e) { return '—'; } }
+  function fmtHM(ts, tz) { var d = new Date(ts); if (isNaN(d)) return '—'; try { var o = { hour: '2-digit', minute: '2-digit' }; if (tz) o.timeZone = tz; return d.toLocaleTimeString(locale(), o); } catch (e) { return '—'; } }
   function hasLocation() { return S.user && S.user.location_lat != null && S.user.location_lon != null; }
 
   /* ── shell ─────────────────────────────────────────────────────────────── */
@@ -373,7 +383,7 @@
       html += sdoImage();
       // last flare / CME quick stats
       html += statRow([
-        [t('sun.lastFlare'), flares.length ? flares[0].severity : '—'],
+        [t('sun.lastFlare'), flares.length ? (flares[0].severity + ' · ' + fmtTime(flares[0].timestamp)) : '—'],
         [t('sun.lastCME'), cmes.length ? fmtTime(cmes[0].timestamp) : '—']
       ]);
       // PACK 5.2: when DONKI returns no flares/CMEs, say it's a genuine quiet
@@ -442,24 +452,33 @@
         [t('moon.age'), m.age.toFixed(1) + ' ' + t('moon.days')]
       ]) + '</div></div>';
     html += '<div class="ef-foot-inline">' + esc(t('moon.computed')) + '</div>';
-    if (hasLocation()) html += '<div class="ef-suntimes" id="ef-moontimes"><span>🌙 ' + esc(t('moon.moonrise')) + ': <b>—</b></span><span>🌑 ' + esc(t('moon.moonset')) + ': <b>—</b></span></div>';
-    else html += '<div class="ef-need-loc">' + esc(t('needLoc')) + '</div>';
+    html += moonTimesRow();
     html += '<h4 class="ef-h4">' + esc(t('moon.timeline')) + '</h4><div id="ef-moon-tl"><div class="ef-loading">' + esc(t('loading')) + '</div></div>';
     body.innerHTML = html;
     loadLayer('moon', function (events) {
       var tl = S.container.querySelector('#ef-moon-tl'); if (tl) tl.innerHTML = timeline(events, t('srcEmpty'));
     });
-    if (hasLocation()) fillMoonTimes(m);
   }
-  function fillMoonTimes(m) {
-    var u = S.user;
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + u.location_lat + '&longitude=' + u.location_lon + '&daily=moonrise,moonset&timezone=auto&forecast_days=1')
-      .then(function (r) { return r.json(); }).then(function (d) {
-        var box = S.container.querySelector('#ef-moontimes'); if (!box) return;
-        var mr = d.daily && d.daily.moonrise && d.daily.moonrise[0], ms = d.daily && d.daily.moonset && d.daily.moonset[0];
-        // Open-Meteo may omit moonrise/moonset on its standard endpoint — keep dashes gracefully
-        box.innerHTML = '<span>🌙 ' + esc(t('moon.moonrise')) + ': <b>' + (mr ? fmtHM(mr) : '—') + '</b></span><span>🌑 ' + esc(t('moon.moonset')) + ': <b>' + (ms ? fmtHM(ms) : '—') + '</b></span>';
-      }).catch(function () {});
+  // Astronomical moonrise/moonset for the effective location — always available,
+  // no network. Open-Meteo's standard forecast endpoint silently omits these
+  // fields, which is why the row used to render two dashes. — PR#110
+  function moonTimesRow() {
+    var loc = effectiveLoc();
+    var rise = '—', set = '—';
+    try {
+      if (window.SunCalcLite) {
+        var mt = window.SunCalcLite.getMoonTimes(new Date(), loc.lat, loc.lon);
+        if (mt.rise) rise = fmtHM(mt.rise, loc.tz); else if (mt.alwaysUp) rise = t('moon.alwaysUp');
+        if (mt.set) set = fmtHM(mt.set, loc.tz); else if (mt.alwaysDown) set = t('moon.alwaysDown');
+        if (mt.alwaysUp) set = t('moon.alwaysUp');
+        if (mt.alwaysDown) rise = t('moon.alwaysDown');
+      }
+    } catch (e) {}
+    var locName = loc.city || (loc.lat.toFixed(2) + ', ' + loc.lon.toFixed(2));
+    var locLine = '<div class="ef-foot-inline" style="margin-top:6px">📍 ' + esc(locName) +
+      (loc.isDefault ? ' · ' + esc(t('moon.defaultLoc')) : '') + '</div>';
+    return '<div class="ef-suntimes" id="ef-moontimes"><span>🌙 ' + esc(t('moon.moonrise')) + ': <b>' + esc(rise) +
+      '</b></span><span>🌑 ' + esc(t('moon.moonset')) + ': <b>' + esc(set) + '</b></span></div>' + locLine;
   }
 
   /* ── Earth ──────────────────────────────────────────────────────────────── */
