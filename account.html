@@ -46,7 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=15" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=16" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -374,13 +374,16 @@ a.dash-tab:hover { text-decoration:none; }
 /* ── PR#97 (Phase 3.5): live mini-Neuromap inset — a small corner panel inside the
    Sensation / Diary overlays that previews the graph as the form is filled. Static
    render (no RAF), reuses nmGetNodeColor. Collapsible; shrinks on touch. ── */
-.nm-mini-inset { position:absolute;right:16px;bottom:16px;width:280px;height:200px;z-index:7;
-  border-radius:14px;overflow:hidden;background:rgba(6,9,14,0.82);border:1px solid rgba(0,224,255,0.18);
-  box-shadow:0 8px 30px rgba(0,0,0,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+/* PR#109 (#2): unified, unobtrusive live-map inset — matches the Emotion survey's
+   embedded right-panel look (subtle dark, faint white border, no bright cyan plaque)
+   so Sensation/Diary read identically to Emotion instead of a loud floating badge. */
+.nm-mini-inset { position:absolute;right:16px;bottom:16px;width:288px;height:208px;z-index:7;
+  border-radius:16px;overflow:hidden;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.07);
+  box-shadow:0 6px 22px rgba(0,0,0,0.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   display:flex;flex-direction:column;transition:height 0.22s ease,width 0.22s ease; }
 .nm-mini-inset .nm-mini-head { display:flex;align-items:center;justify-content:space-between;gap:6px;
-  padding:5px 8px 4px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(120,200,235,0.85);
-  border-bottom:1px solid rgba(255,255,255,0.05);user-select:none; }
+  padding:5px 9px 4px;font-size:10px;letter-spacing:0.04em;color:rgba(255,255,255,0.34);
+  border-bottom:1px solid rgba(255,255,255,0.04);user-select:none; }
 .nm-mini-inset .nm-mini-toggle { background:none;border:none;color:rgba(255,255,255,0.45);font-size:14px;
   line-height:1;cursor:pointer;padding:2px 4px;border-radius:6px;min-width:24px;min-height:24px; }
 .nm-mini-inset .nm-mini-toggle:hover { color:#fff;background:rgba(255,255,255,0.06); }
@@ -5907,8 +5910,8 @@ function resetDiaryForm(){
   currentPlusCount=0;
   currentMinusCount=0;
   // Reset rating area to initial state
-  document.getElementById('minus-area').innerHTML='<button class="rating-btn minus" onclick="addRating(\'minus\')" title="Хуже"><span>−</span></button>';
-  document.getElementById('plus-area').innerHTML='<button class="rating-btn plus" onclick="addRating(\'plus\')" title="Лучше"><span>+</span></button>';
+  document.getElementById('minus-area').innerHTML='<button class="rating-btn minus" onclick="addRating(\'minus\')" title="'+_pr95t('a.diary.rate_worse','Хуже')+'"><span>−</span></button>';
+  document.getElementById('plus-area').innerHTML='<button class="rating-btn plus" onclick="addRating(\'plus\')" title="'+_pr95t('a.diary.rate_better','Лучше')+'"><span>+</span></button>';
   document.getElementById('rating-hint').style.opacity='0';
   document.getElementById('rating-hint').textContent='';
   // Show rating on text input
@@ -5952,7 +5955,7 @@ function updateRatingUI(){
   var hint = document.getElementById('rating-hint');
   var p=currentPlusCount, m=currentMinusCount;
   if(p===0 && m===0){
-    hint.textContent='Тапните + или − для оценки события';
+    hint.textContent=_pr95t('a.diary.rate_prompt','Тапните + или − для оценки события');
     hint.style.opacity='0.6';
     document.getElementById('diary-actions').style.display='none';
     nmDiaryMiniRerender(); // PR#97: reset event node to neutral when ratings cleared
@@ -5960,17 +5963,17 @@ function updateRatingUI(){
   }
   if(p>0 && m>0){
     var diff=p-m;
-    if(diff===0) hint.textContent='Смешанное влияние — баланс';
-    else if(diff>0) hint.textContent='Смешанное, с преобладанием плюса (+'+p+'/−'+m+')';
-    else hint.textContent='Смешанное, с преобладанием минуса (+'+p+'/−'+m+')';
+    if(diff===0) hint.textContent=_pr95t('a.diary.rate_mixed','Смешанное влияние — баланс');
+    else if(diff>0) hint.textContent=_pr95t('a.diary.rate_mixed_plus','Смешанное, с преобладанием плюса (+{p}/−{m})').replace('{p}',p).replace('{m}',m);
+    else hint.textContent=_pr95t('a.diary.rate_mixed_minus','Смешанное, с преобладанием минуса (+{p}/−{m})').replace('{p}',p).replace('{m}',m);
   } else if(p>0){
-    if(p===1) hint.textContent='Немного лучше';
-    else if(p===2) hint.textContent='Значительно лучше';
-    else hint.textContent='Сильно лучше!';
+    if(p===1) hint.textContent=_pr95t('a.diary.rate_p1','Немного лучше');
+    else if(p===2) hint.textContent=_pr95t('a.diary.rate_p2','Значительно лучше');
+    else hint.textContent=_pr95t('a.diary.rate_p3','Сильно лучше!');
   } else if(m>0){
-    if(m===1) hint.textContent='Немного хуже';
-    else if(m===2) hint.textContent='Значительно хуже';
-    else hint.textContent='Сильно хуже!';
+    if(m===1) hint.textContent=_pr95t('a.diary.rate_m1','Немного хуже');
+    else if(m===2) hint.textContent=_pr95t('a.diary.rate_m2','Значительно хуже');
+    else hint.textContent=_pr95t('a.diary.rate_m3','Сильно хуже!');
   }
   hint.style.opacity='1';
   document.getElementById('diary-actions').style.display='flex';
@@ -5989,7 +5992,7 @@ function renderRatingArea(type, count){
     // Last chosen button: tap to undo (remove)
     if(isLast){
       btn.onclick=(function(t){return function(){removeRating(t);};})(type);
-      btn.title='Тапните чтобы убрать';
+      btn.title=_pr95t('a.diary.rate_undo','Тапните чтобы убрать');
     } else {
       btn.onclick=(function(t){return function(){addRating(t);};})(type);
     }
