@@ -184,7 +184,7 @@ fullscreen" miss.
 
 ---
 
-## Migrations 034–043 (INLINE in `POST /api/run-migrations`, server.js ~L293)
+## Migrations 034–046 (INLINE in `POST /api/run-migrations`, server.js ~L293)
 
 Railway has **no auto-migrate** — migrations 034+ are inline in this endpoint and
 run on demand (POST it after deploy). `app.delete`/array-cast gotcha: never
@@ -219,8 +219,16 @@ the «всё тело» bug for 4 PRs). Use pure SUBQUERY deletes.
   target-organs. Links resolve medication slug→id then upsert the join. Per-row try/catch.
   Returns `{ medications_seeded, diagnosis_links, skipped? }`.
 
+- **046** — (PR#117) DIET. Creates `diets` (15 patterns, seeded ru/en/es with
+  pros/cons `TEXT[]` + `target_organs_positive/negative[]` = BodyAtlas seed-ids),
+  `diagnosis_diets` (`diagnosis_slug` TEXT → human_conditions.slug, `diet_id` FK, PK
+  both), `user_diet` (one primary diet per user, `user_id` **UUID** PK), `diet_events`
+  (the once-a-day "how I ate" log). `ON CONFLICT (slug) DO UPDATE` refreshes diet copy /
+  organs; diet→diagnosis links upsert against existing condition slugs. Per-row try/catch.
+  Returns `{ diets_seeded, diagnosis_links, error? }`.
+
 `run-migrations` returns
-`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044, mig045 }`.
+`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046 }`.
 
 ---
 
@@ -258,6 +266,50 @@ SAME `window._anatomyAtlas` instance. Self-contained — no edit to `body-atlas.
   a harm-reduction notice + WHO resource link. All labels live in the controller's local `T`
   table (ru/en/es) — NOT i18n.js (the `a.ha.*` data-i18n attrs are inert fallbacks the
   controller overrides in `localize()`).
+
+---
+
+## Internal Field rename + Diet tab (PR#117)
+
+The «Anatomy» TOOL (the `#tools-mode-anatomy` sub-tab of Tools, sibling of External
+Field) is renamed **«Внутреннее воздействие» / «Internal Field» / «Campo Interno»**
+(`a.tools.internal_field`). The content/element-id stay `anatomy` for back-compat;
+`?tool=internal-field` is the canonical deep-link, `?tool=anatomy` still routes via a
+`setToolsMode` alias (`if(mode==='internal-field') mode='anatomy'`). The FIRST sub-tab
+(`ha-tab-anatomy`) is relabelled **«Анатомический атлас» / «Anatomical Atlas»** — value
+changed in BOTH the JSON `a.ha.tab_anatomy` AND the controller's local `T.tab_anatomy`
+(+ the `localize()` map), else `localize()` reverts it to «Анатомия» at runtime.
+
+**Diet** is the 5th `.ha-tab` (🥗 `ha-tab-diet`, `a.ha.tab_diet`). UNLIKE the other four
+sub-tabs it is NOT part of the anatomy controller IIFE — it's a **standalone module**
+(account.html, last `<script>` before `</body>`) using `window.t`/`getLang`/`naAuthHeaders`.
+`haSwitchTab('diet')` hides `.atlas-body` + `#ha-topbar` and shows the full-width
+`#ha-diet-panel` (primary banner + quick diet-event chips + 15-card grid). `dietOpenDetail`
+re-shows `.atlas-body`, swaps the left column for `#ha-left-diet` (name/desc/pros/cons/
+diagnoses/set-primary), and tints the shared `window._anatomyAtlas`. `haSwitchTab` clears
+the diet tint on every switch (`if(a._focusColored.length) a.focusRegions([])`).
+
+- **Tables** (migration 046): `diets`, `diagnosis_diets`, `user_diet`, `diet_events`
+  (see migrations list). `target_organs_*` are BodyAtlas seed-ids.
+- **Endpoints** (server.js, right after the anatomy/conditions block, BEFORE the
+  medications block): `GET /api/diets`, `/api/diets/:slug` (+diagnoses join),
+  `/api/diagnoses/:slug/diets` (reverse — for the Diagnoses tab to consume),
+  `GET/PUT /api/me/diet`, `POST /api/me/diet/event` (mirrors onto the Personal Path via
+  `logJourney` kind=`diet`), `GET /api/me/diet/events`. All 503 cleanly pre-migration.
+- **3D green/red overlay** — NEW first-class atlas method `BodyAtlas.tintRegions({positive,
+  negative})` (body-atlas.js, `v=32`): FIRST toggles on the target organs' LAYERS (via
+  `layersForSeedIds`+`toggleLayer`, like Conditions `focus()` — else a seed like 'heart'
+  has no mesh in the skin-only default scene and nothing tints), then isolates like
+  `focusRegions` but paints positives **green** `0x6BE89B` / negatives **red** `0xFF6B6B`
+  via `uniforms.uColor`; the colour is cached in `_focusColored` and restored by
+  `_clearFocusState`. `dietOpenDetail` re-applies on timers (GLB streams async). (Distinct from PR#116's
+  in-place `medTint`/`_medBaseColor` mechanism — they don't share cache state and both
+  clear on tab-switch, so they coexist on the shared atlas.)
+- **i18n.** Diet UI strings are `a.diet.*` in the JSON dicts (the standalone module reads
+  them via `window.t`), added to all three locales at once.
+
+SW bump: PR#115 took `v28`, PR#116 `v29`, PR#117 `v30` (+ `v31` follow-up for the
+`tintRegions` layer-loading fix; `body-atlas.js?v=32`).
 
 ---
 
