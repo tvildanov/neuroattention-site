@@ -100,10 +100,20 @@ and goes hybrid:**
   count=10 «любовь» field is visibly bigger than a count=1 «грусть». `buildNmGraph`
   keys `nodeMap` by `dbId` again (NOT `dbId@session`). The old `_sid`/`_baseKey`/
   `'__nosess'` machinery is GONE.
-- **Edges come from CHAINS, not a cross-product.** The `v3/graph` response derives
-  `links[]` from CONSECUTIVE members of each chain: one edge per node-pair, `count` =
-  #chains sharing it (→ thickness), `chain_ids` carried for hover. The only edges
-  drawn are real repetition points; no shared concept ever fuses two flows.
+- **Edges come from CHAINS, UNIONED with `nm_links` (PR#118).** The `v3/graph` response
+  derives `links[]` from CONSECUTIVE members of each chain (one edge per node-pair,
+  `count` = #chains sharing it → thickness, `chain_ids` carried for hover) **and then
+  unions in every `nm_links` row whose endpoints are both visible** (count from the
+  edge, empty `chain_ids`). This is REQUIRED, not optional: `nm_chains` were only
+  backfilled (migration 043) from sessions present in `nm_session_nodes`, so any node
+  whose flow predates that table has NO chain — chain-only derivation left those
+  historical nodes edgeless and the force-sim flung them to the frame («узлы летают как
+  звёзды», PR#118 KING regression). `nm_links` has stored every REAL intra-session edge
+  since PR#96 (within-chain consecutive pairs + the same-session single seam — NEVER a
+  cross-session edge; see `nmBridgeSession` `WHERE sn.session_id = sid` + migration 041),
+  so the union restores edges WITHOUT reintroducing the mass-merge blob. A genuinely
+  isolated concept (a 1-node flow, e.g. a lone emotion log) has neither a chain edge nor
+  an `nm_links` row and CORRECTLY stays an unconnected dot.
 - **Click a node → info-panel UNDER the NeuroMap** (`#nm-node-info`, NOT a floating
   popup, NOT a sidebar). Shows identity + global count, an expandable **Цепочки ▼ N**
   list (from `GET /api/neuromap/chains-by-node/:id`, most-recent first, with minute
@@ -128,11 +138,24 @@ time. Cross-session `journey_links` are IGNORED so two chains can never fuse. Br
 order falls out of `anchorT` (= started_at). Sessionless legacy/calendar events keep
 the old link-based connected-component + `splitComponent` fallback.
 
-Superadmin can prune a single node via the NeuroMap node info-panel → red Delete →
-`POST /api/admin/nm-node/:id/delete` (server.js): removes the `nm_nodes` row, every
-`nm_link` touching it, its `nm_session_nodes`, its `nm_chain_nodes` + any chain it
-empties, the `journey_events` whose `payload.nm_node_id` matches, and orphaned
-`journey_links`; then the client reloads the graph and re-mounts the Path.
+### Delete-propagation contract (PR#118 — the Path-ghost invariant)
+
+A NeuroMap node lives in FOUR places that must die together, or a deleted concept keeps
+drawing a branch off the Path spine («ответвления от спины с удалёнными нодами»). The
+Personal Path renders from `journey_events`, so deleting a node from `nm_nodes` alone is
+never enough. Both delete tools cover all four:
+
+Superadmin prunes a single node via the NeuroMap node info-panel → red Delete →
+`POST /api/admin/nm-node/:id/delete` (server.js): removes (1) the `nm_nodes` row, (2)
+every `nm_link` touching it, (3) its `nm_session_nodes`, (4) its `nm_chain_nodes` + any
+chain it empties, **(5) the `journey_events` whose `payload.nm_node_id` matches** (this
+is the Path link — every save path, `/v2/append` + `/sensation`, stores `nm_node_id` in
+the event payload precisely so the delete can find them), and orphaned `journey_links`;
+then the client reloads the graph and re-mounts the Path. `DELETE /api/admin/wipe-day`
+does the same by date. **Retro cleanup: migration 047** sweeps any `journey_events` whose
+`payload.nm_node_id` references a now-missing `nm_nodes` row (ghosts left by deletes that
+ran before this propagation existed) + dangling `journey_links`; counter
+`mig047.orphan_events_deleted`. Idempotent.
 
 ## `session_id` contract (the KING invariant)
 
@@ -184,7 +207,7 @@ fullscreen" miss.
 
 ---
 
-## Migrations 034–046 (INLINE in `POST /api/run-migrations`, server.js ~L293)
+## Migrations 034–047 (INLINE in `POST /api/run-migrations`, server.js ~L293)
 
 Railway has **no auto-migrate** — migrations 034+ are inline in this endpoint and
 run on demand (POST it after deploy). `app.delete`/array-cast gotcha: never
@@ -227,8 +250,14 @@ the «всё тело» bug for 4 PRs). Use pure SUBQUERY deletes.
   organs; diet→diagnosis links upsert against existing condition slugs. Per-row try/catch.
   Returns `{ diets_seeded, diagnosis_links, error? }`.
 
+- **047** — (PR#118) ORPHAN Path cleanup. Pure-subquery delete of every `journey_events`
+  row whose `payload.nm_node_id` references a now-missing `nm_nodes` id (Path ghosts of
+  nodes deleted before delete-propagation existed), then dangling `journey_links`. No
+  schema change, idempotent (clean DB → 0). Returns
+  `mig047 = { orphan_events_deleted, orphan_links_deleted, error? }`.
+
 `run-migrations` returns
-`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046 }`.
+`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047 }`.
 
 ---
 

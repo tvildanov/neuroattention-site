@@ -60,6 +60,15 @@
 //     behaviour unchanged; only the CACHE_NAME bump, to purge any stale account.html.
 // v4: cache-bust for PR#95 (NeuroMap hub right-panel) — runtime behaviour
 //     unchanged from v3; only the CACHE_NAME bump, to purge any stale account.html.
+// v33: PR#119 — diagnoses moved into Tools → Internal Field → "Диагнозы и состояния"
+//      (standalone Diagnoses tab removed; #diagnoses redirects), claim on every card +
+//      "Мои диагнозы" folder + combined 3D atlas view + Profile "Мои документы";
+//      Medications green/red 3D overlay via tintRegions (Issue#2); Diet detail mobile
+//      stack (Issue#3); mobile bottom-nav scoped to .dash-nav-primary (Issue#6).
+// v32: PR#118 — restore NeuroMap chain links (v3/graph unions nm_links so legacy/
+//      un-backfilled nodes stop flying loose) + delete→Path propagation + migration
+//      047. Runtime behaviour unchanged; CACHE_NAME bump purges any stale account.html
+//      so Nick's mobile Chrome stops serving a pre-PR#114 build with no chain links.
 // v3: same safe runtime behaviour as v2 — the only change is the CACHE_NAME bump.
 //     The OLD v1 SW wrapped EVERY GET (incl. cross-origin) in
 //     respondWith(fetch(req).catch(()=>caches.match(req))). For users still controlled
