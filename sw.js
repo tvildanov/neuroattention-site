@@ -69,7 +69,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v31';
+var CACHE_NAME = 'na-practices-v33';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

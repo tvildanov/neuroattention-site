@@ -1732,6 +1732,7 @@
   "a.dx.intro": "A reference of conditions with anatomical visualization of affected areas. Mark your diagnoses to collect them in a private folder and attach medical documents.",
   "a.dx.disclaimer": "This information is for educational purposes. It does not replace a doctor's consultation.",
   "a.dx.my_folder": "My diagnoses",
+  "a.dx.my_docs": "My documents",
   "a.dx.combined_btn": "Combined impact",
   "a.dx.all_docs_btn": "Show all documents",
   "a.dx.loading": "Loading reference…",

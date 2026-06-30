@@ -443,9 +443,14 @@ a.dash-tab:hover { text-decoration:none; }
 @media(max-width:1024px){ .program-cards-grid { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:480px){ .program-cards-grid { grid-template-columns:1fr; } }
 .program-scroll-dots { display:none!important; }
-/* ── Mobile bottom-nav ── */
+/* ── Mobile bottom-nav ──
+   PR#119 (Issue#6): the fixed bottom-nav rule must apply ONLY to the primary
+   top-level tab bar (.dash-nav-primary). It used to target every `.dash-tabs`,
+   so the inner sub-tab strips (#evo-subtabs Personal/Collective/Family, admin
+   sub-tabs) were ALSO pinned to bottom:0 and stacked on top of the bottom-nav —
+   the "две полоски накладываются" overlap. Inner sub-tabs now flow inline. */
 @media(max-width:768px){
-  .dash-tabs {
+  .dash-nav-primary {
     position:fixed;bottom:0;left:0;right:0;z-index:900;
     background:rgba(10,12,18,0.95);backdrop-filter:blur(12px);
     border-top:1px solid rgba(255,255,255,0.06);border-bottom:none;
@@ -454,12 +459,18 @@ a.dash-tab:hover { text-decoration:none; }
     gap:0;display:flex;flex-wrap:nowrap;
     scrollbar-width:none;
   }
-  .dash-tabs::-webkit-scrollbar { display:none; }
-  .dash-tab {
+  .dash-nav-primary::-webkit-scrollbar { display:none; }
+  .dash-nav-primary .dash-tab {
     padding:0.5rem 0.7rem;font-size:11px;white-space:nowrap;flex-shrink:0;
     border-bottom:none;border-top:2px solid transparent;
   }
-  .dash-tab.active { border-top-color:var(--accent-cyan);border-bottom-color:transparent; }
+  .dash-nav-primary .dash-tab.active { border-top-color:var(--accent-cyan);border-bottom-color:transparent; }
+  /* Inner sub-tab strips: normal inline flow, horizontal-scroll if they overflow. */
+  #evo-subtabs, #admin-tabs, #admin-people-subtabs {
+    position:static;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  #evo-subtabs::-webkit-scrollbar, #admin-tabs::-webkit-scrollbar, #admin-people-subtabs::-webkit-scrollbar { display:none; }
+  #evo-subtabs .dash-tab, #admin-tabs .dash-tab, #admin-people-subtabs .dash-tab { flex:0 0 auto; }
   /* Add padding at bottom of page so content isn't hidden behind bottom-nav.
      PR #82: keep side padding tight on phones (matches .container's 1.25rem) now
      that the base rule runs the wider 2.5rem desktop gutter. */
@@ -473,7 +484,7 @@ a.dash-tab:hover { text-decoration:none; }
   /* Bottom-sheet scrollable */
   .nm-fs-bottomsheet { max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch; }
   /* Hide bottom-nav when fullscreen overlay is open (body class set via JS) */
-  body.nm-fs-active .dash-tabs { display:none!important; }
+  body.nm-fs-active .dash-nav-primary { display:none!important; }
 }
 #rpg-avatar-wrap:hover #rpg-avatar-hover { opacity:1!important; }
 .rpg-modal-overlay { position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px); }
@@ -830,13 +841,14 @@ a.dash-tab:hover { text-decoration:none; }
   <!-- Nav tabs are real <a href="#tab"> anchors (PR#87): a normal click is handled
        by the SPA listener (switchTab); middle-click / cmd-click / right-click →
        "Open in new tab" opens account.html#tab, which applyHashTabs restores. -->
-  <div class="dash-tabs">
+  <div class="dash-tabs dash-nav-primary">
     <a class="dash-tab active" href="#overview" data-tab="overview" data-i18n="a.tabs.profile">Профиль</a>
     <a class="dash-tab" href="#courses" data-tab="courses" data-i18n="a.tabs.courses">Курсы</a>
     <a class="dash-tab" href="#evolution" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</a>
     <a class="dash-tab" href="#domunity" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></a>
     <a class="dash-tab" href="#tools" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</a>
-    <a class="dash-tab" href="#diagnoses" data-tab="diagnoses" data-i18n="a.tabs.diagnoses">Диагнозы</a>
+    <!-- PR#119: the standalone "Diagnoses" tab was removed. Diagnoses now live in
+         Tools → Internal Field → "Диагнозы и состояния". #diagnoses redirects there. -->
     <a class="dash-tab" href="#enroll" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</a>
     <a class="dash-tab" href="#administration" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</a>
   </div>
@@ -979,6 +991,18 @@ a.dash-tab:hover { text-decoration:none; }
       <p style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;" data-i18n="a.profile.take_test">Пройдите тест адаптации</p>
       <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.profile.take_test_desc">Чтобы увидеть свой профиль и 13 параметров личности</p>
       <a href="test.html" style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.06);color:var(--text-primary);font-weight:600;padding:0.75rem 1.5rem;border-radius:12px;border:1px solid rgba(255,255,255,0.14);text-decoration:none;backdrop-filter:blur(20px);transition:all 0.2s;" data-i18n="a.profile.btn_start_test">Начать тест</a>
+    </div>
+
+    <!-- PR#119: My medical documents — every file across all claimed diagnoses.
+         Auth-scoped (owner only; superadmin reads others via the admin API). The
+         card stays hidden until the user has ≥1 uploaded document. -->
+    <div class="dash-card glass-card-elevated" id="profile-docs-card" style="margin-top:1.5rem;display:none;">
+      <button id="profile-docs-toggle" onclick="profileDocsToggle()" style="width:100%;display:flex;align-items:center;gap:0.5rem;background:none;border:none;color:var(--text-primary);font-size:15px;font-weight:600;cursor:pointer;padding:0;font-family:inherit;text-align:left;">
+        <span>📁</span><span data-i18n="a.dx.my_docs">Мои документы</span>
+        <span id="profile-docs-count" style="background:var(--accent-cyan);color:#04121a;border-radius:10px;padding:1px 9px;font-size:11px;font-weight:700;">0</span>
+        <span id="profile-docs-caret" style="margin-left:auto;color:var(--text-muted);">▼</span>
+      </button>
+      <div id="profile-docs-list" style="display:none;margin-top:0.85rem;"></div>
     </div>
   </div>
 
@@ -1640,6 +1664,55 @@ a.dash-tab:hover { text-decoration:none; }
           /* keep the 3D viewport tall enough to be usable under the feed */
           .ha-tab[id^="ha-tab"]{ font-size:12px; padding:0.4rem 0.5rem; }
         }
+        /* PR#119 (Issue#3): Diet DETAIL on mobile — clean vertical stack instead of
+           the squished 300px row. The aside (#ha-left-diet) carries an inline
+           width:300px;flex:0 0 300px, so override with !important. Order: 3D body
+           fit-to-width on top → full-width info card (name, description, pros/cons,
+           diagnoses) below. Scoped via .diet-detail-open so other Atlas tabs keep
+           their list-on-top layout. */
+        @media(max-width:760px){
+          .atlas-body.diet-detail-open{ flex-direction:column; }
+          .atlas-body.diet-detail-open .atlas-viewport{ order:1; width:100%; min-width:0; min-height:46vh; }
+          .atlas-body.diet-detail-open #ha-left-diet{
+            order:2; width:100%!important; flex:1 1 auto!important; flex-direction:column!important;
+            overflow:visible!important; max-height:none; box-sizing:border-box; padding:0.9rem 1rem 1.3rem;
+            border-right:none; border-top:1px solid rgba(168,247,255,0.08);
+          }
+          .atlas-body.diet-detail-open #ha-left-diet .btn{ width:100%; }
+        }
+        /* PR#119 (Issue#1): "Мои диагнозы" folder + claim controls inside the
+           Conditions sub-tab, and the combined-impact card over the 3D atlas. */
+        .ha-mine{ background:rgba(141,255,200,0.05); border:1px solid rgba(141,255,200,0.22); border-radius:12px; padding:0.55rem 0.6rem; margin-bottom:0.7rem; }
+        .ha-mine-head{ font-size:11px; text-transform:uppercase; letter-spacing:0.07em; color:#8DFFC8; margin-bottom:0.4rem; }
+        .ha-mine-count{ background:rgba(141,255,200,0.2); color:#bff7dd; border-radius:9px; padding:0 6px; font-size:10px; margin-left:3px; }
+        .ha-mine-item{ display:flex; align-items:center; gap:0.3rem; margin-bottom:0.25rem; }
+        .ha-mine-name{ flex:1; min-width:0; text-align:left; background:none; border:none; color:var(--text-primary,#e8edf2); font-size:12.5px; cursor:pointer; padding:0.2rem 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:inherit; }
+        .ha-mine-name:hover{ color:#8DFFC8; }
+        .ha-mine-act{ display:flex; gap:0.2rem; flex-shrink:0; }
+        .ha-mine-act button{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted,#aab4be); border-radius:7px; font-size:11px; padding:0.18rem 0.4rem; cursor:pointer; }
+        .ha-mine-act button:hover{ color:#fff; border-color:rgba(255,255,255,0.25); }
+        .ha-mine-combined{ width:100%; margin-top:0.4rem; background:rgba(120,200,235,0.12); border:1px solid rgba(120,200,235,0.35); color:#A8F7FF; border-radius:9px; font-size:12px; padding:0.4rem 0.5rem; cursor:pointer; }
+        .ha-mine-combined:hover{ background:rgba(120,200,235,0.22); }
+        .ha-side-meta{ font-size:11px; color:var(--text-dim,#7c8896); margin:0.4rem 0; }
+        .ha-side-ul{ margin:0.2rem 0 0.4rem; padding-left:1.05rem; font-size:12px; color:var(--text-muted,#cdd6df); line-height:1.5; }
+        .ha-claim-wrap{ margin-top:0.9rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.8rem; }
+        .ha-claim-on{ font-size:12px; color:#8DFFC8; margin-bottom:0.4rem; }
+        .ha-claim-btns{ display:flex; gap:0.4rem; flex-wrap:wrap; }
+        .ha-file-row{ display:flex; align-items:center; gap:0.4rem; font-size:12px; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .ha-file-row a{ flex:1; min-width:0; color:var(--accent-cyan,#A8F7FF); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .ha-file-date{ font-size:10.5px; color:var(--text-dim); flex-shrink:0; }
+        .ha-file-del{ background:none; border:none; color:var(--text-dim); cursor:pointer; flex-shrink:0; }
+        .ha-files-empty{ font-size:11.5px; color:var(--text-dim); }
+        .ha-disclaimer{ font-size:10.5px; color:var(--text-dim,#7c8896); line-height:1.5; margin-top:0.7rem; font-style:italic; }
+        .ha-combined-card{ position:absolute; top:12px; right:12px; z-index:40; max-width:300px; width:calc(100% - 24px); max-height:calc(100% - 24px); overflow-y:auto; background:rgba(12,15,20,0.96); border:1px solid rgba(168,247,255,0.3); border-radius:12px; padding:0.85rem 0.95rem; box-shadow:0 12px 40px rgba(0,0,0,0.55); backdrop-filter:blur(8px); }
+        .ha-combined-card .hc-top{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#A8F7FF; }
+        .ha-combined-card .hc-x{ background:none; border:none; color:var(--text-muted); font-size:15px; cursor:pointer; line-height:1; }
+        .ha-combined-card .hc-names{ font-size:11px; color:var(--text-dim); margin:3px 0 0.5rem; }
+        .ha-combined-card .hc-sec{ margin-top:0.55rem; }
+        .ha-combined-card .hc-sec-h{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.2rem; }
+        .ha-combined-card .hc-sec ul{ margin:0; padding-left:1rem; font-size:11.5px; color:var(--text-muted,#cdd6df); line-height:1.5; }
+        .ha-combined-card .hc-disc{ font-size:10px; color:var(--text-dim); margin-top:0.7rem; line-height:1.45; }
+        @media(max-width:760px){ .ha-combined-card{ position:static; max-width:none; width:auto; margin:0.6rem; } }
       </style>
       <div class="dash-card glass-card-elevated" style="padding:1.25rem;">
         <h3 style="margin:0 0 0.4rem;" data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
@@ -1670,6 +1743,8 @@ a.dash-tab:hover { text-decoration:none; }
               <div class="ha-list" id="ha-fn-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
             </aside>
             <aside class="atlas-layers" id="ha-left-conditions" style="display:none;">
+              <!-- PR#119: sticky "Мои диагнозы" folder (claimed diagnoses + combined view) -->
+              <div id="ha-cond-mine" class="ha-mine" style="display:none;"></div>
               <input class="ha-search" id="ha-cond-search" oninput="haCondSearch(this.value)" data-i18n-ph="a.ha.cond_search" placeholder="Поиск состояния…" autocomplete="off">
               <div class="ha-cats" id="ha-cond-cats"></div>
               <div class="ha-list" id="ha-cond-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
@@ -2044,41 +2119,10 @@ a.dash-tab:hover { text-decoration:none; }
     </div>
   </div>
 
-  <!-- TAB: Diagnoses (PR#115) -->
-  <div class="tab-panel" id="tab-diagnoses">
-    <div class="dash-grid">
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <h2 style="margin:0 0 0.4rem;font-size:20px;" data-i18n="a.dx.title">Диагнозы</h2>
-        <p style="margin:0 0 0.75rem;font-size:13px;color:var(--text-muted);line-height:1.5;" data-i18n="a.dx.intro">Справочник состояний с анатомической визуализацией зон влияния. Отметьте свои диагнозы, чтобы собрать их в личной папке и приложить медицинские документы.</p>
-        <div style="display:flex;gap:8px;align-items:flex-start;background:rgba(232,170,72,0.08);border:1px solid rgba(232,170,72,0.25);border-radius:10px;padding:0.6rem 0.85rem;">
-          <span style="font-size:16px;line-height:1.2;">⚠️</span>
-          <p style="margin:0;font-size:12px;color:var(--text-muted);line-height:1.5;" data-i18n="a.dx.disclaimer">Эта информация для образовательных целей. Не заменяет консультацию врача.</p>
-        </div>
-      </div>
-
-      <!-- "Мои диагнозы" folder — shown only when the user has claimed ≥1 -->
-      <div class="dash-card glass-card-elevated" id="dx-my-folder" style="grid-column:span 12;display:none;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
-            <span>🗂</span><span data-i18n="a.dx.my_folder">Мои диагнозы</span>
-            <span id="dx-my-count" style="background:var(--accent-cyan);color:#04121a;border-radius:10px;padding:1px 9px;font-size:11px;font-weight:700;">0</span>
-          </h3>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button id="dx-combined-btn" class="btn btn-ghost" style="font-size:12px;display:none;" onclick="dxOpenCombined()" data-i18n="a.dx.combined_btn">Сводное воздействие</button>
-            <button class="btn btn-ghost" style="font-size:12px;" onclick="dxOpenAllDocs()" data-i18n="a.dx.all_docs_btn">Развернуть список документов</button>
-          </div>
-        </div>
-        <div id="dx-my-list" style="margin-top:0.85rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
-      </div>
-
-      <!-- Full catalog -->
-      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
-        <div id="dx-catalog" style="display:flex;flex-direction:column;gap:1.25rem;">
-          <p style="font-size:13px;color:var(--text-dim);" data-i18n="a.dx.loading">Загрузка справочника…</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- PR#119: the standalone "Diagnoses" tab (PR#115) was removed. The catalog,
+       "Мои диагнозы" folder, claim, combined 3D view and medical-file uploads now
+       live in Tools → Internal Field → "Диагнозы и состояния" (the dx* IIFE is now
+       a shared claim/upload service consumed there). #diagnoses redirects there. -->
 
   <!-- TAB: Enroll (purchase flow) -->
   <div class="tab-panel" id="tab-enroll">
@@ -4934,6 +4978,16 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
 
 // ── Tabs ──
 function switchTab(id){
+  // PR#119: the standalone Diagnoses tab was removed — diagnoses live in
+  // Tools → Internal Field → "Диагнозы и состояния". Redirect any #diagnoses
+  // navigation (old bookmarks / hash) there.
+  if(id==='diagnoses'){
+    try{ if(history.replaceState) history.replaceState(null,'','#tools'); }catch(e){}
+    switchTab('tools');
+    setTimeout(function(){ try{ if(window.setToolsMode) setToolsMode('internal-field'); }catch(e){}
+      setTimeout(function(){ try{ if(window.haSwitchTab) haSwitchTab('conditions'); }catch(e){} }, 240); }, 60);
+    return;
+  }
   // When switching to administration tab, move admin panels into embed container
   if(id==='administration'){
     var container = document.getElementById('admin-embed-container');
@@ -4994,10 +5048,8 @@ function switchTab(id){
     }
     evoMaybeShowCollective();
   }
-  // PR#115: render the Diagnoses catalog + my-folder when its tab becomes visible
-  if(id==='diagnoses'){
-    setTimeout(function(){ try { if(window.dxRender) dxRender(); } catch(e){ console.warn('dx render:', e); } }, 30);
-  }
+  // PR#119: refresh the Profile-tab "Мои документы" section when Profile is shown.
+  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} }, 40); }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -5670,6 +5722,14 @@ window.toolsExpandActive = toolsExpandActive;
    ============================================================================ */
 (function(){
   var DX = { data:null, mine:[], byId:{} };
+  // PR#119: the dx* IIFE is now a shared "my diagnoses" service for the Internal
+  // Field → Diagnoses sub-tab. The Conditions panel registers a name-index for ALL
+  // claimable slugs (12 catalog diagnoses + human_conditions) so the claim/upload/
+  // all-docs modals can title any slug. (The old top-level Diagnoses tab is gone.)
+  window.dxSetCatalog = function(items){
+    (items||[]).forEach(function(it){ if(!it||!it.slug) return; var e=DX.byId[it.slug]||(DX.byId[it.slug]={}); if(it.name) e.name = e.name || it.name; });
+  };
+  function dxAfterChange(){ if(window.haDxRefresh){ try{ window.haDxRefresh(); }catch(e){} } }
   function dxLang(){ return (typeof getLang==='function') ? getLang() : 'ru'; }
   function dxT(k,f){ return (typeof window.t==='function') ? window.t(k,f) : (f||k); }
   function dxApi(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
@@ -5892,6 +5952,7 @@ window.toolsExpandActive = toolsExpandActive;
       // Close any open modals, refresh.
       document.querySelectorAll('div[style*="z-index:9999"]').forEach(function(el){ el.remove(); });
       dxLoadMine().then(function(){ dxRenderMine(); dxRenderCatalog(); });
+      dxAfterChange();
     }).catch(function(e){ alert('Error: '+e.message); });
   }
 
@@ -5903,6 +5964,7 @@ window.toolsExpandActive = toolsExpandActive;
     }).then(function(){
       document.querySelectorAll('div[style*="z-index:9999"]').forEach(function(el){ el.remove(); });
       dxLoadMine().then(function(){ dxRenderMine(); dxRenderCatalog(); });
+      dxAfterChange();
     }).catch(function(e){ alert('Error: '+e.message); });
   };
 
@@ -5998,6 +6060,7 @@ window.toolsExpandActive = toolsExpandActive;
       if(!res.ok){ err.textContent = (res.j&&res.j.error)||'Upload failed'; btn.disabled=false; btn.textContent=dxT('a.dx.f_upload','Загрузить'); return; }
       wrap.remove();
       dxLoadMine().then(function(){ dxRenderMine(); dxRenderCatalog(); });
+      dxAfterChange();
     }).catch(function(e){ err.textContent = e.message; btn.disabled=false; btn.textContent=dxT('a.dx.f_upload','Загрузить'); });
   }
 
@@ -6029,9 +6092,49 @@ window.toolsExpandActive = toolsExpandActive;
   window.dxDeleteFile = function(fileId, btn){
     if(!confirm(dxT('a.dx.confirm_del_file','Удалить этот документ?'))) return;
     fetch(dxApi()+'/api/me/medical-files/'+fileId, { method:'DELETE', headers:{ 'Authorization':'Bearer '+dxTok() } })
-      .then(function(){ var row = btn.closest('div'); if(row) row.remove(); dxLoadMine().then(function(){ dxRenderMine(); }); })
+      .then(function(){ var row = btn.closest('div'); if(row) row.remove(); dxLoadMine().then(function(){ dxRenderMine(); }); dxAfterChange(); })
       .catch(function(e){ alert('Error: '+e.message); });
   };
+
+  /* ── PR#119: Profile-tab "Мои документы" expandable section ──────────────────
+     Lists every medical file across all of the user's claimed diagnoses. Reuses
+     the same auth-scoped /api/me/medical-files endpoint; the card is hidden until
+     the user has ≥1 document. Refreshed whenever a file is uploaded/removed. */
+  var _profDocs = null;
+  window.profileLoadDocs = function(){
+    var tok = dxTok(); if(!tok) return;
+    fetch(dxApi()+'/api/me/medical-files', { headers:{ 'Authorization':'Bearer '+tok } })
+      .then(function(r){ return r.ok?r.json():{files:[]}; }).then(function(d){
+        _profDocs = (d&&d.files)||[];
+        var card=document.getElementById('profile-docs-card'); if(!card) return;
+        if(!_profDocs.length){ card.style.display='none'; return; }
+        card.style.display='';
+        var cnt=document.getElementById('profile-docs-count'); if(cnt) cnt.textContent=_profDocs.length;
+        var list=document.getElementById('profile-docs-list');
+        if(list && list.style.display!=='none') profileRenderDocs();
+      }).catch(function(){});
+  };
+  function profileRenderDocs(){
+    var list=document.getElementById('profile-docs-list'); if(!list || !_profDocs) return;
+    if(!_profDocs.length){ list.innerHTML='<p style="color:var(--text-dim);font-size:13px;">'+dxEsc(dxT('a.dx.no_docs','Пока нет загруженных документов.'))+'</p>'; return; }
+    var typeLbl={ lab:dxT('a.dx.type_lab','Анализ'), report:dxT('a.dx.type_report','Заключение'), discharge:dxT('a.dx.type_discharge','Выписка'), other:dxT('a.dx.type_other','Прочее') };
+    list.innerHTML=_profDocs.map(function(f){
+      var dn = (window.__condName && window.__condName(f.diagnosis_slug)) || f.diagnosis_slug || '';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0.55rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+        + '<div style="min-width:0;"><a href="'+dxEsc(f.storage_url)+'" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none;font-size:13px;">'+dxEsc(f.display_name)+'</a>'
+        + '<div style="font-size:11px;color:var(--text-dim);">'+dxEsc(typeLbl[f.doc_type]||f.doc_type||'')+' · '+dxFmtDate(f.doc_date)+(dn?' · '+dxEsc(dn):'')+'</div></div>'
+        + '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;flex-shrink:0;" onclick="dxDeleteFile('+f.id+', this); setTimeout(profileLoadDocs,400);">🗑</button>'
+        + '</div>';
+    }).join('');
+  }
+  window.profileDocsToggle = function(){
+    var list=document.getElementById('profile-docs-list'); var caret=document.getElementById('profile-docs-caret'); if(!list) return;
+    var open = list.style.display==='none';
+    list.style.display = open?'':'none'; if(caret) caret.textContent = open?'▲':'▼';
+    if(open){ if(_profDocs) profileRenderDocs(); else profileLoadDocs(); }
+  };
+  // (the ha-engine's haDxRefresh also calls profileLoadDocs after any claim change)
+  try{ window.addEventListener('load', function(){ setTimeout(function(){ try{ if(dxTok()) profileLoadDocs(); }catch(e){} }, 1200); }); }catch(e){}
 })();
 
 /* ============================================================================
@@ -17608,6 +17711,9 @@ window.pbMove = pbMove;
     endocrine:{ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'},
     neurological:{ru:'Неврологические',en:'Neurological',es:'Neurológicas'},
     respiratory:{ru:'Дыхательные',en:'Respiratory',es:'Respiratorias'},
+    oncology:{ru:'Онкология',en:'Oncology',es:'Oncología'},
+    vasculitis:{ru:'Васкулиты',en:'Vasculitis',es:'Vasculitis'},
+    thymus:{ru:'Тимус',en:'Thymus',es:'Timo'},
     glucocorticoid:{ru:'Глюкокортикоиды',en:'Glucocorticoids',es:'Glucocorticoides'},
     immunosuppressant:{ru:'Иммуносупрессанты',en:'Immunosuppressants',es:'Inmunosupresores'},
     biologic:{ru:'Биологические',en:'Biologics',es:'Biológicos'},
@@ -17643,6 +17749,116 @@ window.pbMove = pbMove;
   function regionLabel(id){ return (id||'').replace(/-/g,' ').replace(/\b\w/g,function(m){return m.toUpperCase();}); }
   function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function apiBase(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
+  function txt(k,f){ try{ return window.t?window.t(k,f):f; }catch(e){ return f; } }
+
+  /* ── PR#119: Diagnoses-claim layer inside Internal Field → Diagnoses & states ──
+     The 12 PR#115 catalog diagnoses (data/diagnoses.json) are merged into the
+     Conditions list; EVERY card (catalog + human_conditions) gets a "Это мой
+     диагноз" button, a sticky "Мои диагнозы" folder lives at the top, and a
+     combined view focuses the REAL 3D atlas on the union of all claimed zones. */
+  var DX_SEED = { brain:['brain'], thyroid:['thyroid-gland'], lungs:['lungs'], stomach:['stomach'], kidneys:['kidneys'], colon:['large-intestine'], skin:['skin'], mediastinum:['heart'] };
+  var DX_CATALOG = [];
+  function dxSeeds(regions){ var out=[]; (regions||[]).forEach(function(r){ var s=DX_SEED[r]; if(s) out=out.concat(s); }); return out; }
+  function dxLArr(o){ if(!o) return []; return o[lang()]||o.ru||o.en||[]; }
+  function dxMergeCatalog(list){
+    DX_CATALOG = list||[];
+    // condBySlug isn't built yet at merge time — guard against the live DATA.conds slugs.
+    var existing={}; (DATA.conds||[]).forEach(function(c){ existing[c.slug]=1; });
+    DX_CATALOG.forEach(function(d){
+      if(existing[d.slug]) return;   // a real human_conditions row wins
+      DATA.conds.push({
+        id:'dx_'+d.slug, slug:d.slug, category:d.group,
+        name_ru:d.name&&d.name.ru, name_en:d.name&&d.name.en, name_es:d.name&&d.name.es,
+        description_ru:d.summary&&d.summary.ru, description_en:d.summary&&d.summary.en, description_es:d.summary&&d.summary.es,
+        affected_region_ids: dxSeeds(d.regions), affected_function_ids:[],
+        is_neurodevelopmental:false, icd10:d.icd10, _isDx:true, _dx:d
+      });
+    });
+  }
+  function seedLabel(s){ var o=ORGAN_LABEL&&ORGAN_LABEL[s]; return o?tr(o):regionLabel(s); }
+
+  // claimed-diagnoses state ("Мои диагнозы")
+  var MINE = [], MINE_BY = {};
+  function mineTok(){ return (typeof naGetToken==='function')?naGetToken():localStorage.getItem('na_token'); }
+  function loadMine(cb){
+    var tok=mineTok(); if(!tok){ MINE=[]; MINE_BY={}; cb&&cb(); return; }
+    fetch(apiBase()+'/api/me/diagnoses',{headers:{'Authorization':'Bearer '+tok}})
+      .then(function(r){ return r.ok?r.json():{diagnoses:[]}; })
+      .then(function(d){ MINE=(d&&d.diagnoses)||[]; MINE_BY={}; MINE.forEach(function(m){ MINE_BY[m.diagnosis_slug]=m; }); cb&&cb(); })
+      .catch(function(){ MINE=[]; MINE_BY={}; cb&&cb(); });
+  }
+  // dx* claim/upload/file modals call this after any change so this panel refreshes.
+  window.haDxRefresh = function(){ loadMine(function(){ renderCondMine(); try{ renderCondList(); }catch(e){} if(curCond) window.haSelectCondition(curCond.slug); }); try{ window.profileLoadDocs&&window.profileLoadDocs(); }catch(e){} };
+  // name lookup for the profile docs list (resolve a diagnosis slug → localized name)
+  window.__condName = function(slug){ var c=DATA.condBySlug&&DATA.condBySlug[slug]; return c?nm(c):''; };
+  // medical docs for ONE claimed diagnosis, shown inside its detail card.
+  function loadCondFiles(slug){
+    var tok=mineTok(); if(!tok) return;
+    fetch(apiBase()+'/api/me/medical-files',{headers:{'Authorization':'Bearer '+tok}})
+      .then(function(r){ return r.ok?r.json():{files:[]}; }).then(function(d){
+        var host=document.getElementById('ha-claim-files'); if(!host) return;
+        var files=((d&&d.files)||[]).filter(function(f){ return f.diagnosis_slug===slug; });
+        if(!files.length){ host.innerHTML='<div class="ha-files-empty">'+esc(txt('a.dx.no_docs','Пока нет загруженных документов.'))+'</div>'; return; }
+        host.innerHTML=files.map(function(f){
+          return '<div class="ha-file-row"><a href="'+esc(f.storage_url)+'" target="_blank" rel="noopener">'+esc(f.display_name)+'</a>'
+            +'<span class="ha-file-date">'+esc(String(f.doc_date||'').slice(0,10))+'</span>'
+            +'<button class="ha-file-del" onclick="dxDeleteFile('+f.id+',this)">🗑</button></div>';
+        }).join('');
+      }).catch(function(){});
+  }
+
+  function renderCondMine(){
+    var host=document.getElementById('ha-cond-mine'); if(!host) return;
+    if(!MINE.length){ host.style.display='none'; host.innerHTML=''; return; }
+    host.style.display='';
+    var items = MINE.map(function(m){
+      var c=DATA.condBySlug[m.diagnosis_slug]; var nmTxt=c?nm(c):m.diagnosis_slug;
+      return '<div class="ha-mine-item">'
+        + '<button class="ha-mine-name" onclick="haSelectCondition(\''+esc(m.diagnosis_slug)+'\')">'+esc(nmTxt)+'</button>'
+        + '<span class="ha-mine-act">'
+        + '<button title="'+esc(txt('a.dx.upload_btn','Загрузить документ'))+'" onclick="dxOpenUpload('+m.id+',\''+esc(m.diagnosis_slug)+'\')">＋📎'+(m.file_count?(' '+m.file_count):'')+'</button>'
+        + '<button title="'+esc(txt('a.dx.remove_mine','Убрать'))+'" onclick="dxUnclaim(\''+esc(m.diagnosis_slug)+'\')">✕</button>'
+        + '</span></div>';
+    }).join('');
+    var combined = MINE.length>1 ? '<button class="ha-mine-combined" onclick="haCondCombined()">🧬 '+esc(txt('a.dx.combined_title','Сводное воздействие'))+'</button>' : '';
+    host.innerHTML = '<div class="ha-mine-head">🗂 '+esc(txt('a.dx.my_folder','Мои диагнозы'))+' <span class="ha-mine-count">'+MINE.length+'</span></div>'+items+combined;
+  }
+
+  // Combined view on the REAL 3D atlas: union of every claimed diagnosis' zones.
+  window.haCondCombined = function(){
+    ensureData(function(){ loadMine(function(){
+      var claimed = MINE.map(function(m){ return DATA.condBySlug[m.diagnosis_slug]; }).filter(Boolean);
+      if(claimed.length<2) return;
+      var union=[], seedToCond={};
+      claimed.forEach(function(c){ (c.affected_region_ids||[]).forEach(function(s){ if(union.indexOf(s)<0) union.push(s); (seedToCond[s]=seedToCond[s]||[]).push(nm(c)); }); });
+      if(typeof window.haSwitchTab==='function') window.haSwitchTab('anatomy');
+      setTimeout(function(){
+        // focus() (the local helper) enables the right GLB layers for each seed
+        // before isolating — so heart/lungs/kidneys actually appear and highlight.
+        var apply=function(){ try{ focus(union); }catch(e){} };
+        if(window._anatomyAtlas){ apply(); setTimeout(apply,450); setTimeout(apply,1100); }
+        else if(typeof window.mountAnatomyAtlas==='function'){ window.mountAnatomyAtlas(); setTimeout(function(){ if(window._anatomyAtlas){ apply(); setTimeout(apply,650); } },520); }
+        showCombinedCard(claimed, seedToCond);
+      },160);
+    }); });
+  };
+  function showCombinedCard(claimed, seedToCond){
+    var host=document.querySelector('#tools-anatomy-content .atlas-viewport')||document.getElementById('tools-anatomy-content'); if(!host) return;
+    var old=document.getElementById('ha-combined-card'); if(old) old.remove();
+    var overlaps=''; Object.keys(seedToCond).forEach(function(s){ if(seedToCond[s].length>1) overlaps+='<li><b>'+esc(seedLabel(s))+'</b>: '+esc(seedToCond[s].join(', '))+'</li>'; });
+    function pool(field){ var seen={},out=[]; claimed.forEach(function(c){ (c._isDx?dxLArr(c._dx[field]):[]).forEach(function(x){ var k=String(x).toLowerCase(); if(!seen[k]){ seen[k]=1; out.push(x); } }); }); return out; }
+    function sec(title,arr,color){ if(!arr.length) return ''; return '<div class="hc-sec"><div class="hc-sec-h" style="color:'+color+';">'+esc(title)+'</div><ul>'+arr.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul></div>'; }
+    var names=claimed.map(function(c){ return esc(nm(c)); }).join(' · ');
+    var card=document.createElement('div'); card.id='ha-combined-card'; card.className='ha-combined-card';
+    card.innerHTML='<div class="hc-top"><b>🧬 '+esc(txt('a.dx.combined_title','Сводное воздействие'))+'</b>'
+      + '<button class="hc-x" onclick="this.closest(\'.ha-combined-card\').remove()">✕</button></div>'
+      + '<div class="hc-names">'+names+'</div>'
+      + (overlaps?'<div class="hc-sec"><div class="hc-sec-h" style="color:#f0829c;">'+esc(txt('a.dx.overlap','Перекрывающиеся зоны'))+'</div><ul>'+overlaps+'</ul></div>':'')
+      + sec(txt('a.dx.combined_symptoms','Общие / частые симптомы'), pool('symptoms'), '#A8F7FF')
+      + sec(txt('a.dx.combined_complications','Возможные осложнения'), pool('complications'), '#E8AA48')
+      + '<div class="hc-disc">⚠️ '+esc(txt('a.dx.disclaimer','Эта информация для образовательных целей. Не заменяет консультацию врача.'))+'</div>';
+    host.appendChild(card);
+  }
 
   var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, medsByDiag:{}, diagsByMed:{} };
   var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null;
@@ -17653,11 +17869,20 @@ window.pbMove = pbMove;
     loading = true;
     var b = apiBase();
     function gj(u){ return fetch(b+u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
-    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links') ])
+    // PR#119: diagnoses.json (the 12 PR#115 catalog diagnoses) is a static Pages
+    // asset, not an API route — fetch it relative to account.html and merge it into
+    // the Conditions list so it shows in ONE list with the human_conditions catalog.
+    function gjStatic(u){ return fetch(u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
+    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2') ])
       .then(function(res){
         DATA.fns = (res[0].functions)||[]; DATA.conds = (res[1].conditions)||[];
         DATA.circuits = (res[2].circuits)||[]; DATA.relations = (res[3].relations)||[];
         DATA.meds = (res[4].medications)||[]; DATA.medLinks = (res[5].links)||[];
+        // PR#119: fold the 12 catalog diagnoses into DATA.conds as condition-shaped
+        // rows. `regions` (schematic DX keys) map to real BodyAtlas seed-ids so they
+        // focus/tint the SAME 3D atlas as the existing conditions. _isDx/_dx keep the
+        // original entry for the symptoms/complications shown in the detail card.
+        dxMergeCatalog((res[6]&&res[6].diagnoses)||[]);
         DATA.fns.forEach(function(f){ DATA.byFnId[f.id]=f; DATA.fnBySlug[f.slug]=f; });
         DATA.conds.forEach(function(c){ DATA.byCondId[c.id]=c; DATA.condBySlug[c.slug]=c; });
         DATA.circuits.forEach(function(c){ DATA.circById[c.id]=c; });
@@ -17743,7 +17968,20 @@ window.pbMove = pbMove;
     thyroid:['thyroid-gland']
   };
   var MED_GREEN = 0x4fd67e, MED_RED = 0xe85d6f;
-  function medResolveSeeds(slugs){ var out=[]; (slugs||[]).forEach(function(s){ var m=MED_SEED[s]; if(m) out=out.concat(m); }); return out; }
+  // PR#119 (Issue#2): resolve a medication organ-slug to BodyAtlas seed-ids. Known
+  // aliases come from MED_SEED; anything else (already a valid seed-id like
+  // liver/heart/lungs/stomach/pancreas/kidneys) is passed through normalized so
+  // tintRegions() can load its layer + tint it. Non-mesh systems (vessels/skin/
+  // bones/joints/muscles/adrenals/spleen) pass through too but simply don't match.
+  function medResolveSeeds(slugs){
+    var out=[];
+    (slugs||[]).forEach(function(s){
+      var m=MED_SEED[s];
+      if(m){ out=out.concat(m); }
+      else if(s){ out.push(String(s).toLowerCase().replace(/[_\s]+/g,'-')); }
+    });
+    return out;
+  }
   function normSeed(s){ return (s==null?'':String(s)).toLowerCase().replace(/[_\s]+/g,'-'); }
   function medExpand(ids){
     var INFO = (window.BodyAtlas&&window.BodyAtlas.SEED_REGION_INFO) ||
@@ -17769,23 +18007,30 @@ window.pbMove = pbMove;
     if(a._requestRender) a._requestRender();
   }
   window.medClearTint=function(){
-    window.__medTint=null; var a=window._anatomyAtlas; if(!a||!a.root) return;
-    a.root.traverse(function(o){ var ud=o.userData,mat=o.material;
+    window.__medTint=null; var a=window._anatomyAtlas; if(!a) return;
+    // PR#119: medications now tint via BodyAtlas.tintRegions (same path as Diet),
+    // whose state lives in _focusColored/_focusVis — restore it via _clearFocusState.
+    try{ if(a._clearFocusState) a._clearFocusState(); }catch(e){}
+    // Legacy restore for any pre-PR#119 uColor tint still in the scene (harmless no-op otherwise).
+    if(a.root){ a.root.traverse(function(o){ var ud=o.userData,mat=o.material;
       if(ud&&ud._medBaseColor!=null&&mat&&mat.uniforms&&mat.uniforms.uColor){
         mat.uniforms.uColor.value.copy(ud._medBaseColor);
         if(mat.uniforms.uGlow&&ud._medBaseGlow!=null) mat.uniforms.uGlow.value=ud._medBaseGlow;
         mat.needsUpdate=true; ud._medBaseColor=null; ud._medBaseGlow=null;
       }
-    });
+    }); }
     if(a._requestRender) a._requestRender();
   };
   function medFocus(posSlugs,negSlugs){
     var a=window._anatomyAtlas; if(!a) return;
-    medClearTint();
-    var posSeeds=medResolveSeeds(posSlugs), negSeeds=medResolveSeeds(negSlugs);
-    focus(posSeeds.concat(negSeeds));                          // enable layers + isolate organs
-    window.__medTint={ pos:posSeeds, neg:negSeeds };
-    var apply=function(){ if(!window.__medTint) return; medTintNow(window.__medTint.pos, window.__medTint.neg); };
+    // PR#119 (Issue#2): use BodyAtlas.tintRegions exactly like Diet — it loads the
+    // target-organ layers (layersForSeedIds), isolates them, and paints positives
+    // green / negatives red. The old custom medTintNow path left organs in their
+    // native colour because focus()+mesh-match didn't reliably load/tint the layer.
+    var pos=medResolveSeeds(posSlugs), neg=medResolveSeeds(negSlugs);
+    window.__medTint={ pos:pos, neg:neg };
+    var apply=function(){ var aa=window._anatomyAtlas; if(!aa||!window.__medTint) return;
+      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); }catch(e){} };
     apply(); setTimeout(apply,400); setTimeout(apply,950); setTimeout(apply,2100);
   }
 
@@ -17808,6 +18053,7 @@ window.pbMove = pbMove;
     // PR#117: the Diet tab hides the 3D body+asides and shows a full-width list.
     var body=document.querySelector('#tools-anatomy-content .atlas-body');
     var dpan=document.getElementById('ha-diet-panel');
+    if(body) body.classList.remove('diet-detail-open');   // PR#119: drop mobile diet-detail stack on any tab switch
     if(body) body.style.display = tab==='diet'?'none':'';
     if(dpan) dpan.style.display = tab==='diet'?'':'none';
     var topbar=document.getElementById('ha-topbar'); if(topbar) topbar.style.display = tab==='anatomy'?'':'none';
@@ -17879,7 +18125,11 @@ window.pbMove = pbMove;
       list.forEach(function(c){ html+='<button class="ha-cat" data-cat="'+c+'" onclick="haCondCat(\''+c+'\')">'+esc(catLabel(c))+'</button>'; });
       cats.innerHTML=html;
     }
-    renderCondList();
+    // PR#119: feed the dx* claim service a name-registry for ALL conditions (catalog
+    // + human_conditions) so its claim/upload/all-docs modals can title any slug,
+    // then load + render the "Мои диагнозы" folder.
+    try{ if(window.dxSetCatalog) window.dxSetCatalog(DATA.conds.map(function(c){ return { slug:c.slug, name:{ru:c.name_ru,en:c.name_en,es:c.name_es} }; })); }catch(e){}
+    loadMine(function(){ renderCondMine(); renderCondList(); });
   }
   window.haCondCat=function(c){ condCat=c; document.querySelectorAll('#ha-cond-cats .ha-cat').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-cat')||'')===c); }); renderCondList(); };
   window.haCondSearch=function(v){ condQuery=(v||'').trim().toLowerCase(); renderCondList(); };
@@ -17922,7 +18172,28 @@ window.pbMove = pbMove;
           var pt=l.is_primary?' <span class="med-kind medication">'+esc(tr(T.primary_tag))+'</span>':'';
           return '<span class="ha-chip link" onclick="haGoMedication(\''+l.medication_slug+'\')">'+esc(nm(m))+pt+'</span>'; }).join('');
       }
+      // PR#119: catalog-diagnosis clinical detail (symptoms / complications from diagnoses.json)
+      if(c._isDx && c._dx){
+        if(c._dx.icd10){ h+='<div class="ha-side-meta">ICD-10: '+esc(c._dx.icd10)+'</div>'; }
+        var sy=dxLArr(c._dx.symptoms), co=dxLArr(c._dx.complications);
+        if(sy.length){ h+='<div class="ha-side-h">'+esc(txt('a.dx.symptoms','Основные симптомы'))+'</div><ul class="ha-side-ul">'+sy.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'; }
+        if(co.length){ h+='<div class="ha-side-h">'+esc(txt('a.dx.complications','Осложнения'))+'</div><ul class="ha-side-ul">'+co.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>'; }
+      }
+      // PR#119: "Это мой диагноз" claim toggle — on EVERY card (catalog + human_conditions).
+      var mineRec = MINE_BY[c.slug];
+      h+='<div class="ha-claim-wrap">';
+      if(mineRec){
+        h+='<div class="ha-claim-on">✓ '+esc(txt('a.dx.mine_badge','В моих диагнозах'))+'</div>'
+          +'<div class="ha-claim-btns">'
+          +'<button class="btn btn-ghost" style="font-size:12px;" onclick="dxOpenUpload('+mineRec.id+',\''+esc(c.slug)+'\')">＋ '+esc(txt('a.dx.upload_btn','Загрузить документ'))+'</button>'
+          +'<button class="btn btn-ghost" style="font-size:12px;" onclick="dxUnclaim(\''+esc(c.slug)+'\')">'+esc(txt('a.dx.remove_mine','Убрать из моих диагнозов'))+'</button>'
+          +'</div><div id="ha-claim-files" style="margin-top:0.5rem;"></div>';
+      } else {
+        h+='<button class="btn btn-solid" style="font-size:13px;width:100%;" onclick="dxClaimPrompt(\''+esc(c.slug)+'\')">＋ '+esc(txt('a.dx.add_mine','Это мой диагноз'))+'</button>';
+      }
+      h+='<div class="ha-disclaimer">⚠️ '+esc(txt('a.dx.disclaimer','Эта информация для образовательных целей. Не заменяет консультацию врача.'))+'</div></div>';
       openDetail(h);
+      if(mineRec) loadCondFiles(c.slug);
     });
   };
 
@@ -18176,9 +18447,9 @@ window.pbMove = pbMove;
         if (window._rpgLastRender && typeof rpgRenderStats === 'function') {
           rpgRenderStats(window._rpgLastRender.stats, window._rpgLastRender.wmc);
         }
-        // PR#115: re-render Diagnoses catalog/folder on language switch when open
-        var dxPanel = document.getElementById('tab-diagnoses');
-        if (dxPanel && dxPanel.classList.contains('active') && typeof window.dxRender === 'function') window.dxRender();
+        // PR#119: re-render the Internal Field → Diagnoses conditions panel + folder
+        // on language switch when the conditions sub-tab is open.
+        try{ var ct=document.getElementById('ha-tab-conditions'); if(ct && ct.classList.contains('active') && typeof window.haDxRefresh==='function') window.haDxRefresh(); }catch(e){}
         // Re-render diagnostic editor labels if open
         if (typeof renderDiagItems === 'function' && window.diagState && window.diagState.currentTpl) renderDiagItems();
         if (typeof renderDiagTemplatesList === 'function') renderDiagTemplatesList();
@@ -18439,7 +18710,7 @@ window.pbMove = pbMove;
     var lDi=document.getElementById('ha-left-diet');
     try{ var a=window._anatomyAtlas; if(a) a.focusRegions([]); }catch(e){}
     if(lDi) lDi.style.display='none';
-    if(body) body.style.display='none';
+    if(body){ body.classList.remove('diet-detail-open'); body.style.display='none'; }
     if(dpan) dpan.style.display='';
     renderBanner(); renderGrid();
   };
@@ -18464,6 +18735,7 @@ window.pbMove = pbMove;
     if(lAn) lAn.style.display='none'; if(lFn) lFn.style.display='none'; if(lCo) lCo.style.display='none';
     if(topbar) topbar.style.display='none';
     if(lDi) lDi.style.display='';
+    if(body) body.classList.add('diet-detail-open');   // PR#119 (Issue#3): mobile = body-on-top + full-width card stack
 
     var pros=arr(d,'pros'), cons=arr(d,'cons');
     var prosH = pros.length ? '<div class="diet-eff-h pos">🟢 '+T('a.diet.green','Зелёные эффекты')+'</div><ul class="diet-eff">'+pros.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ul>' : '';
