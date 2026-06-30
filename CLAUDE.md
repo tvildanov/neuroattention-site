@@ -50,7 +50,18 @@ was the PR#103 regression). See `nmAreaKind()` / `nmNodeLayer()`.
   created by `nmBridgeSession` are normal rows here.
 - **`nm_session_nodes`** — session bridge table (migration 035). Maps a
   `session_id` to the nodes created in that flow so cross-linked flows resolve to
-  one connected component.
+  one connected component. Still written on every append; it is the SOURCE the chain
+  tables are derived/backfilled from.
+- **`nm_chains`** (migration 043, PR#114) — FIRST-CLASS chain entity. One row per
+  `(user_id, session_id)` (UNIQUE on `session_id`) with `started_at`/`finished_at`
+  (minute-accurate) and `source` (`sensation`|`emotion`|`thought`|`diary`). A chain
+  IS one modal flow (= one `session_id`). `session_id` is **TEXT** (matches
+  `nm_session_nodes`/`journey_events`; the spec's UUID would break the cast).
+- **`nm_chain_nodes`** (migration 043) — chain membership. `(chain_id, node_id,
+  position)` PK; a node may legitimately repeat at different positions (within or
+  across chains — that recurrence is the gestalt). `node_id` FK → `nm_nodes(id)
+  ON DELETE CASCADE`, `chain_id` FK → `nm_chains(id) ON DELETE CASCADE`. Position =
+  append order (body-first within a batch).
 - **`journey_events`** — the Evolution Path timeline. Cols incl. `occurred_at`,
   `created_at`, `kind` (`insight`, `block_done`, …), `dependent_id` (PR#91/#99
   family routing), `session_id` (PR#109, merges one flow into one Path chain).
@@ -64,41 +75,52 @@ was the PR#103 regression). See `nmAreaKind()` / `nmNodeLayer()`.
 
 ---
 
-## Node dedup vs chain integrity — split-on-render (PR#113, Option A)
+## Hybrid model — shared node + first-class chains (PR#114, the current contract)
 
-`nm_nodes` are **deduplicated in the DB** by `(user_id, type, normalized_label, valence)`
-— one row per concept, `count` accumulates. This powers the vocab library and
-frequency sizing. But it is **catastrophic for chain integrity**: the same emotion
-(«интерес») picked in two unrelated flows resolves to ONE node, and the per-chain
-`nm_links` from both flows attach to it → the node becomes an articulation point that
-fuses the two flows into one connected blob (Tahir's "кишмиш" / mass-merge). This is
-the SAME mechanism that produced the PR#108 phantom-stick.
+`nm_nodes` are **deduplicated in the DB** by `(user_id, type, normalized_label,
+valence)` — one row per concept, `count` accumulates. This powers the vocab library
+and frequency sizing. PR#113 tried to protect chain integrity with **split-on-render**
+(one node instance per session), but that LOST the gestalt («эта эмоция повторилась
+10 раз») and shattered the map into look-alike twins. **PR#114 reverts split-on-render
+and goes hybrid:**
 
-**Fix = split-on-render, NOT split-in-DB.** The DB stays deduplicated. The
-`/api/neuromap/v2/graph` response carries each node's `sessions` array (from
-`nm_session_nodes`). `buildNmGraph` (account.html) renders **one instance per
-`(node, session)`**: instance `id = dbId+'@'+sessionId`, carrying `dbId`, `_sid`,
-`_baseKey`. A link is drawn only inside sessions BOTH endpoints share (`common`
-sessions); a cross-session edge (the fusion link) is simply not drawn. `fsTick`
-(fullscreen) and the analysis panel both consume `nmNodes`/`nmLinks` so they split
-automatically; the analysis panel keys counts by label (one entry, total count — no
-double-count). **No migration**: `nm_session_nodes` is already populated for every
-append (both v2/append and /sensation call `nmBridgeSession`), so existing fused
-graphs un-fuse on next load. Legacy pre-session nodes get `sessions:[]` → one
-standalone instance keyed under the sentinel `'__nosess'`.
+- **NeuroMap = ONE shared node per concept**, radius ∝ `log(count)` (`nmNodeR`). A
+  count=10 «любовь» field is visibly bigger than a count=1 «грусть». `buildNmGraph`
+  keys `nodeMap` by `dbId` again (NOT `dbId@session`). The old `_sid`/`_baseKey`/
+  `'__nosess'` machinery is GONE.
+- **Edges come from CHAINS, not a cross-product.** The `v3/graph` response derives
+  `links[]` from CONSECUTIVE members of each chain: one edge per node-pair, `count` =
+  #chains sharing it (→ thickness), `chain_ids` carried for hover. The only edges
+  drawn are real repetition points; no shared concept ever fuses two flows.
+- **Click a node → info-panel UNDER the NeuroMap** (`#nm-node-info`, NOT a floating
+  popup, NOT a sidebar). Shows identity + global count, an expandable **Цепочки ▼ N**
+  list (from `GET /api/neuromap/chains-by-node/:id`, most-recent first, with minute
+  timestamps + `a → b → c` preview), and an in-panel **mini-view canvas**: clicking a
+  timestamp fetches `GET /api/neuromap/chain/:chain_id` and draws that one chain
+  isolated (`nmDrawChainMini`), the clicked node highlighted. Superadmin Delete lives
+  at the panel foot.
 
-The Personal Path has the MIRROR bug: re-saving a flow logs a NEW `journey_event`
-pointing at the SAME deduped `nm_node`, so one concept rendered twice in a chain
-(«мягкость → голова → мягкость»). Fix = `buildTunnelComponents` (evolution-path.js)
-collapses events by content key (`nm_node_id`, else `layer+label`) **per-component**
-to the earliest, rewiring edges. PER-COMPONENT only — a global dedup would re-merge
-unrelated sessions and recreate the blob on the Path.
+**Chains are first-class, not inferred at render time.** `nm_chains` /
+`nm_chain_nodes` (migration 043) store each flow with explicit minute timestamps +
+node positions. They are maintained live in `nmBridgeSession` (upsert chain on the
+session_id, append batch nodes at the running `position`) and backfilled from
+`nm_session_nodes`. The three read endpoints are `v3/graph`, `chains-by-node/:id`,
+`chain/:chain_id`. `nmLoadV2Graph` fetches **v3** (falls back to v2 pre-migration) and
+stores `nmV2Graph.chains`.
 
-Superadmin can prune a single node via the NeuroMap node popup → red Delete →
+**Personal Path = one branch per chain.** `buildTunnelComponents` (evolution-path.js)
+now groups events **strictly by `session_id`** — each session is ONE branch, events
+strung in time (= position) order. NO per-component dedup (PR#113's `ckey` collapse is
+REMOVED): a node that recurs within a chain, or appears in two chains, is drawn each
+time. Cross-session `journey_links` are IGNORED so two chains can never fuse. Branch
+order falls out of `anchorT` (= started_at). Sessionless legacy/calendar events keep
+the old link-based connected-component + `splitComponent` fallback.
+
+Superadmin can prune a single node via the NeuroMap node info-panel → red Delete →
 `POST /api/admin/nm-node/:id/delete` (server.js): removes the `nm_nodes` row, every
-`nm_link` touching it, its `nm_session_nodes`, the `journey_events` whose
-`payload.nm_node_id` matches, and orphaned `journey_links`; then the client reloads
-the graph and re-mounts the Path.
+`nm_link` touching it, its `nm_session_nodes`, its `nm_chain_nodes` + any chain it
+empties, the `journey_events` whose `payload.nm_node_id` matches, and orphaned
+`journey_links`; then the client reloads the graph and re-mounts the Path.
 
 ## `session_id` contract (the KING invariant)
 
@@ -123,6 +145,12 @@ the graph and re-mounts the Path.
   the cross-product was the PR#108/#111 phantom-stick bug).
 - `ORDER BY is_body ASC` so the felt sensation (not the body part) is the seam, and
   the body never anchors the chain.
+- **Also maintains the chain (PR#114)**: upserts the `nm_chains` row keyed on
+  `session_id` (start on first append, `finished_at = GREATEST(…)` after) and appends
+  the batch's nodes to `nm_chain_nodes` at the running `position`. Takes a `source`
+  arg (`/sensation` → `'sensation'`; v2/append derives from the chain's node types).
+  Wrapped in try/catch so a missing-table window (pre-migration deploy) never breaks a
+  save.
 
 ---
 
@@ -137,11 +165,14 @@ fullscreen" miss.
 3. **`nmMiniMakeInset` / `nmMiniDraw`** — live mini-preview inset (static, no RAF);
    reuses `nmGetNodeColor`.
 4. **`evolution-path.js`** — Personal/Collective Path (timeline), uses `nmPathColor`
-   for node tones; body-first ordering.
+   for node tones; body-first ordering. ONE branch per chain (PR#114).
+5. **`nmDrawChainMini`** (PR#114) — the info-panel mini-view canvas; draws a single
+   chain left→right (consecutive edges), clicked node highlighted. Reuses
+   `nmGetNodeColor` (which returns an OPEN `rgba(…,` prefix — append `'1)'`).
 
 ---
 
-## Migrations 034–042 (INLINE in `POST /api/run-migrations`, server.js ~L293)
+## Migrations 034–043 (INLINE in `POST /api/run-migrations`, server.js ~L293)
 
 Railway has **no auto-migrate** — migrations 034+ are inline in this endpoint and
 run on demand (POST it after deploy). `app.delete`/array-cast gotcha: never
@@ -160,8 +191,14 @@ the «всё тело» bug for 4 PRs). Use pure SUBQUERY deletes.
 - **041** — phantom-bridge prune: delete body↔emotion/cause/thought links.
 - **042** — sensation-mirror insight prune: delete backfilled `"Sensation: …"`
   insight events that duplicated the cyan sensation node (first run deleted 35).
+- **043** — (PR#114) FIRST-CLASS CHAINS. Creates `nm_chains` + `nm_chain_nodes`
+  (`IF NOT EXISTS`), then backfills one chain per `(user, session)` from
+  `nm_session_nodes` (`started_at`=min/`finished_at`=max created_at, nodes ordered
+  body-first then created_at). Idempotent (chains UNIQUE on `session_id`, ON CONFLICT
+  DO NOTHING); per-group try/catch so one bad row can't abort the sweep. Returns
+  `{ chains_created, chain_nodes_created, backfilled_chains, skipped? }`.
 
-`run-migrations` returns `{ ok, message, mig039, mig040, mig041, mig042 }`.
+`run-migrations` returns `{ ok, message, mig039, mig040, mig041, mig042, mig043 }`.
 
 ---
 
@@ -204,8 +241,9 @@ into the next unrelated flow.
 
 - **`DELETE /api/admin/wipe-day?user_id=…|email=…&date=YYYY-MM-DD`** (server.js
   ~L7082) — superadmin-only. Disposes a tester's whole day across `journey_events`,
-  `nm_nodes`, `nm_links`, `nm_session_nodes`, `neuro_resource_diary`, orphaned
-  `journey_links`. Accepts email OR uuid. Gated `403` for non-superadmin.
+  `nm_nodes`, `nm_links`, `nm_session_nodes`, `nm_chains` (PR#114: started that day or
+  emptied by the node sweep), `neuro_resource_diary`, orphaned `journey_links`.
+  Accepts email OR uuid. Gated `403` for non-superadmin.
 - **Superadmin** is `SUPERADMIN_EMAILS` + `SUPERADMIN_LIMIT=2` (env on Railway).
   Slots are limited; a fresh `test.local` user only auto-promotes if a slot is free.
 - Railway has no auto-migrate: `POST /api/run-migrations` after each backend deploy.
