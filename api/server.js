@@ -2475,7 +2475,16 @@ const MEDICAL_MIME_OK = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/pn
 app.post('/api/diagnoses/:slug/claim', requireAuth, async (req, res) => {
   try {
     const slug = String(req.params.slug || '').trim();
-    if (!KNOWN_DIAGNOSIS_SLUGS.includes(slug)) return res.status(400).json({ error: 'Unknown diagnosis' });
+    // PR#119: claims are now allowed on the 12 catalog diagnoses (KNOWN list) AND on
+    // any existing human_conditions slug — the Internal Field → Diagnoses sub-tab puts
+    // a "Это мой диагноз" button on every card, catalog + condition.
+    if (!slug || !/^[a-z0-9_-]+$/i.test(slug)) return res.status(400).json({ error: 'Invalid diagnosis slug' });
+    let known = KNOWN_DIAGNOSIS_SLUGS.includes(slug);
+    if (!known) {
+      try { const [hit] = await sql`SELECT 1 FROM human_conditions WHERE slug = ${slug} LIMIT 1`; known = !!hit; }
+      catch (e) { /* human_conditions may be absent on a fresh DB — fall through */ }
+    }
+    if (!known) return res.status(400).json({ error: 'Unknown diagnosis' });
     let { diagnosed_at, notes } = req.body || {};
     // YYYY-MM-DD or null. Anything malformed is dropped to null rather than erroring.
     const date = (typeof diagnosed_at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(diagnosed_at)) ? diagnosed_at : null;
