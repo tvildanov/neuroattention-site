@@ -37,6 +37,9 @@
 // v15: cache-bust for PR#103 (NeuroMap mobile fixes — custom-painted layer
 //      checkboxes, body-part anchors folded into layer 1, layer toggles stay
 //      visible when all layers are off, hub mini-calendar keeps its 7-col grid)
+// v31: PR#117 follow-up — tintRegions now loads its target-organ LAYERS before
+//      isolating (a diet's green/red overlay was empty when the atlas opened on
+//      skin only); body-atlas.js?v=31→v32.
 // v30: cache-bust for PR#117 (Internal Field rename of «Anatomy» + new Diet
 //      sub-tab: 15 diet patterns, green/red 3D organ overlay, daily diet-event
 //      log onto the Personal Path). v28/v29 reserved for parallel PR#115/#116.
@@ -66,7 +69,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v30';
+var CACHE_NAME = 'na-practices-v31';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

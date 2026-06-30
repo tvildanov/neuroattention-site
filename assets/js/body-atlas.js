@@ -1489,8 +1489,20 @@
     var T = window.THREE;
     var GREEN = 0x6BE89B, GREEN_RIM = 0xCFFFE4, RED = 0xFF6B6B, RED_RIM = 0xFFD2D2;
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
-    this._clearFocusState();
     spec = spec || {};
+    // Ensure the target organs' LAYERS are loaded/visible before isolating — without
+    // this, a seed like 'heart'/'liver' has no mesh in the scene yet (atlas opens on
+    // skin only) so nothing tints. Mirrors the Conditions `focus()` layer step. The
+    // GLB streams async, so the caller re-applies tintRegions on a few timers.
+    var union = (spec.positive || []).concat(spec.negative || []);
+    if (union.length && this.layersForSeedIds && this.toggleLayer) {
+      var need = {};
+      try { this.layersForSeedIds(union).forEach(function (l) { need[l] = 1; }); } catch (e) {}
+      var self = this;
+      ['skin', 'muscles', 'skeleton', 'nervous', 'vessels', 'organs', 'female_reproductive', 'placenta']
+        .forEach(function (l) { try { self.toggleLayer(l, !!need[l]); } catch (e) {} });
+    }
+    this._clearFocusState();
     var posIds = this._expandSeedIds(spec.positive || []);
     var negIds = this._expandSeedIds(spec.negative || []);
     var posSet = {}, negSet = {};
