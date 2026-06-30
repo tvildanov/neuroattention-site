@@ -60,6 +60,10 @@
 //     behaviour unchanged; only the CACHE_NAME bump, to purge any stale account.html.
 // v4: cache-bust for PR#95 (NeuroMap hub right-panel) — runtime behaviour
 //     unchanged from v3; only the CACHE_NAME bump, to purge any stale account.html.
+// v32: PR#118 — restore NeuroMap chain links (v3/graph unions nm_links so legacy/
+//      un-backfilled nodes stop flying loose) + delete→Path propagation + migration
+//      047. Runtime behaviour unchanged; CACHE_NAME bump purges any stale account.html
+//      so Nick's mobile Chrome stops serving a pre-PR#114 build with no chain links.
 // v3: same safe runtime behaviour as v2 — the only change is the CACHE_NAME bump.
 //     The OLD v1 SW wrapped EVERY GET (incl. cross-origin) in
 //     respondWith(fetch(req).catch(()=>caches.match(req))). For users still controlled
@@ -69,7 +73,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v31';
+var CACHE_NAME = 'na-practices-v32';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
