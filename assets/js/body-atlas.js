@@ -1468,8 +1468,79 @@
         }
       });
     }
+    // PR#117: restore any green/red diet tint applied by tintRegions().
+    if (this._focusColored) {
+      this._focusColored.forEach(function (it) {
+        if (it.mat && it.mat.uniforms && it.mat.uniforms.uColor && it.color) it.mat.uniforms.uColor.value.copy(it.color);
+        if (it.mat && it.mat.uniforms && it.mat.uniforms.uRim && it.rim) it.mat.uniforms.uRim.value.copy(it.rim);
+      });
+      this._focusColored = [];
+    }
     this._focusVis = [];
     this._focusBoosted = [];
+  };
+  // PR#117 (Diet): isolate + TINT. Like focusRegions but paints `positive` ids green
+  // and `negative` ids red (a diet's beneficial vs harmful target organs), hiding
+  // everything else. Reuses the boost/visibility machinery; the green/red uColor is
+  // restored by _clearFocusState. Pass ({positive, negative}); ids are BodyAtlas seed
+  // ids (brain/heart/liver/kidneys/pancreas/lungs/endocrine/gi-tract).
+  Atlas.prototype.tintRegions = function (spec) {
+    if (!this.root) return this;
+    var T = window.THREE;
+    var GREEN = 0x6BE89B, GREEN_RIM = 0xCFFFE4, RED = 0xFF6B6B, RED_RIM = 0xFFD2D2;
+    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+    this._clearFocusState();
+    spec = spec || {};
+    var posIds = this._expandSeedIds(spec.positive || []);
+    var negIds = this._expandSeedIds(spec.negative || []);
+    var posSet = {}, negSet = {};
+    posIds.forEach(function (i) { var k = norm(i); if (k) posSet[k] = 1; });
+    negIds.forEach(function (i) { var k = norm(i); if (k) negSet[k] = 1; });
+    var hit = function (set, ud) {
+      var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
+      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ];
+      for (var ci = 0; ci < cands.length; ci++) { if (cands[ci] && set[norm(cands[ci])]) return true; }
+      if (bare) { var toks = String(bare).split('_'); for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) return true; } }
+      return false;
+    };
+    var items = [], matchCount = 0;
+    this.root.traverse(function (o) {
+      if (!o.isMesh || !o.userData || !o.userData.regionId) return;
+      var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
+      var ud = o.userData;
+      if (ud._baseOpacity == null) ud._baseOpacity = mat.uniforms.uOpacity.value;
+      var tone = hit(posSet, ud) ? 'pos' : hit(negSet, ud) ? 'neg' : null;
+      if (tone) matchCount++;
+      items.push({ o: o, mat: mat, ud: ud, tone: tone });
+    });
+    if (matchCount === 0) { if (this._requestRender) this._requestRender(); return this; }
+    var visChanges = [], boosted = [], colored = [];
+    items.forEach(function (it) {
+      var mat = it.mat, ud = it.ud;
+      if (it.tone) {
+        if (ud._baseSolid == null) {
+          ud._baseSolid = (mat.uniforms.uSolid ? mat.uniforms.uSolid.value : 0);
+          ud._baseBlend = mat.blending; ud._baseDepthWrite = mat.depthWrite; ud._baseTransparent = mat.transparent;
+          if (mat.uniforms.uGlow) ud._baseGlow = mat.uniforms.uGlow.value;
+        }
+        // cache the colour so _clearFocusState can restore the layer's native tone
+        colored.push({ mat: mat, color: mat.uniforms.uColor.value.clone(), rim: mat.uniforms.uRim ? mat.uniforms.uRim.value.clone() : null });
+        var c = it.tone === 'pos' ? GREEN : RED, r = it.tone === 'pos' ? GREEN_RIM : RED_RIM;
+        mat.uniforms.uColor.value.setHex(c);
+        if (mat.uniforms.uRim) mat.uniforms.uRim.value.setHex(r);
+        mat.uniforms.uOpacity.value = 1.0;
+        if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 1.0;
+        if (T && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
+        mat.depthWrite = true; mat.transparent = false;
+        boosted.push(it.o);
+        if (it.o.visible !== true) { visChanges.push({ mesh: it.o, prior: it.o.visible }); it.o.visible = true; }
+      } else if (it.o.visible !== false) {
+        visChanges.push({ mesh: it.o, prior: it.o.visible }); it.o.visible = false;
+      }
+    });
+    this._focusVis = visChanges; this._focusBoosted = boosted; this._focusColored = colored;
+    if (this._requestRender) this._requestRender();
+    return this;
   };
   Atlas.prototype.focusRegions = function (ids, dim) {
     // ISOLATE (Tahir): focused regions render at full opacity; EVERYTHING ELSE is
