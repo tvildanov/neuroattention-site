@@ -1564,6 +1564,30 @@ a.dash-tab:hover { text-decoration:none; }
         .ha-sev.severe{background:rgba(255,143,163,0.16);color:#FF8FA3;}
         .ha-sev.variable{background:rgba(168,247,255,0.13);color:#A8F7FF;}
         .ha-nd{display:inline-block;font-size:9.5px;border-radius:6px;padding:0.1rem 0.45rem;margin-left:0.4rem;background:rgba(141,255,200,0.12);color:#8DFFC8;vertical-align:middle;}
+        /* ── Medications & Substances (PR#116) ── */
+        .med-kind{display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:0.08em;border-radius:6px;padding:0.1rem 0.4rem;margin-left:0.4rem;vertical-align:middle;}
+        .med-kind.medication{background:rgba(168,247,255,0.13);color:#A8F7FF;}
+        .med-kind.substance{background:rgba(214,167,255,0.16);color:#D6A7FF;}
+        .med-brand{font-size:11px;color:var(--text-dim,#7c8896);margin:0.1rem 0 0.5rem;line-height:1.5;}
+        .med-eff{border-radius:9px;padding:0.55rem 0.65rem;margin:0.55rem 0;font-size:12px;line-height:1.55;}
+        .med-eff.pos{background:rgba(79,214,126,0.09);border:1px solid rgba(79,214,126,0.28);}
+        .med-eff.neg{background:rgba(232,93,111,0.09);border:1px solid rgba(232,93,111,0.28);}
+        .med-eff .med-eff-h{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.25rem;font-weight:600;}
+        .med-eff.pos .med-eff-h{color:#6fe39a;}
+        .med-eff.neg .med-eff-h{color:#ff8a9c;}
+        .med-eff p{color:var(--text-muted,#cdd6df);margin:0;font-size:12px;}
+        .med-organ{display:inline-flex;align-items:center;gap:0.25rem;border-radius:7px;font-size:10.5px;padding:0.2rem 0.45rem;margin:0 0.3rem 0.3rem 0;border:1px solid transparent;}
+        .med-organ.pos{background:rgba(79,214,126,0.12);border-color:rgba(79,214,126,0.3);color:#8df0ad;}
+        .med-organ.neg{background:rgba(232,93,111,0.12);border-color:rgba(232,93,111,0.32);color:#ff9aa8;}
+        .med-warn{background:rgba(255,203,141,0.09);border:1px solid rgba(255,203,141,0.3);border-radius:9px;padding:0.55rem 0.65rem;margin:0.7rem 0 0;font-size:11.5px;line-height:1.55;color:#ffd9a8;}
+        .med-disclaimer{font-size:10.5px;line-height:1.5;color:var(--text-dim,#7c8896);border-top:1px dashed rgba(168,247,255,0.15);margin-top:0.9rem;padding-top:0.6rem;}
+        .med-disclaimer.substance{color:#d8b6e6;border-top-color:rgba(214,167,255,0.22);}
+        .med-disclaimer a{color:#A8F7FF;}
+        .ha-item.substance{border-color:rgba(214,167,255,0.18);}
+        .ha-item.substance.active{background:rgba(214,167,255,0.12);border-color:rgba(214,167,255,0.4);}
+        .ha-legend{display:flex;gap:0.7rem;flex-wrap:wrap;font-size:10px;color:var(--text-dim,#7c8896);margin:0.3rem 0 0.1rem;}
+        .ha-legend span{display:inline-flex;align-items:center;gap:0.3rem;}
+        .ha-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
         @media(max-width:760px){.ha-side{width:100%;max-width:100%;}.ha-list{max-height:300px;}}
         /* C: Functions/Conditions left panel on mobile — stack vertically. The
            generic .atlas-layers mobile rule (flex-direction:row;overflow-x:auto)
@@ -1572,12 +1596,12 @@ a.dash-tab:hover { text-decoration:none; }
            horizontal-scroll chip strip, then a full-width list, with the 3D
            viewport below it. */
         @media(max-width:720px){
-          #ha-left-functions, #ha-left-conditions{ flex-direction:column; overflow:visible; width:100%; flex:none; gap:0.55rem; padding:0.75rem 0.85rem; }
-          #ha-left-functions .ha-search, #ha-left-conditions .ha-search{ width:100%; box-sizing:border-box; }
-          #ha-left-functions .ha-cats, #ha-left-conditions .ha-cats{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.2rem; scrollbar-width:none; }
-          #ha-left-functions .ha-cats::-webkit-scrollbar, #ha-left-conditions .ha-cats::-webkit-scrollbar{ display:none; }
-          #ha-left-functions .ha-cat, #ha-left-conditions .ha-cat{ flex:0 0 auto; }
-          #ha-left-functions .ha-list, #ha-left-conditions .ha-list{ max-height:40vh; }
+          #ha-left-functions, #ha-left-conditions, #ha-left-medications{ flex-direction:column; overflow:visible; width:100%; flex:none; gap:0.55rem; padding:0.75rem 0.85rem; }
+          #ha-left-functions .ha-search, #ha-left-conditions .ha-search, #ha-left-medications .ha-search{ width:100%; box-sizing:border-box; }
+          #ha-left-functions .ha-cats, #ha-left-conditions .ha-cats, #ha-left-medications .ha-cats{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.2rem; scrollbar-width:none; }
+          #ha-left-functions .ha-cats::-webkit-scrollbar, #ha-left-conditions .ha-cats::-webkit-scrollbar, #ha-left-medications .ha-cats::-webkit-scrollbar{ display:none; }
+          #ha-left-functions .ha-cat, #ha-left-conditions .ha-cat, #ha-left-medications .ha-cat{ flex:0 0 auto; }
+          #ha-left-functions .ha-list, #ha-left-conditions .ha-list, #ha-left-medications .ha-list{ max-height:40vh; }
           /* keep the 3D viewport tall enough to be usable under the feed */
           .ha-tab[id^="ha-tab"]{ font-size:12px; padding:0.4rem 0.5rem; }
         }
@@ -1590,6 +1614,7 @@ a.dash-tab:hover { text-decoration:none; }
             <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')">🫀 <span data-i18n="a.ha.tab_anatomy">Анатомия</span></button>
             <button class="ha-tab" id="ha-tab-functions" onclick="haSwitchTab('functions')">🧠 <span data-i18n="a.ha.tab_functions">Функции человека</span></button>
             <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')">🩺 <span data-i18n="a.ha.tab_conditions">Диагнозы и состояния</span></button>
+            <button class="ha-tab" id="ha-tab-medications" onclick="haSwitchTab('medications')">💊 <span data-i18n="a.ha.tab_medications">Препараты и вещества</span></button>
           </div>
           <div class="atlas-topbar" id="ha-topbar">
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
@@ -1612,6 +1637,13 @@ a.dash-tab:hover { text-decoration:none; }
               <input class="ha-search" id="ha-cond-search" oninput="haCondSearch(this.value)" data-i18n-ph="a.ha.cond_search" placeholder="Поиск состояния…" autocomplete="off">
               <div class="ha-cats" id="ha-cond-cats"></div>
               <div class="ha-list" id="ha-cond-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
+            </aside>
+            <aside class="atlas-layers" id="ha-left-medications" style="display:none;">
+              <input class="ha-search" id="ha-med-search" oninput="haMedSearch(this.value)" data-i18n-ph="a.ha.med_search" placeholder="Поиск препарата…" autocomplete="off">
+              <div class="ha-cats" id="ha-med-kinds"></div>
+              <div class="ha-cats" id="ha-med-cats"></div>
+              <div class="ha-legend"><span><i style="background:#4fd67e"></i><span data-i18n="a.ha.med_legend_pos">лечебный эффект</span></span><span><i style="background:#e85d6f"></i><span data-i18n="a.ha.med_legend_neg">побочный эффект</span></span></div>
+              <div class="ha-list" id="ha-med-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
             </aside>
             <div class="atlas-viewport" id="atlas-viewport">
               <div class="atlas-tooltip" id="atlas-tooltip"></div>
@@ -17458,8 +17490,30 @@ window.pbMove = pbMove;
     tab_anatomy:{ru:'Анатомия',en:'Anatomy',es:'Anatomía'},
     tab_functions:{ru:'Функции человека',en:'Human functions',es:'Funciones humanas'},
     tab_conditions:{ru:'Диагнозы и состояния',en:'Conditions & states',es:'Diagnósticos y estados'},
+    tab_medications:{ru:'Препараты и вещества',en:'Medications & substances',es:'Medicamentos y sustancias'},
     fn_search:{ru:'Поиск функции…',en:'Search a function…',es:'Buscar una función…'},
     cond_search:{ru:'Поиск состояния…',en:'Search a condition…',es:'Buscar un estado…'},
+    med_search:{ru:'Поиск препарата…',en:'Search a medication…',es:'Buscar un medicamento…'},
+    kind_medication:{ru:'Препараты',en:'Medications',es:'Medicamentos'},
+    kind_substance:{ru:'Вещества',en:'Substances',es:'Sustancias'},
+    eff_pos:{ru:'Основной терапевтический эффект',en:'Primary therapeutic effect',es:'Efecto terapéutico principal'},
+    eff_pos_sub:{ru:'Действие вещества',en:'How it acts',es:'Cómo actúa'},
+    eff_neg:{ru:'Основные побочные эффекты',en:'Main side effects',es:'Efectos secundarios principales'},
+    eff_neg_sub:{ru:'Риски',en:'Risks',es:'Riesgos'},
+    anatomy_impact:{ru:'Анатомия воздействия',en:'Anatomy of action',es:'Anatomía del efecto'},
+    organs_pos:{ru:'Зоны лечебного эффекта',en:'Therapeutic target tissues',es:'Tejidos diana terapéuticos'},
+    organs_neg:{ru:'Зоны побочного действия',en:'Side-effect tissues',es:'Tejidos de efectos adversos'},
+    brands:{ru:'Торговые названия',en:'Brand names',es:'Nombres comerciales'},
+    prescribed_for:{ru:'Назначается при',en:'Prescribed for',es:'Se prescribe para'},
+    meds_for:{ru:'Препараты для лечения',en:'Medications used',es:'Medicamentos utilizados'},
+    go_to_med:{ru:'к препарату →',en:'to medication →',es:'al medicamento →'},
+    go_to_diag:{ru:'к диагнозу →',en:'to diagnosis →',es:'al diagnóstico →'},
+    primary_tag:{ru:'основной',en:'first-line',es:'primera línea'},
+    harm_reduction:{ru:'Снижение вреда',en:'Harm reduction',es:'Reducción de daños'},
+    med_disclaimer:{ru:'Образовательная информация, не медицинская рекомендация. Самолечение опасно. Назначение и отмена препаратов — только через врача.',en:'Educational information, not medical advice. Self-medication is dangerous. Starting and stopping medication must go through a doctor.',es:'Información educativa, no consejo médico. La automedicación es peligrosa. Iniciar y suspender medicamentos solo a través de un médico.'},
+    sub_disclaimer:{ru:'Информация для снижения вреда. Употребление психоактивных веществ имеет серьёзные риски для здоровья, юридические последствия и может вызвать зависимость. Если вы или близкие столкнулись с зависимостью — обратитесь за помощью.',en:'Harm-reduction information. Using psychoactive substances carries serious health risks, legal consequences and can cause addiction. If you or someone close struggles with addiction, please seek help.',es:'Información de reducción de daños. El uso de sustancias psicoactivas conlleva graves riesgos para la salud, consecuencias legales y puede causar adicción. Si tú o alguien cercano enfrenta una adicción, busca ayuda.'},
+    sub_resources:{ru:'Помощь при зависимости',en:'Addiction help',es:'Ayuda con la adicción'},
+    tip_med:{ru:'Выбери препарат слева — зелёным подсветятся зоны лечебного действия, красным — побочного.',en:'Pick a medication on the left — therapeutic target tissues light up green, side-effect tissues red.',es:'Elige un medicamento a la izquierda — los tejidos diana se resaltan en verde y los de efectos adversos en rojo.'},
     loading:{ru:'Загрузка…',en:'Loading…',es:'Cargando…'},
     empty:{ru:'Ничего не найдено',en:'Nothing found',es:'Nada encontrado'},
     all:{ru:'Все',en:'All',es:'Todos'},
@@ -17496,7 +17550,27 @@ window.pbMove = pbMove;
     cardiovascular:{ru:'Сердечно-сосудистые',en:'Cardiovascular',es:'Cardiovasculares'},
     endocrine:{ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'},
     neurological:{ru:'Неврологические',en:'Neurological',es:'Neurológicas'},
-    respiratory:{ru:'Дыхательные',en:'Respiratory',es:'Respiratorias'}
+    respiratory:{ru:'Дыхательные',en:'Respiratory',es:'Respiratorias'},
+    glucocorticoid:{ru:'Глюкокортикоиды',en:'Glucocorticoids',es:'Glucocorticoides'},
+    immunosuppressant:{ru:'Иммуносупрессанты',en:'Immunosuppressants',es:'Inmunosupresores'},
+    biologic:{ru:'Биологические',en:'Biologics',es:'Biológicos'},
+    ppi:{ru:'ИПП',en:'PPIs',es:'IBP'},
+    antidepressant:{ru:'Антидепрессанты',en:'Antidepressants',es:'Antidepresivos'},
+    anxiolytic:{ru:'Анксиолитики',en:'Anxiolytics',es:'Ansiolíticos'},
+    antipsychotic:{ru:'Антипсихотики',en:'Antipsychotics',es:'Antipsicóticos'},
+    mood_stabilizer:{ru:'Стабилизаторы настроения',en:'Mood stabilizers',es:'Estabilizadores del ánimo'},
+    stimulant:{ru:'Стимуляторы',en:'Stimulants',es:'Estimulantes'},
+    antiepileptic:{ru:'Противоэпилептические',en:'Antiepileptics',es:'Antiepilépticos'},
+    nsaid:{ru:'НПВП',en:'NSAIDs',es:'AINE'},
+    antibiotic:{ru:'Антибиотики',en:'Antibiotics',es:'Antibióticos'},
+    anticoagulant:{ru:'Антикоагулянты',en:'Anticoagulants',es:'Anticoagulantes'},
+    metabolic:{ru:'Метаболические',en:'Metabolic',es:'Metabólicos'},
+    hormone:{ru:'Гормоны',en:'Hormones',es:'Hormonas'},
+    cannabinoid:{ru:'Каннабиноиды',en:'Cannabinoids',es:'Cannabinoides'},
+    dissociative:{ru:'Диссоциативы',en:'Dissociatives',es:'Disociativos'},
+    psychedelic:{ru:'Психоделики',en:'Psychedelics',es:'Psicodélicos'},
+    empathogen:{ru:'Эмпатогены',en:'Empathogens',es:'Empatógenos'},
+    depressant:{ru:'Депрессанты',en:'Depressants',es:'Depresores'}
   };
   var SEV = { mild:{ru:'лёгкое',en:'mild',es:'leve'}, moderate:{ru:'умеренное',en:'moderate',es:'moderado'}, severe:{ru:'тяжёлое',en:'severe',es:'grave'}, variable:{ru:'вариативное',en:'variable',es:'variable'} };
   var BRAIN = {'frontal-lobe':1,'parietal-lobe':1,'temporal-lobe':1,'occipital-lobe':1,'thalamus':1,'hypothalamus':1,'hippocampus':1,'amygdala':1,'basal-ganglia':1,'cerebellum':1,'midbrain':1,'pons':1,'medulla':1,'insula':1,'cingulate':1,'corpus-callosum':1,'fornix':1,'ventricles':1};
@@ -17513,8 +17587,8 @@ window.pbMove = pbMove;
   function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function apiBase(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
 
-  var DATA = { fns:null, conds:null, circuits:null, relations:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{} };
-  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null;
+  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, medsByDiag:{}, diagsByMed:{} };
+  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null;
 
   function ensureData(cb){
     if(loaded){ cb&&cb(); return; }
@@ -17522,13 +17596,20 @@ window.pbMove = pbMove;
     loading = true;
     var b = apiBase();
     function gj(u){ return fetch(b+u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
-    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations') ])
+    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links') ])
       .then(function(res){
         DATA.fns = (res[0].functions)||[]; DATA.conds = (res[1].conditions)||[];
         DATA.circuits = (res[2].circuits)||[]; DATA.relations = (res[3].relations)||[];
+        DATA.meds = (res[4].medications)||[]; DATA.medLinks = (res[5].links)||[];
         DATA.fns.forEach(function(f){ DATA.byFnId[f.id]=f; DATA.fnBySlug[f.slug]=f; });
         DATA.conds.forEach(function(c){ DATA.byCondId[c.id]=c; DATA.condBySlug[c.slug]=c; });
         DATA.circuits.forEach(function(c){ DATA.circById[c.id]=c; });
+        DATA.meds.forEach(function(m){ DATA.medBySlug[m.slug]=m; });
+        // build both directions of the diagnosis↔medication cross-link
+        DATA.medLinks.forEach(function(l){
+          (DATA.medsByDiag[l.diagnosis_slug] = DATA.medsByDiag[l.diagnosis_slug] || []).push(l);
+          (DATA.diagsByMed[l.medication_slug] = DATA.diagsByMed[l.medication_slug] || []).push(l);
+        });
         loaded = true; loading = false; cb&&cb();
       });
   }
@@ -17592,24 +17673,85 @@ window.pbMove = pbMove;
     });
   }
 
+  /* ── Medications: green/red 3D overlay (PR#116) ─────────────────────────────
+     Canonical organ slugs (stored in target_organs_*) → BodyAtlas seed-ids that
+     resolve to real meshes. Non-mesh systems (vessels/skin/bones/joints/muscles/
+     adrenals/spleen) are listed as coloured chips in the card but not tinted in 3D.
+     We reuse the Conditions focus() to isolate + solidify the organs, then recolor
+     them: positives green, negatives red. Re-applied on lazy GLB stream via timers. */
+  var MED_SEED = {
+    brain:['brain'], nervous:['brain'], spinal_cord:['spinal-cord'], heart:['heart'],
+    lungs:['lungs'], liver:['liver'], kidneys:['kidneys'], stomach:['stomach'],
+    colon:['large-intestine'], small_intestine:['small-intestine'], pancreas:['pancreas'],
+    thyroid:['thyroid-gland']
+  };
+  var MED_GREEN = 0x4fd67e, MED_RED = 0xe85d6f;
+  function medResolveSeeds(slugs){ var out=[]; (slugs||[]).forEach(function(s){ var m=MED_SEED[s]; if(m) out=out.concat(m); }); return out; }
+  function normSeed(s){ return (s==null?'':String(s)).toLowerCase().replace(/[_\s]+/g,'-'); }
+  function medExpand(ids){
+    var INFO = (window.BodyAtlas&&window.BodyAtlas.SEED_REGION_INFO) ||
+               (window._anatomyAtlas&&window._anatomyAtlas.constructor&&window._anatomyAtlas.constructor.SEED_REGION_INFO) || {};
+    var out={};
+    function add(id){ id=normSeed(id); if(!id||out[id]) return; out[id]=1; var info=INFO[id]; if(info){ (info.aliases||[]).forEach(add); (info.descendants||[]).forEach(add); } }
+    (ids||[]).forEach(add); return out;
+  }
+  function medMeshMatch(ud,set){ if(!ud) return false;
+    return !!(set[normSeed(ud.regionId)]||set[normSeed(ud.baseSlug)]||set[normSeed(ud.coarseId)]||set[normSeed(ud.organ)]||set[normSeed(ud.originalName)]); }
+  function medTintNow(posSeeds,negSeeds){
+    var a=window._anatomyAtlas; if(!a||!a.root) return;
+    var pset=medExpand(posSeeds), nset=medExpand(negSeeds);
+    a.root.traverse(function(o){
+      if(!o.isMesh||!o.userData) return; var mat=o.material; if(!mat||!mat.uniforms||!mat.uniforms.uColor) return;
+      var ud=o.userData; var isPos=medMeshMatch(ud,pset), isNeg=medMeshMatch(ud,nset);
+      if(!isPos&&!isNeg) return;
+      if(ud._medBaseColor==null) ud._medBaseColor=mat.uniforms.uColor.value.clone();
+      mat.uniforms.uColor.value.setHex(isPos?MED_GREEN:MED_RED);          // positive wins ties
+      if(mat.uniforms.uGlow){ if(ud._medBaseGlow==null) ud._medBaseGlow=mat.uniforms.uGlow.value; mat.uniforms.uGlow.value=1.05; }
+      mat.needsUpdate=true;
+    });
+    if(a._requestRender) a._requestRender();
+  }
+  window.medClearTint=function(){
+    window.__medTint=null; var a=window._anatomyAtlas; if(!a||!a.root) return;
+    a.root.traverse(function(o){ var ud=o.userData,mat=o.material;
+      if(ud&&ud._medBaseColor!=null&&mat&&mat.uniforms&&mat.uniforms.uColor){
+        mat.uniforms.uColor.value.copy(ud._medBaseColor);
+        if(mat.uniforms.uGlow&&ud._medBaseGlow!=null) mat.uniforms.uGlow.value=ud._medBaseGlow;
+        mat.needsUpdate=true; ud._medBaseColor=null; ud._medBaseGlow=null;
+      }
+    });
+    if(a._requestRender) a._requestRender();
+  };
+  function medFocus(posSlugs,negSlugs){
+    var a=window._anatomyAtlas; if(!a) return;
+    medClearTint();
+    var posSeeds=medResolveSeeds(posSlugs), negSeeds=medResolveSeeds(negSlugs);
+    focus(posSeeds.concat(negSeeds));                          // enable layers + isolate organs
+    window.__medTint={ pos:posSeeds, neg:negSeeds };
+    var apply=function(){ if(!window.__medTint) return; medTintNow(window.__medTint.pos, window.__medTint.neg); };
+    apply(); setTimeout(apply,400); setTimeout(apply,950); setTimeout(apply,2100);
+  }
+
   /* ── tab switching ──────────────────────────────────────────────────────── */
   window.haSwitchTab = function(tab){
     activeTab = tab;
-    ['anatomy','functions','conditions'].forEach(function(t){
+    ['anatomy','functions','conditions','medications'].forEach(function(t){
       var btn=document.getElementById('ha-tab-'+t); if(btn) btn.classList.toggle('active', t===tab);
     });
-    var lAn=document.getElementById('atlas-layers'), lFn=document.getElementById('ha-left-functions'), lCo=document.getElementById('ha-left-conditions');
+    var lAn=document.getElementById('atlas-layers'), lFn=document.getElementById('ha-left-functions'), lCo=document.getElementById('ha-left-conditions'), lMe=document.getElementById('ha-left-medications');
     if(lAn) lAn.style.display = tab==='anatomy'?'':'none';
     if(lFn) lFn.style.display = tab==='functions'?'':'none';
     if(lCo) lCo.style.display = tab==='conditions'?'':'none';
+    if(lMe) lMe.style.display = tab==='medications'?'':'none';
     var topbar=document.getElementById('ha-topbar'); if(topbar) topbar.style.display = tab==='anatomy'?'':'none';
     // close both detail panels on switch
     if(window.atlasCloseRegion) window.atlasCloseRegion();   // closes region panel + clears stacked state + mini
     haCloseDetail();
+    medClearTint();                                          // drop any green/red drug overlay
     if(tab==='anatomy'){ syncAnatomyLayers(); }
     else {
       clearFocus();
-      ensureData(function(){ tab==='functions' ? renderFnPanel() : renderCondPanel(); });
+      ensureData(function(){ tab==='functions' ? renderFnPanel() : (tab==='conditions' ? renderCondPanel() : renderMedPanel()); });
     }
   };
 
@@ -17704,8 +17846,123 @@ window.pbMove = pbMove;
       var rec=fld(c,'recommendations'); if(rec){ h+='<div class="ha-side-h">'+esc(tr(T.recommend))+'</div><p>'+esc(rec)+'</p>'; }
       if(fns.length){ h+='<div class="ha-side-h">'+esc(tr(T.aff_functions))+'</div>'; h+=fns.map(function(f){ return '<span class="ha-chip link" onclick="haGoFunction(\''+f.slug+'\')">'+esc(nm(f))+'</span>'; }).join(''); }
       h+=regionSection(T.aff_regions, c.affected_region_ids||[], false);
+      // PR#116: medications prescribed for this diagnosis → jump to the med axis
+      var medLinks=(DATA.medsByDiag[c.slug]||[]).slice().sort(function(a,b){ return (b.is_primary?1:0)-(a.is_primary?1:0); });
+      if(medLinks.length){
+        h+='<div class="ha-side-h">'+esc(tr(T.meds_for))+'</div>';
+        h+=medLinks.map(function(l){ var m=DATA.medBySlug[l.medication_slug]; if(!m) return '';
+          var pt=l.is_primary?' <span class="med-kind medication">'+esc(tr(T.primary_tag))+'</span>':'';
+          return '<span class="ha-chip link" onclick="haGoMedication(\''+l.medication_slug+'\')">'+esc(nm(m))+pt+'</span>'; }).join('');
+      }
       openDetail(h);
     });
+  };
+
+  /* ── Medications tab (PR#116) ───────────────────────────────────────────── */
+  var ORGAN_LABEL = {
+    brain:{ru:'мозг',en:'brain',es:'cerebro'}, nervous:{ru:'нервная система',en:'nervous system',es:'sistema nervioso'},
+    spinal_cord:{ru:'спинной мозг',en:'spinal cord',es:'médula espinal'}, heart:{ru:'сердце',en:'heart',es:'corazón'},
+    vessels:{ru:'сосуды',en:'vessels',es:'vasos'}, lungs:{ru:'лёгкие',en:'lungs',es:'pulmones'},
+    liver:{ru:'печень',en:'liver',es:'hígado'}, kidneys:{ru:'почки',en:'kidneys',es:'riñones'},
+    stomach:{ru:'желудок',en:'stomach',es:'estómago'}, colon:{ru:'толстый кишечник',en:'colon',es:'colon'},
+    small_intestine:{ru:'тонкий кишечник',en:'small intestine',es:'intestino delgado'},
+    pancreas:{ru:'поджелудочная',en:'pancreas',es:'páncreas'}, spleen:{ru:'селезёнка',en:'spleen',es:'bazo'},
+    thyroid:{ru:'щитовидная железа',en:'thyroid',es:'tiroides'}, adrenals:{ru:'надпочечники',en:'adrenals',es:'suprarrenales'},
+    bones:{ru:'кости',en:'bones',es:'huesos'}, joints:{ru:'суставы',en:'joints',es:'articulaciones'},
+    muscles:{ru:'мышцы',en:'muscles',es:'músculos'}, skin:{ru:'кожа',en:'skin',es:'piel'}
+  };
+  function organLabel(s){ var o=ORGAN_LABEL[s]; return o?tr(o):String(s||'').replace(/[_-]/g,' '); }
+  var medQuery='', medCat='', medKind='';
+  function renderMedPanel(){
+    var kinds=document.getElementById('ha-med-kinds');
+    if(kinds && !kinds.dataset.built){
+      kinds.dataset.built='1';
+      kinds.innerHTML='<button class="ha-cat'+(medKind===''?' active':'')+'" data-kind="" onclick="haMedKind(\'\')">'+esc(tr(T.all))+'</button>'+
+        '<button class="ha-cat" data-kind="medication" onclick="haMedKind(\'medication\')">'+esc(tr(T.kind_medication))+'</button>'+
+        '<button class="ha-cat" data-kind="substance" onclick="haMedKind(\'substance\')">'+esc(tr(T.kind_substance))+'</button>';
+    }
+    var cats=document.getElementById('ha-med-cats');
+    if(cats && !cats.dataset.built){
+      cats.dataset.built='1';
+      var list=catsOf(DATA.meds); var html='<button class="ha-cat'+(medCat===''?' active':'')+'" onclick="haMedCat(\'\')">'+esc(tr(T.all))+'</button>';
+      list.forEach(function(c){ html+='<button class="ha-cat" data-cat="'+c+'" onclick="haMedCat(\''+c+'\')">'+esc(catLabel(c))+'</button>'; });
+      cats.innerHTML=html;
+    }
+    renderMedList();
+  }
+  window.haMedKind=function(k){ medKind=k; document.querySelectorAll('#ha-med-kinds .ha-cat').forEach(function(b){ b.classList.toggle('active',(b.getAttribute('data-kind')||'')===k); }); renderMedList(); };
+  window.haMedCat=function(c){ medCat=c; document.querySelectorAll('#ha-med-cats .ha-cat').forEach(function(b){ b.classList.toggle('active',(b.getAttribute('data-cat')||'')===c); }); renderMedList(); };
+  window.haMedSearch=function(v){ medQuery=(v||'').trim().toLowerCase(); renderMedList(); };
+  function medMatch(m){
+    if(medKind && m.kind!==medKind) return false;
+    if(medCat && m.category!==medCat) return false;
+    if(!medQuery) return true;
+    var hay=((m.name_en||'')+' '+(m.name_ru||'')+' '+(m.name_es||'')+' '+((m.brand_us||[]).join(' '))+' '+((m.brand_ru||[]).join(' '))).toLowerCase();
+    return hay.indexOf(medQuery)>=0;
+  }
+  function renderMedList(){
+    var host=document.getElementById('ha-med-list'); if(!host) return;
+    var rows=(DATA.meds||[]).filter(medMatch);
+    if(!rows.length){ host.innerHTML='<div class="ha-empty">'+esc(tr(T.empty))+'</div>'; return; }
+    host.innerHTML = rows.map(function(m){
+      var kb=' <span class="med-kind '+esc(m.kind)+'">'+esc(tr(m.kind==='substance'?T.kind_substance:T.kind_medication))+'</span>';
+      return '<button class="ha-item'+(m.kind==='substance'?' substance':'')+(curMed&&curMed.slug===m.slug?' active':'')+'" onclick="haSelectMedication(\''+m.slug+'\')">'+
+        '<span class="ha-item-name">'+esc(nm(m))+(m.kind==='substance'?kb:'')+'</span><span class="ha-item-cat">'+esc(catLabel(m.category))+'</span></button>';
+    }).join('');
+  }
+  function organChips(slugs,polarity){
+    slugs=(slugs||[]).filter(Boolean); if(!slugs.length) return '';
+    return slugs.map(function(s){ return '<span class="med-organ '+polarity+'">'+esc(organLabel(s))+'</span>'; }).join('');
+  }
+  window.haSelectMedication=function(slug){
+    ensureData(function(){
+      var m=DATA.medBySlug[slug]; if(!m) return; curMed=m;
+      renderMedList();
+      medFocus(m.target_organs_positive||[], m.target_organs_negative||[]);
+      var isSub=m.kind==='substance';
+      var kb=' <span class="med-kind '+esc(m.kind)+'">'+esc(tr(isSub?T.kind_substance:T.kind_medication))+'</span>';
+      var h='<h4>'+esc(nm(m))+kb+'</h4><div class="ha-side-cat">'+esc(catLabel(m.category))+'</div>';
+      // brand names (market-localized: RU shows РФ brands, EN/ES show US brands)
+      var brands = (lang()==='ru' ? (m.brand_ru||[]) : (m.brand_us||[])); brands=brands.filter(Boolean);
+      if(brands.length){ h+='<div class="med-brand"><b>'+esc(tr(T.brands))+':</b> '+esc(brands.join(', '))+'</div>'; }
+      var posTxt=fld(m,'effect_positive'); var negTxt=fld(m,'effect_negative');
+      if(posTxt){ h+='<div class="med-eff pos"><span class="med-eff-h">🟢 '+esc(tr(isSub?T.eff_pos_sub:T.eff_pos))+'</span><p>'+esc(posTxt)+'</p></div>'; }
+      if(negTxt){ h+='<div class="med-eff neg"><span class="med-eff-h">🔴 '+esc(tr(isSub?T.eff_neg_sub:T.eff_neg))+'</span><p>'+esc(negTxt)+'</p></div>'; }
+      // anatomy of action: green/red organ chips (3D body is already tinted)
+      var pos=organChips(m.target_organs_positive,'pos'), neg=organChips(m.target_organs_negative,'neg');
+      if(pos||neg){ h+='<div class="ha-side-h">'+esc(tr(T.anatomy_impact))+'</div>';
+        if(pos){ h+='<div style="font-size:10px;color:#8df0ad;margin:0.2rem 0;">'+esc(tr(T.organs_pos))+'</div>'+pos; }
+        if(neg){ h+='<div style="font-size:10px;color:#ff9aa8;margin:0.35rem 0 0.2rem;">'+esc(tr(T.organs_neg))+'</div>'+neg; }
+      }
+      // prescribed for: diagnoses where this med is used → jump back to Diagnoses tab
+      var diagLinks=(DATA.diagsByMed[m.slug]||[]).slice().sort(function(a,b){ return (b.is_primary?1:0)-(a.is_primary?1:0); });
+      if(diagLinks.length){
+        h+='<div class="ha-side-h">'+esc(tr(T.prescribed_for))+'</div>';
+        h+=diagLinks.map(function(l){ var c=DATA.condBySlug[l.diagnosis_slug]; if(!c) return '';
+          var pt=l.is_primary?' <span class="med-kind medication">'+esc(tr(T.primary_tag))+'</span>':'';
+          return '<span class="ha-chip link" onclick="haGoCondition(\''+l.diagnosis_slug+'\')">'+esc(nm(c))+pt+'</span>'; }).join('');
+      }
+      var warn=fld(m,'warning'); if(warn){ h+='<div class="med-warn">⚠️ '+esc(warn)+'</div>'; }
+      // disclaimers (always) + substance-specific harm-reduction notice + resources
+      h+='<div class="med-disclaimer">'+esc(tr(T.med_disclaimer))+'</div>';
+      if(isSub){
+        h+='<div class="med-disclaimer substance">'+esc(tr(T.sub_disclaimer))+
+          ' <a href="https://www.who.int/health-topics/drugs-psychoactive" target="_blank" rel="noopener">'+esc(tr(T.sub_resources))+'</a></div>';
+      }
+      openDetail(h);
+    });
+  };
+  window.haGoMedication=function(slug){
+    haSwitchTab('medications');
+    setTimeout(function(){
+      var i=document.getElementById('ha-med-search'); if(i) i.value='';
+      medQuery=''; medCat=''; medKind='';
+      // reset kind + category filter chips to their "All" option
+      document.querySelectorAll('#ha-med-kinds .ha-cat').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-kind')===''); });
+      document.querySelectorAll('#ha-med-cats .ha-cat').forEach(function(b){ b.classList.toggle('active', !b.hasAttribute('data-cat')); });
+      renderMedList();
+      haSelectMedication(slug);
+    },40);
   };
 
   /* ── shared: region chip section (click = re-focus this region) ─────────── */
@@ -17749,19 +18006,24 @@ window.pbMove = pbMove;
 
   /* ── detail panel ───────────────────────────────────────────────────────── */
   function openDetail(html){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* drop a stale stacked region card from the previous selection */ var p=document.getElementById('ha-detail-panel'); var b=document.getElementById('ha-detail-body'); if(b) b.innerHTML=html; if(p) p.classList.add('open'); }
-  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); };
+  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; curMed=null; medClearTint(); if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); renderMedList&&renderMedList(); };
 
   /* ── static label localization (tabs, placeholders, headers) ────────────── */
   function localize(){
-    var map=[['ha-tab-anatomy',T.tab_anatomy],['ha-tab-functions',T.tab_functions],['ha-tab-conditions',T.tab_conditions]];
+    var map=[['ha-tab-anatomy',T.tab_anatomy],['ha-tab-functions',T.tab_functions],['ha-tab-conditions',T.tab_conditions],['ha-tab-medications',T.tab_medications]];
     map.forEach(function(p){ var el=document.getElementById(p[0]); if(el){ var sp=el.querySelector('span'); if(sp) sp.textContent=tr(p[1]); } });
     var fs=document.getElementById('ha-fn-search'); if(fs) fs.placeholder=tr(T.fn_search);
     var cs=document.getElementById('ha-cond-search'); if(cs) cs.placeholder=tr(T.cond_search);
+    var ms=document.getElementById('ha-med-search'); if(ms) ms.placeholder=tr(T.med_search);
+    var ml=document.querySelector('#ha-left-medications .ha-legend'); if(ml){ var sp=ml.querySelectorAll('span span'); if(sp[0]) sp[0].textContent=tr(T.med_legend_pos||{ru:'лечебный эффект',en:'therapeutic',es:'terapéutico'}); if(sp[1]) sp[1].textContent=tr(T.med_legend_neg||{ru:'побочный эффект',en:'side effect',es:'efecto adverso'}); }
     // rebuild category bars (labels are language-dependent)
     var fc=document.getElementById('ha-fn-cats'); if(fc) delete fc.dataset.built;
     var cc=document.getElementById('ha-cond-cats'); if(cc) delete cc.dataset.built;
+    var mk=document.getElementById('ha-med-kinds'); if(mk) delete mk.dataset.built;
+    var mc=document.getElementById('ha-med-cats'); if(mc) delete mc.dataset.built;
     if(loaded && activeTab==='functions') renderFnPanel();
     if(loaded && activeTab==='conditions') renderCondPanel();
+    if(loaded && activeTab==='medications') renderMedPanel();
   }
   document.addEventListener('langchange', function(){ localize(); });
   // localize once the tool DOM exists
