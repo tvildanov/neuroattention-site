@@ -37,6 +37,9 @@
 // v15: cache-bust for PR#103 (NeuroMap mobile fixes — custom-painted layer
 //      checkboxes, body-part anchors folded into layer 1, layer toggles stay
 //      visible when all layers are off, hub mini-calendar keeps its 7-col grid)
+// v30: cache-bust for PR#117 (Internal Field rename of «Anatomy» + new Diet
+//      sub-tab: 15 diet patterns, green/red 3D organ overlay, daily diet-event
+//      log onto the Personal Path). v28/v29 reserved for parallel PR#115/#116.
 // v11-v14: cache-bust for PR#102 (standalone NeuroMap — enable the «Ощущения»
 //      layer-1 toggle + sticky sensation bubbles glued to body-location nodes)
 // v10: cache-bust for PR#101 (global arc-radius clamp — kills the pre-existing
@@ -63,7 +66,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v27';
+var CACHE_NAME = 'na-practices-v30';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
