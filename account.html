@@ -1948,8 +1948,15 @@ a.dash-tab:hover { text-decoration:none; }
           <button id="nm-ni-chains-toggle" onclick="nmToggleChainList()" style="display:none;margin-top:0.9rem;width:100%;text-align:left;padding:0.55rem 0.75rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:var(--text-primary);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;"></button>
           <div id="nm-ni-chain-list" style="display:none;margin-top:0.6rem;flex-direction:column;gap:0.3rem;"></div>
           <div id="nm-ni-mini" style="display:none;margin-top:0.8rem;">
-            <p id="nm-ni-mini-title" style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;"></p>
-            <canvas id="nm-ni-mini-canvas" width="520" height="150" style="width:100%;height:150px;border-radius:10px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);"></canvas>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin:0 0 0.4rem;">
+              <p id="nm-ni-mini-title" style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"></p>
+              <button id="nm-ni-mini-mode" onclick="nmToggleMini3D()" style="flex:none;padding:3px 10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.04);color:var(--text-primary);border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:0.04em;">3D</button>
+            </div>
+            <div style="position:relative;">
+              <canvas id="nm-ni-mini-canvas" width="520" height="150" style="width:100%;height:250px;border-radius:10px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);display:block;"></canvas>
+              <div id="nm-ni-mini-3d" style="display:none;width:100%;height:250px;border-radius:10px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);overflow:hidden;"></div>
+              <div id="nm-ni-mini-tip" style="display:none;position:absolute;pointer-events:none;z-index:6;padding:0.35rem 0.55rem;border-radius:8px;background:rgba(10,12,18,0.94);border:1px solid rgba(255,255,255,0.14);font-size:11px;color:var(--text-primary);max-width:180px;line-height:1.35;white-space:nowrap;"></div>
+            </div>
           </div>
           <div id="nm-ni-admin" style="margin-top:0.9rem;"></div>
         </div>
@@ -3390,6 +3397,7 @@ var RPG_I18N = {
     // PR#114 node info-panel (chains)
     node_occurs_times: 'appears {n}×',
     nm_chains_label: 'Chains',
+    nm_no_chains: 'No chains recorded for this node yet.',
     nm_chain_minview: 'Mini-view',
     // Drill-down panel
     connected_nodes: 'Connected nodes',
@@ -3584,6 +3592,7 @@ var RPG_I18N = {
     // PR#114 panel de info del nodo (cadenas)
     node_occurs_times: 'aparece {n}×',
     nm_chains_label: 'Cadenas',
+    nm_no_chains: 'Aún no hay cadenas registradas para este nodo.',
     nm_chain_minview: 'Mini-vista',
     // Drill-down panel
     connected_nodes: 'Nodos conectados',
@@ -9537,9 +9546,17 @@ function _nmEscHtml(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c
 // chain the user clicks. This is the gestalt the split-on-render rollback restores:
 // one node, many chains, all visible in one place.
 var nmNiNode=null, nmNiChains=null, nmNiChainOpen=false;
+// PR#120: the currently-open chain (raw /chain payload) so the 2D/3D toggle can
+// re-render the SAME chain in the other mode; the 3D handle + camera-orbit RAF; the
+// 2D hit map for hover tooltips; and the chain hovered in the list (highlighted on
+// the main NeuroMap). 3D preference persists across sessions.
+var nmNiChainData=null, nmNiMini3DGraph=null, nmNiMini3DRot=null, nmNiMiniHit=null, nmNiMiniHover=null;
+var nmHoverChainId=null;
+var nmNi3D=false; try{ nmNi3D=(localStorage.getItem('nm_mini_3d')==='1'); }catch(e){}
 function nmCloseNodeInfo(){
   var p=document.getElementById('nm-node-info'); if(p) p.style.display='none';
-  nmNiNode=null; nmNiChains=null; nmNiChainOpen=false;
+  nmNiNode=null; nmNiChains=null; nmNiChainOpen=false; nmNiChainData=null;
+  nmHoverChainId=null; nmDestroyMini3D();
 }
 function nmFmtChainTime(iso){
   var d=new Date(iso); if(isNaN(d.getTime())) return '';
@@ -9554,10 +9571,14 @@ function nmShowNodeInfo(node){
   var col=((typeof nmGetNodeColor==='function')?nmGetNodeColor(node):'rgba(180,190,210,')+'1)';
   var valLabel=node.valence<0?(rpgT('hover_negative')||'негатив'):(node.valence>0?(rpgT('hover_positive')||'позитив'):(rpgT('hover_neutral')||'нейтрал'));
   var occurs=(rpgT('node_occurs_times')||'встречается {n} раз').replace('{n}', node.count||1);
+  // PR#120: the «appears N times» count is itself a click target that expands the
+  // chain list (the count IS the entry point into the gestalt). The dedicated
+  // «▾ Цепочки N» button below stays as the explicit affordance.
+  var occursHtml='<span id="nm-ni-occurs" onclick="nmToggleChainList()" style="cursor:pointer;border-bottom:1px dashed rgba(255,255,255,0.35);color:var(--accent-cyan,#5cc8ff);" title="'+(rpgT('nm_chains_label')||'Цепочки')+'">'+_nmEscHtml(occurs)+' <span id="nm-ni-occurs-chev" style="font-size:10px;">▾</span></span>';
   var dot='<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+col+';margin-right:8px;vertical-align:middle;box-shadow:0 0 8px '+col+';"></span>';
   document.getElementById('nm-ni-header').innerHTML=
     '<div style="font-size:15px;font-weight:600;color:#fff;padding-right:24px;">'+dot+_nmEscHtml(nmTranslate(node.label))+'</div>'+
-    '<div style="color:var(--text-dim,#8a93a6);font-size:12px;margin-top:0.35rem;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · '+occurs+'</div>';
+    '<div style="color:var(--text-dim,#8a93a6);font-size:12px;margin-top:0.35rem;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · '+occursHtml+'</div>';
   var admin=document.getElementById('nm-ni-admin'); admin.innerHTML='';
   if(nmIsSuperadmin() && node.dbId){
     admin.innerHTML='<button onclick="nmDeleteNode(\''+_nmEscHtml(node.dbId)+'\')" style="width:100%;padding:7px 0;border:1px solid rgba(240,90,90,0.5);background:rgba(240,90,90,0.12);color:#ff8a8a;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🗑 '+(rpgT('node_delete_btn')||'Удалить узел')+'</button>';
@@ -9566,6 +9587,7 @@ function nmShowNodeInfo(node){
   document.getElementById('nm-ni-chain-list').innerHTML='';
   document.getElementById('nm-ni-mini').style.display='none';
   document.getElementById('nm-ni-chains-toggle').style.display='none';
+  nmNiChainData=null; nmDestroyMini3D();
   panel.style.display='block';
   nmFetchNodeChains(node.dbId);
 }
@@ -9600,55 +9622,202 @@ function nmToggleChainList(){
 }
 function nmRenderChainList(){
   var list=document.getElementById('nm-ni-chain-list');
-  if(!nmNiChains||!nmNiChains.length){ list.style.display='none'; return; }
+  if(!nmNiChains||!nmNiChains.length){
+    // PR#120: a node with no recorded chains (legacy/pre-migration) is not an error —
+    // say so plainly instead of showing an empty void that reads as "broken".
+    list.innerHTML='<div style="padding:0.5rem 0.6rem;font-size:12px;color:var(--text-dim,#8a93a6);">'+(rpgT('nm_no_chains')||'Цепочки пока не записаны для этого узла.')+'</div>';
+    list.style.display='flex'; return;
+  }
   var html='';
   nmNiChains.forEach(function(c){
     var preview=(c.nodes||[]).map(function(x){ return _nmEscHtml(nmTranslate(x.label)); }).join(' → ');
-    html+='<div onclick="nmOpenChainMini(\''+c.id+'\')" style="cursor:pointer;padding:0.45rem 0.6rem;border:1px solid rgba(255,255,255,0.06);border-radius:9px;background:rgba(255,255,255,0.02);font-size:12px;line-height:1.45;display:flex;gap:0.55rem;align-items:baseline;">'+
+    var srcTag=c.source?('<span style="opacity:0.55;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">'+_nmEscHtml(c.source)+'</span>'):'';
+    html+='<div id="nm-ch-row-'+c.id+'" onclick="nmOpenChainMini(\''+c.id+'\')" onmouseenter="nmHoverChain(\''+c.id+'\')" onmouseleave="nmHoverChain(null)" style="cursor:pointer;padding:0.45rem 0.6rem;border:1px solid rgba(255,255,255,0.06);border-radius:9px;background:rgba(255,255,255,0.02);font-size:12px;line-height:1.45;display:flex;gap:0.55rem;align-items:baseline;transition:background 0.12s,border-color 0.12s;">'+
       '<span style="color:var(--accent-cyan,#5cc8ff);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600;">'+_nmEscHtml(nmFmtChainTime(c.started_at))+'</span>'+
-      '<span style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;">'+preview+'</span></div>';
+      '<span style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;flex:1;">'+preview+'</span>'+srcTag+'</div>';
   });
   list.innerHTML=html;
   list.style.display='flex';
 }
+// Highlight the hovered chain's nodes/edges on the MAIN NeuroMap (lightweight: store
+// the chain id, the draw loops brighten any edge carrying it). Cleared on leave.
+var nmHoverChainNodes=null;
+function nmHoverChain(chainId){
+  nmHoverChainId=chainId?String(chainId):null;
+  nmHoverChainNodes=null;
+  if(nmHoverChainId && nmNiChains){
+    var ch=nmNiChains.find(function(c){ return String(c.id)===nmHoverChainId; });
+    if(ch && ch.node_ids){ nmHoverChainNodes={}; ch.node_ids.forEach(function(id){ nmHoverChainNodes[String(id)]=true; }); }
+  }
+  var rows=document.querySelectorAll('[id^="nm-ch-row-"]');
+  rows.forEach(function(r){ var on=(r.id==='nm-ch-row-'+nmHoverChainId); r.style.background=on?'rgba(92,200,255,0.10)':'rgba(255,255,255,0.02)'; r.style.borderColor=on?'rgba(92,200,255,0.35)':'rgba(255,255,255,0.06)'; });
+  // nudge a redraw so the highlight shows even when the sim has cooled — but only if no
+  // loop is already running, else we'd spawn a duplicate RAF chain.
+  try{ if(!nm3DMode && !nmAnimFrame){ var c=document.getElementById('nm-canvas'); if(c && typeof nmSimulate==='function') nmSimulate(c, 0.0001); } }catch(e){}
+}
 function nmOpenChainMini(chainId){
   var token=naGetToken(); var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  // mark the active row
+  var rows=document.querySelectorAll('[id^="nm-ch-row-"]');
+  rows.forEach(function(r){ r.style.boxShadow=(r.id==='nm-ch-row-'+chainId)?'0 0 0 1px rgba(92,200,255,0.5) inset':'none'; });
   fetch(base+'/api/neuromap/chain/'+encodeURIComponent(chainId),{headers:{'Authorization':'Bearer '+token}})
     .then(function(r){ return r.json(); })
     .then(function(j){
       if(!j||!j.ok) return;
+      nmNiChainData=j;
       var mini=document.getElementById('nm-ni-mini');
       var preview=(j.nodes||[]).map(function(x){ return nmTranslate(x.label); }).join(' → ');
       document.getElementById('nm-ni-mini-title').textContent=nmFmtChainTime(j.chain&&j.chain.started_at)+' · '+preview;
       mini.style.display='block';
-      nmDrawChainMini(j);
+      nmRenderMini();
     }).catch(function(e){ console.warn('[NM] chain failed:',e); });
+}
+// Mode dispatcher: draws the currently-open chain in 2D or 3D per nmNi3D.
+function nmRenderMini(){
+  if(!nmNiChainData) return;
+  var btn=document.getElementById('nm-ni-mini-mode');
+  if(btn) btn.textContent=nmNi3D?'2D':'3D';
+  var canvas=document.getElementById('nm-ni-mini-canvas');
+  var box3d=document.getElementById('nm-ni-mini-3d');
+  if(nmNi3D){
+    if(canvas) canvas.style.display='none';
+    if(box3d) box3d.style.display='block';
+    nmDrawChainMini3D(nmNiChainData);
+  } else {
+    nmDestroyMini3D();
+    if(box3d) box3d.style.display='none';
+    if(canvas) canvas.style.display='block';
+    nmDrawChainMini(nmNiChainData);
+  }
+}
+function nmToggleMini3D(){
+  nmNi3D=!nmNi3D;
+  try{ localStorage.setItem('nm_mini_3d', nmNi3D?'1':'0'); }catch(e){}
+  nmRenderMini();
+}
+// Map a chain node payload → an opaque rgba colour from the shared NeuroMap palette.
+function nmChainNodeColor(nd){
+  var valNum=(nd.valence==='negative')?-1:(nd.valence==='positive'?1:0);
+  var cn={type:nd.type,valence:valNum,metadata:nd.metadata||{},count:nd.count||1,label:nd.label};
+  cn._layer=(typeof nmNodeLayer==='function')?nmNodeLayer(cn):0;
+  return ((typeof nmGetNodeColor==='function')?nmGetNodeColor(cn):'rgba(180,190,210,')+'1)';
 }
 function nmDrawChainMini(data){
   var canvas=document.getElementById('nm-ni-mini-canvas'); if(!canvas) return;
   var ctx=canvas.getContext('2d');
-  var cssW=canvas.clientWidth||520, cssH=150;
+  var cssW=canvas.clientWidth||520, cssH=250;
   canvas.width=cssW*2; canvas.height=cssH*2; ctx.setTransform(2,0,0,2,0,0);
   ctx.clearRect(0,0,cssW,cssH);
-  var nodes=data.nodes||[]; if(!nodes.length) return;
-  var n=nodes.length, padX=42, usableW=Math.max(1,cssW-padX*2), midY=cssH*0.40;
-  var xs=[]; for(var i=0;i<n;i++){ xs.push(n===1?cssW/2:(padX+usableW*(i/(n-1)))); }
-  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1.5;
-  for(var e=0;e<n-1;e++){ ctx.beginPath(); ctx.moveTo(xs[e],midY); ctx.lineTo(xs[e+1],midY); ctx.stroke(); }
-  for(var k=0;k<n;k++){
-    var nd=nodes[k];
-    var valNum=(nd.valence==='negative')?-1:(nd.valence==='positive'?1:0);
-    var cn={type:nd.type,valence:valNum,metadata:nd.metadata||{},count:nd.count||1,label:nd.label};
-    cn._layer=(typeof nmNodeLayer==='function')?nmNodeLayer(cn):0;
-    var col=((typeof nmGetNodeColor==='function')?nmGetNodeColor(cn):'rgba(180,190,210,')+'1)';
-    var hi=(nmNiNode && String(nd.id)===String(nmNiNode.dbId));
-    ctx.beginPath(); ctx.arc(xs[k],midY,hi?12:9,0,Math.PI*2);
-    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=hi?16:6; ctx.fill(); ctx.shadowBlur=0;
-    if(hi){ ctx.lineWidth=2.5; ctx.strokeStyle='#fff'; ctx.stroke(); }
-    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font=(hi?'bold ':'')+'11px sans-serif'; ctx.textAlign='center';
-    var lbl=nmTranslate(nd.label); if(lbl.length>15) lbl=lbl.slice(0,14)+'…';
-    ctx.fillText(lbl, xs[k], midY+26+(k%2)*17);
+  var nodes=data.nodes||[]; if(!nodes.length){ nmNiMiniHit=null; return; }
+  // Lay the chain out in append (position) order, left→right, gently snaking on Y so a
+  // long flow stays readable. position is authoritative = the order it was felt.
+  var n=nodes.length, padX=42, usableW=Math.max(1,cssW-padX*2), baseY=cssH*0.42, amp=Math.min(38,cssH*0.16);
+  var pts=[];
+  for(var i=0;i<n;i++){
+    var x=(n===1?cssW/2:(padX+usableW*(i/(n-1))));
+    var y=baseY+(n>1?Math.sin(i/(n-1)*Math.PI)*amp*(i%2?-1:1)*0.6:0);
+    pts.push({x:x,y:y});
   }
+  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1.5;
+  for(var e=0;e<n-1;e++){ ctx.beginPath(); ctx.moveTo(pts[e].x,pts[e].y); ctx.lineTo(pts[e+1].x,pts[e+1].y); ctx.stroke(); }
+  var hit=[];
+  for(var k=0;k<n;k++){
+    var nd=nodes[k]; var col=nmChainNodeColor(nd);
+    var hi=(nmNiNode && String(nd.id)===String(nmNiNode.dbId));
+    var hov=(nmNiMiniHover===k);
+    var r=hi?12:9; if(hov) r+=2;
+    ctx.beginPath(); ctx.arc(pts[k].x,pts[k].y,r,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=(hi||hov)?16:6; ctx.fill(); ctx.shadowBlur=0;
+    if(hi||hov){ ctx.lineWidth=2.5; ctx.strokeStyle='#fff'; ctx.stroke(); }
+    // step number badge — makes the "order it was entered" explicit
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(k+1), pts[k].x, pts[k].y);
+    ctx.textBaseline='alphabetic';
+    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font=(hi?'bold ':'')+'11px sans-serif';
+    var lbl=nmTranslate(nd.label); if(lbl.length>15) lbl=lbl.slice(0,14)+'…';
+    ctx.fillText(lbl, pts[k].x, pts[k].y+r+15+(k%2)*15);
+    hit.push({x:pts[k].x,y:pts[k].y,r:r+4,label:nmTranslate(nd.label),type:nd.type,idx:k});
+  }
+  nmNiMiniHit=hit;
+  nmBindMiniHover(canvas);
+}
+// Attach the 2D hover handler once (idempotent).
+function nmBindMiniHover(canvas){
+  if(canvas._nmHoverBound) return; canvas._nmHoverBound=true;
+  canvas.addEventListener('mousemove', function(ev){
+    if(nmNi3D || !nmNiMiniHit){ return; }
+    var rect=canvas.getBoundingClientRect();
+    var mx=ev.clientX-rect.left, my=ev.clientY-rect.top;
+    var found=null;
+    for(var i=0;i<nmNiMiniHit.length;i++){ var h=nmNiMiniHit[i]; if((mx-h.x)*(mx-h.x)+(my-h.y)*(my-h.y)<=h.r*h.r){ found=h; break; } }
+    var tip=document.getElementById('nm-ni-mini-tip');
+    if(found){
+      if(nmNiMiniHover!==found.idx){ nmNiMiniHover=found.idx; if(nmNiChainData) nmDrawChainMini(nmNiChainData); }
+      tip.textContent=(found.idx+1)+'. '+found.label;
+      tip.style.left=Math.min(rect.width-150, found.x+12)+'px'; tip.style.top=Math.max(2,found.y-32)+'px'; tip.style.display='block';
+      canvas.style.cursor='pointer';
+    } else {
+      if(nmNiMiniHover!==null){ nmNiMiniHover=null; if(nmNiChainData) nmDrawChainMini(nmNiChainData); }
+      tip.style.display='none'; canvas.style.cursor='default';
+    }
+  });
+  canvas.addEventListener('mouseleave', function(){
+    var tip=document.getElementById('nm-ni-mini-tip'); if(tip) tip.style.display='none';
+    if(nmNiMiniHover!==null){ nmNiMiniHover=null; if(nmNiChainData && !nmNi3D) nmDrawChainMini(nmNiChainData); }
+  });
+}
+// ── 3D mini-view: a ForceGraph3D instance (it bundles its own THREE, so it works even
+// when window.THREE is null) with the chain laid out as a FIXED straight line in
+// position order, edges between consecutive nodes, and a slow camera orbit. Toggling
+// back to 2D tears it down. ──
+function nmDestroyMini3D(){
+  if(nmNiMini3DRot){ cancelAnimationFrame(nmNiMini3DRot); nmNiMini3DRot=null; }
+  if(nmNiMini3DGraph){ try{ nmNiMini3DGraph._destructor && nmNiMini3DGraph._destructor(); }catch(e){} nmNiMini3DGraph=null; }
+  var box=document.getElementById('nm-ni-mini-3d'); if(box) box.innerHTML='';
+}
+function nmDrawChainMini3D(data){
+  var box=document.getElementById('nm-ni-mini-3d'); if(!box) return;
+  nmDestroyMini3D();
+  if(typeof ForceGraph3D==='undefined'){ // graceful fallback — no 3D lib → stay 2D
+    nmNi3D=false; try{ localStorage.setItem('nm_mini_3d','0'); }catch(e){}
+    nmRenderMini(); return;
+  }
+  var nodes=data.nodes||[]; if(!nodes.length) return;
+  var n=nodes.length, span=Math.max(1,n-1), step=44;
+  var gNodes=nodes.map(function(nd,i){
+    var col=nmChainNodeColor(nd);
+    var m=col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); var hex='#9aa6bb';
+    if(m) hex='#'+((1<<24)+(parseInt(m[1])<<16)+(parseInt(m[2])<<8)+parseInt(m[3])).toString(16).slice(1);
+    var hi=(nmNiNode && String(nd.id)===String(nmNiNode.dbId));
+    return { id:String(nd.id)+'@'+i, label:(i+1)+'. '+nmTranslate(nd.label), color:hi?'#ffffff':hex, _col:hex,
+             val:hi?7:5, fx:(i-span/2)*step, fy:0, fz:0 };
+  });
+  var gLinks=[]; for(var i=0;i<n-1;i++) gLinks.push({source:gNodes[i].id,target:gNodes[i+1].id});
+  var W=box.clientWidth||300, H=box.clientHeight||250;
+  var g=ForceGraph3D()(box)
+    .width(W).height(H).backgroundColor('rgba(0,0,0,0)')
+    .graphData({nodes:gNodes,links:gLinks})
+    .nodeLabel(function(nd){ return nd.label; })
+    .nodeColor(function(nd){ return nd.color; })
+    .nodeVal(function(nd){ return nd.val; })
+    .nodeOpacity(0.95)
+    .linkColor(function(){ return 'rgba(255,255,255,0.35)'; })
+    .linkWidth(1.2)
+    .linkDirectionalArrowLength(4).linkDirectionalArrowRelPos(1)
+    .cooldownTicks(0)
+    .showNavInfo(false);
+  try{ g.d3Force('charge', null); g.d3Force('link', null); g.d3Force('center', null); }catch(e){}
+  nmNiMini3DGraph=g;
+  // Frame the chain, then orbit the camera slowly around it.
+  var dist=Math.max(120, span*step*0.9+90);
+  try{ g.cameraPosition({x:0,y:span*step*0.25,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
+  var ang=0;
+  function spin(){
+    ang+=0.0045;
+    try{ g.cameraPosition({ x:Math.sin(ang)*dist, y:span*step*0.18, z:Math.cos(ang)*dist }); }catch(e){}
+    nmNiMini3DRot=requestAnimationFrame(spin);
+  }
+  nmNiMini3DRot=requestAnimationFrame(spin);
 }
 function nmDeleteNode(dbId){
   if(!dbId) return;
@@ -10127,10 +10296,14 @@ function nmSimulate(canvas, initAlpha){
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
       var ec=nmGetEdgeColor(s,t);
       var edgeAlpha=(0.08+Math.min(l.count*0.06,0.25))*linkFresh;
+      // PR#120: when a chain is hovered in the info-panel list, brighten every edge it
+      // carries (chain_ids ride on the v3 links) so the user sees that one flow lit up
+      // on the full NeuroMap.
+      var hlChain=(nmHoverChainId && l.chain_ids && l.chain_ids.map(String).indexOf(nmHoverChainId)>=0);
       ctx.beginPath();
       ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
-      ctx.strokeStyle='rgba('+ec.r+','+ec.g+','+ec.b+','+edgeAlpha+')';
-      ctx.lineWidth=Math.max(1.5, Math.min(6, Math.log(l.count+1)*2));
+      ctx.strokeStyle=hlChain?'rgba(92,200,255,0.95)':('rgba('+ec.r+','+ec.g+','+ec.b+','+edgeAlpha+')');
+      ctx.lineWidth=hlChain?Math.max(3,Math.min(7,Math.log(l.count+1)*2.4)):Math.max(1.5, Math.min(6, Math.log(l.count+1)*2));
       ctx.stroke();
       // Arrowhead at target end
       var dx=t.x-s.x,dy=t.y-s.y;
@@ -10205,6 +10378,13 @@ function nmSimulate(canvas, initAlpha){
         ctx.save();
         ctx.beginPath();ctx.arc(n.x,n.y,drawR+(n._hlFocus?9:6)+2*Math.sin(animT*3),0,Math.PI*2);
         ctx.strokeStyle='rgba(94,224,255,'+hp+')';ctx.lineWidth=n._hlFocus?3:2;ctx.stroke();
+        ctx.restore();
+      }
+      // PR#120: ring the nodes of the chain hovered in the info-panel list.
+      if(nmHoverChainNodes && nmHoverChainNodes[String(n.dbId||n.id)]){
+        ctx.save();
+        ctx.beginPath();ctx.arc(n.x,n.y,drawR+5,0,Math.PI*2);
+        ctx.strokeStyle='rgba(92,200,255,0.9)';ctx.lineWidth=2.5;ctx.stroke();
         ctx.restore();
       }
       // Label: show for top-N or all depending on mode
