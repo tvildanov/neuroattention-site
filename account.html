@@ -836,6 +836,7 @@ a.dash-tab:hover { text-decoration:none; }
     <a class="dash-tab" href="#evolution" data-tab="evolution" data-i18n="a.tabs.evolution">Путь развития</a>
     <a class="dash-tab" href="#domunity" data-tab="domunity" data-i18n="a.tabs.domunity">DOMunity <span id="domunity-unread-badge" style="display:none;background:var(--accent-rose);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;"></span></a>
     <a class="dash-tab" href="#tools" data-tab="tools" data-i18n="a.tabs.tools">Инструменты</a>
+    <a class="dash-tab" href="#diagnoses" data-tab="diagnoses" data-i18n="a.tabs.diagnoses">Диагнозы</a>
     <a class="dash-tab" href="#enroll" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</a>
     <a class="dash-tab" href="#administration" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</a>
   </div>
@@ -2007,6 +2008,42 @@ a.dash-tab:hover { text-decoration:none; }
         <!-- Result screen -->
         <div id="ab-result" style="display:none;"></div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Diagnoses (PR#115) -->
+  <div class="tab-panel" id="tab-diagnoses">
+    <div class="dash-grid">
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <h2 style="margin:0 0 0.4rem;font-size:20px;" data-i18n="a.dx.title">Диагнозы</h2>
+        <p style="margin:0 0 0.75rem;font-size:13px;color:var(--text-muted);line-height:1.5;" data-i18n="a.dx.intro">Справочник состояний с анатомической визуализацией зон влияния. Отметьте свои диагнозы, чтобы собрать их в личной папке и приложить медицинские документы.</p>
+        <div style="display:flex;gap:8px;align-items:flex-start;background:rgba(232,170,72,0.08);border:1px solid rgba(232,170,72,0.25);border-radius:10px;padding:0.6rem 0.85rem;">
+          <span style="font-size:16px;line-height:1.2;">⚠️</span>
+          <p style="margin:0;font-size:12px;color:var(--text-muted);line-height:1.5;" data-i18n="a.dx.disclaimer">Эта информация для образовательных целей. Не заменяет консультацию врача.</p>
+        </div>
+      </div>
+
+      <!-- "Мои диагнозы" folder — shown only when the user has claimed ≥1 -->
+      <div class="dash-card glass-card-elevated" id="dx-my-folder" style="grid-column:span 12;display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+            <span>🗂</span><span data-i18n="a.dx.my_folder">Мои диагнозы</span>
+            <span id="dx-my-count" style="background:var(--accent-cyan);color:#04121a;border-radius:10px;padding:1px 9px;font-size:11px;font-weight:700;">0</span>
+          </h3>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button id="dx-combined-btn" class="btn btn-ghost" style="font-size:12px;display:none;" onclick="dxOpenCombined()" data-i18n="a.dx.combined_btn">Сводное воздействие</button>
+            <button class="btn btn-ghost" style="font-size:12px;" onclick="dxOpenAllDocs()" data-i18n="a.dx.all_docs_btn">Развернуть список документов</button>
+          </div>
+        </div>
+        <div id="dx-my-list" style="margin-top:0.85rem;display:flex;flex-direction:column;gap:0.6rem;"></div>
+      </div>
+
+      <!-- Full catalog -->
+      <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+        <div id="dx-catalog" style="display:flex;flex-direction:column;gap:1.25rem;">
+          <p style="font-size:13px;color:var(--text-dim);" data-i18n="a.dx.loading">Загрузка справочника…</p>
+        </div>
       </div>
     </div>
   </div>
@@ -4925,6 +4962,10 @@ function switchTab(id){
     }
     evoMaybeShowCollective();
   }
+  // PR#115: render the Diagnoses catalog + my-folder when its tab becomes visible
+  if(id==='diagnoses'){
+    setTimeout(function(){ try { if(window.dxRender) dxRender(); } catch(e){ console.warn('dx render:', e); } }, 30);
+  }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -5587,6 +5628,379 @@ function toolsExpandActive(){
   });
 }
 window.toolsExpandActive = toolsExpandActive;
+
+/* ============================================================================
+   PR#115 — Diagnoses. A static clinical catalog (data/diagnoses.json, tri-lingual)
+   + a private "My diagnoses" folder (claim/unclaim), a combined anatomical overlay
+   for multiple claimed diagnoses, and medical-document upload (R2-backed) per
+   diagnosis. Everything user-scoped; superadmin reads via /api/admin/users/:id/*.
+   Anatomy is a self-contained schematic SVG body map (no 3D-atlas dependency).
+   ============================================================================ */
+(function(){
+  var DX = { data:null, mine:[], byId:{} };
+  function dxLang(){ return (typeof getLang==='function') ? getLang() : 'ru'; }
+  function dxT(k,f){ return (typeof window.t==='function') ? window.t(k,f) : (f||k); }
+  function dxApi(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
+  function dxTok(){ return (typeof naGetToken==='function') ? naGetToken() : localStorage.getItem('na_token'); }
+  function dxIsSuper(){ return !!(window.currentUser && currentUser.serverRole==='superadmin'); }
+  function dxL(obj){ if(!obj) return ''; var l=dxLang(); return obj[l] || obj.ru || obj.en || ''; }
+  function dxEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function dxFmtDate(d){ if(!d) return ''; try { return new Date(d).toLocaleDateString(getLocale()); } catch(e){ return String(d).slice(0,10); } }
+
+  // ── Region catalog: schematic marker geometry on a 260×560 viewBox ──
+  var DX_REGIONS = {
+    brain:        { kind:'ell', cx:130, cy:46, rx:22, ry:18, label:{ru:'Головной мозг',en:'Brain',es:'Cerebro'} },
+    head_ent:     { kind:'ell', cx:130, cy:74, rx:16, ry:12, label:{ru:'ЛОР-органы (нос, пазухи)',en:'ENT (nose, sinuses)',es:'ORL (nariz, senos)'} },
+    thyroid:      { kind:'ell', cx:130, cy:101, rx:13, ry:8,  label:{ru:'Щитовидная железа',en:'Thyroid',es:'Tiroides'} },
+    lungs:        { kind:'pair',a:{cx:108,cy:168},b:{cx:152,cy:168},rx:16,ry:27, label:{ru:'Лёгкие',en:'Lungs',es:'Pulmones'} },
+    mediastinum:  { kind:'ell', cx:130, cy:160, rx:9,  ry:30, label:{ru:'Средостение / тимус',en:'Mediastinum / thymus',es:'Mediastino / timo'} },
+    breast:       { kind:'pair',a:{cx:112,cy:188},b:{cx:148,cy:188},rx:11,ry:11, label:{ru:'Молочные железы',en:'Breasts',es:'Mamas'} },
+    stomach:      { kind:'ell', cx:117, cy:226, rx:17, ry:13, label:{ru:'Желудок',en:'Stomach',es:'Estómago'} },
+    spleen:       { kind:'ell', cx:152, cy:222, rx:9,  ry:9,  label:{ru:'Селезёнка',en:'Spleen',es:'Bazo'} },
+    kidneys:      { kind:'pair',a:{cx:110,cy:252},b:{cx:150,cy:252},rx:8,ry:13, label:{ru:'Почки',en:'Kidneys',es:'Riñones'} },
+    colon:        { kind:'ell', cx:130, cy:285, rx:30, ry:21, label:{ru:'Толстый кишечник',en:'Colon',es:'Colon'} },
+    prostate:     { kind:'ell', cx:130, cy:332, rx:9,  ry:8,  label:{ru:'Предстательная железа',en:'Prostate',es:'Próstata'} },
+    bone_marrow:  { kind:'ell', cx:130, cy:326, rx:27, ry:14, label:{ru:'Костный мозг (таз, кости)',en:'Bone marrow (pelvis, bones)',es:'Médula ósea (pelvis, huesos)'} },
+    lymph_nodes:  { kind:'dots',pts:[[118,98],[142,98],[86,152],[174,152],[112,316],[148,316]],r:5, label:{ru:'Лимфоузлы',en:'Lymph nodes',es:'Ganglios linfáticos'} },
+    skin:         { kind:'skin', label:{ru:'Кожа (весь покров)',en:'Skin (whole body)',es:'Piel (todo el cuerpo)'} },
+    neuromuscular:{ kind:'dots',pts:[[88,150],[172,150],[88,360],[172,360]],r:5, label:{ru:'Нервно-мышечные синапсы',en:'Neuromuscular junctions',es:'Uniones neuromusculares'} }
+  };
+
+  // Build the body-map SVG for a union of region keys.
+  function dxBodyMap(regionKeys, accent){
+    accent = accent || '120,200,235';
+    var set = {}; (regionKeys||[]).forEach(function(k){ set[k]=true; });
+    var sil = 'rgba(255,255,255,0.06)', silStroke = set.skin ? ('rgba('+accent+',0.9)') : 'rgba(255,255,255,0.16)';
+    var swid = set.skin ? 3 : 1.4;
+    // Schematic silhouette: head, neck, torso, arms, pelvis, legs.
+    var body = ''
+      + '<circle cx="130" cy="60" r="34" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<rect x="120" y="88" width="20" height="20" rx="6" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<path d="M82 116 Q130 100 178 116 L168 300 Q130 312 92 300 Z" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<path d="M82 120 L60 130 L52 300 L70 304 L92 150 Z" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<path d="M178 120 L200 130 L208 300 L190 304 L168 150 Z" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<path d="M92 300 Q130 314 168 300 L160 348 L100 348 Z" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<rect x="100" y="346" width="28" height="200" rx="12" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>'
+      + '<rect x="132" y="346" width="28" height="200" rx="12" fill="'+sil+'" stroke="'+silStroke+'" stroke-width="'+swid+'"/>';
+    var marks = '';
+    function ell(cx,cy,rx,ry){ return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'" fill="rgba('+accent+',0.55)" stroke="rgba('+accent+',1)" stroke-width="1.5"><animate attributeName="opacity" values="0.6;1;0.6" dur="2.4s" repeatCount="indefinite"/></ellipse>'; }
+    Object.keys(DX_REGIONS).forEach(function(key){
+      if(!set[key]) return; var r = DX_REGIONS[key];
+      if(r.kind==='ell') marks += ell(r.cx,r.cy,r.rx,r.ry);
+      else if(r.kind==='pair'){ marks += ell(r.a.cx,r.a.cy,r.rx,r.ry); marks += ell(r.b.cx,r.b.cy,r.rx,r.ry); }
+      else if(r.kind==='dots'){ r.pts.forEach(function(p){ marks += ell(p[0],p[1],r.r,r.r); }); }
+      // 'skin' is rendered via the silhouette stroke above
+    });
+    return '<svg viewBox="0 0 260 560" width="100%" style="max-width:200px;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="anatomy map">'+body+marks+'</svg>';
+  }
+
+  // Legend list for a set of regions.
+  function dxRegionLegend(regionKeys, accent){
+    accent = accent || '120,200,235';
+    var seen = {}, html = '';
+    (regionKeys||[]).forEach(function(k){
+      if(seen[k] || !DX_REGIONS[k]) return; seen[k]=true;
+      html += '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);">'
+        + '<span style="width:9px;height:9px;border-radius:50%;background:rgba('+accent+',0.85);"></span>'
+        + dxEsc(dxL(DX_REGIONS[k].label)) + '</span>';
+    });
+    return '<div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:6px;">'+html+'</div>';
+  }
+
+  function dxGroupAccent(group){
+    return group==='vasculitis' ? '232,170,72' : group==='thymus' ? '175,150,240' : '240,130,166';
+  }
+
+  // ── Data loading ──
+  function dxLoadCatalog(){
+    if(DX.data) return Promise.resolve(DX.data);
+    return fetch('data/diagnoses.json?v=1').then(function(r){ return r.json(); }).then(function(d){
+      DX.data = d; DX.byId = {}; (d.diagnoses||[]).forEach(function(dx){ DX.byId[dx.slug]=dx; }); return d;
+    });
+  }
+  function dxLoadMine(){
+    var tok = dxTok(); if(!tok){ DX.mine=[]; return Promise.resolve([]); }
+    return fetch(dxApi()+'/api/me/diagnoses', { headers:{ 'Authorization':'Bearer '+tok } })
+      .then(function(r){ return r.ok ? r.json() : {diagnoses:[]}; })
+      .then(function(d){ DX.mine = (d&&d.diagnoses)||[]; return DX.mine; })
+      .catch(function(){ DX.mine=[]; return []; });
+  }
+  function dxMineSlugs(){ var m={}; DX.mine.forEach(function(x){ m[x.diagnosis_slug]=x; }); return m; }
+
+  // ── Render ──
+  window.dxRender = function(){
+    var cat = document.getElementById('dx-catalog'); if(!cat) return;
+    Promise.all([dxLoadCatalog(), dxLoadMine()]).then(function(){
+      dxRenderMine(); dxRenderCatalog();
+    }).catch(function(e){
+      cat.innerHTML = '<p style="color:var(--accent-rose);font-size:13px;">'+dxEsc(dxT('a.dx.load_error','Не удалось загрузить справочник.'))+'</p>';
+      console.warn('dx load:', e);
+    });
+  };
+
+  function dxRenderCatalog(){
+    var cat = document.getElementById('dx-catalog'); if(!cat || !DX.data) return;
+    var mine = dxMineSlugs();
+    var html = '';
+    (DX.data.groups||[]).forEach(function(g){
+      var items = (DX.data.diagnoses||[]).filter(function(d){ return d.group===g.slug; });
+      if(!items.length) return;
+      html += '<div><h3 style="margin:0 0 0.6rem;font-size:14px;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.06em;">'+dxEsc(dxL(g.name))+'</h3>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:0.75rem;">';
+      items.forEach(function(d){
+        var claimed = !!mine[d.slug]; var accent = dxGroupAccent(d.group);
+        html += '<button onclick="dxOpenDetail(\''+d.slug+'\')" style="text-align:left;cursor:pointer;background:rgba(255,255,255,0.03);border:1px solid '+(claimed?'rgba('+accent+',0.5)':'rgba(255,255,255,0.08)')+';border-radius:12px;padding:0.85rem;display:flex;gap:0.7rem;align-items:center;font-family:inherit;">'
+          + '<div style="flex-shrink:0;width:46px;">'+dxBodyMap(d.regions, accent)+'</div>'
+          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--text-primary);line-height:1.3;">'+dxEsc(dxL(d.name))+(claimed?' <span title="'+dxEsc(dxT('a.dx.mine_badge','В моих диагнозах'))+'">✓</span>':'')+'</div>'
+          + (dxL(d.aka)?'<div style="font-size:11px;color:var(--text-dim);">'+dxEsc(dxL(d.aka))+'</div>':'')
+          + '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">ICD-10: '+dxEsc(d.icd10||'')+'</div></div>'
+          + '</button>';
+      });
+      html += '</div></div>';
+    });
+    cat.innerHTML = html;
+  }
+
+  function dxRenderMine(){
+    var folder = document.getElementById('dx-my-folder');
+    var list = document.getElementById('dx-my-list');
+    var countEl = document.getElementById('dx-my-count');
+    var combinedBtn = document.getElementById('dx-combined-btn');
+    if(!folder || !list) return;
+    if(!DX.mine.length){ folder.style.display='none'; return; }
+    folder.style.display='';
+    if(countEl) countEl.textContent = DX.mine.length;
+    if(combinedBtn) combinedBtn.style.display = DX.mine.length>1 ? '' : 'none';
+    var html = '';
+    DX.mine.forEach(function(m){
+      var d = DX.byId[m.diagnosis_slug]; if(!d) return; var accent = dxGroupAccent(d.group);
+      html += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba('+accent+',0.35);border-radius:12px;padding:0.8rem;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+        + '<div><div style="font-size:14px;font-weight:600;">'+dxEsc(dxL(d.name))+'</div>'
+        + (m.diagnosed_at?'<div style="font-size:11px;color:var(--text-dim);">'+dxEsc(dxT('a.dx.diagnosed_on','Дата постановки'))+': '+dxFmtDate(m.diagnosed_at)+'</div>':'')
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">📎 '+(m.file_count||0)+' '+dxEsc(dxT('a.dx.docs_suffix','документов'))+'</div></div>'
+        + '<div style="display:flex;gap:4px;flex-shrink:0;">'
+        + '<button class="btn btn-ghost" style="font-size:11px;padding:0.3rem 0.6rem;" onclick="dxOpenUpload('+m.id+',\''+d.slug+'\')">＋ '+dxEsc(dxT('a.dx.upload_btn','Загрузить документ'))+'</button>'
+        + '<button class="btn btn-ghost" style="font-size:11px;padding:0.3rem 0.6rem;" onclick="dxOpenDetail(\''+d.slug+'\')">'+dxEsc(dxT('a.dx.view_btn','Открыть'))+'</button>'
+        + '</div></div>'
+        + '<div id="dx-files-'+m.id+'" style="margin-top:0.5rem;"></div>'
+        + '</div>';
+    });
+    list.innerHTML = html;
+  }
+
+  // ── Diagnosis detail modal ──
+  function dxModalShell(inner, maxw){
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px;';
+    wrap.onclick = function(e){ if(e.target===wrap) wrap.remove(); };
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-card,#0e1620);border:1px solid rgba(255,255,255,0.1);border-radius:16px;max-width:'+(maxw||'560px')+';width:100%;padding:1.4rem;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+    card.innerHTML = inner;
+    wrap.appendChild(card); document.body.appendChild(wrap);
+    return wrap;
+  }
+
+  window.dxOpenDetail = function(slug){
+    var d = DX.byId[slug]; if(!d) return; var accent = dxGroupAccent(d.group);
+    var mine = dxMineSlugs(); var claimed = mine[slug];
+    function sec(title, arr){
+      if(!arr || !arr.length) return '';
+      var li = arr.map(function(x){ return '<li style="margin-bottom:3px;">'+dxEsc(x)+'</li>'; }).join('');
+      return '<div style="margin-top:0.9rem;"><div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:0.3rem;">'+title+'</div><ul style="margin:0;padding-left:1.1rem;font-size:13px;color:var(--text-muted);line-height:1.5;">'+li+'</ul></div>';
+    }
+    var inner = ''
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">'
+      + '<div><h2 style="margin:0;font-size:19px;">'+dxEsc(dxL(d.name))+'</h2>'
+      + (dxL(d.aka)?'<div style="font-size:12px;color:var(--text-dim);">'+dxEsc(dxL(d.aka))+'</div>':'')
+      + '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">ICD-10: '+dxEsc(d.icd10||'')+'</div></div>'
+      + '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:16px;line-height:1;">✕</button></div>'
+      + '<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.9rem;align-items:flex-start;">'
+      + '<div style="flex:0 0 130px;">'+dxBodyMap(d.regions, accent)+'</div>'
+      + '<div style="flex:1;min-width:200px;"><p style="margin:0;font-size:13px;line-height:1.55;color:var(--text-muted);">'+dxEsc(dxL(d.summary))+'</p>'
+      + '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">'+dxEsc(dxT('a.dx.regions_label','Зоны влияния'))+':</div>'+dxRegionLegend(d.regions, accent)+'</div>'
+      + '</div>'
+      + sec(dxT('a.dx.symptoms','Основные симптомы'), dxL(d.symptoms))
+      + sec(dxT('a.dx.complications','Осложнения'), dxL(d.complications))
+      + '<div style="display:flex;gap:6px;align-items:flex-start;background:rgba(232,170,72,0.08);border:1px solid rgba(232,170,72,0.25);border-radius:10px;padding:0.55rem 0.75rem;margin-top:1rem;">'
+      + '<span style="font-size:14px;">⚠️</span><p style="margin:0;font-size:11px;color:var(--text-muted);line-height:1.5;">'+dxEsc(dxT('a.dx.disclaimer','Эта информация для образовательных целей. Не заменяет консультацию врача.'))+'</p></div>'
+      + '<div style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end;">'
+      + (claimed
+          ? '<button class="btn btn-ghost" onclick="dxUnclaim(\''+slug+'\')" style="font-size:13px;">'+dxEsc(dxT('a.dx.remove_mine','Убрать из моих диагнозов'))+'</button>'
+          : '<button class="btn btn-solid" onclick="dxClaimPrompt(\''+slug+'\')" style="font-size:13px;">'+dxEsc(dxT('a.dx.add_mine','Это мой диагноз'))+'</button>')
+      + '</div>';
+    dxModalShell(inner, '600px');
+  };
+
+  // ── Claim with optional date confirmation ──
+  window.dxClaimPrompt = function(slug){
+    var d = DX.byId[slug]; if(!d) return;
+    var inner = ''
+      + '<h3 style="margin:0 0 0.3rem;font-size:16px;">'+dxEsc(dxT('a.dx.confirm_title','Добавить в «Мои диагнозы»'))+'</h3>'
+      + '<p style="margin:0 0 0.8rem;font-size:13px;color:var(--text-muted);">'+dxEsc(dxL(d.name))+'</p>'
+      + '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:0.25rem;">'+dxEsc(dxT('a.dx.diagnosed_optional','Дата постановки (по желанию)'))+'</label>'
+      + '<input id="dx-claim-date" type="date" class="glass-input" style="width:100%;margin-bottom:0.9rem;" />'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+      + '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:13px;">'+dxEsc(dxT('a.dx.cancel','Отмена'))+'</button>'
+      + '<button class="btn btn-solid" id="dx-claim-go" style="font-size:13px;">'+dxEsc(dxT('a.dx.confirm_add','Добавить'))+'</button>'
+      + '</div>';
+    var wrap = dxModalShell(inner, '380px');
+    wrap.querySelector('#dx-claim-go').onclick = function(){
+      var date = wrap.querySelector('#dx-claim-date').value || null;
+      dxClaim(slug, date, wrap);
+    };
+  };
+
+  function dxClaim(slug, date, wrap){
+    var tok = dxTok(); if(!tok){ alert(dxT('a.dx.login_required','Войдите в аккаунт')); return; }
+    fetch(dxApi()+'/api/diagnoses/'+encodeURIComponent(slug)+'/claim', {
+      method:'POST', headers:{ 'Authorization':'Bearer '+tok, 'Content-Type':'application/json' },
+      body: JSON.stringify({ diagnosed_at: date })
+    }).then(function(r){ return r.json(); }).then(function(){
+      // Close any open modals, refresh.
+      document.querySelectorAll('div[style*="z-index:9999"]').forEach(function(el){ el.remove(); });
+      dxLoadMine().then(function(){ dxRenderMine(); dxRenderCatalog(); });
+    }).catch(function(e){ alert('Error: '+e.message); });
+  }
+
+  window.dxUnclaim = function(slug){
+    if(!confirm(dxT('a.dx.confirm_remove','Убрать этот диагноз из «Мои диагнозы»? Загруженные документы также станут недоступны.'))) return;
+    var tok = dxTok();
+    fetch(dxApi()+'/api/diagnoses/'+encodeURIComponent(slug)+'/claim', {
+      method:'DELETE', headers:{ 'Authorization':'Bearer '+tok }
+    }).then(function(){
+      document.querySelectorAll('div[style*="z-index:9999"]').forEach(function(el){ el.remove(); });
+      dxLoadMine().then(function(){ dxRenderMine(); dxRenderCatalog(); });
+    }).catch(function(e){ alert('Error: '+e.message); });
+  };
+
+  // ── Combined view: union of all claimed regions + overlapping symptoms ──
+  window.dxOpenCombined = function(){
+    var diags = DX.mine.map(function(m){ return DX.byId[m.diagnosis_slug]; }).filter(Boolean);
+    if(diags.length<2) return;
+    var allRegions = []; var regionToDx = {};
+    diags.forEach(function(d){ (d.regions||[]).forEach(function(r){ allRegions.push(r); (regionToDx[r]=regionToDx[r]||[]).push(dxL(d.name)); }); });
+    // Overlapping (region claimed by ≥2 diagnoses).
+    var overlapHtml = '';
+    Object.keys(regionToDx).forEach(function(r){
+      if(regionToDx[r].length<2 || !DX_REGIONS[r]) return;
+      overlapHtml += '<li style="margin-bottom:4px;"><b>'+dxEsc(dxL(DX_REGIONS[r].label))+'</b>: '+dxEsc(regionToDx[r].join(', '))+'</li>';
+    });
+    // Pooled symptom/complication lists (deduped).
+    function pool(field){
+      var seen={}, out=[];
+      diags.forEach(function(d){ (dxL(d[field])||[]).forEach(function(x){ var k=x.toLowerCase(); if(!seen[k]){ seen[k]=1; out.push(x); } }); });
+      return out;
+    }
+    function listSec(title, arr){
+      if(!arr.length) return '';
+      return '<div style="margin-top:0.8rem;"><div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:0.3rem;">'+title+'</div><ul style="margin:0;padding-left:1.1rem;font-size:12px;color:var(--text-muted);line-height:1.5;">'+arr.map(function(x){return '<li>'+dxEsc(x)+'</li>';}).join('')+'</ul></div>';
+    }
+    var legendNames = diags.map(function(d){ return dxEsc(dxL(d.name)); }).join(' · ');
+    var inner = ''
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">'
+      + '<h2 style="margin:0;font-size:18px;">'+dxEsc(dxT('a.dx.combined_title','Сводное воздействие'))+'</h2>'
+      + '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:16px;line-height:1;">✕</button></div>'
+      + '<div style="font-size:11px;color:var(--text-dim);margin:4px 0 0.8rem;">'+legendNames+'</div>'
+      + '<div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">'
+      + '<div style="flex:0 0 150px;">'+dxBodyMap(allRegions, '120,200,235')+'</div>'
+      + '<div style="flex:1;min-width:220px;">'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">'+dxEsc(dxT('a.dx.combined_zones','Объединённые зоны влияния'))+':</div>'+dxRegionLegend(allRegions,'120,200,235')
+      + (overlapHtml?'<div style="margin-top:0.8rem;"><div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent-rose,#f0829c);margin-bottom:0.3rem;">'+dxEsc(dxT('a.dx.overlap','Перекрывающиеся зоны'))+'</div><ul style="margin:0;padding-left:1.1rem;font-size:12px;color:var(--text-muted);line-height:1.5;">'+overlapHtml+'</ul></div>':'')
+      + '</div></div>'
+      + listSec(dxT('a.dx.combined_symptoms','Общие / частые симптомы'), pool('symptoms'))
+      + listSec(dxT('a.dx.combined_complications','Возможные осложнения'), pool('complications'))
+      + '<div style="display:flex;gap:6px;align-items:flex-start;background:rgba(232,170,72,0.08);border:1px solid rgba(232,170,72,0.25);border-radius:10px;padding:0.55rem 0.75rem;margin-top:1rem;">'
+      + '<span style="font-size:14px;">⚠️</span><p style="margin:0;font-size:11px;color:var(--text-muted);line-height:1.5;">'+dxEsc(dxT('a.dx.disclaimer','Эта информация для образовательных целей. Не заменяет консультацию врача.'))+'</p></div>';
+    dxModalShell(inner, '640px');
+  };
+
+  // ── Medical file upload ──
+  window.dxOpenUpload = function(diagId, slug){
+    var d = DX.byId[slug];
+    var inner = ''
+      + '<h3 style="margin:0 0 0.6rem;font-size:16px;">'+dxEsc(dxT('a.dx.upload_title','Загрузить документ'))+(d?' — '+dxEsc(dxL(d.name)):'')+'</h3>'
+      + '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+dxEsc(dxT('a.dx.f_name','Название'))+'</label>'
+      + '<input id="dx-f-name" type="text" class="glass-input" style="width:100%;margin-bottom:0.6rem;" />'
+      + '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+dxEsc(dxT('a.dx.f_date','Дата выдачи'))+' *</label>'
+      + '<input id="dx-f-date" type="date" class="glass-input" style="width:100%;margin-bottom:0.6rem;" />'
+      + '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+dxEsc(dxT('a.dx.f_type','Тип'))+'</label>'
+      + '<select id="dx-f-type" class="glass-input" style="width:100%;margin-bottom:0.6rem;">'
+        + '<option value="lab">'+dxEsc(dxT('a.dx.type_lab','Анализ'))+'</option>'
+        + '<option value="report">'+dxEsc(dxT('a.dx.type_report','Заключение'))+'</option>'
+        + '<option value="discharge">'+dxEsc(dxT('a.dx.type_discharge','Выписка'))+'</option>'
+        + '<option value="other">'+dxEsc(dxT('a.dx.type_other','Прочее'))+'</option>'
+      + '</select>'
+      + '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+dxEsc(dxT('a.dx.f_desc','Описание (по желанию)'))+'</label>'
+      + '<textarea id="dx-f-desc" class="glass-input" rows="2" style="width:100%;margin-bottom:0.6rem;resize:vertical;"></textarea>'
+      + '<label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">'+dxEsc(dxT('a.dx.f_file','Файл (PDF, JPG, PNG, до 10 МБ)'))+' *</label>'
+      + '<input id="dx-f-file" type="file" accept="application/pdf,image/jpeg,image/png" style="width:100%;margin-bottom:0.4rem;font-size:12px;color:var(--text-muted);" />'
+      + '<div id="dx-f-err" style="font-size:12px;color:var(--accent-rose,#f0829c);min-height:16px;"></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:0.6rem;">'
+      + '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:13px;">'+dxEsc(dxT('a.dx.cancel','Отмена'))+'</button>'
+      + '<button class="btn btn-solid" id="dx-f-go" style="font-size:13px;">'+dxEsc(dxT('a.dx.f_upload','Загрузить'))+'</button>'
+      + '</div>';
+    var wrap = dxModalShell(inner, '440px');
+    wrap.querySelector('#dx-f-go').onclick = function(){ dxUpload(diagId, wrap); };
+  };
+
+  function dxUpload(diagId, wrap){
+    var err = wrap.querySelector('#dx-f-err');
+    var fileEl = wrap.querySelector('#dx-f-file');
+    var date = wrap.querySelector('#dx-f-date').value;
+    var f = fileEl.files && fileEl.files[0];
+    err.textContent = '';
+    if(!date){ err.textContent = dxT('a.dx.err_date','Укажите дату выдачи.'); return; }
+    if(!f){ err.textContent = dxT('a.dx.err_file','Выберите файл.'); return; }
+    if(f.size > 10*1024*1024){ err.textContent = dxT('a.dx.err_size','Файл больше 10 МБ.'); return; }
+    var fd = new FormData();
+    fd.append('file', f);
+    fd.append('display_name', wrap.querySelector('#dx-f-name').value || f.name);
+    fd.append('doc_type', wrap.querySelector('#dx-f-type').value);
+    fd.append('doc_date', date);
+    fd.append('description', wrap.querySelector('#dx-f-desc').value || '');
+    var btn = wrap.querySelector('#dx-f-go'); btn.disabled = true; btn.textContent = '…';
+    fetch(dxApi()+'/api/me/diagnoses/'+diagId+'/files', {
+      method:'POST', headers:{ 'Authorization':'Bearer '+dxTok() }, body: fd
+    }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); }).then(function(res){
+      if(!res.ok){ err.textContent = (res.j&&res.j.error)||'Upload failed'; btn.disabled=false; btn.textContent=dxT('a.dx.f_upload','Загрузить'); return; }
+      wrap.remove();
+      dxLoadMine().then(function(){ dxRenderMine(); dxRenderCatalog(); });
+    }).catch(function(e){ err.textContent = e.message; btn.disabled=false; btn.textContent=dxT('a.dx.f_upload','Загрузить'); });
+  }
+
+  // ── All documents list (across every claimed diagnosis) ──
+  window.dxOpenAllDocs = function(){
+    var tok = dxTok();
+    var inner = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">'
+      + '<h3 style="margin:0;font-size:16px;">'+dxEsc(dxT('a.dx.all_docs_title','Мои медицинские документы'))+'</h3>'
+      + '<button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()" style="font-size:16px;line-height:1;">✕</button></div>'
+      + '<div id="dx-alldocs-body" style="margin-top:0.8rem;font-size:13px;color:var(--text-dim);">'+dxEsc(dxT('a.dx.loading','Загрузка…'))+'</div>';
+    var wrap = dxModalShell(inner, '560px');
+    fetch(dxApi()+'/api/me/medical-files', { headers:{ 'Authorization':'Bearer '+tok } })
+      .then(function(r){ return r.json(); }).then(function(d){
+        var files = (d&&d.files)||[];
+        var body = wrap.querySelector('#dx-alldocs-body');
+        if(!files.length){ body.innerHTML = '<p style="color:var(--text-dim);">'+dxEsc(dxT('a.dx.no_docs','Пока нет загруженных документов.'))+'</p>'; return; }
+        var typeLbl = { lab:dxT('a.dx.type_lab','Анализ'), report:dxT('a.dx.type_report','Заключение'), discharge:dxT('a.dx.type_discharge','Выписка'), other:dxT('a.dx.type_other','Прочее') };
+        body.innerHTML = files.map(function(f){
+          var dn = DX.byId[f.diagnosis_slug] ? dxL(DX.byId[f.diagnosis_slug].name) : '';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0.55rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+            + '<div style="min-width:0;"><a href="'+dxEsc(f.storage_url)+'" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none;font-size:13px;">'+dxEsc(f.display_name)+'</a>'
+            + '<div style="font-size:11px;color:var(--text-dim);">'+dxEsc(typeLbl[f.doc_type]||f.doc_type||'')+' · '+dxFmtDate(f.doc_date)+(dn?' · '+dxEsc(dn):'')+'</div></div>'
+            + '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;flex-shrink:0;" onclick="dxDeleteFile('+f.id+', this)">🗑</button>'
+            + '</div>';
+        }).join('');
+      }).catch(function(e){ wrap.querySelector('#dx-alldocs-body').innerHTML = '<p style="color:var(--accent-rose);">'+dxEsc(e.message)+'</p>'; });
+  };
+
+  window.dxDeleteFile = function(fileId, btn){
+    if(!confirm(dxT('a.dx.confirm_del_file','Удалить этот документ?'))) return;
+    fetch(dxApi()+'/api/me/medical-files/'+fileId, { method:'DELETE', headers:{ 'Authorization':'Bearer '+dxTok() } })
+      .then(function(){ var row = btn.closest('div'); if(row) row.remove(); dxLoadMine().then(function(){ dxRenderMine(); }); })
+      .catch(function(e){ alert('Error: '+e.message); });
+  };
+})();
 
 /* ============================================================================
    PR#95 — Phase 3.1: NeuroMap as hub. The right panel offers three flows that
@@ -17498,6 +17912,9 @@ window.pbMove = pbMove;
         if (window._rpgLastRender && typeof rpgRenderStats === 'function') {
           rpgRenderStats(window._rpgLastRender.stats, window._rpgLastRender.wmc);
         }
+        // PR#115: re-render Diagnoses catalog/folder on language switch when open
+        var dxPanel = document.getElementById('tab-diagnoses');
+        if (dxPanel && dxPanel.classList.contains('active') && typeof window.dxRender === 'function') window.dxRender();
         // Re-render diagnostic editor labels if open
         if (typeof renderDiagItems === 'function' && window.diagState && window.diagState.currentTpl) renderDiagItems();
         if (typeof renderDiagTemplatesList === 'function') renderDiagTemplatesList();

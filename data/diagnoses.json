@@ -1,0 +1,287 @@
+{
+  "version": 1,
+  "note": "Educational reference data. Clinical summaries are general and conservative (NCI / standard ICD-10-level knowledge). Not a medical recommendation. Codes are ICD-10.",
+  "groups": [
+    { "slug": "vasculitis", "name": { "ru": "Системные васкулиты", "en": "Systemic vasculitis", "es": "Vasculitis sistémica" } },
+    { "slug": "thymus", "name": { "ru": "Опухоли вилочковой железы", "en": "Thymus tumors", "es": "Tumores del timo" } },
+    { "slug": "oncology", "name": { "ru": "Онкологические заболевания", "en": "Oncological diseases", "es": "Enfermedades oncológicas" } }
+  ],
+  "diagnoses": [
+    {
+      "slug": "gpa",
+      "group": "vasculitis",
+      "icd10": "M31.3",
+      "regions": ["head_ent", "lungs", "kidneys"],
+      "name": { "ru": "Гранулематоз с полиангиитом (ГПА)", "en": "Granulomatosis with polyangiitis (GPA)", "es": "Granulomatosis con poliangitis (GPA)" },
+      "aka": { "ru": "болезнь Вегенера", "en": "Wegener's granulomatosis", "es": "granulomatosis de Wegener" },
+      "summary": {
+        "ru": "Системный ANCA-ассоциированный васкулит мелких сосудов с некротизирующим гранулематозным воспалением. Классически поражает три зоны: ЛОР-органы (нос, придаточные пазухи), лёгкие и почки.",
+        "en": "A systemic ANCA-associated small-vessel vasculitis with necrotizing granulomatous inflammation. It classically affects three areas: the ENT organs (nose, sinuses), the lungs, and the kidneys.",
+        "es": "Vasculitis sistémica de vasos pequeños asociada a ANCA con inflamación granulomatosa necrosante. Afecta clásicamente tres zonas: órganos ORL (nariz, senos), pulmones y riñones."
+      },
+      "symptoms": {
+        "ru": ["Хронический насморк, корки и кровянистые выделения из носа", "Синусит, боль в придаточных пазухах", "Кашель, одышка, кровохарканье (лёгочные узлы/каверны)", "Кровь в моче, отёки (гломерулонефрит)", "Общие: лихорадка, потеря веса, слабость, боли в суставах"],
+        "en": ["Chronic rhinitis, nasal crusting and bloody discharge", "Sinusitis, pain over the sinuses", "Cough, shortness of breath, coughing up blood (lung nodules/cavities)", "Blood in the urine, swelling (glomerulonephritis)", "General: fever, weight loss, fatigue, joint pain"],
+        "es": ["Rinitis crónica, costras nasales y secreción con sangre", "Sinusitis, dolor en los senos paranasales", "Tos, falta de aire, expectoración con sangre (nódulos/cavidades pulmonares)", "Sangre en la orina, hinchazón (glomerulonefritis)", "Generales: fiebre, pérdida de peso, fatiga, dolor articular"]
+      },
+      "complications": {
+        "ru": ["Деформация носа («седловидный нос»)", "Дыхательная недостаточность", "Хроническая болезнь почек, почечная недостаточность", "Потеря слуха, поражение глаз", "Рецидивы при ослаблении терапии"],
+        "en": ["Nasal deformity (\"saddle nose\")", "Respiratory failure", "Chronic kidney disease, kidney failure", "Hearing loss, eye involvement", "Relapses when therapy is reduced"],
+        "es": ["Deformidad nasal (\"nariz en silla de montar\")", "Insuficiencia respiratoria", "Enfermedad renal crónica, insuficiencia renal", "Pérdida de audición, afectación ocular", "Recaídas al reducir el tratamiento"]
+      }
+    },
+    {
+      "slug": "thymoma",
+      "group": "thymus",
+      "icd10": "C37",
+      "regions": ["mediastinum", "neuromuscular"],
+      "name": { "ru": "Тимома вилочковой железы", "en": "Thymoma", "es": "Timoma" },
+      "aka": { "ru": "опухоль тимуса", "en": "tumor of the thymus", "es": "tumor del timo" },
+      "summary": {
+        "ru": "Опухоль из эпителиальных клеток вилочковой железы (тимуса), расположенной в передне-верхнем средостении. Часто протекает медленно и нередко связана с миастенией (нарушением передачи в нервно-мышечных синапсах) и другими аутоиммунными синдромами.",
+        "en": "A tumor arising from the epithelial cells of the thymus gland, located in the anterosuperior mediastinum. It often grows slowly and is frequently associated with myasthenia gravis (impaired transmission at the neuromuscular junction) and other autoimmune syndromes.",
+        "es": "Tumor de las células epiteliales del timo, situado en el mediastino anterosuperior. Suele crecer lentamente y se asocia con frecuencia a la miastenia gravis (alteración de la unión neuromuscular) y otros síndromes autoinmunes."
+      },
+      "symptoms": {
+        "ru": ["Часто бессимптомно, находка при КТ грудной клетки", "Боль или давление за грудиной, кашель, одышка", "Слабость мышц, двоение в глазах, опущение века (при миастении)", "Утомляемость мышц к вечеру", "Синдром верхней полой вены при крупной опухоли"],
+        "en": ["Often asymptomatic, found incidentally on a chest CT", "Chest pressure or pain behind the sternum, cough, shortness of breath", "Muscle weakness, double vision, drooping eyelid (with myasthenia)", "Muscle fatigue worsening through the day", "Superior vena cava syndrome with a large tumor"],
+        "es": ["A menudo asintomático, hallazgo en TC de tórax", "Presión o dolor detrás del esternón, tos, falta de aire", "Debilidad muscular, visión doble, párpado caído (con miastenia)", "Fatiga muscular que empeora a lo largo del día", "Síndrome de vena cava superior en tumores grandes"]
+      },
+      "complications": {
+        "ru": ["Миастенический криз (нарушение дыхания)", "Местное прорастание в соседние структуры средостения", "Рецидив после удаления", "Связанные аутоиммунные состояния (аплазия эритроцитов, гипогаммаглобулинемия)"],
+        "en": ["Myasthenic crisis (breathing failure)", "Local invasion of neighboring mediastinal structures", "Recurrence after removal", "Associated autoimmune conditions (pure red cell aplasia, hypogammaglobulinemia)"],
+        "es": ["Crisis miasténica (insuficiencia respiratoria)", "Invasión local de estructuras vecinas del mediastino", "Recurrencia tras la extirpación", "Trastornos autoinmunes asociados (aplasia pura de glóbulos rojos, hipogammaglobulinemia)"]
+      }
+    },
+    {
+      "slug": "breast_cancer",
+      "group": "oncology",
+      "icd10": "C50",
+      "regions": ["breast", "lymph_nodes"],
+      "name": { "ru": "Рак молочной железы", "en": "Breast cancer", "es": "Cáncer de mama" },
+      "aka": { "ru": "", "en": "", "es": "" },
+      "summary": {
+        "ru": "Злокачественная опухоль ткани молочной железы — наиболее частый рак у женщин (встречается и у мужчин). Чаще исходит из протоков или долек; может распространяться в подмышечные лимфоузлы и далее.",
+        "en": "A malignant tumor of breast tissue — the most common cancer in women (it also occurs in men). It usually arises from the ducts or lobules and may spread to the axillary lymph nodes and beyond.",
+        "es": "Tumor maligno del tejido mamario, el cáncer más frecuente en mujeres (también ocurre en hombres). Suele originarse en los conductos o lobulillos y puede diseminarse a los ganglios axilares y más allá."
+      },
+      "symptoms": {
+        "ru": ["Уплотнение (узел) в груди или подмышке", "Изменение формы или размера груди", "Втяжение или изменения кожи («лимонная корка»), втяжение соска", "Выделения из соска, особенно кровянистые", "Чаще всего ранние стадии безболезненны"],
+        "en": ["A lump in the breast or armpit", "Change in breast shape or size", "Skin dimpling (\"orange peel\") or nipple retraction", "Nipple discharge, especially bloody", "Early stages are most often painless"],
+        "es": ["Bulto en la mama o la axila", "Cambio en la forma o el tamaño de la mama", "Hoyuelos en la piel (\"piel de naranja\") o retracción del pezón", "Secreción del pezón, sobre todo con sangre", "Las etapas tempranas suelen ser indoloras"]
+      },
+      "complications": {
+        "ru": ["Метастазы в лимфоузлы, кости, печень, лёгкие, мозг", "Лимфедема руки после лечения", "Рецидив заболевания", "Психологическое воздействие, влияние на качество жизни"],
+        "en": ["Spread to lymph nodes, bones, liver, lungs, brain", "Arm lymphedema after treatment", "Disease recurrence", "Psychological impact, effect on quality of life"],
+        "es": ["Diseminación a ganglios, huesos, hígado, pulmones, cerebro", "Linfedema del brazo tras el tratamiento", "Recurrencia de la enfermedad", "Impacto psicológico y en la calidad de vida"]
+      }
+    },
+    {
+      "slug": "lung_cancer",
+      "group": "oncology",
+      "icd10": "C34",
+      "regions": ["lungs", "lymph_nodes"],
+      "name": { "ru": "Рак лёгкого", "en": "Lung cancer", "es": "Cáncer de pulmón" },
+      "aka": { "ru": "", "en": "", "es": "" },
+      "summary": {
+        "ru": "Злокачественная опухоль лёгких; основные типы — немелкоклеточный и мелкоклеточный рак. Главный фактор риска — курение. Часто выявляется на поздних стадиях из-за бедной ранней симптоматики.",
+        "en": "A malignant tumor of the lungs; the main types are non-small-cell and small-cell carcinoma. The leading risk factor is smoking. It is often detected at a late stage because early symptoms are sparse.",
+        "es": "Tumor maligno de los pulmones; los tipos principales son el carcinoma no microcítico y el microcítico. El principal factor de riesgo es el tabaquismo. A menudo se detecta en etapas avanzadas por la escasez de síntomas tempranos."
+      },
+      "symptoms": {
+        "ru": ["Длительный кашель, изменение характера кашля", "Кровь в мокроте", "Одышка, боль в груди", "Повторные пневмонии или бронхиты", "Потеря веса, слабость, охриплость голоса"],
+        "en": ["A persistent cough or change in a chronic cough", "Blood in the sputum", "Shortness of breath, chest pain", "Repeated pneumonia or bronchitis", "Weight loss, fatigue, hoarseness"],
+        "es": ["Tos persistente o cambio en una tos crónica", "Sangre en el esputo", "Falta de aire, dolor torácico", "Neumonías o bronquitis repetidas", "Pérdida de peso, fatiga, ronquera"]
+      },
+      "complications": {
+        "ru": ["Метастазы в лимфоузлы, мозг, кости, печень, надпочечники", "Плевральный выпот, дыхательная недостаточность", "Синдром верхней полой вены", "Паранеопластические синдромы"],
+        "en": ["Spread to lymph nodes, brain, bones, liver, adrenal glands", "Pleural effusion, respiratory failure", "Superior vena cava syndrome", "Paraneoplastic syndromes"],
+        "es": ["Diseminación a ganglios, cerebro, huesos, hígado, glándulas suprarrenales", "Derrame pleural, insuficiencia respiratoria", "Síndrome de vena cava superior", "Síndromes paraneoplásicos"]
+      }
+    },
+    {
+      "slug": "gastric_cancer",
+      "group": "oncology",
+      "icd10": "C16",
+      "regions": ["stomach", "lymph_nodes"],
+      "name": { "ru": "Рак желудка", "en": "Stomach (gastric) cancer", "es": "Cáncer de estómago" },
+      "aka": { "ru": "", "en": "", "es": "" },
+      "summary": {
+        "ru": "Злокачественная опухоль слизистой желудка, чаще аденокарцинома. Факторы риска — инфекция Helicobacter pylori, хронический гастрит, диета, курение. Ранние симптомы неспецифичны.",
+        "en": "A malignant tumor of the stomach lining, most often adenocarcinoma. Risk factors include Helicobacter pylori infection, chronic gastritis, diet, and smoking. Early symptoms are non-specific.",
+        "es": "Tumor maligno de la mucosa gástrica, con mayor frecuencia adenocarcinoma. Factores de riesgo: infección por Helicobacter pylori, gastritis crónica, dieta y tabaquismo. Los síntomas tempranos son inespecíficos."
+      },
+      "symptoms": {
+        "ru": ["Дискомфорт или боль в верхней части живота", "Раннее насыщение, тошнота, потеря аппетита", "Потеря веса", "Чёрный стул или рвота с кровью", "Слабость из-за анемии"],
+        "en": ["Upper abdominal discomfort or pain", "Early fullness, nausea, loss of appetite", "Weight loss", "Black stools or vomiting blood", "Weakness from anemia"],
+        "es": ["Molestia o dolor en la parte alta del abdomen", "Saciedad precoz, náuseas, pérdida de apetito", "Pérdida de peso", "Heces negras o vómito con sangre", "Debilidad por anemia"]
+      },
+      "complications": {
+        "ru": ["Метастазы в лимфоузлы, печень, брюшину", "Желудочное кровотечение", "Непроходимость (стеноз) желудка", "Истощение (кахексия)"],
+        "en": ["Spread to lymph nodes, liver, peritoneum", "Gastric bleeding", "Stomach obstruction (stenosis)", "Wasting (cachexia)"],
+        "es": ["Diseminación a ganglios, hígado, peritoneo", "Hemorragia gástrica", "Obstrucción (estenosis) del estómago", "Desgaste (caquexia)"]
+      }
+    },
+    {
+      "slug": "colorectal_cancer",
+      "group": "oncology",
+      "icd10": "C18–C20",
+      "regions": ["colon", "lymph_nodes"],
+      "name": { "ru": "Колоректальный рак", "en": "Colorectal cancer", "es": "Cáncer colorrectal" },
+      "aka": { "ru": "рак толстой и прямой кишки", "en": "cancer of the colon and rectum", "es": "cáncer de colon y recto" },
+      "summary": {
+        "ru": "Злокачественная опухоль толстой или прямой кишки, чаще развивается из полипов (аденом). Скрининг (колоноскопия, тест на скрытую кровь) позволяет выявлять болезнь рано.",
+        "en": "A malignant tumor of the colon or rectum, usually developing from polyps (adenomas). Screening (colonoscopy, fecal occult blood test) allows early detection.",
+        "es": "Tumor maligno del colon o el recto, que suele desarrollarse a partir de pólipos (adenomas). El cribado (colonoscopia, prueba de sangre oculta en heces) permite la detección temprana."
+      },
+      "symptoms": {
+        "ru": ["Изменение характера стула (запор/понос), его формы", "Кровь в стуле или ректальное кровотечение", "Боль или спазмы в животе", "Чувство неполного опорожнения", "Потеря веса, утомляемость, анемия"],
+        "en": ["Change in bowel habits (constipation/diarrhea) or stool shape", "Blood in the stool or rectal bleeding", "Abdominal pain or cramps", "A feeling of incomplete emptying", "Weight loss, fatigue, anemia"],
+        "es": ["Cambio en el hábito intestinal (estreñimiento/diarrea) o forma de las heces", "Sangre en las heces o sangrado rectal", "Dolor o cólicos abdominales", "Sensación de evacuación incompleta", "Pérdida de peso, fatiga, anemia"]
+      },
+      "complications": {
+        "ru": ["Метастазы в печень, лёгкие, лимфоузлы", "Кишечная непроходимость", "Прободение кишки, кровотечение", "Рецидив после операции"],
+        "en": ["Spread to liver, lungs, lymph nodes", "Bowel obstruction", "Bowel perforation, bleeding", "Recurrence after surgery"],
+        "es": ["Diseminación a hígado, pulmones, ganglios", "Obstrucción intestinal", "Perforación intestinal, hemorragia", "Recurrencia tras la cirugía"]
+      }
+    },
+    {
+      "slug": "prostate_cancer",
+      "group": "oncology",
+      "icd10": "C61",
+      "regions": ["prostate", "bone_marrow"],
+      "name": { "ru": "Рак предстательной железы", "en": "Prostate cancer", "es": "Cáncer de próstata" },
+      "aka": { "ru": "рак простаты", "en": "", "es": "" },
+      "summary": {
+        "ru": "Злокачественная опухоль предстательной железы — один из самых частых раков у мужчин. Часто растёт медленно; риск повышается с возрастом. Может давать метастазы в кости.",
+        "en": "A malignant tumor of the prostate gland — one of the most common cancers in men. It often grows slowly; risk rises with age. It can metastasize to the bones.",
+        "es": "Tumor maligno de la próstata, uno de los cánceres más frecuentes en hombres. Suele crecer lentamente; el riesgo aumenta con la edad. Puede dar metástasis óseas."
+      },
+      "symptoms": {
+        "ru": ["Часто бессимптомно на ранней стадии", "Учащённое мочеиспускание, особенно ночью", "Слабая струя, затруднённое начало мочеиспускания", "Кровь в моче или сперме", "Боль в костях при распространении"],
+        "en": ["Often asymptomatic in early stages", "Frequent urination, especially at night", "Weak stream, difficulty starting urination", "Blood in urine or semen", "Bone pain when it has spread"],
+        "es": ["A menudo asintomático en etapas tempranas", "Micción frecuente, sobre todo de noche", "Chorro débil, dificultad para iniciar la micción", "Sangre en la orina o el semen", "Dolor óseo cuando se ha diseminado"]
+      },
+      "complications": {
+        "ru": ["Метастазы в кости и лимфоузлы", "Задержка мочи", "Недержание и эректильная дисфункция (болезнь/лечение)", "Боль и переломы при костных метастазах"],
+        "en": ["Spread to bones and lymph nodes", "Urinary retention", "Incontinence and erectile dysfunction (disease/treatment)", "Pain and fractures from bone metastases"],
+        "es": ["Diseminación a huesos y ganglios", "Retención urinaria", "Incontinencia y disfunción eréctil (enfermedad/tratamiento)", "Dolor y fracturas por metástasis óseas"]
+      }
+    },
+    {
+      "slug": "thyroid_cancer",
+      "group": "oncology",
+      "icd10": "C73",
+      "regions": ["thyroid", "lymph_nodes"],
+      "name": { "ru": "Рак щитовидной железы", "en": "Thyroid cancer", "es": "Cáncer de tiroides" },
+      "aka": { "ru": "", "en": "", "es": "" },
+      "summary": {
+        "ru": "Злокачественная опухоль щитовидной железы. Большинство форм (папиллярный, фолликулярный рак) хорошо поддаются лечению и имеют благоприятный прогноз. Часто выявляется как узел на шее.",
+        "en": "A malignant tumor of the thyroid gland. Most forms (papillary, follicular) respond well to treatment and have a favorable prognosis. It is often found as a neck nodule.",
+        "es": "Tumor maligno de la glándula tiroides. La mayoría de las formas (papilar, folicular) responden bien al tratamiento y tienen buen pronóstico. Suele detectarse como un nódulo en el cuello."
+      },
+      "symptoms": {
+        "ru": ["Узел или припухлость на передней поверхности шеи", "Увеличение шейных лимфоузлов", "Охриплость голоса", "Затруднение глотания или дыхания", "Чаще всего безболезненно"],
+        "en": ["A nodule or swelling at the front of the neck", "Enlarged neck lymph nodes", "Hoarseness", "Difficulty swallowing or breathing", "Most often painless"],
+        "es": ["Nódulo o hinchazón en la parte anterior del cuello", "Ganglios cervicales aumentados", "Ronquera", "Dificultad para tragar o respirar", "Generalmente indoloro"]
+      },
+      "complications": {
+        "ru": ["Метастазы в шейные лимфоузлы, лёгкие, кости", "Повреждение голосовых нервов (охриплость)", "Гипопаратиреоз после операции", "Рецидив (требует наблюдения)"],
+        "en": ["Spread to neck lymph nodes, lungs, bones", "Damage to vocal nerves (hoarseness)", "Hypoparathyroidism after surgery", "Recurrence (requires monitoring)"],
+        "es": ["Diseminación a ganglios cervicales, pulmones, huesos", "Lesión de los nervios de la voz (ronquera)", "Hipoparatiroidismo tras la cirugía", "Recurrencia (requiere seguimiento)"]
+      }
+    },
+    {
+      "slug": "melanoma",
+      "group": "oncology",
+      "icd10": "C43",
+      "regions": ["skin", "lymph_nodes"],
+      "name": { "ru": "Меланома кожи", "en": "Skin melanoma", "es": "Melanoma cutáneo" },
+      "aka": { "ru": "", "en": "", "es": "" },
+      "summary": {
+        "ru": "Злокачественная опухоль из пигментных клеток (меланоцитов) кожи. Связана с ультрафиолетовым облучением. Раннее выявление по правилу ABCDE существенно улучшает прогноз.",
+        "en": "A malignant tumor of the skin's pigment cells (melanocytes). It is linked to ultraviolet exposure. Early detection using the ABCDE rule substantially improves the prognosis.",
+        "es": "Tumor maligno de las células pigmentarias (melanocitos) de la piel. Se relaciona con la exposición ultravioleta. La detección temprana con la regla ABCDE mejora notablemente el pronóstico."
+      },
+      "symptoms": {
+        "ru": ["Новая или изменяющаяся родинка", "Асимметрия, неровные края, неоднородный цвет (правило ABCDE)", "Диаметр более ~6 мм, рост со временем", "Зуд, кровоточивость или изъязвление образования"],
+        "en": ["A new or changing mole", "Asymmetry, irregular borders, uneven color (ABCDE rule)", "Diameter over ~6 mm, growth over time", "Itching, bleeding or ulceration of the lesion"],
+        "es": ["Lunar nuevo o cambiante", "Asimetría, bordes irregulares, color desigual (regla ABCDE)", "Diámetro mayor de ~6 mm, crecimiento con el tiempo", "Picor, sangrado o ulceración de la lesión"]
+      },
+      "complications": {
+        "ru": ["Метастазы в лимфоузлы, печень, лёгкие, мозг, кости", "Местный рецидив", "Распространение по коже (сателлиты)"],
+        "en": ["Spread to lymph nodes, liver, lungs, brain, bones", "Local recurrence", "In-transit/satellite skin spread"],
+        "es": ["Diseminación a ganglios, hígado, pulmones, cerebro, huesos", "Recurrencia local", "Diseminación cutánea (satélites)"]
+      }
+    },
+    {
+      "slug": "hodgkin_lymphoma",
+      "group": "oncology",
+      "icd10": "C81",
+      "regions": ["lymph_nodes", "mediastinum"],
+      "name": { "ru": "Лимфома Ходжкина", "en": "Hodgkin lymphoma", "es": "Linfoma de Hodgkin" },
+      "aka": { "ru": "лимфогранулематоз", "en": "Hodgkin's disease", "es": "enfermedad de Hodgkin" },
+      "summary": {
+        "ru": "Злокачественное заболевание лимфатической системы с характерными клетками Рид-Штернберга. Часто начинается с лимфоузлов шеи или средостения. Один из наиболее излечимых видов рака.",
+        "en": "A malignancy of the lymphatic system with characteristic Reed-Sternberg cells. It often begins in the neck or mediastinal lymph nodes. One of the most curable cancers.",
+        "es": "Neoplasia del sistema linfático con las características células de Reed-Sternberg. Suele comenzar en los ganglios del cuello o del mediastino. Uno de los cánceres más curables."
+      },
+      "symptoms": {
+        "ru": ["Безболезненное увеличение лимфоузлов (шея, подмышки, пах)", "Стойкая лихорадка, ночная потливость", "Необъяснимая потеря веса (B-симптомы)", "Кожный зуд", "Утомляемость, иногда боль в узлах после алкоголя"],
+        "en": ["Painless enlargement of lymph nodes (neck, armpits, groin)", "Persistent fever, night sweats", "Unexplained weight loss (B symptoms)", "Itchy skin", "Fatigue; sometimes node pain after alcohol"],
+        "es": ["Aumento indoloro de ganglios (cuello, axilas, ingle)", "Fiebre persistente, sudores nocturnos", "Pérdida de peso inexplicada (síntomas B)", "Picor en la piel", "Fatiga; a veces dolor ganglionar tras el alcohol"]
+      },
+      "complications": {
+        "ru": ["Распространение на другие группы лимфоузлов и органы", "Сдавление средостения крупной массой", "Снижение иммунитета и инфекции", "Поздние эффекты лечения (сердце, вторичные опухоли)"],
+        "en": ["Spread to other lymph node groups and organs", "Mediastinal compression by a bulky mass", "Weakened immunity and infections", "Late effects of treatment (heart, second cancers)"],
+        "es": ["Diseminación a otros grupos ganglionares y órganos", "Compresión mediastínica por una masa voluminosa", "Inmunidad debilitada e infecciones", "Efectos tardíos del tratamiento (corazón, segundos tumores)"]
+      }
+    },
+    {
+      "slug": "cml",
+      "group": "oncology",
+      "icd10": "C92.1",
+      "regions": ["bone_marrow", "spleen"],
+      "name": { "ru": "Хронический миелолейкоз (ХМЛ)", "en": "Chronic myeloid leukemia (CML)", "es": "Leucemia mieloide crónica (LMC)" },
+      "aka": { "ru": "", "en": "", "es": "" },
+      "summary": {
+        "ru": "Хронический лейкоз костного мозга, вызванный филадельфийской хромосомой (ген BCR-ABL). Избыток зрелых миелоидных клеток. Целевая терапия ингибиторами тирозинкиназы радикально улучшила прогноз.",
+        "en": "A chronic bone-marrow leukemia driven by the Philadelphia chromosome (BCR-ABL gene), with overproduction of mature myeloid cells. Targeted therapy with tyrosine kinase inhibitors has dramatically improved the prognosis.",
+        "es": "Leucemia crónica de la médula ósea causada por el cromosoma Filadelfia (gen BCR-ABL), con exceso de células mieloides maduras. La terapia dirigida con inhibidores de tirosina cinasa ha mejorado mucho el pronóstico."
+      },
+      "symptoms": {
+        "ru": ["Часто выявляется случайно по анализу крови", "Утомляемость, слабость", "Чувство тяжести/насыщения из-за увеличенной селезёнки", "Ночная потливость, потеря веса", "Лёгкие кровоподтёки или кровоточивость"],
+        "en": ["Often found incidentally on a blood test", "Fatigue, weakness", "Fullness/heaviness from an enlarged spleen", "Night sweats, weight loss", "Easy bruising or bleeding"],
+        "es": ["A menudo hallazgo casual en un análisis de sangre", "Fatiga, debilidad", "Sensación de plenitud por bazo agrandado", "Sudores nocturnos, pérdida de peso", "Hematomas o sangrados fáciles"]
+      },
+      "complications": {
+        "ru": ["Переход в фазу акселерации и бластный криз", "Резистентность к терапии", "Тромбозы или кровотечения при очень высоком числе клеток", "Инфекции"],
+        "en": ["Progression to accelerated phase and blast crisis", "Resistance to therapy", "Clotting or bleeding with very high cell counts", "Infections"],
+        "es": ["Progresión a fase acelerada y crisis blástica", "Resistencia al tratamiento", "Trombosis o sangrado con recuentos muy altos", "Infecciones"]
+      }
+    },
+    {
+      "slug": "glioblastoma",
+      "group": "oncology",
+      "icd10": "C71",
+      "regions": ["brain"],
+      "name": { "ru": "Глиобластома головного мозга", "en": "Glioblastoma of the brain", "es": "Glioblastoma cerebral" },
+      "aka": { "ru": "глиобластома (GBM)", "en": "GBM, grade 4 glioma", "es": "GBM, glioma de grado 4" },
+      "summary": {
+        "ru": "Наиболее агрессивная первичная злокачественная опухоль головного мозга (глиома 4 степени). Быстро растёт и инфильтрирует ткань мозга. Симптомы зависят от расположения опухоли.",
+        "en": "The most aggressive primary malignant brain tumor (grade 4 glioma). It grows rapidly and infiltrates brain tissue. Symptoms depend on the tumor's location.",
+        "es": "El tumor cerebral maligno primario más agresivo (glioma de grado 4). Crece con rapidez e infiltra el tejido cerebral. Los síntomas dependen de la localización del tumor."
+      },
+      "symptoms": {
+        "ru": ["Постоянная, усиливающаяся головная боль", "Судороги (впервые возникшие)", "Тошнота и рвота", "Слабость или онемение части тела, нарушения речи/зрения", "Изменения личности, памяти, спутанность"],
+        "en": ["Persistent, worsening headache", "Seizures (new onset)", "Nausea and vomiting", "Weakness or numbness of part of the body, speech/vision problems", "Personality changes, memory problems, confusion"],
+        "es": ["Cefalea persistente y creciente", "Convulsiones (de nueva aparición)", "Náuseas y vómitos", "Debilidad o entumecimiento de parte del cuerpo, problemas de habla/visión", "Cambios de personalidad, problemas de memoria, confusión"]
+      },
+      "complications": {
+        "ru": ["Повышение внутричерепного давления, отёк мозга", "Прогрессирующая неврологическая утрата", "Высокий риск рецидива", "Влияние на когнитивные функции и качество жизни"],
+        "en": ["Raised intracranial pressure, brain swelling", "Progressive neurological loss", "High risk of recurrence", "Impact on cognition and quality of life"],
+        "es": ["Aumento de la presión intracraneal, edema cerebral", "Pérdida neurológica progresiva", "Alto riesgo de recurrencia", "Impacto en la cognición y la calidad de vida"]
+      }
+    }
+  ]
+}
