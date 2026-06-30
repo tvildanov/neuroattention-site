@@ -1386,6 +1386,10 @@
     'pancreas':        { layer: 'organs', organ: 'pancreas', parent: null, aliases: ['pancreas'] },
     'thyroid-gland':   { layer: 'organs', organ: 'endocrine', parent: null, aliases: ['thyroid_gland'] },
     'nose':            { layer: 'organs', organ: 'airway', parent: null, aliases: ['nose', 'nasal', 'paranasal'] },
+    // adrenals share the 'kidneys' organ group in the organs GLB (assignOrganTag folds
+    // suprarenal→kidneys) but are a distinct seed for Meds tint — matched by the raw
+    // adrenal/suprarenal mesh tokens so tinting adrenals does NOT recolour the kidneys.
+    'adrenals':        { layer: 'organs', organ: 'kidneys', parent: null, aliases: ['adrenal', 'adrenal_gland', 'suprarenal', 'suprarenal_gland'] },
 
     // ── spine (sub-layer 'spine' of layer 'skeleton') ──
     'spine':           { layer: 'skeleton', organ: 'spine', parent: null, aliases: [], descendants: ['cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacral-spine'] },
@@ -1435,7 +1439,12 @@
   // toggle exactly those layers on before focusing). Empty for unregistered ids.
   Atlas.prototype.layersForSeedIds = function (ids) {
     var seen = {};
+    // Coarse whole-system seeds (Meds PR#121): a target like 'bones'/'muscles'/'vessels'
+    // resolves to a bare GLB-LAYER name (no fine mesh of its own). Recognise those so
+    // tintRegions loads the layer and the layer-wide tint below can paint every mesh.
+    var LAYER_NAMES = { skin: 1, muscles: 1, skeleton: 1, nervous: 1, vessels: 1, organs: 1, female_reproductive: 1, placenta: 1 };
     this._expandSeedIds(ids).forEach(function (i) {
+      if (LAYER_NAMES[i]) { seen[i] = 1; return; }
       var info = SEED_REGION_INFO[i];
       if (info && info.layer) seen[info.layer] = 1;
     });
@@ -1510,7 +1519,9 @@
     negIds.forEach(function (i) { var k = norm(i); if (k) negSet[k] = 1; });
     var hit = function (set, ud) {
       var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
-      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ];
+      // ud.layer last so a coarse whole-system seed ('skeleton'/'muscles'/'vessels')
+      // paints EVERY mesh in that GLB layer (bones/muscles/vessels have no fine seed).
+      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ, ud.layer];
       for (var ci = 0; ci < cands.length; ci++) { if (cands[ci] && set[norm(cands[ci])]) return true; }
       if (bare) { var toks = String(bare).split('_'); for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) return true; } }
       return false;
@@ -1540,10 +1551,19 @@
         var c = it.tone === 'pos' ? GREEN : RED, r = it.tone === 'pos' ? GREEN_RIM : RED_RIM;
         mat.uniforms.uColor.value.setHex(c);
         if (mat.uniforms.uRim) mat.uniforms.uRim.value.setHex(r);
-        mat.uniforms.uOpacity.value = 1.0;
-        if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 1.0;
-        if (T && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
-        mat.depthWrite = true; mat.transparent = false;
+        // The skin envelope (Meds PR#121: drugs that target 'skin') is tinted as a
+        // TRANSLUCENT shell so the tinted internal organs stay visible through it —
+        // a solid opaque skin would hide everything inside.
+        if (ud.layer === 'skin') {
+          mat.uniforms.uOpacity.value = 0.16;
+          if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 0;
+          mat.transparent = true; mat.depthWrite = false;
+        } else {
+          mat.uniforms.uOpacity.value = 1.0;
+          if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 1.0;
+          if (T && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
+          mat.depthWrite = true; mat.transparent = false;
+        }
         boosted.push(it.o);
         if (it.o.visible !== true) { visChanges.push({ mesh: it.o, prior: it.o.visible }); it.o.visible = true; }
       } else if (it.o.visible !== false) {
