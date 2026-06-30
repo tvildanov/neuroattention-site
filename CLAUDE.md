@@ -301,8 +301,23 @@ the «всё тело» bug for 4 PRs). Use pure SUBQUERY deletes.
   schema change, idempotent (clean DB → 0). Returns
   `mig047 = { orphan_events_deleted, orphan_links_deleted, error? }`.
 
+- **048** — (PR#121) MED ORGAN_EFFECTS. `ALTER TABLE medications ADD COLUMN IF NOT EXISTS
+  organ_effects jsonb`, then backfills it from `api/medications-pr121-data.js` (40 meds,
+  tri-lingual per-organ effect detail for the 3D hover tooltip) AND RE-DERIVES
+  `target_organs_positive/negative` so tint and tooltip agree: organ_effects is
+  authoritative on polarity, brain sub-region keys (`brain_memory_hippocampus`,
+  `brain_emotion_amygdala`, `brain_serotonergic`, …) REPLACE the generic `brain`/`nervous`
+  tint target (so psychoactive substances SPLIT the brain instead of glowing it whole),
+  organs not covered by organ_effects are preserved. Idempotent. Returns
+  `mig048 = { organ_effects_set, target_organs_updated, skipped?, error? }`.
+- **049** — (PR#121) EXTRA dx-med links. Upserts `DIAG_LINKS_EXT` (medications-pr121-data.js,
+  ~154 standard-of-care pairs across 53 diagnoses incl. the 12 catalog slugs) into
+  `diagnosis_medications` (with `notes`). The 60-drug formulary structurally caps honest
+  coverage (~150-170 pairs); we DO NOT pad with fabricated pairings. Idempotent. Returns
+  `mig049 = { diagnosis_links, skipped?, error? }`.
+
 `run-migrations` returns
-`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047 }`.
+`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049 }`.
 
 ---
 
@@ -395,7 +410,8 @@ the diet tint on every switch (`if(a._focusColored.length) a.focusRegions([])`).
   Atlas tabs too.
 
 SW bump: PR#115 took `v28`, PR#116 `v29`, PR#117 `v30` (+ `v31` follow-up for the
-`tintRegions` layer-loading fix; `body-atlas.js?v=32`). PR#118 `v32`, **PR#119 `v33`**.
+`tintRegions` layer-loading fix; `body-atlas.js?v=32`). PR#118 `v32`, PR#119 `v33`,
+PR#120 `v34`, **PR#121 `v35`** (`body-atlas.js?v=33` — whole-system tint + adrenals seed).
 
 ## Mobile bottom-nav (PR#119 Issue#6)
 

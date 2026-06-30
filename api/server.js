@@ -2242,7 +2242,62 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 047 (orphan journey_events): deleted', mig047.orphan_events_deleted, 'events,', mig047.orphan_links_deleted, 'dangling links');
     } catch (e) { mig047.error = e.message; console.error('migration 047 (orphan journey_events):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-047 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047 });
+    // ── 048 (PR#121): per-organ effect descriptions for the Meds 3D tooltip. Adds the
+    //    organ_effects jsonb column and backfills it, then RE-DERIVES target_organs so the
+    //    green/red tint and the tooltip agree: organ_effects is authoritative on polarity
+    //    (an organ moves to the list its effect names), brain sub-region keys REPLACE the
+    //    generic 'brain'/'nervous' tint target (so e.g. cannabis splits amygdala vs
+    //    hippocampus instead of glowing the whole brain), and organs NOT covered by
+    //    organ_effects (e.g. prednisolone's joints/vessels/skin) are preserved. Idempotent.
+    let mig048 = { organ_effects_set: 0, target_organs_updated: 0 };
+    try {
+      const { ORGAN_EFFECTS } = require('./medications-pr121-data.js');
+      await sql`ALTER TABLE medications ADD COLUMN IF NOT EXISTS organ_effects jsonb DEFAULT '{}'::jsonb`;
+      for (const [slug, effects] of Object.entries(ORGAN_EFFECTS)) {
+        try {
+          const cur = await sql`SELECT id, target_organs_positive, target_organs_negative FROM medications WHERE slug = ${slug}`;
+          if (!cur.length) continue;
+          const row = cur[0];
+          const posKeys = Object.keys(effects).filter(k => effects[k].effect === 'positive');
+          const negKeys = Object.keys(effects).filter(k => effects[k].effect === 'negative');
+          const posSet = new Set(posKeys), negSet = new Set(negKeys);
+          const hasBrainSub = Object.keys(effects).some(k => k.indexOf('brain_') === 0);
+          const drop = new Set(hasBrainSub ? ['brain', 'nervous'] : []);
+          const mergePos = Array.from(new Set([...(row.target_organs_positive || []).filter(x => !drop.has(x) && !negSet.has(x)), ...posKeys]));
+          const mergeNeg = Array.from(new Set([...(row.target_organs_negative || []).filter(x => !drop.has(x) && !posSet.has(x)), ...negKeys]));
+          await sql`UPDATE medications
+            SET organ_effects = ${JSON.stringify(effects)}::jsonb,
+                target_organs_positive = ${mergePos}::text[],
+                target_organs_negative = ${mergeNeg}::text[]
+            WHERE id = ${row.id}`;
+          mig048.organ_effects_set++; mig048.target_organs_updated++;
+        } catch (ie) { mig048.skipped = (mig048.skipped || 0) + 1; }
+      }
+      console.log('migration 048 (organ_effects):', mig048.organ_effects_set, 'meds tagged');
+    } catch (e) { mig048.error = e.message; console.error('migration 048 (organ_effects):', e.message); }
+
+    // ── 049 (PR#121): extra clinically-accurate diagnosis↔medication links (mig045 seeded
+    //    only ~10-20%). Standard-of-care / FDA-indicated pairs only (see medications-pr121-data.js).
+    //    diagnosis_slug TEXT join (no FK) so catalog slugs (gpa/breast_cancer/…) are fine.
+    let mig049 = { diagnosis_links: 0 };
+    try {
+      const { DIAG_LINKS_EXT } = require('./medications-pr121-data.js');
+      for (const diagSlug of Object.keys(DIAG_LINKS_EXT)) {
+        for (const lk of DIAG_LINKS_EXT[diagSlug]) {
+          try {
+            const mrow = await sql`SELECT id FROM medications WHERE slug = ${lk.slug}`;
+            if (!mrow.length) continue;
+            await sql`INSERT INTO diagnosis_medications (diagnosis_slug, medication_id, is_primary, notes)
+              VALUES (${diagSlug}, ${mrow[0].id}, ${!!lk.is_primary}, ${lk.notes || ''})
+              ON CONFLICT (diagnosis_slug, medication_id) DO UPDATE SET is_primary = EXCLUDED.is_primary, notes = EXCLUDED.notes`;
+            mig049.diagnosis_links++;
+          } catch (le) { mig049.skipped = (mig049.skipped || 0) + 1; }
+        }
+      }
+      console.log('migration 049 (dx-med links):', mig049.diagnosis_links, 'links upserted');
+    } catch (e) { mig049.error = e.message; console.error('migration 049 (dx-med links):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-049 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
