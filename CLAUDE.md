@@ -201,9 +201,54 @@ fullscreen" miss.
    reuses `nmGetNodeColor`.
 4. **`evolution-path.js`** — Personal/Collective Path (timeline), uses `nmPathColor`
    for node tones; body-first ordering. ONE branch per chain (PR#114).
-5. **`nmDrawChainMini`** (PR#114) — the info-panel mini-view canvas; draws a single
-   chain left→right (consecutive edges), clicked node highlighted. Reuses
-   `nmGetNodeColor` (which returns an OPEN `rgba(…,` prefix — append `'1)'`).
+5. **`nmDrawChainMini`** (PR#114/#120) — the info-panel mini-view canvas; draws a single
+   chain left→right in **position order** (numbered step badges + consecutive edges),
+   the clicked node highlighted, hover tooltips (`nmBindMiniHover`/`nmNiMiniHit`). Reuses
+   `nmGetNodeColor` (which returns an OPEN `rgba(…,` prefix — append `'1)'`, see
+   `nmChainNodeColor`).
+6. **`nmDrawChainMini3D`** (PR#120) — the 3D variant of the mini-view. A **ForceGraph3D**
+   instance (NOT raw THREE — `window.THREE` is null on this page, only ForceGraph3D's
+   internal bundle exists) with the chain as a FIXED straight line (`fx`/`fy`/`fz`, all
+   forces nulled, `cooldownTicks(0)`) and a slow **camera auto-orbit** RAF
+   (`nmNiMini3DRot`). `nmDestroyMini3D` MUST run on toggle-off / panel-close / node-reopen
+   or the orbit RAF leaks. `ForceGraph3D===undefined` → graceful fall back to 2D.
+
+---
+
+## Info-panel UX contract (PR#114 + PR#120 — the click-to-isolate flow)
+
+Clicking a NeuroMap node opens `#nm-node-info` UNDER the canvas (`nmShowNodeInfo`). The
+full interaction, end to end:
+
+- **Header** shows identity + layer + valence + the **«appears N times» count, which is
+  itself a click target** (`#nm-ni-occurs`, dashed-underline + ▾) that toggles the chain
+  list — plus the explicit `#nm-ni-chains-toggle` («▾ Цепочки N») button. Both call
+  `nmToggleChainList`.
+- **Chain list** (`nmRenderChainList`, fed by `GET /chains-by-node/:id`): one row per
+  chain, most-recent first, `«29.06 14:32»` minute timestamp + `a → b → c` preview +
+  source tag. **Hover a row → that chain lights up on the MAIN NeuroMap** (`nmHoverChain`
+  sets `nmHoverChainId` + `nmHoverChainNodes`; the `nmSimulate` link-draw brightens edges
+  carrying `chain_ids`, the node-draw rings member nodes). A node with **zero** recorded
+  chains is NOT an error — render the `nm_no_chains` note, don't hide everything.
+- **Mini-view** (`#nm-ni-mini`, opened by `nmOpenChainMini` → `GET /chain/:chain_id`):
+  the isolated chain rendered IN the panel, in `position` order. A **2D/3D toggle**
+  (`#nm-ni-mini-mode` → `nmToggleMini3D`, persisted in `localStorage['nm_mini_3d']`)
+  switches between `nmDrawChainMini` (D3-style canvas) and `nmDrawChainMini3D`. The
+  dispatcher is `nmRenderMini` — always go through it so the canvas/3D `display` swap and
+  3D teardown stay consistent.
+- Superadmin Delete stays at the panel foot (unchanged from PR#114).
+
+**Storage contract (verify on every save-handler PR).** One save == one `nm_chain`
+(`started_at` minute-accurate, `source ∈ sensation|emotion|thought|diary`) + `nm_chain_nodes`
+at `position` = entry order. Maintained centrally in **`nmBridgeSession`**, called by the
+TWO NeuroMap write paths: `POST /sensation` (`source='sensation'`) and `POST /v2/append`
+(source derived from node types: emotion → thought → sensation → diary). All four NeuroMap
+flows therefore satisfy the contract. **Diet events (PR#117) and diagnosis claims (PR#115)
+are intentionally Path-only** — they write `journey_events`/`diet_events`, have NO
+`nm_nodes`, and so create NO chain. That is BY DESIGN (NeuroMap is felt-experience nodes;
+there is no diet/diagnosis layer in the 1–6 model). Do NOT force chains for them — it would
+pollute the NeuroMap with non-felt nodes. The standalone Resource-Diary `POST /api/diary/save`
+is likewise Path-only; the *NeuroMap* diary flow goes through `/v2/append` and DOES chain.
 
 ---
 
