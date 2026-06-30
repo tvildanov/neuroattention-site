@@ -9842,7 +9842,10 @@ app.post('/api/me/diet/event', requireAuth, async (req, res) => {
     let jid = null;
     try {
       const label = b.label ? String(b.label).slice(0, 120) : ('🍽 ' + kind);
-      jid = await logJourney(userId, 'diet', 'diet',
+      // NOTE: layer MUST be one of the Path's lane buckets (practice|emotion|event|
+      // thought|sensation|insight|xp_gain) — the evolution endpoint drops events whose
+      // `layer` has no bucket. A diet pick is a daily life event → the `event` lane.
+      jid = await logJourney(userId, 'diet', 'event',
         { label, event_kind: kind, notes: notes || undefined, icon: '🍽' },
         whenIso, depId, null);
     } catch (le) { console.warn('diet event → path:', le.message); }

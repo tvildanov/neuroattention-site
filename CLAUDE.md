@@ -295,7 +295,10 @@ the diet tint on every switch (`if(a._focusColored.length) a.focusRegions([])`).
   medications block): `GET /api/diets`, `/api/diets/:slug` (+diagnoses join),
   `/api/diagnoses/:slug/diets` (reverse — for the Diagnoses tab to consume),
   `GET/PUT /api/me/diet`, `POST /api/me/diet/event` (mirrors onto the Personal Path via
-  `logJourney` kind=`diet`), `GET /api/me/diet/events`. All 503 cleanly pre-migration.
+  `logJourney` kind=`diet`, **layer=`event`** — the evolution endpoint DROPS events whose
+  `layer` isn't one of its lane buckets `practice|emotion|event|thought|sensation|insight|
+  xp_gain`, so a diet pick rides the generic `event` lane with a 🍽 `payload.label`),
+  `GET /api/me/diet/events`. All 503 cleanly pre-migration.
 - **3D green/red overlay** — NEW first-class atlas method `BodyAtlas.tintRegions({positive,
   negative})` (body-atlas.js, `v=32`): FIRST toggles on the target organs' LAYERS (via
   `layersForSeedIds`+`toggleLayer`, like Conditions `focus()` — else a seed like 'heart'
