@@ -1255,7 +1255,7 @@ a.dash-tab:hover { text-decoration:none; }
            to NeuroMap and pop the matching overlay. -->
       <a class="dash-tab dash-subtab" id="tools-mode-pointab" href="?tool=pointab" onclick="event.preventDefault();setToolsMode('pointab');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</a>
       <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;">External Field</a>
-      <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=anatomy" onclick="event.preventDefault();setToolsMode('anatomy');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.anatomy">Анатомия</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=internal-field" onclick="event.preventDefault();setToolsMode('internal-field');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.internal_field">Внутреннее воздействие</a>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -1564,6 +1564,41 @@ a.dash-tab:hover { text-decoration:none; }
         .ha-sev.variable{background:rgba(168,247,255,0.13);color:#A8F7FF;}
         .ha-nd{display:inline-block;font-size:9.5px;border-radius:6px;padding:0.1rem 0.45rem;margin-left:0.4rem;background:rgba(141,255,200,0.12);color:#8DFFC8;vertical-align:middle;}
         @media(max-width:760px){.ha-side{width:100%;max-width:100%;}.ha-list{max-height:300px;}}
+        /* ── Diet (PR#117) ── */
+        .diet-banner{font-size:13px;color:var(--text-muted,#cdd6df);background:rgba(141,255,200,0.06);border:1px solid rgba(141,255,200,0.18);border-radius:10px;padding:0.6rem 0.8rem;margin-bottom:0.9rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;}
+        .diet-banner b{color:#8DFFC8;}
+        .diet-quick{background:rgba(0,0,0,0.18);border:1px solid rgba(168,247,255,0.1);border-radius:12px;padding:0.8rem 0.9rem;margin-bottom:1.1rem;}
+        .diet-quick-head,.diet-grid-head{font-size:11px;text-transform:uppercase;letter-spacing:0.09em;color:#A8F7FF;margin-bottom:0.55rem;}
+        .diet-grid-head{margin:0.4rem 0 0.7rem;}
+        .diet-chips{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.6rem;}
+        .diet-chip{background:rgba(168,247,255,0.07);border:1px solid rgba(168,247,255,0.18);border-radius:18px;font-size:12.5px;color:var(--text-primary,#e8edf2);padding:0.35rem 0.75rem;cursor:pointer;transition:.15s;}
+        .diet-chip:hover{background:rgba(168,247,255,0.16);}
+        .diet-chip.sel{background:rgba(141,255,200,0.18);border-color:#8DFFC8;color:#bff7dd;}
+        .diet-quick-row{display:flex;gap:0.5rem;align-items:center;}
+        .diet-quick-status{font-size:12px;color:#8DFFC8;margin-top:0.45rem;min-height:1em;}
+        .diet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.7rem;}
+        .diet-card{text-align:left;background:rgba(168,247,255,0.04);border:1px solid rgba(168,247,255,0.14);border-radius:12px;padding:0.8rem 0.85rem;cursor:pointer;transition:.15s;color:var(--text-primary,#e8edf2);display:flex;flex-direction:column;gap:0.3rem;}
+        .diet-card:hover{background:rgba(168,247,255,0.1);border-color:rgba(168,247,255,0.4);transform:translateY(-2px);}
+        .diet-card.primary{border-color:#8DFFC8;box-shadow:0 0 0 1px rgba(141,255,200,0.35) inset;}
+        .diet-card .dc-name{font-size:14px;font-weight:600;display:flex;align-items:center;gap:0.35rem;}
+        .diet-card .dc-desc{font-size:11.5px;color:var(--text-muted,#aab4be);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+        .diet-card .dc-organs{display:flex;gap:0.25rem;margin-top:0.15rem;}
+        .diet-card .dc-dot{width:9px;height:9px;border-radius:50%;}
+        .dc-dot.pos{background:#6BE89B;} .dc-dot.neg{background:#FF6B6B;}
+        .diet-disclaimer{font-size:10.5px;color:var(--text-dim,#7c8896);line-height:1.5;margin:1.1rem 0 0;font-style:italic;}
+        .diet-back{background:none;border:none;color:#A8F7FF;font-size:13px;cursor:pointer;padding:0 0 0.5rem;}
+        .diet-detail-name{font-size:16px;color:#A8F7FF;margin:0.2rem 0 0.1rem;}
+        .diet-detail-desc{font-size:12.5px;line-height:1.6;color:var(--text-muted,#cdd6df);margin:0.3rem 0 0.7rem;}
+        .diet-eff-h{font-size:10.5px;text-transform:uppercase;letter-spacing:0.1em;margin:0.7rem 0 0.3rem;}
+        .diet-eff-h.pos{color:#6BE89B;} .diet-eff-h.neg{color:#FF6B6B;}
+        .diet-eff li{font-size:12px;line-height:1.5;color:var(--text-muted,#cdd6df);margin-left:1rem;}
+        .diet-dx{display:inline-flex;align-items:center;gap:0.3rem;font-size:11px;border-radius:7px;padding:0.2rem 0.5rem;margin:0 0.3rem 0.3rem 0;}
+        .diet-dx.recommended{background:rgba(141,255,200,0.12);color:#8DFFC8;}
+        .diet-dx.contraindicated{background:rgba(255,143,163,0.14);color:#FF8FA3;}
+        .diet-dx.neutral{background:rgba(168,247,255,0.1);color:#A8F7FF;}
+        .diet-legend{display:flex;gap:0.8rem;font-size:10.5px;color:var(--text-muted);margin-top:0.5rem;}
+        .diet-legend span{display:inline-flex;align-items:center;gap:0.3rem;}
+        .diet-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
         /* C: Functions/Conditions left panel on mobile — stack vertically. The
            generic .atlas-layers mobile rule (flex-direction:row;overflow-x:auto)
            squashes search + category chips + list into a cramped horizontal row.
@@ -1586,9 +1621,10 @@ a.dash-tab:hover { text-decoration:none; }
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;" data-i18n="a.tools.anatomy_subtitle">Интерактивное 3D-тело: вращай, переключай слои, нажми на голову — погрузишься в детальный мозг. Слои мышц, скелета и нервной системы — анатомически точные схемы.</p>
         <div class="atlas-shell">
           <div class="ha-tabs">
-            <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')">🫀 <span data-i18n="a.ha.tab_anatomy">Анатомия</span></button>
+            <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')">🫀 <span data-i18n="a.ha.tab_anatomy">Анатомический атлас</span></button>
             <button class="ha-tab" id="ha-tab-functions" onclick="haSwitchTab('functions')">🧠 <span data-i18n="a.ha.tab_functions">Функции человека</span></button>
             <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')">🩺 <span data-i18n="a.ha.tab_conditions">Диагнозы и состояния</span></button>
+            <button class="ha-tab" id="ha-tab-diet" onclick="haSwitchTab('diet')">🥗 <span data-i18n="a.ha.tab_diet">Тип питания</span></button>
           </div>
           <div class="atlas-topbar" id="ha-topbar">
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
@@ -1612,6 +1648,7 @@ a.dash-tab:hover { text-decoration:none; }
               <div class="ha-cats" id="ha-cond-cats"></div>
               <div class="ha-list" id="ha-cond-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
             </aside>
+            <aside class="atlas-layers" id="ha-left-diet" style="display:none;width:300px;flex:0 0 300px;overflow-y:auto;"></aside>
             <div class="atlas-viewport" id="atlas-viewport">
               <div class="atlas-tooltip" id="atlas-tooltip"></div>
               <div class="atlas-region-panel" id="atlas-region-panel">
@@ -1635,6 +1672,22 @@ a.dash-tab:hover { text-decoration:none; }
                 <div id="ha-detail-body"></div>
               </div>
             </div>
+          </div>
+          <!-- ── Diet (PR#117): full-width list of diet patterns + quick "how I ate" log. ── -->
+          <div id="ha-diet-panel" style="display:none;padding:1.1rem 1.1rem 1.4rem;">
+            <div id="diet-primary-banner" class="diet-banner"></div>
+            <div class="diet-quick">
+              <div class="diet-quick-head" data-i18n="a.diet.quick_title">Как я сегодня ел?</div>
+              <div class="diet-chips" id="diet-event-chips"></div>
+              <div class="diet-quick-row">
+                <input type="text" id="diet-event-note" class="glass-input" maxlength="200" data-i18n-placeholder="a.diet.note_ph" placeholder="Комментарий (необязательно)…" style="flex:1;min-width:0;font-size:13px;padding:0.45rem 0.7rem;">
+                <button class="btn btn-primary" id="diet-event-save" onclick="dietSaveEvent()" disabled data-i18n="a.diet.log_btn" style="font-size:13px;white-space:nowrap;">Записать</button>
+              </div>
+              <div id="diet-event-status" class="diet-quick-status"></div>
+            </div>
+            <div class="diet-grid-head" data-i18n="a.diet.choose_title">Выбери основной тип питания</div>
+            <div id="diet-grid" class="diet-grid"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
+            <p class="diet-disclaimer" data-i18n="a.diet.disclaimer">Образовательная информация, не индивидуальная диетологическая рекомендация. При наличии хронических заболеваний — консультация с врачом/нутрициологом.</p>
           </div>
         </div>
       </div>
@@ -5418,6 +5471,9 @@ function setToolsMode(mode){
   var _overlayAfter = null;
   if(mode==='sensation'){ _overlayAfter = window.nmOpenSensationOverlay; mode='nm'; }
   else if(mode==='diary' || mode==='cal'){ _overlayAfter = window.nmOpenDiaryOverlay; mode='nm'; }
+  // PR#117: «Anatomy» tool renamed to «Internal Field». The content/id stay
+  // `anatomy` (back-compat for ?tool=anatomy deep-links); internal-field is an alias.
+  else if(mode==='internal-field'){ mode='anatomy'; }
   var nmContent = document.getElementById('tools-nm-content');
   var calDiaryWrap = document.getElementById('tools-cal-diary-wrap');
   var calPanel = document.getElementById('cal-mode-cal');
@@ -16710,7 +16766,7 @@ window.pbMove = pbMove;
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
-<script src="assets/js/body-atlas.js?v=30"></script>
+<script src="assets/js/body-atlas.js?v=31"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -17181,18 +17237,28 @@ window.pbMove = pbMove;
   /* ── tab switching ──────────────────────────────────────────────────────── */
   window.haSwitchTab = function(tab){
     activeTab = tab;
-    ['anatomy','functions','conditions'].forEach(function(t){
+    ['anatomy','functions','conditions','diet'].forEach(function(t){
       var btn=document.getElementById('ha-tab-'+t); if(btn) btn.classList.toggle('active', t===tab);
     });
-    var lAn=document.getElementById('atlas-layers'), lFn=document.getElementById('ha-left-functions'), lCo=document.getElementById('ha-left-conditions');
+    // PR#117: drop any green/red diet tint when leaving the Diet tab.
+    try{ var a0=window._anatomyAtlas; if(a0 && a0._focusColored && a0._focusColored.length) a0.focusRegions([]); }catch(e){}
+    var lAn=document.getElementById('atlas-layers'), lFn=document.getElementById('ha-left-functions'),
+        lCo=document.getElementById('ha-left-conditions'), lDi=document.getElementById('ha-left-diet');
     if(lAn) lAn.style.display = tab==='anatomy'?'':'none';
     if(lFn) lFn.style.display = tab==='functions'?'':'none';
     if(lCo) lCo.style.display = tab==='conditions'?'':'none';
+    if(lDi) lDi.style.display='none';   // diet detail aside is shown only via dietOpenDetail()
+    // PR#117: the Diet tab hides the 3D body+asides and shows a full-width list.
+    var body=document.querySelector('#tools-anatomy-content .atlas-body');
+    var dpan=document.getElementById('ha-diet-panel');
+    if(body) body.style.display = tab==='diet'?'none':'';
+    if(dpan) dpan.style.display = tab==='diet'?'':'none';
     var topbar=document.getElementById('ha-topbar'); if(topbar) topbar.style.display = tab==='anatomy'?'':'none';
     // close both detail panels on switch
     if(window.atlasCloseRegion) window.atlasCloseRegion();   // closes region panel + clears stacked state + mini
     haCloseDetail();
     if(tab==='anatomy'){ syncAnatomyLayers(); }
+    else if(tab==='diet'){ if(window.dietEnter) window.dietEnter(); }
     else {
       clearFocus();
       ensureData(function(){ tab==='functions' ? renderFnPanel() : renderCondPanel(); });
@@ -17595,6 +17661,172 @@ window.pbMove = pbMove;
       setTimeout(bindDiagTab, 2000);
     });
   })();
+</script>
+<!-- ── Diet / «Тип питания» (PR#117) — Internal Field sub-tab ── -->
+<script>
+(function(){
+  // Reuses the shared BodyAtlas (window._anatomyAtlas) for the green/red overlay,
+  // window.t()/getLang() for i18n, and the naAuthHeaders helper for authed calls.
+  var DIETS = null, PRIMARY = null, SELECTED_EVENT = null, loaded = false;
+  function L(){ try{ return (window.getLang && window.getLang()) || 'ru'; }catch(e){ return 'ru'; } }
+  function T(k, fb){ try{ return (window.t && window.t(k)) || fb || k; }catch(e){ return fb || k; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function pick(row, base){ var l=L(); return row[base+'_'+l] || row[base+'_ru'] || row[base+'_en'] || ''; }
+  function arr(row, base){ var l=L(); return row[base+'_'+l] || row[base+'_ru'] || row[base+'_en'] || []; }
+
+  var EVENT_KINDS = ['clean','sugar_excess','alcohol_excess','overeating','skipped','heavy','other'];
+  function eventLabel(k){
+    return T('a.diet.ev_'+k, {clean:'Чисто',sugar_excess:'Превышение сахара',alcohol_excess:'Превышение алкоголя',
+      overeating:'Переедание',skipped:'Пропуск приёма пищи',heavy:'Высокая тяжесть',other:'Другое'}[k]);
+  }
+
+  function load(cb){
+    if(loaded){ cb && cb(); return; }
+    fetch(API_BASE + '/api/diets').then(function(r){ return r.json(); }).then(function(j){
+      DIETS = (j && j.diets) || []; loaded = true;
+      // current primary (authed; ignore failure for guests)
+      fetch(API_BASE + '/api/me/diet', { headers: naAuthHeaders() }).then(function(r){ return r.json(); })
+        .then(function(p){ PRIMARY = (p && p.primary && p.primary.primary_diet_slug) || null; cb && cb(); })
+        .catch(function(){ cb && cb(); });
+    }).catch(function(){ DIETS=[]; loaded=true; cb && cb(); });
+  }
+
+  function organDots(row){
+    var pos=(row.target_organs_positive||[]).length, neg=(row.target_organs_negative||[]).length, h='';
+    for(var i=0;i<Math.min(pos,4);i++) h+='<i class="dc-dot pos"></i>';
+    for(var j=0;j<Math.min(neg,4);j++) h+='<i class="dc-dot neg"></i>';
+    return h ? '<div class="dc-organs">'+h+'</div>' : '';
+  }
+
+  function renderBanner(){
+    var b=document.getElementById('diet-primary-banner'); if(!b) return;
+    if(PRIMARY){
+      var d=(DIETS||[]).filter(function(x){return x.slug===PRIMARY;})[0];
+      b.innerHTML = T('a.diet.your_diet','Твой тип питания:')+' <b>'+esc(d?pick(d,'name'):PRIMARY)+'</b>';
+    } else {
+      b.innerHTML = '🥗 '+T('a.diet.no_primary','Ты ещё не выбрал основной тип питания. Открой карточку, чтобы установить.');
+    }
+  }
+
+  function renderChips(){
+    var c=document.getElementById('diet-event-chips'); if(!c) return;
+    c.innerHTML = EVENT_KINDS.map(function(k){
+      return '<button class="diet-chip'+(SELECTED_EVENT===k?' sel':'')+'" data-k="'+k+'" onclick="dietPickEvent(\''+k+'\')">'+esc(eventLabel(k))+'</button>';
+    }).join('');
+  }
+
+  function renderGrid(){
+    var g=document.getElementById('diet-grid'); if(!g) return;
+    if(!DIETS || !DIETS.length){ g.innerHTML='<div class="ha-empty">'+T('a.diet.none','Нет данных. Запусти миграции.')+'</div>'; return; }
+    g.innerHTML = DIETS.map(function(d){
+      return '<button class="diet-card'+(PRIMARY===d.slug?' primary':'')+'" onclick="dietOpenDetail(\''+esc(d.slug)+'\')">'
+        + '<span class="dc-name">'+(PRIMARY===d.slug?'★ ':'')+esc(pick(d,'name'))+'</span>'
+        + '<span class="dc-desc">'+esc(pick(d,'description'))+'</span>'
+        + organDots(d) + '</button>';
+    }).join('');
+  }
+
+  window.dietEnter = function(){
+    load(function(){ renderBanner(); renderChips(); renderGrid(); });
+  };
+
+  window.dietPickEvent = function(k){
+    SELECTED_EVENT = (SELECTED_EVENT===k ? null : k);
+    renderChips();
+    var btn=document.getElementById('diet-event-save'); if(btn) btn.disabled = !SELECTED_EVENT;
+  };
+
+  window.dietSaveEvent = function(){
+    if(!SELECTED_EVENT) return;
+    var note=document.getElementById('diet-event-note'), st=document.getElementById('diet-event-status');
+    var btn=document.getElementById('diet-event-save'); if(btn) btn.disabled=true;
+    fetch(API_BASE + '/api/me/diet/event', {
+      method:'POST', headers: naAuthHeaders(),
+      body: JSON.stringify({ event_kind: SELECTED_EVENT, notes: note?note.value:'', label: '🍽 '+eventLabel(SELECTED_EVENT) })
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if(j && j.ok){
+        if(st) st.textContent = '✓ '+T('a.diet.saved','Записано — отметка появится на твоём Пути.');
+        SELECTED_EVENT=null; if(note) note.value=''; renderChips();
+        try{ var eb=document.getElementById('evo-path'); if(eb && window.mountEvolutionPath) window.mountEvolutionPath(eb); }catch(e){}
+      } else { if(st) st.textContent = T('a.diet.save_err','Не удалось записать.'); if(btn) btn.disabled=false; }
+    }).catch(function(){ if(st) st.textContent=T('a.diet.save_err','Не удалось записать.'); if(btn) btn.disabled=false; });
+  };
+
+  window.dietBackToList = function(){
+    var body=document.querySelector('#tools-anatomy-content .atlas-body');
+    var dpan=document.getElementById('ha-diet-panel');
+    var lDi=document.getElementById('ha-left-diet');
+    try{ var a=window._anatomyAtlas; if(a) a.focusRegions([]); }catch(e){}
+    if(lDi) lDi.style.display='none';
+    if(body) body.style.display='none';
+    if(dpan) dpan.style.display='';
+    renderBanner(); renderGrid();
+  };
+
+  window.dietSetPrimary = function(slug){
+    fetch(API_BASE + '/api/me/diet', { method:'PUT', headers: naAuthHeaders(), body: JSON.stringify({ slug: slug }) })
+      .then(function(r){ return r.json(); }).then(function(j){
+        if(j && j.ok){ PRIMARY = slug; var b=document.getElementById('diet-set-primary'); if(b){ b.textContent='★ '+T('a.diet.is_primary','Это твой основной тип'); b.disabled=true; } }
+      }).catch(function(){});
+  };
+
+  window.dietOpenDetail = function(slug){
+    var d=(DIETS||[]).filter(function(x){return x.slug===slug;})[0]; if(!d) return;
+    var body=document.querySelector('#tools-anatomy-content .atlas-body');
+    var dpan=document.getElementById('ha-diet-panel');
+    var lDi=document.getElementById('ha-left-diet');
+    var lAn=document.getElementById('atlas-layers'), lFn=document.getElementById('ha-left-functions'),
+        lCo=document.getElementById('ha-left-conditions'), topbar=document.getElementById('ha-topbar');
+    // switch to the 3D view, replacing the left column with the diet card
+    if(dpan) dpan.style.display='none';
+    if(body) body.style.display='';
+    if(lAn) lAn.style.display='none'; if(lFn) lFn.style.display='none'; if(lCo) lCo.style.display='none';
+    if(topbar) topbar.style.display='none';
+    if(lDi) lDi.style.display='';
+
+    var pros=arr(d,'pros'), cons=arr(d,'cons');
+    var prosH = pros.length ? '<div class="diet-eff-h pos">🟢 '+T('a.diet.green','Зелёные эффекты')+'</div><ul class="diet-eff">'+pros.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ul>' : '';
+    var consH = cons.length ? '<div class="diet-eff-h neg">🔴 '+T('a.diet.red','Красные эффекты')+'</div><ul class="diet-eff">'+cons.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ul>' : '';
+    var isPrim = PRIMARY===slug;
+    if(lDi) lDi.innerHTML =
+      '<button class="diet-back" onclick="dietBackToList()">← '+T('a.diet.back','К списку')+'</button>'
+      + '<h3 class="diet-detail-name">'+esc(pick(d,'name'))+'</h3>'
+      + '<p class="diet-detail-desc">'+esc(pick(d,'description'))+'</p>'
+      + '<button id="diet-set-primary" class="btn '+(isPrim?'btn-ghost':'btn-primary')+'" '+(isPrim?'disabled':'')+' onclick="dietSetPrimary(\''+esc(slug)+'\')" style="font-size:13px;width:100%;margin-bottom:0.6rem;">'+(isPrim?'★ '+T('a.diet.is_primary','Это твой основной тип'):T('a.diet.set_primary','Сделать основным'))+'</button>'
+      + '<div class="diet-legend"><span><i style="background:#6BE89B"></i>'+T('a.diet.legend_pos','польза')+'</span><span><i style="background:#FF6B6B"></i>'+T('a.diet.legend_neg','нагрузка')+'</span></div>'
+      + prosH + consH
+      + '<div id="diet-dx-wrap"></div>'
+      + '<p class="diet-disclaimer">'+T('a.diet.disclaimer','Образовательная информация, не индивидуальная диетологическая рекомендация. При наличии хронических заболеваний — консультация с врачом/нутрициологом.')+'</p>';
+
+    // green/red overlay on the shared 3D body
+    try{
+      var a=window._anatomyAtlas;
+      var applyTint=function(){ try{ a.tintRegions({ positive: d.target_organs_positive||[], negative: d.target_organs_negative||[] }); }catch(e){} };
+      if(a){ applyTint(); setTimeout(applyTint,350); setTimeout(applyTint,900); }
+      else if(typeof window.mountAnatomyAtlas==='function'){ window.mountAnatomyAtlas(); setTimeout(function(){ a=window._anatomyAtlas; if(a){ applyTint(); setTimeout(applyTint,500); } }, 400); }
+    }catch(e){}
+
+    // recommended / contraindicated diagnoses
+    fetch(API_BASE + '/api/diets/'+encodeURIComponent(slug)).then(function(r){ return r.json(); }).then(function(j){
+      var w=document.getElementById('diet-dx-wrap'); if(!w) return;
+      var dx=(j && j.diagnoses) || []; if(!dx.length){ w.innerHTML=''; return; }
+      var nm=function(x){ var l=L(); return x['name_'+l]||x.name_ru||x.name_en||x.slug; };
+      var rec=dx.filter(function(x){return x.recommendation==='recommended';});
+      var con=dx.filter(function(x){return x.recommendation==='contraindicated';});
+      var h='';
+      if(rec.length) h+='<div class="diet-eff-h pos">'+T('a.diet.rec_for','Рекомендована при')+'</div><div>'+rec.map(function(x){return '<span class="diet-dx recommended">✓ '+esc(nm(x))+'</span>';}).join('')+'</div>';
+      if(con.length) h+='<div class="diet-eff-h neg">'+T('a.diet.contra_for','Не подходит при')+'</div><div>'+con.map(function(x){return '<span class="diet-dx contraindicated">✕ '+esc(nm(x))+'</span>';}).join('')+'</div>';
+      w.innerHTML=h;
+    }).catch(function(){});
+  };
+
+  // Re-render labels on language change while the Diet tab is open.
+  document.addEventListener('langchange', function(){
+    if(document.getElementById('ha-tab-diet') && document.getElementById('ha-tab-diet').classList.contains('active')){
+      renderBanner(); renderChips(); renderGrid();
+    }
+  });
+})();
 </script>
 </body>
 </html>

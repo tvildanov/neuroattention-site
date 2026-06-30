@@ -1834,7 +1834,268 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 043 (first-class chains): created', mig043.chains_created, 'chains,', mig043.chain_nodes_created, 'chain-node links');
     } catch (e) { mig043.error = e.message; console.error('migration 043 (first-class chains):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-043 applied successfully', mig039, mig040, mig041, mig042, mig043 });
+    // ── Migration 046 (PR#117): Diet / «Тип питания» ──────────────────────────
+    // diets (15 reference patterns), diagnosis_diets (recommend/contra links to
+    // human_conditions.slug), user_diet (one primary per user), diet_events (the
+    // minimal once-a-day "how I ate" log; also mirrored onto the Personal Path as
+    // journey_events). target_organs_* hold BodyAtlas seed-ids (brain/heart/liver/
+    // kidneys/pancreas/lungs/endocrine/gi-tract) so the diet card tints the 3D body
+    // green (positive) / red (negative) directly. Idempotent: CREATE IF NOT EXISTS,
+    // seed INSERT … ON CONFLICT DO NOTHING + UPDATE refresh.
+    let mig046 = { diets_seeded: 0, diagnosis_links: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS diets (
+        id BIGSERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        name_ru TEXT, name_en TEXT, name_es TEXT,
+        description_ru TEXT, description_en TEXT, description_es TEXT,
+        pros_ru TEXT[], pros_en TEXT[], pros_es TEXT[],
+        cons_ru TEXT[], cons_en TEXT[], cons_es TEXT[],
+        target_organs_positive TEXT[], target_organs_negative TEXT[],
+        sort_order INT DEFAULT 100
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS diagnosis_diets (
+        diagnosis_slug TEXT NOT NULL,
+        diet_id BIGINT NOT NULL REFERENCES diets(id) ON DELETE CASCADE,
+        recommendation TEXT,
+        notes TEXT,
+        PRIMARY KEY (diagnosis_slug, diet_id)
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS user_diet (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        primary_diet_slug TEXT,
+        started_at DATE,
+        updated_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS diet_events (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event_kind TEXT NOT NULL,
+        notes TEXT,
+        occurred_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS diet_events_user_time ON diet_events(user_id, occurred_at)`;
+
+      const DIETS = [
+        { slug:'western', sort:10,
+          nr:'Западный (стандартный)', ne:'Western (Standard)', ns:'Occidental (estándar)',
+          dr:'Преобладание фастфуда, сахара и ультрапереработанных продуктов; мало клетчатки и цельных продуктов.',
+          de:'Heavy on fast food, sugar and ultra-processed products; low in fibre and whole foods.',
+          ds:'Predominio de comida rápida, azúcar y ultraprocesados; poca fibra y alimentos integrales.',
+          pr:['Доступность','Привычность'], pe:['Accessible','Familiar'], ps:['Accesible','Familiar'],
+          cr:['Высокий сахар и трансжиры','Хроническое воспаление','Риск ожирения и диабета'],
+          ce:['High sugar and trans fats','Chronic inflammation','Obesity and diabetes risk'],
+          cs:['Mucho azúcar y grasas trans','Inflamación crónica','Riesgo de obesidad y diabetes'],
+          pos:[], neg:['liver','heart','brain','gi-tract'] },
+        { slug:'mediterranean', sort:20,
+          nr:'Средиземноморская', ne:'Mediterranean', ns:'Mediterránea',
+          dr:'Оливковое масло, рыба, овощи, бобовые, орехи и цельные зёрна; красное мясо ограничено.',
+          de:'Olive oil, fish, vegetables, legumes, nuts and whole grains; red meat limited.',
+          ds:'Aceite de oliva, pescado, verduras, legumbres, frutos secos y cereales integrales; carne roja limitada.',
+          pr:['Здоровье сердца и сосудов','Поддержка когнитивных функций','Богата клетчаткой'],
+          pe:['Heart and vessel health','Supports cognition','Rich in fibre'],
+          ps:['Salud cardiovascular','Apoya la cognición','Rica en fibra'],
+          cr:['Требует свежих продуктов'], ce:['Needs fresh produce'], cs:['Requiere productos frescos'],
+          pos:['heart','brain','gi-tract'], neg:[] },
+        { slug:'keto', sort:30,
+          nr:'Кето / LCHF', ne:'Keto / LCHF', ns:'Keto / LCHF',
+          dr:'Высокий жир, очень низкий углевод; организм переходит на кетоны как источник энергии.',
+          de:'High fat, very low carb; the body shifts to ketones for fuel.',
+          ds:'Alto en grasa, muy bajo en carbohidratos; el cuerpo usa cetonas como energía.',
+          pr:['Стабильный уровень сахара','Снижение веса','Ясность мышления у части людей'],
+          pe:['Stable blood sugar','Weight loss','Mental clarity for some'],
+          ps:['Glucemia estable','Pérdida de peso','Claridad mental en algunos'],
+          cr:['Нагрузка на печень и почки','Дефицит клетчатки','Тяжело придерживаться'],
+          ce:['Load on liver and kidneys','Low fibre','Hard to sustain'],
+          cs:['Carga hepática y renal','Poca fibra','Difícil de mantener'],
+          pos:['brain'], neg:['liver','kidneys'] },
+        { slug:'paleo', sort:40,
+          nr:'Палео', ne:'Paleo', ns:'Paleo',
+          dr:'Мясо, рыба, овощи, фрукты и орехи; без зерновых, молочных продуктов и сахара.',
+          de:'Meat, fish, vegetables, fruit and nuts; no grains, dairy or sugar.',
+          ds:'Carne, pescado, verduras, fruta y frutos secos; sin cereales, lácteos ni azúcar.',
+          pr:['Минимум переработки','Стабильная энергия','Меньше сахара'],
+          pe:['Minimally processed','Stable energy','Less sugar'],
+          ps:['Mínimo procesamiento','Energía estable','Menos azúcar'],
+          cr:['Дороговизна','Исключает цельные зёрна'], ce:['Can be costly','Excludes whole grains'],
+          cs:['Puede ser costosa','Excluye cereales integrales'],
+          pos:['gi-tract','pancreas'], neg:[] },
+        { slug:'vegetarian', sort:50,
+          nr:'Вегетарианство (ово-лакто)', ne:'Vegetarian (ovo-lacto)', ns:'Vegetariana (ovo-lacto)',
+          dr:'Растительная пища плюс молочные продукты и яйца; без мяса и рыбы.',
+          de:'Plant foods plus dairy and eggs; no meat or fish.',
+          ds:'Alimentos vegetales más lácteos y huevos; sin carne ni pescado.',
+          pr:['Богата клетчаткой','Польза для сердца','Поддержка микробиоты'],
+          pe:['High fibre','Heart benefits','Supports microbiome'],
+          ps:['Rica en fibra','Beneficios cardíacos','Apoya la microbiota'],
+          cr:['Риск дефицита B12 и железа'], ce:['B12 and iron deficiency risk'],
+          cs:['Riesgo de déficit de B12 y hierro'],
+          pos:['heart','gi-tract'], neg:[] },
+        { slug:'vegan', sort:60,
+          nr:'Веганство', ne:'Vegan', ns:'Vegana',
+          dr:'Только растительная пища; исключаются все продукты животного происхождения.',
+          de:'Entirely plant-based; all animal products excluded.',
+          ds:'Totalmente vegetal; se excluyen todos los productos animales.',
+          pr:['Низкий насыщенный жир','Здоровье сосудов','Богата клетчаткой'],
+          pe:['Low saturated fat','Vessel health','High fibre'],
+          ps:['Poca grasa saturada','Salud vascular','Rica en fibra'],
+          cr:['Требует добавок B12','Риск дефицита железа, омега-3, D'],
+          ce:['Needs B12 supplements','Risk of iron, omega-3, D deficiency'],
+          cs:['Requiere suplemento de B12','Riesgo de déficit de hierro, omega-3, D'],
+          pos:['heart','gi-tract'], neg:[] },
+        { slug:'dash', sort:70,
+          nr:'DASH', ne:'DASH', ns:'DASH',
+          dr:'Низкое содержание соли, много фруктов и овощей; разработана при гипертонии.',
+          de:'Low sodium, rich in fruit and vegetables; designed for hypertension.',
+          ds:'Baja en sodio, rica en frutas y verduras; diseñada para la hipertensión.',
+          pr:['Снижает давление','Здоровье почек','Польза для сердца'],
+          pe:['Lowers blood pressure','Kidney health','Heart benefits'],
+          ps:['Reduce la presión','Salud renal','Beneficios cardíacos'],
+          cr:['Требует контроля соли'], ce:['Needs sodium tracking'], cs:['Requiere controlar el sodio'],
+          pos:['heart','kidneys'], neg:[] },
+        { slug:'carnivore', sort:80,
+          nr:'Карнивор', ne:'Carnivore', ns:'Carnívora',
+          dr:'Только животная пища: мясо, рыба, яйца; полностью без растительных продуктов.',
+          de:'Animal foods only: meat, fish, eggs; no plant foods at all.',
+          ds:'Solo alimentos de origen animal: carne, pescado, huevos; sin vegetales.',
+          pr:['Высокая сытость','Простота','Стабильный сахар'],
+          pe:['High satiety','Simple','Stable blood sugar'],
+          ps:['Mucha saciedad','Sencilla','Glucemia estable'],
+          cr:['Нет клетчатки','Нагрузка на сосуды и почки','Бедность нутриентами'],
+          ce:['No fibre','Load on vessels and kidneys','Nutrient-poor'],
+          cs:['Sin fibra','Carga vascular y renal','Pobre en nutrientes'],
+          pos:[], neg:['gi-tract','heart','kidneys'] },
+        { slug:'intermittent_fasting', sort:90,
+          nr:'Интервальное голодание', ne:'Intermittent Fasting', ns:'Ayuno intermitente',
+          dr:'Ограничение времени приёма пищи (16:8, OMAD, 5:2); важен не состав, а окно питания.',
+          de:'Time-restricted eating (16:8, OMAD, 5:2); the eating window matters more than content.',
+          ds:'Alimentación con restricción horaria (16:8, OMAD, 5:2); importa la ventana, no el contenido.',
+          pr:['Чувствительность к инсулину','Аутофагия','Простота режима'],
+          pe:['Insulin sensitivity','Autophagy','Simple schedule'],
+          ps:['Sensibilidad a la insulina','Autofagia','Horario sencillo'],
+          cr:['Не подходит при некоторых состояниях','Риск переедания в окно'],
+          ce:['Not for some conditions','Overeating risk in window'],
+          cs:['No apto en ciertas condiciones','Riesgo de atracón en la ventana'],
+          pos:['liver','pancreas','brain'], neg:[] },
+        { slug:'wfpb', sort:100,
+          nr:'Цельная растительная (WFPB)', ne:'Whole-food plant-based', ns:'Vegetal integral (WFPB)',
+          dr:'Цельные растительные продукты с минимальной обработкой; масла и сахар сведены к минимуму.',
+          de:'Whole, minimally processed plant foods; oils and sugar kept minimal.',
+          ds:'Alimentos vegetales integrales y poco procesados; aceites y azúcar al mínimo.',
+          pr:['Сильная польза для сердца','Здоровье сосудов и мозга','Богата клетчаткой'],
+          pe:['Strong heart benefits','Vessel and brain health','High fibre'],
+          ps:['Gran beneficio cardíaco','Salud vascular y cerebral','Rica en fibra'],
+          cr:['Требует планирования','B12 из добавок'], ce:['Needs planning','B12 from supplements'],
+          cs:['Requiere planificación','B12 de suplemento'],
+          pos:['heart','gi-tract','brain'], neg:[] },
+        { slug:'gluten_free', sort:110,
+          nr:'Безглютеновая', ne:'Gluten-free', ns:'Sin gluten',
+          dr:'Исключение глютена (пшеница, рожь, ячмень); необходима при целиакии и чувствительности.',
+          de:'Excludes gluten (wheat, rye, barley); needed for celiac disease and sensitivity.',
+          ds:'Excluye el gluten (trigo, centeno, cebada); necesaria en celiaquía y sensibilidad.',
+          pr:['Снимает симптомы при целиакии','Здоровье кишечника'],
+          pe:['Relieves celiac symptoms','Gut health'], ps:['Alivia síntomas celíacos','Salud intestinal'],
+          cr:['Без необходимости не полезнее','Переработанные «GF» продукты'],
+          ce:['No benefit without need','Processed "GF" products'],
+          cs:['Sin necesidad no aporta más','Productos «GF» procesados'],
+          pos:['gi-tract'], neg:[] },
+        { slug:'low_fodmap', sort:120,
+          nr:'Low-FODMAP', ne:'Low-FODMAP', ns:'Baja en FODMAP',
+          dr:'Ограничение ферментируемых углеводов; протокол при синдроме раздражённого кишечника (СРК).',
+          de:'Restricts fermentable carbs; a protocol for irritable bowel syndrome (IBS).',
+          ds:'Restringe carbohidratos fermentables; protocolo para el síndrome de intestino irritable (SII).',
+          pr:['Снижает вздутие и боль при СРК','Структурированный протокол'],
+          pe:['Reduces IBS bloating and pain','Structured protocol'],
+          ps:['Reduce hinchazón y dolor del SII','Protocolo estructurado'],
+          cr:['Сложна','Не предназначена надолго','Лучше с диетологом'],
+          ce:['Complex','Not for long term','Best with a dietitian'],
+          cs:['Compleja','No para largo plazo','Mejor con nutricionista'],
+          pos:['gi-tract'], neg:[] },
+        { slug:'high_protein', sort:130,
+          nr:'Высокобелковая (бодибилдинг)', ne:'High-protein (bodybuilding)', ns:'Alta en proteínas',
+          dr:'Повышенный белок для роста и сохранения мышц; обычно с силовыми тренировками.',
+          de:'Elevated protein for muscle growth and retention; usually paired with strength training.',
+          ds:'Proteína elevada para crecer y conservar músculo; suele combinarse con fuerza.',
+          pr:['Рост и сохранение мышц','Высокая сытость'],
+          pe:['Muscle growth and retention','High satiety'],
+          ps:['Crecimiento y retención muscular','Mucha saciedad'],
+          cr:['Нагрузка на почки при их болезни','Часто мало клетчатки'],
+          ce:['Kidney load if disease present','Often low fibre'],
+          cs:['Carga renal si hay enfermedad','A menudo poca fibra'],
+          pos:[], neg:['kidneys'] },
+        { slug:'religious', sort:140,
+          nr:'Религиозная (халяль / кошер)', ne:'Religious (halal / kosher)', ns:'Religiosa (halal / kosher)',
+          dr:'Питание по религиозным правилам (халяль, кошер): дозволенные продукты и способы приготовления.',
+          de:'Eating by religious rules (halal, kosher): permitted foods and preparation methods.',
+          ds:'Alimentación según reglas religiosas (halal, kosher): alimentos y preparación permitidos.',
+          pr:['Чёткие правила','Контроль качества продуктов','Культурная преемственность'],
+          pe:['Clear rules','Food quality control','Cultural continuity'],
+          ps:['Reglas claras','Control de calidad','Continuidad cultural'],
+          cr:['Влияние зависит от конкретного рациона'], ce:['Effect depends on the actual diet'],
+          cs:['El efecto depende de la dieta real'],
+          pos:[], neg:[] },
+        { slug:'russian_traditional', sort:150,
+          nr:'Русская традиционная', ne:'Russian traditional', ns:'Rusa tradicional',
+          dr:'Щи, каши, мясо, молочные продукты, соленья и хлеб; сытная и согревающая, но солёная и жирная.',
+          de:'Cabbage soups, porridges, meat, dairy, pickles and bread; hearty and warming, but salty and fatty.',
+          ds:'Sopas de col, gachas, carne, lácteos, encurtidos y pan; contundente, pero salada y grasa.',
+          pr:['Цельные домашние продукты','Согревающая и сытная'],
+          pe:['Whole home-cooked foods','Warming and filling'],
+          ps:['Comida casera integral','Reconfortante y saciante'],
+          cr:['Много соли и животного жира','Нагрузка на желудок и сосуды'],
+          ce:['High salt and animal fat','Load on stomach and vessels'],
+          cs:['Mucha sal y grasa animal','Carga gástrica y vascular'],
+          pos:[], neg:['gi-tract','heart'] }
+      ];
+      for (const d of DIETS) {
+        await sql`INSERT INTO diets
+          (slug, name_ru, name_en, name_es, description_ru, description_en, description_es,
+           pros_ru, pros_en, pros_es, cons_ru, cons_en, cons_es,
+           target_organs_positive, target_organs_negative, sort_order)
+          VALUES (${d.slug}, ${d.nr}, ${d.ne}, ${d.ns}, ${d.dr}, ${d.de}, ${d.ds},
+           ${d.pr}::text[], ${d.pe}::text[], ${d.ps}::text[], ${d.cr}::text[], ${d.ce}::text[], ${d.cs}::text[],
+           ${d.pos}::text[], ${d.neg}::text[], ${d.sort})
+          ON CONFLICT (slug) DO NOTHING`;
+        await sql`UPDATE diets SET
+           name_ru=${d.nr}, name_en=${d.ne}, name_es=${d.ns},
+           description_ru=${d.dr}, description_en=${d.de}, description_es=${d.ds},
+           pros_ru=${d.pr}::text[], pros_en=${d.pe}::text[], pros_es=${d.ps}::text[],
+           cons_ru=${d.cr}::text[], cons_en=${d.ce}::text[], cons_es=${d.cs}::text[],
+           target_organs_positive=${d.pos}::text[], target_organs_negative=${d.neg}::text[],
+           sort_order=${d.sort}
+          WHERE slug=${d.slug}`;
+        mig046.diets_seeded++;
+      }
+
+      // diagnosis_diets — link diets to EXISTING human_conditions slugs (recommend/contra).
+      const DLINKS = [
+        ['type2-diabetes','mediterranean','recommended'], ['type2-diabetes','dash','recommended'],
+        ['type2-diabetes','wfpb','recommended'], ['type2-diabetes','keto','recommended'],
+        ['type2-diabetes','western','contraindicated'],
+        ['hypertension','dash','recommended'], ['hypertension','mediterranean','recommended'],
+        ['hypertension','wfpb','recommended'], ['hypertension','western','contraindicated'],
+        ['hypertension','russian_traditional','contraindicated'], ['hypertension','carnivore','contraindicated'],
+        ['ibs','low_fodmap','recommended'], ['ibs','western','contraindicated'],
+        ['gastritis','mediterranean','recommended'], ['gastritis','western','contraindicated'],
+        ['gastritis','russian_traditional','contraindicated'], ['gastritis','carnivore','contraindicated'],
+        ['gerd','mediterranean','recommended'], ['gerd','western','contraindicated'],
+        ['gerd','keto','contraindicated'],
+        ['crohns','low_fodmap','recommended'], ['crohns','western','contraindicated'],
+        ['type1-diabetes','mediterranean','recommended'], ['type1-diabetes','western','contraindicated']
+      ];
+      for (const [cslug, dslug, rec] of DLINKS) {
+        try {
+          await sql`INSERT INTO diagnosis_diets (diagnosis_slug, diet_id, recommendation)
+            SELECT ${cslug}, id, ${rec} FROM diets WHERE slug=${dslug}
+            ON CONFLICT (diagnosis_slug, diet_id) DO UPDATE SET recommendation=EXCLUDED.recommendation`;
+          mig046.diagnosis_links++;
+        } catch (le) { /* skip a link if the diet row is missing */ }
+      }
+      console.log('migration 046 (diets): seeded', mig046.diets_seeded, 'diets,', mig046.diagnosis_links, 'diagnosis links');
+    } catch (e) { mig046.error = e.message; console.error('migration 046 (diets):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-046 applied successfully', mig039, mig040, mig041, mig042, mig043, mig046 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -9195,6 +9456,146 @@ app.get('/api/anatomy/conditions/:slug', async (req, res) => {
     }
     res.json({ ok: true, condition: cond, functions });
   } catch (err) { console.error('GET /api/anatomy/conditions/:slug:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── PR#117: Diet / «Тип питания» ───────────────────────────────────────────
+// Reference diet patterns (no PII) — served without auth, like anatomy/*. Per-user
+// primary diet + the once-a-day "how I ate" event log are requireAuth. Diet events
+// are mirrored onto the Personal Path via logJourney so a week of picks shows a
+// pattern. Wrapped defensively so a pre-migration deploy (tables absent) 503s
+// cleanly instead of 500-crashing the route.
+
+// GET /api/diets — all diet patterns, sorted. Returns name_/description_/pros_/cons_
+// in all three locales; the client's tr() picks the active language.
+app.get('/api/diets', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM diets ORDER BY sort_order, name_en`;
+    res.json({ ok: true, diets: rows });
+  } catch (err) {
+    if (/relation .*diets.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'diets table not migrated', diets: [] });
+    console.error('GET /api/diets:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/diets/:slug — one diet + the diagnoses where it is recommended /
+// contraindicated (joined to human_conditions for localized names).
+app.get('/api/diets/:slug', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM diets WHERE slug = ${req.params.slug}`;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    let diagnoses = [];
+    try {
+      diagnoses = await sql`
+        SELECT dd.diagnosis_slug AS slug, dd.recommendation, dd.notes,
+               c.name_ru, c.name_en, c.name_es
+        FROM diagnosis_diets dd
+        LEFT JOIN human_conditions c ON c.slug = dd.diagnosis_slug
+        WHERE dd.diet_id = ${rows[0].id}
+        ORDER BY dd.recommendation, c.name_en`;
+    } catch (je) { /* diagnosis_diets/human_conditions absent → empty */ }
+    res.json({ ok: true, diet: rows[0], diagnoses });
+  } catch (err) {
+    if (/relation .*diets.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'diets table not migrated' });
+    console.error('GET /api/diets/:slug:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/diagnoses/:slug/diets — reverse direction (the diets a diagnosis
+// recommends / contraindicates). Provided for the Diagnoses tab (PR#115) to consume.
+app.get('/api/diagnoses/:slug/diets', async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT d.slug, d.name_ru, d.name_en, d.name_es, dd.recommendation, dd.notes
+      FROM diagnosis_diets dd
+      JOIN diets d ON d.id = dd.diet_id
+      WHERE dd.diagnosis_slug = ${req.params.slug}
+      ORDER BY dd.recommendation, d.sort_order`;
+    res.json({ ok: true, diets: rows });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated', diets: [] });
+    console.error('GET /api/diagnoses/:slug/diets:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/me/diet — this user's primary diet (the user_diet row + the diet object).
+app.get('/api/me/diet', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const ud = await sql`SELECT primary_diet_slug, started_at, updated_at FROM user_diet WHERE user_id = ${userId}`;
+    if (!ud.length || !ud[0].primary_diet_slug) return res.json({ ok: true, primary: null, diet: null });
+    const d = await sql`SELECT * FROM diets WHERE slug = ${ud[0].primary_diet_slug}`;
+    res.json({ ok: true, primary: ud[0], diet: d[0] || null });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated', primary: null });
+    console.error('GET /api/me/diet:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/me/diet — choose / change the primary diet. Body: { slug }.
+app.put('/api/me/diet', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const slug = (req.body && req.body.slug ? String(req.body.slug) : '').slice(0, 60);
+    if (!slug) return res.status(400).json({ error: 'slug required' });
+    const exists = await sql`SELECT 1 FROM diets WHERE slug = ${slug}`;
+    if (!exists.length) return res.status(404).json({ error: 'unknown diet' });
+    await sql`INSERT INTO user_diet (user_id, primary_diet_slug, started_at, updated_at)
+              VALUES (${userId}, ${slug}, CURRENT_DATE, now())
+              ON CONFLICT (user_id) DO UPDATE SET primary_diet_slug = ${slug}, updated_at = now()`;
+    res.json({ ok: true, primary_diet_slug: slug });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated' });
+    console.error('PUT /api/me/diet:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/me/diet/event — record one daily "how I ate" pick. Body:
+// { event_kind, notes?, label?, occurred_at?, dependent_id? }. Mirrors onto the
+// Personal Path (journey_events kind='diet', layer='diet') so the pick is visible
+// in time. `label` is the client-localized chip caption (jeLabel falls back to it).
+app.post('/api/me/diet/event', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const b = req.body || {};
+    const KINDS = ['clean','sugar_excess','alcohol_excess','overeating','skipped','heavy','other'];
+    const kind = KINDS.includes(b.event_kind) ? b.event_kind : null;
+    if (!kind) return res.status(400).json({ error: 'invalid event_kind' });
+    const notes = b.notes ? String(b.notes).slice(0, 500) : null;
+    const whenIso = b.occurred_at ? new Date(b.occurred_at).toISOString() : new Date().toISOString();
+    const depId = b.dependent_id ? parseInt(b.dependent_id, 10) : null;
+    const ins = await sql`INSERT INTO diet_events (user_id, event_kind, notes, occurred_at)
+              VALUES (${userId}, ${kind}, ${notes}, ${whenIso}) RETURNING id`;
+    // Mirror onto the Personal Path. payload.label = client-localized caption so the
+    // Path node reads naturally; emoji + neutral kind kept for future localization.
+    let jid = null;
+    try {
+      const label = b.label ? String(b.label).slice(0, 120) : ('🍽 ' + kind);
+      jid = await logJourney(userId, 'diet', 'diet',
+        { label, event_kind: kind, notes: notes || undefined, icon: '🍽' },
+        whenIso, depId, null);
+    } catch (le) { console.warn('diet event → path:', le.message); }
+    res.json({ ok: true, id: ins[0] && ins[0].id, journey_id: jid });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated' });
+    console.error('POST /api/me/diet/event:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/me/diet/events?range=week|month|all — this user's recent diet picks.
+app.get('/api/me/diet/events', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const range = (req.query.range || 'month').toLowerCase();
+    const days = range === 'week' ? 7 : range === 'all' ? 3650 : 31;
+    const from = new Date(Date.now() - days * 864e5).toISOString();
+    const rows = await sql`SELECT id, event_kind, notes, occurred_at FROM diet_events
+              WHERE user_id = ${userId} AND occurred_at >= ${from}
+              ORDER BY occurred_at DESC LIMIT 400`;
+    res.json({ ok: true, events: rows });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated', events: [] });
+    console.error('GET /api/me/diet/events:', err); res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
