@@ -279,15 +279,18 @@ SAME `window._anatomyAtlas` instance. Self-contained — no edit to `body-atlas.
   `GET /api/medications/:slug` (detail + its diagnoses), `GET /api/diagnoses/:slug/medications`,
   `GET /api/medications/:id/diagnoses` (`:id` = numeric id OR slug). Route order:
   `/api/medications/:id/diagnoses` and `/api/medication-links` precede `/api/medications/:slug`.
-- **3D green/red overlay** (account.html `medFocus`/`medTintNow`/`medClearTint`). Reuses the
-  Conditions `focus()` to isolate + solidify target organs, then recolors meshes IN PLACE via
-  `material.uniforms.uColor`: positives **green** `0x4fd67e`, negatives **red** `0xe85d6f`
-  (positive wins ties). `MED_SEED` maps the canonical organ slugs that resolve to real meshes
-  (brain, lungs, liver, kidneys, stomach, colon→large-intestine, small_intestine, pancreas,
-  heart, thyroid→thyroid-gland, spinal_cord). Non-mesh systems (vessels/skin/bones/joints/
-  muscles/adrenals/spleen) are coloured CHIPS in the card only — not tinted in 3D. Re-applied on
-  lazy GLB stream via timers (400/950/2100 ms), like `focus()`. Base color saved in
-  `userData._medBaseColor` and restored by `medClearTint()` (called on tab-switch + card close).
+- **3D green/red overlay** (account.html `medFocus`/`medClearTint`). **PR#119 (Issue#2): now
+  calls `BodyAtlas.tintRegions({positive,negative})` — the SAME path Diet uses — instead of the
+  old custom `medTintNow` mesh-walk, which left organs in their native colour because
+  `focus()`+`medMeshMatch` didn't reliably load/tint the target layer.** `medResolveSeeds` maps
+  med organ-slugs → seed-ids via `MED_SEED` (brain, lungs, liver, kidneys, stomach,
+  colon→large-intestine, small_intestine, pancreas, heart, thyroid→thyroid-gland, spinal_cord)
+  and passes any other slug through normalized; `tintRegions` then loads the layer
+  (`layersForSeedIds`), isolates, and paints positives **green** / negatives **red**. Non-mesh
+  systems (vessels/skin/bones/joints/muscles/adrenals/spleen) are coloured CHIPS only — not
+  tinted in 3D. Re-applied on lazy GLB stream via timers (400/950/2100 ms). `medClearTint()`
+  restores via `atlas._clearFocusState()` (tintRegions state), called on tab-switch + card close.
+  `medTintNow`/`medExpand`/`medMeshMatch` remain but are dead code.
 - **Bidirectional links.** Condition card gains a «Препараты для лечения» section
   (`DATA.medsByDiag`) → `haGoMedication`; med card has «Назначается при» (`DATA.diagsByMed`) →
   `haGoCondition`. Both built client-side from the bulk `/api/medication-links`.
@@ -339,9 +342,26 @@ the diet tint on every switch (`if(a._focusColored.length) a.focusRegions([])`).
   clear on tab-switch, so they coexist on the shared atlas.)
 - **i18n.** Diet UI strings are `a.diet.*` in the JSON dicts (the standalone module reads
   them via `window.t`), added to all three locales at once.
+- **Diet DETAIL mobile (PR#119 Issue#3).** `dietOpenDetail` adds class `diet-detail-open` to
+  `.atlas-body` (removed by `dietBackToList` + `haSwitchTab`); a `@media(max-width:760px)`
+  rule scoped to `.atlas-body.diet-detail-open` overrides the aside's inline
+  `width:300px;flex:0 0 300px` → full-width vertical stack (3D body fit-to-width `order:1` on
+  top, info card `order:2` below). Without the class scope the rule would reorder the other
+  Atlas tabs too.
 
 SW bump: PR#115 took `v28`, PR#116 `v29`, PR#117 `v30` (+ `v31` follow-up for the
-`tintRegions` layer-loading fix; `body-atlas.js?v=32`).
+`tintRegions` layer-loading fix; `body-atlas.js?v=32`). PR#118 `v32`, **PR#119 `v33`**.
+
+## Mobile bottom-nav (PR#119 Issue#6)
+
+The fixed mobile bottom-nav rule is scoped to **`.dash-nav-primary`** (the ONE primary
+top-level tab bar), NOT every `.dash-tabs`. The blanket `@media(max-width:768px){.dash-tabs{
+position:fixed;bottom:0}}` used to pin the inner sub-tab strips (`#evo-subtabs`
+Personal/Collective/Family, the admin sub-tab bars) to `bottom:0` too, so they stacked on top
+of the bottom-nav — the "две полоски накладываются" overlap. Inner `.dash-tabs` now flow
+inline (`position:static` + horizontal-scroll). Add a new top-level nav? give it
+`class="dash-tabs dash-nav-primary"`. Add an inner sub-tab bar? plain `class="dash-tabs"` is
+fine — it will NOT be pinned.
 
 ---
 
@@ -380,30 +400,46 @@ into the next unrelated flow.
 
 ---
 
-## Diagnoses section (PR#115)
+## Diagnoses section (PR#115 → restructured by PR#119)
 
-A separate dashboard tab (`#tab-diagnoses`, `data-tab="diagnoses"`), independent of the
-NeuroMap. The whole feature lives in the `dx*` IIFE in `account.html` (search
-`window.dxRender`) + the `data/diagnoses.json` catalog + the eight `/api/diagnoses*` /
-`/api/me/diagnoses*` / `/api/me/medical-files*` endpoints in `server.js`.
+**PR#119 moved diagnoses INTO `Tools → Internal Field → "Диагнозы и состояния"`** (the
+`ha`-engine Conditions sub-tab, `ha-tab-conditions`). The old standalone top-level
+`#tab-diagnoses` / `data-tab="diagnoses"` tab is GONE; `switchTab('diagnoses')` (and any
+`#diagnoses` bookmark) now redirects to Tools → Internal Field → conditions. There is ONE
+unified list: the `human_conditions` catalog **plus** the 12 PR#115 catalog diagnoses.
 
-- **Catalog = `data/diagnoses.json`** (static, tri-lingual ru/en/es, 12 entries in 3
-  groups: vasculitis/thymus/oncology). Each entry: `slug`, `group`, `icd10`, `regions[]`,
-  `name`/`aka`/`summary`/`symptoms`/`complications` (each `{ru,en,es}`). Clinical text is
-  EDUCATIONAL and conservative (NCI/ICD-10-level) — **not medical advice**; every card
-  renders the disclaimer (`a.dx.disclaimer`). To add a diagnosis: append to the JSON AND
-  add its slug to `KNOWN_DIAGNOSIS_SLUGS` in server.js (the claim allow-list). Bump the
-  `?v=` on the `fetch('data/diagnoses.json?v=N')` if you change the file.
-- **Anatomy = a self-contained schematic SVG body map** (`dxBodyMap(regionKeys, accent)`),
-  NOT the 3D atlas. Region geometry lives in `DX_REGIONS` (260×560 viewBox). The combined
-  view (`dxOpenCombined`) draws the UNION of all claimed diagnoses' regions and flags
-  regions claimed by ≥2 diagnoses as overlapping. Add a body zone → add a `DX_REGIONS` key
-  (with tri-lingual label) and reference it from a diagnosis's `regions[]`.
-- **"My diagnoses"** is private (auth-scoped); the folder is hidden until ≥1 claim. Files
-  open in a new tab from their R2/GitHub `storage_url`. Superadmin reads other users via
-  `GET /api/admin/users/:id/diagnoses` and `/medical-files`.
-- i18n: all UI strings are `a.dx.*` / `a.tabs.diagnoses` keys, present in ALL THREE
-  locales (see the i18n footgun section).
+- **Two catalogs, one list.** `human_conditions` (DB table, 30+ conditions, 3D-atlas
+  `affected_region_ids`) is loaded by `ensureData`; the 12 catalog diagnoses come from the
+  static **`data/diagnoses.json`** (tri-lingual ru/en/es, groups vasculitis/thymus/oncology;
+  each `slug`/`group`/`icd10`/`regions[]`/`name`/`aka`/`summary`/`symptoms`/`complications`).
+  `dxMergeCatalog()` folds the 12 into `DATA.conds` as condition-shaped rows, mapping their
+  schematic `regions` → real BodyAtlas seed-ids via **`DX_SEED`** (brain→brain,
+  thyroid→thyroid-gland, lungs→lungs, stomach→stomach, kidneys→kidneys, colon→large-intestine,
+  skin→skin, mediastinum→heart; breast/prostate/bone_marrow/lymph_nodes/spleen have no mesh →
+  list-only). `_isDx`/`_dx` keep the raw entry for the symptoms/complications shown in the
+  detail card. To add a catalog diagnosis: append to the JSON, add its slug to
+  `KNOWN_DIAGNOSIS_SLUGS`, and (for a 3D zone) add a `DX_SEED` mapping.
+- **Claim on EVERY card.** `haSelectCondition`'s detail renders a "Это мой диагноз"
+  (`a.dx.add_mine`) button for catalog AND human_conditions rows. The claim endpoint
+  (`POST /api/diagnoses/:slug/claim`) now validates the slug against `KNOWN_DIAGNOSIS_SLUGS`
+  **OR** `human_conditions` (so existing conditions are claimable too), with a slug-format
+  guard. `user_diagnoses`/`user_medical_files` (mig044) unchanged.
+- **"Мои диагнозы" folder** (`#ha-cond-mine`, sticky at the top of `#ha-left-conditions`):
+  claimed list + per-item upload/✕ + a **"Сводное воздействие"** button when ≥2 claimed.
+- **Combined view = the REAL 3D atlas** (`haCondCombined` → `focus(union)` over every claimed
+  diagnosis' `affected_region_ids`, + `showCombinedCard` overlay listing overlapping zones and
+  pooled symptoms/complications). NOT the old schematic `dxBodyMap`.
+- **The `dx*` IIFE is now a shared claim/upload SERVICE**, not a tab renderer. The Conditions
+  panel calls `window.dxSetCatalog(items)` (name registry for all slugs) so `dxClaimPrompt`/
+  `dxOpenUpload`/`dxOpenAllDocs` can title any slug; every dx* mutation calls
+  `dxAfterChange()` → `window.haDxRefresh()` so the folder/detail/profile refresh.
+- **Profile tab "Мои документы"** (`#profile-docs-card`, `profileLoadDocs`/`profileDocsToggle`):
+  expandable list of every medical file across all claimed diagnoses, hidden until ≥1 file.
+  Owner-scoped (`/api/me/medical-files`); superadmin reads others via
+  `GET /api/admin/users/:id/diagnoses` + `/medical-files`.
+- i18n: all UI strings are `a.dx.*` flat keys, present in ALL THREE locales (`t()` does a
+  FLAT `dict[key]` lookup — keys must be flat `"a.dx.x"`, NOT nested). `a.tabs.diagnoses` is
+  now unused.
 
 ---
 

@@ -1732,6 +1732,7 @@
   "a.dx.intro": "Un catálogo de afecciones con visualización anatómica de las zonas afectadas. Marca tus diagnósticos para reunirlos en una carpeta privada y adjuntar documentos médicos.",
   "a.dx.disclaimer": "Esta información tiene fines educativos. No sustituye la consulta con un médico.",
   "a.dx.my_folder": "Mis diagnósticos",
+  "a.dx.my_docs": "Mis documentos",
   "a.dx.combined_btn": "Impacto combinado",
   "a.dx.all_docs_btn": "Ver todos los documentos",
   "a.dx.loading": "Cargando el catálogo…",

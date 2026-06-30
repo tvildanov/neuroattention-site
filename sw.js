@@ -60,6 +60,11 @@
 //     behaviour unchanged; only the CACHE_NAME bump, to purge any stale account.html.
 // v4: cache-bust for PR#95 (NeuroMap hub right-panel) — runtime behaviour
 //     unchanged from v3; only the CACHE_NAME bump, to purge any stale account.html.
+// v33: PR#119 — diagnoses moved into Tools → Internal Field → "Диагнозы и состояния"
+//      (standalone Diagnoses tab removed; #diagnoses redirects), claim on every card +
+//      "Мои диагнозы" folder + combined 3D atlas view + Profile "Мои документы";
+//      Medications green/red 3D overlay via tintRegions (Issue#2); Diet detail mobile
+//      stack (Issue#3); mobile bottom-nav scoped to .dash-nav-primary (Issue#6).
 // v32: PR#118 — restore NeuroMap chain links (v3/graph unions nm_links so legacy/
 //      un-backfilled nodes stop flying loose) + delete→Path propagation + migration
 //      047. Runtime behaviour unchanged; CACHE_NAME bump purges any stale account.html
@@ -73,7 +78,7 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v32';
+var CACHE_NAME = 'na-practices-v33';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
