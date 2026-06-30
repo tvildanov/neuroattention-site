@@ -1603,6 +1603,16 @@ a.dash-tab:hover { text-decoration:none; }
         .med-organ{display:inline-flex;align-items:center;gap:0.25rem;border-radius:7px;font-size:10.5px;padding:0.2rem 0.45rem;margin:0 0.3rem 0.3rem 0;border:1px solid transparent;}
         .med-organ.pos{background:rgba(79,214,126,0.12);border-color:rgba(79,214,126,0.3);color:#8df0ad;}
         .med-organ.neg{background:rgba(232,93,111,0.12);border-color:rgba(232,93,111,0.32);color:#ff9aa8;}
+        /* PR#121: an organ that is BOTH beneficial and harmful (e.g. cyclophosphamide kidneys) — striped */
+        .med-organ.both{background:repeating-linear-gradient(135deg,rgba(79,214,126,0.16) 0 7px,rgba(232,93,111,0.16) 7px 14px);border-color:rgba(200,200,120,0.4);color:#e7e0b0;cursor:help;}
+        .med-organ[title]{cursor:help;}
+        /* PR#121: rich 3D hover tooltip showing the specific organ-effect detail */
+        #atlas-tooltip.med-tip{max-width:260px;white-space:normal;padding:0.5rem 0.6rem;line-height:1.45;font-size:11px;background:rgba(14,20,28,0.96);border:1px solid rgba(168,247,255,0.22);box-shadow:0 6px 22px rgba(0,0,0,0.5);border-radius:9px;pointer-events:none;}
+        #atlas-tooltip.med-tip .mt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+        #atlas-tooltip.med-tip .mt-dot.pos{background:#4fd67e;} #atlas-tooltip.med-tip .mt-dot.neg{background:#e85d6f;}
+        #atlas-tooltip.med-tip .mt-sev,#atlas-tooltip.med-tip .mt-onset{display:inline-block;margin-left:6px;font-size:9px;text-transform:uppercase;letter-spacing:0.03em;opacity:0.8;border:1px solid rgba(168,247,255,0.2);border-radius:5px;padding:0 4px;}
+        #atlas-tooltip.med-tip .mt-sev.high{color:#ff9aa8;border-color:rgba(232,93,111,0.4);} #atlas-tooltip.med-tip .mt-sev.medium{color:#ffd9a8;} #atlas-tooltip.med-tip .mt-sev.low{color:#8df0ad;}
+        #atlas-tooltip.med-tip .mt-detail{margin-top:0.35rem;color:var(--text-muted,#cdd6df);}
         .med-warn{background:rgba(255,203,141,0.09);border:1px solid rgba(255,203,141,0.3);border-radius:9px;padding:0.55rem 0.65rem;margin:0.7rem 0 0;font-size:11.5px;line-height:1.55;color:#ffd9a8;}
         .med-disclaimer{font-size:10.5px;line-height:1.5;color:var(--text-dim,#7c8896);border-top:1px dashed rgba(168,247,255,0.15);margin-top:0.9rem;padding-top:0.6rem;}
         .med-disclaimer.substance{color:#d8b6e6;border-top-color:rgba(214,167,255,0.22);}
@@ -17498,7 +17508,7 @@ window.pbMove = pbMove;
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
-<script src="assets/js/body-atlas.js?v=32"></script>
+<script src="assets/js/body-atlas.js?v=33"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -17685,15 +17695,56 @@ window.pbMove = pbMove;
   function onHover(hit){
     var tip = document.getElementById('atlas-tooltip'); if(!tip) return;
     if(hit && hit.names){
-      tip.textContent = fmtName(hit.names);
+      // PR#121 Issue#3: when a medication/substance is focused, a hover over a tinted
+      // organ shows the SPECIFIC effect (mechanism + consequence) from organ_effects.
+      var medHtml = medTooltipHtml(hit);
+      if(medHtml){ tip.innerHTML = medHtml; tip.classList.add('med-tip'); }
+      else { tip.textContent = fmtName(hit.names); tip.classList.remove('med-tip'); }
       var vp = document.getElementById('atlas-viewport').getBoundingClientRect();
       // position via last mouse — use event from BodyAtlas point projection fallback: center-top
-      tip.style.display='block';
+      tip.style.transform=''; tip.style.display='block';
       document.getElementById('atlas-viewport').onmousemove = function(e){ tip.style.left=(e.clientX-vp.left)+'px'; tip.style.top=(e.clientY-vp.top)+'px'; };
-    } else { tip.style.display='none'; }
+    } else { tip.style.display='none'; tip.classList.remove('med-tip'); }
   }
+  // Build the rich org-effect tooltip HTML for a hovered mesh under the active med, or
+  // '' if none. Reads curMed.organ_effects[slug].detail_{lang}. (Issue#3)
+  function medTooltipHtml(hit){
+    var m = (typeof curMed!=='undefined') ? curMed : null;
+    if(!m || !window.__medOrganMap) return '';
+    var ud = hit && hit.object && hit.object.userData; if(!ud) return '';
+    var oh = medOrganHit(ud); if(!oh) return '';
+    var oe = m.organ_effects && (m.organ_effects[oh.slug] || m.organ_effects[String(oh.slug).replace(/-/g,'_')]);
+    var label = organLabel(oh.slug);
+    var dotCls = oh.tone==='pos' ? 'pos' : 'neg';
+    var head = '<span class="mt-dot '+dotCls+'"></span><b>'+esc(label)+'</b>';
+    if(!oe){ return head; }
+    var detail = oe['detail_'+lang()] || oe.detail_ru || oe.detail_en || '';
+    var sev = oe.severity ? '<span class="mt-sev '+esc(oe.severity)+'">'+esc(sevLabel(oe.severity))+'</span>' : '';
+    var onset = oe.onset ? '<span class="mt-onset">'+esc(onsetLabel(oe.onset))+'</span>' : '';
+    return head + sev + onset + (detail?'<div class="mt-detail">'+esc(detail)+'</div>':'');
+  }
+  function sevLabel(s){ var M={high:{ru:'высокая',en:'high',es:'alta'},medium:{ru:'средняя',en:'medium',es:'media'},low:{ru:'низкая',en:'low',es:'baja'}}; var o=M[s]; return o?(o[lang()]||o.ru):s; }
+  function onsetLabel(s){ var M={acute:{ru:'остро',en:'acute',es:'agudo'},chronic:{ru:'хронически',en:'chronic',es:'crónico'}}; var o=M[s]; return o?(o[lang()]||o.ru):s; }
   function onClick(hit){
     if(!hit) return;
+    // PR#121 Issue#3 (mobile): tap a tinted organ while a medication is focused → toggle
+    // its effect tooltip (top-centre) instead of opening the anatomy region card.
+    if(hit && (typeof curMed!=='undefined') && curMed && window.__medOrganMap){
+      var mh=medTooltipHtml(hit);
+      if(mh){
+        var mtip=document.getElementById('atlas-tooltip');
+        if(mtip){
+          var key=String(curMed.slug)+':'+((hit.object&&hit.object.userData&&hit.object.userData.regionId)||'');
+          if(mtip.classList.contains('med-tip') && mtip.style.display==='block' && mtip.dataset.medkey===key){
+            mtip.style.display='none';
+          } else {
+            mtip.innerHTML=mh; mtip.classList.add('med-tip'); mtip.dataset.medkey=key;
+            mtip.style.display='block'; mtip.style.left='50%'; mtip.style.top='12px'; mtip.style.transform='translateX(-50%)';
+          }
+        }
+        return;   // keep the med view clean — don't stack the region card on top
+      }
+    }
     // level:'region' (double-click) → the panel describes the whole ANCESTOR
     // region, and its opacity slider drives every mesh of that region.
     var isRegion = hit.level === 'region';
@@ -18144,11 +18195,34 @@ window.pbMove = pbMove;
      adrenals/spleen) are listed as coloured chips in the card but not tinted in 3D.
      We reuse the Conditions focus() to isolate + solidify the organs, then recolor
      them: positives green, negatives red. Re-applied on lazy GLB stream via timers. */
+  // PR#121 Issue#1/#2: map a medication organ-slug → real BodyAtlas seed-id(s).
+  // Coarse whole-systems resolve to a bare GLB LAYER name (bones→skeleton, muscles,
+  // vessels) which tintRegions paints layer-wide. Brain sub-regions resolve to real
+  // brain-detail meshes so a substance can light up distinct circuits (e.g. cannabis:
+  // amygdala green, hippocampus red). Chip-only systems (spleen/thymus — no mesh) map
+  // to [] so they show as a chip but never mis-tint.
   var MED_SEED = {
-    brain:['brain'], nervous:['brain'], spinal_cord:['spinal-cord'], heart:['heart'],
-    lungs:['lungs'], liver:['liver'], kidneys:['kidneys'], stomach:['stomach'],
-    colon:['large-intestine'], small_intestine:['small-intestine'], pancreas:['pancreas'],
-    thyroid:['thyroid-gland']
+    // ── generic organs ──
+    brain:['cortex','cerebellum','brainstem'], nervous:['spinal-cord'], nervous_system:['spinal-cord'],
+    spinal_cord:['spinal-cord'], nerves:['spinal-cord'],
+    heart:['heart'], vessels:['vessels'], blood_vessels:['vessels'], cardiovascular:['vessels'],
+    lungs:['lungs'], liver:['liver'], kidneys:['kidneys'],
+    adrenals:['adrenals'], adrenal:['adrenals'],
+    stomach:['stomach'], colon:['large-intestine'], large_intestine:['large-intestine'],
+    small_intestine:['small-intestine'], intestines:['small-intestine','large-intestine'],
+    gut:['small-intestine','large-intestine'], pancreas:['pancreas'],
+    thyroid:['thyroid-gland'], thyroid_gland:['thyroid-gland'], nose:['nose'],
+    // ── coarse whole-systems → GLB layer (tinted layer-wide) ──
+    bones:['skeleton'], bone:['skeleton'], skeleton:['skeleton'],
+    joints:['hip'], joint:['hip'],                          // 'hip' = the one real articular joint mesh
+    muscles:['muscles'], muscle:['muscles'], skin:['skin'],
+    // ── chip-only (no mesh in the atlas) ──
+    spleen:[], thymus:[],
+    // ── brain sub-regions / neurotransmitter systems (Issue#2) ──
+    brain_memory_hippocampus:['hippocampus'], brain_emotion_amygdala:['amygdala'],
+    brain_attention_prefrontal:['frontal-lobe'], brain_motor_basal_ganglia:['basal-ganglia'],
+    brain_dopaminergic:['basal-ganglia','midbrain'], brain_serotonergic:['brainstem'],
+    brain_glutamatergic:['cortex'], brain_gabaergic:['cortex']
   };
   var MED_GREEN = 0x4fd67e, MED_RED = 0xe85d6f;
   // PR#119 (Issue#2): resolve a medication organ-slug to BodyAtlas seed-ids. Known
@@ -18174,7 +18248,21 @@ window.pbMove = pbMove;
     (ids||[]).forEach(add); return out;
   }
   function medMeshMatch(ud,set){ if(!ud) return false;
-    return !!(set[normSeed(ud.regionId)]||set[normSeed(ud.baseSlug)]||set[normSeed(ud.coarseId)]||set[normSeed(ud.organ)]||set[normSeed(ud.originalName)]); }
+    return !!(set[normSeed(ud.regionId)]||set[normSeed(ud.baseSlug)]||set[normSeed(ud.coarseId)]||set[normSeed(ud.organ)]||set[normSeed(ud.originalName)]||set[normSeed(ud.layer)]); }
+  // PR#121 Issue#3: reverse-resolve a hovered mesh → the ORIGINAL med organ-slug it
+  // belongs to (so the tooltip can show organ_effects[slug]). Built fresh each medFocus.
+  function buildMedOrganMap(posSlugs,negSlugs){
+    var map=[];
+    (posSlugs||[]).forEach(function(s){ map.push({ slug:s, tone:'pos', set:medExpand(medResolveSeeds([s])) }); });
+    (negSlugs||[]).forEach(function(s){ map.push({ slug:s, tone:'neg', set:medExpand(medResolveSeeds([s])) }); });
+    return map;
+  }
+  // Find the organ-effect entry for a hovered atlas mesh under the active med.
+  function medOrganHit(ud){
+    var m=window.__medOrganMap; if(!m||!ud) return null;
+    for(var i=0;i<m.length;i++){ if(medMeshMatch(ud,m[i].set)) return m[i]; }
+    return null;
+  }
   function medTintNow(posSeeds,negSeeds){
     var a=window._anatomyAtlas; if(!a||!a.root) return;
     var pset=medExpand(posSeeds), nset=medExpand(negSeeds);
@@ -18190,7 +18278,7 @@ window.pbMove = pbMove;
     if(a._requestRender) a._requestRender();
   }
   window.medClearTint=function(){
-    window.__medTint=null; var a=window._anatomyAtlas; if(!a) return;
+    window.__medTint=null; window.__medOrganMap=null; var a=window._anatomyAtlas; if(!a) return;
     // PR#119: medications now tint via BodyAtlas.tintRegions (same path as Diet),
     // whose state lives in _focusColored/_focusVis — restore it via _clearFocusState.
     try{ if(a._clearFocusState) a._clearFocusState(); }catch(e){}
@@ -18212,6 +18300,7 @@ window.pbMove = pbMove;
     // native colour because focus()+mesh-match didn't reliably load/tint the layer.
     var pos=medResolveSeeds(posSlugs), neg=medResolveSeeds(negSlugs);
     window.__medTint={ pos:pos, neg:neg };
+    window.__medOrganMap=buildMedOrganMap(posSlugs,negSlugs);   // Issue#3 hover-tooltip lookup
     var apply=function(){ var aa=window._anatomyAtlas; if(!aa||!window.__medTint) return;
       try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); }catch(e){} };
     apply(); setTimeout(apply,400); setTimeout(apply,950); setTimeout(apply,2100);
@@ -18391,7 +18480,17 @@ window.pbMove = pbMove;
     pancreas:{ru:'поджелудочная',en:'pancreas',es:'páncreas'}, spleen:{ru:'селезёнка',en:'spleen',es:'bazo'},
     thyroid:{ru:'щитовидная железа',en:'thyroid',es:'tiroides'}, adrenals:{ru:'надпочечники',en:'adrenals',es:'suprarrenales'},
     bones:{ru:'кости',en:'bones',es:'huesos'}, joints:{ru:'суставы',en:'joints',es:'articulaciones'},
-    muscles:{ru:'мышцы',en:'muscles',es:'músculos'}, skin:{ru:'кожа',en:'skin',es:'piel'}
+    muscles:{ru:'мышцы',en:'muscles',es:'músculos'}, skin:{ru:'кожа',en:'skin',es:'piel'},
+    thymus:{ru:'тимус',en:'thymus',es:'timo'},
+    // PR#121 Issue#2 — brain sub-regions / neurotransmitter systems (for psychoactive substances)
+    brain_memory_hippocampus:{ru:'гиппокамп (память)',en:'hippocampus (memory)',es:'hipocampo (memoria)'},
+    brain_emotion_amygdala:{ru:'миндалина (эмоции)',en:'amygdala (emotion)',es:'amígdala (emoción)'},
+    brain_attention_prefrontal:{ru:'префронтальная кора (внимание)',en:'prefrontal cortex (attention)',es:'corteza prefrontal (atención)'},
+    brain_motor_basal_ganglia:{ru:'базальные ганглии (движение)',en:'basal ganglia (motor)',es:'ganglios basales (motor)'},
+    brain_dopaminergic:{ru:'дофаминовая система',en:'dopaminergic system',es:'sistema dopaminérgico'},
+    brain_serotonergic:{ru:'серотониновая система',en:'serotonergic system',es:'sistema serotoninérgico'},
+    brain_glutamatergic:{ru:'глутаматная система',en:'glutamatergic system',es:'sistema glutamatérgico'},
+    brain_gabaergic:{ru:'ГАМК-система',en:'GABAergic system',es:'sistema GABAérgico'}
   };
   function organLabel(s){ var o=ORGAN_LABEL[s]; return o?tr(o):String(s||'').replace(/[_-]/g,' '); }
   var medQuery='', medCat='', medKind='';
@@ -18432,9 +18531,19 @@ window.pbMove = pbMove;
         '<span class="ha-item-name">'+esc(nm(m))+(m.kind==='substance'?kb:'')+'</span><span class="ha-item-cat">'+esc(catLabel(m.category))+'</span></button>';
     }).join('');
   }
-  function organChips(slugs,polarity){
+  // PR#121: organ chips carry the organ_effects detail as a title (hover fallback for
+  // the 3D tooltip) and render STRIPED when the same organ is in both lists.
+  function organChips(slugs,polarity,med,otherSlugs){
     slugs=(slugs||[]).filter(Boolean); if(!slugs.length) return '';
-    return slugs.map(function(s){ return '<span class="med-organ '+polarity+'">'+esc(organLabel(s))+'</span>'; }).join('');
+    var other={}; (otherSlugs||[]).forEach(function(s){ other[s]=1; });
+    var oe=(med&&med.organ_effects)||{};
+    return slugs.map(function(s){
+      var both=!!other[s];
+      var info=oe[s]||oe[String(s).replace(/-/g,'_')];
+      var detail=info?(info['detail_'+lang()]||info.detail_ru||''):'';
+      var ttl=detail?' title="'+esc(detail)+'"':'';
+      return '<span class="med-organ '+(both?'both':polarity)+'"'+ttl+'>'+esc(organLabel(s))+'</span>';
+    }).join('');
   }
   window.haSelectMedication=function(slug){
     ensureData(function(){
@@ -18451,7 +18560,7 @@ window.pbMove = pbMove;
       if(posTxt){ h+='<div class="med-eff pos"><span class="med-eff-h">🟢 '+esc(tr(isSub?T.eff_pos_sub:T.eff_pos))+'</span><p>'+esc(posTxt)+'</p></div>'; }
       if(negTxt){ h+='<div class="med-eff neg"><span class="med-eff-h">🔴 '+esc(tr(isSub?T.eff_neg_sub:T.eff_neg))+'</span><p>'+esc(negTxt)+'</p></div>'; }
       // anatomy of action: green/red organ chips (3D body is already tinted)
-      var pos=organChips(m.target_organs_positive,'pos'), neg=organChips(m.target_organs_negative,'neg');
+      var pos=organChips(m.target_organs_positive,'pos',m,m.target_organs_negative), neg=organChips(m.target_organs_negative,'neg',m,m.target_organs_positive);
       if(pos||neg){ h+='<div class="ha-side-h">'+esc(tr(T.anatomy_impact))+'</div>';
         if(pos){ h+='<div style="font-size:10px;color:#8df0ad;margin:0.2rem 0;">'+esc(tr(T.organs_pos))+'</div>'+pos; }
         if(neg){ h+='<div style="font-size:10px;color:#ff9aa8;margin:0.35rem 0 0.2rem;">'+esc(tr(T.organs_neg))+'</div>'+neg; }
