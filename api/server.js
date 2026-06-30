@@ -2194,6 +2194,13 @@ app.post('/api/me/diagnoses/:id/files', requireAuth, uploadMedical.single('file'
     const ext = (mime === 'application/pdf') ? 'pdf' : (mime.indexOf('png') >= 0 ? 'png' : 'jpg');
     const stamp = Date.now();
     const objectKey = `medical/${req.user.id}/${diagId}/${stamp}-${safeName}`.replace(/\.[^.]*$/, '') + '.' + ext;
+    // PRIVACY: medical documents are PHI. The GitHub storage fallback commits files to
+    // the repo and serves them publicly via GitHub Pages (neuroattention.org/medical/…),
+    // which would leak medical data. Require R2 (object storage) for these uploads —
+    // never fall back to the public repo. If R2 is unconfigured, refuse the upload.
+    if (!r2Client) {
+      return res.status(503).json({ error: 'Secure file storage (R2) is not configured. Medical documents cannot be stored publicly. Please contact an administrator to enable R2.' });
+    }
     const stored = await storeMediaAsset(objectKey, req.file.buffer, mime, `[medical] add doc for diagnosis ${diagId}`);
     const [row] = await sql`
       INSERT INTO user_medical_files
