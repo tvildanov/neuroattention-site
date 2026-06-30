@@ -3204,6 +3204,11 @@ var RPG_I18N = {
     hover_positive: 'positive',
     hover_neutral: 'neutral',
     hover_frequency: 'Frequency',
+    node_session: 'Session',
+    node_delete_btn: 'Delete',
+    node_delete_confirm: 'Delete this node? It will be removed from the NeuroMap and the Evolution Path.',
+    node_delete_done: 'Node deleted',
+    node_delete_fail: 'Could not delete the node',
     // Drill-down panel
     connected_nodes: 'Connected nodes',
     no_connections: 'No connections',
@@ -3389,6 +3394,11 @@ var RPG_I18N = {
     hover_positive: 'positivo',
     hover_neutral: 'neutral',
     hover_frequency: 'Frecuencia',
+    node_session: 'Sesión',
+    node_delete_btn: 'Eliminar',
+    node_delete_confirm: '¿Eliminar este nodo? Se quitará del NeuroMapa y del Camino de evolución.',
+    node_delete_done: 'Nodo eliminado',
+    node_delete_fail: 'No se pudo eliminar el nodo',
     // Drill-down panel
     connected_nodes: 'Nodos conectados',
     no_connections: 'Sin conexiones',
@@ -8883,6 +8893,49 @@ function getEntriesForView(){
   return entries;
 }
 
+// ── PR#113 (#4): NeuroMap node info popup + superadmin delete ──
+function nmIsSuperadmin(){ return !!(window.currentUser && currentUser.serverRole==='superadmin'); }
+function nmCloseNodePopup(){ var p=document.getElementById('nm-node-popup'); if(p&&p.parentNode) p.parentNode.removeChild(p); }
+function _nmEscHtml(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function nmShowNodePopup(node, clientX, clientY){
+  nmCloseNodePopup();
+  if(!node) return;
+  var layerNum=(typeof nmNodeLayer==='function')?nmNodeLayer(node):(nmTypeToLayer?nmTypeToLayer(node.type):0);
+  var valLabel=node.valence<0?(rpgT('hover_negative')||'негатив'):(node.valence>0?(rpgT('hover_positive')||'позитив'):(rpgT('hover_neutral')||'нейтрал'));
+  var sess=(node._sid&&node._sid!=='__nosess')?('<div style="color:var(--text-dim,#8a93a6);font-size:11px;margin-top:4px;">'+(rpgT('node_session')||'Сессия')+': '+_nmEscHtml(String(node._sid).slice(0,8))+'</div>'):'';
+  var html='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
+    '<strong style="color:#fff;font-size:14px;">'+_nmEscHtml(nmTranslate(node.label))+'</strong>'+
+    '<span onclick="nmCloseNodePopup()" style="cursor:pointer;color:var(--text-dim,#8a93a6);font-size:16px;line-height:1;">✕</span></div>'+
+    '<div style="color:var(--text-dim,#8a93a6);font-size:11px;margin-top:4px;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · ×'+(node.count||1)+'</div>'+sess;
+  if(nmIsSuperadmin() && node.dbId){
+    html+='<button onclick="nmDeleteNode(\''+_nmEscHtml(node.dbId)+'\')" style="margin-top:10px;width:100%;padding:7px 0;border:1px solid rgba(240,90,90,0.5);background:rgba(240,90,90,0.12);color:#ff8a8a;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">'+(rpgT('node_delete_btn')||'Удалить')+'</button>';
+  }
+  var p=document.createElement('div');
+  p.id='nm-node-popup';
+  p.style.cssText='position:fixed;z-index:99999;min-width:180px;max-width:260px;background:rgba(18,20,28,0.97);border:1px solid rgba(255,255,255,0.16);border-radius:12px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-size:13px;';
+  p.innerHTML=html;
+  document.body.appendChild(p);
+  var vw=window.innerWidth, vh=window.innerHeight;
+  p.style.left=Math.max(8, Math.min(clientX+12, vw-272))+'px';
+  p.style.top=Math.max(8, Math.min(clientY+8, vh-130))+'px';
+}
+function nmDeleteNode(dbId){
+  if(!dbId) return;
+  if(!window.confirm(rpgT('node_delete_confirm')||'Удалить этот узел? Это уберёт его с Нейрокарты и Пути развития.')) return;
+  var token=naGetToken(); var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  fetch(base+'/api/admin/nm-node/'+encodeURIComponent(dbId)+'/delete',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}})
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }).catch(function(){ return {ok:r.ok,j:null}; }); })
+    .then(function(res){
+      nmCloseNodePopup();
+      if(res.ok && res.j && res.j.ok){
+        if(typeof nmLoadV2Graph==='function') nmLoadV2Graph();   // re-render NeuroMap without the node
+        try { var eb=document.getElementById('evo-path'); if(eb && window.mountEvolutionPath) window.mountEvolutionPath(eb); } catch(e){}  // invalidate Personal Path
+      } else {
+        alert(rpgT('node_delete_fail')||'Не удалось удалить узел');
+      }
+    }).catch(function(e){ nmCloseNodePopup(); alert(rpgT('node_delete_fail')||'Не удалось удалить узел'); console.warn('[NM] delete node failed:',e); });
+}
+
 function buildNmGraph(){
   var entries=getEntriesForView();
   var empty=document.getElementById('nm-empty');
@@ -8921,25 +8974,43 @@ function buildNmGraph(){
   var linkMap={};
 
   if(nmV2Graph && nmV2Graph.nodes.length>0){
-    // Use server-deduplicated v2 graph data with freshness
+    // PR#113 (#1, mass-merge fix — split-on-render): nm_nodes are deduplicated in the
+    // DB by (type,label,valence), so the SAME emotion picked in two unrelated flows is
+    // ONE row. Keying the render graph by label (the old `type[0]+':'+normalized_label`)
+    // reproduced that fusion on the canvas — both chains shared one circle and the whole
+    // day collapsed into a blob. Instead render ONE instance of a node PER session it
+    // belongs to (sessions come from nm_session_nodes via the v2/graph response). Same
+    // label in different sessions → separate circles; the vocab library + counts stay
+    // intact (still one DB row). Links are drawn only between instances that share a
+    // session, so a shared concept no longer bridges unrelated flows.
     var now=Date.now();
+    var NOSESS='__nosess';
+    var dbSessions={};   // dbId -> [sessionId,...] (instances we actually created, in range)
     nmV2Graph.nodes.forEach(function(n){
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
       if(!nmTsInRange(lastSeen)) return;   // PR94 (#5d/#5c): crop to the selected period / custom range
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      var id=n.type[0]+':'+n.normalized_label;
-      nodeMap[id]={id:id,dbId:n.id,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      var baseKey=n.type[0]+':'+n.normalized_label;
+      var sessions=(n.sessions&&n.sessions.length)?n.sessions.slice():[NOSESS];
+      dbSessions[n.id]=sessions;
+      sessions.forEach(function(sid){
+        var id=n.id+'@'+sid;   // unique per (node, session) — the render instance
+        nodeMap[id]={id:id,dbId:n.id,_sid:sid,_baseKey:baseKey,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      });
     });
     nmV2Graph.links.forEach(function(l){
-      // Map DB node ids to our local ids
-      var fromNode=null,toNode=null;
-      Object.keys(nodeMap).forEach(function(k){ if(nodeMap[k].dbId===l.source) fromNode=k; if(nodeMap[k].dbId===l.target) toNode=k; });
-      if(fromNode&&toNode){
-        var key=fromNode+'||'+toNode;
-        linkMap[key]={source:fromNode,target:toNode,count:l.count||1,_lastSeen:l.last_seen_at||''};
-      }
+      var sFrom=dbSessions[l.source], sTo=dbSessions[l.target];
+      if(!sFrom||!sTo) return;   // an endpoint fell outside the date window
+      // Draw the link inside every session both endpoints share. A link whose
+      // endpoints never co-occurred in a session (the cross-session fusion edge we
+      // want gone) is simply not drawn. Legacy no-session nodes share NOSESS.
+      var common=sFrom.filter(function(s){ return sTo.indexOf(s)>=0; });
+      common.forEach(function(sid){
+        var f=l.source+'@'+sid, t=l.target+'@'+sid;
+        if(nodeMap[f]&&nodeMap[t]) linkMap[f+'||'+t]={source:f,target:t,count:l.count||1,_lastSeen:l.last_seen_at||''};
+      });
     });
   } else {
     // Fallback: build from old nmData entries
@@ -9473,6 +9544,21 @@ function nmSimulate(canvas, initAlpha){
     }
   });
   canvas.addEventListener('mouseleave',function(){tip.style.display='none';});
+
+  // ── PR#113 (#4): click a node → info popup; superadmins get a Delete that prunes
+  // the node + its links + journey events from the NeuroMap AND the Evolution Path.
+  var nmDownX=0, nmDownY=0;
+  canvas.addEventListener('mousedown',function(ev){ nmDownX=ev.clientX; nmDownY=ev.clientY; });
+  canvas.addEventListener('click',function(ev){
+    // ignore the click that ends a drag (node was being repositioned)
+    if(Math.abs(ev.clientX-nmDownX)>6 || Math.abs(ev.clientY-nmDownY)>6){ return; }
+    var rect=canvas.getBoundingClientRect();
+    var sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+    var mx=(ev.clientX-rect.left)*sx, my=(ev.clientY-rect.top)*sy;
+    var found=null;
+    nmNodes.forEach(function(n){ var r=nmNodeR(n)+8; var dx=n.x-mx,dy=n.y-my; if(dx*dx+dy*dy<r*r) found=n; });
+    if(found) nmShowNodePopup(found, ev.clientX, ev.clientY); else nmCloseNodePopup();
+  });
 
   // ── Drag-and-drop for graph nodes (mouse + touch) ──
   var dragNode=null, dragOffX=0, dragOffY=0;
@@ -16508,7 +16594,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=24"></script>
+<script src="assets/js/evolution-path.js?v=25"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>

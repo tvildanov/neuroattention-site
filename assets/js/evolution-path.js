@@ -842,18 +842,37 @@
       var g = bySession[sid].slice().sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
       for (var i = 0; i < g.length - 1; i++) addEdge(g[i].id, g[i + 1].id);
     });
+    // PR#113 (#4): a concept's content key. A re-save logs a NEW journey_event that
+    // points at the SAME deduplicated nm_node — so one flow saved twice produced
+    // "мягкость → голова → мягкость" (each event drawn as its own node). Collapse by
+    // nm_node_id (else layer+label) so a concept is ONE node per chain. Done
+    // PER-COMPONENT below, never globally — unrelated sessions must stay separate.
+    function ckey(e) { var p = e.payload || {}; return p.nm_node_id != null ? ('n:' + p.nm_node_id) : ((e.layer || '') + '|' + String(e.label || '').trim().toLowerCase()); }
     var seen = {}, out = [];
     events.forEach(function (e) {
       var id = String(e.id); if (seen[id]) return;
       var stack = [id], ids = []; seen[id] = 1;
       while (stack.length) { var u = stack.pop(); ids.push(u); Object.keys(adj[u] || {}).forEach(function (v) { if (!seen[v]) { seen[v] = 1; stack.push(v); } }); }
+      // Collapse duplicate concepts within THIS chain to their earliest occurrence,
+      // rewiring edges onto the kept node. Kills the "X → Y → X" repeat.
+      var keyRep = {}, rep = {};
+      ids.map(function (x) { return byId[x]; }).filter(Boolean)
+         .sort(function (a, b) { return (a.t || 0) - (b.t || 0); })
+         .forEach(function (e2) { var k = ckey(e2), eid = String(e2.id); if (keyRep[k] == null) keyRep[k] = eid; rep[eid] = keyRep[k]; });
+      var repAdj = {}, repIds = [], repHas = {};
+      ids.forEach(function (x) { var rx = rep[x] || x; if (!repHas[rx]) { repHas[rx] = 1; repIds.push(rx); } });
+      ids.forEach(function (x) {
+        var rx = rep[x] || x;
+        Object.keys(adj[x] || {}).forEach(function (y) { var ry = rep[y] || y; if (rx !== ry) { (repAdj[rx] = repAdj[rx] || {})[ry] = 1; (repAdj[ry] = repAdj[ry] || {})[rx] = 1; } });
+      });
+      ids = repIds;
       // Defensive split: bound branch length + cut on big time gaps. For genuine
       // short chains (the common case) this returns the component unchanged.
       var subs = splitComponent(ids, byId);
       subs.forEach(function (sub) {
         // When we actually split, rebuild a linear adjacency over the sub-chain so
         // layout stays connected (the original cross-edge may span the cut point).
-        var subAdj = adj;
+        var subAdj = repAdj;
         if (subs.length > 1) {
           subAdj = {};
           for (var k = 0; k < sub.length - 1; k++) {
