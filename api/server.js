@@ -1834,7 +1834,86 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 043 (first-class chains): created', mig043.chains_created, 'chains,', mig043.chain_nodes_created, 'chain-node links');
     } catch (e) { mig043.error = e.message; console.error('migration 043 (first-class chains):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-043 applied successfully', mig039, mig040, mig041, mig042, mig043 });
+    // ── Migration 045 (PR#116): Medications & Substances. Creates `medications`
+    //   (drugs + psychoactive substances) and the `diagnosis_medications` TEXT-slug
+    //   join to human_conditions, then seeds 60+ rows from api/medications-seed.js
+    //   (50 meds + 10 substances). Idempotent: CREATE … IF NOT EXISTS, ON CONFLICT
+    //   (slug) DO UPDATE refreshes content so re-running picks up edited copy/organs.
+    //   target_organs_* are BodyAtlas seed-ids (green=therapeutic, red=side-effect).
+    //   (Migration 044 is reserved for the parallel Diagnoses PR#115.)
+    let mig045 = { medications_seeded: 0, diagnosis_links: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS medications (
+        id BIGSERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'medication',
+        category TEXT,
+        name_ru TEXT, name_en TEXT, name_es TEXT,
+        brand_ru TEXT[] DEFAULT '{}', brand_us TEXT[] DEFAULT '{}',
+        effect_positive_ru TEXT, effect_positive_en TEXT, effect_positive_es TEXT,
+        effect_negative_ru TEXT, effect_negative_en TEXT, effect_negative_es TEXT,
+        target_organs_positive TEXT[] DEFAULT '{}',
+        target_organs_negative TEXT[] DEFAULT '{}',
+        warning_ru TEXT, warning_en TEXT, warning_es TEXT,
+        sort_order INT DEFAULT 100,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_medications_kind ON medications(kind)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_medications_category ON medications(category)`;
+      await sql`CREATE TABLE IF NOT EXISTS diagnosis_medications (
+        diagnosis_slug TEXT NOT NULL,
+        medication_id BIGINT NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
+        is_primary BOOLEAN DEFAULT FALSE,
+        notes TEXT,
+        PRIMARY KEY (diagnosis_slug, medication_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_diagnosis_medications_med ON diagnosis_medications(medication_id)`;
+
+      const { MEDICATIONS, DIAG_LINKS } = require('./medications-seed.js');
+      for (const m of MEDICATIONS) {
+        try {
+          await sql`INSERT INTO medications
+            (slug, kind, category, name_ru, name_en, name_es, brand_ru, brand_us,
+             effect_positive_ru, effect_positive_en, effect_positive_es,
+             effect_negative_ru, effect_negative_en, effect_negative_es,
+             target_organs_positive, target_organs_negative,
+             warning_ru, warning_en, warning_es, sort_order, is_active)
+            VALUES (${m.slug}, ${m.kind}, ${m.category}, ${m.name_ru}, ${m.name_en}, ${m.name_es},
+             ${m.brand_ru || []}::text[], ${m.brand_us || []}::text[],
+             ${m.effect_positive_ru}, ${m.effect_positive_en}, ${m.effect_positive_es},
+             ${m.effect_negative_ru}, ${m.effect_negative_en}, ${m.effect_negative_es},
+             ${m.target_organs_positive || []}::text[], ${m.target_organs_negative || []}::text[],
+             ${m.warning_ru}, ${m.warning_en}, ${m.warning_es}, ${m.sort_order || 100}, TRUE)
+            ON CONFLICT (slug) DO UPDATE SET
+             kind = EXCLUDED.kind, category = EXCLUDED.category,
+             name_ru = EXCLUDED.name_ru, name_en = EXCLUDED.name_en, name_es = EXCLUDED.name_es,
+             brand_ru = EXCLUDED.brand_ru, brand_us = EXCLUDED.brand_us,
+             effect_positive_ru = EXCLUDED.effect_positive_ru, effect_positive_en = EXCLUDED.effect_positive_en, effect_positive_es = EXCLUDED.effect_positive_es,
+             effect_negative_ru = EXCLUDED.effect_negative_ru, effect_negative_en = EXCLUDED.effect_negative_en, effect_negative_es = EXCLUDED.effect_negative_es,
+             target_organs_positive = EXCLUDED.target_organs_positive, target_organs_negative = EXCLUDED.target_organs_negative,
+             warning_ru = EXCLUDED.warning_ru, warning_en = EXCLUDED.warning_en, warning_es = EXCLUDED.warning_es,
+             sort_order = EXCLUDED.sort_order, is_active = TRUE`;
+          mig045.medications_seeded++;
+        } catch (me) { mig045.skipped = (mig045.skipped || 0) + 1; }
+      }
+      // Links: resolve medication slug → id, then upsert the join rows.
+      for (const diagSlug of Object.keys(DIAG_LINKS)) {
+        for (const lk of DIAG_LINKS[diagSlug]) {
+          try {
+            const mrow = await sql`SELECT id FROM medications WHERE slug = ${lk.slug}`;
+            if (!mrow.length) continue;
+            await sql`INSERT INTO diagnosis_medications (diagnosis_slug, medication_id, is_primary)
+              VALUES (${diagSlug}, ${mrow[0].id}, ${!!lk.is_primary})
+              ON CONFLICT (diagnosis_slug, medication_id) DO UPDATE SET is_primary = EXCLUDED.is_primary`;
+            mig045.diagnosis_links++;
+          } catch (le) { mig045.skipped = (mig045.skipped || 0) + 1; }
+        }
+      }
+      console.log('migration 045 (medications & substances): seeded', mig045.medications_seeded, 'meds,', mig045.diagnosis_links, 'diagnosis links');
+    } catch (e) { mig045.error = e.message; console.error('migration 045 (medications & substances):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-045 applied successfully', mig039, mig040, mig041, mig042, mig043, mig045 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -9195,6 +9274,94 @@ app.get('/api/anatomy/conditions/:slug', async (req, res) => {
     }
     res.json({ ok: true, condition: cond, functions });
   } catch (err) { console.error('GET /api/anatomy/conditions/:slug:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── Medications & Substances (PR#116) ───────────────────────────────────────
+// Tab 4 of the Human Atlas. `medications` holds both real drugs (kind='medication')
+// and psychoactive substances (kind='substance', harm-reduction framing).
+// `diagnosis_medications` is a TEXT-slug join to human_conditions. target_organs_*
+// use BodyAtlas seed-ids → green (therapeutic) / red (side-effect) 3D overlay.
+
+// GET /api/medications?kind=&category=&q=&limit= — list/search
+app.get('/api/medications', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    const kind = (req.query.kind || '').trim().toLowerCase();
+    const category = (req.query.category || '').trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 300, 500);
+    let rows;
+    if (q) {
+      const like = '%' + q + '%';
+      rows = await sql`SELECT * FROM medications
+        WHERE is_active = TRUE
+          AND (${kind} = '' OR kind = ${kind})
+          AND (${category} = '' OR lower(coalesce(category,'')) = ${category})
+          AND (lower(coalesce(name_en,'')) LIKE ${like} OR lower(coalesce(name_ru,'')) LIKE ${like}
+               OR lower(coalesce(name_es,'')) LIKE ${like}
+               OR EXISTS (SELECT 1 FROM unnest(coalesce(brand_us,'{}'::text[])) b WHERE lower(b) LIKE ${like})
+               OR EXISTS (SELECT 1 FROM unnest(coalesce(brand_ru,'{}'::text[])) b WHERE lower(b) LIKE ${like}))
+        ORDER BY sort_order, name_en LIMIT ${limit}`;
+    } else {
+      rows = await sql`SELECT * FROM medications
+        WHERE is_active = TRUE
+          AND (${kind} = '' OR kind = ${kind})
+          AND (${category} = '' OR lower(coalesce(category,'')) = ${category})
+        ORDER BY sort_order, name_en LIMIT ${limit}`;
+    }
+    res.json({ ok: true, medications: rows });
+  } catch (err) { console.error('GET /api/medications:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/medication-links — the full diagnosis↔medication join (bulk, for the
+// client to build both navigation directions without per-click round-trips).
+app.get('/api/medication-links', async (req, res) => {
+  try {
+    const rows = await sql`SELECT dm.diagnosis_slug, m.slug AS medication_slug, dm.is_primary
+      FROM diagnosis_medications dm JOIN medications m ON m.id = dm.medication_id
+      WHERE m.is_active = TRUE`;
+    res.json({ ok: true, links: rows });
+  } catch (err) { console.error('GET /api/medication-links:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/diagnoses/:slug/medications — meds prescribed for one diagnosis
+app.get('/api/diagnoses/:slug/medications', async (req, res) => {
+  try {
+    const rows = await sql`SELECT m.*, dm.is_primary, dm.notes AS link_notes
+      FROM diagnosis_medications dm JOIN medications m ON m.id = dm.medication_id
+      WHERE dm.diagnosis_slug = ${req.params.slug} AND m.is_active = TRUE
+      ORDER BY dm.is_primary DESC, m.sort_order, m.name_en`;
+    res.json({ ok: true, medications: rows });
+  } catch (err) { console.error('GET /api/diagnoses/:slug/medications:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/medications/:id/diagnoses — reverse: diagnoses where a med is used
+// (:id accepts the numeric id OR the slug).
+app.get('/api/medications/:id/diagnoses', async (req, res) => {
+  try {
+    const raw = req.params.id;
+    const num = /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
+    const rows = await sql`SELECT c.slug, c.name_en, c.name_ru, c.name_es, c.category, dm.is_primary
+      FROM diagnosis_medications dm
+      JOIN medications m ON m.id = dm.medication_id
+      JOIN human_conditions c ON c.slug = dm.diagnosis_slug
+      WHERE (${num}::bigint IS NOT NULL AND m.id = ${num}::bigint) OR m.slug = ${raw}
+      ORDER BY dm.is_primary DESC, c.name_en`;
+    res.json({ ok: true, diagnoses: rows });
+  } catch (err) { console.error('GET /api/medications/:id/diagnoses:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/medications/:slug — full detail + the diagnoses it is prescribed for
+app.get('/api/medications/:slug', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM medications WHERE slug = ${req.params.slug} AND is_active = TRUE`;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const med = rows[0];
+    const diagnoses = await sql`SELECT c.slug, c.name_en, c.name_ru, c.name_es, c.category, dm.is_primary
+      FROM diagnosis_medications dm JOIN human_conditions c ON c.slug = dm.diagnosis_slug
+      WHERE dm.medication_id = ${med.id}
+      ORDER BY dm.is_primary DESC, c.name_en`;
+    res.json({ ok: true, medication: med, diagnoses });
+  } catch (err) { console.error('GET /api/medications/:slug:', err); res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
