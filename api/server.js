@@ -1738,7 +1738,28 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 041 (phantom bridge prune): deleted', mig041.phantom_links_deleted, 'body↔emotion/cause/thought links');
     } catch (e) { mig041.error = e.message; console.error('migration 041 (phantom bridge prune):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-041 applied successfully', mig039, mig040, mig041 });
+    // ── Migration 042 (PR#112 #4): kill the Personal-Path sensation DUPLICATE. The
+    //   auto-backfill (/api/users/me/evolution/backfill, called on every account load)
+    //   turned the "Sensation: … @ …" diary mirror — which /api/neuromap/sensation
+    //   writes purely for the recent-list UI — into a real `insight` journey_event.
+    //   That insight node then rendered ALONGSIDE the genuine sensation node (the
+    //   "два жара / две мягкости" Tahir saw: one real cyan sensation + one phantom
+    //   insight star). The render-time fallback skipped these, but a backfilled
+    //   journey_event is a first-class row that bypasses the fallback. Delete every
+    //   such mirror event for all users (idempotent — the backfill no longer creates
+    //   them, see the skip below). Pure predicate, no array casts (PR#107 lesson).
+    let mig042 = { sensation_mirror_insights_deleted: 0 };
+    try {
+      const dl = await sql`DELETE FROM journey_events
+        WHERE kind = 'insight'
+          AND payload->>'source' = 'backfill_diary'
+          AND payload->>'text' ~* '^\s*sensation\s*:'
+        RETURNING id`;
+      mig042.sensation_mirror_insights_deleted = dl.length;
+      console.log('migration 042 (sensation-mirror insight prune): deleted', mig042.sensation_mirror_insights_deleted, 'duplicate insight events');
+    } catch (e) { mig042.error = e.message; console.error('migration 042 (sensation-mirror insight prune):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-042 applied successfully', mig039, mig040, mig041, mig042 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -6847,6 +6868,11 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     je.forEach(e => {
       const layer = e.layer || nmTypeToJourney('').layer;
       if (e.kind === 'xp_gain' || e.layer === 'xp') return;            // xp handled below
+      // PR#112 (#4): defensive — never surface a "Sensation: … @ …" mirror as an
+      // insight node on the Path. Migration 042 deletes the backfilled ones, but this
+      // also covers any that slip through (the genuine sensation already has its own
+      // cyan node + blue body node, so the insight copy is always a duplicate).
+      if (e.kind === 'insight' && /^\s*sensation\s*:/i.test(String((e.payload && e.payload.text) || ''))) return;
       if (e.kind === 'achievement') { layers.practice.push(jeItem(e)); haveJE.practice = true; return; }
       if (e.kind === 'block_done')  { layers.practice.push(jeItem(e)); haveJE.practice = true; return; }
       if (layers[layer]) { layers[layer].push(jeItem(e)); haveJE[layer] = true; }
@@ -7014,6 +7040,11 @@ app.post('/api/users/me/evolution/backfill', requireAuth, async (req, res) => {
     const diary = await sql`SELECT id, text, comment, plus_count, minus_count, date_key, time, created_at FROM neuro_resource_diary WHERE user_id = ${me}`;
     for (const d of diary) {
       if (haveDiary.has(String(d.id))) continue;
+      // PR#112 (#4): the "Sensation: … @ …" rows are mirrors of /api/neuromap/sensation
+      // (kept only for the recent-list UI). They already have their own sensation +
+      // body journey events, so backfilling them as `insight` events created a phantom
+      // duplicate node on the Personal Path. Never backfill a sensation mirror.
+      if (/^\s*sensation\s*:/i.test(String(d.text || ''))) continue;
       const occAt = d.date_key ? (d.date_key + (d.time && /^\d{2}:\d{2}/.test(d.time) ? 'T' + d.time : 'T12:00')) : d.created_at;
       const valence = (d.plus_count || 0) > (d.minus_count || 0) ? 'positive'
                     : ((d.minus_count || 0) > (d.plus_count || 0) ? 'negative' : 'neutral');
@@ -7039,6 +7070,58 @@ app.post('/api/users/me/evolution/backfill', requireAuth, async (req, res) => {
 
     res.json({ ok: true, backfilled: { neuromap: nmCount, diary: diaryCount, blocks: blockCount } });
   } catch (err) { console.error('POST evolution/backfill:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/admin/wipe-day?user_id=…&date=YYYY-MM-DD — superadmin tool to dispose
+// of a tester's data for a single day (PR#112 #5: Tahir uses his own account as a test
+// rig and wants today's NeuroMap/Path entries cleared after each round). Removes the
+// day's journey_events, nm_nodes (+ orphaned nm_links), nm_session_nodes and the
+// neuro_resource_diary rows for that user, so GET /api/neuromap and the Path come back
+// empty for the date. Idempotent. Day is matched on both occurred/created time and the
+// node freshness (last_seen) so a node re-touched that day is swept too.
+app.delete('/api/admin/wipe-day', requireAuth, async (req, res) => {
+  try {
+    const me = req.user.sub || req.user.id;
+    const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
+    if (!caller || !['superadmin', 'founder'].includes(caller.role)) {
+      return res.status(403).json({ error: 'superadmin only' });
+    }
+    const targetId = String(req.query.user_id || '').trim();
+    const date = String(req.query.date || '').trim();
+    if (!targetId) return res.status(400).json({ error: 'user_id required' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    const [tu] = await sql`SELECT id, email FROM users WHERE id = ${targetId}`;
+    if (!tu) return res.status(404).json({ error: 'user not found' });
+
+    // nm_session_nodes created that day
+    const sn = await sql`DELETE FROM nm_session_nodes
+      WHERE user_id = ${targetId} AND created_at::date = ${date}::date RETURNING node_id`;
+    // nm_nodes created OR last-seen that day, then sweep any nm_links that now dangle
+    const nn = await sql`DELETE FROM nm_nodes
+      WHERE user_id = ${targetId}
+        AND (created_at::date = ${date}::date OR last_seen_at::date = ${date}::date) RETURNING id`;
+    const ll = await sql`DELETE FROM nm_links l
+      WHERE l.user_id = ${targetId}
+        AND ( l.last_seen_at::date = ${date}::date
+           OR NOT EXISTS (SELECT 1 FROM nm_nodes n WHERE n.id = l.from_node_id)
+           OR NOT EXISTS (SELECT 1 FROM nm_nodes n WHERE n.id = l.to_node_id) ) RETURNING id`;
+    // journey_events for that day (occurred OR created), then orphaned journey_links
+    const je = await sql`DELETE FROM journey_events
+      WHERE user_id = ${targetId}
+        AND (occurred_at::date = ${date}::date OR created_at::date = ${date}::date) RETURNING id`;
+    const jl = await sql`DELETE FROM journey_links jl
+      WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
+         OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b) RETURNING event_a`;
+    // diary rows for that day
+    const dr = await sql`DELETE FROM neuro_resource_diary
+      WHERE user_id = ${targetId}
+        AND (created_at::date = ${date}::date OR date_key = ${date}) RETURNING id`;
+
+    const counts = { nm_session_nodes: sn.length, nm_nodes: nn.length, nm_links: ll.length,
+                     journey_events: je.length, journey_links: jl.length, neuro_resource_diary: dr.length };
+    console.log('wipe-day', tu.email, date, JSON.stringify(counts));
+    res.json({ ok: true, user: tu.email, date, deleted: counts });
+  } catch (err) { console.error('DELETE /api/admin/wipe-day:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PR7: Collective Path of Development ──────────────────────────────────────
