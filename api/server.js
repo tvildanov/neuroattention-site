@@ -2215,7 +2215,34 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 045 (medications & substances): seeded', mig045.medications_seeded, 'meds,', mig045.diagnosis_links, 'diagnosis links');
     } catch (e) { mig045.error = e.message; console.error('migration 045 (medications & substances):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-046 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046 });
+    // ── Migration 047 (PR#118) — ORPHAN journey_events cleanup ────────────────
+    // Personal Path renders from journey_events. A NeuroMap node delete removes the
+    // node + its journey_events (payload.nm_node_id match), but historical deletes —
+    // and any delete that ran before this propagation existed — left journey_events
+    // pointing at nm_nodes rows that no longer exist. Those ghosts still draw a branch
+    // off the spine with the deleted concept (Nick's Issue #2). Sweep every event whose
+    // payload.nm_node_id references a missing nm_nodes row, then drop journey_links that
+    // dangle as a result. Idempotent (a clean DB deletes 0); pure subquery deletes (the
+    // neon `= ANY(${jsArray}::bigint[])` cast SILENTLY THROWS — CLAUDE.md migration note).
+    let mig047 = { orphan_events_deleted: 0, orphan_links_deleted: 0 };
+    try {
+      const oe = await sql`DELETE FROM journey_events
+        WHERE payload ? 'nm_node_id'
+          AND NULLIF(payload->>'nm_node_id','') IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM nm_nodes n WHERE n.id::text = journey_events.payload->>'nm_node_id'
+          ) RETURNING id`;
+      mig047.orphan_events_deleted = oe.length;
+      if (oe.length) {
+        const ol = await sql`DELETE FROM journey_links jl
+          WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
+             OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b) RETURNING event_a`;
+        mig047.orphan_links_deleted = ol.length;
+      }
+      console.log('migration 047 (orphan journey_events): deleted', mig047.orphan_events_deleted, 'events,', mig047.orphan_links_deleted, 'dangling links');
+    } catch (e) { mig047.error = e.message; console.error('migration 047 (orphan journey_events):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-047 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3362,7 +3389,8 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
       metadata: n.metadata, created_at: n.created_at
     }));
 
-    // Links from chain consecutive pairs (undirected, deduped).
+    // Links from chain consecutive pairs (undirected, deduped). count = #chains
+    // sharing the edge (→ thickness), chain_ids carried for hover.
     const linkMap = {};
     chains.forEach(c => {
       for (let i = 0; i < c.node_ids.length - 1; i++) {
@@ -3373,6 +3401,24 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
         linkMap[key].count++; linkMap[key].chain_ids.push(String(c.id));
         if (c.finished_at > linkMap[key].last_seen_at) linkMap[key].last_seen_at = c.finished_at;
       }
+    });
+    // PR#118: ALSO union the authoritative nm_links edges. nm_chains were only
+    // backfilled (migration 043) from sessions present in nm_session_nodes, so a
+    // heavy historical map — Nick's — can have nodes whose flows predate that table
+    // and therefore carry NO chain, leaving them as orphan dots the force-sim flings
+    // to the frame (the KING regression). nm_links has stored every REAL intra-session
+    // edge since PR#96 (within-chain consecutive pairs + same-session single seam —
+    // never a cross-session edge, see nmBridgeSession line ~3022 + migration 041), so
+    // unioning it restores the missing edges WITHOUT risking the mass-merge blob.
+    // Chain-derived edges win (richer count/chain_ids); nm_links only fills gaps.
+    const rawLinks = await sql`SELECT from_node_id, to_node_id, count, last_seen_at
+                               FROM nm_links WHERE user_id = ${userId}`;
+    rawLinks.forEach(l => {
+      const a = String(l.from_node_id), b = String(l.to_node_id);
+      if (a === b) return;
+      if (!visIds.has(a) || !visIds.has(b)) return;   // an endpoint fell outside the window
+      const key = a < b ? a + '|' + b : b + '|' + a;
+      if (!linkMap[key]) linkMap[key] = { source: a, target: b, count: l.count || 1, chain_ids: [], last_seen_at: l.last_seen_at };
     });
     const links = Object.keys(linkMap).map(k => linkMap[k]);
 
