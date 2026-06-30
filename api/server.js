@@ -285,6 +285,11 @@ const uploadRecording = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 500 * 1024 * 1024 }
 });
+// Medical documents (PR#115): PDF/JPG/PNG up to 10 MB.
+const uploadMedical = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -1834,6 +1839,42 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 043 (first-class chains): created', mig043.chains_created, 'chains,', mig043.chain_nodes_created, 'chain-node links');
     } catch (e) { mig043.error = e.message; console.error('migration 043 (first-class chains):', e.message); }
 
+    // ── Migration 044 (PR#115): "My diagnoses" + medical files ──
+    // NOTE: the PR spec wrote user_id BIGINT, but users.id is UUID in this DB
+    // (see migration 005). Using BIGINT would make the FK fail at create time,
+    // so we mirror the real schema and use UUID.
+    let mig044 = { ok: false };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS user_diagnoses (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        diagnosis_slug TEXT NOT NULL,
+        diagnosed_at DATE,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        UNIQUE (user_id, diagnosis_slug)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS user_diagnoses_user_idx ON user_diagnoses(user_id)`;
+      await sql`CREATE TABLE IF NOT EXISTS user_medical_files (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_diagnosis_id BIGINT REFERENCES user_diagnoses(id) ON DELETE SET NULL,
+        filename TEXT NOT NULL,
+        display_name TEXT NOT NULL,
+        doc_type TEXT,
+        doc_date DATE NOT NULL,
+        description TEXT,
+        storage_url TEXT NOT NULL,
+        size_bytes INT NOT NULL,
+        mime_type TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS user_medical_files_user_idx ON user_medical_files(user_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS user_medical_files_diag_idx ON user_medical_files(user_diagnosis_id)`;
+      mig044.ok = true;
+      console.log('migration 044 (user diagnoses + medical files): applied');
+    } catch (e) { mig044.error = e.message; console.error('migration 044 (user diagnoses + medical files):', e.message); }
+
     // ── Migration 045 (PR#116): Medications & Substances. Creates `medications`
     //   (drugs + psychoactive substances) and the `diagnosis_medications` TEXT-slug
     //   join to human_conditions, then seeds 60+ rows from api/medications-seed.js
@@ -1913,7 +1954,7 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 045 (medications & substances): seeded', mig045.medications_seeded, 'meds,', mig045.diagnosis_links, 'diagnosis links');
     } catch (e) { mig045.error = e.message; console.error('migration 045 (medications & substances):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-045 applied successfully', mig039, mig040, mig041, mig042, mig043, mig045 });
+    res.json({ ok: true, message: 'Migrations 003-045 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2150,6 +2191,158 @@ app.post('/api/users/me/avatar/preset', requireAuth, async (req, res) => {
 // Logout (placeholder for future token blacklist)
 app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PR#115 — Diagnoses: "My diagnoses" + medical files
+// All endpoints are user-scoped (own data only). Superadmin can read
+// any user's rows via the /api/admin/users/:id/* endpoints below.
+// Clinical catalog itself is static (data/diagnoses.json on the front-end);
+// the server only stores which slugs a user has claimed + their files.
+// ══════════════════════════════════════════════════════════════════
+
+// The 12 catalog slugs (must match data/diagnoses.json). Used to reject junk.
+const KNOWN_DIAGNOSIS_SLUGS = [
+  'gpa', 'thymoma', 'breast_cancer', 'lung_cancer', 'gastric_cancer',
+  'colorectal_cancer', 'prostate_cancer', 'thyroid_cancer', 'melanoma',
+  'hodgkin_lymphoma', 'cml', 'glioblastoma'
+];
+const MEDICAL_DOC_TYPES = ['lab', 'report', 'discharge', 'other'];
+const MEDICAL_MIME_OK = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+
+// POST /api/diagnoses/:slug/claim — add a catalog diagnosis to "my diagnoses"
+app.post('/api/diagnoses/:slug/claim', requireAuth, async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+    if (!KNOWN_DIAGNOSIS_SLUGS.includes(slug)) return res.status(400).json({ error: 'Unknown diagnosis' });
+    let { diagnosed_at, notes } = req.body || {};
+    // YYYY-MM-DD or null. Anything malformed is dropped to null rather than erroring.
+    const date = (typeof diagnosed_at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(diagnosed_at)) ? diagnosed_at : null;
+    notes = notes ? String(notes).slice(0, 2000) : null;
+    const [row] = await sql`
+      INSERT INTO user_diagnoses (user_id, diagnosis_slug, diagnosed_at, notes)
+      VALUES (${req.user.id}, ${slug}, ${date}, ${notes})
+      ON CONFLICT (user_id, diagnosis_slug)
+      DO UPDATE SET diagnosed_at = EXCLUDED.diagnosed_at, notes = EXCLUDED.notes
+      RETURNING *`;
+    res.status(201).json({ ok: true, diagnosis: row });
+  } catch (err) { console.error('POST claim:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/diagnoses/:slug/claim — remove from "my diagnoses"
+app.delete('/api/diagnoses/:slug/claim', requireAuth, async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+    await sql`DELETE FROM user_diagnoses WHERE user_id = ${req.user.id} AND diagnosis_slug = ${slug}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE claim:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/me/diagnoses — my claimed diagnoses + per-diagnosis file count
+app.get('/api/me/diagnoses', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT d.id, d.diagnosis_slug, d.diagnosed_at, d.notes, d.created_at,
+             COUNT(f.id)::int AS file_count
+      FROM user_diagnoses d
+      LEFT JOIN user_medical_files f ON f.user_diagnosis_id = d.id
+      WHERE d.user_id = ${req.user.id}
+      GROUP BY d.id
+      ORDER BY d.created_at DESC`;
+    res.json({ ok: true, diagnoses: rows });
+  } catch (err) { console.error('GET me/diagnoses:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/me/diagnoses/:id/files — upload a medical document (multipart "file")
+app.post('/api/me/diagnoses/:id/files', requireAuth, uploadMedical.single('file'), async (req, res) => {
+  try {
+    const diagId = parseInt(req.params.id, 10);
+    if (!diagId) return res.status(400).json({ error: 'Bad diagnosis id' });
+    // Ownership check — the diagnosis row must belong to the caller.
+    const own = await sql`SELECT id FROM user_diagnoses WHERE id = ${diagId} AND user_id = ${req.user.id}`;
+    if (!own.length) return res.status(403).json({ error: 'Not your diagnosis' });
+    if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'file required (multipart "file")' });
+    const mime = (req.file.mimetype || '').toLowerCase();
+    if (!MEDICAL_MIME_OK.includes(mime)) return res.status(400).json({ error: 'Only PDF / JPG / PNG allowed' });
+    let { display_name, doc_type, doc_date, description } = req.body || {};
+    if (!doc_date || !/^\d{4}-\d{2}-\d{2}$/.test(doc_date)) return res.status(400).json({ error: 'doc_date (YYYY-MM-DD) is required' });
+    display_name = (display_name ? String(display_name) : (req.file.originalname || 'document')).slice(0, 200);
+    doc_type = MEDICAL_DOC_TYPES.includes(doc_type) ? doc_type : 'other';
+    description = description ? String(description).slice(0, 2000) : null;
+    const safeName = String(req.file.originalname || 'doc').toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
+    const ext = (mime === 'application/pdf') ? 'pdf' : (mime.indexOf('png') >= 0 ? 'png' : 'jpg');
+    const stamp = Date.now();
+    const objectKey = `medical/${req.user.id}/${diagId}/${stamp}-${safeName}`.replace(/\.[^.]*$/, '') + '.' + ext;
+    // PRIVACY: medical documents are PHI. The GitHub storage fallback commits files to
+    // the repo and serves them publicly via GitHub Pages (neuroattention.org/medical/…),
+    // which would leak medical data. Require R2 (object storage) for these uploads —
+    // never fall back to the public repo. If R2 is unconfigured, refuse the upload.
+    if (!r2Client) {
+      return res.status(503).json({ error: 'Secure file storage (R2) is not configured. Medical documents cannot be stored publicly. Please contact an administrator to enable R2.' });
+    }
+    const stored = await storeMediaAsset(objectKey, req.file.buffer, mime, `[medical] add doc for diagnosis ${diagId}`);
+    const [row] = await sql`
+      INSERT INTO user_medical_files
+        (user_id, user_diagnosis_id, filename, display_name, doc_type, doc_date, description, storage_url, size_bytes, mime_type)
+      VALUES (${req.user.id}, ${diagId}, ${safeName}, ${display_name}, ${doc_type}, ${doc_date}, ${description}, ${stored.url}, ${req.file.size || 0}, ${mime})
+      RETURNING *`;
+    res.status(201).json({ ok: true, file: row });
+  } catch (err) { console.error('POST medical file:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/me/medical-files — all my files, newest doc_date first, with slug
+app.get('/api/me/medical-files', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT f.*, d.diagnosis_slug
+      FROM user_medical_files f
+      LEFT JOIN user_diagnoses d ON d.id = f.user_diagnosis_id
+      WHERE f.user_id = ${req.user.id}
+      ORDER BY f.doc_date DESC, f.created_at DESC`;
+    res.json({ ok: true, files: rows });
+  } catch (err) { console.error('GET medical-files:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/me/medical-files/:id — remove a file (DB row + best-effort storage)
+app.delete('/api/me/medical-files/:id', requireAuth, async (req, res) => {
+  try {
+    const fileId = parseInt(req.params.id, 10);
+    const [row] = await sql`SELECT * FROM user_medical_files WHERE id = ${fileId} AND user_id = ${req.user.id}`;
+    if (!row) return res.status(404).json({ error: 'File not found' });
+    await sql`DELETE FROM user_medical_files WHERE id = ${fileId} AND user_id = ${req.user.id}`;
+    try { await deleteMediaAsset(row.storage_url); } catch (e) { console.warn('medical storage delete:', e.message); }
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE medical file:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/admin/users/:id/diagnoses (superadmin) — view a user's claimed diagnoses
+app.get('/api/admin/users/:id/diagnoses', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const rows = await sql`
+      SELECT d.id, d.diagnosis_slug, d.diagnosed_at, d.notes, d.created_at,
+             COUNT(f.id)::int AS file_count
+      FROM user_diagnoses d
+      LEFT JOIN user_medical_files f ON f.user_diagnosis_id = d.id
+      WHERE d.user_id = ${req.params.id}
+      GROUP BY d.id
+      ORDER BY d.created_at DESC`;
+    res.json({ ok: true, diagnoses: rows });
+  } catch (err) { console.error('GET admin user diagnoses:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/admin/users/:id/medical-files (superadmin) — view a user's files
+app.get('/api/admin/users/:id/medical-files', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const rows = await sql`
+      SELECT f.*, d.diagnosis_slug
+      FROM user_medical_files f
+      LEFT JOIN user_diagnoses d ON d.id = f.user_diagnosis_id
+      WHERE f.user_id = ${req.params.id}
+      ORDER BY f.doc_date DESC, f.created_at DESC`;
+    res.json({ ok: true, files: rows });
+  } catch (err) { console.error('GET admin user medical-files:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PASSWORD RESET ──
