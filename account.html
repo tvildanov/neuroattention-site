@@ -404,20 +404,27 @@ a.dash-tab:hover { text-decoration:none; }
   background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06); }
 .nm-mini-inset.nm-mini-full .nm-mini-head { font-size:11px;padding:9px 12px 7px; }
 .nm-mini-inset.nm-mini-full .nm-mini-empty { font-size:12px; }
-/* Sensation overlay: split the fullscreen body into form (left) + live map (right). */
+/* Sensation overlay: split the fullscreen body into form (left) + live map (right).
+   PR#112 (#2): a true 50/50 split (was 480px-fixed form vs a flex-grow live map that
+   ate ~63% of the width and squeezed the body figures). The form is a flex COLUMN so
+   the footer buttons flow BELOW the body figures (margin-top:auto pins them to the
+   bottom of the column) instead of an absolute bar overlapping the front/back bodies. */
 .nm-fs-split { display:flex;gap:1.25rem;align-items:stretch;width:100%;height:100%;
   box-sizing:border-box;padding:1rem 1.25rem 1.25rem; }
-.nm-fs-split .nm-fs-form { flex:0 0 480px;max-width:480px;min-width:0;overflow-y:auto;
-  position:relative;padding-bottom:84px; }
-.nm-fs-split .nm-fs-live { flex:1 1 auto;min-width:280px;position:relative;height:100%; }
+.nm-fs-split .nm-fs-form { flex:1 1 50%;max-width:50%;min-width:0;overflow-y:auto;
+  position:relative;display:flex;flex-direction:column; }
+.nm-fs-split .nm-fs-live { flex:1 1 50%;max-width:50%;min-width:280px;position:relative;height:100%; }
+/* footer (Link to emotion / Save and exit) sits at the end of the form column */
+.nm-fs-split .nm-fs-footer { margin-top:auto;position:sticky;bottom:0;display:flex;gap:0.6rem;
+  padding:0.85rem 0 0.2rem;background:transparent;flex-wrap:wrap;justify-content:flex-end;z-index:6; }
 /* Diary modal: same two-column layout, widened modal box. */
 #diaryModal .nm-diary-split { display:flex;gap:1.25rem;align-items:stretch; }
 #diaryModal .nm-diary-form { flex:0 0 400px;max-width:400px;min-width:0; }
 #diaryModal .nm-diary-live { flex:1 1 auto;min-width:260px;position:relative;min-height:420px; }
 @media(max-width:860px),(pointer:coarse){
   .nm-fs-split { flex-direction:column;padding:0.75rem; }
-  .nm-fs-split .nm-fs-form { flex:1 1 auto;max-width:none;padding-bottom:84px; }
-  .nm-fs-split .nm-fs-live { flex:0 0 240px;min-height:240px; }
+  .nm-fs-split .nm-fs-form { flex:1 1 auto;max-width:none; }
+  .nm-fs-split .nm-fs-live { flex:0 0 240px;min-height:240px;max-width:none; }
   #diaryModal .nm-diary-split { flex-direction:column; }
   #diaryModal .nm-diary-form { flex:1 1 auto;max-width:none; }
   #diaryModal .nm-diary-live { flex:0 0 220px;min-height:220px; }
@@ -5518,6 +5525,16 @@ function _pr95t(k,f){ return (typeof t==='function') ? t(k,f) : f; }
    ========================================================================== */
 var nmSessionId = null;
 var nmSessionHandoff = false;
+// PR#112 (#1): timestamp of the last cross-link handoff. The handoff flag is a global
+// that the auto-opened next overlay consumes ~80ms later. If that open never happens
+// (the user abandons the cross-link, navigates away, etc.) the flag used to linger and
+// glue the NEXT, unrelated flow into the same session — Tahir's "mass-merge" where a
+// whole day's separate events collapsed into one blob. A handoff is only honoured if it
+// was raised in the last few seconds (a real auto-open is immediate); otherwise the
+// next flow opens fresh. Combined with rotate-on-open below, one modal flow == one
+// session_id, always.
+var nmHandoffAt = 0;
+var NM_HANDOFF_TTL = 8000;
 // PR#111 (#1): when the user presses «Привязать к эмоции» in the Sensation Map, the
 // body + sensation nodes already drawn on the live map must CARRY into the emotion
 // walkthrough's live map (not vanish, then reappear only as a faint prior strip).
@@ -5546,10 +5563,22 @@ function nmGenUuid(){
 }
 function nmEnsureSession(){ if(!nmSessionId) nmSessionId = nmGenUuid(); return nmSessionId; }
 function nmClearSession(){ nmSessionId = null; if(typeof nmClearPrior==='function') nmClearPrior(); }
-// Called at the top of every flow-opener: keep the session on a handoff, else reset.
+// PR#112 (#1): mark a deliberate cross-link handoff (Link-to-Emotion / Save-and-link).
+// The NEXT overlay that opens within NM_HANDOFF_TTL keeps the current session; anything
+// later starts fresh.
+function nmMarkHandoff(){ nmSessionHandoff = true; nmHandoffAt = Date.now(); }
+window.nmMarkHandoff = nmMarkHandoff;
+// Called at the top of every flow-opener. HARD RULE (PR#112 #1): one modal flow = one
+// session_id. A genuine, recent handoff continues the carried session (so a linked
+// Sensation→Emotion pair stays one cluster); every other open mints a BRAND-NEW uuid so
+// independent flows can never bridge — not via a lingering handoff flag, not via a stale
+// nmSessionId. The server only ever bridges nodes that share a session_id, so a fresh id
+// per flow is the guarantee that separate events render as separate clusters.
 function nmConsumeSessionHandoff(){
-  if (nmSessionHandoff){ nmSessionHandoff = false; }
-  else { nmClearSession(); }
+  var live = nmSessionHandoff && nmHandoffAt && (Date.now() - nmHandoffAt) < NM_HANDOFF_TTL;
+  nmSessionHandoff = false; nmHandoffAt = 0;
+  if (live){ nmEnsureSession(); }                 // continuation — keep the carried session
+  else { nmSessionId = nmGenUuid(); if(typeof nmClearPrior==='function') nmClearPrior(); } // fresh flow → new session
 }
 window.nmEnsureSession = nmEnsureSession;
 window.nmClearSession = nmClearSession;
@@ -5663,6 +5692,7 @@ function nmOpenSensationOverlay(){
     split.appendChild(colL); split.appendChild(colR);
     body.appendChild(split);
     src.style.display = '';
+    src.style.flex = '0 0 auto'; // PR#112 (#2): keep the body figures at natural size (no flex-shrink squish)
     colL.appendChild(src);
     if (typeof loadSensationMap === 'function') { try{ loadSensationMap(); }catch(e){} }
     var mini = nmMiniMakeInset(colR, { full:true, title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
@@ -5674,9 +5704,10 @@ function nmOpenSensationOverlay(){
     if(intEl) intEl.addEventListener('input', rerender);
     setTimeout(rerender, 120);
     _nmSensMiniRerender = rerender; // expose so a programmatic save can refresh
-    // Footer pinned to the bottom of the form column.
+    // Footer flows at the END of the form column (below the body figures), never
+    // overlapping them — PR#112 (#2). .nm-fs-footer uses margin-top:auto + sticky bottom.
     var footer = document.createElement('div');
-    footer.style.cssText = 'position:absolute;left:0;right:0;bottom:0;display:flex;gap:0.6rem;padding:0.85rem 1.1rem;background:rgba(8,10,14,0.92);border-top:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(10px);z-index:6;flex-wrap:wrap;justify-content:flex-end;';
+    footer.className = 'nm-fs-footer';
     footer.innerHTML =
       '<button class="btn btn-ghost" id="nm-sens-link-stub" style="font-size:13px;border:1px dashed rgba(0,224,255,0.3);">'+_pr95t('a.tools.sensation_link_emotion','Привязать к эмоции')+'</button>'+
       '<button class="btn btn-solid" id="nm-sens-save-exit" style="font-size:13px;">'+_pr95t('a.tools.sensation_save_exit','Сохранить и выйти')+'</button>';
@@ -5697,7 +5728,7 @@ function nmOpenSensationOverlay(){
       try { nmSetCarriedLive(nmMiniSensModel()); } catch(e){}
       submitSensationMap(function(){
         refreshGraph();
-        nmSessionHandoff = true;
+        nmMarkHandoff(); // PR#112 (#1): timestamped handoff (TTL-guarded)
         didHandoff = true; // PR#108: survive this overlay's late (160ms) onClose
         handle.close();
         setTimeout(function(){ openNmSurvey(); }, 80);
@@ -5737,16 +5768,23 @@ window.nmOpenDiaryOverlay = nmOpenDiaryOverlay;
 // nodes there link back to this event, making one connected chain on the map.
 function nmDiaryLinkTo(opener){
   nmEnsureSession();
-  nmSessionHandoff = true;
+  nmMarkHandoff(); // PR#112 (#1): timestamped handoff (TTL-guarded)
   // PR#97: snapshot the diary event node BEFORE save clears the form, so the next
   // overlay's mini-graph shows the faded prior context.
   try { nmSetPrior(nmMiniDiaryModel().nodes.map(function(n){ return {type:n.type,label:n.label,valence:n.valence}; })); } catch(e){}
+  // PR#112 (#3): CARRY the diary event's live-map nodes into the next overlay's live
+  // map (same as Sensation→Emotion already does via nmCarriedLive), so a Diary→Emotion
+  // cross-link EXTENDS the visible map instead of resetting to a blank canvas. The
+  // emotion walkthrough's buildLiveGraph() re-draws the carried nodes and attaches the
+  // first emotion to the diary tail. Cleared automatically on any fresh (non-handoff) open.
+  try { nmSetCarriedLive(nmMiniDiaryModel()); } catch(e){}
   if(saveDiaryEvent()){
     closeDiaryInput();
     setTimeout(function(){ opener(); }, 80);
   } else {
     // Nothing saved (empty event) — drop the session so nothing links by accident.
-    nmSessionHandoff = false;
+    nmSessionHandoff = false; nmHandoffAt = 0;
+    nmClearCarriedLive();
     nmClearSession();
   }
 }
@@ -7351,7 +7389,7 @@ function nmFinishAndSave(){
 // hand off to the sensation overlay — its nodes link back to this emotion chain.
 function nmSaveAndLinkSensation(){
   nmEnsureSession();
-  nmSessionHandoff = true;
+  nmMarkHandoff(); // PR#112 (#1): timestamped handoff (TTL-guarded)
   document.getElementById('nm-nav-btns').style.display='flex';
   nmSaveSurvey();
   setTimeout(function(){ nmOpenSensationOverlay(); }, 80);
