@@ -198,7 +198,51 @@ the «всё тело» bug for 4 PRs). Use pure SUBQUERY deletes.
   DO NOTHING); per-group try/catch so one bad row can't abort the sweep. Returns
   `{ chains_created, chain_nodes_created, backfilled_chains, skipped? }`.
 
-`run-migrations` returns `{ ok, message, mig039, mig040, mig041, mig042, mig043 }`.
+- **044** — RESERVED for the parallel Diagnoses PR#115 (do not reuse).
+- **045** — (PR#116) MEDICATIONS & SUBSTANCES. Creates `medications` + `diagnosis_medications`
+  (`IF NOT EXISTS`), then seeds 60 rows (50 drugs + 10 psychoactive substances) from
+  `api/medications-seed.js`. `ON CONFLICT (slug) DO UPDATE` so re-running refreshes copy /
+  target-organs. Links resolve medication slug→id then upsert the join. Per-row try/catch.
+  Returns `{ medications_seeded, diagnosis_links, skipped? }`.
+
+`run-migrations` returns `{ ok, message, mig039, mig040, mig041, mig042, mig043, mig045 }`.
+
+---
+
+## Medications & Substances tab (PR#116, 4th Human-Atlas tab)
+
+A 4th tab «Препараты и вещества» / «Medications & substances» sits beside Anatomy /
+Functions / Conditions, driven by the SAME controller IIFE (account.html ~L17068) and the
+SAME `window._anatomyAtlas` instance. Self-contained — no edit to `body-atlas.js`.
+
+- **Tables.** `medications` (id, slug UNIQUE, `kind` `medication`|`substance`, `category`,
+  `name_ru/en/es`, `brand_ru[]`/`brand_us[]`, `effect_positive_*`, `effect_negative_*`,
+  `target_organs_positive[]`/`target_organs_negative[]`, `warning_*`, `sort_order`,
+  `is_active`). `diagnosis_medications` (`diagnosis_slug` TEXT → human_conditions.slug,
+  `medication_id` FK, `is_primary`, PK both) — TEXT-slug join, NO FK on the diagnosis side so
+  unknown/PR#115-pending slugs are harmless. Seed in `api/medications-seed.js`
+  (`MEDICATIONS` + `DIAG_LINKS`). RU names = РФ-market (Золофт/Велаксин…), EN/ES = US-market.
+- **Endpoints** (server.js, after the anatomy block): `GET /api/medications?kind=&category=&q=`,
+  `GET /api/medication-links` (bulk join, client builds both nav directions),
+  `GET /api/medications/:slug` (detail + its diagnoses), `GET /api/diagnoses/:slug/medications`,
+  `GET /api/medications/:id/diagnoses` (`:id` = numeric id OR slug). Route order:
+  `/api/medications/:id/diagnoses` and `/api/medication-links` precede `/api/medications/:slug`.
+- **3D green/red overlay** (account.html `medFocus`/`medTintNow`/`medClearTint`). Reuses the
+  Conditions `focus()` to isolate + solidify target organs, then recolors meshes IN PLACE via
+  `material.uniforms.uColor`: positives **green** `0x4fd67e`, negatives **red** `0xe85d6f`
+  (positive wins ties). `MED_SEED` maps the canonical organ slugs that resolve to real meshes
+  (brain, lungs, liver, kidneys, stomach, colon→large-intestine, small_intestine, pancreas,
+  heart, thyroid→thyroid-gland, spinal_cord). Non-mesh systems (vessels/skin/bones/joints/
+  muscles/adrenals/spleen) are coloured CHIPS in the card only — not tinted in 3D. Re-applied on
+  lazy GLB stream via timers (400/950/2100 ms), like `focus()`. Base color saved in
+  `userData._medBaseColor` and restored by `medClearTint()` (called on tab-switch + card close).
+- **Bidirectional links.** Condition card gains a «Препараты для лечения» section
+  (`DATA.medsByDiag`) → `haGoMedication`; med card has «Назначается при» (`DATA.diagsByMed`) →
+  `haGoCondition`. Both built client-side from the bulk `/api/medication-links`.
+- **Disclaimers.** EVERY card shows the not-medical-advice disclaimer; `kind='substance'` adds
+  a harm-reduction notice + WHO resource link. All labels live in the controller's local `T`
+  table (ru/en/es) — NOT i18n.js (the `a.ha.*` data-i18n attrs are inert fallbacks the
+  controller overrides in `localize()`).
 
 ---
 
