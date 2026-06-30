@@ -1759,7 +1759,82 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 042 (sensation-mirror insight prune): deleted', mig042.sensation_mirror_insights_deleted, 'duplicate insight events');
     } catch (e) { mig042.error = e.message; console.error('migration 042 (sensation-mirror insight prune):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-042 applied successfully', mig039, mig040, mig041, mig042 });
+    // ── Migration 043 (PR#114): FIRST-CLASS CHAINS. Promote the implicit
+    //   "session_id == one flow" convention into a real entity (nm_chains +
+    //   nm_chain_nodes with explicit minute-accurate timestamps and node positions).
+    //   This is the backing store for the hybrid NeuroMap (one shared node sized by
+    //   usage, info-panel chain list) and the per-chain Personal Path branches. No
+    //   data is destroyed — chains are DERIVED from the already-populated
+    //   nm_session_nodes bridge, so every historical flow un-folds into a chain on
+    //   first run. Idempotent: tables use IF NOT EXISTS, chains key on session_id
+    //   (UNIQUE) with ON CONFLICT DO NOTHING. Pure predicates, no array-cast deletes
+    //   (PR#107 lesson). node_id/user_id are UUID to match nm_nodes (the spec's BIGINT
+    //   was illustrative — this codebase keys users + nm_nodes by uuid).
+    let mig043 = { chains_created: 0, chain_nodes_created: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS nm_chains (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID NOT NULL,
+        session_id TEXT NOT NULL,
+        started_at TIMESTAMPTZ NOT NULL,
+        finished_at TIMESTAMPTZ NOT NULL,
+        source TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS nm_chains_user_started_idx ON nm_chains(user_id, started_at)`;
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS nm_chains_session_uidx ON nm_chains(session_id)`;
+      await sql`CREATE TABLE IF NOT EXISTS nm_chain_nodes (
+        chain_id BIGINT NOT NULL REFERENCES nm_chains(id) ON DELETE CASCADE,
+        node_id UUID NOT NULL REFERENCES nm_nodes(id) ON DELETE CASCADE,
+        position INT NOT NULL,
+        PRIMARY KEY (chain_id, node_id, position)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS nm_chain_nodes_node_idx ON nm_chain_nodes(node_id)`;
+      // Backfill: every distinct (user, session) in the bridge table becomes a chain.
+      const sessGroups = await sql`
+        SELECT user_id, session_id, MIN(created_at) AS started_at, MAX(created_at) AS finished_at
+        FROM nm_session_nodes
+        WHERE session_id IS NOT NULL
+        GROUP BY user_id, session_id`;
+      for (const g of sessGroups) {
+       try {
+        // Order this session's nodes: body-first (so a chain reads body→sensation→…),
+        // then by created_at, for a stable position index.
+        const nodes = await sql`
+          SELECT sn.node_id, n.type,
+            CASE WHEN n.type = 'area' AND n.metadata->>'area_kind' = 'body' THEN 0
+                 WHEN n.type = 'sensation' THEN 1 ELSE 2 END AS body_rank
+          FROM nm_session_nodes sn JOIN nm_nodes n ON n.id = sn.node_id
+          WHERE sn.user_id = ${g.user_id} AND sn.session_id = ${g.session_id}
+          ORDER BY sn.created_at ASC, body_rank ASC, sn.node_id ASC`;
+        if (!nodes.length) continue;
+        const src =
+          (nodes.some(n => n.type === 'emotion') && 'emotion') ||
+          (nodes.some(n => n.type === 'sensation' || n.type === 'area') && 'sensation') ||
+          (nodes.some(n => n.type === 'thought' || n.type === 'concept') && 'thought') ||
+          'diary';
+        const ins = await sql`
+          INSERT INTO nm_chains (user_id, session_id, started_at, finished_at, source)
+          VALUES (${g.user_id}, ${g.session_id}, ${g.started_at}, ${g.finished_at}, ${src})
+          ON CONFLICT (session_id) DO NOTHING
+          RETURNING id`;
+        if (!ins.length) continue;   // already backfilled on an earlier run
+        const chainId = ins[0].id;
+        mig043.chains_created++;
+        let pos = 0;
+        for (const nd of nodes) {
+          await sql`INSERT INTO nm_chain_nodes (chain_id, node_id, position)
+                    VALUES (${chainId}, ${nd.node_id}, ${pos})
+                    ON CONFLICT DO NOTHING`;
+          pos++; mig043.chain_nodes_created++;
+        }
+       } catch (ge) { mig043.skipped = (mig043.skipped || 0) + 1; }
+      }
+      mig043.backfilled_chains = mig043.chains_created;
+      console.log('migration 043 (first-class chains): created', mig043.chains_created, 'chains,', mig043.chain_nodes_created, 'chain-node links');
+    } catch (e) { mig043.error = e.message; console.error('migration 043 (first-class chains):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-043 applied successfully', mig039, mig040, mig041, mig042, mig043 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2387,7 +2462,7 @@ app.delete('/api/neuromap/:id', requireAuth, async (req, res) => {
 // are short-lived (one cross-link hop, reset on "save and exit"), so the existing
 // set is small (a diary event, a sensation pair, or a ~4-node emotion chain) and
 // the cross-product stays tiny. Returns the number of bridge links touched.
-async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso) {
+async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso, source) {
   if (!sessionId || !Array.isArray(newNodeIds) || !newNodeIds.length) return 0;
   const sid = String(sessionId).slice(0, 80);
   const when = whenIso || new Date().toISOString();
@@ -2428,6 +2503,31 @@ async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso) {
               VALUES (${userId}, ${sid}, ${nid}, ${when})
               ON CONFLICT (user_id, session_id, node_id) DO NOTHING`;
   }
+  // PR#114: maintain the FIRST-CLASS chain. One modal flow == one session_id == one
+  // nm_chains row, with its nodes strung along nm_chain_nodes in append (position)
+  // order. This is what makes chains first-class instead of inferred from session_id
+  // at render time: the NeuroMap info-panel lists a node's chains, the Personal Path
+  // draws one branch per chain, and v3/graph derives links from consecutive members.
+  // `ids` already arrive in flow order (body→sensation→emotion…), so position is just
+  // the running index appended to whatever the session already holds.
+  try {
+    const ch = await sql`
+      INSERT INTO nm_chains (user_id, session_id, started_at, finished_at, source)
+      VALUES (${userId}, ${sid}, ${when}, ${when}, ${source || null})
+      ON CONFLICT (session_id) DO UPDATE SET
+        finished_at = GREATEST(nm_chains.finished_at, EXCLUDED.finished_at),
+        source = COALESCE(nm_chains.source, EXCLUDED.source)
+      RETURNING id`;
+    const chainId = ch[0].id;
+    const pr = await sql`SELECT COALESCE(MAX(position), -1) AS m FROM nm_chain_nodes WHERE chain_id = ${chainId}`;
+    let pos = (pr[0].m == null ? -1 : pr[0].m) + 1;
+    for (const nid of ids) {
+      await sql`INSERT INTO nm_chain_nodes (chain_id, node_id, position)
+                VALUES (${chainId}, ${nid}::uuid, ${pos})
+                ON CONFLICT DO NOTHING`;
+      pos++;
+    }
+  } catch (e) { console.error('nmBridgeSession chain upsert:', e.message); }
   return made;
 }
 
@@ -2560,7 +2660,13 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
 
     // PR#96: cross-link bridge — if this append is part of a cross-link flow,
     // connect its nodes to the rest of the session (and remember them).
-    const sessionLinked = await nmBridgeSession(userId, req.body && req.body.session_id, nodeIds, occurredAt);
+    // PR#114: classify the chain's source for the info-panel (best-effort by node type).
+    const chainSource =
+      (validItems.some(c => c && c.type === 'emotion') && 'emotion') ||
+      (validItems.some(c => c && (c.type === 'thought' || c.type === 'concept')) && 'thought') ||
+      (validItems.some(c => c && (c.type === 'sensation' || c.type === 'area')) && 'sensation') ||
+      'diary';
+    const sessionLinked = await nmBridgeSession(userId, req.body && req.body.session_id, nodeIds, occurredAt, chainSource);
 
     res.json({ ok: true, node_ids: nodeIds, journey_ids: journeyIds, links: linkResults, session_linked: sessionLinked });
   } catch (err) {
@@ -2634,6 +2740,184 @@ app.get('/api/neuromap/v2/graph', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('GET /api/neuromap/v2/graph:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// PR#114 — resolve the target user for a NeuroMap read, honouring the superadmin
+// ?email= override (same gate as v2/graph). Returns the user id to query.
+async function nmResolveTargetUser(req) {
+  let userId = req.user.id;
+  if (req.query.email) {
+    const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+    if (caller.length && ['superadmin', 'founder'].includes(caller[0].role)) {
+      const target = await sql`SELECT id FROM users WHERE email = ${req.query.email}`;
+      if (target.length) userId = target[0].id;
+    }
+  }
+  return userId;
+}
+
+// GET /api/neuromap/v3/graph — the HYBRID graph (PR#114). Returns:
+//   nodes[]  — ONE per deduplicated (user,type,label,valence) with global `count`
+//              (drives usage-proportional sizing — the gestalt "this repeated 10×").
+//   links[]  — ONE edge per node pair, derived from CONSECUTIVE members of every
+//              chain. `count` = how many chains share the edge (→ thickness),
+//              `chain_ids` = which chains (→ hover). No cross-product, no fusion.
+//   chains[] — every nm_chains row with timestamps + ordered node_ids.
+// ?range=day|week|month|all (+ optional from/to ISO) crops by chain started_at /
+// node last_seen; default 'all'. The client also crops by date as a secondary pass,
+// so returning everything here is safe.
+app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
+  try {
+    const userId = await nmResolveTargetUser(req);
+    const range = String(req.query.range || 'all').toLowerCase();
+    let from = null, to = null;
+    if (req.query.from || req.query.to || (range !== 'all' && range)) {
+      to = req.query.to ? new Date(req.query.to) : new Date();
+      if (req.query.from) {
+        from = new Date(req.query.from);
+      } else {
+        const days = { day: 1, week: 7, month: 30 }[range] || null;
+        from = days ? new Date(to.getTime() - days * 86400000) : null;
+      }
+      if (from && isNaN(from.getTime())) from = null;
+      if (to && isNaN(to.getTime())) to = new Date();
+    }
+    const fromIso = from ? from.toISOString() : null;
+    const toIso = to ? to.toISOString() : null;
+
+    const chainRows = (from)
+      ? await sql`SELECT id, session_id, started_at, finished_at, source FROM nm_chains
+                  WHERE user_id = ${userId} AND started_at >= ${fromIso} AND started_at <= ${toIso}
+                  ORDER BY started_at ASC`
+      : await sql`SELECT id, session_id, started_at, finished_at, source FROM nm_chains
+                  WHERE user_id = ${userId} ORDER BY started_at ASC`;
+    const chainIds = chainRows.map(c => c.id);
+    let cnRows = [];
+    if (chainIds.length) {
+      cnRows = await sql`SELECT chain_id, node_id, position FROM nm_chain_nodes
+                         WHERE chain_id = ANY(${chainIds}::bigint[]) ORDER BY chain_id, position ASC`;
+    }
+    const nodesByChain = {};
+    cnRows.forEach(r => { (nodesByChain[r.chain_id] = nodesByChain[r.chain_id] || []).push(String(r.node_id)); });
+    const chains = chainRows.map(c => ({
+      id: String(c.id), session_id: c.session_id,
+      started_at: c.started_at, finished_at: c.finished_at, source: c.source,
+      node_ids: nodesByChain[c.id] || []
+    }));
+
+    // Visible node set: every node that appears in an in-range chain, plus orphan
+    // nodes (legacy, no chain) whose last_seen falls in the window.
+    const allNodes = await sql`
+      SELECT id, type, label, normalized_label, valence, count, last_seen_at, metadata, created_at
+      FROM nm_nodes WHERE user_id = ${userId} ORDER BY count DESC`;
+    const nodeById = {};
+    allNodes.forEach(n => { nodeById[String(n.id)] = n; });
+    const visIds = new Set();
+    chains.forEach(c => c.node_ids.forEach(id => visIds.add(id)));
+    allNodes.forEach(n => {
+      const inChain = visIds.has(String(n.id));
+      if (!from) { visIds.add(String(n.id)); return; }
+      if (inChain) return;
+      const ls = n.last_seen_at ? new Date(n.last_seen_at) : null;
+      if (ls && ls >= from && ls <= to) visIds.add(String(n.id));
+    });
+    const nodes = [...visIds].map(id => nodeById[id]).filter(Boolean).map(n => ({
+      id: n.id, type: n.type, label: n.label, normalized_label: n.normalized_label,
+      valence: n.valence, count: n.count, last_seen_at: n.last_seen_at,
+      metadata: n.metadata, created_at: n.created_at
+    }));
+
+    // Links from chain consecutive pairs (undirected, deduped).
+    const linkMap = {};
+    chains.forEach(c => {
+      for (let i = 0; i < c.node_ids.length - 1; i++) {
+        const a = c.node_ids[i], b = c.node_ids[i + 1];
+        if (a === b) continue;
+        const key = a < b ? a + '|' + b : b + '|' + a;
+        if (!linkMap[key]) linkMap[key] = { source: a, target: b, count: 0, chain_ids: [], last_seen_at: c.finished_at };
+        linkMap[key].count++; linkMap[key].chain_ids.push(String(c.id));
+        if (c.finished_at > linkMap[key].last_seen_at) linkMap[key].last_seen_at = c.finished_at;
+      }
+    });
+    const links = Object.keys(linkMap).map(k => linkMap[k]);
+
+    res.json({ ok: true, nodes, links, chains });
+  } catch (err) {
+    console.error('GET /api/neuromap/v3/graph:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// GET /api/neuromap/chains-by-node/:node_id — every chain a node appears in, most
+// recent first, each with its ordered nodes (labels) for the info-panel list (PR#114).
+app.get('/api/neuromap/chains-by-node/:node_id', requireAuth, async (req, res) => {
+  try {
+    const userId = await nmResolveTargetUser(req);
+    const nodeId = String(req.params.node_id || '').trim();
+    if (!nodeId) return res.status(400).json({ error: 'node id required' });
+    const chs = await sql`
+      SELECT c.id, c.session_id, c.started_at, c.finished_at, c.source
+      FROM nm_chains c JOIN nm_chain_nodes cn ON cn.chain_id = c.id
+      WHERE c.user_id = ${userId} AND cn.node_id = ${nodeId}::uuid
+      GROUP BY c.id ORDER BY c.started_at DESC`;
+    const ids = chs.map(c => c.id);
+    let cn = [];
+    if (ids.length) {
+      cn = await sql`
+        SELECT cn.chain_id, cn.position, n.id AS node_id, n.type, n.label, n.valence, n.metadata
+        FROM nm_chain_nodes cn JOIN nm_nodes n ON n.id = cn.node_id
+        WHERE cn.chain_id = ANY(${ids}::bigint[])
+        ORDER BY cn.chain_id, cn.position ASC`;
+    }
+    const byChain = {};
+    cn.forEach(r => { (byChain[r.chain_id] = byChain[r.chain_id] || []).push({
+      node_id: String(r.node_id), type: r.type, label: r.label, valence: r.valence, metadata: r.metadata
+    }); });
+    res.json({ ok: true, chains: chs.map(c => ({
+      id: String(c.id), session_id: c.session_id,
+      started_at: c.started_at, finished_at: c.finished_at, source: c.source,
+      nodes: byChain[c.id] || [], node_ids: (byChain[c.id] || []).map(x => x.node_id)
+    })) });
+  } catch (err) {
+    console.error('GET /api/neuromap/chains-by-node:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// GET /api/neuromap/chain/:chain_id — one chain for the in-panel mini-view: ordered
+// nodes + consecutive edges + timestamps (PR#114). Owner-gated (superadmin via the
+// chain's own owner check).
+app.get('/api/neuromap/chain/:chain_id', requireAuth, async (req, res) => {
+  try {
+    const chainId = parseInt(req.params.chain_id, 10);
+    if (isNaN(chainId)) return res.status(400).json({ error: 'chain id required' });
+    const c = await sql`SELECT id, user_id, session_id, started_at, finished_at, source FROM nm_chains WHERE id = ${chainId}`;
+    if (!c.length) return res.status(404).json({ error: 'chain not found' });
+    // Owner or superadmin/founder may read.
+    if (String(c[0].user_id) !== String(req.user.id)) {
+      const caller = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+      if (!(caller.length && ['superadmin', 'founder'].includes(caller[0].role))) {
+        return res.status(403).json({ error: 'not your chain' });
+      }
+    }
+    const rows = await sql`
+      SELECT cn.position, n.id, n.type, n.label, n.valence, n.metadata, n.count
+      FROM nm_chain_nodes cn JOIN nm_nodes n ON n.id = cn.node_id
+      WHERE cn.chain_id = ${chainId} ORDER BY cn.position ASC`;
+    const nodes = rows.map(r => ({
+      id: String(r.id), type: r.type, label: r.label, valence: r.valence,
+      metadata: r.metadata, count: r.count, position: r.position
+    }));
+    const edges = [];
+    for (let i = 0; i < nodes.length - 1; i++) edges.push({ source: nodes[i].id, target: nodes[i + 1].id });
+    res.json({ ok: true, chain: {
+      id: String(c[0].id), session_id: c[0].session_id,
+      started_at: c[0].started_at, finished_at: c[0].finished_at, source: c[0].source
+    }, nodes, edges });
+  } catch (err) {
+    console.error('GET /api/neuromap/chain:', err);
     res.status(500).json({ error: 'Internal error' });
   }
 });
@@ -4892,7 +5176,7 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
     // PR#96: cross-link bridge — chain these sensation/area nodes onto any other
     // nodes saved in the same cross-link session (e.g. an emotion walkthrough the
     // user is linking from/to).
-    const sessionLinked = await nmBridgeSession(userId, session_id, nmNodeIds.concat(sensNodeIds), when.toISOString());
+    const sessionLinked = await nmBridgeSession(userId, session_id, nmNodeIds.concat(sensNodeIds), when.toISOString(), 'sensation');
 
     res.json({ ok: true, sensations: sensRows.length, locations: locRows.length,
                journey_id: sensationEventId, linked: linkedCount, session_linked: sessionLinked });
@@ -7136,8 +7420,15 @@ app.delete('/api/admin/wipe-day', requireAuth, async (req, res) => {
     const dr = await sql`DELETE FROM neuro_resource_diary
       WHERE user_id = ${targetId}
         AND (created_at::date = ${date}::date OR date_key = ${date}) RETURNING id`;
+    // PR#114: chains that started that day, plus any chain emptied by the node sweep
+    // above (nm_chain_nodes cascades on nm_nodes delete, leaving the chain orphaned).
+    const ch = await sql`DELETE FROM nm_chains
+      WHERE user_id = ${targetId}
+        AND ( started_at::date = ${date}::date
+           OR NOT EXISTS (SELECT 1 FROM nm_chain_nodes cn WHERE cn.chain_id = nm_chains.id) ) RETURNING id`;
 
     const counts = { nm_session_nodes: sn.length, nm_nodes: nn.length, nm_links: ll.length,
+                     nm_chains: ch.length,
                      journey_events: je.length, journey_links: jl.length, neuro_resource_diary: dr.length };
     console.log('wipe-day', tu.email, date, JSON.stringify(counts));
     res.json({ ok: true, user: tu.email, date, deleted: counts });
@@ -7169,8 +7460,13 @@ app.post('/api/admin/nm-node/:id/delete', requireAuth, async (req, res) => {
     const sn = await sql`DELETE FROM nm_session_nodes WHERE user_id = ${ownerId} AND node_id = ${nodeId}::uuid RETURNING node_id`;
     const ll = await sql`DELETE FROM nm_links WHERE user_id = ${ownerId}
       AND (from_node_id = ${nodeId}::uuid OR to_node_id = ${nodeId}::uuid) RETURNING id`;
+    // PR#114: drop the node's chain memberships, then prune any chain it emptied.
+    const cnd = await sql`DELETE FROM nm_chain_nodes WHERE node_id = ${nodeId}::uuid RETURNING chain_id`;
+    const ocd = await sql`DELETE FROM nm_chains WHERE user_id = ${ownerId}
+      AND NOT EXISTS (SELECT 1 FROM nm_chain_nodes cn WHERE cn.chain_id = nm_chains.id) RETURNING id`;
     const nn = await sql`DELETE FROM nm_nodes WHERE id = ${nodeId}::uuid RETURNING id`;
     const deleted = { nm_nodes: nn.length, nm_links: ll.length, nm_session_nodes: sn.length,
+                      nm_chain_nodes: cnd.length, nm_chains_pruned: ocd.length,
                       journey_events: je.length, journey_links: jl.length };
     console.log('nm-node-delete', caller.id, '→', nodeId, node[0].label, JSON.stringify(deleted));
     res.json({ ok: true, node_id: nodeId, label: node[0].label, deleted });
