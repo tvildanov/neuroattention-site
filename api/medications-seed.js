@@ -1014,59 +1014,26 @@ const MEDICATIONS = [
 // diagnosis_slug -> [{ slug, is_primary }]  (diagnosis slugs from anatomy_conditions;
 // includes PR#115 additions — unknown slugs are simply ignored at render time).
 const DIAG_LINKS = {
-  'granulomatosis-with-polyangiitis': [
-    { slug: 'rituximab', is_primary: true }, { slug: 'cyclophosphamide', is_primary: true },
-    { slug: 'prednisolone', is_primary: true }, { slug: 'methotrexate', is_primary: false },
-    { slug: 'azathioprine', is_primary: false }
-  ],
-  'systemic-lupus-erythematosus': [
-    { slug: 'hydroxychloroquine', is_primary: true }, { slug: 'prednisolone', is_primary: true },
-    { slug: 'mycophenolate', is_primary: true },
-    { slug: 'methotrexate', is_primary: false }, { slug: 'azathioprine', is_primary: false },
-    { slug: 'cyclophosphamide', is_primary: false }
-  ],
-  'lupus': [
-    { slug: 'hydroxychloroquine', is_primary: true }, { slug: 'prednisolone', is_primary: true },
-    { slug: 'mycophenolate', is_primary: true }, { slug: 'azathioprine', is_primary: false }
-  ],
-  'rheumatoid-arthritis': [
-    { slug: 'methotrexate', is_primary: true }, { slug: 'adalimumab', is_primary: true },
-    { slug: 'hydroxychloroquine', is_primary: false }, { slug: 'prednisolone', is_primary: false },
-    { slug: 'rituximab', is_primary: false },
-    { slug: 'celecoxib', is_primary: false }, { slug: 'ibuprofen', is_primary: false }
-  ],
-  'asthma': [
-    { slug: 'prednisolone', is_primary: true }, { slug: 'methylprednisolone', is_primary: false }
-  ],
+  // Keyed by REAL human_conditions.slug (verified against the live catalog). Slugs
+  // absent from the catalog (autoimmune rheumatology, hormone replacement) simply
+  // have no cross-link — their med cards just omit the "Prescribed for" section.
   'depression': [
     { slug: 'sertraline', is_primary: true }, { slug: 'escitalopram', is_primary: true },
     { slug: 'venlafaxine', is_primary: false }, { slug: 'bupropion', is_primary: false },
     { slug: 'mirtazapine', is_primary: false }
   ],
-  'major-depressive-disorder': [
-    { slug: 'sertraline', is_primary: true }, { slug: 'escitalopram', is_primary: true },
-    { slug: 'bupropion', is_primary: false }, { slug: 'venlafaxine', is_primary: false }
-  ],
-  'anxiety': [
-    { slug: 'escitalopram', is_primary: true }, { slug: 'sertraline', is_primary: true },
-    { slug: 'venlafaxine', is_primary: false }, { slug: 'alprazolam', is_primary: false },
+  'gad': [
+    { slug: 'escitalopram', is_primary: true }, { slug: 'venlafaxine', is_primary: true },
+    { slug: 'sertraline', is_primary: false }, { slug: 'alprazolam', is_primary: false },
     { slug: 'clonazepam', is_primary: false }
-  ],
-  'generalized-anxiety-disorder': [
-    { slug: 'escitalopram', is_primary: true }, { slug: 'venlafaxine', is_primary: false },
-    { slug: 'sertraline', is_primary: false }
-  ],
-  'panic-disorder': [
-    { slug: 'sertraline', is_primary: true }, { slug: 'alprazolam', is_primary: false },
-    { slug: 'clonazepam', is_primary: false }
-  ],
-  'ptsd': [
-    { slug: 'sertraline', is_primary: true }, { slug: 'mdma', is_primary: false }
   ],
   'ocd': [
     { slug: 'sertraline', is_primary: true }, { slug: 'escitalopram', is_primary: false }
   ],
-  'bipolar-disorder': [
+  'ptsd': [
+    { slug: 'sertraline', is_primary: true }, { slug: 'mirtazapine', is_primary: false }
+  ],
+  'bipolar': [
     { slug: 'lithium', is_primary: true }, { slug: 'lamotrigine', is_primary: true },
     { slug: 'valproate', is_primary: false }, { slug: 'quetiapine', is_primary: false },
     { slug: 'olanzapine', is_primary: false }
@@ -1074,6 +1041,9 @@ const DIAG_LINKS = {
   'schizophrenia': [
     { slug: 'risperidone', is_primary: true }, { slug: 'olanzapine', is_primary: true },
     { slug: 'quetiapine', is_primary: false }
+  ],
+  'bpd': [
+    { slug: 'quetiapine', is_primary: false }, { slug: 'lamotrigine', is_primary: false }
   ],
   'adhd': [
     { slug: 'methylphenidate', is_primary: true }, { slug: 'lisdexamfetamine', is_primary: true },
@@ -1084,77 +1054,65 @@ const DIAG_LINKS = {
     { slug: 'valproate', is_primary: false }, { slug: 'carbamazepine', is_primary: false },
     { slug: 'topiramate', is_primary: false }, { slug: 'gabapentin', is_primary: false }
   ],
-  'fibromyalgia': [
-    { slug: 'gabapentin', is_primary: true }, { slug: 'venlafaxine', is_primary: false }
-  ],
   'migraine': [
     { slug: 'topiramate', is_primary: true }, { slug: 'valproate', is_primary: false },
-    { slug: 'naproxen', is_primary: false }
+    { slug: 'naproxen', is_primary: false }, { slug: 'gabapentin', is_primary: false }
+  ],
+  'insomnia': [
+    { slug: 'mirtazapine', is_primary: true }, { slug: 'quetiapine', is_primary: false }
   ],
   'gerd': [
     { slug: 'omeprazole', is_primary: true }, { slug: 'esomeprazole', is_primary: true },
     { slug: 'pantoprazole', is_primary: false }
   ],
-  'peptic-ulcer-disease': [
-    { slug: 'omeprazole', is_primary: true }, { slug: 'pantoprazole', is_primary: false }
-  ],
   'gastritis': [
     { slug: 'omeprazole', is_primary: true }, { slug: 'pantoprazole', is_primary: false }
   ],
-  'crohns-disease': [
+  'crohns': [
     { slug: 'infliximab', is_primary: true }, { slug: 'adalimumab', is_primary: true },
     { slug: 'azathioprine', is_primary: false }, { slug: 'methotrexate', is_primary: false },
     { slug: 'prednisolone', is_primary: false }
   ],
-  'ulcerative-colitis': [
-    { slug: 'infliximab', is_primary: true }, { slug: 'adalimumab', is_primary: false },
-    { slug: 'azathioprine', is_primary: false }
-  ],
-  'inflammatory-bowel-disease': [
-    { slug: 'infliximab', is_primary: true }, { slug: 'adalimumab', is_primary: false },
-    { slug: 'azathioprine', is_primary: false }
-  ],
-  'psoriasis': [
-    { slug: 'methotrexate', is_primary: true }, { slug: 'adalimumab', is_primary: true }
-  ],
-  'type-2-diabetes': [
-    { slug: 'metformin', is_primary: true }, { slug: 'semaglutide', is_primary: true }
-  ],
-  'diabetes': [
-    { slug: 'metformin', is_primary: true }, { slug: 'semaglutide', is_primary: false }
-  ],
-  'obesity': [
-    { slug: 'semaglutide', is_primary: true }
+  'type2-diabetes': [
+    { slug: 'metformin', is_primary: true }, { slug: 'semaglutide', is_primary: true },
+    { slug: 'atorvastatin', is_primary: false }
   ],
   'hypothyroidism': [
     { slug: 'levothyroxine', is_primary: true }
   ],
-  'hyperlipidemia': [
-    { slug: 'atorvastatin', is_primary: true }
+  'coronary-artery-disease': [
+    { slug: 'atorvastatin', is_primary: true }, { slug: 'apixaban', is_primary: false }
   ],
-  'hypercholesterolemia': [
-    { slug: 'atorvastatin', is_primary: true }
+  'stroke': [
+    { slug: 'atorvastatin', is_primary: true }, { slug: 'apixaban', is_primary: true },
+    { slug: 'rivaroxaban', is_primary: false }, { slug: 'warfarin', is_primary: false }
   ],
-  'atrial-fibrillation': [
-    { slug: 'apixaban', is_primary: true }, { slug: 'rivaroxaban', is_primary: true },
-    { slug: 'warfarin', is_primary: false }
+  'copd': [
+    { slug: 'prednisolone', is_primary: true }, { slug: 'amoxicillin-clavulanate', is_primary: false },
+    { slug: 'doxycycline', is_primary: false }
   ],
-  'deep-vein-thrombosis': [
-    { slug: 'apixaban', is_primary: true }, { slug: 'rivaroxaban', is_primary: true },
-    { slug: 'warfarin', is_primary: false }
+  'asthma': [
+    { slug: 'prednisolone', is_primary: true }, { slug: 'methylprednisolone', is_primary: false }
   ],
-  'pulmonary-embolism': [
-    { slug: 'apixaban', is_primary: true }, { slug: 'rivaroxaban', is_primary: false },
-    { slug: 'warfarin', is_primary: false }
+  'multiple-sclerosis': [
+    { slug: 'methylprednisolone', is_primary: true }
   ],
-  'menopause': [
-    { slug: 'estradiol', is_primary: true }
+  'hip-osteoarthritis': [
+    { slug: 'ibuprofen', is_primary: true }, { slug: 'naproxen', is_primary: false },
+    { slug: 'celecoxib', is_primary: false }
   ],
-  'trigeminal-neuralgia': [
-    { slug: 'carbamazepine', is_primary: true }, { slug: 'gabapentin', is_primary: false }
+  'disc-herniation': [
+    { slug: 'ibuprofen', is_primary: true }, { slug: 'naproxen', is_primary: false },
+    { slug: 'gabapentin', is_primary: false }
   ],
-  'thymoma': [
-    { slug: 'prednisolone', is_primary: false }, { slug: 'rituximab', is_primary: false }
+  'spinal-osteochondrosis': [
+    { slug: 'ibuprofen', is_primary: true }, { slug: 'naproxen', is_primary: false }
+  ],
+  'endometriosis': [
+    { slug: 'naproxen', is_primary: true }, { slug: 'ibuprofen', is_primary: false }
+  ],
+  'mastitis': [
+    { slug: 'amoxicillin-clavulanate', is_primary: true }
   ]
 };
 
