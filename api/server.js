@@ -2596,6 +2596,20 @@ app.get('/api/neuromap/v2/graph', requireAuth, async (req, res) => {
       ORDER BY l.count DESC
     `;
 
+    // PR#113 (#1, mass-merge): per-node session membership. A concept node is
+    // deduplicated in the DB (one row per user/type/label/valence) so the SAME
+    // emotion picked in two UNRELATED flows resolves to ONE node — and the per-chain
+    // links then fuse both flows into one blob ("кишмиш"). We keep the DB dedup (it
+    // powers the vocab library + counts) but ship the session memberships so the
+    // client can render ONE instance of the node per session it appears in (Option A,
+    // split-on-render). Nodes with no session (legacy, pre-PR#96) get an empty list
+    // and render as a single standalone instance.
+    const sessRows = await sql`
+      SELECT node_id, array_agg(DISTINCT session_id) AS sessions
+      FROM nm_session_nodes WHERE user_id = ${userId} GROUP BY node_id`;
+    const sessByNode = {};
+    sessRows.forEach(r => { sessByNode[String(r.node_id)] = (r.sessions || []).filter(Boolean); });
+
     res.json({
       ok: true,
       nodes: nodes.map(n => ({
@@ -2607,7 +2621,8 @@ app.get('/api/neuromap/v2/graph', requireAuth, async (req, res) => {
         count: n.count,
         last_seen_at: n.last_seen_at,
         metadata: n.metadata,
-        created_at: n.created_at
+        created_at: n.created_at,
+        sessions: sessByNode[String(n.id)] || []
       })),
       links: links.map(l => ({
         id: l.id,
@@ -7127,6 +7142,39 @@ app.delete('/api/admin/wipe-day', requireAuth, async (req, res) => {
     console.log('wipe-day', tu.email, date, JSON.stringify(counts));
     res.json({ ok: true, user: tu.email, date, deleted: counts });
   } catch (err) { console.error('DELETE /api/admin/wipe-day:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/admin/nm-node/:id/delete — superadmin tool to surgically remove ONE
+// NeuroMap node and everything that hangs off it (PR#113 #4). Used from the node
+// info popup to prune a junk/test concept without wiping a whole day. Deletes:
+// the nm_nodes row, every nm_link touching it, its nm_session_nodes memberships,
+// the journey_events that point at it (payload.nm_node_id) + any orphaned
+// journey_links. Scoped to the node's OWNER (which, with ?email=, lets a superadmin
+// clean another user's map — same gate as the v2/graph read). nm_node ids are uuids.
+app.post('/api/admin/nm-node/:id/delete', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  try {
+    const nodeId = String(req.params.id || '').trim();
+    if (!nodeId) return res.status(400).json({ error: 'node id required' });
+    // Resolve the node + its owner (superadmin may target any user's node).
+    const node = await sql`SELECT id, user_id, label, type FROM nm_nodes WHERE id = ${nodeId}::uuid`;
+    if (!node.length) return res.status(404).json({ error: 'node not found' });
+    const ownerId = node[0].user_id;
+    // journey_events that reference this node (payload.nm_node_id is stored as text)
+    const je = await sql`DELETE FROM journey_events
+      WHERE user_id = ${ownerId} AND payload->>'nm_node_id' = ${nodeId} RETURNING id`;
+    const jl = je.length ? await sql`DELETE FROM journey_links jl
+      WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
+         OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b) RETURNING event_a` : [];
+    const sn = await sql`DELETE FROM nm_session_nodes WHERE user_id = ${ownerId} AND node_id = ${nodeId}::uuid RETURNING node_id`;
+    const ll = await sql`DELETE FROM nm_links WHERE user_id = ${ownerId}
+      AND (from_node_id = ${nodeId}::uuid OR to_node_id = ${nodeId}::uuid) RETURNING id`;
+    const nn = await sql`DELETE FROM nm_nodes WHERE id = ${nodeId}::uuid RETURNING id`;
+    const deleted = { nm_nodes: nn.length, nm_links: ll.length, nm_session_nodes: sn.length,
+                      journey_events: je.length, journey_links: jl.length };
+    console.log('nm-node-delete', caller.id, '→', nodeId, node[0].label, JSON.stringify(deleted));
+    res.json({ ok: true, node_id: nodeId, label: node[0].label, deleted });
+  } catch (err) { console.error('POST /api/admin/nm-node/:id/delete:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PR7: Collective Path of Development ──────────────────────────────────────

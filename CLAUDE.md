@@ -64,6 +64,42 @@ was the PR#103 regression). See `nmAreaKind()` / `nmNodeLayer()`.
 
 ---
 
+## Node dedup vs chain integrity — split-on-render (PR#113, Option A)
+
+`nm_nodes` are **deduplicated in the DB** by `(user_id, type, normalized_label, valence)`
+— one row per concept, `count` accumulates. This powers the vocab library and
+frequency sizing. But it is **catastrophic for chain integrity**: the same emotion
+(«интерес») picked in two unrelated flows resolves to ONE node, and the per-chain
+`nm_links` from both flows attach to it → the node becomes an articulation point that
+fuses the two flows into one connected blob (Tahir's "кишмиш" / mass-merge). This is
+the SAME mechanism that produced the PR#108 phantom-stick.
+
+**Fix = split-on-render, NOT split-in-DB.** The DB stays deduplicated. The
+`/api/neuromap/v2/graph` response carries each node's `sessions` array (from
+`nm_session_nodes`). `buildNmGraph` (account.html) renders **one instance per
+`(node, session)`**: instance `id = dbId+'@'+sessionId`, carrying `dbId`, `_sid`,
+`_baseKey`. A link is drawn only inside sessions BOTH endpoints share (`common`
+sessions); a cross-session edge (the fusion link) is simply not drawn. `fsTick`
+(fullscreen) and the analysis panel both consume `nmNodes`/`nmLinks` so they split
+automatically; the analysis panel keys counts by label (one entry, total count — no
+double-count). **No migration**: `nm_session_nodes` is already populated for every
+append (both v2/append and /sensation call `nmBridgeSession`), so existing fused
+graphs un-fuse on next load. Legacy pre-session nodes get `sessions:[]` → one
+standalone instance keyed under the sentinel `'__nosess'`.
+
+The Personal Path has the MIRROR bug: re-saving a flow logs a NEW `journey_event`
+pointing at the SAME deduped `nm_node`, so one concept rendered twice in a chain
+(«мягкость → голова → мягкость»). Fix = `buildTunnelComponents` (evolution-path.js)
+collapses events by content key (`nm_node_id`, else `layer+label`) **per-component**
+to the earliest, rewiring edges. PER-COMPONENT only — a global dedup would re-merge
+unrelated sessions and recreate the blob on the Path.
+
+Superadmin can prune a single node via the NeuroMap node popup → red Delete →
+`POST /api/admin/nm-node/:id/delete` (server.js): removes the `nm_nodes` row, every
+`nm_link` touching it, its `nm_session_nodes`, the `journey_events` whose
+`payload.nm_node_id` matches, and orphaned `journey_links`; then the client reloads
+the graph and re-mounts the Path.
+
 ## `session_id` contract (the KING invariant)
 
 **One modal flow == one `session_id`.**
