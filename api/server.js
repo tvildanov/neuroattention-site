@@ -7086,12 +7086,17 @@ app.delete('/api/admin/wipe-day', requireAuth, async (req, res) => {
     if (!caller || !['superadmin', 'founder'].includes(caller.role)) {
       return res.status(403).json({ error: 'superadmin only' });
     }
-    const targetId = String(req.query.user_id || '').trim();
+    // Target by user_id OR email (email saves the caller a uuid lookup).
+    const qId = String(req.query.user_id || '').trim();
+    const qEmail = String(req.query.email || '').trim().toLowerCase();
     const date = String(req.query.date || '').trim();
-    if (!targetId) return res.status(400).json({ error: 'user_id required' });
+    if (!qId && !qEmail) return res.status(400).json({ error: 'user_id or email required' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
-    const [tu] = await sql`SELECT id, email FROM users WHERE id = ${targetId}`;
+    const [tu] = qId
+      ? await sql`SELECT id, email FROM users WHERE id = ${qId}`
+      : await sql`SELECT id, email FROM users WHERE lower(email) = ${qEmail}`;
     if (!tu) return res.status(404).json({ error: 'user not found' });
+    const targetId = tu.id;
 
     // nm_session_nodes created that day
     const sn = await sql`DELETE FROM nm_session_nodes
