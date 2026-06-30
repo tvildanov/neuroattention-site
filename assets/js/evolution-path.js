@@ -205,9 +205,15 @@
     LAYERS.forEach(function (ly) {
       if (ly.key === 'xp_gain') return;
       (data.layers[ly.key] || []).forEach(function (e) {
+        // PR#114: carry session_id (+ nm_type/area_kind) through the LAYERS data
+        // shape too. They were only preserved on the flat `events` shape, so the
+        // layers path silently dropped session_id → buildTunnelComponents saw no
+        // sessions → every event became its own branch (one-branch-per-chain broke).
         out.push({ id: e.id, layer: ly.key, t: tms(e.t), occurred_at: e.occurred_at, label: e.label,
                    valence: e.valence, weight: e.weight || 1, kind: e.kind || ly.key,
-                   source: e.source, payload: e.payload || {}, links: e.links || [] });
+                   source: e.source, session_id: e.session_id || null,
+                   nm_type: e.nm_type || null, area_kind: e.area_kind || null,
+                   payload: e.payload || {}, links: e.links || [] });
       });
     });
     return out.sort(function (a, b) { return a.t - b.t; });
