@@ -72,6 +72,18 @@ was the PR#103 regression). See `nmAreaKind()` / `nmNodeLayer()`.
   these must be tagged/skipped so they never render as a second Path node.
 - **`vocab_terms`** (a.k.a. vocab; `/api/admin/vocab`) — emotion/sensation
   vocabulary incl. `polarity_strength` that drives `nmPolarityColor`.
+- **`user_diagnoses`** (migration 044, PR#115) — which catalog diagnoses a user has
+  claimed. `(user_id, diagnosis_slug)` UNIQUE; `diagnosed_at` DATE optional; `notes`.
+  `user_id` is **UUID** (the PR spec said BIGINT — wrong for this DB; `users.id` is
+  UUID, see migration 005). `diagnosis_slug` references the static catalog
+  **`data/diagnoses.json`** (NOT a DB table) — the 12 educational entries are front-end
+  data; the server only stores claims + files and validates the slug against the
+  `KNOWN_DIAGNOSIS_SLUGS` allow-list (server.js).
+- **`user_medical_files`** (migration 044, PR#115) — uploaded medical documents,
+  `user_diagnosis_id` FK → `user_diagnoses(id) ON DELETE SET NULL`. Stored via the same
+  `storeMediaAsset` path as course/recording uploads (R2 if configured, GitHub
+  fallback); `storage_url` is the public URL, `doc_type` ∈ `lab|report|discharge|other`,
+  `doc_date` DATE required, 10 MB cap (`uploadMedical` multer, PDF/JPG/PNG only).
 
 ---
 
@@ -197,8 +209,12 @@ the «всё тело» bug for 4 PRs). Use pure SUBQUERY deletes.
   body-first then created_at). Idempotent (chains UNIQUE on `session_id`, ON CONFLICT
   DO NOTHING); per-group try/catch so one bad row can't abort the sweep. Returns
   `{ chains_created, chain_nodes_created, backfilled_chains, skipped? }`.
+- **044** — (PR#115) DIAGNOSES. Creates `user_diagnoses` + `user_medical_files`
+  (`IF NOT EXISTS`). `user_id UUID` (NOT the spec's BIGINT — `users.id` is UUID). No
+  backfill (new feature). Returns `mig044 = { ok, error? }`.
 
-`run-migrations` returns `{ ok, message, mig039, mig040, mig041, mig042, mig043 }`.
+`run-migrations` returns
+`{ ok, message, mig039, mig040, mig041, mig042, mig043, mig044 }`.
 
 ---
 
@@ -234,6 +250,33 @@ into the next unrelated flow.
 5. **Sensation Map UI** — body picker 50% left, live map 50% right, footer buttons
    BELOW the body (sticky `margin-top:auto`), never an absolute bar overlapping the
    figures (PR#112 #2; inline CSS `.nm-fs-form`/`.nm-fs-live`/`.nm-fs-footer`).
+
+---
+
+## Diagnoses section (PR#115)
+
+A separate dashboard tab (`#tab-diagnoses`, `data-tab="diagnoses"`), independent of the
+NeuroMap. The whole feature lives in the `dx*` IIFE in `account.html` (search
+`window.dxRender`) + the `data/diagnoses.json` catalog + the eight `/api/diagnoses*` /
+`/api/me/diagnoses*` / `/api/me/medical-files*` endpoints in `server.js`.
+
+- **Catalog = `data/diagnoses.json`** (static, tri-lingual ru/en/es, 12 entries in 3
+  groups: vasculitis/thymus/oncology). Each entry: `slug`, `group`, `icd10`, `regions[]`,
+  `name`/`aka`/`summary`/`symptoms`/`complications` (each `{ru,en,es}`). Clinical text is
+  EDUCATIONAL and conservative (NCI/ICD-10-level) — **not medical advice**; every card
+  renders the disclaimer (`a.dx.disclaimer`). To add a diagnosis: append to the JSON AND
+  add its slug to `KNOWN_DIAGNOSIS_SLUGS` in server.js (the claim allow-list). Bump the
+  `?v=` on the `fetch('data/diagnoses.json?v=N')` if you change the file.
+- **Anatomy = a self-contained schematic SVG body map** (`dxBodyMap(regionKeys, accent)`),
+  NOT the 3D atlas. Region geometry lives in `DX_REGIONS` (260×560 viewBox). The combined
+  view (`dxOpenCombined`) draws the UNION of all claimed diagnoses' regions and flags
+  regions claimed by ≥2 diagnoses as overlapping. Add a body zone → add a `DX_REGIONS` key
+  (with tri-lingual label) and reference it from a diagnosis's `regions[]`.
+- **"My diagnoses"** is private (auth-scoped); the folder is hidden until ≥1 claim. Files
+  open in a new tab from their R2/GitHub `storage_url`. Superadmin reads other users via
+  `GET /api/admin/users/:id/diagnoses` and `/medical-files`.
+- i18n: all UI strings are `a.dx.*` / `a.tabs.diagnoses` keys, present in ALL THREE
+  locales (see the i18n footgun section).
 
 ---
 
