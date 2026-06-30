@@ -828,62 +828,49 @@
     return groups.map(function (g) { return g.map(function (e) { return String(e.id); }); });
   }
   function buildTunnelComponents(events, half) {
+    // PR#114 (HYBRID — reverts PR#113 split-on-render dedup): one nm_chain == one
+    // horizontal branch. A chain IS its session_id (the King invariant: one modal flow
+    // == one session == one nm_chains row), so we group strictly by session_id and lay
+    // each group out as a single branch with its events strung along in time order
+    // (= nm_chain_nodes position order). NO per-component concept dedup: a node that
+    // recurs within a chain, or appears in two different chains, is drawn each time —
+    // that repetition is the gestalt we want back ("интерес appeared in 2 branches").
+    // Branch order falls out of anchorT (= started_at) downstream. Cross-session
+    // journey_links are intentionally IGNORED so two chains can never fuse into a blob.
     var byId = {}; events.forEach(function (e) { if (e.id != null) byId[String(e.id)] = e; });
-    var adj = {};
-    function addEdge(a, b) { if (a == null || b == null) return; a = String(a); b = String(b); if (a === b || !byId[a] || !byId[b]) return; (adj[a] = adj[a] || {})[b] = 1; (adj[b] = adj[b] || {})[a] = 1; }
-    // strong links only — correlation hubs no longer merge chains
-    events.forEach(function (e) { (e.links || []).forEach(function (lk) { if (!isStrongLink(lk)) return; addEdge(e.id, lk && lk.to != null ? lk.to : lk); }); });
-    // PR#109 (#3): one fill-flow (shared session_id) is ONE chain. Connect each
-    // session's events in time order — covers historical events that predate the
-    // server-side journey bridge (only session_id was backfilled, no links).
-    var bySession = {};
-    events.forEach(function (e) { if (e.session_id) (bySession[e.session_id] = bySession[e.session_id] || []).push(e); });
+    var out = [];
+    var bySession = {}, sessionless = [];
+    events.forEach(function (e) { if (e.session_id) (bySession[e.session_id] = bySession[e.session_id] || []).push(e); else sessionless.push(e); });
     Object.keys(bySession).forEach(function (sid) {
       var g = bySession[sid].slice().sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
-      for (var i = 0; i < g.length - 1; i++) addEdge(g[i].id, g[i + 1].id);
+      var ids = g.map(function (e) { return String(e.id); });
+      var adj = {};
+      for (var i = 0; i < ids.length - 1; i++) { (adj[ids[i]] = adj[ids[i]] || {})[ids[i + 1]] = 1; (adj[ids[i + 1]] = adj[ids[i + 1]] || {})[ids[i]] = 1; }
+      var laid = layoutComponent(ids, adj, byId, half);
+      if (laid) out.push(laid);
     });
-    // PR#113 (#4): a concept's content key. A re-save logs a NEW journey_event that
-    // points at the SAME deduplicated nm_node — so one flow saved twice produced
-    // "мягкость → голова → мягкость" (each event drawn as its own node). Collapse by
-    // nm_node_id (else layer+label) so a concept is ONE node per chain. Done
-    // PER-COMPONENT below, never globally — unrelated sessions must stay separate.
-    function ckey(e) { var p = e.payload || {}; return p.nm_node_id != null ? ('n:' + p.nm_node_id) : ((e.layer || '') + '|' + String(e.label || '').trim().toLowerCase()); }
-    var seen = {}, out = [];
-    events.forEach(function (e) {
-      var id = String(e.id); if (seen[id]) return;
-      var stack = [id], ids = []; seen[id] = 1;
-      while (stack.length) { var u = stack.pop(); ids.push(u); Object.keys(adj[u] || {}).forEach(function (v) { if (!seen[v]) { seen[v] = 1; stack.push(v); } }); }
-      // Collapse duplicate concepts within THIS chain to their earliest occurrence,
-      // rewiring edges onto the kept node. Kills the "X → Y → X" repeat.
-      var keyRep = {}, rep = {};
-      ids.map(function (x) { return byId[x]; }).filter(Boolean)
-         .sort(function (a, b) { return (a.t || 0) - (b.t || 0); })
-         .forEach(function (e2) { var k = ckey(e2), eid = String(e2.id); if (keyRep[k] == null) keyRep[k] = eid; rep[eid] = keyRep[k]; });
-      var repAdj = {}, repIds = [], repHas = {};
-      ids.forEach(function (x) { var rx = rep[x] || x; if (!repHas[rx]) { repHas[rx] = 1; repIds.push(rx); } });
-      ids.forEach(function (x) {
-        var rx = rep[x] || x;
-        Object.keys(adj[x] || {}).forEach(function (y) { var ry = rep[y] || y; if (rx !== ry) { (repAdj[rx] = repAdj[rx] || {})[ry] = 1; (repAdj[ry] = repAdj[ry] || {})[rx] = 1; } });
+    // Legacy fallback: sessionless events (pre-session_id history, or non-journey
+    // sources like calendar) keep the old link-based connected-component behaviour so
+    // they still render as bounded branches.
+    if (sessionless.length) {
+      var inSet = {}; sessionless.forEach(function (e) { inSet[String(e.id)] = 1; });
+      var adj2 = {};
+      function addEdge(a, b) { if (a == null || b == null) return; a = String(a); b = String(b); if (a === b || !inSet[a] || !inSet[b]) return; (adj2[a] = adj2[a] || {})[b] = 1; (adj2[b] = adj2[b] || {})[a] = 1; }
+      sessionless.forEach(function (e) { (e.links || []).forEach(function (lk) { if (!isStrongLink(lk)) return; addEdge(e.id, lk && lk.to != null ? lk.to : lk); }); });
+      var seen = {};
+      sessionless.forEach(function (e) {
+        var id = String(e.id); if (seen[id]) return;
+        var stack = [id], ids = []; seen[id] = 1;
+        while (stack.length) { var u = stack.pop(); ids.push(u); Object.keys(adj2[u] || {}).forEach(function (v) { if (!seen[v]) { seen[v] = 1; stack.push(v); } }); }
+        var subs = splitComponent(ids, byId);
+        subs.forEach(function (sub) {
+          var subAdj = {};
+          for (var k = 0; k < sub.length - 1; k++) { var x = sub[k], y = sub[k + 1]; (subAdj[x] = subAdj[x] || {})[y] = 1; (subAdj[y] = subAdj[y] || {})[x] = 1; }
+          var laid = layoutComponent(sub, subAdj, byId, half);
+          if (laid) out.push(laid);
+        });
       });
-      ids = repIds;
-      // Defensive split: bound branch length + cut on big time gaps. For genuine
-      // short chains (the common case) this returns the component unchanged.
-      var subs = splitComponent(ids, byId);
-      subs.forEach(function (sub) {
-        // When we actually split, rebuild a linear adjacency over the sub-chain so
-        // layout stays connected (the original cross-edge may span the cut point).
-        var subAdj = repAdj;
-        if (subs.length > 1) {
-          subAdj = {};
-          for (var k = 0; k < sub.length - 1; k++) {
-            var x = sub[k], y = sub[k + 1];
-            (subAdj[x] = subAdj[x] || {})[y] = 1; (subAdj[y] = subAdj[y] || {})[x] = 1;
-          }
-        }
-        var laid = layoutComponent(sub, subAdj, byId, half);
-        if (laid) out.push(laid);
-      });
-    });
+    }
     return out;
   }
   function layoutComponent(ids, adj, byId, half) {

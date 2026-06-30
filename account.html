@@ -1780,6 +1780,18 @@ a.dash-tab:hover { text-decoration:none; }
             <div id="nm-dd-corr-list" style="font-size:13px;color:var(--text-secondary);"></div>
           </div>
         </div>
+        <!-- ── PR#114: Node Info panel (chains a node appears in + in-panel mini-view) ── -->
+        <div id="nm-node-info" style="display:none;margin-top:1rem;padding:1.1rem 1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;position:relative;">
+          <button onclick="nmCloseNodeInfo()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;line-height:1;">&times;</button>
+          <div id="nm-ni-header"></div>
+          <button id="nm-ni-chains-toggle" onclick="nmToggleChainList()" style="display:none;margin-top:0.9rem;width:100%;text-align:left;padding:0.55rem 0.75rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:var(--text-primary);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;"></button>
+          <div id="nm-ni-chain-list" style="display:none;margin-top:0.6rem;flex-direction:column;gap:0.3rem;"></div>
+          <div id="nm-ni-mini" style="display:none;margin-top:0.8rem;">
+            <p id="nm-ni-mini-title" style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 0.4rem;"></p>
+            <canvas id="nm-ni-mini-canvas" width="520" height="150" style="width:100%;height:150px;border-radius:10px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);"></canvas>
+          </div>
+          <div id="nm-ni-admin" style="margin-top:0.9rem;"></div>
+        </div>
       </div>
       <!-- Right panel (PR#95 Phase 3.1: NeuroMap as hub — 3 entry buttons + mini-calendar) -->
       <div class="dash-card glass-card-elevated span-4">
@@ -3205,10 +3217,14 @@ var RPG_I18N = {
     hover_neutral: 'neutral',
     hover_frequency: 'Frequency',
     node_session: 'Session',
-    node_delete_btn: 'Delete',
+    node_delete_btn: 'Delete node',
     node_delete_confirm: 'Delete this node? It will be removed from the NeuroMap and the Evolution Path.',
     node_delete_done: 'Node deleted',
     node_delete_fail: 'Could not delete the node',
+    // PR#114 node info-panel (chains)
+    node_occurs_times: 'appears {n}×',
+    nm_chains_label: 'Chains',
+    nm_chain_minview: 'Mini-view',
     // Drill-down panel
     connected_nodes: 'Connected nodes',
     no_connections: 'No connections',
@@ -3395,10 +3411,14 @@ var RPG_I18N = {
     hover_neutral: 'neutral',
     hover_frequency: 'Frecuencia',
     node_session: 'Sesión',
-    node_delete_btn: 'Eliminar',
+    node_delete_btn: 'Eliminar nodo',
     node_delete_confirm: '¿Eliminar este nodo? Se quitará del NeuroMapa y del Camino de evolución.',
     node_delete_done: 'Nodo eliminado',
     node_delete_fail: 'No se pudo eliminar el nodo',
+    // PR#114 panel de info del nodo (cadenas)
+    node_occurs_times: 'aparece {n}×',
+    nm_chains_label: 'Cadenas',
+    nm_chain_minview: 'Mini-vista',
     // Drill-down panel
     connected_nodes: 'Nodos conectados',
     no_connections: 'Sin conexiones',
@@ -7652,17 +7672,23 @@ async function nmLoadV2Graph(){
   if(!token) return;
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
   try {
-    var resp=await fetch(base+'/api/neuromap/v2/graph',{
+    // PR#114: hybrid graph. v3 returns shared nodes (with global count), chain-derived
+    // links (count = #chains, chain_ids for hover), and the chains[] list that powers
+    // the node info-panel. Fall back to v2 if v3 is unavailable (pre-migration deploy).
+    var resp=await fetch(base+'/api/neuromap/v3/graph',{
       headers:{'Authorization':'Bearer '+token}
     });
-    if(!resp.ok){ console.warn('[NM] v2/graph status='+resp.status); return; }
+    if(resp.status===404 || resp.status===500){
+      resp=await fetch(base+'/api/neuromap/v2/graph',{ headers:{'Authorization':'Bearer '+token} });
+    }
+    if(!resp.ok){ console.warn('[NM] graph status='+resp.status); return; }
     var json=await resp.json();
     if(json.ok){
-      nmV2Graph={nodes:json.nodes||[], links:json.links||[]};
-      console.log('[NM] v2 graph loaded: '+nmV2Graph.nodes.length+' nodes, '+nmV2Graph.links.length+' links');
-      try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after v2 load:', e); }
+      nmV2Graph={nodes:json.nodes||[], links:json.links||[], chains:json.chains||[]};
+      console.log('[NM] graph loaded: '+nmV2Graph.nodes.length+' nodes, '+nmV2Graph.links.length+' links, '+(nmV2Graph.chains?nmV2Graph.chains.length:0)+' chains');
+      try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after graph load:', e); }
     }
-  } catch(err){ console.warn('[NM] v2/graph FAILED:',err); }
+  } catch(err){ console.warn('[NM] graph FAILED:',err); }
 }
 
 // Send chain to v2/append API (dedup + accumulate on server)
@@ -8897,27 +8923,124 @@ function getEntriesForView(){
 function nmIsSuperadmin(){ return !!(window.currentUser && currentUser.serverRole==='superadmin'); }
 function nmCloseNodePopup(){ var p=document.getElementById('nm-node-popup'); if(p&&p.parentNode) p.parentNode.removeChild(p); }
 function _nmEscHtml(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-function nmShowNodePopup(node, clientX, clientY){
-  nmCloseNodePopup();
-  if(!node) return;
-  var layerNum=(typeof nmNodeLayer==='function')?nmNodeLayer(node):(nmTypeToLayer?nmTypeToLayer(node.type):0);
+// ── PR#114: clicking a node opens the INFO-PANEL under the NeuroMap (not a floating
+// popup). It shows the shared node's identity + global usage, the list of CHAINS it
+// appears in (expandable, with minute timestamps), and an in-panel mini-view of any
+// chain the user clicks. This is the gestalt the split-on-render rollback restores:
+// one node, many chains, all visible in one place.
+var nmNiNode=null, nmNiChains=null, nmNiChainOpen=false;
+function nmCloseNodeInfo(){
+  var p=document.getElementById('nm-node-info'); if(p) p.style.display='none';
+  nmNiNode=null; nmNiChains=null; nmNiChainOpen=false;
+}
+function nmFmtChainTime(iso){
+  var d=new Date(iso); if(isNaN(d.getTime())) return '';
+  function p(n){ return (n<10?'0':'')+n; }
+  return p(d.getDate())+'.'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function nmShowNodeInfo(node){
+  if(!node){ nmCloseNodeInfo(); return; }
+  nmNiNode=node; nmNiChains=null; nmNiChainOpen=false;
+  var panel=document.getElementById('nm-node-info'); if(!panel) return;
+  var layerNum=(typeof nmNodeLayer==='function')?nmNodeLayer(node):0;
+  var col=((typeof nmGetNodeColor==='function')?nmGetNodeColor(node):'rgba(180,190,210,')+'1)';
   var valLabel=node.valence<0?(rpgT('hover_negative')||'негатив'):(node.valence>0?(rpgT('hover_positive')||'позитив'):(rpgT('hover_neutral')||'нейтрал'));
-  var sess=(node._sid&&node._sid!=='__nosess')?('<div style="color:var(--text-dim,#8a93a6);font-size:11px;margin-top:4px;">'+(rpgT('node_session')||'Сессия')+': '+_nmEscHtml(String(node._sid).slice(0,8))+'</div>'):'';
-  var html='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
-    '<strong style="color:#fff;font-size:14px;">'+_nmEscHtml(nmTranslate(node.label))+'</strong>'+
-    '<span onclick="nmCloseNodePopup()" style="cursor:pointer;color:var(--text-dim,#8a93a6);font-size:16px;line-height:1;">✕</span></div>'+
-    '<div style="color:var(--text-dim,#8a93a6);font-size:11px;margin-top:4px;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · ×'+(node.count||1)+'</div>'+sess;
+  var occurs=(rpgT('node_occurs_times')||'встречается {n} раз').replace('{n}', node.count||1);
+  var dot='<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+col+';margin-right:8px;vertical-align:middle;box-shadow:0 0 8px '+col+';"></span>';
+  document.getElementById('nm-ni-header').innerHTML=
+    '<div style="font-size:15px;font-weight:600;color:#fff;padding-right:24px;">'+dot+_nmEscHtml(nmTranslate(node.label))+'</div>'+
+    '<div style="color:var(--text-dim,#8a93a6);font-size:12px;margin-top:0.35rem;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · '+occurs+'</div>';
+  var admin=document.getElementById('nm-ni-admin'); admin.innerHTML='';
   if(nmIsSuperadmin() && node.dbId){
-    html+='<button onclick="nmDeleteNode(\''+_nmEscHtml(node.dbId)+'\')" style="margin-top:10px;width:100%;padding:7px 0;border:1px solid rgba(240,90,90,0.5);background:rgba(240,90,90,0.12);color:#ff8a8a;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">'+(rpgT('node_delete_btn')||'Удалить')+'</button>';
+    admin.innerHTML='<button onclick="nmDeleteNode(\''+_nmEscHtml(node.dbId)+'\')" style="width:100%;padding:7px 0;border:1px solid rgba(240,90,90,0.5);background:rgba(240,90,90,0.12);color:#ff8a8a;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🗑 '+(rpgT('node_delete_btn')||'Удалить узел')+'</button>';
   }
-  var p=document.createElement('div');
-  p.id='nm-node-popup';
-  p.style.cssText='position:fixed;z-index:99999;min-width:180px;max-width:260px;background:rgba(18,20,28,0.97);border:1px solid rgba(255,255,255,0.16);border-radius:12px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-size:13px;';
-  p.innerHTML=html;
-  document.body.appendChild(p);
-  var vw=window.innerWidth, vh=window.innerHeight;
-  p.style.left=Math.max(8, Math.min(clientX+12, vw-272))+'px';
-  p.style.top=Math.max(8, Math.min(clientY+8, vh-130))+'px';
+  document.getElementById('nm-ni-chain-list').style.display='none';
+  document.getElementById('nm-ni-chain-list').innerHTML='';
+  document.getElementById('nm-ni-mini').style.display='none';
+  document.getElementById('nm-ni-chains-toggle').style.display='none';
+  panel.style.display='block';
+  nmFetchNodeChains(node.dbId);
+}
+// back-compat alias for any caller still using the old name
+function nmShowNodePopup(node){ nmShowNodeInfo(node); }
+function nmFetchNodeChains(dbId){
+  if(!dbId) return;
+  var token=naGetToken(); var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  fetch(base+'/api/neuromap/chains-by-node/'+encodeURIComponent(dbId),{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j||!j.ok||!nmNiNode||String(nmNiNode.dbId)!==String(dbId)) return;
+      nmNiChains=j.chains||[];
+      var tog=document.getElementById('nm-ni-chains-toggle');
+      if(!nmNiChains.length){ tog.style.display='none'; return; }
+      nmNiChainOpen=true;                 // auto-expand on open
+      nmUpdateChainToggle();
+      tog.style.display='block';
+      nmRenderChainList();
+    }).catch(function(e){ console.warn('[NM] chains-by-node failed:',e); });
+}
+function nmUpdateChainToggle(){
+  var tog=document.getElementById('nm-ni-chains-toggle');
+  if(!tog||!nmNiChains) return;
+  tog.textContent=(nmNiChainOpen?'▾ ':'▸ ')+(rpgT('nm_chains_label')||'Цепочки')+'   '+nmNiChains.length;
+}
+function nmToggleChainList(){
+  nmNiChainOpen=!nmNiChainOpen;
+  nmUpdateChainToggle();
+  if(nmNiChainOpen) nmRenderChainList();
+  else document.getElementById('nm-ni-chain-list').style.display='none';
+}
+function nmRenderChainList(){
+  var list=document.getElementById('nm-ni-chain-list');
+  if(!nmNiChains||!nmNiChains.length){ list.style.display='none'; return; }
+  var html='';
+  nmNiChains.forEach(function(c){
+    var preview=(c.nodes||[]).map(function(x){ return _nmEscHtml(nmTranslate(x.label)); }).join(' → ');
+    html+='<div onclick="nmOpenChainMini(\''+c.id+'\')" style="cursor:pointer;padding:0.45rem 0.6rem;border:1px solid rgba(255,255,255,0.06);border-radius:9px;background:rgba(255,255,255,0.02);font-size:12px;line-height:1.45;display:flex;gap:0.55rem;align-items:baseline;">'+
+      '<span style="color:var(--accent-cyan,#5cc8ff);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600;">'+_nmEscHtml(nmFmtChainTime(c.started_at))+'</span>'+
+      '<span style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;">'+preview+'</span></div>';
+  });
+  list.innerHTML=html;
+  list.style.display='flex';
+}
+function nmOpenChainMini(chainId){
+  var token=naGetToken(); var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
+  fetch(base+'/api/neuromap/chain/'+encodeURIComponent(chainId),{headers:{'Authorization':'Bearer '+token}})
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j||!j.ok) return;
+      var mini=document.getElementById('nm-ni-mini');
+      var preview=(j.nodes||[]).map(function(x){ return nmTranslate(x.label); }).join(' → ');
+      document.getElementById('nm-ni-mini-title').textContent=nmFmtChainTime(j.chain&&j.chain.started_at)+' · '+preview;
+      mini.style.display='block';
+      nmDrawChainMini(j);
+    }).catch(function(e){ console.warn('[NM] chain failed:',e); });
+}
+function nmDrawChainMini(data){
+  var canvas=document.getElementById('nm-ni-mini-canvas'); if(!canvas) return;
+  var ctx=canvas.getContext('2d');
+  var cssW=canvas.clientWidth||520, cssH=150;
+  canvas.width=cssW*2; canvas.height=cssH*2; ctx.setTransform(2,0,0,2,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+  var nodes=data.nodes||[]; if(!nodes.length) return;
+  var n=nodes.length, padX=42, usableW=Math.max(1,cssW-padX*2), midY=cssH*0.40;
+  var xs=[]; for(var i=0;i<n;i++){ xs.push(n===1?cssW/2:(padX+usableW*(i/(n-1)))); }
+  ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1.5;
+  for(var e=0;e<n-1;e++){ ctx.beginPath(); ctx.moveTo(xs[e],midY); ctx.lineTo(xs[e+1],midY); ctx.stroke(); }
+  for(var k=0;k<n;k++){
+    var nd=nodes[k];
+    var valNum=(nd.valence==='negative')?-1:(nd.valence==='positive'?1:0);
+    var cn={type:nd.type,valence:valNum,metadata:nd.metadata||{},count:nd.count||1,label:nd.label};
+    cn._layer=(typeof nmNodeLayer==='function')?nmNodeLayer(cn):0;
+    var col=((typeof nmGetNodeColor==='function')?nmGetNodeColor(cn):'rgba(180,190,210,')+'1)';
+    var hi=(nmNiNode && String(nd.id)===String(nmNiNode.dbId));
+    ctx.beginPath(); ctx.arc(xs[k],midY,hi?12:9,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=hi?16:6; ctx.fill(); ctx.shadowBlur=0;
+    if(hi){ ctx.lineWidth=2.5; ctx.strokeStyle='#fff'; ctx.stroke(); }
+    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font=(hi?'bold ':'')+'11px sans-serif'; ctx.textAlign='center';
+    var lbl=nmTranslate(nd.label); if(lbl.length>15) lbl=lbl.slice(0,14)+'…';
+    ctx.fillText(lbl, xs[k], midY+26+(k%2)*17);
+  }
 }
 function nmDeleteNode(dbId){
   if(!dbId) return;
@@ -8926,14 +9049,14 @@ function nmDeleteNode(dbId){
   fetch(base+'/api/admin/nm-node/'+encodeURIComponent(dbId)+'/delete',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}})
     .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }).catch(function(){ return {ok:r.ok,j:null}; }); })
     .then(function(res){
-      nmCloseNodePopup();
+      nmCloseNodeInfo();
       if(res.ok && res.j && res.j.ok){
         if(typeof nmLoadV2Graph==='function') nmLoadV2Graph();   // re-render NeuroMap without the node
         try { var eb=document.getElementById('evo-path'); if(eb && window.mountEvolutionPath) window.mountEvolutionPath(eb); } catch(e){}  // invalidate Personal Path
       } else {
         alert(rpgT('node_delete_fail')||'Не удалось удалить узел');
       }
-    }).catch(function(e){ nmCloseNodePopup(); alert(rpgT('node_delete_fail')||'Не удалось удалить узел'); console.warn('[NM] delete node failed:',e); });
+    }).catch(function(e){ nmCloseNodeInfo(); alert(rpgT('node_delete_fail')||'Не удалось удалить узел'); console.warn('[NM] delete node failed:',e); });
 }
 
 function buildNmGraph(){
@@ -8974,43 +9097,28 @@ function buildNmGraph(){
   var linkMap={};
 
   if(nmV2Graph && nmV2Graph.nodes.length>0){
-    // PR#113 (#1, mass-merge fix — split-on-render): nm_nodes are deduplicated in the
-    // DB by (type,label,valence), so the SAME emotion picked in two unrelated flows is
-    // ONE row. Keying the render graph by label (the old `type[0]+':'+normalized_label`)
-    // reproduced that fusion on the canvas — both chains shared one circle and the whole
-    // day collapsed into a blob. Instead render ONE instance of a node PER session it
-    // belongs to (sessions come from nm_session_nodes via the v2/graph response). Same
-    // label in different sessions → separate circles; the vocab library + counts stay
-    // intact (still one DB row). Links are drawn only between instances that share a
-    // session, so a shared concept no longer bridges unrelated flows.
+    // PR#114 (HYBRID — reverts PR#113 split-on-render): render ONE shared node per
+    // deduplicated (type,label,valence). Splitting per-session lost the gestalt
+    // ("this emotion repeated 10×") and shattered the map into look-alike twins.
+    // Instead the node is a single big field sized by its global `count` (see
+    // nmNodeR), and a click opens the info-panel listing the CHAINS it belongs to.
+    // Links come from v3 (chain consecutive pairs): one edge per pair, thickness ∝
+    // how many chains share it, chain_ids carried for hover. No cross-product, no
+    // fusion — the only edges drawn are real repetition points inside chains.
     var now=Date.now();
-    var NOSESS='__nosess';
-    var dbSessions={};   // dbId -> [sessionId,...] (instances we actually created, in range)
     nmV2Graph.nodes.forEach(function(n){
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
       if(!nmTsInRange(lastSeen)) return;   // PR94 (#5d/#5c): crop to the selected period / custom range
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      var baseKey=n.type[0]+':'+n.normalized_label;
-      var sessions=(n.sessions&&n.sessions.length)?n.sessions.slice():[NOSESS];
-      dbSessions[n.id]=sessions;
-      sessions.forEach(function(sid){
-        var id=n.id+'@'+sid;   // unique per (node, session) — the render instance
-        nodeMap[id]={id:id,dbId:n.id,_sid:sid,_baseKey:baseKey,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
-      });
+      nodeMap[n.id]={id:n.id,dbId:n.id,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
     nmV2Graph.links.forEach(function(l){
-      var sFrom=dbSessions[l.source], sTo=dbSessions[l.target];
-      if(!sFrom||!sTo) return;   // an endpoint fell outside the date window
-      // Draw the link inside every session both endpoints share. A link whose
-      // endpoints never co-occurred in a session (the cross-session fusion edge we
-      // want gone) is simply not drawn. Legacy no-session nodes share NOSESS.
-      var common=sFrom.filter(function(s){ return sTo.indexOf(s)>=0; });
-      common.forEach(function(sid){
-        var f=l.source+'@'+sid, t=l.target+'@'+sid;
-        if(nodeMap[f]&&nodeMap[t]) linkMap[f+'||'+t]={source:f,target:t,count:l.count||1,_lastSeen:l.last_seen_at||''};
-      });
+      var f=l.source, t=l.target;
+      if(!nodeMap[f]||!nodeMap[t]) return;   // an endpoint fell outside the date window
+      var key=f+'||'+t;
+      if(!linkMap[key]) linkMap[key]={source:f,target:t,count:l.count||1,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
     });
   } else {
     // Fallback: build from old nmData entries
@@ -9189,8 +9297,12 @@ function nmTriggerAnalysis(){
 }
 
 function nmNodeR(n){
+  // PR#114: usage-proportional sizing. With ONE shared node per concept, count is the
+  // global repetition tally — a logarithmic radius keeps a count=10 "любовь" field
+  // clearly larger than a count=1 "грусть" without letting heavy hubs swallow the map.
   var deg=n._degree||0;
-  return Math.min(32, Math.max(8, 8 + 4*(n.count + deg/2)));
+  var c=Math.max(1, n.count||1);
+  return Math.min(40, Math.max(8, 9 + 7*Math.log(1+c) + deg*0.6));
 }
 var nmMiniTopNIds = {};
 function nmSimulate(canvas, initAlpha){
@@ -9557,7 +9669,7 @@ function nmSimulate(canvas, initAlpha){
     var mx=(ev.clientX-rect.left)*sx, my=(ev.clientY-rect.top)*sy;
     var found=null;
     nmNodes.forEach(function(n){ var r=nmNodeR(n)+8; var dx=n.x-mx,dy=n.y-my; if(dx*dx+dy*dy<r*r) found=n; });
-    if(found) nmShowNodePopup(found, ev.clientX, ev.clientY); else nmCloseNodePopup();
+    if(found) nmShowNodeInfo(found); else nmCloseNodeInfo();
   });
 
   // ── Drag-and-drop for graph nodes (mouse + touch) ──
@@ -16594,7 +16706,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=25"></script>
+<script src="assets/js/evolution-path.js?v=26"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
