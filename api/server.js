@@ -3477,10 +3477,20 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
     // Chain-derived edges win (richer count/chain_ids); nm_links only fills gaps.
     const rawLinks = await sql`SELECT from_node_id, to_node_id, count, last_seen_at
                                FROM nm_links WHERE user_id = ${userId}`;
+    // PR#123 B2: only union nm_links to RECONNECT orphan nodes (PR#118's edgeless
+    // historical case). nm_links is NOT date-scoped, so when BOTH endpoints already
+    // belong to an in-range chain, adding their historical edges re-introduces
+    // cross-chain links among the shared/recurring dedup nodes — a single 7-node chain
+    // (Nick's interest→…→жар) then renders as an all-to-all "клубок" instead of a
+    // sausage. The date-scoped chain already supplies those nodes' linear connectivity,
+    // so skip chained↔chained pairs; chained↔orphan and orphan↔orphan still fill gaps.
+    const chainedIds = new Set();
+    chains.forEach(c => c.node_ids.forEach(id => chainedIds.add(id)));
     rawLinks.forEach(l => {
       const a = String(l.from_node_id), b = String(l.to_node_id);
       if (a === b) return;
       if (!visIds.has(a) || !visIds.has(b)) return;   // an endpoint fell outside the window
+      if (chainedIds.has(a) && chainedIds.has(b)) return; // chain is authoritative for these
       const key = a < b ? a + '|' + b : b + '|' + a;
       if (!linkMap[key]) linkMap[key] = { source: a, target: b, count: l.count || 1, chain_ids: [], last_seen_at: l.last_seen_at };
     });
