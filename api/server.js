@@ -2330,7 +2330,37 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 051 (dangling refs):', JSON.stringify(mig051));
     } catch (e) { mig051.error = e.message; console.error('migration 051 (dangling refs):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-051 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051 });
+    // ── Migration 052 (PR#125 Issue 2) — legacy `nm_node_ids` ARRAY Path ghosts ───────
+    // mig047/051 and BOTH delete tools (node-delete + wipe-day) match ONLY the singular
+    // payload.nm_node_id. But an older save shape stored a node ARRAY under
+    // payload.nm_node_ids (still READ by the mig040 session-merge backfill, L1691, and by
+    // the Path position resolver — never written by current code). When such a legacy
+    // event's nodes were later deleted, nothing swept the event, so it kept drawing a
+    // standalone branch off the Path spine (Nick's D2: mig051 reported orphan_events=0 yet
+    // the ghosts stayed — they were array-shaped, invisible to the singular-key sweep).
+    // Delete a journey_event ONLY when its whole nm_node_ids array references zero surviving
+    // nm_nodes (a fully-deleted felt experience); keep it if ANY member still lives. Then
+    // prune dangling links. Pure subquery, idempotent (clean DB → 0).
+    let mig052 = { orphan_array_events: 0, orphan_links: 0 };
+    try {
+      const oae = await sql`DELETE FROM journey_events je
+        WHERE je.payload ? 'nm_node_ids'
+          AND jsonb_typeof(je.payload->'nm_node_ids') = 'array'
+          AND jsonb_array_length(je.payload->'nm_node_ids') > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM jsonb_array_elements_text(je.payload->'nm_node_ids') AS elem
+            JOIN nm_nodes n ON n.id::text = elem
+          )
+        RETURNING id`;
+      mig052.orphan_array_events = oae.length;
+      const ol2 = await sql`DELETE FROM journey_links jl
+        WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
+           OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b) RETURNING event_a`;
+      mig052.orphan_links = ol2.length;
+      console.log('migration 052 (nm_node_ids array ghosts):', JSON.stringify(mig052));
+    } catch (e) { mig052.error = e.message; console.error('migration 052 (array ghosts):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-052 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -8159,9 +8189,25 @@ app.post('/api/admin/nm-node/:id/delete', requireAuth, async (req, res) => {
     const node = await sql`SELECT id, user_id, label, type FROM nm_nodes WHERE id = ${nodeId}::uuid`;
     if (!node.length) return res.status(404).json({ error: 'node not found' });
     const ownerId = node[0].user_id;
-    // journey_events that reference this node (payload.nm_node_id is stored as text)
+    // journey_events that reference this node (payload.nm_node_id is stored as text).
+    // PR#125 (Issue 2): ALSO catch the legacy `nm_node_ids` ARRAY shape — but only drop
+    // an array-event when this node is its LAST surviving member (excluding this node,
+    // no other array element still exists), so deleting one node of a multi-node legacy
+    // entry never erases an event whose other nodes remain. Mirrors migration 052.
     const je = await sql`DELETE FROM journey_events
-      WHERE user_id = ${ownerId} AND payload->>'nm_node_id' = ${nodeId} RETURNING id`;
+      WHERE user_id = ${ownerId}
+        AND (
+          payload->>'nm_node_id' = ${nodeId}
+          OR (
+            payload ? 'nm_node_ids'
+            AND payload->'nm_node_ids' @> ${JSON.stringify(nodeId)}::jsonb
+            AND NOT EXISTS (
+              SELECT 1 FROM jsonb_array_elements_text(payload->'nm_node_ids') AS elem
+              JOIN nm_nodes n ON n.id::text = elem WHERE elem <> ${nodeId}
+            )
+          )
+        )
+      RETURNING id`;
     const jl = je.length ? await sql`DELETE FROM journey_links jl
       WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
          OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b) RETURNING event_a` : [];
