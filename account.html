@@ -1606,6 +1606,11 @@ a.dash-tab:hover { text-decoration:none; }
         /* PR#121: an organ that is BOTH beneficial and harmful (e.g. cyclophosphamide kidneys) — striped */
         .med-organ.both{background:repeating-linear-gradient(135deg,rgba(79,214,126,0.16) 0 7px,rgba(232,93,111,0.16) 7px 14px);border-color:rgba(200,200,120,0.4);color:#e7e0b0;cursor:help;}
         .med-organ[title]{cursor:help;}
+        /* PR#123 A1: per-organ 👁 transparency toggle on each chip (Full/Semi/Hidden) */
+        .med-organ-eye{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:5px;color:inherit;font-size:10px;line-height:1;padding:1px 3px;margin-left:1px;cursor:pointer;opacity:0.85;}
+        .med-organ-eye:hover{opacity:1;background:rgba(255,255,255,0.16);}
+        .med-organ-eye[data-vis="hidden"]{opacity:0.5;}
+        .med-organ-eye[data-vis="semi"]{opacity:0.75;}
         /* PR#121: rich 3D hover tooltip showing the specific organ-effect detail */
         #atlas-tooltip.med-tip{max-width:260px;white-space:normal;padding:0.5rem 0.6rem;line-height:1.45;font-size:11px;background:rgba(14,20,28,0.96);border:1px solid rgba(168,247,255,0.22);box-shadow:0 6px 22px rgba(0,0,0,0.5);border-radius:9px;pointer-events:none;}
         #atlas-tooltip.med-tip .mt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;}
@@ -17508,7 +17513,7 @@ window.pbMove = pbMove;
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
-<script src="assets/js/body-atlas.js?v=33"></script>
+<script src="assets/js/body-atlas.js?v=34"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -17890,6 +17895,7 @@ window.pbMove = pbMove;
     med_search:{ru:'Поиск препарата…',en:'Search a medication…',es:'Buscar un medicamento…'},
     kind_medication:{ru:'Препараты',en:'Medications',es:'Medicamentos'},
     kind_substance:{ru:'Вещества',en:'Substances',es:'Sustancias'},
+    organ_vis_hint:{ru:'Прозрачность слоя: полностью / полупрозрачно / скрыть',en:'Layer transparency: full / semi / hidden',es:'Transparencia de capa: completa / media / oculta'},
     eff_pos:{ru:'Основной терапевтический эффект',en:'Primary therapeutic effect',es:'Efecto terapéutico principal'},
     eff_pos_sub:{ru:'Действие вещества',en:'How it acts',es:'Cómo actúa'},
     eff_neg:{ru:'Основные побочные эффекты',en:'Main side effects',es:'Efectos secundarios principales'},
@@ -18302,9 +18308,37 @@ window.pbMove = pbMove;
     window.__medTint={ pos:pos, neg:neg };
     window.__medOrganMap=buildMedOrganMap(posSlugs,negSlugs);   // Issue#3 hover-tooltip lookup
     var apply=function(){ var aa=window._anatomyAtlas; if(!aa||!window.__medTint) return;
-      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); }catch(e){} };
+      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); medApplyOrganVis(); }catch(e){} };
     apply(); setTimeout(apply,400); setTimeout(apply,950); setTimeout(apply,2100);
   }
+
+  /* ── PR#123 A1: per-organ transparency (👁 Full / Semi / Hidden) ──────────────
+     Each organ chip carries an eye toggle cycling the tinted layer's render opacity so an
+     occluding wrap (muscles/skeleton) can be faded WITHOUT losing its green/red tint. The
+     choice is global per organ-slug (localStorage) and re-applied after every tint pass. */
+  var MED_VIS_KEY='na_med_organ_vis';
+  var MED_ENVELOPE_SLUGS={muscles:1,muscle:1,bones:1,bone:1,skeleton:1,skin:1,joints:1,joint:1,vessels:1};
+  var MED_VIS_OP={full:1.0,semi:0.4,hidden:0};
+  var MED_VIS_GLYPH={full:'👁',semi:'◐',hidden:'🚫'};
+  function medVisLoad(){ try{ return JSON.parse(localStorage.getItem(MED_VIS_KEY)||'{}')||{}; }catch(e){ return {}; } }
+  function medVisSave(m){ try{ localStorage.setItem(MED_VIS_KEY,JSON.stringify(m)); }catch(e){} }
+  function medDefaultVis(slug){ return MED_ENVELOPE_SLUGS[slug]?'semi':'full'; }   // envelope wraps default translucent
+  function medVisFor(slug){ var m=medVisLoad(); return m[slug]||medDefaultVis(slug); }
+  // Re-apply every stored/default per-organ opacity to the freshly-tinted atlas.
+  function medApplyOrganVis(){
+    var a=window._anatomyAtlas; if(!a||!a.setTintOpacity||!curMed) return;
+    var slugs=[].concat(curMed.target_organs_positive||[],curMed.target_organs_negative||[]);
+    slugs.forEach(function(s){ try{ a.setTintOpacity(medResolveSeeds([s]),MED_VIS_OP[medVisFor(s)]); }catch(e){} });
+  }
+  // Cycle one organ chip Full → Semi → Hidden → Full; persist + re-apply live.
+  window.medCycleOrgan=function(ev,slug){
+    if(ev){ ev.stopPropagation(); if(ev.preventDefault) ev.preventDefault(); }
+    var order=['full','semi','hidden']; var next=order[(order.indexOf(medVisFor(slug))+1)%order.length];
+    var m=medVisLoad(); m[slug]=next; medVisSave(m);
+    var a=window._anatomyAtlas; if(a&&a.setTintOpacity){ try{ a.setTintOpacity(medResolveSeeds([slug]),MED_VIS_OP[next]); }catch(e){} }
+    var btn=ev&&ev.currentTarget; if(btn){ btn.textContent=MED_VIS_GLYPH[next]; btn.setAttribute('data-vis',next); }
+    return false;
+  };
 
   /* ── tab switching ──────────────────────────────────────────────────────── */
   window.haSwitchTab = function(tab){
@@ -18542,7 +18576,10 @@ window.pbMove = pbMove;
       var info=oe[s]||oe[String(s).replace(/-/g,'_')];
       var detail=info?(info['detail_'+lang()]||info.detail_ru||''):'';
       var ttl=detail?' title="'+esc(detail)+'"':'';
-      return '<span class="med-organ '+(both?'both':polarity)+'"'+ttl+'>'+esc(organLabel(s))+'</span>';
+      // PR#123 A1: 👁 toggle to fade this organ's tinted layer (Full/Semi/Hidden)
+      var vis=medVisFor(s);
+      var eye='<button type="button" class="med-organ-eye" data-vis="'+vis+'" title="'+esc(tr(T.organ_vis_hint))+'" onclick="medCycleOrgan(event,\''+esc(s)+'\')">'+MED_VIS_GLYPH[vis]+'</button>';
+      return '<span class="med-organ '+(both?'both':polarity)+'" data-seed="'+esc(s)+'"'+ttl+'>'+esc(organLabel(s))+eye+'</span>';
     }).join('');
   }
   window.haSelectMedication=function(slug){
