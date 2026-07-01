@@ -6324,7 +6324,12 @@ function nmOpenSensationOverlay(){
   var src = document.getElementById('tools-sensation-wrap');
   if (!src) return;
   if (_nmSensState) return; // already open
+  var _wasHandoff = nmSessionHandoff; // PR#123 B1: is this a cross-link continuation?
   nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
+  // A fresh, standalone Sensation Map starts blank — drop any carried nodes left over
+  // from an unrelated prior flow. A handoff (Emotion/Diary → «Привязать к ощущению»)
+  // KEEPS them so the live map EXTENDS the chain (PR#123 B1). Mirrors openNmSurvey.
+  if(!_wasHandoff) nmClearCarriedLive();
   var placeholder = document.createComment('na-nm-sens');
   src.parentNode.insertBefore(placeholder, src);
   var prevDisplay = src.style.display;
@@ -7240,7 +7245,10 @@ function closeNmSurvey(){
   // keeps it for the next overlay.
   if(!nmSessionHandoff) nmClearSession();
   if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
-  nmClearCarriedLive(); // PR#111 (#1): carried sensation nodes don't outlive the survey
+  // PR#123 B1: on a terminal close, carried nodes must not outlive the survey — but a
+  // save-and-link handoff (Emotion→Sensation) needs the snapshot to survive so the
+  // sensation overlay opening ~80ms later can EXTEND it. Guard like the session above.
+  if(!nmSessionHandoff) nmClearCarriedLive(); // PR#111 (#1)
 }
 
 function renderNmStepDots(){
@@ -7845,11 +7853,27 @@ function nmMiniSensModel(){
   // Grow a sensation that already exists in the prior session (same word ranks again).
   var priorLabels={}; (window.nmSessionPrior||[]).forEach(function(p){ if(p.label) priorLabels[String(p.label).toLowerCase()]=1; });
 
+  // PR#123 B1: carried live-map from a cross-link INTO the sensation flow (Emotion→Sensation,
+  // Diary→Sensation). Draw the prior chain as real nodes across the top so the map EXTENDS
+  // instead of resetting to blank; the sensation centre connects to the carried tail below.
+  var _carry = window.nmCarriedLive, _carryTail=null;
+  if(_carry && _carry.nodes && _carry.nodes.length){
+    var ncar=_carry.nodes.length;
+    _carry.nodes.forEach(function(c,i){
+      nodes.push({ id:'cy:'+c.id, type:c.type, label:c.label, valence:c.valence||'neutral', _layer:c._layer,
+        x:(i+1)/(ncar+1), y:0.15, r:9 });
+    });
+    (_carry.links||[]).forEach(function(l){ links.push({source:'cy:'+l.source, target:'cy:'+l.target, color:'rgba(255,255,255,0.16)', w:1.4}); });
+    if(_carry.tail) _carryTail='cy:'+_carry.tail;
+  }
+
   // central body node(s). If no location yet but sensations exist, use a generic centre.
   var centerLabel = locs[0] || (sens.length ? _pr95t('a.tools.mini_body','тело') : null);
-  if(!centerLabel) return {nodes:nodes, links:links};
+  if(!centerLabel) return {nodes:nodes, links:links};   // still returns any carried chain
   var cR = 14 + intensity*0.9; // intensity grows the centre
   nodes.push({ id:'c0', type:'area', label:centerLabel, valence:'neutral', _layer:1, x:0.5, y:0.52, r:cR });
+  // PR#123 B1: seam the carried chain's tail into the new sensation centre.
+  if(_carryTail) links.push({source:_carryTail, target:'c0', color:'rgba(0,224,255,0.42)', w:1.6});
   // extra locations as smaller satellites near the centre
   locs.slice(1,3).forEach(function(loc,i){
     var ang = -0.6 + i*1.2;
@@ -7872,6 +7896,38 @@ function nmMiniSensModel(){
     // sticky link — short, faint, to make the bubble read as "attached"
     var lc = val==='negative' ? 'rgba(220,90,90,0.4)' : (val==='positive' ? 'rgba(80,220,180,0.4)' : 'rgba(160,170,190,0.3)');
     links.push({source:'c0', target:'s'+i, color:lc, w:1.5});
+  });
+  return {nodes:nodes, links:links};
+}
+
+// ── PR#123 B1: snapshot the emotion walkthrough's live map as a carry model, so a
+//    cross-link OUT of the emotion flow (→ Sensation) keeps the built chain visible
+//    instead of dropping to a blank canvas. Mirrors buildLiveGraph's construction; the
+//    receiving flow (nmMiniSensModel) re-draws these as real nodes and seams onto the tail.
+function nmMiniEmotionModel(){
+  var nodes=[], links=[], seen={};
+  function addN(id,type,label,valence,layer){ if(seen[id]) return; seen[id]=1; nodes.push({id:id,type:type,label:label,valence:valence||'neutral',_layer:layer}); }
+  function addL(a,b){ links.push({source:a,target:b}); }
+  var _carry=window.nmCarriedLive;   // a prior Sensation→Emotion handoff already in the map
+  if(_carry && _carry.nodes){ _carry.nodes.forEach(function(cn){ addN('cy:'+cn.id,cn.type,cn.label,cn.valence,cn._layer); });
+    (_carry.links||[]).forEach(function(cl){ addL('cy:'+cl.source,'cy:'+cl.target); }); }
+  var st=nmSurveyState||{};
+  var hasConcept = nmThoughtMode && st._concept && st._concept.label;
+  if(hasConcept) addN('concept','concept',st._concept.label,(st._concept.valence||'neutral'),4);
+  (st.emotions||[]).forEach(function(emo,i){
+    if(!emo) return;
+    addN('e:'+emo,'emotion',emo,null,2);
+    if(hasConcept) addL('concept','e:'+emo);
+    var chain=(st.emotionChains&&st.emotionChains[i])||{};
+    (chain.areas||[]).forEach(function(a){
+      var label=(a==='другое'&&chain.customArea)?chain.customArea:a;
+      addN('a:'+label,'area',label,null,3); addL('e:'+emo,'a:'+label);
+      (chain.causes||[]).forEach(function(c){
+        var cl=(c==='другое'&&chain.customCause)?chain.customCause:c;
+        addN('c:'+cl,'cause',cl,null,5); addL('a:'+label,'c:'+cl);
+        (chain.thoughts||[]).forEach(function(t){ addN('t:'+t,'thought',t,null,4); addL('c:'+cl,'t:'+t); });
+      });
+    });
   });
   return {nodes:nodes, links:links};
 }
@@ -8051,6 +8107,9 @@ function nmFinishAndSave(){
 // hand off to the sensation overlay — its nodes link back to this emotion chain.
 function nmSaveAndLinkSensation(){
   nmEnsureSession();
+  // PR#123 B1: carry the emotion chain into the sensation live map so «Сохранить и
+  // привязать к ощущению» EXTENDS the visible map instead of opening a blank canvas.
+  try { nmSetCarriedLive(nmMiniEmotionModel()); } catch(e){}
   nmMarkHandoff(); // PR#112 (#1): timestamped handoff (TTL-guarded)
   document.getElementById('nm-nav-btns').style.display='flex';
   nmSaveSurvey();
