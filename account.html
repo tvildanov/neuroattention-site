@@ -6961,6 +6961,30 @@ function nmNodeViewCount(node){
   return total>0 ? total : 1;                       // visible via last_seen but no in-range chain → ≥1
 }
 window.nmNodeViewCount = nmNodeViewCount;
+// PR#124 (B3 follow-up): co-occurring nodes counted over the PERIOD-scoped v3 chains — the
+// SAME authoritative source as nmNodeViewCount — so «Появляется вместе с» agrees with
+// «appears N×». A neighbour is counted once per shared chain in range. Returns
+// [{label,count}] most-frequent first, or null when the node has no in-view chain (the
+// caller then falls back to the legacy nmData-entry count).
+function nmCoOccurInView(node){
+  var chains=(window.nmV2Graph&&nmV2Graph.chains)||[];
+  if(!chains.length) return null;
+  var byId={}; ((window.nmV2Graph&&nmV2Graph.nodes)||[]).forEach(function(n){ byId[String(n.id)]=n; });
+  var id=String((node&&(node.id!=null?node.id:node.dbId))||''); if(!id) return null;
+  var cnt={}, seenChain=false;
+  chains.forEach(function(c){
+    var t=c.started_at?new Date(c.started_at).getTime():null;
+    if(t!=null && !nmTsInRange(t)) return;                 // chain outside the window
+    var ids=(c.node_ids||[]).map(String);
+    if(ids.indexOf(id)<0) return;
+    seenChain=true;
+    var uniq={};
+    ids.forEach(function(nid){ if(nid===id||uniq[nid]) return; uniq[nid]=1; var nn=byId[nid]; if(nn&&nn.label) cnt[nn.label]=(cnt[nn.label]||0)+1; });
+  });
+  if(!seenChain) return null;                               // not in any in-view chain → fall back
+  return Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];}).slice(0,5).map(function(k){return {label:k,count:cnt[k]};});
+}
+window.nmCoOccurInView = nmCoOccurInView;
 var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
@@ -9277,29 +9301,24 @@ function openFsDrilldown(node){
   drawFsDdTimeline(node);
   // Correlations
   var corrList=document.getElementById('nm-fs-dd-corr-list');
-  var corrMap={};
-  var entries=getEntriesForView();
-  entries.forEach(function(e){
-    var hasNode=false;
-    e.chains.forEach(function(c){
-      if(node.type==='emotion'&&c.emotion===node.label) hasNode=true;
-      if(node.type==='area'&&c.area===node.label) hasNode=true;
-      if(node.type==='cause'&&c.cause===node.label) hasNode=true;
-      if(node.type==='thought'&&c.thought===node.label) hasNode=true;
-    });
-    if(hasNode){
+  // PR#124: same period-scoped v3-chain co-occurrence as the main panel (legacy fallback).
+  var co=nmCoOccurInView(node);
+  if(co===null){
+    var corrMap={};
+    getEntriesForView().forEach(function(e){
+      var hasNode=false;
       e.chains.forEach(function(c){
-        ['emotion','area','cause','thought'].forEach(function(t){
-          if(c[t]&&c[t]!==node.label){
-            if(!corrMap[c[t]]) corrMap[c[t]]=0;
-            corrMap[c[t]]++;
-          }
-        });
+        if(node.type==='emotion'&&c.emotion===node.label) hasNode=true;
+        if(node.type==='area'&&c.area===node.label) hasNode=true;
+        if(node.type==='cause'&&c.cause===node.label) hasNode=true;
+        if(node.type==='thought'&&c.thought===node.label) hasNode=true;
       });
-    }
-  });
-  var sorted=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5);
-  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.5rem;">'+nmTranslate(k)+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:11px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет данных')+'</span>';
+      if(hasNode){ e.chains.forEach(function(c){ ['emotion','area','cause','thought'].forEach(function(t){
+        if(c[t]&&c[t]!==node.label){ corrMap[c[t]]=(corrMap[c[t]]||0)+1; } }); }); }
+    });
+    co=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5).map(function(k){return {label:k,count:corrMap[k]};});
+  }
+  corrList.innerHTML=co.length?co.map(function(x){return '<span style="margin-right:0.5rem;">'+nmTranslate(x.label)+' <span style="color:var(--accent-cyan);">'+x.count+'×</span></span>';}).join(''):'<span style="font-size:11px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет данных')+'</span>';
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function drawFsDdTimeline(node){
@@ -10735,29 +10754,25 @@ function openNmDrilldown(node){
 
   // Correlations — nodes that appear in same entries
   var corrList=document.getElementById('nm-dd-corr-list');
-  var corrMap={};
-  var entries=getEntriesForView();
-  entries.forEach(function(e){
-    var hasNode=false;
-    e.chains.forEach(function(c){
-      if(node.type==='emotion'&&c.emotion===node.label) hasNode=true;
-      if(node.type==='area'&&c.area===node.label) hasNode=true;
-      if(node.type==='cause'&&c.cause===node.label) hasNode=true;
-      if(node.type==='thought'&&c.thought===node.label) hasNode=true;
-    });
-    if(hasNode){
+  // PR#124: prefer period-scoped v3 chains so co-occurrence agrees with «appears N×»;
+  // fall back to the legacy nmData entries for a node with no chain in view.
+  var co=nmCoOccurInView(node);
+  if(co===null){
+    var corrMap={};
+    getEntriesForView().forEach(function(e){
+      var hasNode=false;
       e.chains.forEach(function(c){
-        ['emotion','area','cause','thought'].forEach(function(t){
-          if(c[t]&&c[t]!==node.label){
-            if(!corrMap[c[t]]) corrMap[c[t]]=0;
-            corrMap[c[t]]++;
-          }
-        });
+        if(node.type==='emotion'&&c.emotion===node.label) hasNode=true;
+        if(node.type==='area'&&c.area===node.label) hasNode=true;
+        if(node.type==='cause'&&c.cause===node.label) hasNode=true;
+        if(node.type==='thought'&&c.thought===node.label) hasNode=true;
       });
-    }
-  });
-  var sorted=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5);
-  corrList.innerHTML=sorted.length?sorted.map(function(k){return '<span style="margin-right:0.75rem;">'+nmTranslate(k)+' <span style="color:var(--accent-cyan);">'+corrMap[k]+'×</span></span>';}).join(''):'<span style="font-size:12px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет данных')+'</span>';
+      if(hasNode){ e.chains.forEach(function(c){ ['emotion','area','cause','thought'].forEach(function(t){
+        if(c[t]&&c[t]!==node.label){ corrMap[c[t]]=(corrMap[c[t]]||0)+1; } }); }); }
+    });
+    co=Object.keys(corrMap).sort(function(a,b){return corrMap[b]-corrMap[a];}).slice(0,5).map(function(k){return {label:k,count:corrMap[k]};});
+  }
+  corrList.innerHTML=co.length?co.map(function(x){return '<span style="margin-right:0.75rem;">'+nmTranslate(x.label)+' <span style="color:var(--accent-cyan);">'+x.count+'×</span></span>';}).join(''):'<span style="font-size:12px;color:var(--text-muted);">'+(rpgT('no_connections')||'Нет данных')+'</span>';
 
   // Scroll into view
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
