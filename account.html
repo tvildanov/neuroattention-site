@@ -9857,14 +9857,34 @@ function nmBindMiniHover(canvas){
     if(nmNiMiniHover!==null){ nmNiMiniHover=null; if(nmNiChainData && !nmNi3D) nmDrawChainMini(nmNiChainData); }
   });
 }
-// ── 3D mini-view: a ForceGraph3D instance (it bundles its own THREE, so it works even
-// when window.THREE is null) with the chain laid out as a FIXED straight line in
-// position order, edges between consecutive nodes, and a slow camera orbit. Toggling
-// back to 2D tears it down. ──
+// ── 3D mini-view (PR#123 C): a ForceGraph3D instance (it bundles its own THREE for the
+// spheres/edges, so it renders even when window.THREE is null) with the chain as a FIXED
+// straight line in position order. PR#123 rewrite: auto-rotate is OFF (it used to fight
+// the user's drag), orbit is smooth (damping), node-drag is disabled so a drag orbits the
+// camera, edges are thick + arrowed, and each node carries a PERSISTENT numbered label
+// sprite (needs a real THREE — lazily loaded here since the atlas may not have mounted). ──
+var _nmThreeLoading=false, _nmThreeCbs=[];
+function nmEnsureThree(cb){
+  if(window.THREE){ THREE=window.THREE; if(cb) cb(); return; }
+  if(cb) _nmThreeCbs.push(cb);
+  if(_nmThreeLoading) return; _nmThreeLoading=true;
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  var done=function(){ THREE=window.THREE||null; _nmThreeLoading=false; var cbs=_nmThreeCbs.slice(); _nmThreeCbs=[]; cbs.forEach(function(f){ try{ f&&f(); }catch(e){} }); };
+  s.onload=done; s.onerror=done; document.head.appendChild(s);
+}
 function nmDestroyMini3D(){
   if(nmNiMini3DRot){ cancelAnimationFrame(nmNiMini3DRot); nmNiMini3DRot=null; }
   if(nmNiMini3DGraph){ try{ nmNiMini3DGraph._destructor && nmNiMini3DGraph._destructor(); }catch(e){} nmNiMini3DGraph=null; }
   var box=document.getElementById('nm-ni-mini-3d'); if(box) box.innerHTML='';
+}
+// Build a persistent "N · label" sprite above a node (only when a real THREE is present).
+function nmMini3DLabelObj(nd){
+  if(!THREE) return null;
+  var tex=nmMake3DLabel(nd.label); if(!tex) return null;
+  var spr=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false, depthTest:false }));
+  spr.scale.set(34,8.5,1); spr.position.set(0,9,0);
+  return spr;
 }
 function nmDrawChainMini3D(data){
   var box=document.getElementById('nm-ni-mini-3d'); if(!box) return;
@@ -9892,23 +9912,26 @@ function nmDrawChainMini3D(data){
     .nodeColor(function(nd){ return nd.color; })
     .nodeVal(function(nd){ return nd.val; })
     .nodeOpacity(0.95)
-    .linkColor(function(){ return 'rgba(255,255,255,0.35)'; })
-    .linkWidth(1.2)
-    .linkDirectionalArrowLength(4).linkDirectionalArrowRelPos(1)
+    .linkColor(function(){ return 'rgba(180,220,255,0.6)'; })
+    .linkWidth(2.4)
+    .linkDirectionalArrowLength(6).linkDirectionalArrowRelPos(1).linkDirectionalArrowColor(function(){ return 'rgba(180,220,255,0.8)'; })
+    .enableNodeDrag(false)          // a drag ORBITS the camera, never yanks a fixed node
     .cooldownTicks(0)
     .showNavInfo(false);
+  try{ g.controlType && g.controlType('orbit'); }catch(e){}
   try{ g.d3Force('charge', null); g.d3Force('link', null); g.d3Force('center', null); }catch(e){}
   nmNiMini3DGraph=g;
-  // Frame the chain, then orbit the camera slowly around it.
+  // Static 3/4 framing — NO auto-orbit RAF (it used to override the user's drag every frame).
   var dist=Math.max(120, span*step*0.9+90);
-  try{ g.cameraPosition({x:0,y:span*step*0.25,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
-  var ang=0;
-  function spin(){
-    ang+=0.0045;
-    try{ g.cameraPosition({ x:Math.sin(ang)*dist, y:span*step*0.18, z:Math.cos(ang)*dist }); }catch(e){}
-    nmNiMini3DRot=requestAnimationFrame(spin);
-  }
-  nmNiMini3DRot=requestAnimationFrame(spin);
+  try{ g.cameraPosition({x:span*step*0.12,y:span*step*0.32+40,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
+  // Smooth, damped manual orbit.
+  setTimeout(function(){ try{ var c=g.controls&&g.controls(); if(c){ c.enableDamping=true; c.dampingFactor=0.14; if('rotateSpeed' in c) c.rotateSpeed=0.85; } }catch(e){} }, 0);
+  // Persistent numbered labels need a real THREE — load it, then attach (graph already
+  // renders spheres+edges meanwhile so the panel is never blank).
+  nmEnsureThree(function(){
+    if(nmNiMini3DGraph!==g) return;   // panel closed / re-rendered while loading
+    try{ g.nodeThreeObjectExtend(true).nodeThreeObject(nmMini3DLabelObj); }catch(e){}
+  });
 }
 function nmDeleteNode(dbId){
   if(!dbId) return;
