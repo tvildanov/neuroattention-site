@@ -2297,7 +2297,40 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 049 (dx-med links):', mig049.diagnosis_links, 'links upserted');
     } catch (e) { mig049.error = e.message; console.error('migration 049 (dx-med links):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-049 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049 });
+    // ── Migration 051 (PR#123 D2) — full dangling-reference sweep ─────────────
+    // The node-delete endpoint already propagates (nm_nodes + nm_links + nm_session_nodes
+    // + nm_chain_nodes + journey_events by payload.nm_node_id). But deletes that ran before
+    // that propagation existed (and any wipe that missed one table) left dangling refs to
+    // now-missing nm_nodes, so a deleted concept keeps drawing a branch off the Path spine
+    // (Nick's D2: "вчерашние удалённые узлы всё ещё на Пути"). This is a SUPERSET of mig047:
+    // sweep every table that points at an nm_nodes id which no longer exists, then prune the
+    // chains that empties and the journey_links that dangle. Pure subquery deletes (the neon
+    // `= ANY(${jsArray})` cast silently throws — CLAUDE.md note). Idempotent (clean DB → 0).
+    let mig051 = { orphan_events: 0, orphan_session_nodes: 0, orphan_chain_nodes: 0, chains_pruned: 0, orphan_links: 0 };
+    try {
+      const oe = await sql`DELETE FROM journey_events
+        WHERE payload ? 'nm_node_id'
+          AND NULLIF(payload->>'nm_node_id','') IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM nm_nodes n WHERE n.id::text = journey_events.payload->>'nm_node_id')
+        RETURNING id`;
+      mig051.orphan_events = oe.length;
+      const osn = await sql`DELETE FROM nm_session_nodes
+        WHERE NOT EXISTS (SELECT 1 FROM nm_nodes n WHERE n.id = nm_session_nodes.node_id) RETURNING node_id`;
+      mig051.orphan_session_nodes = osn.length;
+      const ocn = await sql`DELETE FROM nm_chain_nodes
+        WHERE NOT EXISTS (SELECT 1 FROM nm_nodes n WHERE n.id = nm_chain_nodes.node_id) RETURNING chain_id`;
+      mig051.orphan_chain_nodes = ocn.length;
+      const cp = await sql`DELETE FROM nm_chains
+        WHERE NOT EXISTS (SELECT 1 FROM nm_chain_nodes cn WHERE cn.chain_id = nm_chains.id) RETURNING id`;
+      mig051.chains_pruned = cp.length;
+      const ol = await sql`DELETE FROM journey_links jl
+        WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
+           OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b) RETURNING event_a`;
+      mig051.orphan_links = ol.length;
+      console.log('migration 051 (dangling refs):', JSON.stringify(mig051));
+    } catch (e) { mig051.error = e.message; console.error('migration 051 (dangling refs):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-051 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3477,10 +3510,20 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
     // Chain-derived edges win (richer count/chain_ids); nm_links only fills gaps.
     const rawLinks = await sql`SELECT from_node_id, to_node_id, count, last_seen_at
                                FROM nm_links WHERE user_id = ${userId}`;
+    // PR#123 B2: only union nm_links to RECONNECT orphan nodes (PR#118's edgeless
+    // historical case). nm_links is NOT date-scoped, so when BOTH endpoints already
+    // belong to an in-range chain, adding their historical edges re-introduces
+    // cross-chain links among the shared/recurring dedup nodes — a single 7-node chain
+    // (Nick's interest→…→жар) then renders as an all-to-all "клубок" instead of a
+    // sausage. The date-scoped chain already supplies those nodes' linear connectivity,
+    // so skip chained↔chained pairs; chained↔orphan and orphan↔orphan still fill gaps.
+    const chainedIds = new Set();
+    chains.forEach(c => c.node_ids.forEach(id => chainedIds.add(id)));
     rawLinks.forEach(l => {
       const a = String(l.from_node_id), b = String(l.to_node_id);
       if (a === b) return;
       if (!visIds.has(a) || !visIds.has(b)) return;   // an endpoint fell outside the window
+      if (chainedIds.has(a) && chainedIds.has(b)) return; // chain is authoritative for these
       const key = a < b ? a + '|' + b : b + '|' + a;
       if (!linkMap[key]) linkMap[key] = { source: a, target: b, count: l.count || 1, chain_ids: [], last_seen_at: l.last_seen_at };
     });
@@ -7697,6 +7740,27 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
                             AND occurred_at >= ${fromIso} AND occurred_at <= ${toIso}
                           ORDER BY occurred_at ASC`);
     }
+    // PR#123 D1: the chain POSITION of each event (from nm_chain_nodes, resolved via the
+    // event's session_id → nm_chains and payload.nm_node_id → the node). journey_events
+    // share one occurred_at across a whole modal flow, so ordering the Path by occurred_at
+    // tie-broke arbitrarily (Nick saw sensation before emotion, dupes out of order). Position
+    // is the authoritative "order it was felt". MIN() collapses a node that recurs in the
+    // chain to its earliest slot. Wrapped so a pre-migration DB just falls back to time order.
+    const posByEvent = {};
+    if (je.length) {
+      try {
+        const posRows = await sql`
+          SELECT je2.id AS ev_id, MIN(cn.position) AS pos
+          FROM journey_events je2
+          JOIN nm_chains ch ON ch.user_id = je2.user_id AND ch.session_id = je2.session_id
+          JOIN nm_chain_nodes cn ON cn.chain_id = ch.id AND cn.node_id::text = je2.payload->>'nm_node_id'
+          WHERE je2.id = ANY(${je.map(e => e.id)}::bigint[])
+          GROUP BY je2.id`;
+        posRows.forEach(r => { if (r.pos != null) posByEvent[String(r.ev_id)] = Number(r.pos); });
+      } catch (e) { /* nm_chains not migrated yet → Path keeps time order */ }
+    }
+    je.forEach(e => { e._pos = posByEvent[String(e.id)]; });
+
     const [cbp, nm, cal, diary] = selfScope ? await Promise.all([
       safe(sql`SELECT cbp.points_earned, cbp.completed_at, cb.block_type
                FROM course_block_progress cbp LEFT JOIN course_blocks cb ON cb.id = cbp.block_id
@@ -7799,6 +7863,7 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
         label: jeLabel(e), valence: p.valence || 'neutral',
         weight: p.weight || p.count || p.points || p.intensity || 1,
         session_id: e.session_id || null, // PR#109 (#3): group one flow as one chain
+        position: e._pos != null ? e._pos : null, // PR#123 D1: authoritative order-it-was-felt
         nm_type: p.nm_type || null, area_kind: p.area_kind || null, // PR#109 (#4): NeuroMap colours
         payload: ctx ? Object.assign({}, p, { course_ctx: ctx }) : p,
         links: linksByEvent[String(e.id)] || []
@@ -8114,6 +8179,50 @@ app.post('/api/admin/nm-node/:id/delete', requireAuth, async (req, res) => {
     console.log('nm-node-delete', caller.id, '→', nodeId, node[0].label, JSON.stringify(deleted));
     res.json({ ok: true, node_id: nodeId, label: node[0].label, deleted });
   } catch (err) { console.error('POST /api/admin/nm-node/:id/delete:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/me/journey-event/:id/delete — delete ONE Personal-Path event (PR#123 D3).
+// The owner may delete their own event; a superadmin may delete anyone's. Removes the
+// journey_event + any journey_links it dangles, and — when the event's NeuroMap node is
+// now referenced by NO other event (truly orphaned) — cascades that node off nm_nodes/
+// nm_links/nm_session_nodes/nm_chain_nodes (+ prunes a chain it empties) so the Path AND
+// the NeuroMap both lose it. A node still shared by other events (a recurring concept) is
+// kept — deleting one occurrence must not erase the whole gestalt.
+app.post('/api/me/journey-event/:id/delete', requireAuth, async (req, res) => {
+  try {
+    const eid = parseInt(req.params.id, 10);
+    if (!eid) return res.status(400).json({ error: 'event id required' });
+    const rows = await sql`SELECT id, user_id, payload FROM journey_events WHERE id = ${eid}`;
+    if (!rows.length) return res.status(404).json({ error: 'event not found' });
+    const ev = rows[0];
+    // authz: owner OR superadmin (checked inline so we never pre-write a 403 for the owner)
+    if (String(ev.user_id) !== String(req.user.id)) {
+      const sa = await sql`SELECT 1 FROM users WHERE id = ${req.user.id} AND role = 'superadmin'`;
+      if (!sa.length) return res.status(403).json({ error: 'Forbidden' });
+    }
+    const owner = ev.user_id;
+    const nmNodeId = ev.payload && ev.payload.nm_node_id != null ? String(ev.payload.nm_node_id) : null;
+    await sql`DELETE FROM journey_events WHERE id = ${eid}`;
+    await sql`DELETE FROM journey_links jl
+      WHERE NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_a)
+         OR NOT EXISTS (SELECT 1 FROM journey_events e WHERE e.id = jl.event_b)`;
+    let nodeDeleted = false;
+    if (nmNodeId && /^[0-9a-f-]{36}$/i.test(nmNodeId)) {   // real uuid + no other event refs it
+      try {
+        const still = await sql`SELECT 1 FROM journey_events WHERE payload->>'nm_node_id' = ${nmNodeId} LIMIT 1`;
+        if (!still.length) {
+          await sql`DELETE FROM nm_session_nodes WHERE node_id = ${nmNodeId}::uuid`;
+          await sql`DELETE FROM nm_links WHERE from_node_id = ${nmNodeId}::uuid OR to_node_id = ${nmNodeId}::uuid`;
+          await sql`DELETE FROM nm_chain_nodes WHERE node_id = ${nmNodeId}::uuid`;
+          await sql`DELETE FROM nm_chains WHERE user_id = ${owner}
+            AND NOT EXISTS (SELECT 1 FROM nm_chain_nodes cn WHERE cn.chain_id = nm_chains.id)`;
+          await sql`DELETE FROM nm_nodes WHERE id = ${nmNodeId}::uuid`;
+          nodeDeleted = true;
+        }
+      } catch (e) { /* node cascade is best-effort; the event itself is already gone */ }
+    }
+    res.json({ ok: true, deleted_event: eid, node_deleted: nodeDeleted });
+  } catch (err) { console.error('POST /api/me/journey-event/:id/delete:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PR7: Collective Path of Development ──────────────────────────────────────

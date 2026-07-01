@@ -1606,6 +1606,11 @@ a.dash-tab:hover { text-decoration:none; }
         /* PR#121: an organ that is BOTH beneficial and harmful (e.g. cyclophosphamide kidneys) — striped */
         .med-organ.both{background:repeating-linear-gradient(135deg,rgba(79,214,126,0.16) 0 7px,rgba(232,93,111,0.16) 7px 14px);border-color:rgba(200,200,120,0.4);color:#e7e0b0;cursor:help;}
         .med-organ[title]{cursor:help;}
+        /* PR#123 A1: per-organ 👁 transparency toggle on each chip (Full/Semi/Hidden) */
+        .med-organ-eye{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:5px;color:inherit;font-size:10px;line-height:1;padding:1px 3px;margin-left:1px;cursor:pointer;opacity:0.85;}
+        .med-organ-eye:hover{opacity:1;background:rgba(255,255,255,0.16);}
+        .med-organ-eye[data-vis="hidden"]{opacity:0.5;}
+        .med-organ-eye[data-vis="semi"]{opacity:0.75;}
         /* PR#121: rich 3D hover tooltip showing the specific organ-effect detail */
         #atlas-tooltip.med-tip{max-width:260px;white-space:normal;padding:0.5rem 0.6rem;line-height:1.45;font-size:11px;background:rgba(14,20,28,0.96);border:1px solid rgba(168,247,255,0.22);box-shadow:0 6px 22px rgba(0,0,0,0.5);border-radius:9px;pointer-events:none;}
         #atlas-tooltip.med-tip .mt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;}
@@ -6319,7 +6324,12 @@ function nmOpenSensationOverlay(){
   var src = document.getElementById('tools-sensation-wrap');
   if (!src) return;
   if (_nmSensState) return; // already open
+  var _wasHandoff = nmSessionHandoff; // PR#123 B1: is this a cross-link continuation?
   nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
+  // A fresh, standalone Sensation Map starts blank — drop any carried nodes left over
+  // from an unrelated prior flow. A handoff (Emotion/Diary → «Привязать к ощущению»)
+  // KEEPS them so the live map EXTENDS the chain (PR#123 B1). Mirrors openNmSurvey.
+  if(!_wasHandoff) nmClearCarriedLive();
   var placeholder = document.createComment('na-nm-sens');
   src.parentNode.insertBefore(placeholder, src);
   var prevDisplay = src.style.display;
@@ -6934,6 +6944,23 @@ function nmViewRange(){
   return null; // 'all'
 }
 function nmTsInRange(ts){ var r=nmViewRange(); if(!r) return true; return ts>=r.from && ts<=r.to; }
+// PR#123 B3: how many times a node occurs WITHIN the currently-selected period. In 'all'
+// view we show the global dedup count (nm_nodes.count); a Day/Week/Month view counts the
+// node's memberships across chains whose started_at falls in range, so «appears N×»
+// reflects what's actually on screen for the period, not the lifetime total.
+function nmNodeViewCount(node){
+  if(!node) return 1;
+  var r = (typeof nmViewRange==='function') ? nmViewRange() : null;
+  if(!r) return node.count||1;                     // 'all' → global dedup count
+  var chains=(window.nmV2Graph&&nmV2Graph.chains)||[]; var total=0, id=String(node.id);
+  chains.forEach(function(c){
+    var t=c.started_at?new Date(c.started_at).getTime():null;
+    if(t!=null && !nmTsInRange(t)) return;          // chain outside the window
+    (c.node_ids||[]).forEach(function(nid){ if(String(nid)===id) total++; });
+  });
+  return total>0 ? total : 1;                       // visible via last_seen but no in-range chain → ≥1
+}
+window.nmNodeViewCount = nmNodeViewCount;
 var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
@@ -7235,7 +7262,10 @@ function closeNmSurvey(){
   // keeps it for the next overlay.
   if(!nmSessionHandoff) nmClearSession();
   if(!nmSessionHandoff && typeof nmResetTarget === 'function') nmResetTarget(); // PR#99
-  nmClearCarriedLive(); // PR#111 (#1): carried sensation nodes don't outlive the survey
+  // PR#123 B1: on a terminal close, carried nodes must not outlive the survey — but a
+  // save-and-link handoff (Emotion→Sensation) needs the snapshot to survive so the
+  // sensation overlay opening ~80ms later can EXTEND it. Guard like the session above.
+  if(!nmSessionHandoff) nmClearCarriedLive(); // PR#111 (#1)
 }
 
 function renderNmStepDots(){
@@ -7840,11 +7870,27 @@ function nmMiniSensModel(){
   // Grow a sensation that already exists in the prior session (same word ranks again).
   var priorLabels={}; (window.nmSessionPrior||[]).forEach(function(p){ if(p.label) priorLabels[String(p.label).toLowerCase()]=1; });
 
+  // PR#123 B1: carried live-map from a cross-link INTO the sensation flow (Emotion→Sensation,
+  // Diary→Sensation). Draw the prior chain as real nodes across the top so the map EXTENDS
+  // instead of resetting to blank; the sensation centre connects to the carried tail below.
+  var _carry = window.nmCarriedLive, _carryTail=null;
+  if(_carry && _carry.nodes && _carry.nodes.length){
+    var ncar=_carry.nodes.length;
+    _carry.nodes.forEach(function(c,i){
+      nodes.push({ id:'cy:'+c.id, type:c.type, label:c.label, valence:c.valence||'neutral', _layer:c._layer,
+        x:(i+1)/(ncar+1), y:0.15, r:9 });
+    });
+    (_carry.links||[]).forEach(function(l){ links.push({source:'cy:'+l.source, target:'cy:'+l.target, color:'rgba(255,255,255,0.16)', w:1.4}); });
+    if(_carry.tail) _carryTail='cy:'+_carry.tail;
+  }
+
   // central body node(s). If no location yet but sensations exist, use a generic centre.
   var centerLabel = locs[0] || (sens.length ? _pr95t('a.tools.mini_body','тело') : null);
-  if(!centerLabel) return {nodes:nodes, links:links};
+  if(!centerLabel) return {nodes:nodes, links:links};   // still returns any carried chain
   var cR = 14 + intensity*0.9; // intensity grows the centre
   nodes.push({ id:'c0', type:'area', label:centerLabel, valence:'neutral', _layer:1, x:0.5, y:0.52, r:cR });
+  // PR#123 B1: seam the carried chain's tail into the new sensation centre.
+  if(_carryTail) links.push({source:_carryTail, target:'c0', color:'rgba(0,224,255,0.42)', w:1.6});
   // extra locations as smaller satellites near the centre
   locs.slice(1,3).forEach(function(loc,i){
     var ang = -0.6 + i*1.2;
@@ -7867,6 +7913,38 @@ function nmMiniSensModel(){
     // sticky link — short, faint, to make the bubble read as "attached"
     var lc = val==='negative' ? 'rgba(220,90,90,0.4)' : (val==='positive' ? 'rgba(80,220,180,0.4)' : 'rgba(160,170,190,0.3)');
     links.push({source:'c0', target:'s'+i, color:lc, w:1.5});
+  });
+  return {nodes:nodes, links:links};
+}
+
+// ── PR#123 B1: snapshot the emotion walkthrough's live map as a carry model, so a
+//    cross-link OUT of the emotion flow (→ Sensation) keeps the built chain visible
+//    instead of dropping to a blank canvas. Mirrors buildLiveGraph's construction; the
+//    receiving flow (nmMiniSensModel) re-draws these as real nodes and seams onto the tail.
+function nmMiniEmotionModel(){
+  var nodes=[], links=[], seen={};
+  function addN(id,type,label,valence,layer){ if(seen[id]) return; seen[id]=1; nodes.push({id:id,type:type,label:label,valence:valence||'neutral',_layer:layer}); }
+  function addL(a,b){ links.push({source:a,target:b}); }
+  var _carry=window.nmCarriedLive;   // a prior Sensation→Emotion handoff already in the map
+  if(_carry && _carry.nodes){ _carry.nodes.forEach(function(cn){ addN('cy:'+cn.id,cn.type,cn.label,cn.valence,cn._layer); });
+    (_carry.links||[]).forEach(function(cl){ addL('cy:'+cl.source,'cy:'+cl.target); }); }
+  var st=nmSurveyState||{};
+  var hasConcept = nmThoughtMode && st._concept && st._concept.label;
+  if(hasConcept) addN('concept','concept',st._concept.label,(st._concept.valence||'neutral'),4);
+  (st.emotions||[]).forEach(function(emo,i){
+    if(!emo) return;
+    addN('e:'+emo,'emotion',emo,null,2);
+    if(hasConcept) addL('concept','e:'+emo);
+    var chain=(st.emotionChains&&st.emotionChains[i])||{};
+    (chain.areas||[]).forEach(function(a){
+      var label=(a==='другое'&&chain.customArea)?chain.customArea:a;
+      addN('a:'+label,'area',label,null,3); addL('e:'+emo,'a:'+label);
+      (chain.causes||[]).forEach(function(c){
+        var cl=(c==='другое'&&chain.customCause)?chain.customCause:c;
+        addN('c:'+cl,'cause',cl,null,5); addL('a:'+label,'c:'+cl);
+        (chain.thoughts||[]).forEach(function(t){ addN('t:'+t,'thought',t,null,4); addL('c:'+cl,'t:'+t); });
+      });
+    });
   });
   return {nodes:nodes, links:links};
 }
@@ -8046,6 +8124,9 @@ function nmFinishAndSave(){
 // hand off to the sensation overlay — its nodes link back to this emotion chain.
 function nmSaveAndLinkSensation(){
   nmEnsureSession();
+  // PR#123 B1: carry the emotion chain into the sensation live map so «Сохранить и
+  // привязать к ощущению» EXTENDS the visible map instead of opening a blank canvas.
+  try { nmSetCarriedLive(nmMiniEmotionModel()); } catch(e){}
   nmMarkHandoff(); // PR#112 (#1): timestamped handoff (TTL-guarded)
   document.getElementById('nm-nav-btns').style.display='flex';
   nmSaveSurvey();
@@ -9168,7 +9249,7 @@ function openFsDrilldown(node){
   document.getElementById('nm-fs-dd-title').textContent=nmTranslate(node.label);
   var valTxt=node.valence<0?(rpgT('valence_leak')||'утечка'):(rpgT('valence_resource')||'ресурс');
   if(node.valence===0) valTxt=rpgT('valence_neutral')||'нейтрально';
-  document.getElementById('nm-fs-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+node.count+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'')+node.last_seen:'');
+  document.getElementById('nm-fs-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+nmNodeViewCount(node)+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'')+node.last_seen:'');
   // Translate static labels in FS drill-down panel
   var _fsDdLabels=[{id:'nm-fs-dd-label-conn',key:'connected_nodes',fallback:'Связанные узлы'},{id:'nm-fs-dd-label-freq',key:'frequency_30d',fallback:'Частота за 30 дней'},{id:'nm-fs-dd-label-corr',key:'correlations',fallback:'Корреляции'}];
   _fsDdLabels.forEach(function(item){var el=document.getElementById(item.id);if(el)el.textContent=rpgT(item.key)||item.fallback;});
@@ -9580,7 +9661,7 @@ function nmShowNodeInfo(node){
   var layerNum=(typeof nmNodeLayer==='function')?nmNodeLayer(node):0;
   var col=((typeof nmGetNodeColor==='function')?nmGetNodeColor(node):'rgba(180,190,210,')+'1)';
   var valLabel=node.valence<0?(rpgT('hover_negative')||'негатив'):(node.valence>0?(rpgT('hover_positive')||'позитив'):(rpgT('hover_neutral')||'нейтрал'));
-  var occurs=(rpgT('node_occurs_times')||'встречается {n} раз').replace('{n}', node.count||1);
+  var occurs=(rpgT('node_occurs_times')||'встречается {n} раз').replace('{n}', nmNodeViewCount(node));
   // PR#120: the «appears N times» count is itself a click target that expands the
   // chain list (the count IS the entry point into the gestalt). The dedicated
   // «▾ Цепочки N» button below stays as the explicit affordance.
@@ -9776,14 +9857,34 @@ function nmBindMiniHover(canvas){
     if(nmNiMiniHover!==null){ nmNiMiniHover=null; if(nmNiChainData && !nmNi3D) nmDrawChainMini(nmNiChainData); }
   });
 }
-// ── 3D mini-view: a ForceGraph3D instance (it bundles its own THREE, so it works even
-// when window.THREE is null) with the chain laid out as a FIXED straight line in
-// position order, edges between consecutive nodes, and a slow camera orbit. Toggling
-// back to 2D tears it down. ──
+// ── 3D mini-view (PR#123 C): a ForceGraph3D instance (it bundles its own THREE for the
+// spheres/edges, so it renders even when window.THREE is null) with the chain as a FIXED
+// straight line in position order. PR#123 rewrite: auto-rotate is OFF (it used to fight
+// the user's drag), orbit is smooth (damping), node-drag is disabled so a drag orbits the
+// camera, edges are thick + arrowed, and each node carries a PERSISTENT numbered label
+// sprite (needs a real THREE — lazily loaded here since the atlas may not have mounted). ──
+var _nmThreeLoading=false, _nmThreeCbs=[];
+function nmEnsureThree(cb){
+  if(window.THREE){ THREE=window.THREE; if(cb) cb(); return; }
+  if(cb) _nmThreeCbs.push(cb);
+  if(_nmThreeLoading) return; _nmThreeLoading=true;
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  var done=function(){ THREE=window.THREE||null; _nmThreeLoading=false; var cbs=_nmThreeCbs.slice(); _nmThreeCbs=[]; cbs.forEach(function(f){ try{ f&&f(); }catch(e){} }); };
+  s.onload=done; s.onerror=done; document.head.appendChild(s);
+}
 function nmDestroyMini3D(){
   if(nmNiMini3DRot){ cancelAnimationFrame(nmNiMini3DRot); nmNiMini3DRot=null; }
   if(nmNiMini3DGraph){ try{ nmNiMini3DGraph._destructor && nmNiMini3DGraph._destructor(); }catch(e){} nmNiMini3DGraph=null; }
   var box=document.getElementById('nm-ni-mini-3d'); if(box) box.innerHTML='';
+}
+// Build a persistent "N · label" sprite above a node (only when a real THREE is present).
+function nmMini3DLabelObj(nd){
+  if(!THREE) return null;
+  var tex=nmMake3DLabel(nd.label); if(!tex) return null;
+  var spr=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false, depthTest:false }));
+  spr.scale.set(34,8.5,1); spr.position.set(0,9,0);
+  return spr;
 }
 function nmDrawChainMini3D(data){
   var box=document.getElementById('nm-ni-mini-3d'); if(!box) return;
@@ -9811,23 +9912,26 @@ function nmDrawChainMini3D(data){
     .nodeColor(function(nd){ return nd.color; })
     .nodeVal(function(nd){ return nd.val; })
     .nodeOpacity(0.95)
-    .linkColor(function(){ return 'rgba(255,255,255,0.35)'; })
-    .linkWidth(1.2)
-    .linkDirectionalArrowLength(4).linkDirectionalArrowRelPos(1)
+    .linkColor(function(){ return 'rgba(180,220,255,0.6)'; })
+    .linkWidth(2.4)
+    .linkDirectionalArrowLength(6).linkDirectionalArrowRelPos(1).linkDirectionalArrowColor(function(){ return 'rgba(180,220,255,0.8)'; })
+    .enableNodeDrag(false)          // a drag ORBITS the camera, never yanks a fixed node
     .cooldownTicks(0)
     .showNavInfo(false);
+  try{ g.controlType && g.controlType('orbit'); }catch(e){}
   try{ g.d3Force('charge', null); g.d3Force('link', null); g.d3Force('center', null); }catch(e){}
   nmNiMini3DGraph=g;
-  // Frame the chain, then orbit the camera slowly around it.
+  // Static 3/4 framing — NO auto-orbit RAF (it used to override the user's drag every frame).
   var dist=Math.max(120, span*step*0.9+90);
-  try{ g.cameraPosition({x:0,y:span*step*0.25,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
-  var ang=0;
-  function spin(){
-    ang+=0.0045;
-    try{ g.cameraPosition({ x:Math.sin(ang)*dist, y:span*step*0.18, z:Math.cos(ang)*dist }); }catch(e){}
-    nmNiMini3DRot=requestAnimationFrame(spin);
-  }
-  nmNiMini3DRot=requestAnimationFrame(spin);
+  try{ g.cameraPosition({x:span*step*0.12,y:span*step*0.32+40,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
+  // Smooth, damped manual orbit.
+  setTimeout(function(){ try{ var c=g.controls&&g.controls(); if(c){ c.enableDamping=true; c.dampingFactor=0.14; if('rotateSpeed' in c) c.rotateSpeed=0.85; } }catch(e){} }, 0);
+  // Persistent numbered labels need a real THREE — load it, then attach (graph already
+  // renders spheres+edges meanwhile so the panel is never blank).
+  nmEnsureThree(function(){
+    if(nmNiMini3DGraph!==g) return;   // panel closed / re-rendered while loading
+    try{ g.nodeThreeObjectExtend(true).nodeThreeObject(nmMini3DLabelObj); }catch(e){}
+  });
 }
 function nmDeleteNode(dbId){
   if(!dbId) return;
@@ -10603,7 +10707,7 @@ function openNmDrilldown(node){
   document.getElementById('nm-dd-title').textContent=nmTranslate(node.label);
   var valTxt=node.valence<0?(rpgT('valence_leak')||'утечка'):(rpgT('valence_resource')||'ресурс');
   if(node.valence===0) valTxt=rpgT('valence_neutral')||'нейтрально';
-  document.getElementById('nm-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+node.count+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'Последний: ')+node.last_seen:'');
+  document.getElementById('nm-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+nmNodeViewCount(node)+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'Последний: ')+node.last_seen:'');
 
   // Connected nodes
   var connList=document.getElementById('nm-dd-conn-list');
@@ -17504,11 +17608,11 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=27"></script>
+<script src="assets/js/evolution-path.js?v=28"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
-<script src="assets/js/body-atlas.js?v=33"></script>
+<script src="assets/js/body-atlas.js?v=34"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -17890,6 +17994,7 @@ window.pbMove = pbMove;
     med_search:{ru:'Поиск препарата…',en:'Search a medication…',es:'Buscar un medicamento…'},
     kind_medication:{ru:'Препараты',en:'Medications',es:'Medicamentos'},
     kind_substance:{ru:'Вещества',en:'Substances',es:'Sustancias'},
+    organ_vis_hint:{ru:'Прозрачность слоя: полностью / полупрозрачно / скрыть',en:'Layer transparency: full / semi / hidden',es:'Transparencia de capa: completa / media / oculta'},
     eff_pos:{ru:'Основной терапевтический эффект',en:'Primary therapeutic effect',es:'Efecto terapéutico principal'},
     eff_pos_sub:{ru:'Действие вещества',en:'How it acts',es:'Cómo actúa'},
     eff_neg:{ru:'Основные побочные эффекты',en:'Main side effects',es:'Efectos secundarios principales'},
@@ -18302,9 +18407,37 @@ window.pbMove = pbMove;
     window.__medTint={ pos:pos, neg:neg };
     window.__medOrganMap=buildMedOrganMap(posSlugs,negSlugs);   // Issue#3 hover-tooltip lookup
     var apply=function(){ var aa=window._anatomyAtlas; if(!aa||!window.__medTint) return;
-      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); }catch(e){} };
+      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); medApplyOrganVis(); }catch(e){} };
     apply(); setTimeout(apply,400); setTimeout(apply,950); setTimeout(apply,2100);
   }
+
+  /* ── PR#123 A1: per-organ transparency (👁 Full / Semi / Hidden) ──────────────
+     Each organ chip carries an eye toggle cycling the tinted layer's render opacity so an
+     occluding wrap (muscles/skeleton) can be faded WITHOUT losing its green/red tint. The
+     choice is global per organ-slug (localStorage) and re-applied after every tint pass. */
+  var MED_VIS_KEY='na_med_organ_vis';
+  var MED_ENVELOPE_SLUGS={muscles:1,muscle:1,bones:1,bone:1,skeleton:1,skin:1,joints:1,joint:1,vessels:1};
+  var MED_VIS_OP={full:1.0,semi:0.4,hidden:0};
+  var MED_VIS_GLYPH={full:'👁',semi:'◐',hidden:'🚫'};
+  function medVisLoad(){ try{ return JSON.parse(localStorage.getItem(MED_VIS_KEY)||'{}')||{}; }catch(e){ return {}; } }
+  function medVisSave(m){ try{ localStorage.setItem(MED_VIS_KEY,JSON.stringify(m)); }catch(e){} }
+  function medDefaultVis(slug){ return MED_ENVELOPE_SLUGS[slug]?'semi':'full'; }   // envelope wraps default translucent
+  function medVisFor(slug){ var m=medVisLoad(); return m[slug]||medDefaultVis(slug); }
+  // Re-apply every stored/default per-organ opacity to the freshly-tinted atlas.
+  function medApplyOrganVis(){
+    var a=window._anatomyAtlas; if(!a||!a.setTintOpacity||!curMed) return;
+    var slugs=[].concat(curMed.target_organs_positive||[],curMed.target_organs_negative||[]);
+    slugs.forEach(function(s){ try{ a.setTintOpacity(medResolveSeeds([s]),MED_VIS_OP[medVisFor(s)]); }catch(e){} });
+  }
+  // Cycle one organ chip Full → Semi → Hidden → Full; persist + re-apply live.
+  window.medCycleOrgan=function(ev,slug){
+    if(ev){ ev.stopPropagation(); if(ev.preventDefault) ev.preventDefault(); }
+    var order=['full','semi','hidden']; var next=order[(order.indexOf(medVisFor(slug))+1)%order.length];
+    var m=medVisLoad(); m[slug]=next; medVisSave(m);
+    var a=window._anatomyAtlas; if(a&&a.setTintOpacity){ try{ a.setTintOpacity(medResolveSeeds([slug]),MED_VIS_OP[next]); }catch(e){} }
+    var btn=ev&&ev.currentTarget; if(btn){ btn.textContent=MED_VIS_GLYPH[next]; btn.setAttribute('data-vis',next); }
+    return false;
+  };
 
   /* ── tab switching ──────────────────────────────────────────────────────── */
   window.haSwitchTab = function(tab){
@@ -18542,7 +18675,10 @@ window.pbMove = pbMove;
       var info=oe[s]||oe[String(s).replace(/-/g,'_')];
       var detail=info?(info['detail_'+lang()]||info.detail_ru||''):'';
       var ttl=detail?' title="'+esc(detail)+'"':'';
-      return '<span class="med-organ '+(both?'both':polarity)+'"'+ttl+'>'+esc(organLabel(s))+'</span>';
+      // PR#123 A1: 👁 toggle to fade this organ's tinted layer (Full/Semi/Hidden)
+      var vis=medVisFor(s);
+      var eye='<button type="button" class="med-organ-eye" data-vis="'+vis+'" title="'+esc(tr(T.organ_vis_hint))+'" onclick="medCycleOrgan(event,\''+esc(s)+'\')">'+MED_VIS_GLYPH[vis]+'</button>';
+      return '<span class="med-organ '+(both?'both':polarity)+'" data-seed="'+esc(s)+'"'+ttl+'>'+esc(organLabel(s))+eye+'</span>';
     }).join('');
   }
   window.haSelectMedication=function(slug){
