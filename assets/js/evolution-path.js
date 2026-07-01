@@ -499,10 +499,10 @@
   }
   // PR#123 D3: delete an event straight off the Path → server drops the journey_event
   // (and its now-orphan NeuroMap node), then we re-mount the Path in place.
-  function deletePathEvent(container, ev, lang, btn) {
+  function deletePathEvent(container, ev, lang, btn, skipConfirm) {
     var api = container.__evoApi || {};
     if (!api.token || ev.id == null) return;
-    if (typeof window.confirm === 'function' && !window.confirm(L(CARD_STR.del_confirm, lang))) return;
+    if (!skipConfirm && typeof window.confirm === 'function' && !window.confirm(L(CARD_STR.del_confirm, lang))) return;
     if (btn) { btn.disabled = true; btn.textContent = '…'; }
     fetch((api.apiBase || '') + '/api/me/journey-event/' + encodeURIComponent(ev.id) + '/delete', {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + api.token }
@@ -1776,6 +1776,7 @@
   var MINI_STR = {
     chain:   { ru: 'Цепочка', en: 'Chain', es: 'Cadena' },
     single:  { ru: 'Событие', en: 'Event', es: 'Evento' },
+    del:     { ru: '🗑 Удалить событие', en: '🗑 Delete event', es: '🗑 Eliminar evento' },
     openNm:  { ru: 'Открыть в нейромапе', en: 'Open in NeuroMap', es: 'Abrir en NeuroMapa' },
     noLinks: { ru: 'Связей нет — отдельная запись на спине.', en: 'No links — a standalone entry on the spine.', es: 'Sin enlaces.' },
     walkHint:{ ru: 'Нажми на узел, чтобы пройти по цепочке →', en: 'Tap a node to walk the chain →', es: 'Toca un nodo para recorrer la cadena →' },
@@ -1800,6 +1801,11 @@
     var box = document.createElement('div');
     box.className = 'evo-mini-nm';
     var W = 480, Hm = 400;
+    // PR#125 (Issue 1): owner/superadmin can delete the currently-centred event
+    // straight from this popup (the delete button never rendered here before — it
+    // only lived in the unused showDetailCard path, so users saw no way to prune).
+    var mapi = container.__evoApi || {};
+    var canDelMini = !!(mapi.canDelete && mapi.token);
     box.innerHTML =
       '<div class="evo-mini-head">' +
         '<button class="evo-mini-back" title="' + L(MINI_STR.back, lang) + '" style="display:none;">←</button>' +
@@ -1808,6 +1814,7 @@
       '<div class="evo-mini-body"></div>' +
       '<div class="evo-mini-foot">' +
         '<span class="evo-mini-note"></span>' +
+        (canDelMini ? '<button class="evo-mini-del" style="border-color:rgba(232,93,111,0.6);color:#ff9aa8;">' + L(MINI_STR.del, lang) + '</button>' : '') +
         '<button class="evo-mini-open">' + L(MINI_STR.openNm, lang) + ' →</button>' +
       '</div>';
     canvas.appendChild(box);
@@ -1927,6 +1934,15 @@
 
     backBtn.addEventListener('click', function () { var prev = nav.pop(); if (prev) draw(prev); });
     box.querySelector('.evo-mini-x').addEventListener('click', function () { closeMiniNeuromap(container); });
+    // PR#125 (Issue 1): delete the currently-centred event (the hub) — closes the
+    // popup, then reuses the shared deletePathEvent (confirm + POST + remount).
+    var delBtn = box.querySelector('.evo-mini-del');
+    if (delBtn) delBtn.addEventListener('click', function () {
+      if (typeof window.confirm === 'function' && !window.confirm(L(CARD_STR.del_confirm, lang))) return;
+      delBtn.disabled = true; delBtn.textContent = '…';
+      closeMiniNeuromap(container);
+      deletePathEvent(container, current, lang, null, true);
+    });
     // 5.3: open the FULL neuromap in a NEW TAB, deep-linked to the CURRENT hub + its
     // chain, so the embedded path stays put. account.html reads ?focus / ?chain.
     box.querySelector('.evo-mini-open').addEventListener('click', function () {
