@@ -6944,6 +6944,23 @@ function nmViewRange(){
   return null; // 'all'
 }
 function nmTsInRange(ts){ var r=nmViewRange(); if(!r) return true; return ts>=r.from && ts<=r.to; }
+// PR#123 B3: how many times a node occurs WITHIN the currently-selected period. In 'all'
+// view we show the global dedup count (nm_nodes.count); a Day/Week/Month view counts the
+// node's memberships across chains whose started_at falls in range, so «appears N×»
+// reflects what's actually on screen for the period, not the lifetime total.
+function nmNodeViewCount(node){
+  if(!node) return 1;
+  var r = (typeof nmViewRange==='function') ? nmViewRange() : null;
+  if(!r) return node.count||1;                     // 'all' → global dedup count
+  var chains=(window.nmV2Graph&&nmV2Graph.chains)||[]; var total=0, id=String(node.id);
+  chains.forEach(function(c){
+    var t=c.started_at?new Date(c.started_at).getTime():null;
+    if(t!=null && !nmTsInRange(t)) return;          // chain outside the window
+    (c.node_ids||[]).forEach(function(nid){ if(String(nid)===id) total++; });
+  });
+  return total>0 ? total : 1;                       // visible via last_seen but no in-range chain → ≥1
+}
+window.nmNodeViewCount = nmNodeViewCount;
 var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
@@ -9232,7 +9249,7 @@ function openFsDrilldown(node){
   document.getElementById('nm-fs-dd-title').textContent=nmTranslate(node.label);
   var valTxt=node.valence<0?(rpgT('valence_leak')||'утечка'):(rpgT('valence_resource')||'ресурс');
   if(node.valence===0) valTxt=rpgT('valence_neutral')||'нейтрально';
-  document.getElementById('nm-fs-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+node.count+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'')+node.last_seen:'');
+  document.getElementById('nm-fs-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+nmNodeViewCount(node)+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'')+node.last_seen:'');
   // Translate static labels in FS drill-down panel
   var _fsDdLabels=[{id:'nm-fs-dd-label-conn',key:'connected_nodes',fallback:'Связанные узлы'},{id:'nm-fs-dd-label-freq',key:'frequency_30d',fallback:'Частота за 30 дней'},{id:'nm-fs-dd-label-corr',key:'correlations',fallback:'Корреляции'}];
   _fsDdLabels.forEach(function(item){var el=document.getElementById(item.id);if(el)el.textContent=rpgT(item.key)||item.fallback;});
@@ -9644,7 +9661,7 @@ function nmShowNodeInfo(node){
   var layerNum=(typeof nmNodeLayer==='function')?nmNodeLayer(node):0;
   var col=((typeof nmGetNodeColor==='function')?nmGetNodeColor(node):'rgba(180,190,210,')+'1)';
   var valLabel=node.valence<0?(rpgT('hover_negative')||'негатив'):(node.valence>0?(rpgT('hover_positive')||'позитив'):(rpgT('hover_neutral')||'нейтрал'));
-  var occurs=(rpgT('node_occurs_times')||'встречается {n} раз').replace('{n}', node.count||1);
+  var occurs=(rpgT('node_occurs_times')||'встречается {n} раз').replace('{n}', nmNodeViewCount(node));
   // PR#120: the «appears N times» count is itself a click target that expands the
   // chain list (the count IS the entry point into the gestalt). The dedicated
   // «▾ Цепочки N» button below stays as the explicit affordance.
@@ -10667,7 +10684,7 @@ function openNmDrilldown(node){
   document.getElementById('nm-dd-title').textContent=nmTranslate(node.label);
   var valTxt=node.valence<0?(rpgT('valence_leak')||'утечка'):(rpgT('valence_resource')||'ресурс');
   if(node.valence===0) valTxt=rpgT('valence_neutral')||'нейтрально';
-  document.getElementById('nm-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+node.count+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'Последний: ')+node.last_seen:'');
+  document.getElementById('nm-dd-stats').textContent=(rpgT('appears_x_times')||'Встречается')+' '+nmNodeViewCount(node)+' '+(rpgT('times_word')||'раз')+' | '+valTxt+(node.last_seen?' | '+(rpgT('last_seen_prefix')||'Последний: ')+node.last_seen:'');
 
   // Connected nodes
   var connList=document.getElementById('nm-dd-conn-list');
