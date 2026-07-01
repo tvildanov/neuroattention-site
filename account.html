@@ -1774,6 +1774,16 @@ a.dash-tab:hover { text-decoration:none; }
             <aside class="atlas-layers" id="ha-left-diet" style="display:none;width:300px;flex:0 0 300px;overflow-y:auto;"></aside>
             <div class="atlas-viewport" id="atlas-viewport">
               <div class="atlas-tooltip" id="atlas-tooltip"></div>
+              <!-- PR#125 (Issue 4): coarse layer-visibility toggles for the Meds 3D overlay.
+                   A drug like prednisolone tints the whole skeleton red (осетопороз side-effect);
+                   even at 0.4 the bone cage reads as visual noise over the small target organs.
+                   These master toggles let the user drop the skeleton / muscle wraps entirely so
+                   the tinted internals read cleanly. Shown only on the Medications tab, default ON. -->
+              <div id="med-layer-toggles" style="position:absolute;top:10px;left:10px;z-index:6;display:none;flex-direction:column;gap:5px;background:rgba(12,16,24,0.74);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.09);border-radius:11px;padding:8px 10px;">
+                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-skeleton" checked onchange="medToggleLayer('skeleton',this.checked)" style="accent-color:#FF6B6B;margin:0;"> <span data-i18n="a.med.layer_skeleton">🦴 Скелет</span></label>
+                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-muscles" checked onchange="medToggleLayer('muscles',this.checked)" style="accent-color:#FF6B6B;margin:0;"> <span data-i18n="a.med.layer_muscles">💪 Мускулатура</span></label>
+                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-internal" checked onchange="medToggleLayer('internal',this.checked)" style="accent-color:#6BE89B;margin:0;"> <span data-i18n="a.med.layer_internal">🫀 Внутренние</span></label>
+              </div>
               <div class="atlas-region-panel" id="atlas-region-panel">
                 <button class="arp-x" onclick="atlasCloseRegion()">×</button>
                 <h4 id="arp-name">—</h4>
@@ -9935,14 +9945,24 @@ function nmDrawChainMini3D(data){
     .linkWidth(2.4)
     .linkDirectionalArrowLength(6).linkDirectionalArrowRelPos(1).linkDirectionalArrowColor(function(){ return 'rgba(180,220,255,0.8)'; })
     .enableNodeDrag(false)          // a drag ORBITS the camera, never yanks a fixed node
-    .cooldownTicks(0)
+    // PR#125 (Issue 3): the PR#123 combo of cooldownTicks(0) + nulled forces meant the
+    // fx/fy/fz pins were NEVER copied onto x/y/z — d3-force only applies a pin DURING a
+    // tick, and zero ticks ran, so every node stayed clumped at the initial spiral near
+    // origin while the camera framed a 264px line → a tiny far-off speck, i.e. black.
+    // warmupTicks bakes the pins in before the first paint; a short cooldown then settles.
+    .warmupTicks(30).cooldownTicks(60)
     .showNavInfo(false);
   try{ g.controlType && g.controlType('orbit'); }catch(e){}
-  try{ g.d3Force('charge', null); g.d3Force('link', null); g.d3Force('center', null); }catch(e){}
+  // Keep the charge weak (pins dominate anyway) so the fixed line never wobbles.
+  try{ g.d3Force('charge').strength(-30); }catch(e){}
   nmNiMini3DGraph=g;
-  // Static 3/4 framing — NO auto-orbit RAF (it used to override the user's drag every frame).
-  var dist=Math.max(120, span*step*0.9+90);
-  try{ g.cameraPosition({x:span*step*0.12,y:span*step*0.32+40,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
+  // Frame the whole chain once positions exist (zoomToFit reads the real node bounds, so
+  // it is robust to the exact camera math). Fire on engine-stop and as a timed fallback.
+  var _fit=function(){ if(nmNiMini3DGraph===g){ try{ g.zoomToFit(400,50); }catch(e){} } };
+  try{ g.onEngineStop(_fit); }catch(e){}
+  var dist=Math.max(140, span*step*1.1+120);
+  try{ g.cameraPosition({x:span*step*0.12,y:span*step*0.30+40,z:dist}, {x:0,y:0,z:0}, 0); }catch(e){}
+  setTimeout(_fit, 400); setTimeout(_fit, 900);
   // Smooth, damped manual orbit.
   setTimeout(function(){ try{ var c=g.controls&&g.controls(); if(c){ c.enableDamping=true; c.dampingFactor=0.14; if('rotateSpeed' in c) c.rotateSpeed=0.85; } }catch(e){} }, 0);
   // Persistent numbered labels need a real THREE — load it, then attach (graph already
@@ -17623,7 +17643,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=28"></script>
+<script src="assets/js/evolution-path.js?v=29"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
@@ -18010,6 +18030,9 @@ window.pbMove = pbMove;
     kind_medication:{ru:'Препараты',en:'Medications',es:'Medicamentos'},
     kind_substance:{ru:'Вещества',en:'Substances',es:'Sustancias'},
     organ_vis_hint:{ru:'Прозрачность слоя: полностью / полупрозрачно / скрыть',en:'Layer transparency: full / semi / hidden',es:'Transparencia de capa: completa / media / oculta'},
+    layer_skeleton:{ru:'🦴 Скелет',en:'🦴 Skeleton',es:'🦴 Esqueleto'},
+    layer_muscles:{ru:'💪 Мускулатура',en:'💪 Muscles',es:'💪 Músculos'},
+    layer_internal:{ru:'🫀 Внутренние',en:'🫀 Internal',es:'🫀 Internos'},
     eff_pos:{ru:'Основной терапевтический эффект',en:'Primary therapeutic effect',es:'Efecto terapéutico principal'},
     eff_pos_sub:{ru:'Действие вещества',en:'How it acts',es:'Cómo actúa'},
     eff_neg:{ru:'Основные побочные эффекты',en:'Main side effects',es:'Efectos secundarios principales'},
@@ -18398,7 +18421,9 @@ window.pbMove = pbMove;
     if(a._requestRender) a._requestRender();
   }
   window.medClearTint=function(){
-    window.__medTint=null; window.__medOrganMap=null; var a=window._anatomyAtlas; if(!a) return;
+    window.__medTint=null; window.__medOrganMap=null;
+    var lt=document.getElementById('med-layer-toggles'); if(lt) lt.style.display='none';
+    var a=window._anatomyAtlas; if(!a) return;
     // PR#119: medications now tint via BodyAtlas.tintRegions (same path as Diet),
     // whose state lives in _focusColored/_focusVis — restore it via _clearFocusState.
     try{ if(a._clearFocusState) a._clearFocusState(); }catch(e){}
@@ -18422,9 +18447,35 @@ window.pbMove = pbMove;
     window.__medTint={ pos:pos, neg:neg };
     window.__medOrganMap=buildMedOrganMap(posSlugs,negSlugs);   // Issue#3 hover-tooltip lookup
     var apply=function(){ var aa=window._anatomyAtlas; if(!aa||!window.__medTint) return;
-      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); medApplyOrganVis(); }catch(e){} };
+      try{ aa.tintRegions({ positive:window.__medTint.pos, negative:window.__medTint.neg }); medApplyOrganVis(); medApplyLayerToggles(); }catch(e){} };
     apply(); setTimeout(apply,400); setTimeout(apply,950); setTimeout(apply,2100);
+    var lt=document.getElementById('med-layer-toggles'); if(lt) lt.style.display='flex';
   }
+
+  /* ── PR#125 (Issue 4): coarse master layer toggles for the Meds 3D overlay ──────────
+     Скелет / Мускулатура are occluding envelope wraps; a drug that tints the whole bone
+     cage red (prednisolone → osteoporosis) drowns the tinted internal organs. These
+     checkboxes drop a whole group from the tint via setTintOpacity(op=0), independent of
+     the per-organ 👁 chips. State persists; re-applied after every tint pass. */
+  var MED_LAYER_KEY='na_med_layer_vis';
+  var MED_LAYER_GROUPS={ skeleton:['skeleton'], muscles:['muscles'], internal:['organs','nervous','vessels','female_reproductive','placenta','endocrine'] };
+  var MED_LAYER_OP={ skeleton:0.4, muscles:0.4, internal:1.0 };
+  function medLayerHidden(){ try{ return JSON.parse(localStorage.getItem(MED_LAYER_KEY)||'{}')||{}; }catch(e){ return {}; } }
+  function medApplyLayerToggles(){
+    var a=window._anatomyAtlas; if(!a||!a.setTintOpacity) return;
+    var hid=medLayerHidden();
+    Object.keys(MED_LAYER_GROUPS).forEach(function(group){
+      var on=!hid[group], op=on?MED_LAYER_OP[group]:0;
+      MED_LAYER_GROUPS[group].forEach(function(l){ try{ a.setTintOpacity([l],op); }catch(e){} });
+      var cb=document.getElementById('med-lt-'+group); if(cb) cb.checked=on;
+    });
+  }
+  window.medToggleLayer=function(group,on){
+    var hid=medLayerHidden(); if(on) delete hid[group]; else hid[group]=1;
+    try{ localStorage.setItem(MED_LAYER_KEY,JSON.stringify(hid)); }catch(e){}
+    var a=window._anatomyAtlas; if(a&&a.setTintOpacity){ var op=on?MED_LAYER_OP[group]:0;
+      (MED_LAYER_GROUPS[group]||[]).forEach(function(l){ try{ a.setTintOpacity([l],op); }catch(e){} }); }
+  };
 
   /* ── PR#123 A1: per-organ transparency (👁 Full / Semi / Hidden) ──────────────
      Each organ chip carries an eye toggle cycling the tinted layer's render opacity so an
@@ -18798,6 +18849,9 @@ window.pbMove = pbMove;
     var cs=document.getElementById('ha-cond-search'); if(cs) cs.placeholder=tr(T.cond_search);
     var ms=document.getElementById('ha-med-search'); if(ms) ms.placeholder=tr(T.med_search);
     var ml=document.querySelector('#ha-left-medications .ha-legend'); if(ml){ var sp=ml.querySelectorAll('span span'); if(sp[0]) sp[0].textContent=tr(T.med_legend_pos||{ru:'лечебный эффект',en:'therapeutic',es:'terapéutico'}); if(sp[1]) sp[1].textContent=tr(T.med_legend_neg||{ru:'побочный эффект',en:'side effect',es:'efecto adverso'}); }
+    // PR#125 (Issue 4): Meds 3D layer-toggle labels (a.med.* live here, not in i18n.js).
+    [['med-lt-skeleton',T.layer_skeleton],['med-lt-muscles',T.layer_muscles],['med-lt-internal',T.layer_internal]].forEach(function(p){
+      var cb=document.getElementById(p[0]); if(cb){ var sp2=cb.parentNode.querySelector('span'); if(sp2) sp2.textContent=tr(p[1]); } });
     // rebuild category bars (labels are language-dependent)
     var fc=document.getElementById('ha-fn-cats'); if(fc) delete fc.dataset.built;
     var cc=document.getElementById('ha-cond-cats'); if(cc) delete cc.dataset.built;
