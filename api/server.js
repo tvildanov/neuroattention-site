@@ -2771,9 +2771,12 @@ app.get('/api/me/medical-files/:id/download', requireAuth, async (req, res) => {
       if (!caller || caller.role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
     }
     if (!r2MedicalConfigured || !r2Client) return res.status(503).json({ error: 'Medical storage not configured' });
-    // Legacy safety: if an old row stored a full URL, just redirect to it.
-    if (/^https?:\/\//i.test(file.storage_url)) return res.redirect(302, file.storage_url);
-    const url = await signMedicalGet(file.storage_url, 900);
+    // Legacy safety: if an old row stored a full URL, use it directly; else sign the KEY.
+    const url = /^https?:\/\//i.test(file.storage_url) ? file.storage_url : await signMedicalGet(file.storage_url, 900);
+    // A plain <a href> can't carry the Bearer token, so the UI fetches ?format=json
+    // (authenticated) and window.open()s the returned short-lived signed URL. The bare
+    // 302 remains the default for any direct/programmatic use.
+    if (String(req.query.format || '') === 'json') return res.json({ ok: true, url });
     res.redirect(302, url);
   } catch (err) { console.error('GET medical download:', err); res.status(500).json({ error: err.message }); }
 });
