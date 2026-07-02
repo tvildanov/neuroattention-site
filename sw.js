@@ -78,7 +78,10 @@
 //     register({updateViaCache:'none'}) + reg.update() + a one-time controllerchange
 //     reload in account.html) forces those stale v1 clients to install THIS worker,
 //     which skipWaiting()s, claim()s the page, and purges every old cache.
-var CACHE_NAME = 'na-practices-v35';
+// v39: R2 dual-bucket migration — public assets served off R2, medical documents
+//      in a private bucket read via signed URLs. Backend-only; CACHE_NAME bump
+//      purges any stale account.html.
+var CACHE_NAME = 'na-practices-v39';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

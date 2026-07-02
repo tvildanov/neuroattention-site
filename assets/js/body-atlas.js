@@ -1386,6 +1386,10 @@
     'pancreas':        { layer: 'organs', organ: 'pancreas', parent: null, aliases: ['pancreas'] },
     'thyroid-gland':   { layer: 'organs', organ: 'endocrine', parent: null, aliases: ['thyroid_gland'] },
     'nose':            { layer: 'organs', organ: 'airway', parent: null, aliases: ['nose', 'nasal', 'paranasal'] },
+    // adrenals share the 'kidneys' organ group in the organs GLB (assignOrganTag folds
+    // suprarenal→kidneys) but are a distinct seed for Meds tint — matched by the raw
+    // adrenal/suprarenal mesh tokens so tinting adrenals does NOT recolour the kidneys.
+    'adrenals':        { layer: 'organs', organ: 'kidneys', parent: null, aliases: ['adrenal', 'adrenal_gland', 'suprarenal', 'suprarenal_gland'] },
 
     // ── spine (sub-layer 'spine' of layer 'skeleton') ──
     'spine':           { layer: 'skeleton', organ: 'spine', parent: null, aliases: [], descendants: ['cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacral-spine'] },
@@ -1435,7 +1439,12 @@
   // toggle exactly those layers on before focusing). Empty for unregistered ids.
   Atlas.prototype.layersForSeedIds = function (ids) {
     var seen = {};
+    // Coarse whole-system seeds (Meds PR#121): a target like 'bones'/'muscles'/'vessels'
+    // resolves to a bare GLB-LAYER name (no fine mesh of its own). Recognise those so
+    // tintRegions loads the layer and the layer-wide tint below can paint every mesh.
+    var LAYER_NAMES = { skin: 1, muscles: 1, skeleton: 1, nervous: 1, vessels: 1, organs: 1, female_reproductive: 1, placenta: 1 };
     this._expandSeedIds(ids).forEach(function (i) {
+      if (LAYER_NAMES[i]) { seen[i] = 1; return; }
       var info = SEED_REGION_INFO[i];
       if (info && info.layer) seen[info.layer] = 1;
     });
@@ -1488,6 +1497,10 @@
     if (!this.root) return this;
     var T = window.THREE;
     var GREEN = 0x6BE89B, GREEN_RIM = 0xCFFFE4, RED = 0xFF6B6B, RED_RIM = 0xFFD2D2;
+    // PR#123 A1: envelope layers are tinted as TRANSLUCENT, non-depth-writing shells so
+    // they never physically occlude the internal organs behind them. muscles/skeleton
+    // default to 0.4 (semi) — the per-organ 👁 control can override live.
+    var TINT_ENVELOPE = { skin: 0.16, muscles: 0.4, skeleton: 0.4 };
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
     spec = spec || {};
     // Ensure the target organs' LAYERS are loaded/visible before isolating — without
@@ -1510,13 +1523,21 @@
     negIds.forEach(function (i) { var k = norm(i); if (k) negSet[k] = 1; });
     var hit = function (set, ud) {
       var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
-      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ];
+      // ud.layer last so a coarse whole-system seed ('skeleton'/'muscles'/'vessels')
+      // paints EVERY mesh in that GLB layer (bones/muscles/vessels have no fine seed).
+      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ, ud.layer];
       for (var ci = 0; ci < cands.length; ci++) { if (cands[ci] && set[norm(cands[ci])]) return true; }
       if (bare) { var toks = String(bare).split('_'); for (var ti = 0; ti < toks.length; ti++) { if (toks[ti].length >= 4 && set[norm(toks[ti])]) return true; } }
       return false;
     };
-    var items = [], matchCount = 0;
+    var items = [], matchCount = 0, wires = [];
     this.root.traverse(function (o) {
+      // PR#123 A2: the holographic wireframe overlays (makeWireframe → LineSegments) are
+      // NOT meshes, so the isolate pass below never hid them. When a tint isolated the
+      // target organs, the un-hidden skin/muscle wireframe kept floating as a stray cyan
+      // "net" body ("старая сетчатая модель просвечивает"). Collect + hide them too;
+      // _clearFocusState restores them via _focusVis.
+      if ((o.isLineSegments || o.type === 'LineSegments') && o.visible !== false) { wires.push(o); return; }
       if (!o.isMesh || !o.userData || !o.userData.regionId) return;
       var mat = o.material; if (!mat || !mat.uniforms || !mat.uniforms.uOpacity) return;
       var ud = o.userData;
@@ -1527,6 +1548,7 @@
     });
     if (matchCount === 0) { if (this._requestRender) this._requestRender(); return this; }
     var visChanges = [], boosted = [], colored = [];
+    wires.forEach(function (w) { visChanges.push({ mesh: w, prior: w.visible }); w.visible = false; });
     items.forEach(function (it) {
       var mat = it.mat, ud = it.ud;
       if (it.tone) {
@@ -1540,10 +1562,21 @@
         var c = it.tone === 'pos' ? GREEN : RED, r = it.tone === 'pos' ? GREEN_RIM : RED_RIM;
         mat.uniforms.uColor.value.setHex(c);
         if (mat.uniforms.uRim) mat.uniforms.uRim.value.setHex(r);
-        mat.uniforms.uOpacity.value = 1.0;
-        if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 1.0;
-        if (T && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
-        mat.depthWrite = true; mat.transparent = false;
+        // Envelope layers (skin, and PR#123 A1: muscles + skeleton) are tinted as
+        // TRANSLUCENT, non-depth-writing shells so the tinted internal organs stay
+        // visible through them — a solid opaque muscle/bone/skin wrap physically hides
+        // the stomach/pancreas/adrenals sitting behind it. Internal organs render solid.
+        var envOp = TINT_ENVELOPE[ud.layer];
+        if (envOp != null) {
+          mat.uniforms.uOpacity.value = envOp;
+          if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 0;
+          mat.transparent = true; mat.depthWrite = false;
+        } else {
+          mat.uniforms.uOpacity.value = 1.0;
+          if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = 1.0;
+          if (T && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
+          mat.depthWrite = true; mat.transparent = false;
+        }
         boosted.push(it.o);
         if (it.o.visible !== true) { visChanges.push({ mesh: it.o, prior: it.o.visible }); it.o.visible = true; }
       } else if (it.o.visible !== false) {
@@ -1551,6 +1584,40 @@
       }
     });
     this._focusVis = visChanges; this._focusBoosted = boosted; this._focusColored = colored;
+    if (this._requestRender) this._requestRender();
+    return this;
+  };
+  // PR#123 A1: live per-organ transparency for the Meds tab. After tintRegions() has
+  // painted the chain green/red, this dials the RENDER opacity / visibility of just the
+  // tinted meshes matching `seedIds` (one organ chip) WITHOUT losing the tint colour, so
+  // the user can fade back an occluding wrap (muscles/skeleton) via the chip 👁 control.
+  // op <= 0 hides the mesh; 0 < op < 1 → translucent non-depth-writing shell; op >= 1 → solid.
+  Atlas.prototype.setTintOpacity = function (seedIds, op) {
+    if (!this.root) return this;
+    var T = window.THREE, self = this;
+    var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+    var set = {}; this._expandSeedIds(seedIds || []).forEach(function (i) { var k = norm(i); if (k) set[k] = 1; });
+    if (!Object.keys(set).length) return this;
+    var match = function (ud) {
+      var bare = (ud.layer && ud.baseSlug) ? String(ud.baseSlug).replace(new RegExp('^' + ud.layer + '_'), '') : ud.baseSlug;
+      var cands = [ud.regionId, ud.baseSlug, ud.coarseId, bare, ud.organ, ud.layer];
+      for (var i = 0; i < cands.length; i++) { if (cands[i] && set[norm(cands[i])]) return true; }
+      return false;
+    };
+    (this._focusBoosted || []).forEach(function (o) {
+      var ud = o.userData, mat = o.material;
+      if (!ud || !mat || !mat.uniforms || !mat.uniforms.uOpacity || !match(ud)) return;
+      if (op <= 0.001) {
+        if (o.visible !== false) { (self._focusVis = self._focusVis || []).push({ mesh: o, prior: o.visible }); o.visible = false; }
+        return;
+      }
+      o.visible = true;
+      mat.uniforms.uOpacity.value = op;
+      var solid = op >= 0.999;
+      if (mat.uniforms.uSolid) mat.uniforms.uSolid.value = solid ? 1 : 0;
+      mat.transparent = !solid; mat.depthWrite = solid;
+      if (T && solid && mat.blending !== T.NormalBlending) { mat.blending = T.NormalBlending; mat.needsUpdate = true; }
+    });
     if (this._requestRender) this._requestRender();
     return this;
   };
