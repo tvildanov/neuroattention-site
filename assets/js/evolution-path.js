@@ -198,6 +198,7 @@
         return { id: e.id, layer: e.layer, t: tms(e.t || e.occurred_at), occurred_at: e.occurred_at,
                  label: e.label, valence: e.valence, weight: e.weight || 1, kind: e.kind,
                  source: e.source, session_id: e.session_id || null, nm_type: e.nm_type || null,
+                 position: (e.position != null ? e.position : null), // PR#123 D1: chain order
                  area_kind: e.area_kind || null, payload: e.payload || {}, links: e.links || [] };
       }).sort(function (a, b) { return a.t - b.t; });
     }
@@ -212,6 +213,7 @@
         out.push({ id: e.id, layer: ly.key, t: tms(e.t), occurred_at: e.occurred_at, label: e.label,
                    valence: e.valence, weight: e.weight || 1, kind: e.kind || ly.key,
                    source: e.source, session_id: e.session_id || null,
+                   position: (e.position != null ? e.position : null), // PR#123 D1: chain order
                    nm_type: e.nm_type || null, area_kind: e.area_kind || null,
                    payload: e.payload || {}, links: e.links || [] });
       });
@@ -408,6 +410,9 @@
     time:    { ru: 'Время', en: 'Time', es: 'Hora' },
     links:   { ru: 'Связи', en: 'Links', es: 'Enlaces' },
     open:    { ru: 'Открыть в источнике', en: 'Open in source', es: 'Abrir en la fuente' },
+    del:     { ru: 'Удалить', en: 'Delete', es: 'Eliminar' },
+    del_confirm: { ru: 'Удалить это событие с Пути развития? Если его узел больше нигде не встречается, он исчезнет и с Нейрокарты.', en: 'Delete this event from the Path? If its node occurs nowhere else, it also leaves the NeuroMap.', es: '¿Eliminar este evento del Camino? Si su nodo no aparece en otro lugar, también saldrá del NeuroMapa.' },
+    del_fail: { ru: 'Не удалось удалить', en: 'Delete failed', es: 'No se pudo eliminar' },
     close:   { ru: 'Закрыть', en: 'Close', es: 'Cerrar' },
     intensity:{ ru: 'Интенсивность', en: 'Intensity', es: 'Intensidad' },
     comment: { ru: 'Заметка', en: 'Note', es: 'Nota' },
@@ -454,8 +459,12 @@
     }
 
     var canOpen = canOpenSource(ev);
+    // PR#123 D3: owner/superadmin can delete an event straight off the Path.
+    var api = container.__evoApi || {};
+    var canDel = !!(api.canDelete && api.token && ev.id != null);
     var actions = '<div class="evo-card-actions">';
     if (canOpen) actions += '<button class="evo-open">' + L(CARD_STR.open, lang) + '</button>';
+    if (canDel) actions += '<button class="evo-del" style="border-color:rgba(232,93,111,0.6);color:#ff9aa8;">' + L(CARD_STR.del, lang) + '</button>';
     actions += '<button class="evo-close">' + L(CARD_STR.close, lang) + '</button></div>';
 
     card.innerHTML = rows.join('') + actions;
@@ -463,6 +472,7 @@
     isolatePointer(card);
     var oc = card.querySelector('.evo-close'); if (oc) oc.addEventListener('click', function () { closeDetailCard(container); });
     var op = card.querySelector('.evo-open'); if (op) op.addEventListener('click', function () { openInSource(ev); });
+    var od = card.querySelector('.evo-del'); if (od) od.addEventListener('click', function () { deletePathEvent(container, ev, lang, od); });
     card.querySelectorAll('.evo-rel').forEach(function (b) {
       b.addEventListener('click', function () {
         var r = EVENT_INDEX[String(b.getAttribute('data-id'))];
@@ -486,6 +496,23 @@
   }
   function closeDetailCard(container) {
     var ex = container.querySelector('.evo-detail-card'); if (ex) ex.remove();
+  }
+  // PR#123 D3: delete an event straight off the Path → server drops the journey_event
+  // (and its now-orphan NeuroMap node), then we re-mount the Path in place.
+  function deletePathEvent(container, ev, lang, btn, skipConfirm) {
+    var api = container.__evoApi || {};
+    if (!api.token || ev.id == null) return;
+    if (!skipConfirm && typeof window.confirm === 'function' && !window.confirm(L(CARD_STR.del_confirm, lang))) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    fetch((api.apiBase || '') + '/api/me/journey-event/' + encodeURIComponent(ev.id) + '/delete', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + api.token }
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.ok) { if (btn) { btn.disabled = false; btn.textContent = L(CARD_STR.del, lang); } alert(L(CARD_STR.del_fail, lang)); return; }
+      closeDetailCard(container);
+      // Reload the NeuroMap too (the node may be gone), then re-mount the Path.
+      try { if (typeof window.nmLoadV2Graph === 'function') window.nmLoadV2Graph(); } catch (e) {}
+      mountEvolutionPath(container, api.opts || {});
+    }).catch(function () { if (btn) { btn.disabled = false; btn.textContent = L(CARD_STR.del, lang); } alert(L(CARD_STR.del_fail, lang)); });
   }
   function canOpenSource(ev) {
     var s = (ev.source || '') + '';
@@ -848,7 +875,33 @@
     var bySession = {}, sessionless = [];
     events.forEach(function (e) { if (e.session_id) (bySession[e.session_id] = bySession[e.session_id] || []).push(e); else sessionless.push(e); });
     Object.keys(bySession).forEach(function (sid) {
-      var g = bySession[sid].slice().sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+      // PR#123 D1: order a branch by chain POSITION (authoritative "order it was felt"),
+      // not by occurred_at — a whole modal flow shares one timestamp, so time-sort tie-broke
+      // arbitrarily (sensation drawn before the emotion that preceded it). Fall back to time
+      // when a legacy event carries no position.
+      var g = bySession[sid].slice().sort(function (a, b) {
+        var pa = (a.position != null ? a.position : null), pb = (b.position != null ? b.position : null);
+        if (pa != null && pb != null && pa !== pb) return pa - pb;
+        if (pa != null && pb == null) return -1;
+        if (pa == null && pb != null) return 1;
+        return (a.t || 0) - (b.t || 0);
+      });
+      // PR#123 D1: collapse a node re-logged more than once in the SAME flow (the emotion
+      // walkthrough re-logged its concept/emotion nodes → "interest"/"work·money" appeared
+      // twice, out of order). Key by NeuroMap node id; keep the earliest (already sorted).
+      // Calendar/diet/insight events have no nm_node_id and are never deduped.
+      var seenNode = {};
+      g = g.filter(function (e) {
+        var nid = e.payload && (e.payload.nm_node_id != null ? String(e.payload.nm_node_id) : null);
+        if (!nid) return true;
+        if (seenNode[nid]) return false; seenNode[nid] = 1; return true;
+      });
+      // Re-stamp t to be monotonic in position order so every downstream t-sort
+      // (layoutComponent root pick + neighbour order) agrees with the chain, keeping the
+      // trunk in felt order. Steps are 1ms — inside one flow's timestamp, so the branch's
+      // point on the time axis is unchanged.
+      var baseT = g.length ? (g[0].t || 0) : 0;
+      g.forEach(function (e, i) { if (e.position != null) e.t = baseT + i; });
       var ids = g.map(function (e) { return String(e.id); });
       var adj = {};
       for (var i = 0; i < ids.length - 1; i++) { (adj[ids[i]] = adj[ids[i]] || {})[ids[i + 1]] = 1; (adj[ids[i + 1]] = adj[ids[i + 1]] || {})[ids[i]] = 1; }
@@ -1723,6 +1776,7 @@
   var MINI_STR = {
     chain:   { ru: 'Цепочка', en: 'Chain', es: 'Cadena' },
     single:  { ru: 'Событие', en: 'Event', es: 'Evento' },
+    del:     { ru: '🗑 Удалить событие', en: '🗑 Delete event', es: '🗑 Eliminar evento' },
     openNm:  { ru: 'Открыть в нейромапе', en: 'Open in NeuroMap', es: 'Abrir en NeuroMapa' },
     noLinks: { ru: 'Связей нет — отдельная запись на спине.', en: 'No links — a standalone entry on the spine.', es: 'Sin enlaces.' },
     walkHint:{ ru: 'Нажми на узел, чтобы пройти по цепочке →', en: 'Tap a node to walk the chain →', es: 'Toca un nodo para recorrer la cadena →' },
@@ -1747,6 +1801,11 @@
     var box = document.createElement('div');
     box.className = 'evo-mini-nm';
     var W = 480, Hm = 400;
+    // PR#125 (Issue 1): owner/superadmin can delete the currently-centred event
+    // straight from this popup (the delete button never rendered here before — it
+    // only lived in the unused showDetailCard path, so users saw no way to prune).
+    var mapi = container.__evoApi || {};
+    var canDelMini = !!(mapi.canDelete && mapi.token);
     box.innerHTML =
       '<div class="evo-mini-head">' +
         '<button class="evo-mini-back" title="' + L(MINI_STR.back, lang) + '" style="display:none;">←</button>' +
@@ -1755,6 +1814,7 @@
       '<div class="evo-mini-body"></div>' +
       '<div class="evo-mini-foot">' +
         '<span class="evo-mini-note"></span>' +
+        (canDelMini ? '<button class="evo-mini-del" style="border-color:rgba(232,93,111,0.6);color:#ff9aa8;">' + L(MINI_STR.del, lang) + '</button>' : '') +
         '<button class="evo-mini-open">' + L(MINI_STR.openNm, lang) + ' →</button>' +
       '</div>';
     canvas.appendChild(box);
@@ -1874,6 +1934,15 @@
 
     backBtn.addEventListener('click', function () { var prev = nav.pop(); if (prev) draw(prev); });
     box.querySelector('.evo-mini-x').addEventListener('click', function () { closeMiniNeuromap(container); });
+    // PR#125 (Issue 1): delete the currently-centred event (the hub) — closes the
+    // popup, then reuses the shared deletePathEvent (confirm + POST + remount).
+    var delBtn = box.querySelector('.evo-mini-del');
+    if (delBtn) delBtn.addEventListener('click', function () {
+      if (typeof window.confirm === 'function' && !window.confirm(L(CARD_STR.del_confirm, lang))) return;
+      delBtn.disabled = true; delBtn.textContent = '…';
+      closeMiniNeuromap(container);
+      deletePathEvent(container, current, lang, null, true);
+    });
     // 5.3: open the FULL neuromap in a NEW TAB, deep-linked to the CURRENT hub + its
     // chain, so the embedded path stays put. account.html reads ?focus / ?chain.
     box.querySelector('.evo-mini-open').addEventListener('click', function () {
@@ -2130,6 +2199,9 @@
     st._isSubject = !!opts.subject; // PR#99: subject-scoped views never show the dual switcher
     if (!st.viewType) st.viewType = 'single'; // PR#99 (Phase 2B)
     container.__evo = st;
+    // PR#123 D3: stash creds + opts so the detail-card Delete button can call the API and
+    // re-mount the Path in place. Collective/team/child (subject) views are read-only.
+    container.__evoApi = { apiBase: apiBase, token: token, opts: opts, canDelete: !opts.subject && st.mode !== 'collective' };
 
     container.classList.add('myc-root');
     container.style.padding = '16px 16px 14px';
