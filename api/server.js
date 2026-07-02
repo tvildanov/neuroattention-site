@@ -2242,7 +2242,45 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 047 (orphan journey_events): deleted', mig047.orphan_events_deleted, 'events,', mig047.orphan_links_deleted, 'dangling links');
     } catch (e) { mig047.error = e.message; console.error('migration 047 (orphan journey_events):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-047 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047 });
+    // ── migration 053 (PR R2): asset migration audit log ──────────────────────
+    // One row per source asset copied into R2. Drives idempotency of the
+    // /api/admin/migrate-assets-to-r2 sweep and the mig054 URL rewrite.
+    let mig053 = { ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS asset_migration_log (
+          id BIGSERIAL PRIMARY KEY,
+          source_path TEXT NOT NULL UNIQUE,
+          r2_key TEXT NOT NULL,
+          r2_url TEXT,
+          bucket TEXT NOT NULL,
+          size_bytes BIGINT,
+          sha256 TEXT,
+          migrated_at TIMESTAMPTZ DEFAULT now(),
+          verified BOOLEAN DEFAULT false
+        )`;
+      mig053.ok = true;
+    } catch (e) { mig053.error = e.message; console.error('migration 053 (asset_migration_log):', e.message); }
+
+    // ── migration 054 (PR R2): rewrite DB asset URLs → R2 public URLs ─────────
+    // After the asset sweep populates asset_migration_log, point practices.audio_url
+    // at R2 for every VERIFIED asset. Idempotent (empty log → 0 rewrites); the repo
+    // copies on neuroattention.org keep working, so this never breaks playback.
+    let mig054 = { audio_urls_rewritten: 0 };
+    try {
+      const rows = await sql`
+        UPDATE practices p
+           SET audio_url = l.r2_url
+          FROM asset_migration_log l
+         WHERE l.verified = true
+           AND l.r2_url IS NOT NULL
+           AND p.audio_url = 'https://neuroattention.org/' || l.source_path
+        RETURNING p.id`;
+      mig054.audio_urls_rewritten = rows.length;
+      console.log('migration 054 (asset url rewrite): rewrote', rows.length, 'audio_url rows');
+    } catch (e) { mig054.error = e.message; console.error('migration 054 (asset url rewrite):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-054 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig053, mig054 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -2574,14 +2612,16 @@ app.post('/api/me/diagnoses/:id/files', requireAuth, uploadMedical.single('file'
     // the repo and serves them publicly via GitHub Pages (neuroattention.org/medical/…),
     // which would leak medical data. Require R2 (object storage) for these uploads —
     // never fall back to the public repo. If R2 is unconfigured, refuse the upload.
-    if (!r2Client) {
+    if (!r2MedicalConfigured || !r2Client) {
       return res.status(503).json({ error: 'Secure file storage (R2) is not configured. Medical documents cannot be stored publicly. Please contact an administrator to enable R2.' });
     }
-    const stored = await storeMediaAsset(objectKey, req.file.buffer, mime, `[medical] add doc for diagnosis ${diagId}`);
+    // PHI → private medical bucket. We persist the OBJECT KEY (not a public URL);
+    // reads go through GET /api/me/medical-files/:id/download → signed URL.
+    const stored = await storeMediaAsset(objectKey, req.file.buffer, mime, `[medical] add doc for diagnosis ${diagId}`, 'medical');
     const [row] = await sql`
       INSERT INTO user_medical_files
         (user_id, user_diagnosis_id, filename, display_name, doc_type, doc_date, description, storage_url, size_bytes, mime_type)
-      VALUES (${req.user.id}, ${diagId}, ${safeName}, ${display_name}, ${doc_type}, ${doc_date}, ${description}, ${stored.url}, ${req.file.size || 0}, ${mime})
+      VALUES (${req.user.id}, ${diagId}, ${safeName}, ${display_name}, ${doc_type}, ${doc_date}, ${description}, ${stored.key}, ${req.file.size || 0}, ${mime})
       RETURNING *`;
     res.status(201).json({ ok: true, file: row });
   } catch (err) { console.error('POST medical file:', err); res.status(500).json({ error: err.message }); }
@@ -2598,6 +2638,26 @@ app.get('/api/me/medical-files', requireAuth, async (req, res) => {
       ORDER BY f.doc_date DESC, f.created_at DESC`;
     res.json({ ok: true, files: rows });
   } catch (err) { console.error('GET medical-files:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/me/medical-files/:id/download — 302 → short-lived signed URL (PHI, private bucket).
+// Owner-only; superadmins may read any user's file. storage_url holds the object KEY.
+app.get('/api/me/medical-files/:id/download', requireAuth, async (req, res) => {
+  try {
+    const fileId = parseInt(req.params.id, 10);
+    if (!fileId) return res.status(400).json({ error: 'Bad file id' });
+    const [file] = await sql`SELECT * FROM user_medical_files WHERE id = ${fileId}`;
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    if (file.user_id !== req.user.id) {
+      const [caller] = await sql`SELECT role FROM users WHERE id = ${req.user.id}`;
+      if (!caller || caller.role !== 'superadmin') return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (!r2MedicalConfigured || !r2Client) return res.status(503).json({ error: 'Medical storage not configured' });
+    // Legacy safety: if an old row stored a full URL, just redirect to it.
+    if (/^https?:\/\//i.test(file.storage_url)) return res.redirect(302, file.storage_url);
+    const url = await signMedicalGet(file.storage_url, 900);
+    res.redirect(302, url);
+  } catch (err) { console.error('GET medical download:', err); res.status(500).json({ error: err.message }); }
 });
 
 // DELETE /api/me/medical-files/:id — remove a file (DB row + best-effort storage)
@@ -4803,22 +4863,32 @@ const GITHUB_AUDIO_PATH = 'assets/audio/practices';
 // If any of those are missing, storage falls back to GitHub. Existing
 // files (already on GitHub Pages) keep working forever — only NEW
 // uploads go to R2.
+// R2 DUAL-BUCKET (Option A). Two buckets on the SAME account/credentials:
+//   • PUBLIC  (R2_BUCKET_PUBLIC)  — course audio, 3D body, media, legal PDFs. Served
+//     straight off R2_PUBLIC_BASE_URL (pub-XXX.r2.dev or a custom domain).
+//   • MEDICAL (R2_BUCKET_MEDICAL) — PHI. NO public domain; every read goes through a
+//     short-lived signed URL. `storage_url` stores the OBJECT KEY, not a public URL.
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
-const R2_BUCKET = process.env.R2_BUCKET || '';
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
+const R2_ENDPOINT = (process.env.R2_ENDPOINT || (R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : '')).replace(/\/$/, '');
 const R2_PUBLIC_BASE_URL = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
-const r2Configured = !!(R2_ACCOUNT_ID && R2_BUCKET && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_PUBLIC_BASE_URL);
+// R2_BUCKET is the legacy single-bucket var; R2_BUCKET_PUBLIC supersedes it.
+const R2_BUCKET_PUBLIC = process.env.R2_BUCKET_PUBLIC || process.env.R2_BUCKET || '';
+const R2_BUCKET_MEDICAL = process.env.R2_BUCKET_MEDICAL || '';
+const R2_BUCKET = R2_BUCKET_PUBLIC; // back-compat alias (older references below)
+const r2Configured = !!(R2_ACCOUNT_ID && R2_BUCKET_PUBLIC && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_PUBLIC_BASE_URL);
+const r2MedicalConfigured = !!(R2_ACCOUNT_ID && R2_BUCKET_MEDICAL && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY);
 let r2Client = null;
-if (r2Configured) {
+if (r2Configured || r2MedicalConfigured) {
   try {
     const { S3Client } = require('@aws-sdk/client-s3');
     r2Client = new S3Client({
       region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      endpoint: R2_ENDPOINT,
       credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY }
     });
-    console.log('R2 storage configured: bucket=' + R2_BUCKET);
+    console.log('R2 storage configured: public=' + (R2_BUCKET_PUBLIC || '(none)') + ' medical=' + (R2_BUCKET_MEDICAL || '(none)'));
   } catch (e) {
     console.warn('R2 SDK not loaded:', e.message);
     r2Client = null;
@@ -4830,39 +4900,65 @@ function getStorageStatus() {
   return {
     primary: r2Client ? 'r2' : 'github',
     r2_configured: r2Configured,
-    r2_bucket: R2_BUCKET || null,
+    r2_bucket: R2_BUCKET_PUBLIC || null,
     r2_public_base: R2_PUBLIC_BASE_URL || null,
+    r2_endpoint: R2_ENDPOINT || null,
+    medical_configured: r2MedicalConfigured,
+    buckets: {
+      public: r2Configured ? 'ok' : 'unconfigured',
+      medical: r2MedicalConfigured ? 'ok' : 'unconfigured'
+    },
     github_configured: !!GITHUB_PAT,
     github_repo: GITHUB_REPO_OWNER + '/' + GITHUB_REPO_NAME
   };
 }
 
-// Upload to R2 (if configured) — returns public URL on success
-async function uploadToR2(key, buffer, contentType) {
+// Low-level PUT into a named bucket
+async function putR2(bucket, key, buffer, contentType) {
   if (!r2Client) throw new Error('R2 not configured');
   const { PutObjectCommand } = require('@aws-sdk/client-s3');
   await r2Client.send(new PutObjectCommand({
-    Bucket: R2_BUCKET, Key: key, Body: buffer, ContentType: contentType || 'application/octet-stream'
+    Bucket: bucket, Key: key.replace(/^\/+/, ''), Body: buffer, ContentType: contentType || 'application/octet-stream'
   }));
+}
+
+// Upload to the PUBLIC bucket — returns public URL on success
+async function uploadToR2(key, buffer, contentType) {
+  await putR2(R2_BUCKET_PUBLIC, key, buffer, contentType);
   return R2_PUBLIC_BASE_URL + '/' + key.replace(/^\/+/, '');
 }
 
-// Delete from R2 (best-effort)
-async function deleteFromR2(key) {
+// Sign a GET for a private (medical) object — short-lived
+async function signMedicalGet(key, expiresIn) {
+  const { GetObjectCommand } = require('@aws-sdk/client-s3');
+  const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+  const cmd = new GetObjectCommand({ Bucket: R2_BUCKET_MEDICAL, Key: key.replace(/^\/+/, '') });
+  return getSignedUrl(r2Client, cmd, { expiresIn: expiresIn || 900 });
+}
+
+// Delete from a named R2 bucket (best-effort)
+async function deleteFromR2(key, bucket) {
   if (!r2Client) return;
   try {
     const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
-    await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    await r2Client.send(new DeleteObjectCommand({ Bucket: bucket || R2_BUCKET_PUBLIC, Key: key.replace(/^\/+/, '') }));
   } catch (e) { console.warn('R2 delete failed:', e.message); }
 }
 
-// Storage abstraction: route a file to R2 if configured, else GitHub.
-// Returns { url, backend, key }. Existing GitHub URLs continue working forever.
-async function storeMediaAsset(key, buffer, contentType, commitMessage) {
-  if (r2Client) {
+// Storage abstraction: route a file to R2 (public bucket) if configured, else GitHub.
+// kind==='medical' → PRIVATE bucket, returns { key, bucket:'medical', backend:'r2' }
+//   (NO public url — reads must be signed). Never falls back to GitHub (would leak PHI).
+// otherwise (public) → { url, backend, key, bucket:'public' }. GitHub URLs live forever.
+async function storeMediaAsset(key, buffer, contentType, commitMessage, kind) {
+  if (kind === 'medical') {
+    if (!r2MedicalConfigured || !r2Client) throw new Error('R2 medical bucket not configured');
+    await putR2(R2_BUCKET_MEDICAL, key, buffer, contentType);
+    return { key: key.replace(/^\/+/, ''), bucket: 'medical', backend: 'r2' };
+  }
+  if (r2Client && r2Configured) {
     try {
       const url = await uploadToR2(key, buffer, contentType);
-      return { url, backend: 'r2', key };
+      return { url, backend: 'r2', key, bucket: 'public' };
     } catch (e) {
       console.warn('R2 upload failed, falling back to GitHub:', e.message);
     }
@@ -4870,15 +4966,16 @@ async function storeMediaAsset(key, buffer, contentType, commitMessage) {
   // GitHub fallback
   const b64 = buffer.toString('base64');
   await githubUploadFile(key, b64, commitMessage || ('[storage] add ' + key));
-  return { url: 'https://neuroattention.org/' + key, backend: 'github', key };
+  return { url: 'https://neuroattention.org/' + key, backend: 'github', key, bucket: 'github' };
 }
 
-// Delete by URL — picks the right backend based on the URL host
+// Delete by URL/key — picks the right backend. Medical rows store a bare KEY
+// (medical/…), which matches neither public-host branch → routed to the medical bucket.
 async function deleteMediaAsset(url) {
   if (!url) return;
   if (R2_PUBLIC_BASE_URL && url.indexOf(R2_PUBLIC_BASE_URL) === 0) {
     const key = url.slice(R2_PUBLIC_BASE_URL.length + 1);
-    await deleteFromR2(key);
+    await deleteFromR2(key, R2_BUCKET_PUBLIC);
     return 'r2';
   }
   if (url.indexOf('https://neuroattention.org/') === 0) {
@@ -4888,6 +4985,11 @@ async function deleteMediaAsset(url) {
       if (sha) await githubDeleteFile(path, sha, '[storage] remove ' + path);
     } catch (e) { console.warn('GitHub delete failed:', e.message); }
     return 'github';
+  }
+  // Bare object key → medical bucket (PHI stored as key, not URL)
+  if (R2_BUCKET_MEDICAL && !/^https?:\/\//i.test(url)) {
+    await deleteFromR2(url, R2_BUCKET_MEDICAL);
+    return 'r2-medical';
   }
   return 'unknown';
 }
@@ -9083,6 +9185,121 @@ app.get('/api/admin/storage-status', requireAuth, async (req, res) => {
     if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
     res.json(getStorageStatus());
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── R2 asset migration (Option A) ─────────────────────────────────────────────
+// One-shot sweep: copy the public static assets (course audio, 3D body, media,
+// legal PDFs) from the GitHub-Pages repo into the R2 PUBLIC bucket, verifying each
+// upload with a HEAD on the public URL + content-length match, logging every file
+// to asset_migration_log. Idempotent (re-run skips already-verified rows). The repo
+// copies are LEFT IN PLACE — nothing is deleted here (see safety note in the PR).
+function _httpsGetBuffer(url, redirectsLeft) {
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'neuroattention-migrator' } }, (r) => {
+      if ([301, 302, 303, 307, 308].includes(r.statusCode) && r.headers.location && (redirectsLeft || 0) > 0) {
+        r.resume();
+        return resolve(_httpsGetBuffer(r.headers.location, redirectsLeft - 1));
+      }
+      const chunks = [];
+      r.on('data', (c) => chunks.push(c));
+      r.on('end', () => resolve({ status: r.statusCode, buffer: Buffer.concat(chunks), headers: r.headers }));
+    });
+    req.on('error', reject);
+    req.setTimeout(60000, () => { req.destroy(new Error('timeout')); });
+  });
+}
+function _httpsHead(url, redirectsLeft) {
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, { method: 'HEAD', headers: { 'User-Agent': 'neuroattention-migrator' } }, (r) => {
+      if ([301, 302, 303, 307, 308].includes(r.statusCode) && r.headers.location && (redirectsLeft || 0) > 0) {
+        r.resume();
+        return resolve(_httpsHead(r.headers.location, redirectsLeft - 1));
+      }
+      r.resume();
+      resolve({ status: r.statusCode, headers: r.headers });
+    });
+    req.on('error', reject);
+    req.setTimeout(30000, () => { req.destroy(new Error('timeout')); });
+    req.end();
+  });
+}
+function _contentTypeFor(path) {
+  const p = path.toLowerCase();
+  if (p.endsWith('.mp3')) return 'audio/mpeg';
+  if (p.endsWith('.glb')) return 'model/gltf-binary';
+  if (p.endsWith('.mp4')) return 'video/mp4';
+  if (p.endsWith('.pdf')) return 'application/pdf';
+  if (p.endsWith('.png')) return 'image/png';
+  if (p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'image/jpeg';
+  return 'application/octet-stream';
+}
+
+app.post('/api/admin/migrate-assets-to-r2', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    if (!r2Configured || !r2Client) return res.status(503).json({ error: 'R2 public bucket not configured' });
+    const crypto = require('crypto');
+    const OWNER = GITHUB_REPO_OWNER, REPO = GITHUB_REPO_NAME;
+
+    // 1) Enumerate the repo tree (recursive) and keep only the asset prefixes.
+    const treeUrl = `https://api.github.com/repos/${OWNER}/${REPO}/git/trees/main?recursive=1`;
+    const treeResp = await _httpsGetBuffer(treeUrl, 3);
+    if (treeResp.status !== 200) return res.status(502).json({ error: 'GitHub tree list failed', status: treeResp.status });
+    const tree = JSON.parse(treeResp.buffer.toString('utf8'));
+    const wanted = (p) => (
+      (p.startsWith('assets/audio/practices/') && p.endsWith('.mp3')) ||
+      (p.startsWith('assets/3d/') && p.endsWith('.glb')) ||
+      (p.startsWith('assets/media/') && p.endsWith('.mp4')) ||
+      (p.startsWith('legal/') && p.endsWith('.pdf'))
+    );
+    const paths = (tree.tree || []).filter((n) => n.type === 'blob' && wanted(n.path)).map((n) => n.path);
+
+    // Skip files already verified in a prior run (idempotency).
+    const done = await sql`SELECT source_path FROM asset_migration_log WHERE verified = true`;
+    const doneSet = new Set(done.map((r) => r.source_path));
+    const todo = paths.filter((p) => !doneSet.has(p));
+
+    const results = { total_found: paths.length, already_done: paths.length - todo.length, migrated: 0, verified: 0, failed: 0, total_bytes: 0, failures: [] };
+
+    // 2) Copy in batches of 10.
+    const migrateOne = async (path) => {
+      try {
+        const rawUrl = `https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${path.split('/').map(encodeURIComponent).join('/')}`;
+        const got = await _httpsGetBuffer(rawUrl, 3);
+        if (got.status !== 200 || !got.buffer.length) throw new Error('source fetch ' + got.status);
+        const buf = got.buffer;
+        const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
+        const ct = _contentTypeFor(path);
+        await putR2(R2_BUCKET_PUBLIC, path, buf, ct);
+        const publicUrl = R2_PUBLIC_BASE_URL + '/' + path;
+        // Verify via public HEAD + size match.
+        const head = await _httpsHead(publicUrl, 3);
+        const okSize = head.headers && head.headers['content-length'] ? (parseInt(head.headers['content-length'], 10) === buf.length) : false;
+        const verified = head.status === 200 && okSize;
+        await sql`
+          INSERT INTO asset_migration_log (source_path, r2_key, r2_url, bucket, size_bytes, sha256, verified)
+          VALUES (${path}, ${path}, ${publicUrl}, 'public', ${buf.length}, ${sha256}, ${verified})
+          ON CONFLICT (source_path) DO UPDATE
+            SET r2_key = EXCLUDED.r2_key, r2_url = EXCLUDED.r2_url, bucket = EXCLUDED.bucket,
+                size_bytes = EXCLUDED.size_bytes, sha256 = EXCLUDED.sha256,
+                verified = EXCLUDED.verified, migrated_at = now()`;
+        results.migrated++;
+        results.total_bytes += buf.length;
+        if (verified) results.verified++; else { results.failed++; results.failures.push({ path, reason: 'verify failed (status ' + head.status + ', size ok ' + okSize + ')' }); }
+      } catch (e) {
+        results.failed++;
+        results.failures.push({ path, reason: e.message });
+      }
+    };
+    for (let i = 0; i < todo.length; i += 10) {
+      await Promise.all(todo.slice(i, i + 10).map(migrateOne));
+    }
+    // cap the failures array in the response
+    if (results.failures.length > 40) results.failures = results.failures.slice(0, 40);
+    res.json({ ok: true, ...results });
+  } catch (err) { console.error('migrate-assets-to-r2:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PACK 21: Admin test confirmation email ──
