@@ -5768,6 +5768,18 @@ window.toolsExpandActive = toolsExpandActive;
   function dxT(k,f){ return (typeof window.t==='function') ? window.t(k,f) : (f||k); }
   function dxApi(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
   function dxTok(){ return (typeof naGetToken==='function') ? naGetToken() : localStorage.getItem('na_token'); }
+  // Medical files live in a PRIVATE R2 bucket; storage_url holds the object KEY, not a
+  // public URL. Reads must be authenticated, but a plain <a href> can't send the Bearer
+  // token — so fetch ?format=json (authed) to get a short-lived signed URL, then open it.
+  window.naOpenMedicalFile = function(id){
+    var tok = (typeof naGetToken==='function') ? naGetToken() : localStorage.getItem('na_token');
+    var api = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+    if(!tok){ alert(dxT('a.dx.login_required','Войдите в аккаунт')); return; }
+    fetch(api+'/api/me/medical-files/'+id+'/download?format=json',{headers:{'Authorization':'Bearer '+tok}})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(d){ if(d && d.url){ window.open(d.url,'_blank','noopener'); } else { throw new Error('no url'); } })
+      .catch(function(e){ alert(dxT('a.dx.doc_open_failed','Не удалось открыть документ')+': '+e.message); });
+  };
   function dxIsSuper(){ return !!(window.currentUser && currentUser.serverRole==='superadmin'); }
   function dxL(obj){ if(!obj) return ''; var l=dxLang(); return obj[l] || obj.ru || obj.en || ''; }
   function dxEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -6118,7 +6130,7 @@ window.toolsExpandActive = toolsExpandActive;
         body.innerHTML = files.map(function(f){
           var dn = DX.byId[f.diagnosis_slug] ? dxL(DX.byId[f.diagnosis_slug].name) : '';
           return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0.55rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
-            + '<div style="min-width:0;"><a href="'+dxEsc(f.storage_url)+'" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none;font-size:13px;">'+dxEsc(f.display_name)+'</a>'
+            + '<div style="min-width:0;"><a href="#" onclick="naOpenMedicalFile('+f.id+');return false;" style="color:var(--accent-cyan);text-decoration:none;font-size:13px;cursor:pointer;">'+dxEsc(f.display_name)+'</a>'
             + '<div style="font-size:11px;color:var(--text-dim);">'+dxEsc(typeLbl[f.doc_type]||f.doc_type||'')+' · '+dxFmtDate(f.doc_date)+(dn?' · '+dxEsc(dn):'')+'</div></div>'
             + '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;flex-shrink:0;" onclick="dxDeleteFile('+f.id+', this)">🗑</button>'
             + '</div>';
@@ -6158,7 +6170,7 @@ window.toolsExpandActive = toolsExpandActive;
     list.innerHTML=_profDocs.map(function(f){
       var dn = (window.__condName && window.__condName(f.diagnosis_slug)) || f.diagnosis_slug || '';
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0.55rem 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
-        + '<div style="min-width:0;"><a href="'+dxEsc(f.storage_url)+'" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none;font-size:13px;">'+dxEsc(f.display_name)+'</a>'
+        + '<div style="min-width:0;"><a href="#" onclick="naOpenMedicalFile('+f.id+');return false;" style="color:var(--accent-cyan);text-decoration:none;font-size:13px;cursor:pointer;">'+dxEsc(f.display_name)+'</a>'
         + '<div style="font-size:11px;color:var(--text-dim);">'+dxEsc(typeLbl[f.doc_type]||f.doc_type||'')+' · '+dxFmtDate(f.doc_date)+(dn?' · '+dxEsc(dn):'')+'</div></div>'
         + '<button class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;flex-shrink:0;" onclick="dxDeleteFile('+f.id+', this); setTimeout(profileLoadDocs,400);">🗑</button>'
         + '</div>';
@@ -18177,7 +18189,7 @@ window.pbMove = pbMove;
         var files=((d&&d.files)||[]).filter(function(f){ return f.diagnosis_slug===slug; });
         if(!files.length){ host.innerHTML='<div class="ha-files-empty">'+esc(txt('a.dx.no_docs','Пока нет загруженных документов.'))+'</div>'; return; }
         host.innerHTML=files.map(function(f){
-          return '<div class="ha-file-row"><a href="'+esc(f.storage_url)+'" target="_blank" rel="noopener">'+esc(f.display_name)+'</a>'
+          return '<div class="ha-file-row"><a href="#" onclick="naOpenMedicalFile('+f.id+');return false;" style="cursor:pointer;">'+esc(f.display_name)+'</a>'
             +'<span class="ha-file-date">'+esc(String(f.doc_date||'').slice(0,10))+'</span>'
             +'<button class="ha-file-del" onclick="dxDeleteFile('+f.id+',this)">🗑</button></div>';
         }).join('');
