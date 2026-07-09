@@ -21,11 +21,16 @@ function urlFor(query, win) {
   return 'https://api.gdeltproject.org/api/v2/doc/doc?query=' + encodeURIComponent(query) +
     '&mode=artlist&maxrecords=' + ((win && win.max) || 25) + '&sort=hybridrel&format=json' + range;
 }
+// Returns an articles array on an OK response (possibly empty = genuinely no
+// hits), or null on a hard failure (HTTP error / network / 429 rate-limit). The
+// null vs [] distinction lets the history endpoint AVOID caching an empty day
+// that was really a failed fetch — otherwise a transient 429 would poison the
+// (source,day) cache with a permanent empty result.
 async function tryQuery(query, win) {
   try {
     const d = await getJson(urlFor(query, win));
     return (d && d.articles) || [];
-  } catch (err) { console.warn('[ext/gdelt]', err.message); return []; }
+  } catch (err) { console.warn('[ext/gdelt]', err.message); return null; }
 }
 // GDELT's DOC API only indexes ~3 months back; older windows return nothing.
 var THEMED = '(theme:WAR OR theme:ARMEDCONFLICT OR theme:NATURAL_DISASTER OR theme:DISASTER ' +
@@ -44,8 +49,15 @@ async function build(win) {
   // GDELT's multi-theme boolean query is fragile and sometimes returns nothing.
   // Try the themed high-impact query first; if it's empty, fall back to a simple
   // keyword query so the Social layer isn't permanently "No data".
-  var articles = await tryQuery(THEMED, win);
-  if (!articles.length) articles = await tryQuery(KEYWORD, win);
+  var themed = await tryQuery(THEMED, win);
+  var articles = themed;
+  if (!articles || !articles.length) {
+    var kw = await tryQuery(KEYWORD, win);
+    // Both queries hard-failed (both null) → propagate so the caller (history
+    // endpoint) skips caching; a real "no hits" (either returned []) caches empty.
+    if (themed === null && kw === null) throw new Error('GDELT unreachable (both queries failed)');
+    articles = kw || [];
+  }
   articles.slice(0, (win && win.max) || 25).forEach(function (a) {
     if (!a.title) return;
     out.push({ layer: 'social', source: 'GDELT', source_url: a.url, event_type: 'world_event',
