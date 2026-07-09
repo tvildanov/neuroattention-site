@@ -810,6 +810,15 @@
 
   Atlas.prototype.toggleLayer = function (name, visible) {
     visible = !!visible;
+    // PR#129 (Bug 5, take 2): the `skin` layer (body-male.glb x-ray fill) is a
+    // T-pose body SILHOUETTE that must NEVER render. It has no per-mesh regionId, so
+    // tintRegions' isolate pass skips it — a med/diet whose target includes 'skin'
+    // (prednisolone → skin thinning) used to force-toggle this layer ON via
+    // layersForSeedIds, leaving a translucent "мешок" floating over the real anatomy
+    // that NO master toggle could hide (skin is in no MED_LAYER_GROUP). It only ever
+    // existed for _metrics (bbox is computed while it's already invisible). Pin it
+    // permanently hidden here so no code path can ever reveal it.
+    if (name === 'skin') visible = false;
     if (this._layerState[name]) this._layerState[name].visible = visible;
     else this._layerState[name] = { visible: visible, opacity: (LAYER_STYLE[name] && LAYER_STYLE[name].opacity) || 0.5 };
     var grp = this._layers[name];
@@ -1509,7 +1518,9 @@
     // PR#123 A1: envelope layers are tinted as TRANSLUCENT, non-depth-writing shells so
     // they never physically occlude the internal organs behind them. muscles/skeleton
     // default to 0.4 (semi) — the per-organ 👁 control can override live.
-    var TINT_ENVELOPE = { skin: 0.16, muscles: 0.4, skeleton: 0.4 };
+    // PR#129 (Bug 5, take 2): `skin` is NOT here — the skin silhouette is pinned hidden
+    // in toggleLayer(), so it never becomes a visible envelope regardless of the target.
+    var TINT_ENVELOPE = { muscles: 0.4, skeleton: 0.4 };
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
     spec = spec || {};
     // Ensure the target organs' LAYERS are loaded/visible before isolating — without

@@ -86,7 +86,11 @@
 //      no duplicate /api/diary/save insight); (5) body-atlas.js?v=36 drops the
 //      procedural manikin fallback so a GLB miss shows an empty stage, never a
 //      segmented outline body. Purges any stale account.html + body-atlas.js.
-var CACHE_NAME = 'na-practices-v42';
+// v43: PR#129 follow-up (Bug 5, take 2) — the leftover translucent T-pose "мешок"
+//      was the SKIN layer (body-male.glb x-ray fill), force-shown by tintRegions when
+//      a med/diet targets 'skin' and un-hideable by any master toggle. The skin layer
+//      is now pinned permanently invisible in toggleLayer(); body-atlas.js?v=36→v37.
+var CACHE_NAME = 'na-practices-v43';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
