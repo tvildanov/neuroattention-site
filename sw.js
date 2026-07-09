@@ -102,7 +102,11 @@
 //      /api/me/schedules CRUD + /api/me/schedule/events. evolution-path.js?v=30.
 // v47: Extension requests — floating "Request addition" button on the Human-Atlas
 //      tabs + modal, My-requests profile card, admin Extension queue (migration 059).
-var CACHE_NAME = 'na-practices-v47';
+// v48: PR Library — new «Library» sub-tab in Tools (terms · articles · theories ·
+//      research · functions · methods), migration 058 + api/library-seed.js, Course
+//      Builder library picker, and an Anatomy-atlas function → Library cross-link.
+//      Purges any stale account.html.
+var CACHE_NAME = 'na-practices-v48';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
