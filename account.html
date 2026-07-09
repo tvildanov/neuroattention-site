@@ -17731,7 +17731,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=29"></script>
+<script src="assets/js/evolution-path.js?v=30"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=8"></script>
@@ -18742,6 +18742,7 @@ window.pbMove = pbMove;
       h+=regionSection(T.regions, f.region_ids||[], false);
       if(circuits.length){ h+='<div class="ha-side-h">'+esc(tr(T.circuits))+'</div>'; h+=circuits.map(function(c){ return '<span class="ha-chip" onclick="haFocusList(\''+(c.region_ids||[]).join(',')+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
       if(inConds.length){ h+='<div class="ha-side-h">'+esc(tr(T.in_conditions))+'</div>'; h+=inConds.map(function(c){ return '<span class="ha-chip link" onclick="haGoCondition(\''+c.slug+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
+      if(window.schedButtonHtml) h+=window.schedButtonHtml('function', f.slug, nm(f));
       openDetail(h);
     });
   };
@@ -18936,6 +18937,8 @@ window.pbMove = pbMove;
           return '<span class="ha-chip link" onclick="haGoCondition(\''+l.diagnosis_slug+'\')">'+esc(nm(c))+pt+'</span>'; }).join('');
       }
       var warn=fld(m,'warning'); if(warn){ h+='<div class="med-warn">⚠️ '+esc(warn)+'</div>'; }
+      // schedule this medication (dose/frequency/times → Personal Path)
+      if(!isSub && window.schedButtonHtml) h+=window.schedButtonHtml('medication', m.slug, nm(m));
       // disclaimers (always) + substance-specific harm-reduction notice + resources
       h+='<div class="med-disclaimer">'+esc(tr(T.med_disclaimer))+'</div>';
       if(isSub){
@@ -19436,6 +19439,196 @@ window.pbMove = pbMove;
       renderBanner(); renderChips(); renderGrid();
     }
   });
+})();
+</script>
+<script>
+  /* ── Scheduling module (Part B) ─────────────────────────────────────────────
+     A standalone module (like the Diet module) that lets a user schedule a
+     function / sport / medication. It provides schedButtonHtml() for the atlas
+     detail cards, a modal to create schedules, and a "Мои расписания" manager.
+     Schedules feed the Personal Path via GET /api/me/schedule/events (expanded
+     on the fly, NOT written to journey_events). Uses window.t / getLang /
+     naAuthHeaders. i18n strings are local (all three locales at once). */
+(function(){
+  var API = (window.AUTH_API||'');
+  function SL(){ try{ return (window.getLang?window.getLang():(localStorage.getItem('na_lang')||'ru')).slice(0,2); }catch(e){ return 'ru'; } }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var TS = {
+    add_btn:{ru:'📅 Добавить в расписание',en:'📅 Add to schedule',es:'📅 Añadir al calendario'},
+    title:{ru:'В расписание',en:'Add to schedule',es:'Añadir al calendario'},
+    freq:{ru:'Как часто',en:'How often',es:'Con qué frecuencia'},
+    freq_daily:{ru:'Каждый день',en:'Every day',es:'Cada día'},
+    freq_n:{ru:'Раз в N дней',en:'Every N days',es:'Cada N días'},
+    freq_weekly:{ru:'По дням недели',en:'On weekdays',es:'Días de la semana'},
+    freq_custom:{ru:'Свой интервал',en:'Custom interval',es:'Intervalo propio'},
+    every:{ru:'Каждые',en:'Every',es:'Cada'},
+    days:{ru:'дн.',en:'days',es:'días'},
+    times:{ru:'Время приёма / занятия',en:'Times of day',es:'Horas del día'},
+    add_time:{ru:'+ время',en:'+ time',es:'+ hora'},
+    dose_med:{ru:'Доза',en:'Dose',es:'Dosis'},
+    dose_sport:{ru:'Длительность / интенсивность',en:'Duration / intensity',es:'Duración / intensidad'},
+    dose_fn:{ru:'Заметка (необязательно)',en:'Note (optional)',es:'Nota (opcional)'},
+    dose_ph_med:{ru:'напр. 500 мг',en:'e.g. 500 mg',es:'ej. 500 mg'},
+    dose_ph_sport:{ru:'напр. 30 мин',en:'e.g. 30 min',es:'ej. 30 min'},
+    start:{ru:'Начать с',en:'Start date',es:'Fecha de inicio'},
+    end:{ru:'Закончить (необязательно)',en:'End date (optional)',es:'Fecha de fin (opcional)'},
+    save:{ru:'Сохранить',en:'Save',es:'Guardar'},
+    cancel:{ru:'Отмена',en:'Cancel',es:'Cancelar'},
+    mine:{ru:'Мои расписания',en:'My schedules',es:'Mis horarios'},
+    none:{ru:'Пока нет расписаний',en:'No schedules yet',es:'Aún no hay horarios'},
+    saved:{ru:'Добавлено в расписание ✓',en:'Added to schedule ✓',es:'Añadido al calendario ✓'},
+    del:{ru:'Удалить',en:'Delete',es:'Eliminar'},
+    path_hint:{ru:'Появится на Личном пути при включённом слое.',en:'Shows on the Personal Path when its layer is on.',es:'Aparece en el Camino Personal con su capa activada.'},
+    wd:{ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sa']},
+    kind_function:{ru:'функция',en:'function',es:'función'},
+    kind_sport:{ru:'спорт',en:'sport',es:'deporte'},
+    kind_medication:{ru:'препарат',en:'medication',es:'medicamento'}
+  };
+  function T(k){ var o=TS[k]; if(!o) return k; return o[SL()]||o.ru; }
+  window.schedButtonHtml = function(kind, slug, title){
+    return '<button class="btn btn-ghost sched-add-btn" style="width:100%;margin-top:0.6rem;font-size:13px;" '+
+      'onclick="schedOpen(\''+esc(kind)+'\',\''+esc(slug)+'\',\''+esc((title||'').replace(/'/g,"\\'"))+'\')">'+esc(T('add_btn'))+'</button>';
+  };
+
+  var modal=null, cur={kind:'',slug:'',title:''};
+  function ensureModal(){
+    if(modal) return modal;
+    var css=document.createElement('style');
+    css.textContent=''
+      +'.sched-ov{position:fixed;inset:0;z-index:9500;background:rgba(6,9,15,0.72);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:5vh 1rem;}'
+      +'.sched-ov.open{display:flex;}'
+      +'.sched-card{background:#131922;border:1px solid rgba(255,255,255,0.1);border-radius:16px;max-width:440px;width:100%;padding:1.2rem 1.3rem;color:var(--text-primary,#e7ecf3);box-shadow:0 20px 60px rgba(0,0,0,0.5);}'
+      +'.sched-card h3{margin:0 0 0.2rem;font-size:17px;}'
+      +'.sched-sub{font-size:12px;opacity:0.7;margin-bottom:0.9rem;}'
+      +'.sched-row{margin:0.7rem 0;}'
+      +'.sched-row label{display:block;font-size:12px;opacity:0.8;margin-bottom:0.3rem;}'
+      +'.sched-card select,.sched-card input[type=text],.sched-card input[type=date],.sched-card input[type=number],.sched-card input[type=time]{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.13);border-radius:9px;padding:0.45rem 0.6rem;color:inherit;font-size:14px;width:100%;box-sizing:border-box;}'
+      +'.sched-wd{display:flex;gap:4px;flex-wrap:wrap;}'
+      +'.sched-wd button{flex:1;min-width:34px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.13);border-radius:8px;color:inherit;font-size:12px;padding:0.35rem 0;cursor:pointer;}'
+      +'.sched-wd button.on{background:#4a7cff;border-color:#4a7cff;color:#fff;}'
+      +'.sched-times{display:flex;flex-direction:column;gap:5px;}'
+      +'.sched-time-row{display:flex;gap:6px;align-items:center;}'
+      +'.sched-time-row input{flex:1;}'
+      +'.sched-time-row button{background:rgba(255,90,90,0.15);border:1px solid rgba(255,90,90,0.3);color:#ff8a8a;border-radius:8px;width:34px;cursor:pointer;}'
+      +'.sched-addtime{background:none;border:1px dashed rgba(255,255,255,0.2);color:inherit;border-radius:8px;padding:0.3rem 0.6rem;font-size:12px;cursor:pointer;opacity:0.85;margin-top:4px;}'
+      +'.sched-actions{display:flex;gap:8px;margin-top:1rem;}'
+      +'.sched-actions .btn{flex:1;}'
+      +'.sched-mine{margin-top:1.2rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.8rem;}'
+      +'.sched-mine h4{margin:0 0 0.5rem;font-size:13px;opacity:0.85;}'
+      +'.sched-item{display:flex;align-items:center;gap:8px;padding:0.4rem 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.05);}'
+      +'.sched-item .si-name{flex:1;}'
+      +'.sched-item .si-meta{font-size:11px;opacity:0.6;}'
+      +'.sched-item.off{opacity:0.45;}'
+      +'.sched-item .si-del{background:none;border:none;color:#ff7a7a;cursor:pointer;font-size:14px;}'
+      +'.sched-kind-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,0.08);margin-left:6px;vertical-align:middle;}';
+    document.head.appendChild(css);
+    modal=document.createElement('div');
+    modal.className='sched-ov'; modal.id='sched-ov';
+    modal.addEventListener('click',function(e){ if(e.target===modal) schedClose(); });
+    modal.innerHTML=''
+      +'<div class="sched-card">'
+      +'  <h3 id="sched-title"></h3><div class="sched-sub" id="sched-sub"></div>'
+      +'  <div class="sched-row"><label id="sched-l-freq"></label><select id="sched-freq" onchange="schedFreqChange()"></select></div>'
+      +'  <div class="sched-row" id="sched-n-row" style="display:none;"><label id="sched-l-every"></label><input type="number" id="sched-n" min="1" max="365" value="2"></div>'
+      +'  <div class="sched-row" id="sched-wd-row" style="display:none;"><div class="sched-wd" id="sched-wd"></div></div>'
+      +'  <div class="sched-row"><label id="sched-l-times"></label><div class="sched-times" id="sched-times"></div><button class="sched-addtime" id="sched-addtime" onclick="schedAddTime()"></button></div>'
+      +'  <div class="sched-row"><label id="sched-l-dose"></label><input type="text" id="sched-dose"></div>'
+      +'  <div class="sched-row" style="display:flex;gap:8px;"><div style="flex:1;"><label id="sched-l-start"></label><input type="date" id="sched-start"></div><div style="flex:1;"><label id="sched-l-end"></label><input type="date" id="sched-end"></div></div>'
+      +'  <div class="sched-actions"><button class="btn btn-ghost" id="sched-cancel" onclick="schedClose()"></button><button class="btn btn-solid" id="sched-save" onclick="schedSave()"></button></div>'
+      +'  <div class="sched-mine"><h4 id="sched-mine-h"></h4><div id="sched-mine-list"></div></div>'
+      +'</div>';
+    document.body.appendChild(modal);
+    return modal;
+  }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function addTimeRow(val){
+    var host=document.getElementById('sched-times');
+    var row=document.createElement('div'); row.className='sched-time-row';
+    row.innerHTML='<input type="time" value="'+esc(val||'09:00')+'"><button title="'+esc(T('del'))+'" onclick="this.parentNode.remove()">✕</button>';
+    host.appendChild(row);
+  }
+  window.schedAddTime=function(){ addTimeRow('09:00'); };
+  window.schedFreqChange=function(){
+    var f=document.getElementById('sched-freq').value;
+    document.getElementById('sched-n-row').style.display=(f==='every_n_days'||f==='custom')?'block':'none';
+    document.getElementById('sched-wd-row').style.display=(f==='weekly')?'block':'none';
+  };
+  window.schedOpen=function(kind, slug, title){
+    ensureModal(); cur={kind:kind,slug:slug,title:title||slug};
+    var kb=T('kind_'+kind)||kind;
+    document.getElementById('sched-title').textContent=T('title');
+    document.getElementById('sched-sub').innerHTML=esc(title||slug)+'<span class="sched-kind-badge">'+esc(kb)+'</span> · '+esc(T('path_hint'));
+    document.getElementById('sched-l-freq').textContent=T('freq');
+    var fs=document.getElementById('sched-freq');
+    fs.innerHTML='<option value="daily">'+esc(T('freq_daily'))+'</option>'+
+      '<option value="every_n_days">'+esc(T('freq_n'))+'</option>'+
+      '<option value="weekly">'+esc(T('freq_weekly'))+'</option>'+
+      '<option value="custom">'+esc(T('freq_custom'))+'</option>';
+    document.getElementById('sched-l-every').textContent=T('every');
+    // weekday chips
+    var wd=document.getElementById('sched-wd'); var names=TS.wd[SL()]||TS.wd.ru;
+    wd.innerHTML=names.map(function(n,i){ return '<button type="button" data-wd="'+i+'" onclick="this.classList.toggle(\'on\')">'+esc(n)+'</button>'; }).join('');
+    document.getElementById('sched-l-times').textContent=T('times');
+    document.getElementById('sched-addtime').textContent=T('add_time');
+    document.getElementById('sched-times').innerHTML=''; addTimeRow('09:00');
+    var dl=document.getElementById('sched-l-dose'); var di=document.getElementById('sched-dose');
+    dl.textContent=(kind==='medication')?T('dose_med'):(kind==='sport'?T('dose_sport'):T('dose_fn'));
+    di.value=''; di.placeholder=(kind==='medication')?T('dose_ph_med'):(kind==='sport'?T('dose_ph_sport'):'');
+    document.getElementById('sched-l-start').textContent=T('start');
+    document.getElementById('sched-l-end').textContent=T('end');
+    var today=new Date(); document.getElementById('sched-start').value=today.getFullYear()+'-'+pad2(today.getMonth()+1)+'-'+pad2(today.getDate());
+    document.getElementById('sched-end').value='';
+    document.getElementById('sched-cancel').textContent=T('cancel');
+    document.getElementById('sched-save').textContent=T('save');
+    document.getElementById('sched-mine-h').textContent=T('mine');
+    schedFreqChange();
+    modal.classList.add('open');
+    schedLoadMine();
+  };
+  window.schedClose=function(){ if(modal) modal.classList.remove('open'); };
+  window.schedSave=function(){
+    var f=document.getElementById('sched-freq').value;
+    var times=[].slice.call(document.querySelectorAll('#sched-times input[type=time]')).map(function(i){return i.value;}).filter(Boolean);
+    var weekdays=[].slice.call(document.querySelectorAll('#sched-wd button.on')).map(function(b){return parseInt(b.getAttribute('data-wd'),10);});
+    var body={ kind:cur.kind, ref_slug:cur.slug, title:cur.title, frequency_type:f,
+      frequency_value:parseInt(document.getElementById('sched-n').value,10)||1,
+      weekdays:weekdays, times:times, dose:document.getElementById('sched-dose').value||null,
+      start_date:document.getElementById('sched-start').value, end_date:document.getElementById('sched-end').value||null };
+    var btn=document.getElementById('sched-save'); btn.disabled=true;
+    fetch(API+'/api/me/schedules',{method:'POST',headers:naAuthHeaders(),body:JSON.stringify(body)})
+      .then(function(r){return r.json();})
+      .then(function(j){ btn.disabled=false;
+        if(j&&j.ok){ btn.textContent=T('saved'); schedLoadMine(); setTimeout(function(){ btn.textContent=T('save'); },1500);
+          try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }
+      }).catch(function(){ btn.disabled=false; });
+  };
+  function schedLoadMine(){
+    var host=document.getElementById('sched-mine-list'); if(!host) return;
+    fetch(API+'/api/me/schedules',{headers:naAuthHeaders()}).then(function(r){return r.json();}).then(function(j){
+      var rows=(j&&j.schedules)||[];
+      if(!rows.length){ host.innerHTML='<div style="font-size:12px;opacity:0.6;">'+esc(T('none'))+'</div>'; return; }
+      host.innerHTML=rows.map(function(s){
+        var meta=schedFreqLabel(s)+(s.times&&s.times.length?(' · '+s.times.map(function(t){return String(t).slice(0,5);}).join(', ')):'')+(s.dose?(' · '+esc(s.dose)):'');
+        return '<div class="sched-item'+(s.enabled?'':' off')+'">'+
+          '<input type="checkbox" '+(s.enabled?'checked':'')+' onchange="schedToggle('+s.id+',this.checked)">'+
+          '<div class="si-name">'+esc(s.title||s.ref_slug)+'<span class="sched-kind-badge">'+esc(T('kind_'+s.kind)||s.kind)+'</span><div class="si-meta">'+meta+'</div></div>'+
+          '<button class="si-del" title="'+esc(T('del'))+'" onclick="schedDelete('+s.id+')">✕</button></div>';
+      }).join('');
+    }).catch(function(){});
+  }
+  function schedFreqLabel(s){
+    if(s.frequency_type==='daily') return T('freq_daily');
+    if(s.frequency_type==='weekly'){ var names=TS.wd[SL()]||TS.wd.ru; return (s.weekdays&&s.weekdays.length?s.weekdays.map(function(w){return names[w];}).join(' '):T('freq_weekly')); }
+    return T('every')+' '+(s.frequency_value||1)+' '+T('days');
+  }
+  window.schedToggle=function(id,on){
+    fetch(API+'/api/me/schedules/'+id,{method:'PUT',headers:naAuthHeaders(),body:JSON.stringify({enabled:on})})
+      .then(function(){ schedLoadMine(); try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }).catch(function(){});
+  };
+  window.schedDelete=function(id){
+    fetch(API+'/api/me/schedules/'+id,{method:'DELETE',headers:naAuthHeaders()})
+      .then(function(){ schedLoadMine(); try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }).catch(function(){});
+  };
 })();
 </script>
 </body>
