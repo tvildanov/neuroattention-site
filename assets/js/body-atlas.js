@@ -223,22 +223,14 @@
     });
   }
 
-  // r128 has no CapsuleGeometry (added in r130) — approximate with a cylinder.
-  // Signature mirrors CapsuleGeometry(radius, length, capSegs, radialSegs).
-  function CapGeo(r, len, _capSegs, radialSegs) {
-    return new window.THREE.CylinderGeometry(r, r, len + r, radialSegs || 12, 1, false);
-  }
+  // PR#129 (Bug 5): CapGeo (the r128 capsule approximation) is gone with the
+  // procedural manikin it built — the body is exclusively the real GLB silhouette now.
 
-  // wireframe "net" overlay for a geometry
-  function makeWireframe(geom, color, opacity) {
-    var wf = new window.THREE.WireframeGeometry(geom);
-    var mat = new window.THREE.LineBasicMaterial({
-      color: color != null ? color : COLD_CYAN,
-      transparent: true, opacity: opacity != null ? opacity : 0.22,
-      depthWrite: false
-    });
-    return new window.THREE.LineSegments(wf, mat);
-  }
+  // PR#128: makeWireframe() (the holographic "net" overlay) removed. It was the last
+  // producer of LineSegments on the body; the legacy segmented outline body that kept
+  // resurfacing in the Medications/Diet tint view came from it. The body now renders as
+  // x-ray fill only. The isolate/tint passes still defensively hide any stray
+  // LineSegments (e.g. from a GLB) so no future net can leak back in.
 
   // ── brain region catalogue (i18n names + placeholder descriptions) ─────────
   // Positions are normalized inside the brain's local space (set later).
@@ -430,12 +422,23 @@
   Atlas.prototype._loadBody = function () {
     var self = this, T = window.THREE;
     var loader = new T.GLTFLoader();
-    loader.load(BODY_GLB, function (gltf) {
-      self._mountBody(gltf.scene);
-    }, undefined, function (err) {
-      console.warn('[BodyAtlas] GLB load failed, using procedural body', err);
-      self._mountBody(null);   // procedural fallback humanoid
-    });
+    // PR#129 (Bug 5): the real body silhouette (body-male.glb) is the ONLY body we
+    // ever show. A transient miss (stale SW, network blip) used to fall back to a
+    // segmented procedural "manikin" — the stylized outline Nick reported floating in
+    // the Medications/Diet tint view with no organs tinted. Retry a few times before
+    // giving up; on final failure we keep an EMPTY stage + message, never a manikin.
+    var tries = 0, MAX_TRIES = 3;
+    function attempt() {
+      tries++;
+      loader.load(BODY_GLB, function (gltf) {
+        self._mountBody(gltf.scene);
+      }, undefined, function (err) {
+        if (tries < MAX_TRIES) { setTimeout(attempt, 600 * tries); return; }
+        console.warn('[BodyAtlas] body GLB failed after ' + tries + ' tries', err);
+        self._mountBody(null);   // empty stage + error message — NO procedural manikin
+      });
+    }
+    attempt();
   };
 
   Atlas.prototype._mountBody = function (gltfScene) {
@@ -449,31 +452,42 @@
     }
 
     if (srcMeshes.length) {
-      // Real mesh → x-ray fill + wireframe net, baked to world space.
+      // Real mesh → x-ray fill only, baked to world space.
+      // PR#128: the holographic wireframe "net" overlay is GONE. It was the legacy
+      // segmented outline body ("старая сетчатая модель") that leaked into the
+      // Medications/Diet tint view: tintRegions force-shows the skin layer to isolate
+      // organs, and on a no-match tint the stray cyan LineSegments net kept floating.
+      // The x-ray fill alone gives the body silhouette; nothing else re-creates a net.
       srcMeshes.forEach(function (m) {
         var g = m.geometry.clone();
         g.applyMatrix4(m.matrixWorld);
         var fill = new T.Mesh(g, makeXrayMaterial({ color: COLD_CYAN, opacity: 0.5, glow: 0.7 }));
         skin.add(fill);
-        skin.add(makeWireframe(g, COLD_CYAN, 0.18));
       });
     } else {
-      // Procedural humanoid fallback (capsule torso + limbs) so the tool never
-      // shows an empty stage if the asset is unavailable.
-      var body = this._proceduralBody();
-      skin.add(body);
+      // PR#129 (Bug 5): body GLB unavailable after retries. Do NOT synthesize a
+      // procedural manikin (Nick: the segmented outline body must be gone). Leave the
+      // skin group EMPTY and surface a persistent message; the rest of the pipeline
+      // still runs on nominal metrics so nothing downstream throws.
+      this._bodyLoadFailed = true;
     }
 
-    // center + normalize scale so total height ≈ 2.0 units, centered at origin
-    var box = new T.Box3().setFromObject(skin);
-    var size = new T.Vector3(); box.getSize(size);
-    var center = new T.Vector3(); box.getCenter(center);
-    var targetH = 2.0;
-    var s = size.y > 0.0001 ? targetH / size.y : 1;
-    skin.scale.setScalar(s);
-    // recompute after scale to re-center
-    box = new T.Box3().setFromObject(skin); box.getCenter(center); box.getSize(size);
-    skin.position.sub(center);
+    // center + normalize scale so total height ≈ 2.0 units, centered at origin.
+    // PR#129 (Bug 5): when the body GLB failed, skin is empty → its Box3 is degenerate
+    // (min=+Inf/max=-Inf), which would poison every metric with NaN/Infinity. Fall
+    // back to a nominal 2.0-unit humanoid frame so anatomy/sensation placement stays
+    // finite, WITHOUT drawing any manikin geometry.
+    if (!this._bodyLoadFailed) {
+      var box = new T.Box3().setFromObject(skin);
+      var size = new T.Vector3(); box.getSize(size);
+      var center = new T.Vector3(); box.getCenter(center);
+      var targetH = 2.0;
+      var s = size.y > 0.0001 ? targetH / size.y : 1;
+      skin.scale.setScalar(s);
+      // recompute after scale to re-center
+      box = new T.Box3().setFromObject(skin); box.getCenter(center); box.getSize(size);
+      skin.position.sub(center);
+    }
 
     this.root.add(skin);
     this._layers.skin = skin;
@@ -483,7 +497,9 @@
     this._layerState.skin = { visible: true, opacity: 0.5 };
 
     // metrics for anatomy placement (in root space, body centered at origin)
-    var bb = new T.Box3().setFromObject(skin);
+    var bb = this._bodyLoadFailed
+      ? new T.Box3(new T.Vector3(-0.28, -1.0, -0.14), new T.Vector3(0.28, 1.0, 0.14))
+      : new T.Box3().setFromObject(skin);
     var H = bb.max.y - bb.min.y;
     this._metrics = {
       box: bb,
@@ -507,24 +523,17 @@
     this._applyLayerConfig();
     this._applyMode(this.mode);
     this._emit('ready', {});
-    this._hideLoadingOverlay();   // first GLB is in — drop the spinner
-  };
-
-  Atlas.prototype._proceduralBody = function () {
-    var T = window.THREE, g = new T.Group();
-    function part(geo, x, y, z) {
-      var m = new T.Mesh(geo, makeXrayMaterial({ opacity: 0.5, glow: 0.7 }));
-      m.position.set(x, y, z); g.add(m);
-      g.add((function () { var wf = makeWireframe(geo, COLD_CYAN, 0.18); wf.position.set(x, y, z); return wf; })());
+    if (this._bodyLoadFailed) {
+      // Keep a persistent, non-blocking message instead of a manikin or blank stage.
+      var l = (window.getLang && window.getLang()) || (document.documentElement.lang || 'ru');
+      l = String(l).slice(0, 2);
+      this._showLoadingOverlay(l === 'en' ? 'Could not load the 3D model. Check your connection and reopen.'
+        : l === 'es' ? 'No se pudo cargar el modelo 3D. Revisa la conexión y reábrelo.'
+        : 'Не удалось загрузить 3D-модель. Проверьте соединение и откройте заново.');
+      var sp = this._loadingOverlay && this._loadingOverlay.querySelector('div'); if (sp) sp.style.display = 'none';
+    } else {
+      this._hideLoadingOverlay();   // first GLB is in — drop the spinner
     }
-    part(new T.SphereGeometry(0.16, 24, 18), 0, 1.55, 0);            // head
-    part(new T.CylinderGeometry(0.07, 0.09, 0.18, 16), 0, 1.38, 0);  // neck
-    part(CapGeo(0.26, 0.55, 8, 16), 0, 1.0, 0);       // torso
-    part(CapGeo(0.09, 0.55, 6, 12), -0.34, 1.05, 0);  // arm L
-    part(CapGeo(0.09, 0.55, 6, 12), 0.34, 1.05, 0);   // arm R
-    part(CapGeo(0.12, 0.7, 6, 12), -0.13, 0.4, 0);    // leg L
-    part(CapGeo(0.12, 0.7, 6, 12), 0.13, 0.4, 0);     // leg R
-    return g;
   };
 
   // ── real anatomical brain (Z-Anatomy) — lazy, streamed once ──────────────────
@@ -801,6 +810,15 @@
 
   Atlas.prototype.toggleLayer = function (name, visible) {
     visible = !!visible;
+    // PR#129 (Bug 5, take 2): the `skin` layer (body-male.glb x-ray fill) is a
+    // T-pose body SILHOUETTE that must NEVER render. It has no per-mesh regionId, so
+    // tintRegions' isolate pass skips it — a med/diet whose target includes 'skin'
+    // (prednisolone → skin thinning) used to force-toggle this layer ON via
+    // layersForSeedIds, leaving a translucent "мешок" floating over the real anatomy
+    // that NO master toggle could hide (skin is in no MED_LAYER_GROUP). It only ever
+    // existed for _metrics (bbox is computed while it's already invisible). Pin it
+    // permanently hidden here so no code path can ever reveal it.
+    if (name === 'skin') visible = false;
     if (this._layerState[name]) this._layerState[name].visible = visible;
     else this._layerState[name] = { visible: visible, opacity: (LAYER_STYLE[name] && LAYER_STYLE[name].opacity) || 0.5 };
     var grp = this._layers[name];
@@ -1500,7 +1518,9 @@
     // PR#123 A1: envelope layers are tinted as TRANSLUCENT, non-depth-writing shells so
     // they never physically occlude the internal organs behind them. muscles/skeleton
     // default to 0.4 (semi) — the per-organ 👁 control can override live.
-    var TINT_ENVELOPE = { skin: 0.16, muscles: 0.4, skeleton: 0.4 };
+    // PR#129 (Bug 5, take 2): `skin` is NOT here — the skin silhouette is pinned hidden
+    // in toggleLayer(), so it never becomes a visible envelope regardless of the target.
+    var TINT_ENVELOPE = { muscles: 0.4, skeleton: 0.4 };
     var norm = function (s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ''); };
     spec = spec || {};
     // Ensure the target organs' LAYERS are loaded/visible before isolating — without
@@ -1546,7 +1566,16 @@
       if (tone) matchCount++;
       items.push({ o: o, mat: mat, ud: ud, tone: tone });
     });
-    if (matchCount === 0) { if (this._requestRender) this._requestRender(); return this; }
+    if (matchCount === 0) {
+      // Nothing matched, but still hide any stray wire-net so a no-match tint never
+      // leaves an old "сетчатая модель" floating (PR#128; defensive — makeWireframe is
+      // gone, but a GLB could ship its own LineSegments). Record for _clearFocusState.
+      var vc0 = [];
+      wires.forEach(function (w) { vc0.push({ mesh: w, prior: w.visible }); w.visible = false; });
+      this._focusVis = vc0;
+      if (this._requestRender) this._requestRender();
+      return this;
+    }
     var visChanges = [], boosted = [], colored = [];
     wires.forEach(function (w) { visChanges.push({ mesh: w, prior: w.visible }); w.visible = false; });
     items.forEach(function (it) {
