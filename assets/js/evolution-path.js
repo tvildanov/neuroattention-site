@@ -31,10 +31,20 @@
     { key: 'thought',   label: { ru: 'Мысли',     en: 'Thoughts',   es: 'Pensamientos' } },
     { key: 'sensation', label: { ru: 'Ощущения',  en: 'Sensations', es: 'Sensaciones' } },
     { key: 'insight',   label: { ru: 'Инсайты',   en: 'Insights',   es: 'Insights' } },
-    { key: 'xp_gain',   label: { ru: 'XP и уровень', en: 'XP & level', es: 'XP y nivel' } }
+    { key: 'xp_gain',   label: { ru: 'XP и уровень', en: 'XP & level', es: 'XP y nivel' } },
+    // Part B — scheduled applications of functions / sports / medications. These
+    // ride on-the-fly events from GET /api/me/schedule/events (never journey_events)
+    // and default to OFF (st.hidden seeded true in mountEvolutionPath) so an existing
+    // Path is unchanged until the user opts a layer in.
+    { key: 'sched_function',   sched: true, label: { ru: '🧠 Функции (план)',   en: '🧠 Functions (plan)',   es: '🧠 Funciones (plan)' } },
+    { key: 'sched_sport',      sched: true, label: { ru: '🏃 Спорт (план)',     en: '🏃 Sports (plan)',      es: '🏃 Deportes (plan)' } },
+    { key: 'sched_medication', sched: true, label: { ru: '💊 Препараты (план)', en: '💊 Medications (plan)', es: '💊 Medicamentos (plan)' } }
   ];
+  var SCHED_LAYERS = { sched_function: 1, sched_sport: 1, sched_medication: 1 };
+  var SCHED_COL = { sched_function: 'rgb(120,200,235)', sched_sport: 'rgb(112,202,132)', sched_medication: 'rgb(150,170,255)' };
   // vertical placement of each scatter layer inside the tunnel field (0=top..1=bottom)
-  var LAYER_YFRAC = { insight: 0.16, thought: 0.32, emotion: 0.46, practice: 0.50, sensation: 0.64, event: 0.80 };
+  var LAYER_YFRAC = { insight: 0.16, thought: 0.32, emotion: 0.46, practice: 0.50, sensation: 0.64, event: 0.80,
+    sched_function: 0.88, sched_sport: 0.92, sched_medication: 0.96 };
 
   // D п.17/18: «Персонаж» (field) mode removed; its stat-card moved into the
   // detailed «Путь развития» view (formerly «Тоннель»).
@@ -737,6 +747,8 @@
   };
   function nmPathColor(e) {
     var p = (e && e.payload) || {};
+    // Part B — scheduled applications carry their own palette by kind.
+    if (e && (e.layer && SCHED_COL[e.layer])) return SCHED_COL[e.layer];
     var nt = (e && e.nm_type) || p.nm_type || '';
     var ak = (e && e.area_kind) || p.area_kind || '';
     var k  = (e && (e.kind || e.layer)) || '';
@@ -1086,7 +1098,8 @@
         var nd = comp.nodes[ni], e = nd.e, nx = ax + nd.lx * Z, ny = ay + nd.ly * vCombined, ndr = nd.r * rZ;
         var fillN = nmPathColor(e); // PR#109 (#4): NeuroMap colour by node type
         var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
-        drawNodeCv(ctx, e.layer, nx, ny, ndr, fillN, glow);
+        if (e.payload && e.payload.sched) drawSchedNodeCv(ctx, e, nx, ny, ndr, fillN);
+        else drawNodeCv(ctx, e.layer, nx, ny, ndr, fillN, glow);
         st._nodes.push({ x: nx, y: ny, r: ndr, e: e });
         // PR FIX #8: labels are hidden by default (they overlapped on zoom-in).
         // Only the hovered/tapped node shows its label, and it's highlighted.
@@ -1294,6 +1307,35 @@
     ctx.fillStyle = rgbaFromRgb(fill, 0.82); ctx.fill();
     ctx.lineWidth = 1.4; ctx.strokeStyle = fill; ctx.stroke();
     if (glow) ctx.restore();
+  }
+
+  // Part B — a scheduled application is drawn distinctly from a felt event: a
+  // DASHED hollow ring for an upcoming plan, and a faded/× "missed" marker for a
+  // past occurrence the user never confirmed. Never a solid filled dot (that is
+  // reserved for real journey events).
+  function drawSchedNodeCv(ctx, e, cx, cy, r, fill) {
+    r = Math.max(1.2, r);
+    var missed = !!(e.payload && e.payload.missed);
+    ctx.save();
+    if (missed) {
+      // faded hollow ring + a small × through it
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = rgbaFromRgb(fill, 0.10); ctx.fill();
+      ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.strokeStyle = fill; ctx.stroke();
+      ctx.setLineDash([]);
+      var d = r * 0.6;
+      ctx.beginPath(); ctx.moveTo(cx - d, cy - d); ctx.lineTo(cx + d, cy + d);
+      ctx.moveTo(cx + d, cy - d); ctx.lineTo(cx - d, cy + d);
+      ctx.lineWidth = 1; ctx.strokeStyle = rgbaFromRgb(fill, 0.9); ctx.stroke();
+    } else {
+      // upcoming plan: dashed ring, hollow centre
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = rgbaFromRgb(fill, 0.18); ctx.fill();
+      ctx.setLineDash([3, 2.2]); ctx.lineWidth = 1.5; ctx.strokeStyle = fill; ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
   }
 
   function drawHaloCv(ctx, st, sx, syAt, a, b, T) {
@@ -2066,7 +2108,18 @@
               fill: 'none', stroke: e.valence === 'positive' ? 'rgba(120,240,170,0.85)' : 'rgba(240,110,90,0.92)',
               'stroke-width': '1.3', 'pointer-events': 'none' }));
           }
-          var vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: fill, opacity: '0.96', filter: 'url(#evoGlow)' });
+          // Part B — scheduled applications: dashed hollow ring (upcoming) or
+          // faded ring (missed/past), never a solid felt-event dot.
+          var vis;
+          if (e.payload && e.payload.sched) {
+            var scol = SCHED_COL[e.layer] || fill;
+            var miss = !!e.payload.missed;
+            vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1),
+              fill: rgbaFromRgb(scol, miss ? 0.08 : 0.2), stroke: scol,
+              'stroke-width': '1.4', 'stroke-dasharray': '3,2', opacity: miss ? '0.5' : '0.96' });
+          } else {
+            vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: fill, opacity: '0.96', filter: 'url(#evoGlow)' });
+          }
           vis.appendChild(titleNode(ev, lang));
           registerNode(e.id, px, parseFloat(cy.toFixed(1)));
           laneNodes.appendChild(interactiveNode(vis, ev, container, lang, hitR));
@@ -2202,6 +2255,8 @@
     // PR#123 D3: stash creds + opts so the detail-card Delete button can call the API and
     // re-mount the Path in place. Collective/team/child (subject) views are read-only.
     container.__evoApi = { apiBase: apiBase, token: token, opts: opts, canDelete: !opts.subject && st.mode !== 'collective' };
+    // Part B — remember the personal-path mount so a schedule change can re-render it.
+    if (!opts.subject && st.mode !== 'collective') _lastPersonalPath = { container: container, opts: opts };
 
     container.classList.add('myc-root');
     container.style.padding = '16px 16px 14px';
@@ -2228,12 +2283,19 @@
     evoUrl += '&lang=' + encodeURIComponent(lang || 'ru');   // PR93: localized event labels (block titles, meta-labels)
     // PR91: optional subject scope (dependent:<id> | team:<id>) for child/team path view
     if (opts.subject) evoUrl += '&subject=' + encodeURIComponent(opts.subject);
+    // Part B — schedule occurrences window: from the Path's start (registration or
+    // 90 days back) through 30 days into the future, so upcoming plans are visible.
+    var schedFrom = regIso ? new Date(regIso).toISOString() : new Date(Date.now() - 90 * 864e5).toISOString();
+    var schedTo = new Date(Date.now() + 30 * 864e5).toISOString();
+    var wantSched = !opts.subject && !st._isOverlay;
     Promise.all([
       jget(evoUrl),
       st.user ? Promise.resolve(null) : jget('/api/users/me/xp'),
       st.modules ? Promise.resolve(null) : fetchModules(jget),
       // PR#99 (Phase 2B): list dependents so the dual switcher can appear (own path only)
-      opts.subject ? Promise.resolve(null) : jget('/api/dependents')
+      opts.subject ? Promise.resolve(null) : jget('/api/dependents'),
+      // Part B — on-the-fly scheduled applications (own path only). Never journey_events.
+      wantSched ? jget('/api/me/schedule/events?from=' + encodeURIComponent(schedFrom) + '&to=' + encodeURIComponent(schedTo)) : Promise.resolve(null)
     ]).then(function (res) {
       var data = res[0];
       if (!data || data.error) throw new Error(data && data.error || 'no data');
@@ -2241,6 +2303,31 @@
       if (!st.user) st.user = buildUser(null);
       if (res[2]) st.modules = res[2];
       st.data = maybeDemo(data, st, lang);
+      // Part B — fold scheduled applications into the flat events stream as
+      // on-the-fly nodes (layer = sched_<kind>, carried in payload). Default those
+      // layers OFF so an existing Path is unchanged until the user opts one in.
+      try {
+        var sEv = (res[4] && res[4].events) || [];
+        if (st.data && sEv.length) {
+          if (!Array.isArray(st.data.events)) st.data.events = [];
+          if (!st.data.layers) st.data.layers = {};
+          var SICON = { function: '🧠', sport: '🏃', medication: '💊' };
+          sEv.forEach(function (e) {
+            var layerKey = 'sched_' + e.kind;
+            var evObj = {
+              id: 'sched:' + e.schedule_id + ':' + e.occurred_at,
+              layer: layerKey, occurred_at: e.occurred_at, t: new Date(e.occurred_at).getTime(),
+              label: e.title, kind: 'schedule', source: 'schedule', session_id: null,
+              payload: { sched: true, missed: !!e.missed, icon: SICON[e.kind] || '📅', label: e.title, dose: e.dose || undefined, kind: e.kind }
+            };
+            // tunnel view reads the flat events stream; layers view reads data.layers[key]
+            st.data.events.push(evObj);
+            (st.data.layers[layerKey] = st.data.layers[layerKey] || []).push(evObj);
+          });
+        }
+        st.hidden = st.hidden || {};
+        Object.keys(SCHED_LAYERS).forEach(function (k) { if (st.hidden[k] === undefined) st.hidden[k] = true; });
+      } catch (e) {}
       // PR#99: once dependents are known, rebuild the chrome so the view switcher
       // (Me / Me+child / Child) appears, then re-wire its controls.
       st._deps = (res[3] && res[3].dependents) || [];
@@ -2827,6 +2914,16 @@
   }
 
   window.mountEvolutionPath = mountEvolutionPath;
+  // Part B — re-render the personal Path after a schedule create/toggle/delete so
+  // the on-the-fly scheduled events refresh (only if it is currently mounted).
+  var _lastPersonalPath = null;
+  window.schedRefreshPath = function () {
+    try {
+      if (_lastPersonalPath && _lastPersonalPath.container && document.body.contains(_lastPersonalPath.container)) {
+        mountEvolutionPath(_lastPersonalPath.container, _lastPersonalPath.opts);
+      }
+    } catch (e) {}
+  };
 
   // ── 3.2: reusable spine engine shared with the collective path. Defined inside
   // the IIFE so it reuses the private chain builders + node painters. The personal

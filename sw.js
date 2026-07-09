@@ -95,7 +95,12 @@
 // v45: Sports sub-section inside the Functions tab (Internal Field) — 16 sports with
 //      green/red BodyAtlas tint overlay (reuses the medications path); backend
 //      migration 056 (sports + diagnosis_sports) + /api/sports endpoints.
-var CACHE_NAME = 'na-practices-v45';
+// v46: Scheduling (Part B) — schedule a function / sport / medication (frequency +
+//      times + dose + dates); on-the-fly occurrences render on the Personal Path via
+//      3 new layer toggles (Functions/Sports/Medications, default OFF) with distinct
+//      dashed "planned" / faded "missed" markers. Migration 057 (user_schedules) +
+//      /api/me/schedules CRUD + /api/me/schedule/events. evolution-path.js?v=30.
+var CACHE_NAME = 'na-practices-v46';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

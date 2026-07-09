@@ -2481,7 +2481,35 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 056 (sports): seeded', mig056.sports_seeded, 'links', mig056.diagnosis_links);
     } catch (e) { mig056.error = e.message; console.error('migration 056 (sports):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-056 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056 });
+    // ── migration 057 (Scheduling of functions / sports / medications) ───────
+    // A user picks a function, sport or medication and schedules it (frequency +
+    // times + dose + date window). Occurrences are expanded ON THE FLY by
+    // GET /api/me/schedule/events and rendered as Path events client-side — they
+    // are DELIBERATELY NOT written to journey_events (a plan is not a felt event;
+    // it changes when the schedule changes). New table only, no backfill.
+    let mig057 = { ok: false };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS user_schedules (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT CHECK (kind IN ('function','sport','medication')),
+        ref_slug TEXT NOT NULL,
+        title TEXT,
+        frequency_type TEXT DEFAULT 'daily',
+        frequency_value INT DEFAULT 1,
+        weekdays INT[] DEFAULT '{}',
+        times TIME[] DEFAULT '{}',
+        dose TEXT,
+        start_date DATE NOT NULL,
+        end_date DATE,
+        enabled BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_user_schedules_user ON user_schedules (user_id)`;
+      mig057.ok = true;
+    } catch (e) { mig057.error = e.message; console.error('migration 057 (user_schedules):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-057 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -10517,6 +10545,180 @@ app.get('/api/sports/:slug', async (req, res) => {
   } catch (err) {
     if (/relation .*sports.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sports table not migrated' });
     console.error('GET /api/sports/:slug:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Scheduling of functions / sports / medications (migration 057) ──────────
+// A schedule is a plan ("running every 2 days at 08:00", "metformin daily 08:00
+// & 20:00, 500mg"). GET /api/me/schedule/events expands schedules into concrete
+// dated occurrences over a window; the Personal Path draws those on the fly when
+// its Functions / Sports / Medications layer toggles are on. Occurrences are NOT
+// persisted to journey_events — a plan is not a felt event.
+
+const SCHED_KINDS = ['function', 'sport', 'medication'];
+const SCHED_FREQ = ['daily', 'every_n_days', 'weekly', 'custom'];
+function schedSlug(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 80); }
+// Normalize a client times[] payload → array of 'HH:MM' strings (max 6).
+function schedTimes(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  for (const t of arr) {
+    const m = String(t || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!m) continue;
+    const h = Math.min(23, parseInt(m[1], 10)), mi = Math.min(59, parseInt(m[2], 10));
+    out.push(String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0'));
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+function schedWeekdays(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(n => parseInt(n, 10)).filter(n => n >= 0 && n <= 6).slice(0, 7);
+}
+
+// GET /api/me/schedules — this user's schedule definitions
+app.get('/api/me/schedules', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`SELECT id, kind, ref_slug, title, frequency_type, frequency_value,
+        weekdays, times::text[] AS times, dose, start_date, end_date, enabled, created_at
+      FROM user_schedules WHERE user_id = ${userId} ORDER BY enabled DESC, created_at DESC`;
+    res.json({ ok: true, schedules: rows });
+  } catch (err) {
+    if (/relation .*user_schedules.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'schedules not migrated', schedules: [] });
+    console.error('GET /api/me/schedules:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/me/schedules — create a schedule
+app.post('/api/me/schedules', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const b = req.body || {};
+    const kind = SCHED_KINDS.includes(b.kind) ? b.kind : null;
+    const ref = schedSlug(b.ref_slug);
+    if (!kind || !ref) return res.status(400).json({ error: 'kind and ref_slug required' });
+    const freq = SCHED_FREQ.includes(b.frequency_type) ? b.frequency_type : 'daily';
+    const fval = Math.max(1, Math.min(365, parseInt(b.frequency_value, 10) || 1));
+    const times = schedTimes(b.times);
+    const weekdays = schedWeekdays(b.weekdays);
+    const dose = b.dose ? String(b.dose).slice(0, 120) : null;
+    const title = b.title ? String(b.title).slice(0, 160) : ref;
+    const startDate = b.start_date ? String(b.start_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const endDate = b.end_date ? String(b.end_date).slice(0, 10) : null;
+    const ins = await sql`INSERT INTO user_schedules
+        (user_id, kind, ref_slug, title, frequency_type, frequency_value, weekdays, times, dose, start_date, end_date, enabled)
+      VALUES (${userId}, ${kind}, ${ref}, ${title}, ${freq}, ${fval}, ${weekdays}::int[], ${times}::time[], ${dose}, ${startDate}, ${endDate}, true)
+      RETURNING id`;
+    res.json({ ok: true, id: ins[0] && ins[0].id });
+  } catch (err) {
+    if (/relation .*user_schedules.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'schedules not migrated' });
+    console.error('POST /api/me/schedules:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/me/schedules/:id — update (partial: any of enabled/dose/frequency/times/dates)
+app.put('/api/me/schedules/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'bad id' });
+    const own = await sql`SELECT * FROM user_schedules WHERE id = ${id} AND user_id = ${userId}`;
+    if (!own.length) return res.status(404).json({ error: 'not found' });
+    const cur = own[0], b = req.body || {};
+    const enabled = (b.enabled === undefined) ? cur.enabled : !!b.enabled;
+    const freq = SCHED_FREQ.includes(b.frequency_type) ? b.frequency_type : cur.frequency_type;
+    const fval = (b.frequency_value === undefined) ? cur.frequency_value : Math.max(1, Math.min(365, parseInt(b.frequency_value, 10) || 1));
+    const times = (b.times === undefined) ? null : schedTimes(b.times);
+    const weekdays = (b.weekdays === undefined) ? null : schedWeekdays(b.weekdays);
+    const dose = (b.dose === undefined) ? cur.dose : (b.dose ? String(b.dose).slice(0, 120) : null);
+    const endDate = (b.end_date === undefined) ? cur.end_date : (b.end_date ? String(b.end_date).slice(0, 10) : null);
+    await sql`UPDATE user_schedules SET
+        enabled = ${enabled}, frequency_type = ${freq}, frequency_value = ${fval},
+        weekdays = COALESCE(${weekdays}::int[], weekdays),
+        times = COALESCE(${times}::time[], times),
+        dose = ${dose}, end_date = ${endDate}
+      WHERE id = ${id} AND user_id = ${userId}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('PUT /api/me/schedules/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/me/schedules/:id
+app.delete('/api/me/schedules/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'bad id' });
+    await sql`DELETE FROM user_schedules WHERE id = ${id} AND user_id = ${userId}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE /api/me/schedules/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/me/schedule/events?from=&to= — expand schedules into concrete dated
+// occurrences over [from, to]. NOT persisted; the Path draws these on the fly.
+// Each occurrence: { schedule_id, kind, ref_slug, title, dose, layer:'event',
+// occurred_at, missed }. `missed` = the occurrence is in the past (a plan whose
+// time already elapsed) so the Path can mark it distinctly.
+app.get('/api/me/schedule/events', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const now = Date.now();
+    const dayMs = 864e5;
+    let from = req.query.from ? new Date(req.query.from) : new Date(now - 30 * dayMs);
+    let to = req.query.to ? new Date(req.query.to) : new Date(now + 14 * dayMs);
+    if (isNaN(from.getTime())) from = new Date(now - 30 * dayMs);
+    if (isNaN(to.getTime())) to = new Date(now + 14 * dayMs);
+    // cap the window to 400 days so a bad range can't explode the expansion
+    if ((to - from) > 400 * dayMs) to = new Date(from.getTime() + 400 * dayMs);
+    const rows = await sql`SELECT id, kind, ref_slug, title, frequency_type, frequency_value,
+        weekdays, times::text[] AS times, dose, start_date, end_date
+      FROM user_schedules WHERE user_id = ${userId} AND enabled = true`;
+    const events = [];
+    const fromDay = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+    const toDay = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
+    for (const s of rows) {
+      const start = new Date(s.start_date);
+      const end = s.end_date ? new Date(s.end_date) : null;
+      const times = (Array.isArray(s.times) && s.times.length) ? s.times : ['09:00'];
+      // iterate day by day within the intersection of [from,to] and [start,end]
+      let d = new Date(Math.max(fromDay.getTime(), Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())));
+      const last = end ? Math.min(toDay.getTime(), Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate())) : toDay.getTime();
+      let guard = 0;
+      while (d.getTime() <= last && guard < 800) {
+        guard++;
+        let hit = false;
+        const daysSinceStart = Math.round((d.getTime() - Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / dayMs);
+        if (daysSinceStart >= 0) {
+          if (s.frequency_type === 'daily') hit = true;
+          else if (s.frequency_type === 'every_n_days' || s.frequency_type === 'custom') hit = (daysSinceStart % Math.max(1, s.frequency_value)) === 0;
+          else if (s.frequency_type === 'weekly') {
+            const wd = new Date(d).getUTCDay();
+            hit = (Array.isArray(s.weekdays) && s.weekdays.length) ? s.weekdays.indexOf(wd) >= 0 : (wd === new Date(start).getUTCDay());
+          }
+        }
+        if (hit) {
+          for (const t of times) {
+            const m = String(t).match(/^(\d{1,2}):(\d{2})/);
+            const hh = m ? parseInt(m[1], 10) : 9, mm = m ? parseInt(m[2], 10) : 0;
+            const occ = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hh, mm));
+            if (occ.getTime() < from.getTime() || occ.getTime() > to.getTime()) continue;
+            events.push({
+              schedule_id: s.id, kind: s.kind, ref_slug: s.ref_slug, title: s.title || s.ref_slug,
+              dose: s.dose || null, layer: 'event', occurred_at: occ.toISOString(),
+              missed: occ.getTime() < now
+            });
+            if (events.length >= 2000) break;
+          }
+        }
+        d = new Date(d.getTime() + dayMs);
+        if (events.length >= 2000) break;
+      }
+      if (events.length >= 2000) break;
+    }
+    res.json({ ok: true, events });
+  } catch (err) {
+    if (/relation .*user_schedules.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'schedules not migrated', events: [] });
+    console.error('GET /api/me/schedule/events:', err); res.status(500).json({ error: err.message });
   }
 });
 
