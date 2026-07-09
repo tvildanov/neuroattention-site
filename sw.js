@@ -100,7 +100,9 @@
 //      3 new layer toggles (Functions/Sports/Medications, default OFF) with distinct
 //      dashed "planned" / faded "missed" markers. Migration 057 (user_schedules) +
 //      /api/me/schedules CRUD + /api/me/schedule/events. evolution-path.js?v=30.
-var CACHE_NAME = 'na-practices-v46';
+// v47: Extension requests — floating "Request addition" button on the Human-Atlas
+//      tabs + modal, My-requests profile card, admin Extension queue (migration 059).
+var CACHE_NAME = 'na-practices-v47';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
