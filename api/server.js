@@ -11022,16 +11022,17 @@ app.get('/api/medications/:slug', async (req, res) => {
 // LIBRARY (PR Library) — six content kinds: terms · articles · theories ·
 // research · functions · methods. `content` is JSONB keyed by language; the
 // server localizes to ?lang= (falls back to en). Reads are public; writes are
-// superadmin-only. Table names come from a fixed whitelist (LIBRARY_KINDS), so
-// building them into sql.query() strings is safe — values always go through $n.
+// superadmin-only. The neon `sql` tag has no dynamic-identifier form, so every
+// table is addressed by a per-kind static tagged-template query (no string
+// interpolation of table names, no sql.query()).
 // ─────────────────────────────────────────────────────────────────────────
 const LIBRARY_KINDS = {
-  terms:     { table: 'library_terms',     cols: [['related_slugs', 'text[]']] },
-  articles:  { table: 'library_articles',  cols: [['format', 'text'], ['pdf_url', 'text'], ['pdf_filename', 'text'], ['cover_url', 'text'], ['authors', 'text[]'], ['source_url', 'text']] },
-  theories:  { table: 'library_theories',  cols: [['status', 'text'], ['sources', 'text[]']] },
-  research:  { table: 'library_research',  cols: [['topic', 'text'], ['source_url', 'text'], ['authors', 'text[]'], ['format', 'text'], ['pdf_url', 'text'], ['pdf_filename', 'text']] },
-  functions: { table: 'library_functions', cols: [['body_regions', 'text[]']] },
-  methods:   { table: 'library_methods',   cols: [['category', 'text']] }
+  terms:     { cols: [['related_slugs', 'text[]']] },
+  articles:  { cols: [['format', 'text'], ['pdf_url', 'text'], ['pdf_filename', 'text'], ['cover_url', 'text'], ['authors', 'text[]'], ['source_url', 'text']] },
+  theories:  { cols: [['status', 'text'], ['sources', 'text[]']] },
+  research:  { cols: [['topic', 'text'], ['source_url', 'text'], ['authors', 'text[]'], ['format', 'text'], ['pdf_url', 'text'], ['pdf_filename', 'text']] },
+  functions: { cols: [['body_regions', 'text[]']] },
+  methods:   { cols: [['category', 'text']] }
 };
 const LIB_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
 function libLocalize(row, lang) {
@@ -11041,16 +11042,88 @@ function libLocalize(row, lang) {
   const picked = c[lang] || c.en || (langs.length ? c[langs[0]] : {}) || {};
   return Object.assign({}, row, { content: picked, langs });
 }
-// A short card title for the Course Builder picker / index, per kind.
-function libTitleOf(kind, loc) {
+function libTitleOf(loc) {
   const c = (loc && loc.content) || {};
   return c.title || c.name || c.term || loc.slug;
 }
-// Normalize sql.query() output — some driver builds return a rows array, others
-// a { rows } object; we always want the rows array.
-async function libQuery(text, params) {
-  const r = await sql.query(text, params || []);
-  return Array.isArray(r) ? r : ((r && r.rows) || []);
+
+// Per-kind SELECT (list, all active).
+function libSelectAll(kind) {
+  switch (kind) {
+    case 'terms':     return sql`SELECT * FROM library_terms     WHERE is_active = TRUE ORDER BY sort_order, id`;
+    case 'articles':  return sql`SELECT * FROM library_articles  WHERE is_active = TRUE ORDER BY sort_order, id`;
+    case 'theories':  return sql`SELECT * FROM library_theories  WHERE is_active = TRUE ORDER BY sort_order, id`;
+    case 'research':  return sql`SELECT * FROM library_research  WHERE is_active = TRUE ORDER BY sort_order, id`;
+    case 'functions': return sql`SELECT * FROM library_functions WHERE is_active = TRUE ORDER BY sort_order, id`;
+    case 'methods':   return sql`SELECT * FROM library_methods   WHERE is_active = TRUE ORDER BY sort_order, id`;
+  }
+  return Promise.resolve([]);
+}
+// Per-kind SELECT one by id or slug.
+function libSelectOne(kind, byId, key) {
+  switch (kind) {
+    case 'terms':     return byId ? sql`SELECT * FROM library_terms     WHERE id = ${key}` : sql`SELECT * FROM library_terms     WHERE slug = ${key}`;
+    case 'articles':  return byId ? sql`SELECT * FROM library_articles  WHERE id = ${key}` : sql`SELECT * FROM library_articles  WHERE slug = ${key}`;
+    case 'theories':  return byId ? sql`SELECT * FROM library_theories  WHERE id = ${key}` : sql`SELECT * FROM library_theories  WHERE slug = ${key}`;
+    case 'research':  return byId ? sql`SELECT * FROM library_research  WHERE id = ${key}` : sql`SELECT * FROM library_research  WHERE slug = ${key}`;
+    case 'functions': return byId ? sql`SELECT * FROM library_functions WHERE id = ${key}` : sql`SELECT * FROM library_functions WHERE slug = ${key}`;
+    case 'methods':   return byId ? sql`SELECT * FROM library_methods   WHERE id = ${key}` : sql`SELECT * FROM library_methods   WHERE slug = ${key}`;
+  }
+  return Promise.resolve([]);
+}
+// Per-kind upsert (by slug). `b` carries slug, content (object) + kind extras + sort_order.
+function libUpsert(kind, b, userId) {
+  const content = JSON.stringify(b.content || {});
+  const so = Number(b.sort_order) || 100;
+  switch (kind) {
+    case 'terms':
+      return sql`INSERT INTO library_terms (slug, content, related_slugs, sort_order, created_by)
+        VALUES (${b.slug}, ${content}::jsonb, ${b.related_slugs || []}::text[], ${so}, ${userId})
+        ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, related_slugs = EXCLUDED.related_slugs,
+          sort_order = EXCLUDED.sort_order, updated_at = now() RETURNING *`;
+    case 'theories':
+      return sql`INSERT INTO library_theories (slug, content, status, sources, sort_order, created_by)
+        VALUES (${b.slug}, ${content}::jsonb, ${b.status || null}, ${b.sources || []}::text[], ${so}, ${userId})
+        ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, status = EXCLUDED.status, sources = EXCLUDED.sources,
+          sort_order = EXCLUDED.sort_order, updated_at = now() RETURNING *`;
+    case 'articles':
+      return sql`INSERT INTO library_articles (slug, content, format, cover_url, authors, source_url, sort_order, created_by)
+        VALUES (${b.slug}, ${content}::jsonb, ${b.format || 'rich'}, ${b.cover_url || null}, ${b.authors || []}::text[], ${b.source_url || null}, ${so}, ${userId})
+        ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, format = EXCLUDED.format, cover_url = EXCLUDED.cover_url,
+          authors = EXCLUDED.authors, source_url = EXCLUDED.source_url, sort_order = EXCLUDED.sort_order, updated_at = now() RETURNING *`;
+    case 'research':
+      return sql`INSERT INTO library_research (slug, content, topic, source_url, authors, format, sort_order, created_by)
+        VALUES (${b.slug}, ${content}::jsonb, ${b.topic || null}, ${b.source_url || null}, ${b.authors || []}::text[], ${b.format || 'rich'}, ${so}, ${userId})
+        ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, topic = EXCLUDED.topic, source_url = EXCLUDED.source_url,
+          authors = EXCLUDED.authors, format = EXCLUDED.format, sort_order = EXCLUDED.sort_order, updated_at = now() RETURNING *`;
+    case 'functions':
+      return sql`INSERT INTO library_functions (slug, content, body_regions, sort_order, created_by)
+        VALUES (${b.slug}, ${content}::jsonb, ${b.body_regions || []}::text[], ${so}, ${userId})
+        ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, body_regions = EXCLUDED.body_regions,
+          sort_order = EXCLUDED.sort_order, updated_at = now() RETURNING *`;
+    case 'methods':
+      return sql`INSERT INTO library_methods (slug, content, category, sort_order, created_by)
+        VALUES (${b.slug}, ${content}::jsonb, ${b.category || null}, ${so}, ${userId})
+        ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, category = EXCLUDED.category,
+          sort_order = EXCLUDED.sort_order, updated_at = now() RETURNING *`;
+  }
+  return Promise.resolve([]);
+}
+function libDeleteById(kind, id) {
+  switch (kind) {
+    case 'terms':     return sql`DELETE FROM library_terms     WHERE id = ${id}`;
+    case 'articles':  return sql`DELETE FROM library_articles  WHERE id = ${id}`;
+    case 'theories':  return sql`DELETE FROM library_theories  WHERE id = ${id}`;
+    case 'research':  return sql`DELETE FROM library_research  WHERE id = ${id}`;
+    case 'functions': return sql`DELETE FROM library_functions WHERE id = ${id}`;
+    case 'methods':   return sql`DELETE FROM library_methods   WHERE id = ${id}`;
+  }
+  return Promise.resolve([]);
+}
+function libSetPdf(kind, id, url, filename) {
+  if (kind === 'articles') return sql`UPDATE library_articles SET pdf_url = ${url}, pdf_filename = ${filename}, format = 'pdf', updated_at = now() WHERE id = ${id} RETURNING *`;
+  if (kind === 'research') return sql`UPDATE library_research SET pdf_url = ${url}, pdf_filename = ${filename}, format = 'pdf', updated_at = now() WHERE id = ${id} RETURNING *`;
+  return Promise.resolve([]);
 }
 
 // GET /api/library — flat index across all kinds (Course Builder tool picker).
@@ -11059,9 +11132,8 @@ app.get('/api/library', async (req, res) => {
     const lang = (req.query.lang || 'en').toString().slice(0, 5);
     const out = {};
     for (const kind of Object.keys(LIBRARY_KINDS)) {
-      const cfg = LIBRARY_KINDS[kind];
-      const rows = await libQuery(`SELECT id, slug, content, sort_order FROM ${cfg.table} WHERE is_active = TRUE ORDER BY sort_order, id`);
-      out[kind] = rows.map(r => { const loc = libLocalize(r, lang); return { id: r.id, slug: r.slug, kind, title: libTitleOf(kind, loc) }; });
+      const rows = await libSelectAll(kind);
+      out[kind] = rows.map(r => { const loc = libLocalize(r, lang); return { id: r.id, slug: r.slug, kind, title: libTitleOf(loc) }; });
     }
     res.json({ ok: true, lang, items: out });
   } catch (err) { console.error('GET /api/library:', err); res.status(500).json({ error: err.message }); }
@@ -11070,10 +11142,9 @@ app.get('/api/library', async (req, res) => {
 // GET /api/library/:kind?q=&lang= — list one kind (localized).
 app.get('/api/library/:kind', async (req, res) => {
   try {
-    const cfg = LIBRARY_KINDS[req.params.kind];
-    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    if (!LIBRARY_KINDS[req.params.kind]) return res.status(404).json({ error: 'Unknown library kind' });
     const lang = (req.query.lang || 'en').toString().slice(0, 5);
-    const rows = await libQuery(`SELECT * FROM ${cfg.table} WHERE is_active = TRUE ORDER BY sort_order, id`);
+    const rows = await libSelectAll(req.params.kind);
     let items = rows.map(r => libLocalize(r, lang));
     const q = (req.query.q || '').toString().trim().toLowerCase();
     if (q) items = items.filter(it => JSON.stringify(it.content || {}).toLowerCase().includes(q) || (it.slug || '').includes(q));
@@ -11084,13 +11155,11 @@ app.get('/api/library/:kind', async (req, res) => {
 // GET /api/library/:kind/:idOrSlug?lang= — one item (localized).
 app.get('/api/library/:kind/:id', async (req, res) => {
   try {
-    const cfg = LIBRARY_KINDS[req.params.kind];
-    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    if (!LIBRARY_KINDS[req.params.kind]) return res.status(404).json({ error: 'Unknown library kind' });
     const lang = (req.query.lang || 'en').toString().slice(0, 5);
     const key = req.params.id;
-    const rows = /^\d+$/.test(key)
-      ? await libQuery(`SELECT * FROM ${cfg.table} WHERE id = $1`, [Number(key)])
-      : await libQuery(`SELECT * FROM ${cfg.table} WHERE slug = $1`, [key]);
+    const byId = /^\d+$/.test(key);
+    const rows = await libSelectOne(req.params.kind, byId, byId ? Number(key) : key);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true, kind: req.params.kind, lang, item: libLocalize(rows[0], lang) });
   } catch (err) { console.error('GET /api/library/:kind/:id:', err); res.status(500).json({ error: err.message }); }
@@ -11100,52 +11169,35 @@ app.get('/api/library/:kind/:id', async (req, res) => {
 app.post('/api/library/:kind', requireAuth, async (req, res) => {
   const caller = await requireSuperadmin(req, res); if (!caller) return;
   try {
-    const cfg = LIBRARY_KINDS[req.params.kind];
-    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    if (!LIBRARY_KINDS[req.params.kind]) return res.status(404).json({ error: 'Unknown library kind' });
     const b = req.body || {};
     const slug = (b.slug || '').toString().trim().toLowerCase();
     if (!LIB_SLUG_RE.test(slug)) return res.status(400).json({ error: 'Invalid slug (lowercase a-z, 0-9, hyphen)' });
-    const content = (b.content && typeof b.content === 'object') ? b.content : {};
-    const cols = ['slug', 'content']; const ph = ['$1', '$2::jsonb']; const params = [slug, JSON.stringify(content)];
-    let i = 3;
-    for (const [c, t] of cfg.cols) {
-      if (!(c in b)) continue;
-      cols.push(c); ph.push(t === 'text[]' ? `$${i}::text[]` : `$${i}`);
-      params.push(t === 'text[]' ? (Array.isArray(b[c]) ? b[c] : []) : (b[c] == null ? null : b[c]));
-      i++;
-    }
-    cols.push('sort_order'); ph.push(`$${i}`); params.push(Number(b.sort_order) || 100); i++;
-    cols.push('created_by'); ph.push(`$${i}`); params.push(caller.id); i++;
-    const setUpd = cols.filter(c => c !== 'slug' && c !== 'created_by')
-      .map(c => `${c} = EXCLUDED.${c}`).concat('updated_at = now()').join(', ');
-    const text = `INSERT INTO ${cfg.table} (${cols.join(', ')}) VALUES (${ph.join(', ')}) ON CONFLICT (slug) DO UPDATE SET ${setUpd} RETURNING *`;
-    const rows = await libQuery(text, params);
+    b.slug = slug;
+    if (!b.content || typeof b.content !== 'object') b.content = {};
+    const rows = await libUpsert(req.params.kind, b, caller.id);
     res.json({ ok: true, item: rows[0] });
   } catch (err) { console.error('POST /api/library/:kind:', err); res.status(500).json({ error: err.message }); }
 });
 
-// PUT /api/library/:kind/:id — superadmin update by id.
+// PUT /api/library/:kind/:id — superadmin update by id (merge onto existing, re-upsert by slug).
 app.put('/api/library/:kind/:id', requireAuth, async (req, res) => {
   const caller = await requireSuperadmin(req, res); if (!caller) return;
   try {
     const cfg = LIBRARY_KINDS[req.params.kind];
     if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
     const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
+    const existRows = await libSelectOne(req.params.kind, true, id);
+    if (!existRows.length) return res.status(404).json({ error: 'Not found' });
+    const existing = existRows[0];
     const b = req.body || {};
-    const sets = []; const params = []; let i = 1;
-    if (b.content && typeof b.content === 'object') { sets.push(`content = $${i}::jsonb`); params.push(JSON.stringify(b.content)); i++; }
-    for (const [c, t] of cfg.cols) {
-      if (!(c in b)) continue;
-      sets.push(t === 'text[]' ? `${c} = $${i}::text[]` : `${c} = $${i}`);
-      params.push(t === 'text[]' ? (Array.isArray(b[c]) ? b[c] : []) : (b[c] == null ? null : b[c])); i++;
-    }
-    if ('sort_order' in b) { sets.push(`sort_order = $${i}`); params.push(Number(b.sort_order) || 100); i++; }
-    if ('is_active' in b) { sets.push(`is_active = $${i}`); params.push(!!b.is_active); i++; }
-    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
-    sets.push('updated_at = now()');
-    params.push(id);
-    const rows = await libQuery(`UPDATE ${cfg.table} SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, params);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const merged = {
+      slug: existing.slug,
+      content: (b.content && typeof b.content === 'object') ? b.content : existing.content,
+      sort_order: ('sort_order' in b) ? b.sort_order : existing.sort_order
+    };
+    for (const [c] of cfg.cols) merged[c] = (c in b) ? b[c] : existing[c];
+    const rows = await libUpsert(req.params.kind, merged, existing.created_by || caller.id);
     res.json({ ok: true, item: rows[0] });
   } catch (err) { console.error('PUT /api/library/:kind/:id:', err); res.status(500).json({ error: err.message }); }
 });
@@ -11154,10 +11206,9 @@ app.put('/api/library/:kind/:id', requireAuth, async (req, res) => {
 app.delete('/api/library/:kind/:id', requireAuth, async (req, res) => {
   const caller = await requireSuperadmin(req, res); if (!caller) return;
   try {
-    const cfg = LIBRARY_KINDS[req.params.kind];
-    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    if (!LIBRARY_KINDS[req.params.kind]) return res.status(404).json({ error: 'Unknown library kind' });
     const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
-    await libQuery(`DELETE FROM ${cfg.table} WHERE id = $1`, [id]);
+    await libDeleteById(req.params.kind, id);
     res.json({ ok: true });
   } catch (err) { console.error('DELETE /api/library/:kind/:id:', err); res.status(500).json({ error: err.message }); }
 });
@@ -11168,19 +11219,18 @@ app.post('/api/library/:kind/:id/pdf', requireAuth, uploadLibrary.single('file')
   try {
     const kind = req.params.kind;
     if (kind !== 'articles' && kind !== 'research') return res.status(400).json({ error: 'PDF upload only for articles/research' });
-    const cfg = LIBRARY_KINDS[kind];
     const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
     if (!req.file) return res.status(400).json({ error: 'No file' });
     const mime = (req.file.mimetype || '').toLowerCase();
     if (mime !== 'application/pdf') return res.status(400).json({ error: 'Only PDF allowed' });
-    const rows0 = await libQuery(`SELECT slug FROM ${cfg.table} WHERE id = $1`, [id]);
+    const rows0 = await libSelectOne(kind, true, id);
     if (!rows0.length) return res.status(404).json({ error: 'Not found' });
     const safeName = (req.file.originalname || 'document.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
     const stamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
     const key = `library/${kind}/${rows0[0].slug}/${stamp}-${safeName}`.replace(/\.[^.]*$/, '') + '.pdf';
     const stored = await storeMediaAsset(key, req.file.buffer, 'application/pdf', `[library] add pdf ${rows0[0].slug}`, 'library');
     const url = stored.url || ('https://neuroattention.org/' + stored.key);
-    const rows = await libQuery(`UPDATE ${cfg.table} SET pdf_url = $1, pdf_filename = $2, format = 'pdf', updated_at = now() WHERE id = $3 RETURNING *`, [url, req.file.originalname || safeName, id]);
+    const rows = await libSetPdf(kind, id, url, req.file.originalname || safeName);
     res.json({ ok: true, item: rows[0], pdf_url: url });
   } catch (err) { console.error('POST /api/library/:kind/:id/pdf:', err); res.status(500).json({ error: err.message }); }
 });
