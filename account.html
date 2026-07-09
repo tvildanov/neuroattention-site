@@ -1004,6 +1004,29 @@ a.dash-tab:hover { text-decoration:none; }
       </button>
       <div id="profile-docs-list" style="display:none;margin-top:0.85rem;"></div>
     </div>
+
+    <!-- My extension requests — the user's own "please add X" submissions with
+         live statuses. Hidden until the user has ≥1 request. -->
+    <div class="dash-card glass-card-elevated" id="ext-req-card" style="margin-top:1.5rem;display:none;">
+      <button id="ext-req-toggle" onclick="extToggleMine()" style="width:100%;display:flex;align-items:center;gap:0.5rem;background:none;border:none;color:var(--text-primary);font-size:15px;font-weight:600;cursor:pointer;padding:0;font-family:inherit;text-align:left;">
+        <span>✚</span><span data-i18n="a.ext.my_title">Мои запросы на добавление</span>
+        <span id="ext-req-count" style="background:var(--accent-cyan);color:#04121a;border-radius:10px;padding:1px 9px;font-size:11px;font-weight:700;">0</span>
+        <span id="ext-req-caret" style="margin-left:auto;color:var(--text-muted);">▼</span>
+      </button>
+      <div id="ext-req-mine-wrap" style="display:none;margin-top:0.85rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;flex-wrap:wrap;">
+          <label style="font-size:12px;color:var(--text-muted);" data-i18n="a.ext.filter_status">Статус:</label>
+          <select id="ext-req-filter" onchange="extRenderMine()" class="glass-input" style="font-size:12px;padding:0.3rem 0.5rem;width:auto;">
+            <option value="" data-i18n="a.ext.status_all">Все</option>
+            <option value="pending" data-i18n="a.ext.status_pending">В ожидании</option>
+            <option value="in_progress" data-i18n="a.ext.status_in_progress">В работе</option>
+            <option value="added" data-i18n="a.ext.status_added">Добавлено</option>
+            <option value="declined" data-i18n="a.ext.status_declined">Отклонено</option>
+          </select>
+        </div>
+        <div id="ext-req-mine"></div>
+      </div>
+    </div>
   </div>
 
   <!-- TAB: Program (modules) -->
@@ -1501,7 +1524,19 @@ a.dash-tab:hover { text-decoration:none; }
     <!-- ── Anatomy Atlas tool (3D BodyAtlas) ── -->
     <div id="tools-anatomy-content" style="display:none;">
       <style>
-        .atlas-shell{display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:radial-gradient(120% 120% at 50% 0%, rgba(168,247,255,0.06), rgba(0,0,0,0.25));border:1px solid rgba(168,247,255,0.12);}
+        .atlas-shell{position:relative;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:radial-gradient(120% 120% at 50% 0%, rgba(168,247,255,0.06), rgba(0,0,0,0.25));border:1px solid rgba(168,247,255,0.12);}
+        /* Floating "Request addition" button — FIXED to the viewport corner; shown only
+           while the Internal Field / atlas area is on screen (toggled via IntersectionObserver). */
+        .ext-fab{position:fixed;bottom:22px;right:22px;z-index:900;display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:24px;border:1px solid rgba(168,247,255,0.3);background:linear-gradient(135deg,rgba(0,229,255,0.22),rgba(120,110,255,0.22));color:var(--text-primary);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 26px rgba(0,0,0,0.45);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(10px);transition:opacity .2s,transform .2s,visibility .2s,border-color .15s;}
+        .ext-fab.ext-fab-on{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0);}
+        .ext-fab:hover{border-color:rgba(0,229,255,0.65);}
+        @media(max-width:760px){ .ext-fab{bottom:76px;right:14px;padding:9px 13px;font-size:12px;} }
+        /* Status badges shared by My-requests + admin queue. */
+        .ext-badge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:11px;font-weight:700;white-space:nowrap;}
+        .ext-badge.pending{background:rgba(148,163,184,0.22);color:#cbd5e1;}
+        .ext-badge.in_progress{background:rgba(232,170,72,0.22);color:#f0b950;}
+        .ext-badge.added{background:rgba(107,232,155,0.2);color:#6be89b;}
+        .ext-badge.declined{background:rgba(232,93,111,0.2);color:#f0788a;}
         .atlas-topbar{display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.7rem 1rem;border-bottom:1px solid rgba(168,247,255,0.1);flex-wrap:wrap;}
         .atlas-topbar h3{margin:0;font-size:15px;letter-spacing:0.02em;}
         .atlas-topbar .atlas-actions{display:flex;gap:0.4rem;flex-wrap:wrap;}
@@ -2345,6 +2380,7 @@ a.dash-tab:hover { text-decoration:none; }
     <button class="dash-tab" data-tab="admin-vocab" id="admin-vocab-tab" style="display:none;" data-i18n="a.admin.vocab_tab">Словарь</button>
     <button class="dash-tab" data-tab="admin-diagnostic" id="admin-diag-tab" style="display:none;" data-i18n="a.admin.diag_tab">Диагностика</button>
     <button class="dash-tab" data-tab="admin-courses" id="admin-courses-tab" style="display:none;" data-i18n="a.admin.courses_tab">Конструктор курсов</button>
+    <button class="dash-tab" data-tab="admin-extensions" id="admin-ext-tab" style="display:none;" data-i18n="a.admin.ext_tab">✚ Запросы</button>
   </div>
   <!-- «Люди» sub-tabs — shown only while a people panel is active. The ids
        admin-rehab-tab / admin-purchases-tab and the data-tab values are kept so
@@ -2382,6 +2418,37 @@ a.dash-tab:hover { text-decoration:none; }
         </div>
         <div id="pathmap-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:600px;overflow-y:auto;">Загрузка…</div>
       </div>
+    </div></div>
+  </div>
+
+  <!-- TAB: Extension queue (superadmin) — user-submitted catalog additions -->
+  <div class="tab-panel" id="tab-admin-extensions">
+    <div class="dash-grid"><div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+        <h3 style="margin:0;" data-i18n="a.ext.admin_title">Запросы на расширение каталогов</h3>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="ext-admin-filter" onchange="extAdminLoadQueue()" class="glass-input" style="font-size:12px;padding:0.35rem 0.6rem;width:auto;">
+            <option value="pending" data-i18n="a.ext.status_pending">В ожидании</option>
+            <option value="in_progress" data-i18n="a.ext.status_in_progress">В работе</option>
+            <option value="added" data-i18n="a.ext.status_added">Добавлено</option>
+            <option value="declined" data-i18n="a.ext.status_declined">Отклонено</option>
+            <option value="" data-i18n="a.ext.status_all">Все</option>
+          </select>
+          <button class="dash-tab" onclick="extAdminLoadQueue()" data-i18n="a.ext.refresh">Обновить</button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;" data-i18n="a.ext.admin_hint">Заявки пользователей на добавление функций, препаратов, диагнозов, диет и др. в каталоги.</p>
+      <div style="overflow-x:auto;"><table class="admin-table">
+        <thead><tr>
+          <th data-i18n="a.ext.col_date">Дата</th>
+          <th data-i18n="a.ext.col_kind">Тип</th>
+          <th data-i18n="a.ext.col_name">Название</th>
+          <th data-i18n="a.ext.col_user">Пользователь</th>
+          <th data-i18n="a.ext.col_status">Статус</th>
+          <th data-i18n="a.ext.col_actions">Действия</th>
+        </tr></thead>
+        <tbody id="ext-admin-tbody"><tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;" data-i18n="a.ext.loading">Загрузка…</td></tr></tbody>
+      </table></div>
     </div></div>
   </div>
 
@@ -4017,6 +4084,9 @@ function setupAdminDashboard(user){
     coursesTab.style.display = '';
     if (typeof loadCourses === 'function') loadCourses();
   }
+  // Extension queue — superadmin/founder only
+  var extTab = document.getElementById('admin-ext-tab');
+  if(extTab && isFounder){ extTab.style.display = ''; }
 }
 
 // ══════════════════════════════════════════
@@ -4155,6 +4225,8 @@ function switchAdminTab(id){
   document.querySelectorAll('#admin-tabs .dash-tab[data-tab]').forEach(function(t){
     t.classList.toggle('active', isPeople ? t.dataset.tab==='admin-people' : t.dataset.tab===id);
   });
+  // Extension queue — load its data when the panel opens
+  if(id==='admin-extensions' && typeof window.extAdminLoadQueue==='function') window.extAdminLoadQueue();
   // people sub-tab bar — visible only while a people panel is active
   var subBar=document.getElementById('admin-people-subtabs');
   if(subBar){
@@ -5133,7 +5205,7 @@ function switchTab(id){
     evoMaybeShowCollective();
   }
   // PR#119: refresh the Profile-tab "Мои документы" section when Profile is shown.
-  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} }, 40); }
+  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} }, 40); }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -19628,6 +19700,185 @@ window.pbMove = pbMove;
   window.schedDelete=function(id){
     fetch(API+'/api/me/schedules/'+id,{method:'DELETE',headers:naAuthHeaders()})
       .then(function(){ schedLoadMine(); try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }).catch(function(){});
+  };
+})();
+</script>
+
+<!-- ═══ EXTENSION REQUESTS — "please add X to the catalog" modal + user/admin logic ═══ -->
+<!-- FAB lives at body level (NOT inside the atlas card) so position:fixed resolves
+     against the viewport — dashboard cards use backdrop-filter, which would otherwise
+     trap a fixed descendant. Visibility is toggled by an IntersectionObserver on the
+     atlas shell so it only shows while the Internal Field area is on screen. -->
+<button class="ext-fab" id="ext-req-fab" onclick="extOpenModal()" title="Предложить добавление в каталог">✚ <span data-i18n="a.ext.fab">Чего-то не хватает?</span></button>
+<div class="modal-overlay" id="extReqModal">
+  <div class="modal-box glass-card-elevated" style="max-width:440px;width:100%;padding:1.6rem;">
+    <button class="modal-close" onclick="extCloseModal()">&times;</button>
+    <h3 style="margin:0 0 0.4rem;" data-i18n="a.ext.modal_title">Предложить добавление</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.2rem;line-height:1.5;" data-i18n="a.ext.modal_sub">Не нашли нужный пункт в каталоге? Отправьте запрос — мы рассмотрим и добавим.</p>
+    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:0.3rem;" data-i18n="a.ext.f_kind">Категория</label>
+    <select id="ext-kind" class="glass-input" style="width:100%;margin-bottom:0.9rem;"></select>
+    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:0.3rem;"><span data-i18n="a.ext.f_name">Название</span> <span style="color:#f0788a;">*</span></label>
+    <input id="ext-name" class="glass-input" maxlength="200" style="width:100%;margin-bottom:0.9rem;" placeholder="Например: Магний глицинат">
+    <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:0.3rem;" data-i18n="a.ext.f_notes">Описание (необязательно)</label>
+    <textarea id="ext-notes" class="glass-input" maxlength="2000" rows="3" style="width:100%;margin-bottom:0.9rem;resize:vertical;" placeholder="Почему это стоит добавить, ссылки, детали…"></textarea>
+    <div id="ext-modal-status" style="font-size:13px;min-height:18px;margin-bottom:0.5rem;"></div>
+    <button class="btn btn-primary" id="ext-submit-btn" onclick="extSubmit()" style="width:100%;justify-content:center;" data-i18n="a.ext.submit">Отправить запрос</button>
+  </div>
+</div>
+<script>
+(function(){
+  function api(){ return (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||''); }
+  function hdrs(){ return (typeof naAuthHeaders==='function') ? naAuthHeaders() : {'Content-Type':'application/json'}; }
+  function xt(k,f){ return (typeof window.t==='function') ? window.t(k,f) : (f||k); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  var KIND_KEYS = ['function','sport','medication','substance','diagnosis','diet','body_region','cognitive_function'];
+  function kindLabel(k){
+    return xt('a.ext.kind_'+k, {function:'Функция человека',sport:'Спорт / активность',medication:'Препарат',substance:'Вещество',diagnosis:'Диагноз / состояние',diet:'Тип питания',body_region:'Часть тела / орган',cognitive_function:'Когнитивная функция'}[k]||k);
+  }
+  function statusLabel(s){
+    return xt('a.ext.status_'+s, {pending:'В ожидании',in_progress:'В работе',added:'Добавлено',declined:'Отклонено'}[s]||s);
+  }
+  function badge(s){ return '<span class="ext-badge '+esc(s)+'">'+esc(statusLabel(s))+'</span>'; }
+  function fmtDate(d){ if(!d) return ''; try{ var dt=new Date(d); return ('0'+dt.getDate()).slice(-2)+'.'+('0'+(dt.getMonth()+1)).slice(-2)+'.'+dt.getFullYear(); }catch(e){ return String(d).slice(0,10); } }
+
+  // The FAB is fixed to the viewport corner; reveal it only while the atlas/Internal
+  // Field area is actually on screen (across all its sub-tabs), hide it elsewhere.
+  (function(){
+    var fab=document.getElementById('ext-req-fab');
+    var shell=document.querySelector('#tools-anatomy-content .atlas-shell') || document.querySelector('.atlas-shell');
+    if(!fab) return;
+    if(shell && 'IntersectionObserver' in window){
+      new IntersectionObserver(function(es){ es.forEach(function(e){ fab.classList.toggle('ext-fab-on', e.isIntersecting); }); }, {threshold:0}).observe(shell);
+    } else { fab.classList.add('ext-fab-on'); }
+  })();
+
+  // Derive the default kind from the active Human-Atlas sub-tab.
+  function activeKind(){
+    var a=document.querySelector('.ha-tab.active');
+    var id=a?a.id:'';
+    if(id==='ha-tab-functions') return 'function';
+    if(id==='ha-tab-conditions') return 'diagnosis';
+    if(id==='ha-tab-diet') return 'diet';
+    if(id==='ha-tab-medications'){
+      var sub=document.querySelector('#ha-med-kinds .ha-cat.active');
+      if(sub && sub.getAttribute('data-kind')==='substance') return 'substance';
+      return 'medication';
+    }
+    return 'body_region'; // anatomy / default
+  }
+
+  window.extOpenModal = function(preKind){
+    var sel=document.getElementById('ext-kind'); if(!sel) return;
+    var want = preKind || activeKind();
+    sel.innerHTML = KIND_KEYS.map(function(k){ return '<option value="'+k+'"'+(k===want?' selected':'')+'>'+esc(kindLabel(k))+'</option>'; }).join('');
+    var nm=document.getElementById('ext-name'), no=document.getElementById('ext-notes'), st=document.getElementById('ext-modal-status');
+    if(nm){ nm.value=''; nm.placeholder=xt('a.ext.f_name_ph','Например: Магний глицинат'); }
+    if(no){ no.value=''; no.placeholder=xt('a.ext.f_notes_ph','Почему это стоит добавить, ссылки, детали…'); }
+    if(st) st.textContent='';
+    var ov=document.getElementById('extReqModal'); if(ov){ ov.style.display='flex'; }
+    setTimeout(function(){ if(nm) nm.focus(); }, 50);
+  };
+  window.extCloseModal = function(){ var ov=document.getElementById('extReqModal'); if(ov) ov.style.display='none'; };
+  // click backdrop to close
+  (function(){ var ov=document.getElementById('extReqModal'); if(ov){ ov.addEventListener('click', function(e){ if(e.target===ov) window.extCloseModal(); }); } })();
+
+  window.extSubmit = function(){
+    var nm=document.getElementById('ext-name'), no=document.getElementById('ext-notes'),
+        sel=document.getElementById('ext-kind'), st=document.getElementById('ext-modal-status'),
+        btn=document.getElementById('ext-submit-btn');
+    var name=(nm&&nm.value||'').trim();
+    if(!name){ if(st){ st.style.color='#f0788a'; st.textContent=xt('a.ext.err_name','Укажите название'); } if(nm) nm.focus(); return; }
+    var payload={ name:name, notes:(no&&no.value||'').trim(), kind:(sel&&sel.value)||'body_region' };
+    if(btn){ btn.disabled=true; }
+    if(st){ st.style.color='var(--text-muted)'; st.textContent=xt('a.ext.sending','Отправка…'); }
+    fetch(api()+'/api/extensions/request', { method:'POST', headers:hdrs(), body:JSON.stringify(payload) })
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(res){
+        if(btn) btn.disabled=false;
+        if(!res.ok || !res.d.ok){ if(st){ st.style.color='#f0788a'; st.textContent=(res.d&&res.d.error)||xt('a.ext.err_generic','Не удалось отправить'); } return; }
+        if(st){ st.style.color='#6be89b'; st.textContent=xt('a.ext.sent','Спасибо! Запрос отправлен.'); }
+        try{ window.extLoadMine && window.extLoadMine(); }catch(e){}
+        setTimeout(window.extCloseModal, 900);
+      })
+      .catch(function(){ if(btn) btn.disabled=false; if(st){ st.style.color='#f0788a'; st.textContent=xt('a.ext.err_generic','Не удалось отправить'); } });
+  };
+
+  // ── My requests (Profile card) ──
+  var _mine=null;
+  window.extLoadMine = function(){
+    fetch(api()+'/api/extensions/my-requests', { headers:hdrs() })
+      .then(function(r){ return r.ok?r.json():{requests:[]}; })
+      .then(function(d){
+        _mine=(d&&d.requests)||[];
+        var card=document.getElementById('ext-req-card'); if(!card) return;
+        if(!_mine.length){ card.style.display='none'; return; }
+        card.style.display='';
+        var cnt=document.getElementById('ext-req-count'); if(cnt) cnt.textContent=_mine.length;
+        var wrap=document.getElementById('ext-req-mine-wrap');
+        if(wrap && wrap.style.display!=='none') window.extRenderMine();
+      }).catch(function(){});
+  };
+  window.extRenderMine = function(){
+    var box=document.getElementById('ext-req-mine'); if(!box||!_mine) return;
+    var f=(document.getElementById('ext-req-filter')||{}).value||'';
+    var rows=_mine.filter(function(r){ return !f || r.status===f; });
+    if(!rows.length){ box.innerHTML='<p style="color:var(--text-dim);font-size:13px;margin:0;">'+esc(xt('a.ext.mine_empty','Нет запросов с этим статусом.'))+'</p>'; return; }
+    box.innerHTML='<div style="overflow-x:auto;"><table class="admin-table" style="width:100%;"><thead><tr>'
+      +'<th>'+esc(xt('a.ext.col_date','Дата'))+'</th><th>'+esc(xt('a.ext.col_kind','Тип'))+'</th><th>'+esc(xt('a.ext.col_name','Название'))+'</th><th>'+esc(xt('a.ext.col_status','Статус'))+'</th></tr></thead><tbody>'
+      +rows.map(function(r){
+        var an = r.admin_notes ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">'+esc(xt('a.ext.admin_reply','Ответ'))+': '+esc(r.admin_notes)+'</div>' : '';
+        return '<tr><td style="white-space:nowrap;">'+esc(fmtDate(r.created_at))+'</td><td>'+esc(kindLabel(r.kind))+'</td><td>'+esc(r.name)+an+'</td><td>'+badge(r.status)+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  };
+  window.extToggleMine = function(){
+    var wrap=document.getElementById('ext-req-mine-wrap'), car=document.getElementById('ext-req-caret'); if(!wrap) return;
+    var open=wrap.style.display==='none';
+    wrap.style.display=open?'':'none'; if(car) car.textContent=open?'▲':'▼';
+    if(open) window.extRenderMine();
+  };
+
+  // ── Admin queue ──
+  window.extAdminLoadQueue = function(){
+    var tb=document.getElementById('ext-admin-tbody'); if(!tb) return;
+    var status=(document.getElementById('ext-admin-filter')||{}).value;
+    status = (status==null) ? 'pending' : status;
+    var url=api()+'/api/admin/extensions/queue'+(status?('?status='+encodeURIComponent(status)):'');
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">'+esc(xt('a.ext.loading','Загрузка…'))+'</td></tr>';
+    fetch(url, { headers:hdrs() })
+      .then(function(r){ return r.ok?r.json():{requests:[]}; })
+      .then(function(d){ extAdminRender((d&&d.requests)||[]); })
+      .catch(function(){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#f0788a;padding:1.5rem;">'+esc(xt('a.ext.err_generic','Ошибка загрузки'))+'</td></tr>'; });
+  };
+  function extAdminRender(list){
+    var tb=document.getElementById('ext-admin-tbody'); if(!tb) return;
+    if(!list.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">'+esc(xt('a.ext.queue_empty','Нет запросов.'))+'</td></tr>'; return; }
+    tb.innerHTML=list.map(function(r){
+      var who = esc(r.user_name||r.user_email||'—');
+      var notes = r.notes ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;max-width:280px;">'+esc(r.notes)+'</div>' : '';
+      var anv = r.admin_notes ? esc(r.admin_notes) : '';
+      return '<tr>'
+        +'<td style="white-space:nowrap;">'+esc(fmtDate(r.created_at))+'</td>'
+        +'<td style="white-space:nowrap;">'+esc(kindLabel(r.kind))+'</td>'
+        +'<td>'+esc(r.name)+notes+'</td>'
+        +'<td style="white-space:nowrap;">'+who+'</td>'
+        +'<td>'+badge(r.status)+'</td>'
+        +'<td style="min-width:230px;">'
+          +'<textarea id="ext-an-'+r.id+'" class="glass-input" rows="1" placeholder="'+esc(xt('a.ext.admin_notes_ph','Комментарий администратора…'))+'" style="width:100%;font-size:12px;padding:0.3rem 0.5rem;margin-bottom:0.35rem;resize:vertical;">'+anv+'</textarea>'
+          +'<div style="display:flex;gap:4px;flex-wrap:wrap;">'
+            +'<button class="dash-tab" style="font-size:11px;padding:0.25rem 0.5rem;" onclick="extAdminUpdate('+r.id+',\'in_progress\')">'+esc(xt('a.ext.act_in_progress','В работу'))+'</button>'
+            +'<button class="dash-tab" style="font-size:11px;padding:0.25rem 0.5rem;color:#6be89b;" onclick="extAdminUpdate('+r.id+',\'added\')">'+esc(xt('a.ext.act_added','Добавлено'))+'</button>'
+            +'<button class="dash-tab" style="font-size:11px;padding:0.25rem 0.5rem;color:#f0788a;" onclick="extAdminUpdate('+r.id+',\'declined\')">'+esc(xt('a.ext.act_declined','Отклонить'))+'</button>'
+          +'</div>'
+        +'</td></tr>';
+    }).join('');
+  }
+  window.extAdminUpdate = function(id, status){
+    var an=document.getElementById('ext-an-'+id);
+    var payload={ status:status, admin_notes:(an&&an.value||'').trim() };
+    fetch(api()+'/api/admin/extensions/'+id, { method:'PATCH', headers:hdrs(), body:JSON.stringify(payload) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d&&d.ok){ window.extAdminLoadQueue(); } else { alert((d&&d.error)||'Error'); } })
+      .catch(function(){});
   };
 })();
 </script>
