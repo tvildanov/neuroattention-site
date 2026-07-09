@@ -246,6 +246,11 @@
   // Dispatch the #ef-content region for the active tab + current dateMode.
   function renderActive() {
     var content = S.container.querySelector('#ef-content'); if (!content) return;
+    // Bump a request token: renderActive re-uses the SAME #ef-content across
+    // rapid date changes (mode-switch fires one fetch, then the date input fires
+    // another), so a slower earlier fetch must NOT overwrite a newer one. Every
+    // async painter captures S._seq and bails if it is no longer current.
+    S._seq = (S._seq || 0) + 1;
     content.innerHTML = '<div class="ef-loading">' + esc(t('loading')) + '</div>';
     var key = S.active;
     // 'today' (and always Experimental, which has no historical source) → the
@@ -353,10 +358,10 @@
   function renderHistory(content, key) {
     if (key === 'moon') return renderMoonHistory(content);
     if (key === 'weather') return renderWeatherHistory(content);
-    var r = currentRange();
+    var r = currentRange(), seq = S._seq;
     api('/api/external/history?layer=' + key + '&from=' + r.from + '&to=' + r.to + '&lang=' + encodeURIComponent(lang()))
       .then(function (d) {
-        if (!content || !document.body.contains(content)) return;
+        if (seq !== S._seq || !content || !document.body.contains(content)) return;
         var events = (d && d.events) || [];
         if (S.dateMode === 'range') { content.innerHTML = rangeHeader(r) + groupedTimeline(events); return; }
         content.innerHTML = dayHeader(r.from) + (events.length ? historyStats(key, events) : '') + timeline(events, t('hist.none'));
@@ -392,13 +397,13 @@
       var b = content.querySelector('#ef-prompt-loc'); if (b) b.addEventListener('click', openLocationModal);
       return;
     }
-    var u = S.user, r = currentRange();
+    var u = S.user, r = currentRange(), seq = S._seq;
     var url = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + u.location_lat + '&longitude=' + u.location_lon +
       '&start_date=' + r.from + '&end_date=' + r.to + '&timezone=auto' +
       '&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,precipitation_sum' +
       '&hourly=temperature_2m,surface_pressure,relative_humidity_2m';
     fetch(url).then(function (x) { return x.json(); }).then(function (d) {
-      if (!content || !document.body.contains(content)) return;
+      if (seq !== S._seq || !content || !document.body.contains(content)) return;
       var loc = '<div class="ef-loc-line">📍 ' + esc(u.location_city || (u.location_lat.toFixed(2) + ', ' + u.location_lon.toFixed(2))) + '</div>';
       var daily = d && d.daily, hourly = d && d.hourly;
       if (!daily || !daily.time || !daily.time.length) { content.innerHTML = (S.dateMode === 'range' ? rangeHeader(r) : dayHeader(r.from)) + loc + emptyState(t('srcEmpty')); return; }
