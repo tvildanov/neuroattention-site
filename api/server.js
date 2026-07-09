@@ -2398,7 +2398,69 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 054 (asset url rewrite): rewrote', rows.length, 'audio_url rows');
     } catch (e) { mig054.error = e.message; console.error('migration 054 (asset url rewrite):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-054 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054 });
+    // ── migration 055 (Sports sub-section of Functions) ──────────────────────
+    // FIRST-CLASS sports catalog. `sports` mirrors the medications pattern:
+    // green target_tissues_positive / red target_tissues_negative use the SAME
+    // BodyAtlas seed-id vocabulary (see SPORT_SEED / MED_SEED in account.html), so
+    // the Functions→Sports detail view reuses BodyAtlas.tintRegions. Seeded from
+    // api/sports-seed.js. `diagnosis_sports` is a TEXT-slug advisory join (no FK on
+    // the diagnosis side, unknown slugs harmless). Idempotent (ON CONFLICT).
+    let mig055 = { sports_seeded: 0, diagnosis_links: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS sports (
+        id BIGSERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        category TEXT,
+        name_ru TEXT, name_en TEXT, name_es TEXT,
+        description_ru TEXT, description_en TEXT, description_es TEXT,
+        target_tissues_positive TEXT[] DEFAULT '{}',
+        target_tissues_negative TEXT[] DEFAULT '{}',
+        warning_ru TEXT, warning_en TEXT, warning_es TEXT,
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT true
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS diagnosis_sports (
+        diagnosis_slug TEXT NOT NULL,
+        sport_id BIGINT NOT NULL REFERENCES sports(id) ON DELETE CASCADE,
+        is_primary BOOLEAN DEFAULT false,
+        PRIMARY KEY (diagnosis_slug, sport_id)
+      )`;
+      const { SPORTS, SPORT_DIAG_LINKS } = require('./sports-seed.js');
+      for (const s of SPORTS) {
+        try {
+          await sql`INSERT INTO sports (slug, category, name_ru, name_en, name_es,
+              description_ru, description_en, description_es,
+              target_tissues_positive, target_tissues_negative,
+              warning_ru, warning_en, warning_es, sort_order, is_active)
+            VALUES (${s.slug}, ${s.category || null}, ${s.name_ru || null}, ${s.name_en || null}, ${s.name_es || null},
+              ${s.description_ru || null}, ${s.description_en || null}, ${s.description_es || null},
+              ${s.target_tissues_positive || []}::text[], ${s.target_tissues_negative || []}::text[],
+              ${s.warning_ru || null}, ${s.warning_en || null}, ${s.warning_es || null}, ${s.sort_order || 0}, true)
+            ON CONFLICT (slug) DO UPDATE SET
+              category = EXCLUDED.category, name_ru = EXCLUDED.name_ru, name_en = EXCLUDED.name_en, name_es = EXCLUDED.name_es,
+              description_ru = EXCLUDED.description_ru, description_en = EXCLUDED.description_en, description_es = EXCLUDED.description_es,
+              target_tissues_positive = EXCLUDED.target_tissues_positive, target_tissues_negative = EXCLUDED.target_tissues_negative,
+              warning_ru = EXCLUDED.warning_ru, warning_en = EXCLUDED.warning_en, warning_es = EXCLUDED.warning_es,
+              sort_order = EXCLUDED.sort_order, is_active = true`;
+          mig055.sports_seeded++;
+        } catch (se) { mig055.skipped = (mig055.skipped || 0) + 1; }
+      }
+      for (const diagSlug of Object.keys(SPORT_DIAG_LINKS || {})) {
+        for (const lk of SPORT_DIAG_LINKS[diagSlug]) {
+          try {
+            const srow = await sql`SELECT id FROM sports WHERE slug = ${lk.slug}`;
+            if (!srow.length) continue;
+            await sql`INSERT INTO diagnosis_sports (diagnosis_slug, sport_id, is_primary)
+              VALUES (${diagSlug}, ${srow[0].id}, ${!!lk.is_primary})
+              ON CONFLICT (diagnosis_slug, sport_id) DO UPDATE SET is_primary = EXCLUDED.is_primary`;
+            mig055.diagnosis_links++;
+          } catch (le) { mig055.skipped = (mig055.skipped || 0) + 1; }
+        }
+      }
+      console.log('migration 055 (sports): seeded', mig055.sports_seeded, 'links', mig055.diagnosis_links);
+    } catch (e) { mig055.error = e.message; console.error('migration 055 (sports):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-055 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -10383,6 +10445,57 @@ app.get('/api/me/diet/events', requireAuth, async (req, res) => {
   } catch (err) {
     if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated', events: [] });
     console.error('GET /api/me/diet/events:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Sports (sub-section of the Functions tab, migration 055) ────────────────
+// Mirrors the medications read pattern. `sports` holds a curated catalog whose
+// target_tissues_* use BodyAtlas seed-ids → green (benefits) / red (overuse) 3D
+// overlay reused from the medications tint path. Public read; graceful 503
+// pre-migration so the Functions tab still works without the table.
+
+// GET /api/sports?category=&q=&limit= — list/search
+app.get('/api/sports', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    const category = (req.query.category || '').trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 200);
+    let rows;
+    if (q) {
+      const like = '%' + q + '%';
+      rows = await sql`SELECT * FROM sports
+        WHERE is_active = TRUE
+          AND (${category} = '' OR lower(coalesce(category,'')) = ${category})
+          AND (lower(coalesce(name_en,'')) LIKE ${like} OR lower(coalesce(name_ru,'')) LIKE ${like}
+               OR lower(coalesce(name_es,'')) LIKE ${like})
+        ORDER BY sort_order, name_en LIMIT ${limit}`;
+    } else {
+      rows = await sql`SELECT * FROM sports
+        WHERE is_active = TRUE
+          AND (${category} = '' OR lower(coalesce(category,'')) = ${category})
+        ORDER BY sort_order, name_en LIMIT ${limit}`;
+    }
+    res.json({ ok: true, sports: rows });
+  } catch (err) {
+    if (/relation .*sports.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sports table not migrated', sports: [] });
+    console.error('GET /api/sports:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/sports/:slug — detail + the diagnoses it commonly benefits
+app.get('/api/sports/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').toLowerCase();
+    const rows = await sql`SELECT * FROM sports WHERE slug = ${slug} AND is_active = TRUE`;
+    if (!rows.length) return res.status(404).json({ error: 'sport not found' });
+    let diagnoses = [];
+    try {
+      diagnoses = await sql`SELECT diagnosis_slug, is_primary FROM diagnosis_sports WHERE sport_id = ${rows[0].id}`;
+    } catch (e) { /* join table optional */ }
+    res.json({ ok: true, sport: rows[0], diagnoses });
+  } catch (err) {
+    if (/relation .*sports.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sports table not migrated' });
+    console.error('GET /api/sports/:slug:', err); res.status(500).json({ error: err.message });
   }
 });
 
