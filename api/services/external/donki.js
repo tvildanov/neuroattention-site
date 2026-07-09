@@ -5,7 +5,19 @@ function d10(t) { return new Date(t).toISOString().slice(0, 10); }
 
 async function fetchLatest(ctx) {
   const key = (ctx && ctx.nasaKey) || process.env.NASA_API_KEY || 'DEMO_KEY';
-  const s = d10(Date.now() - 7 * 864e5), e = d10(Date.now());
+  return fetchRange(d10(Date.now() - 7 * 864e5), d10(Date.now()), key);
+}
+
+// Historical FLR/CME/GST for an explicit [from,to] window (YYYY-MM-DD or ms).
+// Same normalized shape as fetchLatest — DONKI's endpoints are already
+// date-ranged, so this is the archive path for the Sun/Earth layers. Needs a
+// real NASA key for coverage; on DEMO_KEY it is rate-limited and returns little.
+async function fetchHistory(ctx) {
+  const key = (ctx && ctx.nasaKey) || process.env.NASA_API_KEY || 'DEMO_KEY';
+  return fetchRange(d10((ctx && ctx.from) || Date.now()), d10((ctx && ctx.to) || Date.now()), key);
+}
+
+async function fetchRange(s, e, key) {
   const out = [];
   try {
     const flr = await getJson('https://api.nasa.gov/DONKI/FLR?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
@@ -40,4 +52,4 @@ async function fetchLatest(ctx) {
   } catch (err) { console.warn('[ext/donki] gst:', err.message); }
   return out.filter(function (x) { return x.timestamp; });
 }
-module.exports = { fetchLatest };
+module.exports = { fetchLatest, fetchHistory };
