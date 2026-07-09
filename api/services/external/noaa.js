@@ -19,6 +19,34 @@ function gScale(kp) {
   return 'Quiet to unsettled geomagnetic field';
 }
 
+// Keyless Sun-layer archive: NOAA SWPC publishes every GOES-classified flare of
+// the LAST 7 DAYS (no auth). For a [from,to] window we pull that feed and keep
+// the flares inside it — so recent past days get real flare data even without a
+// NASA key (DONKI, the deeper archive, needs one). Windows older than ~7 days
+// return nothing here and fall back to DONKI/cache. — PR EF-history
+async function fetchHistory(ctx) {
+  const from = new Date((ctx && ctx.from) || 0).getTime();
+  const to = new Date((ctx && ctx.to) || Date.now()).getTime() + 864e5;   // inclusive of the 'to' day
+  const out = [];
+  try {
+    const flr = await getJson('https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json');
+    (flr || []).forEach(function (f) {
+      const cls = f.max_class || f.current_class;
+      if (!cls || !f.begin_time) return;
+      const peak = f.max_time || f.begin_time;
+      const ts = iso(peak); const tms = ts ? new Date(ts).getTime() : NaN;
+      if (!ts || tms < from || tms > to) return;
+      out.push({ layer: 'sun', source: 'NOAA SWPC',
+        source_url: 'https://www.swpc.noaa.gov/products/goes-x-ray-flux',
+        event_type: 'flare', title: 'Solar flare ' + cls,
+        description: 'GOES-' + (f.satellite || '?') + ' X-ray flare · peak ' + cls,
+        timestamp: ts, start_time: iso(f.begin_time), end_time: f.end_time ? iso(f.end_time) : null,
+        severity: cls, location_scope: 'global', dedup_key: 'noaa:flr:' + f.begin_time, raw_payload: f });
+    });
+  } catch (e) { console.warn('[ext/noaa] history flares:', e.message); }
+  return out.filter(function (e) { return e.timestamp; });
+}
+
 async function fetchLatest() {
   const out = [];
   // ── X-ray flux → current flare level (sun) ──
@@ -125,4 +153,4 @@ async function fetchLatest() {
   return out.filter(function (e) { return e.timestamp; });
 }
 
-module.exports = { fetchLatest };
+module.exports = { fetchLatest, fetchHistory };
