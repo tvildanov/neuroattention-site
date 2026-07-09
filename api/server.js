@@ -10578,21 +10578,27 @@ app.get('/api/external/history', requireAuth, async (req, res) => {
       const missing = wantDays.filter(d => !have.has(d));
       if (!missing.length) continue;
       const mFrom = missing[0], mTo = missing[missing.length - 1];
-      let fetched = [];
+      let fetched = [], hardFail = false;
       try {
         const mod = EXT_SOURCES[src].load();
         if (mod.fetchHistory) fetched = await mod.fetchHistory({ from: mFrom, to: mTo + 'T23:59:59Z', nasaKey: process.env.NASA_API_KEY || 'DEMO_KEY' });
-      } catch (e) { console.warn('[ext/history] ' + src + ':', e.message); }
+        else hardFail = true;   // source has no archive path — don't cache empty
+      } catch (e) { hardFail = true; console.warn('[ext/history] ' + src + ':', e.message); }
       const bucket = {};
       (fetched || []).forEach(ev => { const k = extDayKey(ev.timestamp); if (k) (bucket[k] = bucket[k] || []).push(ev); });
       for (const d of extDayList(mFrom, mTo)) {
         if (have.has(d)) continue;
         const evs = bucket[d] || [];
-        try {
-          await sql`INSERT INTO external_field_cache (source, day, layer, events, fetched_at)
-                    VALUES (${src}, ${d}, ${layer}, ${JSON.stringify(evs)}::jsonb, now())
-                    ON CONFLICT (source, day) DO UPDATE SET events = ${JSON.stringify(evs)}::jsonb, fetched_at = now()`;
-        } catch (e) { /* cache write is best-effort */ }
+        // On a hard fetch failure DON'T cache — else a transient 429/network blip
+        // would pin this (source,day) to a permanent empty result. Serve whatever
+        // arrived this round; a later request retries the miss.
+        if (!hardFail) {
+          try {
+            await sql`INSERT INTO external_field_cache (source, day, layer, events, fetched_at)
+                      VALUES (${src}, ${d}, ${layer}, ${JSON.stringify(evs)}::jsonb, now())
+                      ON CONFLICT (source, day) DO UPDATE SET events = ${JSON.stringify(evs)}::jsonb, fetched_at = now()`;
+          } catch (e) { /* cache write is best-effort */ }
+        }
         evs.forEach(ev => all.push(ev));
       }
     }
