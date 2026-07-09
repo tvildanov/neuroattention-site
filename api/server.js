@@ -4133,6 +4133,34 @@ app.post('/api/admin/cleanup-test-users', requireAuth, async (req, res) => {
     res.json({ success: true, soft_deleted: rows.length, emails: rows.map(r => r.email) });
   } catch (err) { console.error('cleanup-test-users:', err); res.status(500).json({ error: 'Internal error' }); }
 });
+// POST /api/admin/users/bulk-delete { user_ids: [] } — superadmin only.
+// HARD cascade purge of each selected user (reuses hardDeleteUser — same table
+// scope as the 1h-cron hard delete, i.e. a full per-user wipe). No soft-delete /
+// grace window: the batch is meant for triaging the hundreds of QA throwaway
+// accounts, so it removes rows immediately. Skips self, other superadmins, and
+// unknown ids, reporting each so the caller sees exactly what was and wasn't
+// purged. Loops one id at a time (never `id = ANY(${arr}::…)` — neon silently
+// throws inside try/catch and reports success while deleting nothing).
+app.post('/api/admin/users/bulk-delete', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const ids = Array.isArray(req.body && req.body.user_ids) ? req.body.user_ids.map(String) : [];
+    if (!ids.length) return res.status(400).json({ error: 'No user_ids provided' });
+    if (ids.length > 500) return res.status(400).json({ error: 'Too many ids (max 500 per batch)' });
+    const deleted = [];
+    const skipped = [];
+    for (const id of ids) {
+      if (id === String(caller.id)) { skipped.push({ id, reason: 'self' }); continue; }
+      const [target] = await sql`SELECT id, email, role FROM users WHERE id = ${id}`;
+      if (!target) { skipped.push({ id, reason: 'not_found' }); continue; }
+      if (target.role === 'superadmin') { skipped.push({ id, email: target.email, reason: 'superadmin' }); continue; }
+      try { await hardDeleteUser(id); deleted.push({ id, email: target.email }); }
+      catch (e) { skipped.push({ id, email: target.email, reason: 'error' }); }
+    }
+    try { await sql`INSERT INTO audit_log (actor_user_id, action, target_user_id, detail) VALUES (${caller.id}, 'user.bulk_hard_delete', NULL, ${JSON.stringify({ deleted: deleted.length, skipped: skipped.length, emails: deleted.map(d => d.email) })}::jsonb)`; } catch (e) {}
+    res.json({ success: true, deleted: deleted.length, skipped: skipped.length, deleted_ids: deleted.map(d => d.id), skipped_detail: skipped });
+  } catch (err) { console.error('bulk-delete:', err); res.status(500).json({ error: 'Internal error' }); }
+});
 // POST /api/admin/users/:id/restore — only within the 1h grace window.
 app.post('/api/admin/users/:id/restore', requireAuth, async (req, res) => {
   try {
