@@ -1281,6 +1281,7 @@ a.dash-tab:hover { text-decoration:none; }
       <a class="dash-tab dash-subtab" id="tools-mode-pointab" href="?tool=pointab" onclick="event.preventDefault();setToolsMode('pointab');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</a>
       <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;">External Field</a>
       <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=internal-field" onclick="event.preventDefault();setToolsMode('internal-field');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.internal_field">Внутреннее воздействие</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-library" href="?tool=library" onclick="event.preventDefault();setToolsMode('library');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.library">Library</a>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -1497,6 +1498,9 @@ a.dash-tab:hover { text-decoration:none; }
     </div>
     <!-- External Field tool — objective environmental signals -->
     <div id="tools-external-content" style="display:none;"></div>
+
+    <!-- ── Library tool (PR Library): terms · articles · theories · research · functions · methods ── -->
+    <div id="tools-library-content" style="display:none;"></div>
 
     <!-- ── Anatomy Atlas tool (3D BodyAtlas) ── -->
     <div id="tools-anatomy-content" style="display:none;">
@@ -5110,6 +5114,7 @@ function switchTab(id){
                    : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
                    : document.querySelector('#tools-mode-external.active') ? 'external'
                    : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
+                   : document.querySelector('#tools-mode-library.active') ? 'library'
                    : 'nm';
     setToolsMode(activeMode);
   }
@@ -5696,8 +5701,10 @@ function setToolsMode(mode){
   var externalContent = document.getElementById('tools-external-content');
   var btnAnatomy = document.getElementById('tools-mode-anatomy');
   var anatomyContent = document.getElementById('tools-anatomy-content');
+  var btnLibrary = document.getElementById('tools-mode-library');
+  var libraryContent = document.getElementById('tools-library-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy,btnLibrary].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
@@ -5706,6 +5713,13 @@ function setToolsMode(mode){
   if(pointabContent) pointabContent.style.display='none';
   if(externalContent) externalContent.style.display='none';
   if(anatomyContent) anatomyContent.style.display='none';
+  if(libraryContent) libraryContent.style.display='none';
+  if(mode==='library'){
+    if(btnLibrary){ btnLibrary.classList.add('active'); btnLibrary.style.borderBottomColor='var(--accent-cyan)'; }
+    if(libraryContent){ libraryContent.style.display='';
+      setTimeout(function(){ try{ if(typeof window.mountLibraryTool==='function') window.mountLibraryTool(libraryContent); }catch(e){ console.warn('library mount', e); } }, 40);
+    }
+  }
   if(mode==='anatomy'){
     if(btnAnatomy){ btnAnatomy.classList.add('active'); btnAnatomy.style.borderBottomColor='var(--accent-cyan)'; }
     if(anatomyContent){ anatomyContent.style.display='';
@@ -5765,6 +5779,7 @@ function toolsExpandActive(){
     pointab:  { id: 'tools-pointab-content', title: 'Точка А → B' },
     external: { id: 'tools-external-content', title: 'External Field' },
     anatomy:  { id: 'tools-anatomy-content', title: 'Анатомический атлас' },
+    library:  { id: 'tools-library-content', title: 'Library' },
     diary:    { id: 'tools-cal-diary-wrap',  title: 'Дневник' }
   };
   // External Field was missing here, so its «Раскрыть» fell through to the
@@ -5774,6 +5789,7 @@ function toolsExpandActive(){
              : document.querySelector('#tools-mode-pointab.active') ? 'pointab'
              : document.querySelector('#tools-mode-external.active') ? 'external'
              : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
+             : document.querySelector('#tools-mode-library.active') ? 'library'
              : 'nm';
   var info = map[active]; if (!info) return;
   var src = document.getElementById(info.id); if (!src) return;
@@ -13455,7 +13471,8 @@ window.TOOL_TASK_META = {
   neuromap_emotion: { tool: 'neuromap',  nm: 'emotion', title_ru: 'Задание · Нейромап (эмоция)', icon: '💗', label_ru: 'Нейромап · эмоция' },
   neuromap_event:   { tool: 'neuromap',  nm: 'event',   title_ru: 'Задание · Нейромап (событие)', icon: '📍', label_ru: 'Нейромап · событие' },
   neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' },
-  'human-atlas':    { tool: 'anatomy',   title_ru: 'Задание · Атлас человека', icon: '🧬', label_ru: 'Атлас человека' }
+  'human-atlas':    { tool: 'anatomy',   title_ru: 'Задание · Атлас человека', icon: '🧬', label_ru: 'Атлас человека' },
+  'library':        { tool: 'library',   title_ru: 'Задание · Библиотека', icon: '📚', label_ru: 'Библиотека' }
 };
 // Localized instrument label for a tool_task kind. Falls back to label_ru.
 function cpToolLabel(kind){
@@ -13473,7 +13490,7 @@ function courseAddToolTask(parentBlockId){
   ov.style.zIndex = '10050';
   // human-atlas has its own mode+entity picker (courseAddHumanAtlas); the rest are
   // one-click instrument embeds.
-  var kinds = Object.keys(window.TOOL_TASK_META).filter(function(k){ return k !== 'human-atlas'; });
+  var kinds = Object.keys(window.TOOL_TASK_META).filter(function(k){ return k !== 'human-atlas' && k !== 'library'; });
   ov.innerHTML = '<div class="rpg-modal" style="max-width:360px;">' +
     '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">Задание из инструмента</h3>' +
     '<p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);">Ученик выполнит инструмент прямо в плеере курса.</p>' +
@@ -13482,6 +13499,7 @@ function courseAddToolTask(parentBlockId){
         return '<button class="btn btn-ghost tt-pick" data-kind="' + k + '" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">' +
           m.icon + '&nbsp; ' + m.label_ru + '</button>'; }).join('') +
       '<button class="btn btn-ghost" id="tt-pick-ha" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">🧬&nbsp; Атлас человека…</button>' +
+      '<button class="btn btn-ghost" id="tt-pick-lib" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">📚&nbsp; Библиотека…</button>' +
     '</div>' +
     '<button class="btn btn-ghost" id="tt-cancel" style="margin-top:0.9rem;font-size:12px;">Отмена</button></div>';
   document.body.appendChild(ov);
@@ -13489,6 +13507,7 @@ function courseAddToolTask(parentBlockId){
   ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
   ov.querySelector('#tt-cancel').addEventListener('click', close);
   ov.querySelector('#tt-pick-ha').addEventListener('click', function(){ close(); courseAddHumanAtlas(parentBlockId); });
+  ov.querySelector('#tt-pick-lib').addEventListener('click', function(){ close(); courseAddLibrary(parentBlockId); });
   ov.querySelectorAll('.tt-pick').forEach(function(b){
     b.addEventListener('click', function(){
       courseAddBlock('tool_task', parentBlockId, b.getAttribute('data-kind'));
@@ -13557,6 +13576,51 @@ function courseAddHumanAtlas(parentBlockId){
   });
 }
 window.courseAddHumanAtlas = courseAddHumanAtlas;
+
+// 📚 Library course block (PR Library): pick a kind + a specific item from the
+// Library, saved as tool_kind='library', tool_config={kind, slug, title}.
+function courseAddLibrary(parentBlockId){
+  if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
+  var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+  var KINDS = [['terms','📖 Terms'],['articles','📄 Articles'],['theories','🧠 Theories'],['research','🔬 Research'],['functions','⚙️ Functions'],['methods','🧭 Methods']];
+  var index = null, kind = 'theories';
+  var ov = document.createElement('div'); ov.className='rpg-modal-overlay'; ov.style.zIndex='10050';
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:440px;">' +
+    '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">📚 Библиотека — блок курса</h3>' +
+    '<p style="margin:0 0 0.8rem;font-size:12px;color:var(--text-muted);">Выбери раздел и конкретный материал — студент увидит его в плеере курса.</p>' +
+    '<select id="lib-c-kind" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.5rem;font-size:13px;box-sizing:border-box;margin-bottom:0.6rem;">' +
+      KINDS.map(function(k){ return '<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>'; }).join('') + '</select>' +
+    '<select id="lib-c-item" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.5rem;font-size:13px;box-sizing:border-box;margin-bottom:0.9rem;"><option value="">— загрузка… —</option></select>' +
+    '<div style="display:flex;gap:0.5rem;"><button class="btn btn-solid" id="lib-c-add" style="flex:1;font-size:13px;padding:0.5rem;">Добавить блок</button>' +
+    '<button class="btn btn-ghost" id="lib-c-cancel" style="font-size:12px;">Отмена</button></div></div>';
+  document.body.appendChild(ov);
+  function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
+  ov.querySelector('#lib-c-cancel').addEventListener('click', close);
+  var kindSel = ov.querySelector('#lib-c-kind'), itemSel = ov.querySelector('#lib-c-item');
+  function fillItems(){
+    var items = (index && index[kind]) || [];
+    itemSel.innerHTML = items.length ? items.map(function(it){ return '<option value="'+it.slug+'" data-title="'+(it.title||'').replace(/"/g,'&quot;')+'">'+(it.title||it.slug)+'</option>'; }).join('') : '<option value="">— пусто —</option>';
+  }
+  fetch(base+'/api/library?lang=en').then(function(r){return r.ok?r.json():{};}).then(function(d){ index=d.items||{}; fillItems(); }).catch(function(){ itemSel.innerHTML='<option value="">— ошибка —</option>'; });
+  kindSel.addEventListener('change', function(){ kind=kindSel.value; fillItems(); });
+  ov.querySelector('#lib-c-add').addEventListener('click', function(){
+    var slug = itemSel.value; if(!slug){ alert('Выбери материал'); return; }
+    var opt = itemSel.options[itemSel.selectedIndex];
+    var title = (opt && opt.getAttribute('data-title')) || slug;
+    var body = {
+      block_type: 'tool_task', tool_kind: 'library',
+      tool_config: { kind: kind, slug: slug, title: title },
+      title_ru: 'Библиотека · ' + title,
+      payload: { instruction_ru: '', instruction_en: '', instruction_es: '' }, points: 5
+    };
+    if (parentBlockId) body.parent_block_id = parentBlockId;
+    courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', { method:'POST', body: body })
+      .then(function(d){ courseState.currentBlocks.push(d.block); renderCourseBlocks(); close(); })
+      .catch(function(e){ alert(e.message); });
+  });
+}
+window.courseAddLibrary = courseAddLibrary;
 window.courseAddToolTask = courseAddToolTask;
 
 function courseAddBlock(blockType, parentBlockId, toolKind){
@@ -14558,6 +14622,7 @@ window.cpCancelAutoAdvance = cpCancelAutoAdvance;
 function cpRenderToolTask(block, p, lang){
   var kind = block.tool_kind || 'sensation_map';
   if (kind === 'human-atlas') return cpRenderHumanAtlas(block, p, lang);
+  if (kind === 'library') return cpRenderLibrary(block, p, lang);
   // B п.1: sensation_map mounts the REAL mini Sensation Map (silhouettes + regions),
   // not a textarea. Mounted by the post-render hook (cpMountSensationMap).
   if (kind === 'sensation_map') return cpRenderSensationMap(block, p, lang);
@@ -15108,6 +15173,63 @@ function cpRenderHumanAtlas(block, p, lang){
   return h;
 }
 window.cpRenderHumanAtlas = cpRenderHumanAtlas;
+
+// 📚 Library course block (PR Library): render the chosen library item inline as
+// a read view + a notes textarea (#cp-response) so the student's note persists via
+// cpNext. The item is fetched async and injected (kept lightweight — no 3D atlas
+// in the player; the deep-link opens the full page in a new tab).
+function cpLibReadHtml(kind, it){
+  function e(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var c=it.content||{}, h='';
+  h += '<h3 style="margin:0 0 .4rem;font-size:16px;">'+e(c.title||c.name||c.term||it.slug)+'</h3>';
+  if(kind==='terms'){
+    if(c.synonyms&&c.synonyms.length) h+='<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:.3rem;">Also: '+c.synonyms.map(e).join(', ')+'</div>';
+    h+='<p style="font-size:13.5px;line-height:1.6;">'+e(c.definition||'')+'</p>';
+  } else if(kind==='theories'){
+    if(c.proponents) h+='<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:.3rem;">'+e(c.proponents)+'</div>';
+    if(c.summary) h+='<p style="font-size:13.5px;line-height:1.6;">'+e(c.summary)+'</p>';
+    if(c.key_points&&c.key_points.length) h+='<div style="font-size:12px;color:var(--accent-cyan);margin:.5rem 0 .2rem;">Key points</div><ul style="font-size:13px;line-height:1.55;margin-left:1.1rem;">'+c.key_points.map(function(x){return '<li>'+e(x)+'</li>';}).join('')+'</ul>';
+  } else if(kind==='methods'){
+    if(c.summary) h+='<p style="font-size:13.5px;line-height:1.6;">'+e(c.summary)+'</p>';
+    if(c.body_html) h+='<div style="font-size:13.5px;line-height:1.6;">'+c.body_html+'</div>';
+    if(c.steps&&c.steps.length) h+='<ol style="font-size:13px;line-height:1.55;margin-left:1.1rem;">'+c.steps.map(function(x){return '<li>'+e(x)+'</li>';}).join('')+'</ol>';
+  } else if(kind==='functions'){
+    if(c.summary) h+='<p style="font-size:13.5px;line-height:1.6;">'+e(c.summary)+'</p>';
+    if(c.body_html) h+='<div style="font-size:13.5px;line-height:1.6;">'+c.body_html+'</div>';
+  } else { // articles / research
+    if(it.format==='pdf' && it.pdf_url){ h+='<a href="'+e(it.pdf_url)+'" target="_blank" rel="noopener" style="color:#8fb8ff;font-size:13px;">📄 Open PDF</a>'; }
+    else {
+      if(c.summary) h+='<p style="font-size:13px;font-style:italic;line-height:1.6;">'+e(c.summary)+'</p>';
+      if(c.body_html) h+='<div style="font-size:13.5px;line-height:1.6;">'+c.body_html+'</div>';
+      if(c.findings&&c.findings.length) h+='<ul style="font-size:13px;line-height:1.55;margin-left:1.1rem;">'+c.findings.map(function(x){return '<li>'+e(x)+'</li>';}).join('')+'</ul>';
+    }
+  }
+  return h;
+}
+function cpRenderLibrary(block, p, lang){
+  var cfg = block.tool_config || {};
+  var kind = cfg.kind || 'theories', slug = cfg.slug || '', title = cfg.title || slug;
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+  var loadingLbl = lang==='en'?'Loading…':lang==='es'?'Cargando…':'Загрузка…';
+  var openLbl = lang==='en'?'Open in the Library ↗':lang==='es'?'Abrir en la Biblioteca ↗':'Открыть в Библиотеке ↗';
+  var libLbl = lang==='en'?'Library':lang==='es'?'Biblioteca':'Библиотека';
+  var eid = 'cp-lib-' + Math.abs((slug+kind).split('').reduce(function(a,c){return (a*31+c.charCodeAt(0))|0;},7)).toString(36);
+  var esc1 = function(s){ return (s==null?'':String(s)).replace(/</g,'&lt;'); };
+  setTimeout(function(){
+    fetch(base+'/api/library/'+encodeURIComponent(kind)+'/'+encodeURIComponent(slug)+'?lang='+encodeURIComponent(lang==='en'?'en':lang))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ var host=document.getElementById(eid); if(!host) return; host.innerHTML = (j&&j.item) ? cpLibReadHtml(kind, j.item) : '<div style="color:var(--text-muted);font-size:12px;">—</div>'; })
+      .catch(function(){ var host=document.getElementById(eid); if(host) host.innerHTML='<div style="color:var(--text-muted);font-size:12px;">—</div>'; });
+  }, 30);
+  return '<div style="padding:0.3rem 0 0.1rem;">'
+    + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">📚 '+libLbl+' · '+esc1(title)+'</div>'
+    + '<div id="'+eid+'" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1rem 1.1rem;max-height:52vh;overflow:auto;">'+loadingLbl+'</div>'
+    + '<div style="margin:0.4rem 0 0.8rem;"><a href="?tool=library&lib='+encodeURIComponent(kind)+':'+encodeURIComponent(slug)+'" target="_blank" rel="noopener" style="font-size:11px;color:var(--text-dim);text-decoration:none;">'+openLbl+'</a></div></div>'
+    + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.7rem;">'+esc1(instr)+'</div>' : '')
+    + '<textarea id="cp-response" rows="4" placeholder="'+(lang==='en'?'Your notes…':lang==='es'?'Tus notas…':'Твои заметки…')+'" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+}
+window.cpRenderLibrary = cpRenderLibrary;
 
 // PACK 9 / PR#86: inline 3D atlas lifecycle inside the course player ──────────
 // A dedicated BodyAtlas instance lives in #cp-ha-embed for the duration of a
@@ -18669,6 +18791,11 @@ window.pbMove = pbMove;
       h+=regionSection(T.regions, f.region_ids||[], false);
       if(circuits.length){ h+='<div class="ha-side-h">'+esc(tr(T.circuits))+'</div>'; h+=circuits.map(function(c){ return '<span class="ha-chip" onclick="haFocusList(\''+(c.region_ids||[]).join(',')+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
       if(inConds.length){ h+='<div class="ha-side-h">'+esc(tr(T.in_conditions))+'</div>'; h+=inConds.map(function(c){ return '<span class="ha-chip link" onclick="haGoCondition(\''+c.slug+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
+      // Cross-link → Library function page (PR Library), when a matching library entry exists.
+      try{ var _libFn = window.libraryFnForAtlas && window.libraryFnForAtlas(f.slug);
+        if(_libFn){ var _lg=(window.getLang&&window.getLang())||'ru'; var _ll=_lg==='en'?'Learn more':_lg==='es'?'Más información':'Подробнее в Библиотеке';
+          h+='<div style="margin-top:.8rem;"><button class="ha-chip link" style="background:rgba(57,211,195,.14);border-color:rgba(57,211,195,.4);color:#eafffb;" onclick="window.libraryOpen(\'functions\',\''+_libFn+'\')">📚 '+_ll+'</button></div>'; }
+      }catch(e){}
       openDetail(h);
     });
   };
@@ -19363,6 +19490,336 @@ window.pbMove = pbMove;
       renderBanner(); renderChips(); renderGrid();
     }
   });
+})();
+</script>
+
+<!-- ── Library tool (PR Library) — terms · articles · theories · research · functions · methods ──
+     Standalone module (like Diet): reads window.currentUser / naAuthHeaders / getLang.
+     Content is English-only at launch; the server returns per-language content and we
+     render the localized slice it picks. -->
+<style>
+  #tools-library-content .lib-wrap{display:flex;flex-direction:column;gap:1rem;}
+  #tools-library-content .lib-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+  #tools-library-content .lib-head h2{margin:0;font-size:19px;letter-spacing:.01em;}
+  #tools-library-content .lib-head p{margin:.15rem 0 0;font-size:12.5px;color:var(--text-muted);max-width:640px;}
+  #tools-library-content .lib-nav{display:flex;gap:.4rem;flex-wrap:wrap;}
+  #tools-library-content .lib-nav button{background:rgba(168,247,255,.06);border:1px solid rgba(168,247,255,.16);color:var(--text-primary,#e8edf2);border-radius:999px;padding:.4rem .85rem;font-size:12.5px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:.35rem;}
+  #tools-library-content .lib-nav button:hover{background:rgba(168,247,255,.12);}
+  #tools-library-content .lib-nav button.active{background:rgba(57,211,195,.18);border-color:rgba(57,211,195,.5);color:#eafffb;}
+  #tools-library-content .lib-body{min-height:220px;}
+  #tools-library-content .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem;}
+  #tools-library-content .lib-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:.9rem 1rem;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:.35rem;}
+  #tools-library-content .lib-card:hover{border-color:rgba(57,211,195,.45);transform:translateY(-1px);}
+  #tools-library-content .lib-card h4{margin:0;font-size:14.5px;line-height:1.3;}
+  #tools-library-content .lib-card .lib-sub{font-size:12px;color:var(--text-muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  #tools-library-content .lib-badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:.12rem .5rem;border-radius:6px;}
+  #tools-library-content .lib-badge.mainstream{background:rgba(112,202,132,.2);color:#8fe0a6;}
+  #tools-library-content .lib-badge.influential{background:rgba(138,180,255,.2);color:#a9c4ff;}
+  #tools-library-content .lib-badge.controversial{background:rgba(232,170,72,.2);color:#eabf78;}
+  #tools-library-content .lib-badge.fringe{background:rgba(240,130,166,.2);color:#f0a0bd;}
+  #tools-library-content .lib-detail{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.2rem 1.4rem;}
+  #tools-library-content .lib-detail h3{margin:.1rem 0 .3rem;font-size:20px;}
+  #tools-library-content .lib-detail h4{margin:1.1rem 0 .3rem;font-size:14px;color:var(--accent-cyan,#7fe8dd);letter-spacing:.02em;}
+  #tools-library-content .lib-detail p{font-size:14px;line-height:1.62;color:var(--text-primary,#dbe4ea);}
+  #tools-library-content .lib-detail figure{margin:1rem 0;text-align:center;}
+  #tools-library-content .lib-detail figcaption{font-size:11.5px;color:var(--text-muted);margin-top:.35rem;}
+  #tools-library-content .lib-detail ul,#tools-library-content .lib-detail ol{margin:.3rem 0 .3rem 1.1rem;font-size:13.5px;line-height:1.6;}
+  #tools-library-content .lib-detail ul li,#tools-library-content .lib-detail ol li{margin:.25rem 0;}
+  #tools-library-content .lib-detail img{max-width:100%;border-radius:10px;}
+  #tools-library-content .lib-meta{font-size:12px;color:var(--text-muted);margin:.2rem 0 .6rem;}
+  #tools-library-content .lib-back{background:none;border:none;color:var(--accent-cyan,#7fe8dd);cursor:pointer;font-size:13px;padding:.2rem 0;margin-bottom:.5rem;}
+  #tools-library-content .lib-chip{display:inline-block;font-size:12px;background:rgba(168,247,255,.08);border:1px solid rgba(168,247,255,.18);border-radius:999px;padding:.2rem .6rem;margin:.15rem .3rem .15rem 0;cursor:pointer;}
+  #tools-library-content .lib-chip.static{cursor:default;}
+  #tools-library-content .lib-src a{color:#8fb8ff;font-size:12.5px;display:block;margin:.2rem 0;word-break:break-all;}
+  #tools-library-content .lib-fn-atlas{width:100%;height:340px;border-radius:12px;overflow:hidden;position:relative;background:radial-gradient(120% 120% at 50% 0%, rgba(168,247,255,.06), rgba(0,0,0,.28));border:1px solid rgba(168,247,255,.12);margin:.6rem 0;}
+  #tools-library-content .lib-atlas-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12.5px;text-align:center;padding:1rem;}
+  #tools-library-content .lib-add{background:rgba(57,211,195,.14);border:1px solid rgba(57,211,195,.4);color:#eafffb;border-radius:9px;padding:.4rem .8rem;font-size:12.5px;cursor:pointer;}
+  #tools-library-content .lib-adminrow{display:flex;gap:.5rem;margin-top:1rem;padding-top:.8rem;border-top:1px solid rgba(255,255,255,.07);}
+  #tools-library-content .lib-adminrow button{border-radius:8px;padding:.35rem .8rem;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);}
+  #tools-library-content .lib-adminrow button.del{background:rgba(240,90,110,.14);border-color:rgba(240,90,110,.4);color:#ffb3bf;}
+  #tools-library-content .lib-empty{color:var(--text-muted);font-size:13px;padding:1.5rem 0;text-align:center;}
+  .lib-modal-ov{position:fixed;inset:0;background:rgba(4,8,12,.72);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto;}
+  .lib-modal{background:#0e161c;border:1px solid rgba(168,247,255,.16);border-radius:16px;max-width:640px;width:100%;padding:1.3rem 1.4rem;}
+  .lib-modal h3{margin:0 0 .8rem;font-size:16px;}
+  .lib-modal label{display:block;font-size:12px;color:var(--text-muted);margin:.6rem 0 .2rem;}
+  .lib-modal input,.lib-modal select,.lib-modal textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.5rem .6rem;font-size:13px;color:var(--text-primary);font-family:inherit;box-sizing:border-box;}
+  .lib-modal textarea{resize:vertical;min-height:70px;}
+  .lib-modal .lib-modal-foot{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.1rem;}
+  .lib-modal .lib-modal-foot button{border-radius:9px;padding:.5rem 1rem;font-size:13px;cursor:pointer;}
+  .lib-modal .lib-save{background:var(--accent-cyan,#39d3c3);border:none;color:#04222b;font-weight:600;}
+  .lib-modal .lib-cancel{background:none;border:1px solid rgba(255,255,255,.15);color:var(--text-muted);}
+</style>
+<script>
+(function(){
+  var API = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : '';
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function lang(){ try{ return (window.getLang && window.getLang()) || 'en'; }catch(e){ return 'en'; } }
+  function hdrs(){ try{ return naAuthHeaders(); }catch(e){ return {'Content-Type':'application/json'}; } }
+  function isSuper(){ return !!(window.currentUser && (window.currentUser.serverRole==='superadmin')); }
+  function api(path, opts){ return fetch(API+path, opts).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; }); }); }
+
+  var SECTIONS = [
+    { key:'terms',     icon:'📖', label:'Terms',     one:'Term',     blurb:'Glossary of key terms in attention, self-regulation and neuroscience.' },
+    { key:'articles',  icon:'📄', label:'Articles',  one:'Article',  blurb:'Scientific articles — rich text with figures, or uploaded PDFs.' },
+    { key:'theories',  icon:'🧠', label:'Theories',  one:'Theory',   blurb:'Hypotheses & theories, including the leading theories of consciousness.' },
+    { key:'research',  icon:'🔬', label:'Research',  one:'Research entry', blurb:'Summaries of key research on attention, inhibition and self-regulation.' },
+    { key:'functions', icon:'⚙️', label:'Functions', one:'Function', blurb:'Cognitive functions, each with a mini brain atlas of its regions.' },
+    { key:'methods',   icon:'🧭', label:'Methods',   one:'Method',   blurb:'The methods we work with (this list grows over time).' }
+  ];
+  var SEC = {}; SECTIONS.forEach(function(s){ SEC[s.key]=s; });
+  var cache = {}; var state = { section:'terms', root:null };
+
+  window.mountLibraryTool = function(container){
+    if(!container) return;
+    state.root = container;
+    if(container.dataset.libMounted==='1'){ handlePendingDeepLink(); return; }
+    container.dataset.libMounted='1';
+    container.innerHTML =
+      '<div class="lib-wrap">'+
+        '<div class="lib-head"><div><h2>📚 Library</h2><p id="lib-blurb"></p></div><div id="lib-add-host"></div></div>'+
+        '<div class="lib-nav" id="lib-nav"></div>'+
+        '<div class="lib-body" id="lib-body"></div>'+
+      '</div>';
+    var nav = container.querySelector('#lib-nav');
+    nav.innerHTML = SECTIONS.map(function(s){ return '<button data-sec="'+s.key+'">'+s.icon+' '+esc(s.label)+'</button>'; }).join('');
+    nav.querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ openSection(b.getAttribute('data-sec')); }); });
+    openSection(state.section);
+    handlePendingDeepLink();
+  };
+
+  // Anatomy atlas function slug → Library function slug (only where a real
+  // library page exists; other atlas functions show no «Learn more» button).
+  var ATLAS_FN_MAP = {
+    'attention':'attention', 'working-memory':'working-memory', 'decision-making':'decision-making',
+    'reward-processing':'decision-making', 'inhibition':'executive-control', 'cognitive-flexibility':'executive-control',
+    'task-switching':'executive-control', 'language-comprehension':'language', 'speech-production':'language',
+    'reading':'language', 'fine-motor':'motor-planning', 'eye-movement':'motor-planning',
+    'fear':'emotion-regulation', 'stress-response':'emotion-regulation', 'joy':'emotion-regulation',
+    'empathy':'theory-of-mind', 'pain':'interoception', 'taste':'interoception'
+  };
+  window.libraryFnForAtlas = function(slug){ return ATLAS_FN_MAP[slug] || null; };
+
+  // Cross-link entry point (Anatomy atlas «Learn more» → a Library function).
+  window.libraryOpen = function(kind, slug){
+    window.__libPending = { kind:kind, slug:slug };
+    try{ if(typeof switchTab==='function') switchTab('tools'); }catch(e){}
+    try{ if(typeof setToolsMode==='function') setToolsMode('library'); }catch(e){}
+  };
+
+  function handlePendingDeepLink(){
+    var p = window.__libPending;
+    if(!p){ try{ var q=new URLSearchParams(location.search); var v=q.get('lib'); if(v && v.indexOf(':')>0){ var a=v.split(':'); p={kind:a[0], slug:a.slice(1).join(':')}; } }catch(e){} }
+    if(!p || !SEC[p.kind]) return;
+    window.__libPending = null;
+    openSection(p.kind, function(){ openDetail(p.kind, p.slug); });
+  }
+
+  function stashFnAtlas(){ if(libAtlasHolder && libAtlasHolder.__stash){ try{ libAtlasHolder.__stash.appendChild(libAtlasHolder); }catch(e){} } }
+
+  function openSection(kind, after){
+    if(!SEC[kind]) kind='terms';
+    state.section = kind;
+    stashFnAtlas();
+    if(state.root){ state.root.querySelectorAll('#lib-nav button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sec')===kind); }); }
+    var blurb = state.root && state.root.querySelector('#lib-blurb'); if(blurb) blurb.textContent = SEC[kind].blurb;
+    var addHost = state.root && state.root.querySelector('#lib-add-host');
+    if(addHost){ addHost.innerHTML = isSuper() ? '<button class="lib-add" id="lib-add-btn">＋ Add '+esc(SEC[kind].one)+'</button>' : '';
+      var ab = addHost.querySelector('#lib-add-btn'); if(ab) ab.addEventListener('click', function(){ openEditor(kind, null); }); }
+    var body = state.root && state.root.querySelector('#lib-body'); if(!body) return;
+    body.innerHTML = '<div class="lib-empty">Loading…</div>';
+    loadSection(kind, function(items){
+      if(state.section!==kind) return;
+      renderList(kind, items);
+      if(typeof after==='function') after();
+    }, function(err){ body.innerHTML = '<div class="lib-empty">Could not load ('+esc(err.message||'error')+')</div>'; });
+  }
+
+  function loadSection(kind, ok, fail){
+    api('/api/library/'+kind+'?lang='+encodeURIComponent(lang())).then(function(j){ cache[kind]=j.items||[]; ok(cache[kind]); }).catch(fail||function(){});
+  }
+
+  function cardTitle(kind, it){ var c=it.content||{}; return c.title||c.name||c.term||it.slug; }
+  function cardSub(kind, it){ var c=it.content||{};
+    if(kind==='terms') return c.definition||'';
+    if(kind==='theories') return c.summary||c.proponents||'';
+    return c.summary||''; }
+
+  function renderList(kind, items){
+    var body = state.root.querySelector('#lib-body'); if(!body) return;
+    if(!items || !items.length){ body.innerHTML='<div class="lib-empty">Nothing here yet.</div>'; return; }
+    var html = '<div class="lib-grid">'+items.map(function(it){
+      var badge = (kind==='theories' && it.content && it.content.status) ? '<span class="lib-badge '+esc(it.content.status)+'">'+esc(it.content.status)+'</span>' : '';
+      var abbr = (kind==='theories' && it.content && it.content.abbr) ? ' · '+esc(it.content.abbr) : '';
+      return '<div class="lib-card" data-slug="'+esc(it.slug)+'">'+
+        (badge?'<div>'+badge+'</div>':'')+
+        '<h4>'+esc(cardTitle(kind,it))+abbr+'</h4>'+
+        '<div class="lib-sub">'+esc(stripTags(cardSub(kind,it)))+'</div>'+
+      '</div>';
+    }).join('')+'</div>';
+    body.innerHTML = html;
+    body.querySelectorAll('.lib-card').forEach(function(c){ c.addEventListener('click', function(){ openDetail(kind, c.getAttribute('data-slug')); }); });
+  }
+
+  function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); }
+
+  function openDetail(kind, slug){
+    var it = (cache[kind]||[]).filter(function(x){ return x.slug===slug; })[0];
+    if(it){ renderDetail(kind, it); return; }
+    api('/api/library/'+kind+'/'+encodeURIComponent(slug)+'?lang='+encodeURIComponent(lang()))
+      .then(function(j){ renderDetail(kind, j.item); }).catch(function(){});
+  }
+
+  function backBtn(kind){ return '<button class="lib-back" id="lib-back">← '+esc(SEC[kind].label)+'</button>'; }
+  function adminRow(kind, it){ if(!isSuper()) return '';
+    return '<div class="lib-adminrow"><button id="lib-edit">✎ Edit</button><button class="del" id="lib-del">🗑 Delete</button></div>'; }
+
+  function wireDetail(kind, it){
+    var b = state.root.querySelector('#lib-back'); if(b) b.addEventListener('click', function(){ openSection(kind); });
+    var e = state.root.querySelector('#lib-edit'); if(e) e.addEventListener('click', function(){ openEditor(kind, it); });
+    var d = state.root.querySelector('#lib-del'); if(d) d.addEventListener('click', function(){ if(confirm('Delete "'+cardTitle(kind,it)+'"?')) deleteItem(kind, it); });
+    state.root.querySelectorAll('[data-term]').forEach(function(ch){ ch.addEventListener('click', function(){ openDetail('terms', ch.getAttribute('data-term')); }); });
+  }
+
+  function srcList(urls){ if(!urls||!urls.length) return ''; return '<h4>Sources</h4><div class="lib-src">'+urls.map(function(u){ return '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u)+'</a>'; }).join('')+'</div>'; }
+  function listBlock(title, arr){ if(!arr||!arr.length) return ''; return '<h4>'+esc(title)+'</h4><ul>'+arr.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'; }
+
+  function renderDetail(kind, it){
+    stashFnAtlas();
+    var c = it.content||{}, body = state.root.querySelector('#lib-body'); if(!body) return;
+    var h = '<div class="lib-detail">'+backBtn(kind);
+    if(kind==='terms'){
+      h += '<h3>'+esc(c.term||it.slug)+'</h3>';
+      if(c.synonyms&&c.synonyms.length) h+='<div class="lib-meta">Also: '+c.synonyms.map(esc).join(', ')+'</div>';
+      h += '<p>'+esc(c.definition||'')+'</p>';
+      if(it.related_slugs&&it.related_slugs.length){ h+='<h4>Related terms</h4><div>'+it.related_slugs.map(function(s){ return '<span class="lib-chip" data-term="'+esc(s)+'">'+esc(s.replace(/-/g,' '))+'</span>'; }).join('')+'</div>'; }
+    } else if(kind==='theories'){
+      h += '<h3>'+esc(c.title||it.slug)+'</h3>';
+      var meta=[]; if(it.status) meta.push('<span class="lib-badge '+esc(it.status)+'">'+esc(it.status)+'</span>'); if(c.abbr) meta.push(esc(c.abbr));
+      if(meta.length) h+='<div style="margin:.2rem 0 .5rem;">'+meta.join(' &nbsp; ')+'</div>';
+      if(c.proponents) h+='<div class="lib-meta"><b>Proponents:</b> '+esc(c.proponents)+'</div>';
+      if(c.summary) h+='<p>'+esc(c.summary)+'</p>';
+      h += listBlock('Key points', c.key_points);
+      h += listBlock('Criticisms & open debates', c.criticisms);
+      h += srcList(it.sources);
+    } else if(kind==='functions'){
+      h += '<h3>'+esc(c.name||it.slug)+'</h3>';
+      if(c.summary) h+='<div class="lib-meta">'+esc(c.summary)+'</div>';
+      h += '<div class="lib-fn-atlas" id="lib-fn-atlas-slot"></div>';
+      if(c.body_html) h+=c.body_html;
+      if(it.body_regions&&it.body_regions.length) h+='<div style="margin-top:.5rem;">'+it.body_regions.map(function(r){ return '<span class="lib-chip static">'+esc(r.replace(/-/g,' '))+'</span>'; }).join('')+'</div>';
+    } else if(kind==='methods'){
+      h += '<h3>'+esc(c.name||it.slug)+'</h3>';
+      if(c.summary) h+='<div class="lib-meta">'+esc(c.summary)+'</div>';
+      if(c.body_html) h+=c.body_html;
+      if(c.steps&&c.steps.length){ h+='<h4>Steps</h4><ol>'+c.steps.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ol>'; }
+    } else { // articles + research
+      h += '<h3>'+esc(c.title||it.slug)+'</h3>';
+      var m=[]; if(it.authors&&it.authors.length) m.push(it.authors.map(esc).join(', ')); if(it.topic) m.push(esc(it.topic));
+      if(m.length) h+='<div class="lib-meta">'+m.join(' · ')+'</div>';
+      if(it.format==='pdf' && it.pdf_url){
+        h += '<p><a class="lib-chip" href="'+esc(it.pdf_url)+'" target="_blank" rel="noopener">📄 Open PDF'+(it.pdf_filename?' — '+esc(it.pdf_filename):'')+'</a></p>'+
+             '<iframe src="'+esc(it.pdf_url)+'" style="width:100%;height:70vh;border:1px solid rgba(255,255,255,.1);border-radius:10px;margin-top:.5rem;"></iframe>';
+      } else {
+        if(c.summary) h+='<p><em>'+esc(c.summary)+'</em></p>';
+        if(c.body_html) h+=c.body_html;
+        h += listBlock('Key findings', c.findings);
+      }
+      if(it.source_url) h+=srcList([it.source_url]);
+    }
+    h += adminRow(kind, it) + '</div>';
+    body.innerHTML = h;
+    wireDetail(kind, it);
+    if(kind==='functions'){ var slot=state.root.querySelector('#lib-fn-atlas-slot'); if(slot) showFnAtlas(slot, it.body_regions||[]); }
+  }
+
+  // ── Persistent mini-atlas (one BodyAtlas instance, moved between function pages) ──
+  var libAtlasHolder=null, libAtlasInst=null, libAtlasMounting=false;
+  function ensureAtlasHolder(){
+    if(libAtlasHolder) return libAtlasHolder;
+    var stash=document.createElement('div'); stash.style.display='none'; (state.root||document.body).appendChild(stash);
+    libAtlasHolder=document.createElement('div'); libAtlasHolder.style.cssText='width:100%;height:100%;position:relative;'; libAtlasHolder.__stash=stash; stash.appendChild(libAtlasHolder);
+    return libAtlasHolder;
+  }
+  function showFnAtlas(slot, regions){
+    var h=ensureAtlasHolder(); slot.appendChild(h);
+    var apply=function(){ if(libAtlasInst){ try{ libAtlasInst.tintRegions({ positive: regions||[], negative: [] }); }catch(e){} } };
+    if(libAtlasInst){ apply(); setTimeout(apply,350); setTimeout(apply,900); return; }
+    if(libAtlasMounting) return;
+    if(!window.BodyAtlas){ h.innerHTML='<div class="lib-atlas-fallback">3D atlas unavailable</div>'; return; }
+    libAtlasMounting=true;
+    window.BodyAtlas.init(h, { mode:'full' }).then(function(a){ libAtlasInst=a; libAtlasMounting=false; apply(); setTimeout(apply,500); setTimeout(apply,1400); })
+      .catch(function(){ libAtlasMounting=false; h.innerHTML='<div class="lib-atlas-fallback">3D atlas unavailable</div>'; });
+  }
+
+  // ── Superadmin editor ──
+  var EDIT_FIELDS = {
+    terms:     [['term','Term'],['definition','Definition','area'],['synonyms','Synonyms (comma-separated)','csv'],['@related_slugs','Related term slugs (comma-separated)','csv']],
+    articles:  [['title','Title'],['summary','Summary','area'],['body_html','Body (HTML)','area'],['@authors','Authors (comma-separated)','csv'],['@source_url','Source URL']],
+    theories:  [['title','Title'],['abbr','Abbreviation'],['proponents','Proponents'],['summary','Summary','area'],['key_points','Key points (one per line)','lines'],['criticisms','Criticisms (one per line)','lines'],['@status','Status','select:mainstream,influential,controversial,fringe'],['@sources','Sources (one URL per line)','lines']],
+    research:  [['title','Title'],['summary','Summary','area'],['body_html','Body (HTML)','area'],['findings','Key findings (one per line)','lines'],['@topic','Topic'],['@source_url','Source URL'],['@authors','Authors (comma-separated)','csv']],
+    functions: [['name','Name'],['summary','Summary','area'],['body_html','Body (HTML)','area'],['@body_regions','Brain regions / seed-ids (comma-separated)','csv']],
+    methods:   [['name','Name'],['summary','Summary','area'],['body_html','Body (HTML)','area'],['steps','Steps (one per line)','lines'],['@category','Category']]
+  };
+  function openEditor(kind, existing){
+    var fields = EDIT_FIELDS[kind]||[];
+    var c = (existing && existing.content) || {};
+    var ov=document.createElement('div'); ov.className='lib-modal-ov';
+    function val(f){ var key=f[0], type=f[2]||''; var top=key[0]==='@'; var name=top?key.slice(1):key;
+      var raw = top ? (existing?existing[name]:undefined) : c[name];
+      if(type==='csv'||type==='lines'){ if(Array.isArray(raw)) return raw.join(type==='csv'?', ':'\n'); return ''; }
+      return raw==null?'':raw; }
+    var inner = '<div class="lib-modal"><h3>'+(existing?'Edit':'New')+' '+esc(SEC[kind].one)+'</h3>';
+    inner += '<label>Slug (lowercase, hyphens)</label><input id="lib-f-slug" value="'+esc(existing?existing.slug:'')+'"'+(existing?' disabled':'')+'>';
+    fields.forEach(function(f,idx){ var type=f[2]||'';
+      inner += '<label>'+esc(f[1])+'</label>';
+      if(type==='area'||type==='lines'){ inner += '<textarea id="lib-f-'+idx+'"'+((type==='lines')?' rows="5"':'')+'>'+esc(val(f))+'</textarea>'; }
+      else if(type && type.indexOf('select:')===0){ var opts=type.slice(7).split(','); inner+='<select id="lib-f-'+idx+'">'+opts.map(function(o){ return '<option value="'+esc(o)+'"'+(val(f)===o?' selected':'')+'>'+esc(o)+'</option>'; }).join('')+'</select>'; }
+      else { inner += '<input id="lib-f-'+idx+'" value="'+esc(val(f))+'">'; }
+    });
+    inner += '<label>Sort order</label><input id="lib-f-sort" type="number" value="'+esc(existing?existing.sort_order:100)+'">';
+    if((kind==='articles'||kind==='research') && existing){ inner += '<label>Attach PDF (optional — makes this a PDF item)</label><input id="lib-f-pdf" type="file" accept="application/pdf">'; }
+    inner += '<div class="lib-modal-foot"><button class="lib-cancel" id="lib-cancel">Cancel</button><button class="lib-save" id="lib-save">Save</button></div></div>';
+    ov.innerHTML = inner;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.remove(); });
+    ov.querySelector('#lib-cancel').addEventListener('click', function(){ ov.remove(); });
+    ov.querySelector('#lib-save').addEventListener('click', function(){ saveEditor(kind, existing, fields, ov); });
+  }
+  function saveEditor(kind, existing, fields, ov){
+    var slug = existing ? existing.slug : (ov.querySelector('#lib-f-slug').value||'').trim().toLowerCase();
+    if(!/^[a-z0-9][a-z0-9-]{0,80}$/.test(slug)){ alert('Invalid slug — use lowercase letters, digits, hyphens.'); return; }
+    var content={}, top={};
+    fields.forEach(function(f,idx){ var key=f[0], type=f[2]||''; var isTop=key[0]==='@'; var name=isTop?key.slice(1):key;
+      var el=ov.querySelector('#lib-f-'+idx); if(!el) return; var v=el.value;
+      var out;
+      if(type==='csv') out=v.split(',').map(function(x){return x.trim();}).filter(Boolean);
+      else if(type==='lines') out=v.split('\n').map(function(x){return x.trim();}).filter(Boolean);
+      else out=v;
+      if(isTop) top[name]=out; else content[name]=out;
+    });
+    var lg = lang();
+    var payload = { slug:slug, content:{}, sort_order:Number(ov.querySelector('#lib-f-sort').value)||100 };
+    payload.content[lg==='en'?'en':lg] = content; if(lg!=='en'){ payload.content.en = content; } // seed en so it always renders
+    Object.keys(top).forEach(function(k){ payload[k]=top[k]; });
+    var save = ov.querySelector('#lib-save'); save.disabled=true; save.textContent='Saving…';
+    api('/api/library/'+kind, { method:'POST', headers:hdrs(), body:JSON.stringify(payload) })
+      .then(function(j){
+        var pdfEl = ov.querySelector('#lib-f-pdf');
+        if(pdfEl && pdfEl.files && pdfEl.files[0] && j.item){
+          var fd=new FormData(); fd.append('file', pdfEl.files[0]);
+          var h={}; try{ var a=naAuthHeaders(); if(a.Authorization) h.Authorization=a.Authorization; }catch(e){}
+          return fetch(API+'/api/library/'+kind+'/'+j.item.id+'/pdf', { method:'POST', headers:h, body:fd }).then(function(r){ return r.json(); });
+        }
+      })
+      .then(function(){ ov.remove(); delete cache[kind]; openSection(kind); })
+      .catch(function(e){ save.disabled=false; save.textContent='Save'; alert('Save failed: '+(e.message||e)); });
+  }
+  function deleteItem(kind, it){
+    api('/api/library/'+kind+'/'+it.id, { method:'DELETE', headers:hdrs() })
+      .then(function(){ delete cache[kind]; openSection(kind); }).catch(function(e){ alert('Delete failed: '+(e.message||e)); });
+  }
+
+  document.addEventListener('langchange', function(){ if(state.root && state.root.dataset.libMounted==='1' && state.root.style.display!=='none'){ Object.keys(cache).forEach(function(k){ delete cache[k]; }); openSection(state.section); } });
 })();
 </script>
 </body>
