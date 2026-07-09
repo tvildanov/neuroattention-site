@@ -2179,7 +2179,7 @@ a.dash-tab:hover { text-decoration:none; }
             <p style="font-size:14px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;" data-i18n="a.enroll.method_p3">
               На протяжении программы ваша карта растёт и раскрывает скрытые связи: как события влияют на внимание, как эмоции запускают мысли, как всё это приводит к действиям.
             </p>
-            <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0;">
+            <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0;" data-i18n="a.enroll.method_more">
               Подробнее о методе — <a href="method.html" style="color:var(--accent-cyan);text-decoration:none;border-bottom:1px solid rgba(0,224,255,0.3);" target="_blank">на странице Метод</a>
             </p>
           </div>
@@ -2353,6 +2353,7 @@ a.dash-tab:hover { text-decoration:none; }
     <button class="dash-tab" data-tab="admin-rehab" id="admin-rehab-tab" style="display:none;" data-i18n="a.admin.rehab_apps">Заявки Rehab</button>
     <button class="dash-tab" data-tab="admin-purchases" id="admin-purchases-tab" style="display:none;" data-i18n="a.admin.purchases_tab">Покупки</button>
     <button class="dash-tab" data-tab="admin-stats" data-i18n="a.admin.stats">Статистика</button>
+    <button class="dash-tab" data-tab="admin-pathmap" id="admin-pathmap-tab" data-i18n="a.admin.pathmap_tab">👥 Карта путей</button>
     <button class="dash-tab" data-tab="admin-trash" id="admin-trash-tab" style="display:none;" data-i18n="a.admin.trash_tab">🗑 Корзина</button>
   </div>
 
@@ -2365,6 +2366,21 @@ a.dash-tab:hover { text-decoration:none; }
         <thead><tr><th data-i18n="a.admin.trash_col_name">Имя</th><th>Email</th><th data-i18n="a.admin.trash_col_deleted">Удалён</th><th></th></tr></thead>
         <tbody id="admin-trash-tbody"></tbody>
       </table></div>
+    </div></div>
+  </div>
+
+  <!-- TAB: Path map (People sub-tab — moved from admin Tools in PR#128) -->
+  <div class="tab-panel" id="tab-admin-pathmap">
+    <div class="dash-grid"><div class="dash-card glass-card-elevated" style="grid-column:span 12;">
+      <div style="padding:0.25rem;">
+        <h4 style="margin:0 0 0.25rem;font-size:14px;color:#4ecdc4;" data-i18n="a.admin.pathmap_title">👥 Карта путей персонажей</h4>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;" data-i18n="a.admin.pathmap_desc">Все участники, сортировка по XP. Каждая полоса — путь развития: кружки разделов и элементов курсов, баджи достижений, XP.</p>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap;">
+          <input id="pathmap-search" type="text" data-i18n-placeholder="a.admin.pathmap_search" placeholder="Поиск по имени/email…" oninput="renderPathMap()" style="flex:1;min-width:200px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:13px;">
+          <button class="btn btn-ghost" onclick="loadPathMap()" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.admin.pathmap_refresh">↻ Обновить</button>
+        </div>
+        <div id="pathmap-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:600px;overflow-y:auto;">Загрузка…</div>
+      </div>
     </div></div>
   </div>
 
@@ -2404,8 +2420,15 @@ a.dash-tab:hover { text-decoration:none; }
             <button class="nm-filter-btn" onclick="filterAdminUsers('client',this)" data-i18n="a.admin.filter_clients">Клиенты</button>
           </div>
         </div>
+        <!-- Bulk-select toolbar (superadmin) — appears once selectable rows render -->
+        <div id="admin-bulk-bar" style="display:none;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.75rem;padding:0.5rem 0.75rem;background:rgba(255,90,90,0.06);border:1px solid rgba(255,90,90,0.18);border-radius:8px;">
+          <span style="font-size:12px;color:var(--text-secondary);"><span id="admin-bulk-count">0</span> <span data-i18n="a.admin.bulk_selected">выбрано</span></span>
+          <button class="nm-filter-btn" onclick="adminSelectTestAccounts()" data-i18n="a.admin.bulk_select_test">Выбрать test-аккаунты</button>
+          <button class="nm-filter-btn" onclick="adminClearSelection()" data-i18n="a.admin.bulk_clear">Снять выделение</button>
+          <button class="btn btn-solid" id="admin-bulk-del" onclick="adminBulkDelete()" style="background:#c0392b;border-color:#c0392b;font-size:12px;padding:0.3rem 0.7rem;opacity:0.55;" disabled>🗑 <span data-i18n="a.admin.bulk_delete">Удалить выбранные</span> (<span id="admin-bulk-del-count">0</span>)</button>
+        </div>
         <table class="admin-table" id="admin-full-users-table">
-          <thead><tr><th data-i18n="a.admin.th_name">Имя</th><th data-i18n="a.admin.th_contact">Контакт</th><th data-i18n="a.admin.th_role">Роль</th><th data-i18n="a.admin.th_program">Программа</th><th data-i18n="a.admin.th_access">Доступ</th><th></th></tr></thead>
+          <thead><tr><th style="width:28px;text-align:center;"><input type="checkbox" id="admin-users-selall" title="Выбрать все на странице" onclick="adminToggleSelectAll(this.checked)"></th><th data-i18n="a.admin.th_name">Имя</th><th data-i18n="a.admin.th_contact">Контакт</th><th data-i18n="a.admin.th_role">Роль</th><th data-i18n="a.admin.th_program">Программа</th><th data-i18n="a.admin.th_access">Доступ</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
         <!-- Restricted message for basic admins -->
@@ -2443,50 +2466,16 @@ a.dash-tab:hover { text-decoration:none; }
     <div class="dash-grid">
       <div class="dash-card glass-card-elevated" style="grid-column:span 12;">
         <div id="admin-tools-unlocked" style="display:none;">
-          <h3 data-i18n="a.admin.tools_title">Инструменты и практики</h3>
-          <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.admin.tools_desc">Как специалист или основатель, вы имеете полный доступ ко всем инструментам платформы.</p>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
-            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('courses');setCoursesMode('pract')">
-              <h4 data-i18n="a.admin.audio_practices">Аудиопрактики</h4>
-              <p>Все блоки и практики доступны</p>
-            </div>
-            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('tools');setToolsMode('nm')">
-              <h4>NeuroMap</h4>
-              <p>Карта мыслей, эмоций и состояний</p>
-            </div>
-            <div class="program-select-card" style="cursor:pointer;" onclick="switchTab('tools');setTimeout(function(){setToolsMode('diary');},50);">
-              <h4 data-i18n="a.tools.diary">Дневник</h4>
-              <p data-i18n="a.tools.diary_desc">Дневник нейроресурса</p>
-            </div>
-          </div>
-          <!-- Old admin rebuild section removed — rebuild is now in NeuroMap section for all users -->
+          <h3 data-i18n="a.admin.tools_title">Хранилище и доступ</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin:0 0 1.5rem;" data-i18n="a.admin.tools_desc">Состояние медиахранилища, тестовый доступ для QA и кастомные достижения. Сами инструменты доступны на вкладке «Инструменты» как обычному пользователю.</p>
 
           <!-- ── STORAGE BACKEND STATUS ── -->
           <div id="storage-status-panel" style="margin-top:1.25rem;padding:1.25rem;border:1px dashed rgba(255,200,0,0.25);border-radius:12px;background:rgba(255,200,0,0.03);">
             <h4 style="margin:0 0 0.25rem;font-size:14px;color:#fc0;">💾 Хранилище медиа</h4>
             <div id="storage-status-body" style="font-size:12px;color:var(--text-muted);line-height:1.55;">Загрузка…</div>
-            <details style="margin-top:0.6rem;">
-              <summary style="font-size:12px;color:var(--text-secondary);cursor:pointer;font-weight:600;">📋 Как подключить Cloudflare R2 (рекомендуется для больших объёмов)</summary>
-              <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;padding:0.5rem 0 0 0.5rem;">
-                <ol style="margin:0 0 0.5rem 1rem;padding:0;">
-                  <li>Зарегистрируй Cloudflare аккаунт (бесплатно, R2 идёт без egress-сборов)</li>
-                  <li>R2 → Create bucket (например <code>neuroattention-media</code>)</li>
-                  <li>Manage R2 API Tokens → создай Read+Write токен. Сохрани Access Key ID + Secret</li>
-                  <li>Settings бакета → Public access → Allow Access. Запиши Public Bucket URL (либо подключи свой домен <code>media.neuroattention.org</code>)</li>
-                  <li>В Railway-переменных neuroattention-api добавь:
-                    <ul style="margin:0.4rem 0 0.4rem 1rem;padding:0;font-family:JetBrains Mono,monospace;font-size:11px;">
-                      <li>R2_ACCOUNT_ID</li>
-                      <li>R2_BUCKET</li>
-                      <li>R2_ACCESS_KEY_ID</li>
-                      <li>R2_SECRET_ACCESS_KEY</li>
-                      <li>R2_PUBLIC_BASE_URL <span style="color:var(--text-dim);">— например https://pub-xxx.r2.dev или https://media.neuroattention.org</span></li>
-                    </ul>
-                  </li>
-                  <li>Railway передеплоит. Все новые загрузки автоматически пойдут в R2. Старые файлы на GitHub Pages продолжат работать без миграции.</li>
-                </ol>
-                <p style="margin:0;color:var(--text-dim);">Стоимость R2: $0.015/GB-месяц хранения, <strong>$0 egress</strong>. Первые 10 GB бесплатно. Файл 1 GB MP4 в месяц = $0.015. Для сравнения: GitHub Pages начинает предупреждать на 5 GB репозитория.</p>
-              </div>
-            </details>
+            <!-- R2 setup guide removed (PR#128): R2 is already configured in prod.
+                 If storage-status ever reports a misconfiguration, loadStorageStatus()
+                 surfaces it inline in #storage-status-body. -->
           </div>
 
           <!-- ── TEST ACCESS GRANT PANEL (for QA testers) ── -->
@@ -2567,17 +2556,7 @@ a.dash-tab:hover { text-decoration:none; }
             <p id="ach-status" style="margin:0.75rem 0 0;font-size:12px;color:var(--text-muted);min-height:16px;"></p>
           </div>
 
-          <!-- ── PATH MAP (all users' journeys) ── -->
-          <div style="margin-top:1.5rem;padding:1.25rem;border:1px dashed rgba(78,205,196,0.25);border-radius:12px;background:rgba(78,205,196,0.03);">
-            <h4 style="margin:0 0 0.25rem;font-size:14px;color:#4ecdc4;">👥 Карта путей персонажей</h4>
-            <p style="font-size:12px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;">Все участники, сортировка по XP. Каждая полоса — путь развития: кружки разделов и элементов курсов, баджи достижений, XP.</p>
-            <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;flex-wrap:wrap;">
-              <input id="pathmap-search" type="text" placeholder="Поиск по имени/email…" oninput="renderPathMap()" style="flex:1;min-width:200px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:13px;">
-              <button class="btn btn-ghost" onclick="loadPathMap()" style="font-size:12px;padding:0.4rem 0.9rem;">↻ Обновить</button>
-            </div>
-            <div id="pathmap-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:600px;overflow-y:auto;">Загрузка…</div>
-          </div>
-
+          <!-- Path map moved to People → «Карта путей» sub-tab (PR#128) -->
           <!-- Detailed user journey modal opens via JS -->
         </div>
         <div id="admin-tools-locked" style="display:none;text-align:center;padding:3rem 1rem;">
@@ -2812,7 +2791,7 @@ a.dash-tab:hover { text-decoration:none; }
         <div id="diag-editor-empty" style="text-align:center;color:var(--text-muted);font-size:13px;padding:3rem 1rem;" data-i18n="a.admin.diag.empty_select">Выберите шаблон слева, чтобы редактировать</div>
         <div id="diag-editor" style="display:none;">
           <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.6rem;flex-wrap:wrap;">
-            <input id="diag-tpl-name" type="text" placeholder="Название шаблона" style="flex:1;min-width:180px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:14px;font-weight:600;">
+            <input id="diag-tpl-name" type="text" data-i18n-placeholder="a.admin.diag.tpl_name_ph" placeholder="Название шаблона" style="flex:1;min-width:180px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:14px;font-weight:600;">
             <button class="btn btn-solid" onclick="diagSaveAll()" id="diag-save-btn" style="font-size:12px;padding:0.4rem 0.9rem;" data-i18n="a.admin.diag.btn_save">Сохранить шаблон</button>
             <button class="btn btn-ghost" onclick="diagCloneCurrent()" id="diag-clone-btn" style="font-size:12px;padding:0.4rem 0.7rem;display:none;" data-i18n="a.admin.diag.btn_clone">Сделать свою копию</button>
             <button class="btn btn-ghost" onclick="diagDeleteTemplate()" id="diag-delete-btn" style="font-size:12px;padding:0.4rem 0.7rem;color:var(--accent-rose);display:none;" data-i18n="a.admin.diag.btn_delete_tpl">Удалить</button>
@@ -2820,11 +2799,11 @@ a.dash-tab:hover { text-decoration:none; }
 
           <!-- Inline session fields: client info + save-as-session -->
           <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;padding:0.6rem 0.7rem;border:1px dashed rgba(0,229,255,0.18);border-radius:10px;background:rgba(0,229,255,0.03);flex-wrap:wrap;">
-            <span style="font-size:11px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Сеанс с клиентом</span>
-            <input id="diag-session-client-name" type="text" placeholder="Имя клиента" style="flex:1;min-width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
-            <input id="diag-session-client-email" type="email" placeholder="Email клиента" style="flex:1;min-width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
-            <button class="btn btn-solid" onclick="diagSaveSessionInline()" id="diag-save-session-btn" style="font-size:12px;padding:0.4rem 0.9rem;background:rgba(0,229,255,0.15);color:var(--accent-cyan);border-color:rgba(0,229,255,0.3);">💾 Сохранить сеанс</button>
-            <button class="btn btn-ghost" onclick="diagClearAnswers()" style="font-size:11px;padding:0.3rem 0.6rem;color:var(--text-muted);">Очистить ответы</button>
+            <span style="font-size:11px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;" data-i18n="a.admin.diag.client_session">Сеанс с клиентом</span>
+            <input id="diag-session-client-name" type="text" data-i18n-placeholder="a.admin.diag.client_name_ph" placeholder="Имя клиента" style="flex:1;min-width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <input id="diag-session-client-email" type="email" data-i18n-placeholder="a.admin.diag.client_email_ph" placeholder="Email клиента" style="flex:1;min-width:140px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;">
+            <button class="btn btn-solid" onclick="diagSaveSessionInline()" id="diag-save-session-btn" style="font-size:12px;padding:0.4rem 0.9rem;background:rgba(0,229,255,0.15);color:var(--accent-cyan);border-color:rgba(0,229,255,0.3);" data-i18n="a.admin.diag.save_session">💾 Сохранить сеанс</button>
+            <button class="btn btn-ghost" onclick="diagClearAnswers()" style="font-size:11px;padding:0.3rem 0.6rem;color:var(--text-muted);" data-i18n="a.admin.diag.clear_answers">Очистить ответы</button>
           </div>
 
           <p id="diag-status-line" style="margin:0 0 0.6rem;font-size:11px;color:var(--text-muted);min-height:14px;"></p>
@@ -2949,11 +2928,11 @@ a.dash-tab:hover { text-decoration:none; }
         <button class="btn btn-ghost" onclick="diagCancelFill()" style="font-size:14px;" data-i18n="a.admin.diag.fill_cancel">Отмена</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:1rem;">
-        <input id="diag-fill-client-name" placeholder="Имя клиента" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;">
-        <input id="diag-fill-client-email" placeholder="Email клиента" type="email" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;">
+        <input id="diag-fill-client-name" data-i18n-placeholder="a.admin.diag.client_name_ph" placeholder="Имя клиента" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;">
+        <input id="diag-fill-client-email" data-i18n-placeholder="a.admin.diag.client_email_ph" placeholder="Email клиента" type="email" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.45rem 0.7rem;color:var(--text-primary);font-size:13px;">
       </div>
       <div id="diag-fill-items" style="display:flex;flex-direction:column;gap:0.7rem;"></div>
-      <textarea id="diag-fill-notes" placeholder="Заметки специалиста (видны только вам)" rows="3" style="width:100%;margin-top:1rem;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.7rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+      <textarea id="diag-fill-notes" data-i18n-placeholder="a.admin.diag.specialist_notes_ph" placeholder="Заметки специалиста (видны только вам)" rows="3" style="width:100%;margin-top:1rem;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.7rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
       <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
         <button class="btn btn-ghost" onclick="diagCancelFill()" data-i18n="a.admin.diag.fill_cancel">Отмена</button>
         <button class="btn btn-solid" onclick="diagFinishFill()" data-i18n="a.admin.diag.fill_finish">Завершить и сохранить</button>
@@ -4157,7 +4136,7 @@ function rebuildGraph(){
 }
 
 // The four people panels share one top «Люди» tab + a sub-tab bar.
-var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-purchases','admin-stats','admin-trash'];
+var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-purchases','admin-stats','admin-pathmap','admin-trash'];
 function switchAdminTab(id){
   // «Люди» group entry → resolve to the last/first visible people sub.
   if(id==='admin-people'){
@@ -4181,6 +4160,7 @@ function switchAdminTab(id){
     subBar.style.display = isPeople ? '' : 'none';
     subBar.querySelectorAll('.dash-tab[data-tab]').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
     if(id==='admin-trash' && typeof loadAdminTrash==='function') loadAdminTrash();
+    if(id==='admin-pathmap' && typeof loadPathMap==='function') loadPathMap();
     // Mobile: keep the chosen «Люди» sub-tab in view inside the swipeable bar.
     try {
       var act=subBar.querySelector('.dash-tab.active');
@@ -4283,7 +4263,7 @@ function populateUsersList(admin){
   }
   table.style.display='';
   restricted.style.display='none';
-  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">'+t('a.admin.loading','Загрузка...')+'</td></tr>';
+  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">'+t('a.admin.loading','Загрузка...')+'</td></tr>';
 
   var token=localStorage.getItem('na_token');
   if(!token) return;
@@ -4304,7 +4284,7 @@ function populateUsersList(admin){
     })
     .catch(function(e){
       console.warn('populateUsersList error:',e);
-      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--accent-rose);padding:2rem;">'+t('a.admin.error_load','Ошибка загрузки')+'</td></tr>';
+      tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--accent-rose);padding:2rem;">'+t('a.admin.error_load','Ошибка загрузки')+'</td></tr>';
     });
 }
 
@@ -4316,31 +4296,25 @@ function adminDeleteUser(uid, email, name){
   function esc2(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   var ov=document.createElement('div'); ov.className='rpg-modal-overlay'; ov.id='admin-del-overlay';
   ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
-  ov.innerHTML='<div class="rpg-modal" style="max-width:460px;">'+
+  ov.innerHTML='<div class="rpg-modal" style="max-width:440px;">'+
     '<h3 style="font-family:\'Unbounded\',sans-serif;font-size:1rem;font-weight:500;color:var(--text-primary);margin:0 0 0.75rem;">'+_t('a.admin.delete_title','Удалить пользователя')+' '+esc2(name)+'?</h3>'+
-    '<p style="font-size:13px;color:var(--text-secondary);line-height:1.55;margin:0 0 0.6rem;">'+_t('a.admin.delete_body','Это действие отвяжет и удалит все его данные: профиль, journey_events, нейромап, ощущения, прогресс курсов, участие в командах. Действие необратимо через 1 час после подтверждения.')+'</p>'+
-    '<p style="font-size:12px;color:#ff8a8a;margin:0 0 0.8rem;">'+_t('a.admin.delete_warning','Перепроверьте — данные нельзя будет восстановить через 1 час.')+'</p>'+
-    '<label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:0.25rem;">'+_t('a.admin.delete_confirm_label','Введите email пользователя для подтверждения')+'</label>'+
-    '<input id="admin-del-email" class="glass-input" autocomplete="off" placeholder="'+esc2(email)+'" style="width:100%;margin-bottom:0.9rem;">'+
+    '<p style="font-size:13px;color:var(--text-secondary);line-height:1.55;margin:0 0 0.5rem;">'+_t('a.admin.delete_body','Это действие отвяжет и удалит все его данные: профиль, journey_events, нейромап, ощущения, прогресс курсов, участие в командах. Действие необратимо через 1 час после подтверждения.')+'</p>'+
+    '<p style="font-size:12px;color:var(--text-dim);font-family:\'JetBrains Mono\',monospace;margin:0 0 0.7rem;">'+esc2(email)+'</p>'+
     '<p id="admin-del-err" style="font-size:12px;color:#ff8a8a;min-height:1rem;margin:0 0 0.4rem;"></p>'+
     '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">'+
-      '<button class="btn btn-ghost" id="admin-del-cancel" autofocus>'+_t('a.admin.delete_cancel','Отмена')+'</button>'+
-      '<button class="btn btn-solid" id="admin-del-go" disabled style="background:#c0392b;border-color:#c0392b;opacity:0.55;">'+_t('a.admin.delete_btn','Удалить')+'</button>'+
+      '<button class="btn btn-ghost" id="admin-del-cancel">'+_t('a.admin.delete_cancel','Отмена')+'</button>'+
+      '<button class="btn btn-solid" id="admin-del-go" autofocus style="background:#c0392b;border-color:#c0392b;">'+_t('a.admin.delete_btn','Удалить')+'</button>'+
     '</div>'+
   '</div>';
   document.body.appendChild(ov);
-  var inp=ov.querySelector('#admin-del-email'), go=ov.querySelector('#admin-del-go'), err=ov.querySelector('#admin-del-err');
+  var go=ov.querySelector('#admin-del-go'), err=ov.querySelector('#admin-del-err');
   ov.querySelector('#admin-del-cancel').addEventListener('click',function(){ ov.remove(); });
-  ov.querySelector('#admin-del-cancel').focus();
-  inp.addEventListener('input',function(){
-    var ok=inp.value.trim().toLowerCase()===String(email).toLowerCase();
-    go.disabled=!ok; go.style.opacity=ok?'1':'0.55';
-  });
+  go.focus();
   go.addEventListener('click',function(){
     if(go.disabled) return;
     var token=localStorage.getItem('na_token'); if(!token) return;
-    err.textContent='...';
-    fetch(AUTH_API+'/api/admin/users/'+encodeURIComponent(uid)+'/soft-delete',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({confirm_email:inp.value.trim()})})
+    go.disabled=true; err.textContent='...';
+    fetch(AUTH_API+'/api/admin/users/'+encodeURIComponent(uid)+'/soft-delete',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({confirm_email:email})})
       .then(function(r){return r.json();})
       .then(function(d){
         if(d&&d.success){
@@ -4388,6 +4362,72 @@ function adminRestoreUser(uid){
 }
 window.loadAdminTrash=loadAdminTrash;
 window.adminRestoreUser=adminRestoreUser;
+
+// ── Bulk-select + bulk-delete for the admin users list ──────────────────────
+// Heuristic classifier for QA throwaway accounts (the "select test accounts"
+// button). Deliberately conservative — the admin can still tick/untick by hand.
+function isTestAccount(email){
+  if(!email) return false;
+  var e=String(email).toLowerCase().trim();
+  return /@test\.local$/.test(e)                                   // harness throwaways
+      || /@(example|test|invalid|localhost)\./.test(e)             // reserved test domains
+      || /@(example|test)$/.test(e)
+      || /^qa[-_.]/.test(e)                                        // qa-… prefixes
+      || /\+test/.test(e)                                          // plus-addressed tests
+      || /^(test|qa|demo|temp|tmp|throwaway|fake|dummy|asdf)[-_.0-9]*@/.test(e)
+      || /^[a-z0-9]{18,}@/.test(e);                                // long gibberish local-part
+}
+window.isTestAccount=isTestAccount;
+function adminSelChecks(){ return Array.prototype.slice.call(document.querySelectorAll('#admin-full-users-table .admin-user-chk')); }
+function adminSelectedUids(){ return adminSelChecks().filter(function(c){return c.checked;}).map(function(c){return c.getAttribute('data-uid');}); }
+function adminUpdateBulkBar(){
+  var bar=document.getElementById('admin-bulk-bar'); if(!bar) return;
+  var checks=adminSelChecks();
+  var sel=checks.filter(function(c){return c.checked;}).length;
+  bar.style.display=checks.length?'flex':'none';
+  var cnt=document.getElementById('admin-bulk-count'); if(cnt) cnt.textContent=sel;
+  var dcnt=document.getElementById('admin-bulk-del-count'); if(dcnt) dcnt.textContent=sel;
+  var db=document.getElementById('admin-bulk-del'); if(db){ db.disabled=!sel; db.style.opacity=sel?'1':'0.55'; }
+  var all=document.getElementById('admin-users-selall');
+  if(all){ all.checked=checks.length>0 && sel===checks.length; all.indeterminate=sel>0 && sel<checks.length; }
+}
+window.adminOnRowCheck=adminUpdateBulkBar;
+function adminToggleSelectAll(on){ adminSelChecks().forEach(function(c){ c.checked=!!on; }); adminUpdateBulkBar(); }
+window.adminToggleSelectAll=adminToggleSelectAll;
+function adminClearSelection(){ adminToggleSelectAll(false); }
+window.adminClearSelection=adminClearSelection;
+function adminSelectTestAccounts(){
+  var map={}; (typeof adminUsersCache!=='undefined'?adminUsersCache:[]).forEach(function(u){ map[u.id]=u.email; });
+  adminSelChecks().forEach(function(c){ if(isTestAccount(map[c.getAttribute('data-uid')])) c.checked=true; });
+  adminUpdateBulkBar();
+}
+window.adminSelectTestAccounts=adminSelectTestAccounts;
+function adminBulkDelete(){
+  var ids=adminSelectedUids(); if(!ids.length) return;
+  function _t(k,f){ return (typeof t==='function')?t(k,f):f; }
+  var msg=_t('a.admin.bulk_confirm','Удалить {N} аккаунтов? Это действие необратимо — все данные будут стёрты без возможности восстановления.').replace('{N}',ids.length);
+  if(!window.confirm(msg)) return;
+  var token=localStorage.getItem('na_token'); if(!token) return;
+  var db=document.getElementById('admin-bulk-del'); if(db){ db.disabled=true; db.style.opacity='0.55'; }
+  fetch(AUTH_API+'/api/admin/users/bulk-delete',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({user_ids:ids})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.success){
+        (d.deleted_ids||[]).forEach(function(uid){
+          var row=document.querySelector('#admin-full-users-table tbody tr[data-uid="'+uid+'"]');
+          if(row&&row.parentNode) row.parentNode.removeChild(row);
+        });
+        adminUpdateBulkBar();
+        if(d.skipped){ alert(_t('a.admin.bulk_done','Удалено: ')+d.deleted+' · '+_t('a.admin.bulk_skipped','пропущено: ')+d.skipped); }
+      } else {
+        alert((d&&d.error)||'error');
+      }
+    })
+    .catch(function(){ alert(_t('a.admin.delete_error','Не удалось удалить')); })
+    .finally(function(){ if(typeof populateUsersList==='function' && typeof currentUser!=='undefined' && currentUser) populateUsersList(currentUser); });
+}
+window.adminBulkDelete=adminBulkDelete;
+
 function renderAdminUsersList(list,admin){
   var tbody=document.querySelector('#admin-full-users-table tbody');
   if(!tbody) return;
@@ -4395,7 +4435,8 @@ function renderAdminUsersList(list,admin){
   var isFounder=admin.role==='founder'||admin.role==='superadmin';
 
   if(!list.length){
-    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">'+t('a.admin.no_users','Пользователи не найдены')+'</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">'+t('a.admin.no_users','Пользователи не найдены')+'</td></tr>';
+    if(typeof adminUpdateBulkBar==='function') adminUpdateBulkBar();
     return;
   }
 
@@ -4443,11 +4484,16 @@ function renderAdminUsersList(list,admin){
       var safeName=String(name).replace(/'/g,"\\'");
       delBtn='<button class="event-edit" title="'+t('a.admin.delete_tooltip','Удалить пользователя (нельзя отменить через час)')+'" style="color:var(--accent-rose);border-color:rgba(255,90,90,0.35);margin-left:4px;" onclick="event.stopPropagation();adminDeleteUser(\''+u.id+'\',\''+safeEmail+'\',\''+safeName+'\')">🗑 '+t('a.admin.delete_btn','Удалить')+'</button>';
     }
+    // bulk-select checkbox — superadmin only, never on your own row or another superadmin
+    var chkCell='<td></td>';
+    if(isSuperadmin && u.id!==admin.id && u.role!=='superadmin'){
+      chkCell='<td style="text-align:center;"><input type="checkbox" class="admin-user-chk" data-uid="'+u.id+'" onclick="event.stopPropagation();adminOnRowCheck()"></td>';
+    }
     var tr=document.createElement('tr');
     tr.style.cursor='pointer';
     tr.setAttribute('data-uid', u.id);
     tr.onclick=function(){ openUserDetail(u.id); };
-    tr.innerHTML='<td>'+name+'</td>'+
+    tr.innerHTML=chkCell+'<td>'+name+'</td>'+
       '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;">'+contact+'</td>'+
       '<td>'+roleCell+'</td>'+
       '<td style="font-size:11px;">'+progText+'</td>'+
@@ -4455,6 +4501,9 @@ function renderAdminUsersList(list,admin){
       '<td style="white-space:nowrap;"><button class="event-edit" onclick="event.stopPropagation();openUserDetail(\''+u.id+'\')">'+t('a.admin.view_btn','Просмотр')+'</button>'+delBtn+'</td>';
     tbody.appendChild(tr);
   });
+
+  // reset the bulk-select toolbar for the freshly-rendered page
+  if(typeof adminUpdateBulkBar==='function') adminUpdateBulkBar();
 
   // Attach change listeners to role selects
   if(isSuperadmin){
@@ -6814,18 +6863,27 @@ function saveDiaryEvent(){
     minusCount: currentMinusCount,
     time: time
   };
+  // PR#129 (Bug B): a diary EVENT is one Path event at the chosen date — not a
+  // separate "diary layer". Build occurred_at from the picked date (+time) so the
+  // event node AND every node in its chain land on that day (e.g. 1 July), and route
+  // EVERYTHING through /v2/append. We no longer also POST /api/diary/save: that path
+  // logged a second journey_event (kind='insight') at the same date while /v2/append
+  // logged the 'event' at now() → the SAME entry appeared twice, on two different
+  // days ("Пуэльче" bug). One save == one endpoint == one journey_event.
+  var occIso = key + 'T' + (/^\d{2}:\d{2}/.test(time) ? time : '12:00');
   // PR#99 (Phase 2B): a child-targeted diary event routes to the dependent's path
-  // only — it must NOT enter the parent's diary store, graph, or calendar views.
+  // only (nmAppendV2 carries dependent_id) — it must NOT enter the parent's diary
+  // store, graph, or calendar views.
   if(typeof nmTargetDep !== 'undefined' && nmTargetDep){
-    diarySaveToAPI(key, entry, nmTargetDep.id);
+    diaryToGraph(entry, occIso);
     return true;
   }
   diaryData[key].push(entry);
-  // Persist to API + localStorage cache
-  diarySaveToAPI(key, entry);
+  // localStorage cache keeps the just-saved event visible in the diary calendar
+  // for this session; its durable home is now the Personal Path (journey_events).
   diaryCacheToLocal();
-  // Feed diary entry into NeuroMap v2 graph
-  diaryToGraph(entry);
+  // Feed diary entry into NeuroMap v2 graph AT THE CHOSEN DATE
+  diaryToGraph(entry, occIso);
   // Update views
   renderDiaryCalendar();
   if(selectedDiaryDay===key) renderDayColumns(key);
@@ -6853,7 +6911,10 @@ function saveAndClose(){
 }
 
 // ── Diary → NeuroMap v2 graph integration ──
-function diaryToGraph(entry){
+// PR#129 (Bug B): occurredAt (ISO, from the diary date picker) backdates the event
+// node AND its comment/thought node to the chosen day. /v2/append applies it to the
+// whole chain, so the outgoing branch stands on that date on the Personal Path.
+function diaryToGraph(entry, occurredAt){
   if(typeof nmAppendV2 !== 'function') return;
   // Build a v2 chain from diary entry
   // Event text → "event" node, valence from +/- balance
@@ -6864,7 +6925,7 @@ function diaryToGraph(entry){
   if(entry.comment){
     chain.push({ type:'thought', label: entry.comment.substring(0,80), valence: valence, metadata:{ source:'diary' } });
   }
-  nmAppendV2(chain);
+  nmAppendV2(chain, occurredAt);
 }
 
 // ── Practice → NeuroMap v2 graph integration ──
@@ -8200,9 +8261,15 @@ function nmSaveSurvey(){
   nmSurveyState.emotions.forEach(function(emo,i){
     if(!emo) return;
     var c=nmSurveyState.emotionChains[i]||{};
-    var areas=c.areas||[''];
-    var causes=c.causes||[''];
-    var thoughts=c.thoughts||[''];
+    // PR#129 (Bug A): a SKIPPED step (Next without a pick, or a pick then a de-select)
+    // leaves an EMPTY array on that level. `c.areas||['']` kept a truthy [] as-is, so
+    // the cartesian below iterated zero times and dropped the ENTIRE emotion chain
+    // (emotion + sphere + thought all lost). Treat empty-or-missing as [''] so the
+    // skipped level contributes one blank slot (filtered out node-side below) while
+    // every other step survives — skip drops only the skipped item, never the chain.
+    var areas=(c.areas&&c.areas.length)?c.areas:[''];
+    var causes=(c.causes&&c.causes.length)?c.causes:[''];
+    var thoughts=(c.thoughts&&c.thoughts.length)?c.thoughts:[''];
     // Include custom text for "другое"
     var expandedAreas=areas.map(function(a){ return a==='другое'&&c.customArea?c.customArea:a; });
     var expandedCauses=causes.map(function(ca){ return ca==='другое'&&c.customCause?c.customCause:ca; });
@@ -8446,13 +8513,17 @@ async function nmLoadV2Graph(){
 }
 
 // Send chain to v2/append API (dedup + accumulate on server)
-function nmAppendV2(chainItems){
+// PR#129 (Bug B): optional occurredAt (ISO) backdates the whole chain — the server
+// applies it to every node's journey_event AND the chain's started_at, so a diary
+// event logged for a past date lands its whole branch on that date on the Path.
+function nmAppendV2(chainItems, occurredAt){
   var token=naGetToken();
   if(!token) return;
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
   // PR#96: carry the cross-link session id (when active) so the server bridges
   // these nodes to the rest of the chained flow.
   var _nmBody = { chain: chainItems };
+  if (occurredAt) _nmBody.occurred_at = occurredAt;
   if (nmSessionId) _nmBody.session_id = nmSessionId;
   // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
   var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
@@ -12941,9 +13012,12 @@ function renderDiagTemplatesList(){
   }
   box.innerHTML = diagState.templates.map(function(tpl){
     var sub = tpl.is_default ? t('a.admin.diag.tpl_default','Базовая (по умолчанию)') : t('a.admin.diag.tpl_owner_you','Ваша копия');
+    // Default template name is seeded in RU in the DB — show a localized label for it,
+    // but keep custom (owner) template names exactly as the specialist typed them.
+    var tplName = tpl.is_default ? t('a.admin.diag.base_template_name','Базовая диагностика') : (tpl.name || '—');
     var active = (diagState.currentTpl && diagState.currentTpl.id === tpl.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
     return '<div onclick="diagSelectTemplate(' + tpl.id + ')" style="cursor:pointer;padding:0.55rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;'+active+'">'
-         + '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + (tpl.name || '—') + '</div>'
+         + '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + tplName + '</div>'
          + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">' + sub + '</div>'
          + '</div>';
   }).join('');
@@ -13000,7 +13074,7 @@ function diagSaveSessionInline(){
     })
   })
   .then(function(){
-    if (btn) { btn.disabled=false; btn.textContent='✓ Сохранено'; setTimeout(function(){ btn.textContent='💾 Сохранить сеанс'; }, 1500); }
+    if (btn) { btn.disabled=false; btn.textContent='✓ Сохранено'; setTimeout(function(){ btn.textContent=t('a.admin.diag.save_session','💾 Сохранить сеанс'); }, 1500); }
     diagSetStatus('Сеанс сохранён.', true);
     // Clear answers and reload the sessions list
     diagState.responses = {};
@@ -13010,7 +13084,7 @@ function diagSaveSessionInline(){
     if (typeof loadDiagSessions === 'function') loadDiagSessions();
   })
   .catch(function(e){
-    if (btn) { btn.disabled=false; btn.textContent='💾 Сохранить сеанс'; }
+    if (btn) { btn.disabled=false; btn.textContent=t('a.admin.diag.save_session','💾 Сохранить сеанс'); }
     alert('Ошибка: ' + e.message);
   });
 }
@@ -16070,7 +16144,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var toolsTab = document.querySelector('[data-tab="admin-tools"]');
     if (toolsTab && !toolsTab.dataset.achBound) {
       toolsTab.dataset.achBound = '1';
-      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); setTimeout(loadStorageStatus, 200); setTimeout(loadPathMap, 200); });
+      toolsTab.addEventListener('click', function(){ setTimeout(loadCustomAchList, 200); setTimeout(loadStorageStatus, 200); });
     }
   }, 1500);
 });
@@ -16984,8 +17058,9 @@ function renderDiagEditor(){
   if (!diagState.currentTpl){ emptyEl.style.display = ''; editor.style.display = 'none'; return; }
   emptyEl.style.display = 'none';
   editor.style.display = '';
-  document.getElementById('diag-tpl-name').value = diagState.currentTpl.name || '';
   var isDefault = diagState.currentTpl.is_default;
+  // Show the localized label for the (RU-seeded) default template name; custom names verbatim.
+  document.getElementById('diag-tpl-name').value = isDefault ? t('a.admin.diag.base_template_name','Базовая диагностика') : (diagState.currentTpl.name || '');
   var ownsTpl = !isDefault && diagState.currentTpl.owner_user_id === (currentUser && currentUser.id);
   document.getElementById('diag-clone-btn').style.display = isDefault ? '' : 'none';
   document.getElementById('diag-delete-btn').style.display = ownsTpl ? '' : 'none';
@@ -17038,7 +17113,7 @@ function renderDiagItems(){
          + '<input ' + (isDefault?'readonly':'') + ' value="' + (it.label_es||'').replace(/"/g,'&quot;') + '" placeholder="Текст вопроса (ES)" onchange="diagItemField(' + idx + ',\'label_es\',this.value)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:0.35rem 0.6rem;color:var(--text-primary);font-size:12px;margin-bottom:0.3rem;box-sizing:border-box;">'
          + optionsBlock
          + '<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px dashed rgba(0,229,255,0.18);">'
-         +   '<label style="display:block;font-size:10px;color:var(--accent-cyan);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">Ответ клиента</label>'
+         +   '<label style="display:block;font-size:10px;color:var(--accent-cyan);margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;">' + t('a.admin.diag.answer_client','Ответ клиента') + '</label>'
          +   ansBlock
          + '</div>'
          + '</div>';
@@ -17053,10 +17128,10 @@ function renderDiagAnswerInput(it, idx, lang, existingValue){
   var rt = it.response_type || 'text';
   function val(v){ return (v == null) ? '' : String(v).replace(/"/g,'&quot;'); }
   if (rt === 'multiline'){
-    return '<textarea data-ans-idx="' + idx + '" rows="3" placeholder="Запишите ответ клиента…" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;">' + (existingValue||'') + '</textarea>';
+    return '<textarea data-ans-idx="' + idx + '" rows="3" placeholder="' + t('a.admin.diag.answer_multiline_ph','Запишите ответ клиента…') + '" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;">' + (existingValue||'') + '</textarea>';
   }
   if (rt === 'number'){
-    return '<input type="number" data-ans-idx="' + idx + '" value="' + val(existingValue) + '" placeholder="Число" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+    return '<input type="number" data-ans-idx="' + idx + '" value="' + val(existingValue) + '" placeholder="' + t('a.admin.diag.answer_number_ph','Число') + '" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
   }
   if (rt === 'choice'){
     var opts = (Array.isArray(it.options) ? it.options : []).map(function(o){
@@ -17092,7 +17167,7 @@ function renderDiagAnswerInput(it, idx, lang, existingValue){
     }).join('');
   }
   // Default: short text
-  return '<input type="text" data-ans-idx="' + idx + '" value="' + val(existingValue) + '" placeholder="Краткий ответ" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
+  return '<input type="text" data-ans-idx="' + idx + '" value="' + val(existingValue) + '" placeholder="' + t('a.admin.diag.answer_short_ph','Краткий ответ') + '" style="width:100%;background:rgba(0,224,255,0.04);border:1px solid rgba(0,229,255,0.15);border-radius:6px;padding:0.45rem 0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;">';
 }
 
 function wireDiagAnswerInputs(){
@@ -17313,7 +17388,7 @@ function loadDiagSessions(){
     var box = document.getElementById('diag-sessions-list');
     if (!box) return;
     var sessions = d.sessions || [];
-    if (!sessions.length){ box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);" data-i18n="a.admin.diag.sessions_empty">Сеансов пока нет.</p>'; return; }
+    if (!sessions.length){ box.innerHTML = '<p style="font-size:11px;color:var(--text-muted);">' + t('a.admin.diag.sessions_empty','Сеансов пока нет.') + '</p>'; return; }
     var lang = (typeof getLang === 'function') ? getLang() : 'ru';
     var locale = lang==='en'?'en-US':(lang==='es'?'es-ES':'ru-RU');
     box.innerHTML = sessions.slice(0,15).map(function(s){
@@ -17659,7 +17734,7 @@ window.pbMove = pbMove;
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=8"></script>
-<script src="assets/js/body-atlas.js?v=34"></script>
+<script src="assets/js/body-atlas.js?v=37"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){

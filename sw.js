@@ -81,7 +81,18 @@
 // v39: R2 dual-bucket migration — public assets served off R2, medical documents
 //      in a private bucket read via signed URLs. Backend-only; CACHE_NAME bump
 //      purges any stale account.html.
-var CACHE_NAME = 'na-practices-v41';
+// v42: PR#129 — (A) skip a survey step keeps the rest of the emotion chain;
+//      (B) a diary EVENT is one Path event at its chosen date (single /v2/append,
+//      no duplicate /api/diary/save insight); (5) body-atlas.js?v=36 drops the
+//      procedural manikin fallback so a GLB miss shows an empty stage, never a
+//      segmented outline body. Purges any stale account.html + body-atlas.js.
+// v43: PR#129 follow-up (Bug 5, take 2) — the leftover translucent T-pose "мешок"
+//      was the SKIN layer (body-male.glb x-ray fill), force-shown by tintRegions when
+//      a med/diet targets 'skin' and un-hideable by any master toggle. The skin layer
+//      is now pinned permanently invisible in toggleLayer(); body-atlas.js?v=36→v37.
+// v44: External Field history — past-date + date-range views (external-field.js?v=8,
+//      mycelium.css?v=17). New /api/external/history + external_field_cache (mig055).
+var CACHE_NAME = 'na-practices-v44';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
