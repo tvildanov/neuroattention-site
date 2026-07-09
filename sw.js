@@ -81,7 +81,7 @@
 // v39: R2 dual-bucket migration — public assets served off R2, medical documents
 //      in a private bucket read via signed URLs. Backend-only; CACHE_NAME bump
 //      purges any stale account.html.
-var CACHE_NAME = 'na-practices-v40';
+var CACHE_NAME = 'na-practices-v41';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

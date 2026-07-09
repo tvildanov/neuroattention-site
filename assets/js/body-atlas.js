@@ -229,16 +229,11 @@
     return new window.THREE.CylinderGeometry(r, r, len + r, radialSegs || 12, 1, false);
   }
 
-  // wireframe "net" overlay for a geometry
-  function makeWireframe(geom, color, opacity) {
-    var wf = new window.THREE.WireframeGeometry(geom);
-    var mat = new window.THREE.LineBasicMaterial({
-      color: color != null ? color : COLD_CYAN,
-      transparent: true, opacity: opacity != null ? opacity : 0.22,
-      depthWrite: false
-    });
-    return new window.THREE.LineSegments(wf, mat);
-  }
+  // PR#128: makeWireframe() (the holographic "net" overlay) removed. It was the last
+  // producer of LineSegments on the body; the legacy segmented outline body that kept
+  // resurfacing in the Medications/Diet tint view came from it. The body now renders as
+  // x-ray fill only. The isolate/tint passes still defensively hide any stray
+  // LineSegments (e.g. from a GLB) so no future net can leak back in.
 
   // ── brain region catalogue (i18n names + placeholder descriptions) ─────────
   // Positions are normalized inside the brain's local space (set later).
@@ -449,13 +444,17 @@
     }
 
     if (srcMeshes.length) {
-      // Real mesh → x-ray fill + wireframe net, baked to world space.
+      // Real mesh → x-ray fill only, baked to world space.
+      // PR#128: the holographic wireframe "net" overlay is GONE. It was the legacy
+      // segmented outline body ("старая сетчатая модель") that leaked into the
+      // Medications/Diet tint view: tintRegions force-shows the skin layer to isolate
+      // organs, and on a no-match tint the stray cyan LineSegments net kept floating.
+      // The x-ray fill alone gives the body silhouette; nothing else re-creates a net.
       srcMeshes.forEach(function (m) {
         var g = m.geometry.clone();
         g.applyMatrix4(m.matrixWorld);
         var fill = new T.Mesh(g, makeXrayMaterial({ color: COLD_CYAN, opacity: 0.5, glow: 0.7 }));
         skin.add(fill);
-        skin.add(makeWireframe(g, COLD_CYAN, 0.18));
       });
     } else {
       // Procedural humanoid fallback (capsule torso + limbs) so the tool never
@@ -513,9 +512,9 @@
   Atlas.prototype._proceduralBody = function () {
     var T = window.THREE, g = new T.Group();
     function part(geo, x, y, z) {
+      // PR#128: x-ray fill only — no wireframe net (see _mountBody note).
       var m = new T.Mesh(geo, makeXrayMaterial({ opacity: 0.5, glow: 0.7 }));
       m.position.set(x, y, z); g.add(m);
-      g.add((function () { var wf = makeWireframe(geo, COLD_CYAN, 0.18); wf.position.set(x, y, z); return wf; })());
     }
     part(new T.SphereGeometry(0.16, 24, 18), 0, 1.55, 0);            // head
     part(new T.CylinderGeometry(0.07, 0.09, 0.18, 16), 0, 1.38, 0);  // neck
@@ -1546,7 +1545,16 @@
       if (tone) matchCount++;
       items.push({ o: o, mat: mat, ud: ud, tone: tone });
     });
-    if (matchCount === 0) { if (this._requestRender) this._requestRender(); return this; }
+    if (matchCount === 0) {
+      // Nothing matched, but still hide any stray wire-net so a no-match tint never
+      // leaves an old "сетчатая модель" floating (PR#128; defensive — makeWireframe is
+      // gone, but a GLB could ship its own LineSegments). Record for _clearFocusState.
+      var vc0 = [];
+      wires.forEach(function (w) { vc0.push({ mesh: w, prior: w.visible }); w.visible = false; });
+      this._focusVis = vc0;
+      if (this._requestRender) this._requestRender();
+      return this;
+    }
     var visChanges = [], boosted = [], colored = [];
     wires.forEach(function (w) { visChanges.push({ mesh: w, prior: w.visible }); w.visible = false; });
     items.forEach(function (it) {
