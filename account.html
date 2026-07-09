@@ -6863,18 +6863,27 @@ function saveDiaryEvent(){
     minusCount: currentMinusCount,
     time: time
   };
+  // PR#129 (Bug B): a diary EVENT is one Path event at the chosen date — not a
+  // separate "diary layer". Build occurred_at from the picked date (+time) so the
+  // event node AND every node in its chain land on that day (e.g. 1 July), and route
+  // EVERYTHING through /v2/append. We no longer also POST /api/diary/save: that path
+  // logged a second journey_event (kind='insight') at the same date while /v2/append
+  // logged the 'event' at now() → the SAME entry appeared twice, on two different
+  // days ("Пуэльче" bug). One save == one endpoint == one journey_event.
+  var occIso = key + 'T' + (/^\d{2}:\d{2}/.test(time) ? time : '12:00');
   // PR#99 (Phase 2B): a child-targeted diary event routes to the dependent's path
-  // only — it must NOT enter the parent's diary store, graph, or calendar views.
+  // only (nmAppendV2 carries dependent_id) — it must NOT enter the parent's diary
+  // store, graph, or calendar views.
   if(typeof nmTargetDep !== 'undefined' && nmTargetDep){
-    diarySaveToAPI(key, entry, nmTargetDep.id);
+    diaryToGraph(entry, occIso);
     return true;
   }
   diaryData[key].push(entry);
-  // Persist to API + localStorage cache
-  diarySaveToAPI(key, entry);
+  // localStorage cache keeps the just-saved event visible in the diary calendar
+  // for this session; its durable home is now the Personal Path (journey_events).
   diaryCacheToLocal();
-  // Feed diary entry into NeuroMap v2 graph
-  diaryToGraph(entry);
+  // Feed diary entry into NeuroMap v2 graph AT THE CHOSEN DATE
+  diaryToGraph(entry, occIso);
   // Update views
   renderDiaryCalendar();
   if(selectedDiaryDay===key) renderDayColumns(key);
@@ -6902,7 +6911,10 @@ function saveAndClose(){
 }
 
 // ── Diary → NeuroMap v2 graph integration ──
-function diaryToGraph(entry){
+// PR#129 (Bug B): occurredAt (ISO, from the diary date picker) backdates the event
+// node AND its comment/thought node to the chosen day. /v2/append applies it to the
+// whole chain, so the outgoing branch stands on that date on the Personal Path.
+function diaryToGraph(entry, occurredAt){
   if(typeof nmAppendV2 !== 'function') return;
   // Build a v2 chain from diary entry
   // Event text → "event" node, valence from +/- balance
@@ -6913,7 +6925,7 @@ function diaryToGraph(entry){
   if(entry.comment){
     chain.push({ type:'thought', label: entry.comment.substring(0,80), valence: valence, metadata:{ source:'diary' } });
   }
-  nmAppendV2(chain);
+  nmAppendV2(chain, occurredAt);
 }
 
 // ── Practice → NeuroMap v2 graph integration ──
@@ -8249,9 +8261,15 @@ function nmSaveSurvey(){
   nmSurveyState.emotions.forEach(function(emo,i){
     if(!emo) return;
     var c=nmSurveyState.emotionChains[i]||{};
-    var areas=c.areas||[''];
-    var causes=c.causes||[''];
-    var thoughts=c.thoughts||[''];
+    // PR#129 (Bug A): a SKIPPED step (Next without a pick, or a pick then a de-select)
+    // leaves an EMPTY array on that level. `c.areas||['']` kept a truthy [] as-is, so
+    // the cartesian below iterated zero times and dropped the ENTIRE emotion chain
+    // (emotion + sphere + thought all lost). Treat empty-or-missing as [''] so the
+    // skipped level contributes one blank slot (filtered out node-side below) while
+    // every other step survives — skip drops only the skipped item, never the chain.
+    var areas=(c.areas&&c.areas.length)?c.areas:[''];
+    var causes=(c.causes&&c.causes.length)?c.causes:[''];
+    var thoughts=(c.thoughts&&c.thoughts.length)?c.thoughts:[''];
     // Include custom text for "другое"
     var expandedAreas=areas.map(function(a){ return a==='другое'&&c.customArea?c.customArea:a; });
     var expandedCauses=causes.map(function(ca){ return ca==='другое'&&c.customCause?c.customCause:ca; });
@@ -8495,13 +8513,17 @@ async function nmLoadV2Graph(){
 }
 
 // Send chain to v2/append API (dedup + accumulate on server)
-function nmAppendV2(chainItems){
+// PR#129 (Bug B): optional occurredAt (ISO) backdates the whole chain — the server
+// applies it to every node's journey_event AND the chain's started_at, so a diary
+// event logged for a past date lands its whole branch on that date on the Path.
+function nmAppendV2(chainItems, occurredAt){
   var token=naGetToken();
   if(!token) return;
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
   // PR#96: carry the cross-link session id (when active) so the server bridges
   // these nodes to the rest of the chained flow.
   var _nmBody = { chain: chainItems };
+  if (occurredAt) _nmBody.occurred_at = occurredAt;
   if (nmSessionId) _nmBody.session_id = nmSessionId;
   // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
   var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
@@ -17712,7 +17734,7 @@ window.pbMove = pbMove;
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=7"></script>
-<script src="assets/js/body-atlas.js?v=35"></script>
+<script src="assets/js/body-atlas.js?v=36"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
