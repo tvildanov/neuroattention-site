@@ -90,7 +90,11 @@
 //      was the SKIN layer (body-male.glb x-ray fill), force-shown by tintRegions when
 //      a med/diet targets 'skin' and un-hideable by any master toggle. The skin layer
 //      is now pinned permanently invisible in toggleLayer(); body-atlas.js?v=36→v37.
-var CACHE_NAME = 'na-practices-v43';
+// v44: PR Library — new «Library» sub-tab in Tools (terms · articles · theories ·
+//      research · functions · methods), migration 056 + api/library-seed.js, Course
+//      Builder library picker, and an Anatomy-atlas function → Library cross-link.
+//      Purges any stale account.html.
+var CACHE_NAME = 'na-practices-v44';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
