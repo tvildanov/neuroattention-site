@@ -46,7 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=16" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=17" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -1757,6 +1757,7 @@ a.dash-tab:hover { text-decoration:none; }
               <div class="atlas-schematic" id="atlas-help"></div>
             </aside>
             <aside class="atlas-layers" id="ha-left-functions" style="display:none;">
+              <div class="ha-cats" id="ha-fn-modes"></div>
               <input class="ha-search" id="ha-fn-search" oninput="haFnSearch(this.value)" data-i18n-ph="a.ha.fn_search" placeholder="Поиск функции…" autocomplete="off">
               <div class="ha-cats" id="ha-fn-cats"></div>
               <div class="ha-list" id="ha-fn-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
@@ -17852,10 +17853,10 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=29"></script>
+<script src="assets/js/evolution-path.js?v=30"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
-<script src="assets/js/external-field.js?v=7"></script>
+<script src="assets/js/external-field.js?v=8"></script>
 <script src="assets/js/body-atlas.js?v=37"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
@@ -18276,7 +18277,16 @@ window.pbMove = pbMove;
     open_anatomy:{ru:'Показать в Анатомии',en:'Show in Anatomy',es:'Ver en Anatomía'},
     tip_fn:{ru:'Выбери функцию слева — связанные регионы подсветятся на 3D-модели.',en:'Pick a function on the left — its regions light up on the 3D model.',es:'Elige una función a la izquierda — sus regiones se resaltan en el modelo 3D.'},
     tip_cond:{ru:'Выбери состояние слева — затронутые регионы подсветятся на 3D-модели.',en:'Pick a condition on the left — affected regions light up on the 3D model.',es:'Elige un estado a la izquierda — las regiones afectadas se resaltan.'},
-    nd:{ru:'нейроотличие',en:'neurodivergence',es:'neurodivergencia'}
+    nd:{ru:'нейроотличие',en:'neurodivergence',es:'neurodivergencia'},
+    mode_functions:{ru:'Функции',en:'Functions',es:'Funciones'},
+    mode_sports:{ru:'🏃 Виды спорта',en:'🏃 Sports',es:'🏃 Deportes'},
+    sport_search:{ru:'Поиск вида спорта…',en:'Search a sport…',es:'Buscar un deporte…'},
+    sport_improves:{ru:'Что развивает и укрепляет',en:'What it develops & strengthens',es:'Qué desarrolla y fortalece'},
+    sport_load:{ru:'Нагрузка и характерный износ',en:'Load & characteristic wear',es:'Carga y desgaste característico'},
+    sport_tissues_pos:{ru:'Целевые ткани (польза)',en:'Target tissues (benefit)',es:'Tejidos diana (beneficio)'},
+    sport_tissues_neg:{ru:'Ткани под нагрузкой (риск)',en:'Tissues under load (risk)',es:'Tejidos bajo carga (riesgo)'},
+    sport_tip:{ru:'Выбери вид спорта слева — зелёным подсветятся ткани, которые он развивает, красным — зоны характерной нагрузки и травматизма.',en:'Pick a sport on the left — the tissues it develops light up green, its characteristic load / injury zones red.',es:'Elige un deporte a la izquierda — los tejidos que desarrolla se resaltan en verde y sus zonas de carga/lesión en rojo.'},
+    sport_disclaimer:{ru:'Образовательная информация, не тренировочная или медицинская рекомендация. Перед началом новых нагрузок — консультация с врачом, особенно при хронических состояниях.',en:'Educational information, not training or medical advice. Consult a doctor before starting new activity, especially with chronic conditions.',es:'Información educativa, no consejo de entrenamiento ni médico. Consulte a un médico antes de iniciar nueva actividad, sobre todo con condiciones crónicas.'}
   };
   var CAT = {
     cognitive:{ru:'Когнитивные',en:'Cognitive',es:'Cognitivas'},
@@ -18319,7 +18329,13 @@ window.pbMove = pbMove;
     dissociative:{ru:'Диссоциативы',en:'Dissociatives',es:'Disociativos'},
     psychedelic:{ru:'Психоделики',en:'Psychedelics',es:'Psicodélicos'},
     empathogen:{ru:'Эмпатогены',en:'Empathogens',es:'Empatógenos'},
-    depressant:{ru:'Депрессанты',en:'Depressants',es:'Depresores'}
+    depressant:{ru:'Депрессанты',en:'Depressants',es:'Depresores'},
+    endurance:{ru:'Выносливость',en:'Endurance',es:'Resistencia'},
+    team_ball:{ru:'Командные / с мячом',en:'Team / ball',es:'Equipo / pelota'},
+    combat:{ru:'Единоборства',en:'Combat',es:'Combate'},
+    strength:{ru:'Силовые',en:'Strength',es:'Fuerza'},
+    mind_body:{ru:'Тело и разум',en:'Mind-body',es:'Cuerpo-mente'},
+    cognitive_sport:{ru:'Интеллектуальные',en:'Cognitive',es:'Cognitivos'}
   };
   var SEV = { mild:{ru:'лёгкое',en:'mild',es:'leve'}, moderate:{ru:'умеренное',en:'moderate',es:'moderado'}, severe:{ru:'тяжёлое',en:'severe',es:'grave'}, variable:{ru:'вариативное',en:'variable',es:'variable'} };
   var BRAIN = {'frontal-lobe':1,'parietal-lobe':1,'temporal-lobe':1,'occipital-lobe':1,'thalamus':1,'hypothalamus':1,'hippocampus':1,'amygdala':1,'basal-ganglia':1,'cerebellum':1,'midbrain':1,'pons':1,'medulla':1,'insula':1,'cingulate':1,'corpus-callosum':1,'fornix':1,'ventricles':1};
@@ -18446,8 +18462,8 @@ window.pbMove = pbMove;
     host.appendChild(card);
   }
 
-  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, medsByDiag:{}, diagsByMed:{} };
-  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null;
+  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, sports:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, sportBySlug:{}, medsByDiag:{}, diagsByMed:{} };
+  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null, curSport=null;
 
   function ensureData(cb){
     if(loaded){ cb&&cb(); return; }
@@ -18459,11 +18475,12 @@ window.pbMove = pbMove;
     // asset, not an API route — fetch it relative to account.html and merge it into
     // the Conditions list so it shows in ONE list with the human_conditions catalog.
     function gjStatic(u){ return fetch(u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
-    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2') ])
+    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2'), gj('/api/sports?limit=200') ])
       .then(function(res){
         DATA.fns = (res[0].functions)||[]; DATA.conds = (res[1].conditions)||[];
         DATA.circuits = (res[2].circuits)||[]; DATA.relations = (res[3].relations)||[];
         DATA.meds = (res[4].medications)||[]; DATA.medLinks = (res[5].links)||[];
+        DATA.sports = (res[7].sports)||[]; DATA.sports.forEach(function(s){ DATA.sportBySlug[s.slug]=s; });
         // PR#119: fold the 12 catalog diagnoses into DATA.conds as condition-shaped
         // rows. `regions` (schematic DX keys) map to real BodyAtlas seed-ids so they
         // focus/tint the SAME 3D atlas as the existing conditions. _isDx/_dx keep the
@@ -18749,9 +18766,18 @@ window.pbMove = pbMove;
     }
   };
 
-  /* ── Functions tab ──────────────────────────────────────────────────────── */
-  var fnQuery='', fnCat='';
+  /* ── Functions tab (with the Sports sub-section) ────────────────────────── */
+  // fnMode toggles the Functions aside between the anatomy-functions list ('fn')
+  // and the Sports catalog ('sport'). Sports reuse the medications green/red
+  // tintRegions overlay (medFocus) — same seed-id tissue vocabulary.
+  var fnQuery='', fnCat='', fnMode='fn';
+  function renderFnModes(){
+    var modes=document.getElementById('ha-fn-modes'); if(!modes) return;
+    modes.innerHTML='<button class="ha-cat'+(fnMode==='fn'?' active':'')+'" data-mode="fn" onclick="haFnMode(\'fn\')">'+esc(tr(T.mode_functions))+'</button>'+
+      '<button class="ha-cat'+(fnMode==='sport'?' active':'')+'" data-mode="sport" onclick="haFnMode(\'sport\')">'+esc(tr(T.mode_sports))+'</button>';
+  }
   function renderFnPanel(){
+    renderFnModes();
     var cats=document.getElementById('ha-fn-cats');
     if(cats && !cats.dataset.built){
       cats.dataset.built='1';
@@ -18759,10 +18785,57 @@ window.pbMove = pbMove;
       list.forEach(function(c){ html+='<button class="ha-cat" data-cat="'+c+'" onclick="haFnCat(\''+c+'\')">'+esc(catLabel(c))+'</button>'; });
       cats.innerHTML=html;
     }
-    renderFnList();
+    applyFnMode();
   }
+  // Toggle which sub-view of the Functions aside is visible + its search placeholder.
+  function applyFnMode(){
+    var cats=document.getElementById('ha-fn-cats'); if(cats) cats.style.display=(fnMode==='sport')?'none':'';
+    var s=document.getElementById('ha-fn-search'); if(s) s.placeholder=tr(fnMode==='sport'?T.sport_search:T.fn_search);
+    if(fnMode==='sport') renderSportList(); else renderFnList();
+  }
+  window.haFnMode=function(m){
+    if(m===fnMode) return;
+    fnMode=m; fnQuery=''; var s=document.getElementById('ha-fn-search'); if(s) s.value='';
+    renderFnModes();
+    // leaving sports clears any green/red overlay; entering re-focuses on select
+    if(m!=='sport'){ curSport=null; medClearTint(); }
+    applyFnMode();
+  };
   window.haFnCat=function(c){ fnCat=c; document.querySelectorAll('#ha-fn-cats .ha-cat').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-cat')||'')===c); }); renderFnList(); };
-  window.haFnSearch=function(v){ fnQuery=(v||'').trim().toLowerCase(); renderFnList(); };
+  window.haFnSearch=function(v){ fnQuery=(v||'').trim().toLowerCase(); (fnMode==='sport')?renderSportList():renderFnList(); };
+  /* ── Sports sub-section ─────────────────────────────────────────────────── */
+  function sportMatch(s){
+    if(!fnQuery) return true;
+    var hay=((s.name_en||'')+' '+(s.name_ru||'')+' '+(s.name_es||'')+' '+(s.description_en||'')).toLowerCase();
+    return hay.indexOf(fnQuery)>=0;
+  }
+  function renderSportList(){
+    var host=document.getElementById('ha-fn-list'); if(!host) return;
+    var rows=(DATA.sports||[]).filter(sportMatch);
+    if(!rows.length){ host.innerHTML='<div class="ha-empty">'+esc(tr(T.empty))+'</div>'; return; }
+    host.innerHTML = rows.map(function(s){
+      return '<button class="ha-item'+(curSport&&curSport.slug===s.slug?' active':'')+'" onclick="haSelectSport(\''+s.slug+'\')">'+
+        '<span class="ha-item-name">'+esc(nm(s))+'</span><span class="ha-item-cat">'+esc(catLabel(s.category))+'</span></button>';
+    }).join('');
+  }
+  window.haSelectSport=function(slug){
+    ensureData(function(){
+      var s=DATA.sportBySlug[slug]; if(!s) return; curSport=s; curMed=null;
+      renderSportList();
+      // reuse the medications green/red 3D overlay + master layer toggles
+      medFocus(s.target_tissues_positive||[], s.target_tissues_negative||[]);
+      var h='<h4>'+esc(nm(s))+'</h4><div class="ha-side-cat">'+esc(catLabel(s.category))+'</div>';
+      h+='<p>'+esc(desc(s))+'</p>';
+      var pos=organChips(s.target_tissues_positive,'pos',null,s.target_tissues_negative);
+      var neg=organChips(s.target_tissues_negative,'neg',null,s.target_tissues_positive);
+      if(pos){ h+='<div class="med-eff pos"><span class="med-eff-h">🟢 '+esc(tr(T.sport_improves))+'</span></div><div style="font-size:10px;color:#8df0ad;margin:0.2rem 0;">'+esc(tr(T.sport_tissues_pos))+'</div>'+pos; }
+      if(neg){ h+='<div class="med-eff neg" style="margin-top:0.5rem;"><span class="med-eff-h">🔴 '+esc(tr(T.sport_load))+'</span></div><div style="font-size:10px;color:#ff9aa8;margin:0.2rem 0;">'+esc(tr(T.sport_tissues_neg))+'</div>'+neg; }
+      var warn=fld(s,'warning'); if(warn){ h+='<div class="med-warn">⚠️ '+esc(warn)+'</div>'; }
+      if(window.schedButtonHtml) h+=window.schedButtonHtml('sport', s.slug, nm(s));
+      h+='<div class="med-disclaimer">'+esc(tr(T.sport_disclaimer))+'</div>';
+      openDetail(h);
+    });
+  };
   function fnMatch(f){
     if(fnCat && f.category!==fnCat) return false;
     if(!fnQuery) return true;
@@ -18791,6 +18864,7 @@ window.pbMove = pbMove;
       h+=regionSection(T.regions, f.region_ids||[], false);
       if(circuits.length){ h+='<div class="ha-side-h">'+esc(tr(T.circuits))+'</div>'; h+=circuits.map(function(c){ return '<span class="ha-chip" onclick="haFocusList(\''+(c.region_ids||[]).join(',')+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
       if(inConds.length){ h+='<div class="ha-side-h">'+esc(tr(T.in_conditions))+'</div>'; h+=inConds.map(function(c){ return '<span class="ha-chip link" onclick="haGoCondition(\''+c.slug+'\')">'+esc(nm(c))+'</span>'; }).join(''); }
+      if(window.schedButtonHtml) h+=window.schedButtonHtml('function', f.slug, nm(f));
       // Cross-link → Library function page (PR Library), when a matching library entry exists.
       try{ var _libFn = window.libraryFnForAtlas && window.libraryFnForAtlas(f.slug);
         if(_libFn){ var _lg=(window.getLang&&window.getLang())||'ru'; var _ll=_lg==='en'?'Learn more':_lg==='es'?'Más información':'Подробнее в Библиотеке';
@@ -18990,6 +19064,8 @@ window.pbMove = pbMove;
           return '<span class="ha-chip link" onclick="haGoCondition(\''+l.diagnosis_slug+'\')">'+esc(nm(c))+pt+'</span>'; }).join('');
       }
       var warn=fld(m,'warning'); if(warn){ h+='<div class="med-warn">⚠️ '+esc(warn)+'</div>'; }
+      // schedule this medication (dose/frequency/times → Personal Path)
+      if(!isSub && window.schedButtonHtml) h+=window.schedButtonHtml('medication', m.slug, nm(m));
       // disclaimers (always) + substance-specific harm-reduction notice + resources
       h+='<div class="med-disclaimer">'+esc(tr(T.med_disclaimer))+'</div>';
       if(isSub){
@@ -19053,7 +19129,7 @@ window.pbMove = pbMove;
 
   /* ── detail panel ───────────────────────────────────────────────────────── */
   function openDetail(html){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* drop a stale stacked region card from the previous selection */ var p=document.getElementById('ha-detail-panel'); var b=document.getElementById('ha-detail-body'); if(b) b.innerHTML=html; if(p) p.classList.add('open'); }
-  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; curMed=null; medClearTint(); if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); renderMedList&&renderMedList(); };
+  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; curMed=null; curSport=null; medClearTint(); if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); renderMedList&&renderMedList(); (typeof renderSportList==='function')&&renderSportList(); };
 
   /* ── static label localization (tabs, placeholders, headers) ────────────── */
   function localize(){
@@ -19820,6 +19896,197 @@ window.pbMove = pbMove;
   }
 
   document.addEventListener('langchange', function(){ if(state.root && state.root.dataset.libMounted==='1' && state.root.style.display!=='none'){ Object.keys(cache).forEach(function(k){ delete cache[k]; }); openSection(state.section); } });
+})();
+</script>
+
+<script>
+  /* ── Scheduling module (Part B) ─────────────────────────────────────────────
+     A standalone module (like the Diet module) that lets a user schedule a
+     function / sport / medication. It provides schedButtonHtml() for the atlas
+     detail cards, a modal to create schedules, and a "Мои расписания" manager.
+     Schedules feed the Personal Path via GET /api/me/schedule/events (expanded
+     on the fly, NOT written to journey_events). Uses window.t / getLang /
+     naAuthHeaders. i18n strings are local (all three locales at once). */
+(function(){
+  var API = (window.AUTH_API||'');
+  function SL(){ try{ return (window.getLang?window.getLang():(localStorage.getItem('na_lang')||'ru')).slice(0,2); }catch(e){ return 'ru'; } }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var TS = {
+    add_btn:{ru:'📅 Добавить в расписание',en:'📅 Add to schedule',es:'📅 Añadir al calendario'},
+    title:{ru:'В расписание',en:'Add to schedule',es:'Añadir al calendario'},
+    freq:{ru:'Как часто',en:'How often',es:'Con qué frecuencia'},
+    freq_daily:{ru:'Каждый день',en:'Every day',es:'Cada día'},
+    freq_n:{ru:'Раз в N дней',en:'Every N days',es:'Cada N días'},
+    freq_weekly:{ru:'По дням недели',en:'On weekdays',es:'Días de la semana'},
+    freq_custom:{ru:'Свой интервал',en:'Custom interval',es:'Intervalo propio'},
+    every:{ru:'Каждые',en:'Every',es:'Cada'},
+    days:{ru:'дн.',en:'days',es:'días'},
+    times:{ru:'Время приёма / занятия',en:'Times of day',es:'Horas del día'},
+    add_time:{ru:'+ время',en:'+ time',es:'+ hora'},
+    dose_med:{ru:'Доза',en:'Dose',es:'Dosis'},
+    dose_sport:{ru:'Длительность / интенсивность',en:'Duration / intensity',es:'Duración / intensidad'},
+    dose_fn:{ru:'Заметка (необязательно)',en:'Note (optional)',es:'Nota (opcional)'},
+    dose_ph_med:{ru:'напр. 500 мг',en:'e.g. 500 mg',es:'ej. 500 mg'},
+    dose_ph_sport:{ru:'напр. 30 мин',en:'e.g. 30 min',es:'ej. 30 min'},
+    start:{ru:'Начать с',en:'Start date',es:'Fecha de inicio'},
+    end:{ru:'Закончить (необязательно)',en:'End date (optional)',es:'Fecha de fin (opcional)'},
+    save:{ru:'Сохранить',en:'Save',es:'Guardar'},
+    cancel:{ru:'Отмена',en:'Cancel',es:'Cancelar'},
+    mine:{ru:'Мои расписания',en:'My schedules',es:'Mis horarios'},
+    none:{ru:'Пока нет расписаний',en:'No schedules yet',es:'Aún no hay horarios'},
+    saved:{ru:'Добавлено в расписание ✓',en:'Added to schedule ✓',es:'Añadido al calendario ✓'},
+    del:{ru:'Удалить',en:'Delete',es:'Eliminar'},
+    path_hint:{ru:'Появится на Личном пути при включённом слое.',en:'Shows on the Personal Path when its layer is on.',es:'Aparece en el Camino Personal con su capa activada.'},
+    wd:{ru:['Вс','Пн','Вт','Ср','Чт','Пт','Сб'],en:['Su','Mo','Tu','We','Th','Fr','Sa'],es:['Do','Lu','Ma','Mi','Ju','Vi','Sa']},
+    kind_function:{ru:'функция',en:'function',es:'función'},
+    kind_sport:{ru:'спорт',en:'sport',es:'deporte'},
+    kind_medication:{ru:'препарат',en:'medication',es:'medicamento'}
+  };
+  function T(k){ var o=TS[k]; if(!o) return k; return o[SL()]||o.ru; }
+  window.schedButtonHtml = function(kind, slug, title){
+    return '<button class="btn btn-ghost sched-add-btn" style="width:100%;margin-top:0.6rem;font-size:13px;" '+
+      'onclick="schedOpen(\''+esc(kind)+'\',\''+esc(slug)+'\',\''+esc((title||'').replace(/'/g,"\\'"))+'\')">'+esc(T('add_btn'))+'</button>';
+  };
+
+  var modal=null, cur={kind:'',slug:'',title:''};
+  function ensureModal(){
+    if(modal) return modal;
+    var css=document.createElement('style');
+    css.textContent=''
+      +'.sched-ov{position:fixed;inset:0;z-index:9500;background:rgba(6,9,15,0.72);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:5vh 1rem;}'
+      +'.sched-ov.open{display:flex;}'
+      +'.sched-card{background:#131922;border:1px solid rgba(255,255,255,0.1);border-radius:16px;max-width:440px;width:100%;padding:1.2rem 1.3rem;color:var(--text-primary,#e7ecf3);box-shadow:0 20px 60px rgba(0,0,0,0.5);}'
+      +'.sched-card h3{margin:0 0 0.2rem;font-size:17px;}'
+      +'.sched-sub{font-size:12px;opacity:0.7;margin-bottom:0.9rem;}'
+      +'.sched-row{margin:0.7rem 0;}'
+      +'.sched-row label{display:block;font-size:12px;opacity:0.8;margin-bottom:0.3rem;}'
+      +'.sched-card select,.sched-card input[type=text],.sched-card input[type=date],.sched-card input[type=number],.sched-card input[type=time]{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.13);border-radius:9px;padding:0.45rem 0.6rem;color:inherit;font-size:14px;width:100%;box-sizing:border-box;}'
+      +'.sched-wd{display:flex;gap:4px;flex-wrap:wrap;}'
+      +'.sched-wd button{flex:1;min-width:34px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.13);border-radius:8px;color:inherit;font-size:12px;padding:0.35rem 0;cursor:pointer;}'
+      +'.sched-wd button.on{background:#4a7cff;border-color:#4a7cff;color:#fff;}'
+      +'.sched-times{display:flex;flex-direction:column;gap:5px;}'
+      +'.sched-time-row{display:flex;gap:6px;align-items:center;}'
+      +'.sched-time-row input{flex:1;}'
+      +'.sched-time-row button{background:rgba(255,90,90,0.15);border:1px solid rgba(255,90,90,0.3);color:#ff8a8a;border-radius:8px;width:34px;cursor:pointer;}'
+      +'.sched-addtime{background:none;border:1px dashed rgba(255,255,255,0.2);color:inherit;border-radius:8px;padding:0.3rem 0.6rem;font-size:12px;cursor:pointer;opacity:0.85;margin-top:4px;}'
+      +'.sched-actions{display:flex;gap:8px;margin-top:1rem;}'
+      +'.sched-actions .btn{flex:1;}'
+      +'.sched-mine{margin-top:1.2rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.8rem;}'
+      +'.sched-mine h4{margin:0 0 0.5rem;font-size:13px;opacity:0.85;}'
+      +'.sched-item{display:flex;align-items:center;gap:8px;padding:0.4rem 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.05);}'
+      +'.sched-item .si-name{flex:1;}'
+      +'.sched-item .si-meta{font-size:11px;opacity:0.6;}'
+      +'.sched-item.off{opacity:0.45;}'
+      +'.sched-item .si-del{background:none;border:none;color:#ff7a7a;cursor:pointer;font-size:14px;}'
+      +'.sched-kind-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:6px;background:rgba(255,255,255,0.08);margin-left:6px;vertical-align:middle;}';
+    document.head.appendChild(css);
+    modal=document.createElement('div');
+    modal.className='sched-ov'; modal.id='sched-ov';
+    modal.addEventListener('click',function(e){ if(e.target===modal) schedClose(); });
+    modal.innerHTML=''
+      +'<div class="sched-card">'
+      +'  <h3 id="sched-title"></h3><div class="sched-sub" id="sched-sub"></div>'
+      +'  <div class="sched-row"><label id="sched-l-freq"></label><select id="sched-freq" onchange="schedFreqChange()"></select></div>'
+      +'  <div class="sched-row" id="sched-n-row" style="display:none;"><label id="sched-l-every"></label><input type="number" id="sched-n" min="1" max="365" value="2"></div>'
+      +'  <div class="sched-row" id="sched-wd-row" style="display:none;"><div class="sched-wd" id="sched-wd"></div></div>'
+      +'  <div class="sched-row"><label id="sched-l-times"></label><div class="sched-times" id="sched-times"></div><button class="sched-addtime" id="sched-addtime" onclick="schedAddTime()"></button></div>'
+      +'  <div class="sched-row"><label id="sched-l-dose"></label><input type="text" id="sched-dose"></div>'
+      +'  <div class="sched-row" style="display:flex;gap:8px;"><div style="flex:1;"><label id="sched-l-start"></label><input type="date" id="sched-start"></div><div style="flex:1;"><label id="sched-l-end"></label><input type="date" id="sched-end"></div></div>'
+      +'  <div class="sched-actions"><button class="btn btn-ghost" id="sched-cancel" onclick="schedClose()"></button><button class="btn btn-solid" id="sched-save" onclick="schedSave()"></button></div>'
+      +'  <div class="sched-mine"><h4 id="sched-mine-h"></h4><div id="sched-mine-list"></div></div>'
+      +'</div>';
+    document.body.appendChild(modal);
+    return modal;
+  }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function addTimeRow(val){
+    var host=document.getElementById('sched-times');
+    var row=document.createElement('div'); row.className='sched-time-row';
+    row.innerHTML='<input type="time" value="'+esc(val||'09:00')+'"><button title="'+esc(T('del'))+'" onclick="this.parentNode.remove()">✕</button>';
+    host.appendChild(row);
+  }
+  window.schedAddTime=function(){ addTimeRow('09:00'); };
+  window.schedFreqChange=function(){
+    var f=document.getElementById('sched-freq').value;
+    document.getElementById('sched-n-row').style.display=(f==='every_n_days'||f==='custom')?'block':'none';
+    document.getElementById('sched-wd-row').style.display=(f==='weekly')?'block':'none';
+  };
+  window.schedOpen=function(kind, slug, title){
+    ensureModal(); cur={kind:kind,slug:slug,title:title||slug};
+    var kb=T('kind_'+kind)||kind;
+    document.getElementById('sched-title').textContent=T('title');
+    document.getElementById('sched-sub').innerHTML=esc(title||slug)+'<span class="sched-kind-badge">'+esc(kb)+'</span> · '+esc(T('path_hint'));
+    document.getElementById('sched-l-freq').textContent=T('freq');
+    var fs=document.getElementById('sched-freq');
+    fs.innerHTML='<option value="daily">'+esc(T('freq_daily'))+'</option>'+
+      '<option value="every_n_days">'+esc(T('freq_n'))+'</option>'+
+      '<option value="weekly">'+esc(T('freq_weekly'))+'</option>'+
+      '<option value="custom">'+esc(T('freq_custom'))+'</option>';
+    document.getElementById('sched-l-every').textContent=T('every');
+    // weekday chips
+    var wd=document.getElementById('sched-wd'); var names=TS.wd[SL()]||TS.wd.ru;
+    wd.innerHTML=names.map(function(n,i){ return '<button type="button" data-wd="'+i+'" onclick="this.classList.toggle(\'on\')">'+esc(n)+'</button>'; }).join('');
+    document.getElementById('sched-l-times').textContent=T('times');
+    document.getElementById('sched-addtime').textContent=T('add_time');
+    document.getElementById('sched-times').innerHTML=''; addTimeRow('09:00');
+    var dl=document.getElementById('sched-l-dose'); var di=document.getElementById('sched-dose');
+    dl.textContent=(kind==='medication')?T('dose_med'):(kind==='sport'?T('dose_sport'):T('dose_fn'));
+    di.value=''; di.placeholder=(kind==='medication')?T('dose_ph_med'):(kind==='sport'?T('dose_ph_sport'):'');
+    document.getElementById('sched-l-start').textContent=T('start');
+    document.getElementById('sched-l-end').textContent=T('end');
+    var today=new Date(); document.getElementById('sched-start').value=today.getFullYear()+'-'+pad2(today.getMonth()+1)+'-'+pad2(today.getDate());
+    document.getElementById('sched-end').value='';
+    document.getElementById('sched-cancel').textContent=T('cancel');
+    document.getElementById('sched-save').textContent=T('save');
+    document.getElementById('sched-mine-h').textContent=T('mine');
+    schedFreqChange();
+    modal.classList.add('open');
+    schedLoadMine();
+  };
+  window.schedClose=function(){ if(modal) modal.classList.remove('open'); };
+  window.schedSave=function(){
+    var f=document.getElementById('sched-freq').value;
+    var times=[].slice.call(document.querySelectorAll('#sched-times input[type=time]')).map(function(i){return i.value;}).filter(Boolean);
+    var weekdays=[].slice.call(document.querySelectorAll('#sched-wd button.on')).map(function(b){return parseInt(b.getAttribute('data-wd'),10);});
+    var body={ kind:cur.kind, ref_slug:cur.slug, title:cur.title, frequency_type:f,
+      frequency_value:parseInt(document.getElementById('sched-n').value,10)||1,
+      weekdays:weekdays, times:times, dose:document.getElementById('sched-dose').value||null,
+      start_date:document.getElementById('sched-start').value, end_date:document.getElementById('sched-end').value||null };
+    var btn=document.getElementById('sched-save'); btn.disabled=true;
+    fetch(API+'/api/me/schedules',{method:'POST',headers:naAuthHeaders(),body:JSON.stringify(body)})
+      .then(function(r){return r.json();})
+      .then(function(j){ btn.disabled=false;
+        if(j&&j.ok){ btn.textContent=T('saved'); schedLoadMine(); setTimeout(function(){ btn.textContent=T('save'); },1500);
+          try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }
+      }).catch(function(){ btn.disabled=false; });
+  };
+  function schedLoadMine(){
+    var host=document.getElementById('sched-mine-list'); if(!host) return;
+    fetch(API+'/api/me/schedules',{headers:naAuthHeaders()}).then(function(r){return r.json();}).then(function(j){
+      var rows=(j&&j.schedules)||[];
+      if(!rows.length){ host.innerHTML='<div style="font-size:12px;opacity:0.6;">'+esc(T('none'))+'</div>'; return; }
+      host.innerHTML=rows.map(function(s){
+        var meta=schedFreqLabel(s)+(s.times&&s.times.length?(' · '+s.times.map(function(t){return String(t).slice(0,5);}).join(', ')):'')+(s.dose?(' · '+esc(s.dose)):'');
+        return '<div class="sched-item'+(s.enabled?'':' off')+'">'+
+          '<input type="checkbox" '+(s.enabled?'checked':'')+' onchange="schedToggle('+s.id+',this.checked)">'+
+          '<div class="si-name">'+esc(s.title||s.ref_slug)+'<span class="sched-kind-badge">'+esc(T('kind_'+s.kind)||s.kind)+'</span><div class="si-meta">'+meta+'</div></div>'+
+          '<button class="si-del" title="'+esc(T('del'))+'" onclick="schedDelete('+s.id+')">✕</button></div>';
+      }).join('');
+    }).catch(function(){});
+  }
+  function schedFreqLabel(s){
+    if(s.frequency_type==='daily') return T('freq_daily');
+    if(s.frequency_type==='weekly'){ var names=TS.wd[SL()]||TS.wd.ru; return (s.weekdays&&s.weekdays.length?s.weekdays.map(function(w){return names[w];}).join(' '):T('freq_weekly')); }
+    return T('every')+' '+(s.frequency_value||1)+' '+T('days');
+  }
+  window.schedToggle=function(id,on){
+    fetch(API+'/api/me/schedules/'+id,{method:'PUT',headers:naAuthHeaders(),body:JSON.stringify({enabled:on})})
+      .then(function(){ schedLoadMine(); try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }).catch(function(){});
+  };
+  window.schedDelete=function(id){
+    fetch(API+'/api/me/schedules/'+id,{method:'DELETE',headers:naAuthHeaders()})
+      .then(function(){ schedLoadMine(); try{ if(window.schedRefreshPath) window.schedRefreshPath(); }catch(e){} }).catch(function(){});
+  };
 })();
 </script>
 </body>

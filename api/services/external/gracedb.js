@@ -4,11 +4,26 @@
 const { getJson, iso } = require('./_util');
 
 async function fetchLatest() {
-  const out = [];
-  const urls = [
+  return fromUrls([
     'https://gracedb.ligo.org/api/superevents/?category=Production&count=20&format=json',
     'https://gracedb.ligo.org/apiweb/superevents/?category=Production&count=20&format=json'
-  ];
+  ]);
+}
+
+// Historical superevents for an explicit [from,to] window. GraceDB's query
+// language filters by created date (`created: <from> .. <to>`). Best-effort —
+// real detections only exist during observing runs, so most windows are empty.
+async function fetchHistory(ctx) {
+  var d10 = function (t) { return new Date(t).toISOString().slice(0, 10); };
+  var q = encodeURIComponent('created: ' + d10((ctx && ctx.from) || Date.now()) + ' .. ' + d10((ctx && ctx.to) || Date.now()));
+  return fromUrls([
+    'https://gracedb.ligo.org/api/superevents/?query=' + q + '&count=50&format=json',
+    'https://gracedb.ligo.org/apiweb/superevents/?query=' + q + '&count=50&format=json'
+  ]);
+}
+
+async function fromUrls(urls) {
+  const out = [];
   for (var i = 0; i < urls.length; i++) {
     try {
       const d = await getJson(urls[i]);
@@ -41,4 +56,4 @@ async function fetchLatest() {
   }
   return out.filter(function (x) { return x.timestamp; });
 }
-module.exports = { fetchLatest };
+module.exports = { fetchLatest, fetchHistory };

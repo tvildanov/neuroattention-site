@@ -23,6 +23,8 @@
       tab: { sun: 'Sun', moon: 'Moon', earth: 'Earth', weather: 'Weather', cosmos: 'Cosmos', social: 'Social Events', experimental: 'Experimental' },
       noData: 'Data not available', awaitNext: 'Awaiting next poll cycle.', srcEmpty: 'Source API returned no events in this window.',
       needLoc: 'Available after you set a location.',
+      date: { today: 'Today', day: 'Date', range: 'Range' },
+      hist: { peak: 'Peak', strongest: 'Strongest', precip: 'Precipitation', none: 'No events recorded on this day.', archiveNote: 'Historical weather from the Open-Meteo archive. The archive updates with a delay of a few days.' },
       sun: { xray: 'X-ray flux', wind: 'Solar wind', f107: 'F10.7 flux', lastFlare: 'Last flare', lastCME: 'Last CME',
         sunrise: 'Sunrise', sunset: 'Sunset', recent: 'Recent solar events', flares: 'Solar flares', cmes: 'Coronal mass ejections',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (latest)', sdoOpen: 'Open full SDO image ↗',
@@ -64,6 +66,8 @@
       tab: { sun: 'Солнце', moon: 'Луна', earth: 'Земля', weather: 'Погода', cosmos: 'Космос', social: 'Соц. события', experimental: 'Экспериментальные' },
       noData: 'Данных пока нет', awaitNext: 'Ожидаем следующий цикл опроса.', srcEmpty: 'Источник не вернул событий в этом окне.',
       needLoc: 'Доступно после указания локации.',
+      date: { today: 'Сегодня', day: 'Дата', range: 'Период' },
+      hist: { peak: 'Пик', strongest: 'Сильнейшее', precip: 'Осадки', none: 'В этот день событий не зафиксировано.', archiveNote: 'Историческая погода из архива Open-Meteo. Архив обновляется с задержкой в несколько дней.' },
       sun: { xray: 'Рентген. поток', wind: 'Солнечный ветер', f107: 'Поток F10.7', lastFlare: 'Последняя вспышка', lastCME: 'Последний CME',
         sunrise: 'Восход', sunset: 'Закат', recent: 'Недавние солнечные события', flares: 'Солнечные вспышки', cmes: 'Корональные выбросы массы',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (актуальное)', sdoOpen: 'Открыть полное изображение SDO ↗',
@@ -105,6 +109,8 @@
       tab: { sun: 'Sol', moon: 'Luna', earth: 'Tierra', weather: 'Clima', cosmos: 'Cosmos', social: 'Eventos sociales', experimental: 'Experimental' },
       noData: 'Datos no disponibles', awaitNext: 'Esperando el próximo ciclo de sondeo.', srcEmpty: 'La fuente no devolvió eventos en esta ventana.',
       needLoc: 'Disponible tras definir una ubicación.',
+      date: { today: 'Hoy', day: 'Fecha', range: 'Período' },
+      hist: { peak: 'Pico', strongest: 'El más fuerte', precip: 'Precipitación', none: 'No se registraron eventos este día.', archiveNote: 'Clima histórico del archivo de Open-Meteo. El archivo se actualiza con unos días de retraso.' },
       sun: { xray: 'Flujo de rayos X', wind: 'Viento solar', f107: 'Flujo F10.7', lastFlare: 'Última fulguración', lastCME: 'Última CME',
         sunrise: 'Amanecer', sunset: 'Atardecer', recent: 'Eventos solares recientes', flares: 'Fulguraciones solares', cmes: 'Eyecciones de masa coronal',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (reciente)', sdoOpen: 'Abrir imagen completa de SDO ↗',
@@ -157,7 +163,9 @@
     { key: 'experimental', icon: '⚡' }
   ];
 
-  var S = { active: 'sun', config: {}, user: null, container: null };
+  // dateMode: 'today' = live per-day view (unchanged default). 'day' = a single
+  // past calendar date. 'range' = a period up to a month (grouped timeline).
+  var S = { active: 'sun', config: {}, user: null, container: null, dateMode: 'today', day: null, from: null, to: null };
 
   // Moonrise/moonset is astronomical — computed locally (SunCalc), never
   // API-dependent (Open-Meteo's standard endpoint omits it, which is why it was
@@ -231,9 +239,203 @@
     S.active = key;
     S.container.querySelectorAll('.ef-tab').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-ef') === key); });
     var body = S.container.querySelector('#ef-body');
-    body.innerHTML = '<div class="ef-loading">' + esc(t('loading')) + '</div>';
-    var fn = ({ sun: renderSun, moon: renderMoon, earth: renderEarth, weather: renderWeather, cosmos: renderCosmos, social: renderSocial, experimental: renderExperimental })[key];
-    if (fn) fn(body);
+    body.innerHTML = dateBar(key) + '<div class="ef-content" id="ef-content"></div>';
+    bindDateBar(body);
+    renderActive();
+  }
+  // Dispatch the #ef-content region for the active tab + current dateMode.
+  function renderActive() {
+    var content = S.container.querySelector('#ef-content'); if (!content) return;
+    content.innerHTML = '<div class="ef-loading">' + esc(t('loading')) + '</div>';
+    var key = S.active;
+    // 'today' (and always Experimental, which has no historical source) → the
+    // existing live renderers, untouched.
+    if (S.dateMode === 'today' || key === 'experimental') {
+      var fn = ({ sun: renderSun, moon: renderMoon, earth: renderEarth, weather: renderWeather, cosmos: renderCosmos, social: renderSocial, experimental: renderExperimental })[key];
+      if (fn) fn(content);
+      return;
+    }
+    renderHistory(content, key);
+  }
+
+  /* ── date picker (single past date | range up to a month) ───────────────── */
+  function todayISO() { return new Date().toISOString().slice(0, 10); }
+  function isoDaysAgo(n) { return new Date(Date.now() - n * 864e5).toISOString().slice(0, 10); }
+  function currentRange() {
+    var td = todayISO();
+    if (S.dateMode === 'day') { var d = S.day || td; return { from: d, to: d }; }
+    return { from: S.from || isoDaysAgo(6), to: S.to || td };
+  }
+  function eachDay(from, to) {
+    var out = [], d = new Date(from + 'T00:00:00Z'), end = new Date(to + 'T00:00:00Z');
+    for (var i = 0; i < 40 && d <= end; i++) { out.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 864e5); }
+    return out;
+  }
+  function fmtDay(iso) {
+    var d = new Date(iso + 'T12:00:00Z'); if (isNaN(d)) return iso;
+    try { return d.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return iso; }
+  }
+  function dateBar(key) {
+    if (key === 'experimental') return '';   // no historical source for this layer
+    var td = todayISO();
+    var seg = ['today', 'day', 'range'].map(function (m) {
+      return '<button class="ef-dmode' + (S.dateMode === m ? ' active' : '') + '" data-dmode="' + m + '">' + esc(t('date.' + m)) + '</button>';
+    }).join('');
+    var inputs = '';
+    if (S.dateMode === 'day') {
+      inputs = '<input type="date" class="ef-date" id="ef-d-day" max="' + td + '" value="' + esc(S.day || td) + '">';
+    } else if (S.dateMode === 'range') {
+      inputs = '<span class="ef-drange"><input type="date" class="ef-date" id="ef-d-from" max="' + td + '" value="' + esc(S.from || isoDaysAgo(6)) + '">' +
+        '<span class="ef-dsep">–</span>' +
+        '<input type="date" class="ef-date" id="ef-d-to" max="' + td + '" value="' + esc(S.to || td) + '"></span>';
+    }
+    return '<div class="ef-datebar"><div class="ef-dseg">' + seg + '</div><div class="ef-dinputs">' + inputs + '</div></div>';
+  }
+  function rebuildBody() {
+    var body = S.container.querySelector('#ef-body'); if (!body) return;
+    body.innerHTML = dateBar(S.active) + '<div class="ef-content" id="ef-content"></div>';
+    bindDateBar(body); renderActive();
+  }
+  function bindDateBar(body) {
+    body.querySelectorAll('.ef-dmode').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = b.getAttribute('data-dmode'); if (m === S.dateMode) return;
+        S.dateMode = m; var td = todayISO();
+        if (m === 'day' && !S.day) S.day = td;
+        if (m === 'range') { if (!S.from) S.from = isoDaysAgo(6); if (!S.to) S.to = td; }
+        rebuildBody();
+      });
+    });
+    var dd = body.querySelector('#ef-d-day');
+    if (dd) dd.addEventListener('change', function () { if (dd.value) { S.day = dd.value; renderActive(); } });
+    var df = body.querySelector('#ef-d-from'), dt = body.querySelector('#ef-d-to');
+    if (df) df.addEventListener('change', function () { if (df.value) { S.from = df.value; if (S.to && S.from > S.to) S.to = S.from; renderActive(); } });
+    if (dt) dt.addEventListener('change', function () { if (dt.value) { S.to = dt.value; if (S.from && S.to < S.from) S.from = S.to; renderActive(); } });
+  }
+
+  /* ── historical render (past date / range) ──────────────────────────────── */
+  function dayHeader(iso) { return '<div class="ef-hist-head">📅 ' + esc(fmtDay(iso)) + '</div>'; }
+  function rangeHeader(r) { return '<div class="ef-hist-head">📅 ' + esc(fmtDay(r.from)) + ' — ' + esc(fmtDay(r.to)) + '</div>'; }
+  // group events by UTC calendar day (matches the server's day cache); newest first
+  function groupedTimeline(events) {
+    if (!events || !events.length) return emptyState(t('srcEmpty'));
+    var groups = {}, order = [];
+    events.forEach(function (e) {
+      var d = new Date(e.timestamp); if (isNaN(d)) return;
+      var k = d.toISOString().slice(0, 10);
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(e);
+    });
+    order.sort(function (a, b) { return a < b ? 1 : -1; });
+    return order.map(function (day) {
+      return '<div class="ef-day-group"><div class="ef-day-head"><span class="ef-day-date">' + esc(fmtDay(day)) +
+        '</span><span class="ef-day-count">' + groups[day].length + '</span></div>' + timeline(groups[day]) + '</div>';
+    }).join('');
+  }
+  // compact single-day summary chips per layer (peak flare / strongest quake / …)
+  function historyStats(key, events) {
+    if (key === 'sun') {
+      var flares = allOf(events, 'flare'), cmes = allOf(events, 'cme');
+      var peak = null, pv = -99;
+      flares.forEach(function (f) { var p = classPos(f.severity); if (p != null && p > pv) { pv = p; peak = f.severity; } });
+      return statRow([[t('sun.flares'), flares.length], [t('sun.cmes'), cmes.length], [t('hist.peak'), peak || '—']]);
+    }
+    if (key === 'earth') {
+      var quakes = allOf(events, 'earthquake'), storms = allOf(events, 'geomagnetic_storm');
+      var strongest = null, mv = -1;
+      quakes.forEach(function (q) { var m = parseFloat(String(q.severity || '').replace('M', '')); if (isFinite(m) && m > mv) { mv = m; strongest = q.severity; } });
+      return statRow([[t('earth.seismic'), quakes.length], [t('hist.strongest'), strongest || '—'], [t('earth.geomag'), storms.length]]);
+    }
+    if (key === 'cosmos') return statRow([[t('cosmos.candidates'), events.length]]);
+    if (key === 'social') return statRow([[t('social.events'), events.length]]);
+    return '';
+  }
+  function renderHistory(content, key) {
+    if (key === 'moon') return renderMoonHistory(content);
+    if (key === 'weather') return renderWeatherHistory(content);
+    var r = currentRange();
+    api('/api/external/history?layer=' + key + '&from=' + r.from + '&to=' + r.to + '&lang=' + encodeURIComponent(lang()))
+      .then(function (d) {
+        if (!content || !document.body.contains(content)) return;
+        var events = (d && d.events) || [];
+        if (S.dateMode === 'range') { content.innerHTML = rangeHeader(r) + groupedTimeline(events); return; }
+        content.innerHTML = dayHeader(r.from) + (events.length ? historyStats(key, events) : '') + timeline(events, t('hist.none'));
+      })
+      .catch(function () { if (content) content.innerHTML = emptyState(t('awaitNext')); });
+  }
+  function renderMoonHistory(content) {
+    var r = currentRange();
+    if (S.dateMode === 'day') {
+      var date = new Date(r.from + 'T12:00:00Z'), m = moonData(date);
+      var phaseName = (dict().moon.phases[m.phase]) || m.phase;
+      var html = dayHeader(r.from) + '<div class="ef-moon-hero">' + moonGlyph(m.fraction, m.illumination) +
+        '<div class="ef-moon-info">' + statRow([
+          [t('moon.phase'), phaseName], [t('moon.illum'), Math.round(m.illumination * 100) + '%'], [t('moon.age'), m.age.toFixed(1) + ' ' + t('moon.days')]
+        ]) + '</div></div>';
+      html += '<div class="ef-foot-inline">' + esc(t('moon.computed')) + '</div>' + moonTimesRow(date);
+      content.innerHTML = html;
+      return;
+    }
+    var rows = eachDay(r.from, r.to).map(function (iso) {
+      var dt = new Date(iso + 'T12:00:00Z'), md = moonData(dt);
+      var pn = (dict().moon.phases[md.phase]) || md.phase;
+      return '<div class="ef-moon-row">' + moonGlyph(md.fraction, md.illumination) +
+        '<div class="ef-moon-row-b"><div class="ef-moon-row-d">' + esc(fmtDay(iso)) + '</div>' +
+        '<div class="ef-moon-row-p">' + esc(pn) + ' · ' + Math.round(md.illumination * 100) + '%</div></div></div>';
+    }).join('');
+    content.innerHTML = rangeHeader(r) + '<div class="ef-foot-inline">' + esc(t('moon.computed')) + '</div><div class="ef-moon-tl">' + rows + '</div>';
+  }
+  function renderWeatherHistory(content) {
+    if (!hasLocation()) {
+      content.innerHTML = '<div class="ef-prompt"><div class="ef-prompt-ic">📍</div><p>' + esc(t('weather.enterLoc')) + '</p>' +
+        '<button class="btn btn-solid ef-prompt-btn" id="ef-prompt-loc">' + esc(t('setLoc')) + '</button></div>';
+      var b = content.querySelector('#ef-prompt-loc'); if (b) b.addEventListener('click', openLocationModal);
+      return;
+    }
+    var u = S.user, r = currentRange();
+    var url = 'https://archive-api.open-meteo.com/v1/archive?latitude=' + u.location_lat + '&longitude=' + u.location_lon +
+      '&start_date=' + r.from + '&end_date=' + r.to + '&timezone=auto' +
+      '&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,precipitation_sum' +
+      '&hourly=temperature_2m,surface_pressure,relative_humidity_2m';
+    fetch(url).then(function (x) { return x.json(); }).then(function (d) {
+      if (!content || !document.body.contains(content)) return;
+      var loc = '<div class="ef-loc-line">📍 ' + esc(u.location_city || (u.location_lat.toFixed(2) + ', ' + u.location_lon.toFixed(2))) + '</div>';
+      var daily = d && d.daily, hourly = d && d.hourly;
+      if (!daily || !daily.time || !daily.time.length) { content.innerHTML = (S.dateMode === 'range' ? rangeHeader(r) : dayHeader(r.from)) + loc + emptyState(t('srcEmpty')); return; }
+      var html;
+      var num = function (x, u) { return x != null && isFinite(x) ? Math.round(x) + (u || '') : '—'; };
+      if (S.dateMode === 'day') {
+        var i = 0;
+        html = dayHeader(r.from) + loc + statRow([
+          [t('weather.temp'), num(daily.temperature_2m_max[i]) + ' / ' + num(daily.temperature_2m_min[i], '°C')],
+          [t('weather.wind'), num(daily.wind_speed_10m_max[i], ' km/h')],
+          [t('hist.precip'), (daily.precipitation_sum[i] != null ? daily.precipitation_sum[i] : 0) + ' mm']
+        ]);
+        html += '<div class="ef-spark-grid">' +
+          sparkCardRaw(t('weather.temp'), hourly && hourly.temperature_2m, ZONE.orange) +
+          sparkCardRaw(t('weather.pressure'), hourly && hourly.surface_pressure, ZONE.blue) +
+          sparkCardRaw(t('weather.humidity'), hourly && hourly.relative_humidity_2m, ZONE.green) + '</div>';
+      } else {
+        html = rangeHeader(r) + loc + '<div class="ef-spark-grid">' +
+          sparkCardRaw(t('weather.temp') + ' ↑', daily.temperature_2m_max, ZONE.orange) +
+          sparkCardRaw(t('weather.temp') + ' ↓', daily.temperature_2m_min, ZONE.blue) +
+          sparkCardRaw(t('weather.wind'), daily.wind_speed_10m_max, ZONE.green) + '</div>';
+        var rnd = function (x) { return x != null && isFinite(x) ? Math.round(x) + '°' : '—'; };
+        html += '<div class="ef-wx-days">' + daily.time.map(function (day, i) {
+          return '<div class="ef-wx-day"><span class="ef-wx-d">' + esc(fmtDay(day)) + '</span>' +
+            '<span class="ef-wx-t">' + rnd(daily.temperature_2m_max[i]) + ' / ' + rnd(daily.temperature_2m_min[i]) + '</span>' +
+            '<span class="ef-wx-p">' + (daily.precipitation_sum[i] != null ? daily.precipitation_sum[i] : 0) + ' mm</span></div>';
+        }).join('') + '</div>';
+      }
+      html += '<div class="ef-foot-inline">' + esc(t('hist.archiveNote')) + '</div>';
+      content.innerHTML = html;
+    }).catch(function () { if (content) content.innerHTML = emptyState(t('srcEmpty')); });
+  }
+  function sparkCardRaw(label, series, color) {
+    var vals = (series || []).filter(function (x) { return x != null && isFinite(x); });
+    var last = vals.length ? Math.round(vals[vals.length - 1]) : '—';
+    return '<div class="ef-spark-card"><div class="ef-spark-k">' + esc(label) + '</div><div class="ef-spark-v">' + esc(last) + '</div>' +
+      (vals.length > 1 ? sparkline(vals, color) : '') + '</div>';
   }
 
   /* ── shared builders ────────────────────────────────────────────────────── */
@@ -462,12 +664,12 @@
   // Astronomical moonrise/moonset for the effective location — always available,
   // no network. Open-Meteo's standard forecast endpoint silently omits these
   // fields, which is why the row used to render two dashes. — PR#110
-  function moonTimesRow() {
+  function moonTimesRow(date) {
     var loc = effectiveLoc();
     var rise = '—', set = '—';
     try {
       if (window.SunCalcLite) {
-        var mt = window.SunCalcLite.getMoonTimes(new Date(), loc.lat, loc.lon);
+        var mt = window.SunCalcLite.getMoonTimes(date || new Date(), loc.lat, loc.lon);
         if (mt.rise) rise = fmtHM(mt.rise, loc.tz); else if (mt.alwaysUp) rise = t('moon.alwaysUp');
         if (mt.set) set = fmtHM(mt.set, loc.tz); else if (mt.alwaysDown) set = t('moon.alwaysDown');
         if (mt.alwaysUp) set = t('moon.alwaysUp');

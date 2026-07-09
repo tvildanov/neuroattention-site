@@ -2403,13 +2403,13 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 054 (asset url rewrite): rewrote', rows.length, 'audio_url rows');
     } catch (e) { mig054.error = e.message; console.error('migration 054 (asset url rewrite):', e.message); }
 
-    // ── migration 056 (PR Library): the Library tool tables + seed ───────────
+    // ── migration 058 (PR Library): the Library tool tables + seed ───────────
     // Six first-class content tables (terms/articles/theories/research/functions/
     // methods). `content` is JSONB keyed by language ({ en:{...} }) so ru/es
     // translations slot in later WITHOUT a schema change. Seeded from
     // api/library-seed.js with ON CONFLICT (slug) DO UPDATE so re-running refreshes
     // copy. English-only at launch. Per-row try/catch; idempotent.
-    let mig056 = { terms: 0, articles: 0, theories: 0, research: 0, functions: 0, methods: 0 };
+    let mig058 = { terms: 0, articles: 0, theories: 0, research: 0, functions: 0, methods: 0 };
     try {
       await sql`CREATE TABLE IF NOT EXISTS library_terms (
         id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
@@ -2445,8 +2445,8 @@ app.post('/api/run-migrations', async (req, res) => {
             VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.related_slugs || []}::text[], ${r.sort_order || 100})
             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, related_slugs = EXCLUDED.related_slugs,
               sort_order = EXCLUDED.sort_order, updated_at = now()`;
-          mig056.terms++;
-        } catch (e) { mig056.skipped = (mig056.skipped || 0) + 1; }
+          mig058.terms++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
       }
       for (const r of (LIB.THEORIES || [])) {
         try {
@@ -2454,8 +2454,8 @@ app.post('/api/run-migrations', async (req, res) => {
             VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.status || null}, ${r.sources || []}::text[], ${r.sort_order || 100})
             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, status = EXCLUDED.status,
               sources = EXCLUDED.sources, sort_order = EXCLUDED.sort_order, updated_at = now()`;
-          mig056.theories++;
-        } catch (e) { mig056.skipped = (mig056.skipped || 0) + 1; }
+          mig058.theories++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
       }
       for (const r of (LIB.ARTICLES || [])) {
         try {
@@ -2465,8 +2465,8 @@ app.post('/api/run-migrations', async (req, res) => {
             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, format = EXCLUDED.format,
               cover_url = EXCLUDED.cover_url, authors = EXCLUDED.authors, source_url = EXCLUDED.source_url,
               sort_order = EXCLUDED.sort_order, updated_at = now()`;
-          mig056.articles++;
-        } catch (e) { mig056.skipped = (mig056.skipped || 0) + 1; }
+          mig058.articles++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
       }
       for (const r of (LIB.RESEARCH || [])) {
         try {
@@ -2476,8 +2476,8 @@ app.post('/api/run-migrations', async (req, res) => {
             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, topic = EXCLUDED.topic,
               source_url = EXCLUDED.source_url, authors = EXCLUDED.authors, format = EXCLUDED.format,
               sort_order = EXCLUDED.sort_order, updated_at = now()`;
-          mig056.research++;
-        } catch (e) { mig056.skipped = (mig056.skipped || 0) + 1; }
+          mig058.research++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
       }
       for (const r of (LIB.FUNCTIONS || [])) {
         try {
@@ -2485,8 +2485,8 @@ app.post('/api/run-migrations', async (req, res) => {
             VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.body_regions || []}::text[], ${r.sort_order || 100})
             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, body_regions = EXCLUDED.body_regions,
               sort_order = EXCLUDED.sort_order, updated_at = now()`;
-          mig056.functions++;
-        } catch (e) { mig056.skipped = (mig056.skipped || 0) + 1; }
+          mig058.functions++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
       }
       for (const r of (LIB.METHODS || [])) {
         try {
@@ -2494,13 +2494,124 @@ app.post('/api/run-migrations', async (req, res) => {
             VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.category || null}, ${r.sort_order || 100})
             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, category = EXCLUDED.category,
               sort_order = EXCLUDED.sort_order, updated_at = now()`;
-          mig056.methods++;
-        } catch (e) { mig056.skipped = (mig056.skipped || 0) + 1; }
+          mig058.methods++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
       }
-      console.log('migration 056 (library):', JSON.stringify(mig056));
-    } catch (e) { mig056.error = e.message; console.error('migration 056 (library):', e.message); }
+      console.log('migration 058 (library):', JSON.stringify(mig058));
+    } catch (e) { mig058.error = e.message; console.error('migration 058 (library):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-056 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig056 });
+    // ── migration 055 (PR EF-history): External Field historical day cache ────
+    // Backs the past-date / date-range views in External Field. One row per
+    // (source, date) holding that UTC day's normalized events as JSON. The
+    // history endpoint reads this first and only fetches a public API when a
+    // (source, date) is missing, then writes it back — so repeated browsing of
+    // the same past day never re-hits the upstream API. Empty days are cached as
+    // '[]' so a genuinely quiet day is not re-fetched forever. Idempotent.
+    let mig055 = { ok: false };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS external_field_cache (
+        source TEXT NOT NULL,
+        day DATE NOT NULL,
+        layer TEXT,
+        events JSONB NOT NULL DEFAULT '[]'::jsonb,
+        fetched_at TIMESTAMPTZ DEFAULT now(),
+        PRIMARY KEY (source, day)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_efc_day ON external_field_cache (day)`;
+      mig055.ok = true;
+    } catch (e) { mig055.error = e.message; console.error('migration 055 (external_field_cache):', e.message); }
+
+    // ── migration 056 (Sports sub-section of Functions) ──────────────────────
+    // FIRST-CLASS sports catalog. `sports` mirrors the medications pattern:
+    // green target_tissues_positive / red target_tissues_negative use the SAME
+    // BodyAtlas seed-id vocabulary (see SPORT_SEED / MED_SEED in account.html), so
+    // the Functions→Sports detail view reuses BodyAtlas.tintRegions. Seeded from
+    // api/sports-seed.js. `diagnosis_sports` is a TEXT-slug advisory join (no FK on
+    // the diagnosis side, unknown slugs harmless). Idempotent (ON CONFLICT).
+    let mig056 = { sports_seeded: 0, diagnosis_links: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS sports (
+        id BIGSERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        category TEXT,
+        name_ru TEXT, name_en TEXT, name_es TEXT,
+        description_ru TEXT, description_en TEXT, description_es TEXT,
+        target_tissues_positive TEXT[] DEFAULT '{}',
+        target_tissues_negative TEXT[] DEFAULT '{}',
+        warning_ru TEXT, warning_en TEXT, warning_es TEXT,
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT true
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS diagnosis_sports (
+        diagnosis_slug TEXT NOT NULL,
+        sport_id BIGINT NOT NULL REFERENCES sports(id) ON DELETE CASCADE,
+        is_primary BOOLEAN DEFAULT false,
+        PRIMARY KEY (diagnosis_slug, sport_id)
+      )`;
+      const { SPORTS, SPORT_DIAG_LINKS } = require('./sports-seed.js');
+      for (const s of SPORTS) {
+        try {
+          await sql`INSERT INTO sports (slug, category, name_ru, name_en, name_es,
+              description_ru, description_en, description_es,
+              target_tissues_positive, target_tissues_negative,
+              warning_ru, warning_en, warning_es, sort_order, is_active)
+            VALUES (${s.slug}, ${s.category || null}, ${s.name_ru || null}, ${s.name_en || null}, ${s.name_es || null},
+              ${s.description_ru || null}, ${s.description_en || null}, ${s.description_es || null},
+              ${s.target_tissues_positive || []}::text[], ${s.target_tissues_negative || []}::text[],
+              ${s.warning_ru || null}, ${s.warning_en || null}, ${s.warning_es || null}, ${s.sort_order || 0}, true)
+            ON CONFLICT (slug) DO UPDATE SET
+              category = EXCLUDED.category, name_ru = EXCLUDED.name_ru, name_en = EXCLUDED.name_en, name_es = EXCLUDED.name_es,
+              description_ru = EXCLUDED.description_ru, description_en = EXCLUDED.description_en, description_es = EXCLUDED.description_es,
+              target_tissues_positive = EXCLUDED.target_tissues_positive, target_tissues_negative = EXCLUDED.target_tissues_negative,
+              warning_ru = EXCLUDED.warning_ru, warning_en = EXCLUDED.warning_en, warning_es = EXCLUDED.warning_es,
+              sort_order = EXCLUDED.sort_order, is_active = true`;
+          mig056.sports_seeded++;
+        } catch (se) { mig056.skipped = (mig056.skipped || 0) + 1; }
+      }
+      for (const diagSlug of Object.keys(SPORT_DIAG_LINKS || {})) {
+        for (const lk of SPORT_DIAG_LINKS[diagSlug]) {
+          try {
+            const srow = await sql`SELECT id FROM sports WHERE slug = ${lk.slug}`;
+            if (!srow.length) continue;
+            await sql`INSERT INTO diagnosis_sports (diagnosis_slug, sport_id, is_primary)
+              VALUES (${diagSlug}, ${srow[0].id}, ${!!lk.is_primary})
+              ON CONFLICT (diagnosis_slug, sport_id) DO UPDATE SET is_primary = EXCLUDED.is_primary`;
+            mig056.diagnosis_links++;
+          } catch (le) { mig056.skipped = (mig056.skipped || 0) + 1; }
+        }
+      }
+      console.log('migration 056 (sports): seeded', mig056.sports_seeded, 'links', mig056.diagnosis_links);
+    } catch (e) { mig056.error = e.message; console.error('migration 056 (sports):', e.message); }
+
+    // ── migration 057 (Scheduling of functions / sports / medications) ───────
+    // A user picks a function, sport or medication and schedules it (frequency +
+    // times + dose + date window). Occurrences are expanded ON THE FLY by
+    // GET /api/me/schedule/events and rendered as Path events client-side — they
+    // are DELIBERATELY NOT written to journey_events (a plan is not a felt event;
+    // it changes when the schedule changes). New table only, no backfill.
+    let mig057 = { ok: false };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS user_schedules (
+        id BIGSERIAL PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT CHECK (kind IN ('function','sport','medication')),
+        ref_slug TEXT NOT NULL,
+        title TEXT,
+        frequency_type TEXT DEFAULT 'daily',
+        frequency_value INT DEFAULT 1,
+        weekdays INT[] DEFAULT '{}',
+        times TIME[] DEFAULT '{}',
+        dose TEXT,
+        start_date DATE NOT NULL,
+        end_date DATE,
+        enabled BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_user_schedules_user ON user_schedules (user_id)`;
+      mig057.ok = true;
+    } catch (e) { mig057.error = e.message; console.error('migration 057 (user_schedules):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-058 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -10488,6 +10599,231 @@ app.get('/api/me/diet/events', requireAuth, async (req, res) => {
   }
 });
 
+// ── Sports (sub-section of the Functions tab, migration 055) ────────────────
+// Mirrors the medications read pattern. `sports` holds a curated catalog whose
+// target_tissues_* use BodyAtlas seed-ids → green (benefits) / red (overuse) 3D
+// overlay reused from the medications tint path. Public read; graceful 503
+// pre-migration so the Functions tab still works without the table.
+
+// GET /api/sports?category=&q=&limit= — list/search
+app.get('/api/sports', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    const category = (req.query.category || '').trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 200);
+    let rows;
+    if (q) {
+      const like = '%' + q + '%';
+      rows = await sql`SELECT * FROM sports
+        WHERE is_active = TRUE
+          AND (${category} = '' OR lower(coalesce(category,'')) = ${category})
+          AND (lower(coalesce(name_en,'')) LIKE ${like} OR lower(coalesce(name_ru,'')) LIKE ${like}
+               OR lower(coalesce(name_es,'')) LIKE ${like})
+        ORDER BY sort_order, name_en LIMIT ${limit}`;
+    } else {
+      rows = await sql`SELECT * FROM sports
+        WHERE is_active = TRUE
+          AND (${category} = '' OR lower(coalesce(category,'')) = ${category})
+        ORDER BY sort_order, name_en LIMIT ${limit}`;
+    }
+    res.json({ ok: true, sports: rows });
+  } catch (err) {
+    if (/relation .*sports.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sports table not migrated', sports: [] });
+    console.error('GET /api/sports:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/sports/:slug — detail + the diagnoses it commonly benefits
+app.get('/api/sports/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').toLowerCase();
+    const rows = await sql`SELECT * FROM sports WHERE slug = ${slug} AND is_active = TRUE`;
+    if (!rows.length) return res.status(404).json({ error: 'sport not found' });
+    let diagnoses = [];
+    try {
+      diagnoses = await sql`SELECT diagnosis_slug, is_primary FROM diagnosis_sports WHERE sport_id = ${rows[0].id}`;
+    } catch (e) { /* join table optional */ }
+    res.json({ ok: true, sport: rows[0], diagnoses });
+  } catch (err) {
+    if (/relation .*sports.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sports table not migrated' });
+    console.error('GET /api/sports/:slug:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Scheduling of functions / sports / medications (migration 057) ──────────
+// A schedule is a plan ("running every 2 days at 08:00", "metformin daily 08:00
+// & 20:00, 500mg"). GET /api/me/schedule/events expands schedules into concrete
+// dated occurrences over a window; the Personal Path draws those on the fly when
+// its Functions / Sports / Medications layer toggles are on. Occurrences are NOT
+// persisted to journey_events — a plan is not a felt event.
+
+const SCHED_KINDS = ['function', 'sport', 'medication'];
+const SCHED_FREQ = ['daily', 'every_n_days', 'weekly', 'custom'];
+function schedSlug(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 80); }
+// Normalize a client times[] payload → array of 'HH:MM' strings (max 6).
+function schedTimes(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  for (const t of arr) {
+    const m = String(t || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!m) continue;
+    const h = Math.min(23, parseInt(m[1], 10)), mi = Math.min(59, parseInt(m[2], 10));
+    out.push(String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0'));
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+function schedWeekdays(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(n => parseInt(n, 10)).filter(n => n >= 0 && n <= 6).slice(0, 7);
+}
+
+// GET /api/me/schedules — this user's schedule definitions
+app.get('/api/me/schedules', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`SELECT id, kind, ref_slug, title, frequency_type, frequency_value,
+        weekdays, times::text[] AS times, dose, start_date, end_date, enabled, created_at
+      FROM user_schedules WHERE user_id = ${userId} ORDER BY enabled DESC, created_at DESC`;
+    res.json({ ok: true, schedules: rows });
+  } catch (err) {
+    if (/relation .*user_schedules.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'schedules not migrated', schedules: [] });
+    console.error('GET /api/me/schedules:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/me/schedules — create a schedule
+app.post('/api/me/schedules', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const b = req.body || {};
+    const kind = SCHED_KINDS.includes(b.kind) ? b.kind : null;
+    const ref = schedSlug(b.ref_slug);
+    if (!kind || !ref) return res.status(400).json({ error: 'kind and ref_slug required' });
+    const freq = SCHED_FREQ.includes(b.frequency_type) ? b.frequency_type : 'daily';
+    const fval = Math.max(1, Math.min(365, parseInt(b.frequency_value, 10) || 1));
+    const times = schedTimes(b.times);
+    const weekdays = schedWeekdays(b.weekdays);
+    const dose = b.dose ? String(b.dose).slice(0, 120) : null;
+    const title = b.title ? String(b.title).slice(0, 160) : ref;
+    const startDate = b.start_date ? String(b.start_date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const endDate = b.end_date ? String(b.end_date).slice(0, 10) : null;
+    const ins = await sql`INSERT INTO user_schedules
+        (user_id, kind, ref_slug, title, frequency_type, frequency_value, weekdays, times, dose, start_date, end_date, enabled)
+      VALUES (${userId}, ${kind}, ${ref}, ${title}, ${freq}, ${fval}, ${weekdays}::int[], ${times}::time[], ${dose}, ${startDate}, ${endDate}, true)
+      RETURNING id`;
+    res.json({ ok: true, id: ins[0] && ins[0].id });
+  } catch (err) {
+    if (/relation .*user_schedules.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'schedules not migrated' });
+    console.error('POST /api/me/schedules:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/me/schedules/:id — update (partial: any of enabled/dose/frequency/times/dates)
+app.put('/api/me/schedules/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'bad id' });
+    const own = await sql`SELECT * FROM user_schedules WHERE id = ${id} AND user_id = ${userId}`;
+    if (!own.length) return res.status(404).json({ error: 'not found' });
+    const cur = own[0], b = req.body || {};
+    const enabled = (b.enabled === undefined) ? cur.enabled : !!b.enabled;
+    const freq = SCHED_FREQ.includes(b.frequency_type) ? b.frequency_type : cur.frequency_type;
+    const fval = (b.frequency_value === undefined) ? cur.frequency_value : Math.max(1, Math.min(365, parseInt(b.frequency_value, 10) || 1));
+    const times = (b.times === undefined) ? null : schedTimes(b.times);
+    const weekdays = (b.weekdays === undefined) ? null : schedWeekdays(b.weekdays);
+    const dose = (b.dose === undefined) ? cur.dose : (b.dose ? String(b.dose).slice(0, 120) : null);
+    const endDate = (b.end_date === undefined) ? cur.end_date : (b.end_date ? String(b.end_date).slice(0, 10) : null);
+    await sql`UPDATE user_schedules SET
+        enabled = ${enabled}, frequency_type = ${freq}, frequency_value = ${fval},
+        weekdays = COALESCE(${weekdays}::int[], weekdays),
+        times = COALESCE(${times}::time[], times),
+        dose = ${dose}, end_date = ${endDate}
+      WHERE id = ${id} AND user_id = ${userId}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('PUT /api/me/schedules/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/me/schedules/:id
+app.delete('/api/me/schedules/:id', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'bad id' });
+    await sql`DELETE FROM user_schedules WHERE id = ${id} AND user_id = ${userId}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE /api/me/schedules/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/me/schedule/events?from=&to= — expand schedules into concrete dated
+// occurrences over [from, to]. NOT persisted; the Path draws these on the fly.
+// Each occurrence: { schedule_id, kind, ref_slug, title, dose, layer:'event',
+// occurred_at, missed }. `missed` = the occurrence is in the past (a plan whose
+// time already elapsed) so the Path can mark it distinctly.
+app.get('/api/me/schedule/events', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const now = Date.now();
+    const dayMs = 864e5;
+    let from = req.query.from ? new Date(req.query.from) : new Date(now - 30 * dayMs);
+    let to = req.query.to ? new Date(req.query.to) : new Date(now + 14 * dayMs);
+    if (isNaN(from.getTime())) from = new Date(now - 30 * dayMs);
+    if (isNaN(to.getTime())) to = new Date(now + 14 * dayMs);
+    // cap the window to 400 days so a bad range can't explode the expansion
+    if ((to - from) > 400 * dayMs) to = new Date(from.getTime() + 400 * dayMs);
+    const rows = await sql`SELECT id, kind, ref_slug, title, frequency_type, frequency_value,
+        weekdays, times::text[] AS times, dose, start_date, end_date
+      FROM user_schedules WHERE user_id = ${userId} AND enabled = true`;
+    const events = [];
+    const fromDay = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+    const toDay = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
+    for (const s of rows) {
+      const start = new Date(s.start_date);
+      const end = s.end_date ? new Date(s.end_date) : null;
+      const times = (Array.isArray(s.times) && s.times.length) ? s.times : ['09:00'];
+      // iterate day by day within the intersection of [from,to] and [start,end]
+      let d = new Date(Math.max(fromDay.getTime(), Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())));
+      const last = end ? Math.min(toDay.getTime(), Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate())) : toDay.getTime();
+      let guard = 0;
+      while (d.getTime() <= last && guard < 800) {
+        guard++;
+        let hit = false;
+        const daysSinceStart = Math.round((d.getTime() - Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())) / dayMs);
+        if (daysSinceStart >= 0) {
+          if (s.frequency_type === 'daily') hit = true;
+          else if (s.frequency_type === 'every_n_days' || s.frequency_type === 'custom') hit = (daysSinceStart % Math.max(1, s.frequency_value)) === 0;
+          else if (s.frequency_type === 'weekly') {
+            const wd = new Date(d).getUTCDay();
+            hit = (Array.isArray(s.weekdays) && s.weekdays.length) ? s.weekdays.indexOf(wd) >= 0 : (wd === new Date(start).getUTCDay());
+          }
+        }
+        if (hit) {
+          for (const t of times) {
+            const m = String(t).match(/^(\d{1,2}):(\d{2})/);
+            const hh = m ? parseInt(m[1], 10) : 9, mm = m ? parseInt(m[2], 10) : 0;
+            const occ = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hh, mm));
+            if (occ.getTime() < from.getTime() || occ.getTime() > to.getTime()) continue;
+            events.push({
+              schedule_id: s.id, kind: s.kind, ref_slug: s.ref_slug, title: s.title || s.ref_slug,
+              dose: s.dose || null, layer: 'event', occurred_at: occ.toISOString(),
+              missed: occ.getTime() < now
+            });
+            if (events.length >= 2000) break;
+          }
+        }
+        d = new Date(d.getTime() + dayMs);
+        if (events.length >= 2000) break;
+      }
+      if (events.length >= 2000) break;
+    }
+    res.json({ ok: true, events });
+  } catch (err) {
+    if (/relation .*user_schedules.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'schedules not migrated', events: [] });
+    console.error('GET /api/me/schedule/events:', err); res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Medications & Substances (PR#116) ───────────────────────────────────────
 // Tab 4 of the Human Atlas. `medications` holds both real drugs (kind='medication')
 // and psychoactive substances (kind='substance', harm-reduction framing).
@@ -10781,6 +11117,96 @@ app.get('/api/external/events', requireAuth, async (req, res) => {
     }
     res.json({ ok: true, events: rows });
   } catch (err) { console.error('GET /api/external/events:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/external/history?layer=&from=&to=&lang= — historical events for a past
+// date or date range (≤31 days). Served from external_field_cache and lazily
+// backfilled from the public source APIs on a per-(source,day) cache MISS, then
+// written back (idempotent). Distinct from /events, which reads the live poller
+// table for the current window. Weather/experimental are client-side (per user
+// location / no source) → this returns [] with a note. — PR EF-history (mig055)
+const EXT_HISTORY_SOURCES = {
+  sun:    ['noaa', 'donki'],   // NOAA 7-day flares (keyless) + DONKI archive (needs NASA key)
+  earth:  ['usgs', 'donki'],   // USGS quakes (keyless, deep archive) + DONKI storms
+  cosmos: ['gracedb'],
+  social: ['gdelt'],
+  moon:   ['moon']             // pure astronomy, always available
+};
+function extDayKey(ts) { try { const d = new Date(ts); return isNaN(d) ? null : d.toISOString().slice(0, 10); } catch (e) { return null; } }
+function extDayList(from, to) {
+  const out = []; let d = new Date(from + 'T00:00:00Z'); const end = new Date(to + 'T00:00:00Z');
+  for (let i = 0; i < 40 && d <= end; i++) { out.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 864e5); }
+  return out;
+}
+app.get('/api/external/history', requireAuth, async (req, res) => {
+  try {
+    const layer = req.query.layer && /^[a-z]+$/.test(req.query.layer) ? req.query.layer : null;
+    if (!layer || !EXT_HISTORY_SOURCES[layer]) return res.json({ ok: true, events: [], note: 'client_side' });
+    const today = new Date().toISOString().slice(0, 10);
+    let from = extDayKey(req.query.from) || today;
+    let to = extDayKey(req.query.to) || from;
+    if (from > to) { const s = from; from = to; to = s; }
+    if (to > today) to = today;
+    if (from > today) from = today;
+    let days = extDayList(from, to);
+    if (days.length > 31) { from = days[days.length - 31]; days = extDayList(from, to); }   // clamp to a month
+    const wantDays = days;
+    const sources = EXT_HISTORY_SOURCES[layer];
+    let all = [];
+    for (const src of sources) {
+      let cached = [];
+      try { cached = await sql`SELECT day, events FROM external_field_cache WHERE source = ${src} AND day >= ${from} AND day <= ${to}`; }
+      catch (e) { cached = []; }
+      const have = new Set(cached.map(r => (r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day).slice(0, 10))));
+      cached.forEach(r => (r.events || []).forEach(ev => all.push(ev)));
+      const missing = wantDays.filter(d => !have.has(d));
+      if (!missing.length) continue;
+      const mFrom = missing[0], mTo = missing[missing.length - 1];
+      let fetched = [], hardFail = false;
+      try {
+        const mod = EXT_SOURCES[src].load();
+        if (mod.fetchHistory) fetched = await mod.fetchHistory({ from: mFrom, to: mTo + 'T23:59:59Z', nasaKey: process.env.NASA_API_KEY || 'DEMO_KEY' });
+        else hardFail = true;   // source has no archive path — don't cache empty
+      } catch (e) { hardFail = true; console.warn('[ext/history] ' + src + ':', e.message); }
+      const bucket = {};
+      (fetched || []).forEach(ev => { const k = extDayKey(ev.timestamp); if (k) (bucket[k] = bucket[k] || []).push(ev); });
+      for (const d of extDayList(mFrom, mTo)) {
+        if (have.has(d)) continue;
+        const evs = bucket[d] || [];
+        // On a hard fetch failure DON'T cache — else a transient 429/network blip
+        // would pin this (source,day) to a permanent empty result. Serve whatever
+        // arrived this round; a later request retries the miss.
+        if (!hardFail) {
+          try {
+            await sql`INSERT INTO external_field_cache (source, day, layer, events, fetched_at)
+                      VALUES (${src}, ${d}, ${layer}, ${JSON.stringify(evs)}::jsonb, now())
+                      ON CONFLICT (source, day) DO UPDATE SET events = ${JSON.stringify(evs)}::jsonb, fetched_at = now()`;
+          } catch (e) { /* cache write is best-effort */ }
+        }
+        evs.forEach(ev => all.push(ev));
+      }
+    }
+    // clamp to [from,to], dedup, sort newest-first, cap
+    const seen = new Set(), fromMs = new Date(from + 'T00:00:00Z').getTime(), toMs = new Date(to + 'T23:59:59Z').getTime();
+    all = all.filter(ev => {
+      if (!ev || !ev.timestamp) return false;
+      const ms = new Date(ev.timestamp).getTime(); if (!(ms >= fromMs && ms <= toMs)) return false;
+      const k = ev.dedup_key || (ev.source + '|' + ev.timestamp + '|' + (ev.title || ''));
+      if (seen.has(k)) return false; seen.add(k); return true;
+    }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 500);
+    const lang = (req.query.lang || '').toLowerCase().slice(0, 2);
+    if (/^(ru|es)$/.test(lang) && layer === 'social' && all.length) {
+      try {
+        const { translateMany, isConfigured } = require('./services/translate');
+        if (isConfigured()) {
+          const titles = await translateMany(all.map(r => r.title || ''), lang, 60);
+          const descs = await translateMany(all.map(r => r.description || ''), lang, 60);
+          all.forEach((r, i) => { r.title_translated = titles[i]; r.description_translated = descs[i]; });
+        }
+      } catch (e) { console.warn('history social translate skipped:', e.message); }
+    }
+    res.json({ ok: true, events: all, from, to });
+  } catch (err) { console.error('GET /api/external/history:', err); res.status(500).json({ error: err.message }); }
 });
 
 // POST /api/admin/external/poll { source } — superadmin: force one poll cycle of a
