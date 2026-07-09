@@ -81,7 +81,12 @@
 // v39: R2 dual-bucket migration — public assets served off R2, medical documents
 //      in a private bucket read via signed URLs. Backend-only; CACHE_NAME bump
 //      purges any stale account.html.
-var CACHE_NAME = 'na-practices-v41';
+// v42: PR#129 — (A) skip a survey step keeps the rest of the emotion chain;
+//      (B) a diary EVENT is one Path event at its chosen date (single /v2/append,
+//      no duplicate /api/diary/save insight); (5) body-atlas.js?v=36 drops the
+//      procedural manikin fallback so a GLB miss shows an empty stage, never a
+//      segmented outline body. Purges any stale account.html + body-atlas.js.
+var CACHE_NAME = 'na-practices-v42';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
