@@ -90,7 +90,9 @@
 //      was the SKIN layer (body-male.glb x-ray fill), force-shown by tintRegions when
 //      a med/diet targets 'skin' and un-hideable by any master toggle. The skin layer
 //      is now pinned permanently invisible in toggleLayer(); body-atlas.js?v=36→v37.
-var CACHE_NAME = 'na-practices-v43';
+// v44: External Field history — past-date + date-range views (external-field.js?v=8,
+//      mycelium.css?v=17). New /api/external/history + external_field_cache (mig055).
+var CACHE_NAME = 'na-practices-v44';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

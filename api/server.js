@@ -2398,7 +2398,28 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 054 (asset url rewrite): rewrote', rows.length, 'audio_url rows');
     } catch (e) { mig054.error = e.message; console.error('migration 054 (asset url rewrite):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-054 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054 });
+    // ── migration 055 (PR EF-history): External Field historical day cache ────
+    // Backs the past-date / date-range views in External Field. One row per
+    // (source, date) holding that UTC day's normalized events as JSON. The
+    // history endpoint reads this first and only fetches a public API when a
+    // (source, date) is missing, then writes it back — so repeated browsing of
+    // the same past day never re-hits the upstream API. Empty days are cached as
+    // '[]' so a genuinely quiet day is not re-fetched forever. Idempotent.
+    let mig055 = { ok: false };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS external_field_cache (
+        source TEXT NOT NULL,
+        day DATE NOT NULL,
+        layer TEXT,
+        events JSONB NOT NULL DEFAULT '[]'::jsonb,
+        fetched_at TIMESTAMPTZ DEFAULT now(),
+        PRIMARY KEY (source, day)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_efc_day ON external_field_cache (day)`;
+      mig055.ok = true;
+    } catch (e) { mig055.error = e.message; console.error('migration 055 (external_field_cache):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-055 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -10512,6 +10533,90 @@ app.get('/api/external/events', requireAuth, async (req, res) => {
     }
     res.json({ ok: true, events: rows });
   } catch (err) { console.error('GET /api/external/events:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/external/history?layer=&from=&to=&lang= — historical events for a past
+// date or date range (≤31 days). Served from external_field_cache and lazily
+// backfilled from the public source APIs on a per-(source,day) cache MISS, then
+// written back (idempotent). Distinct from /events, which reads the live poller
+// table for the current window. Weather/experimental are client-side (per user
+// location / no source) → this returns [] with a note. — PR EF-history (mig055)
+const EXT_HISTORY_SOURCES = {
+  sun:    ['noaa', 'donki'],   // NOAA 7-day flares (keyless) + DONKI archive (needs NASA key)
+  earth:  ['usgs', 'donki'],   // USGS quakes (keyless, deep archive) + DONKI storms
+  cosmos: ['gracedb'],
+  social: ['gdelt'],
+  moon:   ['moon']             // pure astronomy, always available
+};
+function extDayKey(ts) { try { const d = new Date(ts); return isNaN(d) ? null : d.toISOString().slice(0, 10); } catch (e) { return null; } }
+function extDayList(from, to) {
+  const out = []; let d = new Date(from + 'T00:00:00Z'); const end = new Date(to + 'T00:00:00Z');
+  for (let i = 0; i < 40 && d <= end; i++) { out.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 864e5); }
+  return out;
+}
+app.get('/api/external/history', requireAuth, async (req, res) => {
+  try {
+    const layer = req.query.layer && /^[a-z]+$/.test(req.query.layer) ? req.query.layer : null;
+    if (!layer || !EXT_HISTORY_SOURCES[layer]) return res.json({ ok: true, events: [], note: 'client_side' });
+    const today = new Date().toISOString().slice(0, 10);
+    let from = extDayKey(req.query.from) || today;
+    let to = extDayKey(req.query.to) || from;
+    if (from > to) { const s = from; from = to; to = s; }
+    if (to > today) to = today;
+    if (from > today) from = today;
+    let days = extDayList(from, to);
+    if (days.length > 31) { from = days[days.length - 31]; days = extDayList(from, to); }   // clamp to a month
+    const wantDays = days;
+    const sources = EXT_HISTORY_SOURCES[layer];
+    let all = [];
+    for (const src of sources) {
+      let cached = [];
+      try { cached = await sql`SELECT day, events FROM external_field_cache WHERE source = ${src} AND day >= ${from} AND day <= ${to}`; }
+      catch (e) { cached = []; }
+      const have = new Set(cached.map(r => (r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day).slice(0, 10))));
+      cached.forEach(r => (r.events || []).forEach(ev => all.push(ev)));
+      const missing = wantDays.filter(d => !have.has(d));
+      if (!missing.length) continue;
+      const mFrom = missing[0], mTo = missing[missing.length - 1];
+      let fetched = [];
+      try {
+        const mod = EXT_SOURCES[src].load();
+        if (mod.fetchHistory) fetched = await mod.fetchHistory({ from: mFrom, to: mTo + 'T23:59:59Z', nasaKey: process.env.NASA_API_KEY || 'DEMO_KEY' });
+      } catch (e) { console.warn('[ext/history] ' + src + ':', e.message); }
+      const bucket = {};
+      (fetched || []).forEach(ev => { const k = extDayKey(ev.timestamp); if (k) (bucket[k] = bucket[k] || []).push(ev); });
+      for (const d of extDayList(mFrom, mTo)) {
+        if (have.has(d)) continue;
+        const evs = bucket[d] || [];
+        try {
+          await sql`INSERT INTO external_field_cache (source, day, layer, events, fetched_at)
+                    VALUES (${src}, ${d}, ${layer}, ${JSON.stringify(evs)}::jsonb, now())
+                    ON CONFLICT (source, day) DO UPDATE SET events = ${JSON.stringify(evs)}::jsonb, fetched_at = now()`;
+        } catch (e) { /* cache write is best-effort */ }
+        evs.forEach(ev => all.push(ev));
+      }
+    }
+    // clamp to [from,to], dedup, sort newest-first, cap
+    const seen = new Set(), fromMs = new Date(from + 'T00:00:00Z').getTime(), toMs = new Date(to + 'T23:59:59Z').getTime();
+    all = all.filter(ev => {
+      if (!ev || !ev.timestamp) return false;
+      const ms = new Date(ev.timestamp).getTime(); if (!(ms >= fromMs && ms <= toMs)) return false;
+      const k = ev.dedup_key || (ev.source + '|' + ev.timestamp + '|' + (ev.title || ''));
+      if (seen.has(k)) return false; seen.add(k); return true;
+    }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 500);
+    const lang = (req.query.lang || '').toLowerCase().slice(0, 2);
+    if (/^(ru|es)$/.test(lang) && layer === 'social' && all.length) {
+      try {
+        const { translateMany, isConfigured } = require('./services/translate');
+        if (isConfigured()) {
+          const titles = await translateMany(all.map(r => r.title || ''), lang, 60);
+          const descs = await translateMany(all.map(r => r.description || ''), lang, 60);
+          all.forEach((r, i) => { r.title_translated = titles[i]; r.description_translated = descs[i]; });
+        }
+      } catch (e) { console.warn('history social translate skipped:', e.message); }
+    }
+    res.json({ ok: true, events: all, from, to });
+  } catch (err) { console.error('GET /api/external/history:', err); res.status(500).json({ error: err.message }); }
 });
 
 // POST /api/admin/external/poll { source } — superadmin: force one poll cycle of a
