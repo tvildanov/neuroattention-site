@@ -290,6 +290,11 @@ const uploadMedical = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
 });
+// Library article/research PDFs (PR Library): PDF up to 20 MB, public bucket.
+const uploadLibrary = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }
+});
 
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -2398,6 +2403,103 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 054 (asset url rewrite): rewrote', rows.length, 'audio_url rows');
     } catch (e) { mig054.error = e.message; console.error('migration 054 (asset url rewrite):', e.message); }
 
+    // ── migration 058 (PR Library): the Library tool tables + seed ───────────
+    // Six first-class content tables (terms/articles/theories/research/functions/
+    // methods). `content` is JSONB keyed by language ({ en:{...} }) so ru/es
+    // translations slot in later WITHOUT a schema change. Seeded from
+    // api/library-seed.js with ON CONFLICT (slug) DO UPDATE so re-running refreshes
+    // copy. English-only at launch. Per-row try/catch; idempotent.
+    let mig058 = { terms: 0, articles: 0, theories: 0, research: 0, functions: 0, methods: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS library_terms (
+        id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
+        related_slugs TEXT[] DEFAULT '{}', sort_order INT DEFAULT 100, is_active BOOLEAN DEFAULT TRUE,
+        created_by UUID, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now())`;
+      await sql`CREATE TABLE IF NOT EXISTS library_theories (
+        id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
+        status TEXT, sources TEXT[] DEFAULT '{}', sort_order INT DEFAULT 100, is_active BOOLEAN DEFAULT TRUE,
+        created_by UUID, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now())`;
+      await sql`CREATE TABLE IF NOT EXISTS library_articles (
+        id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
+        format TEXT DEFAULT 'rich', pdf_url TEXT, pdf_filename TEXT, cover_url TEXT,
+        authors TEXT[] DEFAULT '{}', source_url TEXT, sort_order INT DEFAULT 100, is_active BOOLEAN DEFAULT TRUE,
+        created_by UUID, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now())`;
+      await sql`CREATE TABLE IF NOT EXISTS library_research (
+        id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
+        topic TEXT, source_url TEXT, authors TEXT[] DEFAULT '{}', format TEXT DEFAULT 'rich',
+        pdf_url TEXT, pdf_filename TEXT, sort_order INT DEFAULT 100, is_active BOOLEAN DEFAULT TRUE,
+        created_by UUID, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now())`;
+      await sql`CREATE TABLE IF NOT EXISTS library_functions (
+        id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
+        body_regions TEXT[] DEFAULT '{}', sort_order INT DEFAULT 100, is_active BOOLEAN DEFAULT TRUE,
+        created_by UUID, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now())`;
+      await sql`CREATE TABLE IF NOT EXISTS library_methods (
+        id BIGSERIAL PRIMARY KEY, slug TEXT UNIQUE NOT NULL, content JSONB NOT NULL DEFAULT '{}',
+        category TEXT, sort_order INT DEFAULT 100, is_active BOOLEAN DEFAULT TRUE,
+        created_by UUID, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now())`;
+
+      const LIB = require('./library-seed.js');
+      for (const r of (LIB.TERMS || [])) {
+        try {
+          await sql`INSERT INTO library_terms (slug, content, related_slugs, sort_order)
+            VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.related_slugs || []}::text[], ${r.sort_order || 100})
+            ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, related_slugs = EXCLUDED.related_slugs,
+              sort_order = EXCLUDED.sort_order, updated_at = now()`;
+          mig058.terms++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
+      }
+      for (const r of (LIB.THEORIES || [])) {
+        try {
+          await sql`INSERT INTO library_theories (slug, content, status, sources, sort_order)
+            VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.status || null}, ${r.sources || []}::text[], ${r.sort_order || 100})
+            ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, status = EXCLUDED.status,
+              sources = EXCLUDED.sources, sort_order = EXCLUDED.sort_order, updated_at = now()`;
+          mig058.theories++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
+      }
+      for (const r of (LIB.ARTICLES || [])) {
+        try {
+          await sql`INSERT INTO library_articles (slug, content, format, cover_url, authors, source_url, sort_order)
+            VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.format || 'rich'}, ${r.cover_url || null},
+              ${r.authors || []}::text[], ${r.source_url || null}, ${r.sort_order || 100})
+            ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, format = EXCLUDED.format,
+              cover_url = EXCLUDED.cover_url, authors = EXCLUDED.authors, source_url = EXCLUDED.source_url,
+              sort_order = EXCLUDED.sort_order, updated_at = now()`;
+          mig058.articles++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
+      }
+      for (const r of (LIB.RESEARCH || [])) {
+        try {
+          await sql`INSERT INTO library_research (slug, content, topic, source_url, authors, format, sort_order)
+            VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.topic || null}, ${r.source_url || null},
+              ${r.authors || []}::text[], ${r.format || 'rich'}, ${r.sort_order || 100})
+            ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, topic = EXCLUDED.topic,
+              source_url = EXCLUDED.source_url, authors = EXCLUDED.authors, format = EXCLUDED.format,
+              sort_order = EXCLUDED.sort_order, updated_at = now()`;
+          mig058.research++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
+      }
+      for (const r of (LIB.FUNCTIONS || [])) {
+        try {
+          await sql`INSERT INTO library_functions (slug, content, body_regions, sort_order)
+            VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.body_regions || []}::text[], ${r.sort_order || 100})
+            ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, body_regions = EXCLUDED.body_regions,
+              sort_order = EXCLUDED.sort_order, updated_at = now()`;
+          mig058.functions++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
+      }
+      for (const r of (LIB.METHODS || [])) {
+        try {
+          await sql`INSERT INTO library_methods (slug, content, category, sort_order)
+            VALUES (${r.slug}, ${JSON.stringify(r.content)}::jsonb, ${r.category || null}, ${r.sort_order || 100})
+            ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, category = EXCLUDED.category,
+              sort_order = EXCLUDED.sort_order, updated_at = now()`;
+          mig058.methods++;
+        } catch (e) { mig058.skipped = (mig058.skipped || 0) + 1; }
+      }
+      console.log('migration 058 (library):', JSON.stringify(mig058));
+    } catch (e) { mig058.error = e.message; console.error('migration 058 (library):', e.message); }
+
     // ── migration 055 (PR EF-history): External Field historical day cache ────
     // Backs the past-date / date-range views in External Field. One row per
     // (source, date) holding that UTC day's normalized events as JSON. The
@@ -2535,7 +2637,7 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 059 (extension_requests): table ready');
     } catch (e) { mig059.error = e.message; console.error('migration 059 (extension_requests):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-059 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig059 });
+    res.json({ ok: true, message: 'Migrations 003-059 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -10914,6 +11016,173 @@ app.get('/api/medications/:slug', async (req, res) => {
       ORDER BY dm.is_primary DESC, c.name_en`;
     res.json({ ok: true, medication: med, diagnoses });
   } catch (err) { console.error('GET /api/medications/:slug:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// LIBRARY (PR Library) — six content kinds: terms · articles · theories ·
+// research · functions · methods. `content` is JSONB keyed by language; the
+// server localizes to ?lang= (falls back to en). Reads are public; writes are
+// superadmin-only. Table names come from a fixed whitelist (LIBRARY_KINDS), so
+// building them into sql.query() strings is safe — values always go through $n.
+// ─────────────────────────────────────────────────────────────────────────
+const LIBRARY_KINDS = {
+  terms:     { table: 'library_terms',     cols: [['related_slugs', 'text[]']] },
+  articles:  { table: 'library_articles',  cols: [['format', 'text'], ['pdf_url', 'text'], ['pdf_filename', 'text'], ['cover_url', 'text'], ['authors', 'text[]'], ['source_url', 'text']] },
+  theories:  { table: 'library_theories',  cols: [['status', 'text'], ['sources', 'text[]']] },
+  research:  { table: 'library_research',  cols: [['topic', 'text'], ['source_url', 'text'], ['authors', 'text[]'], ['format', 'text'], ['pdf_url', 'text'], ['pdf_filename', 'text']] },
+  functions: { table: 'library_functions', cols: [['body_regions', 'text[]']] },
+  methods:   { table: 'library_methods',   cols: [['category', 'text']] }
+};
+const LIB_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,80}$/;
+function libLocalize(row, lang) {
+  if (!row) return row;
+  const c = row.content || {};
+  const langs = Object.keys(c);
+  const picked = c[lang] || c.en || (langs.length ? c[langs[0]] : {}) || {};
+  return Object.assign({}, row, { content: picked, langs });
+}
+// A short card title for the Course Builder picker / index, per kind.
+function libTitleOf(kind, loc) {
+  const c = (loc && loc.content) || {};
+  return c.title || c.name || c.term || loc.slug;
+}
+// Normalize sql.query() output — some driver builds return a rows array, others
+// a { rows } object; we always want the rows array.
+async function libQuery(text, params) {
+  const r = await sql.query(text, params || []);
+  return Array.isArray(r) ? r : ((r && r.rows) || []);
+}
+
+// GET /api/library — flat index across all kinds (Course Builder tool picker).
+app.get('/api/library', async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().slice(0, 5);
+    const out = {};
+    for (const kind of Object.keys(LIBRARY_KINDS)) {
+      const cfg = LIBRARY_KINDS[kind];
+      const rows = await libQuery(`SELECT id, slug, content, sort_order FROM ${cfg.table} WHERE is_active = TRUE ORDER BY sort_order, id`);
+      out[kind] = rows.map(r => { const loc = libLocalize(r, lang); return { id: r.id, slug: r.slug, kind, title: libTitleOf(kind, loc) }; });
+    }
+    res.json({ ok: true, lang, items: out });
+  } catch (err) { console.error('GET /api/library:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/library/:kind?q=&lang= — list one kind (localized).
+app.get('/api/library/:kind', async (req, res) => {
+  try {
+    const cfg = LIBRARY_KINDS[req.params.kind];
+    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    const lang = (req.query.lang || 'en').toString().slice(0, 5);
+    const rows = await libQuery(`SELECT * FROM ${cfg.table} WHERE is_active = TRUE ORDER BY sort_order, id`);
+    let items = rows.map(r => libLocalize(r, lang));
+    const q = (req.query.q || '').toString().trim().toLowerCase();
+    if (q) items = items.filter(it => JSON.stringify(it.content || {}).toLowerCase().includes(q) || (it.slug || '').includes(q));
+    res.json({ ok: true, kind: req.params.kind, lang, items });
+  } catch (err) { console.error('GET /api/library/:kind:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/library/:kind/:idOrSlug?lang= — one item (localized).
+app.get('/api/library/:kind/:id', async (req, res) => {
+  try {
+    const cfg = LIBRARY_KINDS[req.params.kind];
+    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    const lang = (req.query.lang || 'en').toString().slice(0, 5);
+    const key = req.params.id;
+    const rows = /^\d+$/.test(key)
+      ? await libQuery(`SELECT * FROM ${cfg.table} WHERE id = $1`, [Number(key)])
+      : await libQuery(`SELECT * FROM ${cfg.table} WHERE slug = $1`, [key]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, kind: req.params.kind, lang, item: libLocalize(rows[0], lang) });
+  } catch (err) { console.error('GET /api/library/:kind/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/library/:kind — superadmin create/replace (upsert by slug).
+app.post('/api/library/:kind', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  try {
+    const cfg = LIBRARY_KINDS[req.params.kind];
+    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    const b = req.body || {};
+    const slug = (b.slug || '').toString().trim().toLowerCase();
+    if (!LIB_SLUG_RE.test(slug)) return res.status(400).json({ error: 'Invalid slug (lowercase a-z, 0-9, hyphen)' });
+    const content = (b.content && typeof b.content === 'object') ? b.content : {};
+    const cols = ['slug', 'content']; const ph = ['$1', '$2::jsonb']; const params = [slug, JSON.stringify(content)];
+    let i = 3;
+    for (const [c, t] of cfg.cols) {
+      if (!(c in b)) continue;
+      cols.push(c); ph.push(t === 'text[]' ? `$${i}::text[]` : `$${i}`);
+      params.push(t === 'text[]' ? (Array.isArray(b[c]) ? b[c] : []) : (b[c] == null ? null : b[c]));
+      i++;
+    }
+    cols.push('sort_order'); ph.push(`$${i}`); params.push(Number(b.sort_order) || 100); i++;
+    cols.push('created_by'); ph.push(`$${i}`); params.push(caller.id); i++;
+    const setUpd = cols.filter(c => c !== 'slug' && c !== 'created_by')
+      .map(c => `${c} = EXCLUDED.${c}`).concat('updated_at = now()').join(', ');
+    const text = `INSERT INTO ${cfg.table} (${cols.join(', ')}) VALUES (${ph.join(', ')}) ON CONFLICT (slug) DO UPDATE SET ${setUpd} RETURNING *`;
+    const rows = await libQuery(text, params);
+    res.json({ ok: true, item: rows[0] });
+  } catch (err) { console.error('POST /api/library/:kind:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/library/:kind/:id — superadmin update by id.
+app.put('/api/library/:kind/:id', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  try {
+    const cfg = LIBRARY_KINDS[req.params.kind];
+    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
+    const b = req.body || {};
+    const sets = []; const params = []; let i = 1;
+    if (b.content && typeof b.content === 'object') { sets.push(`content = $${i}::jsonb`); params.push(JSON.stringify(b.content)); i++; }
+    for (const [c, t] of cfg.cols) {
+      if (!(c in b)) continue;
+      sets.push(t === 'text[]' ? `${c} = $${i}::text[]` : `${c} = $${i}`);
+      params.push(t === 'text[]' ? (Array.isArray(b[c]) ? b[c] : []) : (b[c] == null ? null : b[c])); i++;
+    }
+    if ('sort_order' in b) { sets.push(`sort_order = $${i}`); params.push(Number(b.sort_order) || 100); i++; }
+    if ('is_active' in b) { sets.push(`is_active = $${i}`); params.push(!!b.is_active); i++; }
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+    sets.push('updated_at = now()');
+    params.push(id);
+    const rows = await libQuery(`UPDATE ${cfg.table} SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, params);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, item: rows[0] });
+  } catch (err) { console.error('PUT /api/library/:kind/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/library/:kind/:id — superadmin delete.
+app.delete('/api/library/:kind/:id', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  try {
+    const cfg = LIBRARY_KINDS[req.params.kind];
+    if (!cfg) return res.status(404).json({ error: 'Unknown library kind' });
+    const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
+    await libQuery(`DELETE FROM ${cfg.table} WHERE id = $1`, [id]);
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE /api/library/:kind/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/library/:kind/:id/pdf — superadmin PDF upload (articles/research).
+app.post('/api/library/:kind/:id/pdf', requireAuth, uploadLibrary.single('file'), async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  try {
+    const kind = req.params.kind;
+    if (kind !== 'articles' && kind !== 'research') return res.status(400).json({ error: 'PDF upload only for articles/research' });
+    const cfg = LIBRARY_KINDS[kind];
+    const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
+    if (!req.file) return res.status(400).json({ error: 'No file' });
+    const mime = (req.file.mimetype || '').toLowerCase();
+    if (mime !== 'application/pdf') return res.status(400).json({ error: 'Only PDF allowed' });
+    const rows0 = await libQuery(`SELECT slug FROM ${cfg.table} WHERE id = $1`, [id]);
+    if (!rows0.length) return res.status(404).json({ error: 'Not found' });
+    const safeName = (req.file.originalname || 'document.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
+    const stamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+    const key = `library/${kind}/${rows0[0].slug}/${stamp}-${safeName}`.replace(/\.[^.]*$/, '') + '.pdf';
+    const stored = await storeMediaAsset(key, req.file.buffer, 'application/pdf', `[library] add pdf ${rows0[0].slug}`, 'library');
+    const url = stored.url || ('https://neuroattention.org/' + stored.key);
+    const rows = await libQuery(`UPDATE ${cfg.table} SET pdf_url = $1, pdf_filename = $2, format = 'pdf', updated_at = now() WHERE id = $3 RETURNING *`, [url, req.file.originalname || safeName, id]);
+    res.json({ ok: true, item: rows[0], pdf_url: url });
+  } catch (err) { console.error('POST /api/library/:kind/:id/pdf:', err); res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
