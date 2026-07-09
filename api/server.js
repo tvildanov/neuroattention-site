@@ -2611,7 +2611,33 @@ app.post('/api/run-migrations', async (req, res) => {
       mig057.ok = true;
     } catch (e) { mig057.error = e.message; console.error('migration 057 (user_schedules):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-058 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058 });
+    // ── migration 059 (Extension requests): user-submitted catalog additions ──
+    // One table for "please add X" requests across every Human-Atlas catalog
+    // (functions / medications / substances / diagnoses / diets / body regions /
+    // cognitive functions / sports). Users submit + track their own; superadmin
+    // works a queue. Number 059 (not the next-free 055): 055 is taken by an
+    // in-flight branch and 056-058 are reserved for other parallel worktrees.
+    let mig059 = { ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS extension_requests (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+          kind TEXT NOT NULL,
+          name TEXT NOT NULL,
+          notes TEXT,
+          status TEXT DEFAULT 'pending' CHECK (status IN ('pending','in_progress','added','declined')),
+          admin_notes TEXT,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          resolved_at TIMESTAMPTZ
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS extension_requests_status_kind_idx ON extension_requests(status, kind)`;
+      await sql`CREATE INDEX IF NOT EXISTS extension_requests_user_idx ON extension_requests(user_id)`;
+      mig059.ok = true;
+      console.log('migration 059 (extension_requests): table ready');
+    } catch (e) { mig059.error = e.message; console.error('migration 059 (extension_requests):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-059 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3034,6 +3060,86 @@ app.get('/api/admin/users/:id/medical-files', requireAuth, async (req, res) => {
       ORDER BY f.doc_date DESC, f.created_at DESC`;
     res.json({ ok: true, files: rows });
   } catch (err) { console.error('GET admin user medical-files:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTENSION REQUESTS (migration 059) — user-submitted "please add X to the catalog"
+// requests across the Human-Atlas catalogs. Users submit + track their own; a
+// superadmin works the queue. Table lives behind /api/run-migrations.
+// ═══════════════════════════════════════════════════════════════════════════
+const EXT_KINDS = ['function', 'sport', 'medication', 'substance', 'diagnosis', 'diet', 'body_region', 'cognitive_function'];
+const EXT_STATUSES = ['pending', 'in_progress', 'added', 'declined'];
+
+// POST /api/extensions/request — the user submits { name, notes?, kind }
+app.post('/api/extensions/request', requireAuth, async (req, res) => {
+  try {
+    let { name, notes, kind } = req.body || {};
+    name = name ? String(name).trim().slice(0, 200) : '';
+    if (!name) return res.status(400).json({ error: 'name is required' });
+    kind = String(kind || '').trim();
+    if (!EXT_KINDS.includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
+    notes = notes ? String(notes).slice(0, 2000) : null;
+    const [row] = await sql`
+      INSERT INTO extension_requests (user_id, kind, name, notes)
+      VALUES (${req.user.id}, ${kind}, ${name}, ${notes})
+      RETURNING *`;
+    res.status(201).json({ ok: true, request: row });
+  } catch (err) { console.error('POST extensions/request:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/extensions/my-requests — the caller's own requests, newest first
+app.get('/api/extensions/my-requests', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, kind, name, notes, status, admin_notes, created_at, resolved_at
+      FROM extension_requests
+      WHERE user_id = ${req.user.id}
+      ORDER BY created_at DESC`;
+    res.json({ ok: true, requests: rows });
+  } catch (err) { console.error('GET extensions/my-requests:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/admin/extensions/queue?status=pending — superadmin queue (all if no/blank status)
+app.get('/api/admin/extensions/queue', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const status = String(req.query.status || '').trim();
+    const filtered = status && EXT_STATUSES.includes(status);
+    const rows = filtered
+      ? await sql`
+          SELECT e.*, u.email AS user_email, u.display_name AS user_name
+          FROM extension_requests e LEFT JOIN users u ON u.id = e.user_id
+          WHERE e.status = ${status}
+          ORDER BY e.created_at DESC`
+      : await sql`
+          SELECT e.*, u.email AS user_email, u.display_name AS user_name
+          FROM extension_requests e LEFT JOIN users u ON u.id = e.user_id
+          ORDER BY e.created_at DESC`;
+    res.json({ ok: true, requests: rows });
+  } catch (err) { console.error('GET admin extensions/queue:', err); res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/admin/extensions/:id — superadmin sets { status, admin_notes? }
+app.patch('/api/admin/extensions/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await requireSuperadmin(req, res); if (!caller) return;
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'Bad id' });
+    let { status, admin_notes } = req.body || {};
+    status = String(status || '').trim();
+    if (!EXT_STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    admin_notes = admin_notes ? String(admin_notes).slice(0, 2000) : null;
+    // resolved_at stamps once the request reaches a terminal state.
+    const [row] = await sql`
+      UPDATE extension_requests
+         SET status = ${status},
+             admin_notes = ${admin_notes},
+             resolved_at = CASE WHEN ${status} IN ('added','declined') THEN now() ELSE NULL END
+       WHERE id = ${id}
+       RETURNING *`;
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, request: row });
+  } catch (err) { console.error('PATCH admin extensions/:id:', err); res.status(500).json({ error: err.message }); }
 });
 
 // ── PASSWORD RESET ──
