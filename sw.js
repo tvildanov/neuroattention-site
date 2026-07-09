@@ -92,7 +92,10 @@
 //      is now pinned permanently invisible in toggleLayer(); body-atlas.js?v=36→v37.
 // v44: External Field history — past-date + date-range views (external-field.js?v=8,
 //      mycelium.css?v=17). New /api/external/history + external_field_cache (mig055).
-var CACHE_NAME = 'na-practices-v44';
+// v45: Sports sub-section inside the Functions tab (Internal Field) — 16 sports with
+//      green/red BodyAtlas tint overlay (reuses the medications path); backend
+//      migration 056 (sports + diagnosis_sports) + /api/sports endpoints.
+var CACHE_NAME = 'na-practices-v45';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
