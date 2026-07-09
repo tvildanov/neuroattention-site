@@ -90,11 +90,21 @@
 //      was the SKIN layer (body-male.glb x-ray fill), force-shown by tintRegions when
 //      a med/diet targets 'skin' and un-hideable by any master toggle. The skin layer
 //      is now pinned permanently invisible in toggleLayer(); body-atlas.js?v=36→v37.
-// v44: PR Library — new «Library» sub-tab in Tools (terms · articles · theories ·
-//      research · functions · methods), migration 056 + api/library-seed.js, Course
+// v44: External Field history — past-date + date-range views (external-field.js?v=8,
+//      mycelium.css?v=17). New /api/external/history + external_field_cache (mig055).
+// v45: Sports sub-section inside the Functions tab (Internal Field) — 16 sports with
+//      green/red BodyAtlas tint overlay (reuses the medications path); backend
+//      migration 056 (sports + diagnosis_sports) + /api/sports endpoints.
+// v46: Scheduling (Part B) — schedule a function / sport / medication (frequency +
+//      times + dose + dates); on-the-fly occurrences render on the Personal Path via
+//      3 new layer toggles (Functions/Sports/Medications, default OFF) with distinct
+//      dashed "planned" / faded "missed" markers. Migration 057 (user_schedules) +
+//      /api/me/schedules CRUD + /api/me/schedule/events. evolution-path.js?v=30.
+// v47: PR Library — new «Library» sub-tab in Tools (terms · articles · theories ·
+//      research · functions · methods), migration 058 + api/library-seed.js, Course
 //      Builder library picker, and an Anatomy-atlas function → Library cross-link.
 //      Purges any stale account.html.
-var CACHE_NAME = 'na-practices-v44';
+var CACHE_NAME = 'na-practices-v47';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

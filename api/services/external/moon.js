@@ -20,13 +20,25 @@ function moonData(date) {
   return { age: age, illumination: illum, fraction: f, phase: phase };
 }
 
-async function fetchLatest() {
-  var now = new Date();
-  var m = moonData(now);
-  return [{ layer: 'moon', source: 'Computed (astronomical)', source_url: null, event_type: 'moon_phase',
+function moonEvent(date) {
+  var m = moonData(date);
+  return { layer: 'moon', source: 'Computed (astronomical)', source_url: null, event_type: 'moon_phase',
     title: 'Moon: ' + m.phase + ' · ' + Math.round(m.illumination * 100) + '% illuminated',
-    description: 'Lunar age ' + m.age.toFixed(1) + ' days.', timestamp: now.toISOString(),
-    location_scope: 'global', severity: m.phase, dedup_key: 'moon:phase:' + now.toISOString().slice(0, 10),
-    raw_payload: m }];
+    description: 'Lunar age ' + m.age.toFixed(1) + ' days.', timestamp: date.toISOString(),
+    location_scope: 'global', severity: m.phase, dedup_key: 'moon:phase:' + date.toISOString().slice(0, 10),
+    raw_payload: m };
 }
-module.exports = { fetchLatest, moonData };
+
+async function fetchLatest() { return [moonEvent(new Date())]; }
+
+// One deterministic phase event per UTC day across [from,to] (max 60 days).
+// Pure astronomy — always available, no network. Anchored at 12:00 UTC so the
+// stamp lands squarely inside the day it represents.
+async function fetchHistory(ctx) {
+  var from = new Date((ctx && ctx.from) || Date.now()), to = new Date((ctx && ctx.to) || Date.now());
+  var out = [], day = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate(), 12));
+  var end = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate(), 12);
+  for (var i = 0; i < 60 && day.getTime() <= end; i++) { out.push(moonEvent(new Date(day))); day.setUTCDate(day.getUTCDate() + 1); }
+  return out;
+}
+module.exports = { fetchLatest, fetchHistory, moonData };
