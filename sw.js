@@ -106,7 +106,12 @@
 //      research · functions · methods), migration 058 + api/library-seed.js, Course
 //      Builder library picker, and an Anatomy-atlas function → Library cross-link.
 //      Purges any stale account.html.
-var CACHE_NAME = 'na-practices-v48';
+// v49: External Field history follow-up — fix the async race where a slower
+//      earlier fetch (mode-switch → today) overwrote a newer date fetch, so the
+//      Sun/etc. panel showed the wrong day. renderActive() now stamps a request
+//      token (S._seq) and every async painter bails if it is stale.
+//      external-field.js?v=8→v9.
+var CACHE_NAME = 'na-practices-v49';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
