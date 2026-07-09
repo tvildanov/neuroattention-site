@@ -1753,6 +1753,7 @@ a.dash-tab:hover { text-decoration:none; }
               <div class="atlas-schematic" id="atlas-help"></div>
             </aside>
             <aside class="atlas-layers" id="ha-left-functions" style="display:none;">
+              <div class="ha-cats" id="ha-fn-modes"></div>
               <input class="ha-search" id="ha-fn-search" oninput="haFnSearch(this.value)" data-i18n-ph="a.ha.fn_search" placeholder="Поиск функции…" autocomplete="off">
               <div class="ha-cats" id="ha-fn-cats"></div>
               <div class="ha-list" id="ha-fn-list"><div class="ha-empty" data-i18n="a.ha.loading">Загрузка…</div></div>
@@ -18154,7 +18155,16 @@ window.pbMove = pbMove;
     open_anatomy:{ru:'Показать в Анатомии',en:'Show in Anatomy',es:'Ver en Anatomía'},
     tip_fn:{ru:'Выбери функцию слева — связанные регионы подсветятся на 3D-модели.',en:'Pick a function on the left — its regions light up on the 3D model.',es:'Elige una función a la izquierda — sus regiones se resaltan en el modelo 3D.'},
     tip_cond:{ru:'Выбери состояние слева — затронутые регионы подсветятся на 3D-модели.',en:'Pick a condition on the left — affected regions light up on the 3D model.',es:'Elige un estado a la izquierda — las regiones afectadas se resaltan.'},
-    nd:{ru:'нейроотличие',en:'neurodivergence',es:'neurodivergencia'}
+    nd:{ru:'нейроотличие',en:'neurodivergence',es:'neurodivergencia'},
+    mode_functions:{ru:'Функции',en:'Functions',es:'Funciones'},
+    mode_sports:{ru:'🏃 Виды спорта',en:'🏃 Sports',es:'🏃 Deportes'},
+    sport_search:{ru:'Поиск вида спорта…',en:'Search a sport…',es:'Buscar un deporte…'},
+    sport_improves:{ru:'Что развивает и укрепляет',en:'What it develops & strengthens',es:'Qué desarrolla y fortalece'},
+    sport_load:{ru:'Нагрузка и характерный износ',en:'Load & characteristic wear',es:'Carga y desgaste característico'},
+    sport_tissues_pos:{ru:'Целевые ткани (польза)',en:'Target tissues (benefit)',es:'Tejidos diana (beneficio)'},
+    sport_tissues_neg:{ru:'Ткани под нагрузкой (риск)',en:'Tissues under load (risk)',es:'Tejidos bajo carga (riesgo)'},
+    sport_tip:{ru:'Выбери вид спорта слева — зелёным подсветятся ткани, которые он развивает, красным — зоны характерной нагрузки и травматизма.',en:'Pick a sport on the left — the tissues it develops light up green, its characteristic load / injury zones red.',es:'Elige un deporte a la izquierda — los tejidos que desarrolla se resaltan en verde y sus zonas de carga/lesión en rojo.'},
+    sport_disclaimer:{ru:'Образовательная информация, не тренировочная или медицинская рекомендация. Перед началом новых нагрузок — консультация с врачом, особенно при хронических состояниях.',en:'Educational information, not training or medical advice. Consult a doctor before starting new activity, especially with chronic conditions.',es:'Información educativa, no consejo de entrenamiento ni médico. Consulte a un médico antes de iniciar nueva actividad, sobre todo con condiciones crónicas.'}
   };
   var CAT = {
     cognitive:{ru:'Когнитивные',en:'Cognitive',es:'Cognitivas'},
@@ -18197,7 +18207,13 @@ window.pbMove = pbMove;
     dissociative:{ru:'Диссоциативы',en:'Dissociatives',es:'Disociativos'},
     psychedelic:{ru:'Психоделики',en:'Psychedelics',es:'Psicodélicos'},
     empathogen:{ru:'Эмпатогены',en:'Empathogens',es:'Empatógenos'},
-    depressant:{ru:'Депрессанты',en:'Depressants',es:'Depresores'}
+    depressant:{ru:'Депрессанты',en:'Depressants',es:'Depresores'},
+    endurance:{ru:'Выносливость',en:'Endurance',es:'Resistencia'},
+    team_ball:{ru:'Командные / с мячом',en:'Team / ball',es:'Equipo / pelota'},
+    combat:{ru:'Единоборства',en:'Combat',es:'Combate'},
+    strength:{ru:'Силовые',en:'Strength',es:'Fuerza'},
+    mind_body:{ru:'Тело и разум',en:'Mind-body',es:'Cuerpo-mente'},
+    cognitive_sport:{ru:'Интеллектуальные',en:'Cognitive',es:'Cognitivos'}
   };
   var SEV = { mild:{ru:'лёгкое',en:'mild',es:'leve'}, moderate:{ru:'умеренное',en:'moderate',es:'moderado'}, severe:{ru:'тяжёлое',en:'severe',es:'grave'}, variable:{ru:'вариативное',en:'variable',es:'variable'} };
   var BRAIN = {'frontal-lobe':1,'parietal-lobe':1,'temporal-lobe':1,'occipital-lobe':1,'thalamus':1,'hypothalamus':1,'hippocampus':1,'amygdala':1,'basal-ganglia':1,'cerebellum':1,'midbrain':1,'pons':1,'medulla':1,'insula':1,'cingulate':1,'corpus-callosum':1,'fornix':1,'ventricles':1};
@@ -18324,8 +18340,8 @@ window.pbMove = pbMove;
     host.appendChild(card);
   }
 
-  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, medsByDiag:{}, diagsByMed:{} };
-  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null;
+  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, sports:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, sportBySlug:{}, medsByDiag:{}, diagsByMed:{} };
+  var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null, curSport=null;
 
   function ensureData(cb){
     if(loaded){ cb&&cb(); return; }
@@ -18337,11 +18353,12 @@ window.pbMove = pbMove;
     // asset, not an API route — fetch it relative to account.html and merge it into
     // the Conditions list so it shows in ONE list with the human_conditions catalog.
     function gjStatic(u){ return fetch(u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
-    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2') ])
+    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2'), gj('/api/sports?limit=200') ])
       .then(function(res){
         DATA.fns = (res[0].functions)||[]; DATA.conds = (res[1].conditions)||[];
         DATA.circuits = (res[2].circuits)||[]; DATA.relations = (res[3].relations)||[];
         DATA.meds = (res[4].medications)||[]; DATA.medLinks = (res[5].links)||[];
+        DATA.sports = (res[7].sports)||[]; DATA.sports.forEach(function(s){ DATA.sportBySlug[s.slug]=s; });
         // PR#119: fold the 12 catalog diagnoses into DATA.conds as condition-shaped
         // rows. `regions` (schematic DX keys) map to real BodyAtlas seed-ids so they
         // focus/tint the SAME 3D atlas as the existing conditions. _isDx/_dx keep the
@@ -18627,9 +18644,18 @@ window.pbMove = pbMove;
     }
   };
 
-  /* ── Functions tab ──────────────────────────────────────────────────────── */
-  var fnQuery='', fnCat='';
+  /* ── Functions tab (with the Sports sub-section) ────────────────────────── */
+  // fnMode toggles the Functions aside between the anatomy-functions list ('fn')
+  // and the Sports catalog ('sport'). Sports reuse the medications green/red
+  // tintRegions overlay (medFocus) — same seed-id tissue vocabulary.
+  var fnQuery='', fnCat='', fnMode='fn';
+  function renderFnModes(){
+    var modes=document.getElementById('ha-fn-modes'); if(!modes) return;
+    modes.innerHTML='<button class="ha-cat'+(fnMode==='fn'?' active':'')+'" data-mode="fn" onclick="haFnMode(\'fn\')">'+esc(tr(T.mode_functions))+'</button>'+
+      '<button class="ha-cat'+(fnMode==='sport'?' active':'')+'" data-mode="sport" onclick="haFnMode(\'sport\')">'+esc(tr(T.mode_sports))+'</button>';
+  }
   function renderFnPanel(){
+    renderFnModes();
     var cats=document.getElementById('ha-fn-cats');
     if(cats && !cats.dataset.built){
       cats.dataset.built='1';
@@ -18637,10 +18663,57 @@ window.pbMove = pbMove;
       list.forEach(function(c){ html+='<button class="ha-cat" data-cat="'+c+'" onclick="haFnCat(\''+c+'\')">'+esc(catLabel(c))+'</button>'; });
       cats.innerHTML=html;
     }
-    renderFnList();
+    applyFnMode();
   }
+  // Toggle which sub-view of the Functions aside is visible + its search placeholder.
+  function applyFnMode(){
+    var cats=document.getElementById('ha-fn-cats'); if(cats) cats.style.display=(fnMode==='sport')?'none':'';
+    var s=document.getElementById('ha-fn-search'); if(s) s.placeholder=tr(fnMode==='sport'?T.sport_search:T.fn_search);
+    if(fnMode==='sport') renderSportList(); else renderFnList();
+  }
+  window.haFnMode=function(m){
+    if(m===fnMode) return;
+    fnMode=m; fnQuery=''; var s=document.getElementById('ha-fn-search'); if(s) s.value='';
+    renderFnModes();
+    // leaving sports clears any green/red overlay; entering re-focuses on select
+    if(m!=='sport'){ curSport=null; medClearTint(); }
+    applyFnMode();
+  };
   window.haFnCat=function(c){ fnCat=c; document.querySelectorAll('#ha-fn-cats .ha-cat').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-cat')||'')===c); }); renderFnList(); };
-  window.haFnSearch=function(v){ fnQuery=(v||'').trim().toLowerCase(); renderFnList(); };
+  window.haFnSearch=function(v){ fnQuery=(v||'').trim().toLowerCase(); (fnMode==='sport')?renderSportList():renderFnList(); };
+  /* ── Sports sub-section ─────────────────────────────────────────────────── */
+  function sportMatch(s){
+    if(!fnQuery) return true;
+    var hay=((s.name_en||'')+' '+(s.name_ru||'')+' '+(s.name_es||'')+' '+(s.description_en||'')).toLowerCase();
+    return hay.indexOf(fnQuery)>=0;
+  }
+  function renderSportList(){
+    var host=document.getElementById('ha-fn-list'); if(!host) return;
+    var rows=(DATA.sports||[]).filter(sportMatch);
+    if(!rows.length){ host.innerHTML='<div class="ha-empty">'+esc(tr(T.empty))+'</div>'; return; }
+    host.innerHTML = rows.map(function(s){
+      return '<button class="ha-item'+(curSport&&curSport.slug===s.slug?' active':'')+'" onclick="haSelectSport(\''+s.slug+'\')">'+
+        '<span class="ha-item-name">'+esc(nm(s))+'</span><span class="ha-item-cat">'+esc(catLabel(s.category))+'</span></button>';
+    }).join('');
+  }
+  window.haSelectSport=function(slug){
+    ensureData(function(){
+      var s=DATA.sportBySlug[slug]; if(!s) return; curSport=s; curMed=null;
+      renderSportList();
+      // reuse the medications green/red 3D overlay + master layer toggles
+      medFocus(s.target_tissues_positive||[], s.target_tissues_negative||[]);
+      var h='<h4>'+esc(nm(s))+'</h4><div class="ha-side-cat">'+esc(catLabel(s.category))+'</div>';
+      h+='<p>'+esc(desc(s))+'</p>';
+      var pos=organChips(s.target_tissues_positive,'pos',null,s.target_tissues_negative);
+      var neg=organChips(s.target_tissues_negative,'neg',null,s.target_tissues_positive);
+      if(pos){ h+='<div class="med-eff pos"><span class="med-eff-h">🟢 '+esc(tr(T.sport_improves))+'</span></div><div style="font-size:10px;color:#8df0ad;margin:0.2rem 0;">'+esc(tr(T.sport_tissues_pos))+'</div>'+pos; }
+      if(neg){ h+='<div class="med-eff neg" style="margin-top:0.5rem;"><span class="med-eff-h">🔴 '+esc(tr(T.sport_load))+'</span></div><div style="font-size:10px;color:#ff9aa8;margin:0.2rem 0;">'+esc(tr(T.sport_tissues_neg))+'</div>'+neg; }
+      var warn=fld(s,'warning'); if(warn){ h+='<div class="med-warn">⚠️ '+esc(warn)+'</div>'; }
+      if(window.schedButtonHtml) h+=window.schedButtonHtml('sport', s.slug, nm(s));
+      h+='<div class="med-disclaimer">'+esc(tr(T.sport_disclaimer))+'</div>';
+      openDetail(h);
+    });
+  };
   function fnMatch(f){
     if(fnCat && f.category!==fnCat) return false;
     if(!fnQuery) return true;
@@ -18926,7 +18999,7 @@ window.pbMove = pbMove;
 
   /* ── detail panel ───────────────────────────────────────────────────────── */
   function openDetail(html){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* drop a stale stacked region card from the previous selection */ var p=document.getElementById('ha-detail-panel'); var b=document.getElementById('ha-detail-body'); if(b) b.innerHTML=html; if(p) p.classList.add('open'); }
-  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; curMed=null; medClearTint(); if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); renderMedList&&renderMedList(); };
+  window.haCloseDetail=function(){ if(window.atlasCloseRegion) window.atlasCloseRegion(); /* closing the function/condition closes its stacked region card too */ var p=document.getElementById('ha-detail-panel'); if(p) p.classList.remove('open'); curFn=null; curCond=null; curMed=null; curSport=null; medClearTint(); if(activeTab!=='anatomy') clearFocus(); renderFnList&&renderFnList(); renderCondList&&renderCondList(); renderMedList&&renderMedList(); (typeof renderSportList==='function')&&renderSportList(); };
 
   /* ── static label localization (tabs, placeholders, headers) ────────────── */
   function localize(){
