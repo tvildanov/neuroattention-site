@@ -8396,7 +8396,7 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     });
     // calendar — separate instrument, always include (not mirrored to journey)
     cal.forEach(c => layers.event.push({ id: 'cal_' + c.id, kind:'event', layer:'event', source:'calendar', t: c.created_at, occurred_at: c.created_at, label: c.title, valence:'neutral', weight: 1, payload: { title: c.title, event_type: c.event_type, date_key: c.date_key }, links: [] }));
-    if (!haveJE.insight) {
+    if (!haveJE.insight && !haveJE.event) {
       diary.forEach(d => {
         // PR#111 (#3): /api/neuromap/sensation also writes a "Sensation: … @ …" diary
         // row (kept for the recent-list UI). It used to surface here as a duplicate
@@ -8688,6 +8688,18 @@ app.post('/api/admin/nm-node/:id/delete', requireAuth, async (req, res) => {
 // kept — deleting one occurrence must not erase the whole gestalt.
 app.post('/api/me/journey-event/:id/delete', requireAuth, async (req, res) => {
   try {
+    // Legacy diary rows surface on the Path as insight stars with a synthetic
+    // 'diary_<uuid>' id (see the /api/me/journey builder). They live in
+    // neuro_resource_diary, not journey_events — so the numeric-id delete below
+    // would 404. Handle them here: delete the owner's own diary row directly.
+    const rawId = String(req.params.id || '');
+    const diaryMatch = rawId.match(/^diary_(.+)$/);
+    if (diaryMatch) {
+      const diaryId = diaryMatch[1];   // neuro_resource_diary.id is a UUID
+      const del = await sql`DELETE FROM neuro_resource_diary WHERE id = ${diaryId} AND user_id = ${req.user.id} RETURNING id`;
+      if (!del.length) return res.status(404).json({ error: 'Запись дневника не найдена' });
+      return res.json({ ok: true, deleted_diary: diaryId });
+    }
     const eid = parseInt(req.params.id, 10);
     if (!eid) return res.status(400).json({ error: 'event id required' });
     const rows = await sql`SELECT id, user_id, payload FROM journey_events WHERE id = ${eid}`;
