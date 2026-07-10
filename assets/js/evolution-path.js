@@ -519,6 +519,19 @@
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       if (!d || !d.ok) { if (btn) { btn.disabled = false; btn.textContent = L(CARD_STR.del, lang); } alert(L(CARD_STR.del_fail, lang)); return; }
       closeDetailCard(container);
+      // Bug #133: a delete must fully INVALIDATE the derived render caches before the
+      // re-mount. mountEvolutionPath reuses the existing container.__evo, so the stale
+      // st.view (old pxPerDay / panX), st.data (still holding the just-deleted event) and
+      // st._tunnel survived. ensureView() only refreshes originT/nowT when st.view already
+      // exists — it never recomputes zoom/pan — so after removing an endpoint event the
+      // time-domain shifted while the old zoom/pan stuck: the spine re-rendered distorted,
+      // and the day/week/month buttons just repainted that same stale cached view (looked
+      // dead). Clear only the derived caches; the user's mode / period / hidden-layer
+      // choices are intentionally kept so the view returns exactly where they left it.
+      try {
+        var st = container.__evo;
+        if (st) { st.data = null; st.view = null; st._layView = null; st._tunnel = null; st._dual = null; st._w = 0; }
+      } catch (e) {}
       // Reload the NeuroMap too (the node may be gone), then re-mount the Path.
       try { if (typeof window.nmLoadV2Graph === 'function') window.nmLoadV2Graph(); } catch (e) {}
       mountEvolutionPath(container, api.opts || {});
