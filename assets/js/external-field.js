@@ -157,10 +157,12 @@
     return (cur != null ? cur : (fb != null ? fb : path));
   }
 
+  // NOTE: the 'experimental' layer is intentionally NOT listed here — its UI tab
+  // was removed (#132). renderExperimental() and its i18n/config keys are kept
+  // intact below because selectTab()/dispatch still reference them defensively.
   var LAYERS = [
     { key: 'sun', icon: '☀' }, { key: 'moon', icon: '☾' }, { key: 'earth', icon: '⊕' },
-    { key: 'weather', icon: '🌦' }, { key: 'cosmos', icon: '✦' }, { key: 'social', icon: '🌐' },
-    { key: 'experimental', icon: '⚡' }
+    { key: 'weather', icon: '🌦' }, { key: 'cosmos', icon: '✦' }, { key: 'social', icon: '🌐' }
   ];
 
   // dateMode: 'today' = live per-day view (unchanged default). 'day' = a single
