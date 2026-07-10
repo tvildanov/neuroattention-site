@@ -517,7 +517,19 @@
     fetch((api.apiBase || '') + '/api/me/journey-event/' + encodeURIComponent(ev.id) + '/delete', {
       method: 'POST', headers: { 'Authorization': 'Bearer ' + api.token }
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-      if (!d || !d.ok) { if (btn) { btn.disabled = false; btn.textContent = L(CARD_STR.del, lang); } alert(L(CARD_STR.del_fail, lang)); return; }
+      if (!d || !d.ok) {
+        if (btn) { btn.disabled = false; btn.textContent = L(CARD_STR.del, lang); }
+        alert(L(CARD_STR.del_fail, lang));
+        // Bug #C: a failed delete used to leave the detail card blocking the Path and the
+        // period buttons dead (the stale cached view stuck). Even on error, invalidate the
+        // derived caches and re-mount so the UI (and the day/week/month controls) recover.
+        try {
+          var stErr = container.__evo;
+          if (stErr) { stErr.data = null; stErr.view = null; stErr._layView = null; stErr._tunnel = null; stErr._dual = null; stErr._w = 0; }
+        } catch (e) {}
+        mountEvolutionPath(container, api.opts || {});
+        return;
+      }
       closeDetailCard(container);
       // Bug #133: a delete must fully INVALIDATE the derived render caches before the
       // re-mount. mountEvolutionPath reuses the existing container.__evo, so the stale
@@ -712,7 +724,18 @@
     if (!st.view || st.view._fieldW == null) {
       // period = how far to zoom out, but never wider than the real span (+10%) —
       // so a 2-week-old account doesn't render its events squished at the right.
-      var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
+      // Bug #D: when the user EXPLICITLY clicks a period button we must honour that
+      // exact window (e.g. "year" = 365d) even if the real span is shorter, otherwise
+      // the data-range cap collapses day/week/month/year to the same squished view and
+      // the buttons look dead. _periodSwitch is set by the period click handler and
+      // consumed here once.
+      var days;
+      if (st._periodSwitch) {
+        days = PERIOD_DAYS[st.period] || 30;
+        st._periodSwitch = false;
+      } else {
+        days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
+      }
       var pxPerDay = (x1 - x0) / days;
       // _basePxPerDay = the period's fit-to-view zoom; the live zoom factor Z used
       // by the renderer (3.1) is pxPerDay / _basePxPerDay, so the branch geometry,
@@ -2580,6 +2603,7 @@
             // (registration→now) once; switching period just re-fits the view and
             // recentres on "now" without refetching. — rework
             st.period = val; st.cursor = 1;
+            st._periodSwitch = true;     // Bug #D: honour the exact clicked window in ensureView()
             if (st.data) {
               segEl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-active', x === b); });
               st.view = null;            // force ensureView() to recompute zoom/centre
