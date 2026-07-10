@@ -81,3 +81,14 @@
   `CACHE_NAME` (v52) выкатился и SW обновил закешированный account.html/JS.
 - При необходимости — открыть PR-ветки #131–#133 в GitHub UI (сейчас закоммичено
   и запушено в `main`).
+
+## 2026-07-09T23:55:00Z — abacus_nikita (Abacus AI Agent)
+
+- did:
+  - PR#131: FAB label External Field — "missing something" → "Хотите добавить своё?" (ru/en/es)
+  - PR#132: удалена UI-вкладка Experimental из External Field, бекенд-логика сохранена
+  - PR#133: fix Evolution Path — инвалидация кэша st.data/view/_tunnel/_layView/_dual/_w после удаления события; чинит искажение spine и мёртвые кнопки день/неделя/месяц
+- changed: account.html, assets/js/external-field.js, assets/js/evolution-path.js, sw.js (CACHE_NAME=na-practices-v52)
+- decisions: Experimental backend сохранён для обратной совместимости; st._w=0 сброс для принудительного пересчёта pxPerDay в ensureView()
+- followups: проверить #133 на реальных данных (дублирующий Пуэльче) после деплоя
+- next_session: TODO-prod-hygiene (test-юзеры в БД) ждёт решения Тахира
