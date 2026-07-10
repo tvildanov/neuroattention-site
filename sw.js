@@ -111,7 +111,7 @@
 //      Sun/etc. panel showed the wrong day. renderActive() now stamps a request
 //      token (S._seq) and every async painter bails if it is stale.
 //      external-field.js?v=8→v9.
-var CACHE_NAME = 'na-practices-v52';
+var CACHE_NAME = 'na-practices-v53';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
