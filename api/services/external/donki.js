@@ -52,4 +52,34 @@ async function fetchRange(s, e, key) {
   } catch (err) { console.warn('[ext/donki] gst:', err.message); }
   return out.filter(function (x) { return x.timestamp; });
 }
-module.exports = { fetchLatest, fetchHistory };
+// Raw CME analyses for [from,to] (YYYY-MM-DD or ms). Used by the Sun M-flare
+// Earth-direction filter (Nick P6-final): an M-class flare only materializes if
+// it coincides with an Earth-directed CME. Returns the flattened, most-accurate
+// analyses with their heliographic apex (latitude/longitude, Stonyhurst — lon 0 =
+// Sun–Earth line) + halfAngle + speed + time, so the caller can test whether
+// Earth lies inside the CME cone. Needs a real NASA key for coverage.
+async function fetchCmeAnalyses(ctx) {
+  const key = (ctx && ctx.nasaKey) || process.env.NASA_API_KEY || 'DEMO_KEY';
+  const s = d10((ctx && ctx.from) || Date.now()), e = d10((ctx && ctx.to) || Date.now());
+  const out = [];
+  try {
+    const cme = await getJson('https://api.nasa.gov/DONKI/CME?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
+    (cme || []).forEach(function (c) {
+      const analyses = c.cmeAnalyses || [];
+      analyses.forEach(function (a) {
+        out.push({
+          activityID: c.activityID, startTime: iso(c.startTime), analysisTime: iso(a.time21_5 || c.startTime),
+          latitude: (a.latitude != null ? Number(a.latitude) : null),
+          longitude: (a.longitude != null ? Number(a.longitude) : null),
+          halfAngle: (a.halfAngle != null ? Number(a.halfAngle) : null),
+          speed: (a.speed != null ? Number(a.speed) : null),
+          isMostAccurate: a.isMostAccurate === true,
+          type: a.type || null, note: a.note || null, link: a.link || c.link,
+        });
+      });
+    });
+  } catch (err) { console.warn('[ext/donki] cme-analyses:', err.message); }
+  return out;
+}
+
+module.exports = { fetchLatest, fetchHistory, fetchCmeAnalyses };
