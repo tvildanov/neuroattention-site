@@ -92,3 +92,43 @@
 - decisions: Experimental backend сохранён для обратной совместимости; st._w=0 сброс для принудительного пересчёта pxPerDay в ensureView()
 - followups: проверить #133 на реальных данных (дублирующий Пуэльче) после деплоя
 - next_session: TODO-prod-hygiene (test-юзеры в БД) ждёт решения Тахира
+
+## 2026-07-11T23:15:00Z — claude-opus (Exercises & Tests feature)
+
+- did:
+  - New **Exercises & Tests** tool (Tools sub-tab «Упражнения и тесты»): 10
+    evidence-based canvas cognitive exercises — N-back, Stroop, ANT, SART, Corsi,
+    Digit Span, Go/No-Go, Task Switching, Trail Making A/B, Attentional Blink.
+  - assets/js/exercises/_engine.js + 10 self-contained modules (mount(host,opts,
+    onComplete) contract, 1-10 levels, 3-2-1 countdown, accuracy/RT/composite score).
+  - Backend: migration **060** (exercise_definitions + exercise_results, seeded from
+    api/exercises-seed.js w/ real clinical citations) + REST GET /api/exercises[/:slug],
+    POST /api/exercises/result (personal-best + percentile + Path mirror),
+    GET /api/me/exercises/results.
+  - Personal Path: kind='exercise' lane + «🧠 Упражнения» toggle (server whitelist
+    L8342/L8479 + evolution-path.js LAYERS/LAYER_YFRAC/nmPathColor/EVENT_LABELS).
+  - Course Builder: exercises embeddable as tool_task blocks (courseAddExercise picker
+    + inline cpRenderExercise/cpMountExercise/cpDisposeExercise player).
+  - i18n a.tools.exercises (ru/en/es). Launcher UI (grid → level + mini brain-atlas +
+    clinical evidence → play → result + POST).
+- changed: account.html, api/server.js, assets/js/evolution-path.js, api/exercises-seed.js
+  (new), assets/js/exercises/*.js (11 new), data/i18n/{ru,en,es}.json.
+- committed: feat/exercises-tests @ 09bdbe2 (MY files only, by explicit path).
+- verify: 10/10 modules register + mount clean (error-free console, correct control
+  counts, dispose fns) via standalone harness. Node --check passes on all JS. Visual/
+  gameplay + prod fresh-user pass DEFERRED (headless viewport is 0-width; and deploy
+  is on hold — see below).
+- decisions:
+  - Used migration **060** (actual next-free on main), NOT the task's guessed 062.
+  - **HOLD on merge/deploy/SW-bump.** File mtimes proved a CONCURRENT worker was
+    editing this SAME tree mid-session (api/library-seed.js @23:02, sw.js→v53 «Library
+    content pass» @23:04, new untracked api/library-ru/) — between my own edits. My
+    SW v52→v53 bump collided with theirs. Committed only my files, left their WIP
+    untouched. Did NOT push to main / deploy / run prod migrations.
+- followups:
+  - Reconcile ONE SW version covering BOTH features (their Library v53 + Exercises → v54)
+    before deploy; my commit has NO sw.js bump.
+  - After backend deploy: POST /api/run-migrations to create mig060 tables + seed 10 rows.
+  - Prod fresh-user pass (register throwaway, walk the real Tools→Упражнения UI, run an
+    exercise, confirm result saves + Path «Упражнения» marker appears).
+- next_session: coordinate merge with the concurrent Library pass; push branch + open PR.
