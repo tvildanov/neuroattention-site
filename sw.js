@@ -111,7 +111,14 @@
 //      Sun/etc. panel showed the wrong day. renderActive() now stamps a request
 //      token (S._seq) and every async painter bails if it is stale.
 //      external-field.js?v=8→v9.
-var CACHE_NAME = 'na-practices-v52';
+// v53: Anatomical Atlas search bar (search any body region → focus) + hide-region
+//      now fully invisible at opacity 0 (was a ~5% x-ray ghost). Sports precision:
+//      16 sports re-tissued to per-organ groups (quadriceps/hamstrings/motor-cortex…)
+//      + common_injuries — each sport links to its characteristic injuries as real
+//      human_conditions, with a reverse "related sports" link on the diagnosis card.
+//      Migrations 060 (tissue precision) + 061 (sport_injuries + injury conditions).
+//      body-atlas.js?v=37→v38. Purges any stale account.html + body-atlas.js.
+var CACHE_NAME = 'na-practices-v53';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

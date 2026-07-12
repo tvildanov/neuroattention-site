@@ -1598,6 +1598,19 @@ a.dash-tab:hover { text-decoration:none; }
         .ha-tab.active{color:#A8F7FF;border-bottom-color:var(--accent-cyan,#A8F7FF);}
         .ha-search{width:100%;background:rgba(168,247,255,0.05);border:1px solid rgba(168,247,255,0.18);border-radius:9px;color:var(--text-primary,#e8edf2);font-size:12.5px;padding:0.5rem 0.6rem;outline:none;}
         .ha-search:focus{border-color:rgba(168,247,255,0.45);}
+        /* P2a: Anatomical Atlas search bar (over the 3D body, Anatomy tab only) */
+        .atlas-search{position:relative;flex:1;max-width:340px;margin-left:0.75rem;}
+        .atlas-search input{width:100%;background:rgba(168,247,255,0.06);border:1px solid rgba(168,247,255,0.2);border-radius:9px;color:var(--text-primary,#e8edf2);font-size:12.5px;padding:0.42rem 0.65rem;outline:none;}
+        .atlas-search input:focus{border-color:rgba(168,247,255,0.5);}
+        .atlas-search-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;max-height:320px;overflow-y:auto;background:rgba(14,19,28,0.97);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(168,247,255,0.2);border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,0.45);display:none;}
+        .atlas-search-dd.open{display:block;}
+        .atlas-sr{display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.42rem 0.65rem;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);}
+        .atlas-sr:last-child{border-bottom:none;}
+        .atlas-sr:hover,.atlas-sr.sel{background:rgba(168,247,255,0.13);}
+        .atlas-sr-name{font-size:12.5px;color:var(--text-primary,#e8edf2);}
+        .atlas-sr-grp{font-size:10px;color:var(--text-muted,#8c98a6);white-space:nowrap;}
+        .atlas-sr-empty{padding:0.55rem 0.65rem;font-size:12px;color:var(--text-muted,#8c98a6);}
+        @media(max-width:760px){.atlas-search{max-width:none;margin:0.4rem 0 0;flex-basis:100%;}}
         .ha-cats{display:flex;flex-wrap:wrap;gap:0.3rem;}
         .ha-cat{background:rgba(168,247,255,0.05);border:1px solid rgba(168,247,255,0.12);color:var(--text-muted,#8c98a6);border-radius:20px;font-size:10.5px;padding:0.22rem 0.55rem;cursor:pointer;transition:.15s;white-space:nowrap;}
         .ha-cat:hover{background:rgba(168,247,255,0.13);}
@@ -1781,6 +1794,10 @@ a.dash-tab:hover { text-decoration:none; }
           </div>
           <div class="atlas-topbar" id="ha-topbar">
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
+            <div class="atlas-search" id="atlas-search">
+              <input type="search" id="atlas-search-input" autocomplete="off" oninput="atlasSearchInput(this.value)" onkeydown="atlasSearchKey(event)" onfocus="atlasSearchInput(this.value)" placeholder="Поиск области тела…">
+              <div class="atlas-search-dd" id="atlas-search-dd"></div>
+            </div>
             <div class="atlas-actions">
               <button class="atlas-btn" onclick="atlasResetView()">⟲ <span data-i18n="a.tools.anatomy_reset">Сбросить вид</span></button>
             </div>
@@ -17929,7 +17946,7 @@ window.pbMove = pbMove;
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=10"></script>
-<script src="assets/js/body-atlas.js?v=37"></script>
+<script src="assets/js/body-atlas.js?v=38"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -18290,6 +18307,169 @@ window.pbMove = pbMove;
     var ud = mesh && mesh.userData ? mesh.userData : {};
     onClick({ id: regionId, object: mesh||null, names: ud.names||null, point: null, layer: ud.layer||'', level: 'region' });
   };
+
+  /* ── P2a: Anatomical Atlas search ──────────────────────────────────────────
+     A search bar over the 3D body (Anatomy tab). Indexes every focusable region
+     from high-level (lobes, hemispheres, organs) down to specific structures
+     (insula, hippocampus, individual muscles). A curated trilingual map covers
+     the SEED_REGION_INFO seeds reliably; fine mesh names are merged in async from
+     the anatomy i18n dicts. Click a result → atlasOpenRegionCard(id) (zoom + card). */
+  // group 1 = major structure, 2 = sub-structure, 3 = fine mesh (async).
+  var ATLAS_SEARCH_NAMES = {
+    // synthetic high-level (map to a real focusable seed)
+    'cortex':{ru:'Кора больших полушарий',en:'Cerebral cortex',es:'Corteza cerebral',syn:'полушария полушарие hemisphere hemispheres правое левое right left мозг brain',g:1},
+    // lobes
+    'frontal-lobe':{ru:'Лобная доля',en:'Frontal lobe',es:'Lóbulo frontal',syn:'кора префронтальная motor prefrontal',g:1},
+    'parietal-lobe':{ru:'Теменная доля',en:'Parietal lobe',es:'Lóbulo parietal',g:1},
+    'temporal-lobe':{ru:'Височная доля',en:'Temporal lobe',es:'Lóbulo temporal',g:1},
+    'occipital-lobe':{ru:'Затылочная доля',en:'Occipital lobe',es:'Lóbulo occipital',syn:'зрительная visual',g:1},
+    'cingulate':{ru:'Поясная кора',en:'Cingulate cortex',es:'Corteza cingulada',g:2},
+    'insula':{ru:'Островковая доля (инсула)',en:'Insular cortex (insula)',es:'Corteza insular (ínsula)',syn:'инсула островок insular',g:2},
+    // brainstem / cerebellum
+    'brainstem':{ru:'Ствол мозга',en:'Brainstem',es:'Tronco encefálico',g:1},
+    'midbrain':{ru:'Средний мозг',en:'Midbrain',es:'Mesencéfalo',g:2},
+    'pons':{ru:'Мост',en:'Pons',es:'Puente',g:2},
+    'medulla':{ru:'Продолговатый мозг',en:'Medulla oblongata',es:'Bulbo raquídeo',g:2},
+    'cerebellum':{ru:'Мозжечок',en:'Cerebellum',es:'Cerebelo',g:1},
+    // subcortical
+    'thalamus':{ru:'Таламус',en:'Thalamus',es:'Tálamo',g:2},
+    'hypothalamus':{ru:'Гипоталамус',en:'Hypothalamus',es:'Hipotálamo',g:2},
+    'hippocampus':{ru:'Гиппокамп',en:'Hippocampus',es:'Hipocampo',syn:'память memory',g:2},
+    'amygdala':{ru:'Миндалевидное тело',en:'Amygdala',es:'Amígdala',syn:'миндалина',g:2},
+    'basal-ganglia':{ru:'Базальные ганглии',en:'Basal ganglia',es:'Ganglios basales',g:2},
+    'fornix':{ru:'Свод мозга',en:'Fornix',es:'Fórnix',g:2},
+    'corpus-callosum':{ru:'Мозолистое тело',en:'Corpus callosum',es:'Cuerpo calloso',g:2},
+    // spinal cord
+    'spinal-cord':{ru:'Спинной мозг',en:'Spinal cord',es:'Médula espinal',g:1},
+    // heart
+    'heart':{ru:'Сердце',en:'Heart',es:'Corazón',g:1},
+    'right-atrium':{ru:'Правое предсердие',en:'Right atrium',es:'Aurícula derecha',g:2},
+    'left-atrium':{ru:'Левое предсердие',en:'Left atrium',es:'Aurícula izquierda',g:2},
+    'right-ventricle':{ru:'Правый желудочек',en:'Right ventricle',es:'Ventrículo derecho',g:2},
+    'left-ventricle':{ru:'Левый желудочек',en:'Left ventricle',es:'Ventrículo izquierdo',g:2},
+    // organs
+    'liver':{ru:'Печень',en:'Liver',es:'Hígado',g:1},
+    'lungs':{ru:'Лёгкие',en:'Lungs',es:'Pulmones',g:1},
+    'kidneys':{ru:'Почки',en:'Kidneys',es:'Riñones',g:1},
+    'adrenals':{ru:'Надпочечники',en:'Adrenal glands',es:'Glándulas suprarrenales',g:2},
+    'stomach':{ru:'Желудок',en:'Stomach',es:'Estómago',g:1},
+    'oesophagus':{ru:'Пищевод',en:'Oesophagus',es:'Esófago',g:2},
+    'small-intestine':{ru:'Тонкий кишечник',en:'Small intestine',es:'Intestino delgado',g:2},
+    'duodenum':{ru:'Двенадцатиперстная кишка',en:'Duodenum',es:'Duodeno',g:2},
+    'jejunum':{ru:'Тощая кишка',en:'Jejunum',es:'Yeyuno',g:2},
+    'large-intestine':{ru:'Толстый кишечник',en:'Large intestine',es:'Intestino grueso',syn:'colon ободочная',g:2},
+    'gallbladder':{ru:'Жёлчный пузырь',en:'Gallbladder',es:'Vesícula biliar',g:2},
+    'pancreas':{ru:'Поджелудочная железа',en:'Pancreas',es:'Páncreas',g:1},
+    'thyroid-gland':{ru:'Щитовидная железа',en:'Thyroid gland',es:'Glándula tiroides',g:2},
+    'nose':{ru:'Нос',en:'Nose',es:'Nariz',g:2},
+    // spine / hip
+    'spine':{ru:'Позвоночник',en:'Spine',es:'Columna vertebral',g:1},
+    'cervical-spine':{ru:'Шейный отдел позвоночника',en:'Cervical spine',es:'Columna cervical',g:2},
+    'thoracic-spine':{ru:'Грудной отдел позвоночника',en:'Thoracic spine',es:'Columna torácica',g:2},
+    'lumbar-spine':{ru:'Поясничный отдел позвоночника',en:'Lumbar spine',es:'Columna lumbar',g:2},
+    'sacral-spine':{ru:'Крестцовый отдел',en:'Sacral spine',es:'Columna sacra',g:2},
+    'hip':{ru:'Тазобедренный сустав',en:'Hip joint',es:'Articulación de la cadera',g:2},
+    // female reproductive
+    'uterus':{ru:'Матка',en:'Uterus',es:'Útero',g:1},
+    'cervix':{ru:'Шейка матки',en:'Cervix',es:'Cuello uterino',g:2},
+    'ovaries':{ru:'Яичники',en:'Ovaries',es:'Ovarios',g:2},
+    'fallopian-tubes':{ru:'Маточные трубы',en:'Fallopian tubes',es:'Trompas de Falopio',g:2},
+    'vagina':{ru:'Влагалище',en:'Vagina',es:'Vagina',g:2},
+    'breasts':{ru:'Молочные железы',en:'Breasts',es:'Mamas',g:2},
+    'placenta':{ru:'Плацента',en:'Placenta',es:'Placenta',g:2}
+  };
+  var _atlasIndex = null, _atlasFineLoaded = false, _atlasSel = -1;
+  function atlasBuildIndex(){
+    var idx = [], seen = {};
+    Object.keys(ATLAS_SEARCH_NAMES).forEach(function(id){
+      var n = ATLAS_SEARCH_NAMES[id];
+      idx.push({ id:id, label:(n[lang()]||n.ru), grp:(n.g||1),
+        hay:((n.ru||'')+' '+(n.en||'')+' '+(n.es||'')+' '+id.replace(/-/g,' ')+' '+(n.syn||'')).toLowerCase() });
+      seen[id] = 1;
+    });
+    // any SEED_REGION_INFO key not curated → derive a title-cased label so it's still findable
+    var INFO = (window.BodyAtlas && window.BodyAtlas.SEED_REGION_INFO) ||
+               (atlas && atlas.constructor && atlas.constructor.SEED_REGION_INFO) || {};
+    Object.keys(INFO).forEach(function(id){
+      if(seen[id]) return; seen[id]=1;
+      idx.push({ id:id, label:regionLabel(id), grp:2,
+        hay:(id.replace(/-/g,' ')+' '+((INFO[id].aliases||[]).join(' ').replace(/_/g,' '))).toLowerCase() });
+    });
+    _atlasIndex = idx;
+  }
+  // Merge the fine mesh dictionaries (individual muscles, bones, brain gyri) once.
+  function atlasLoadFine(){
+    if(_atlasFineLoaded) return; _atlasFineLoaded = true;
+    // fine anatomy dicts are static Pages assets, fetched relative to account.html
+    function grab(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); }
+    Promise.all([ grab('data/i18n/anatomy/ru.json'), grab('data/i18n/anatomy/es.json'), grab('data/i18n/anatomy-brain.json') ])
+      .then(function(res){
+        if(!_atlasIndex) atlasBuildIndex();
+        var ru = res[0]||{}, es = res[1]||{}, brain = (res[2]&&res[2].regions)||{}, have = {};
+        _atlasIndex.forEach(function(e){ have[e.id]=1; });
+        function push(id, rn, en, esn){ if(!id||have[id]) return; have[id]=1;
+          var label = (lang()==='ru'?rn:lang()==='es'?esn:en) || en || rn || regionLabel(id);
+          _atlasIndex.push({ id:id, label:label, grp:3, hay:((rn||'')+' '+(en||'')+' '+(esn||'')+' '+id.replace(/_/g,' ')).toLowerCase() }); }
+        Object.keys(ru).forEach(function(k){ push(k, ru[k], regionLabel(k.replace(/_/g,'-')), es[k]); });
+        Object.keys(brain).forEach(function(k){ var b=brain[k]||{}; push(k, b.ru, b.en, b.es); });
+      });
+  }
+  function atlasSearchRank(q){
+    if(!_atlasIndex) atlasBuildIndex();
+    q = q.trim().toLowerCase(); if(!q) return [];
+    var toks = q.split(/\s+/).filter(Boolean);
+    var starts = [], words = [], other = [];
+    for(var i=0;i<_atlasIndex.length;i++){
+      var e=_atlasIndex[i], lb=e.label.toLowerCase();
+      // every query token must appear somewhere in the searchable text (AND match),
+      // so "правое полушарие" / "insular cortex" / "foot muscle" all resolve.
+      var all=true; for(var t=0;t<toks.length;t++){ if(e.hay.indexOf(toks[t])<0){ all=false; break; } }
+      if(!all) continue;
+      if(lb.indexOf(q)===0) starts.push(e);
+      else if(lb.indexOf(q)>=0 || e.hay.indexOf(q)>=0) words.push(e);
+      else other.push(e);
+    }
+    function byGrpLen(a,b){ return (a.grp-b.grp) || (a.label.length-b.label.length); }
+    starts.sort(byGrpLen); words.sort(byGrpLen); other.sort(byGrpLen);
+    return starts.concat(words, other).slice(0, 40);
+  }
+  function atlasSearchRender(rows){
+    var dd=document.getElementById('atlas-search-dd'); if(!dd) return;
+    if(!rows.length){ dd.innerHTML='<div class="atlas-sr-empty">'+(lang()==='en'?'Nothing found':lang()==='es'?'Nada encontrado':'Ничего не найдено')+'</div>'; dd.classList.add('open'); return; }
+    dd.innerHTML = rows.map(function(e,i){
+      return '<div class="atlas-sr'+(i===_atlasSel?' sel':'')+'" data-id="'+String(e.id).replace(/"/g,'')+'" onmousedown="atlasSearchPick(event)">'+
+        '<span class="atlas-sr-name">'+(e.label||e.id).replace(/</g,'&lt;')+'</span></div>';
+    }).join('');
+    dd.classList.add('open');
+  }
+  window.atlasSearchInput = function(v){
+    _atlasSel = -1; atlasLoadFine();
+    var rows = atlasSearchRank(v||'');
+    var dd=document.getElementById('atlas-search-dd');
+    if(!(v||'').trim()){ if(dd) dd.classList.remove('open'); return; }
+    window.__atlasSearchRows = rows;
+    atlasSearchRender(rows);
+  };
+  window.atlasSearchPick = function(ev){
+    if(ev){ ev.preventDefault(); }
+    var el = ev && ev.currentTarget; var id = el && el.getAttribute('data-id'); if(!id) return;
+    var dd=document.getElementById('atlas-search-dd'); if(dd) dd.classList.remove('open');
+    var inp=document.getElementById('atlas-search-input');
+    if(inp){ var e=(window.__atlasSearchRows||[]).filter(function(r){return r.id===id;})[0]; inp.value = e?e.label:''; }
+    try{ window.atlasOpenRegionCard(id); }catch(e){}
+  };
+  window.atlasSearchKey = function(ev){
+    var dd=document.getElementById('atlas-search-dd'); var rows=window.__atlasSearchRows||[];
+    if(ev.key==='Escape'){ if(dd) dd.classList.remove('open'); return; }
+    if(!rows.length) return;
+    if(ev.key==='ArrowDown'){ ev.preventDefault(); _atlasSel=Math.min(rows.length-1,_atlasSel+1); atlasSearchRender(rows); }
+    else if(ev.key==='ArrowUp'){ ev.preventDefault(); _atlasSel=Math.max(0,_atlasSel-1); atlasSearchRender(rows); }
+    else if(ev.key==='Enter'){ ev.preventDefault(); var e=rows[_atlasSel>=0?_atlasSel:0]; if(e){ var inp=document.getElementById('atlas-search-input'); if(inp) inp.value=e.label; if(dd) dd.classList.remove('open'); try{ window.atlasOpenRegionCard(e.id); }catch(x){} } }
+  };
+  document.addEventListener('mousedown', function(ev){
+    var wrap=document.getElementById('atlas-search'); if(!wrap) return;
+    if(!wrap.contains(ev.target)){ var dd=document.getElementById('atlas-search-dd'); if(dd) dd.classList.remove('open'); }
+  });
 })();
 </script>
 <script>
@@ -18306,6 +18486,7 @@ window.pbMove = pbMove;
     tab_conditions:{ru:'Диагнозы и состояния',en:'Conditions & states',es:'Diagnósticos y estados'},
     tab_medications:{ru:'Препараты и вещества',en:'Medications & substances',es:'Medicamentos y sustancias'},
     tab_diet:{ru:'Тип питания',en:'Diet',es:'Tipo de alimentación'},
+    atlas_search:{ru:'Поиск области тела…',en:'Search a body region…',es:'Buscar una región del cuerpo…'},
     fn_search:{ru:'Поиск функции…',en:'Search a function…',es:'Buscar una función…'},
     cond_search:{ru:'Поиск состояния…',en:'Search a condition…',es:'Buscar un estado…'},
     med_search:{ru:'Поиск препарата…',en:'Search a medication…',es:'Buscar un medicamento…'},
@@ -18358,7 +18539,9 @@ window.pbMove = pbMove;
     sport_tissues_pos:{ru:'Целевые ткани (польза)',en:'Target tissues (benefit)',es:'Tejidos diana (beneficio)'},
     sport_tissues_neg:{ru:'Ткани под нагрузкой (риск)',en:'Tissues under load (risk)',es:'Tejidos bajo carga (riesgo)'},
     sport_tip:{ru:'Выбери вид спорта слева — зелёным подсветятся ткани, которые он развивает, красным — зоны характерной нагрузки и травматизма.',en:'Pick a sport on the left — the tissues it develops light up green, its characteristic load / injury zones red.',es:'Elige un deporte a la izquierda — los tejidos que desarrolla se resaltan en verde y sus zonas de carga/lesión en rojo.'},
-    sport_disclaimer:{ru:'Образовательная информация, не тренировочная или медицинская рекомендация. Перед началом новых нагрузок — консультация с врачом, особенно при хронических состояниях.',en:'Educational information, not training or medical advice. Consult a doctor before starting new activity, especially with chronic conditions.',es:'Información educativa, no consejo de entrenamiento ni médico. Consulte a un médico antes de iniciar nueva actividad, sobre todo con condiciones crónicas.'}
+    sport_disclaimer:{ru:'Образовательная информация, не тренировочная или медицинская рекомендация. Перед началом новых нагрузок — консультация с врачом, особенно при хронических состояниях.',en:'Educational information, not training or medical advice. Consult a doctor before starting new activity, especially with chronic conditions.',es:'Información educativa, no consejo de entrenamiento ni médico. Consulte a un médico antes de iniciar nueva actividad, sobre todo con condiciones crónicas.'},
+    sport_injuries:{ru:'Профессиональные травмы',en:'Common injuries',es:'Lesiones frecuentes'},
+    injury_sports:{ru:'Связанные виды спорта',en:'Related sports',es:'Deportes relacionados'}
   };
   var CAT = {
     cognitive:{ru:'Когнитивные',en:'Cognitive',es:'Cognitivas'},
@@ -18375,6 +18558,7 @@ window.pbMove = pbMove;
     psychiatric:{ru:'Психиатрические',en:'Psychiatric',es:'Psiquiátricas'},
     gi:{ru:'ЖКТ',en:'Gastrointestinal',es:'Digestivas'},
     musculoskeletal:{ru:'Опорно-двигательные',en:'Musculoskeletal',es:'Musculoesqueléticas'},
+    'sports-injury':{ru:'Спортивные травмы',en:'Sports injuries',es:'Lesiones deportivas'},
     cardiovascular:{ru:'Сердечно-сосудистые',en:'Cardiovascular',es:'Cardiovasculares'},
     endocrine:{ru:'Эндокринные',en:'Endocrine',es:'Endocrinas'},
     neurological:{ru:'Неврологические',en:'Neurological',es:'Neurológicas'},
@@ -18534,7 +18718,7 @@ window.pbMove = pbMove;
     host.appendChild(card);
   }
 
-  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, sports:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, sportBySlug:{}, medsByDiag:{}, diagsByMed:{} };
+  var DATA = { fns:null, conds:null, circuits:null, relations:null, meds:null, medLinks:null, sports:null, sportInjuryLinks:null, byFnId:{}, byCondId:{}, fnBySlug:{}, condBySlug:{}, circById:{}, medBySlug:{}, sportBySlug:{}, medsByDiag:{}, diagsByMed:{}, injuriesBySport:{}, sportsByInjury:{} };
   var loading = false, loaded = false, activeTab = 'anatomy', curFn=null, curCond=null, curMed=null, curSport=null;
 
   function ensureData(cb){
@@ -18547,12 +18731,13 @@ window.pbMove = pbMove;
     // asset, not an API route — fetch it relative to account.html and merge it into
     // the Conditions list so it shows in ONE list with the human_conditions catalog.
     function gjStatic(u){ return fetch(u).then(function(r){ return r.ok?r.json():{}; }).catch(function(){ return {}; }); }
-    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2'), gj('/api/sports?limit=200') ])
+    Promise.all([ gj('/api/anatomy/functions?limit=500'), gj('/api/anatomy/conditions?limit=500'), gj('/api/anatomy/circuits'), gj('/api/anatomy/relations'), gj('/api/medications?limit=500'), gj('/api/medication-links'), gjStatic('data/diagnoses.json?v=2'), gj('/api/sports?limit=200'), gj('/api/sport-injuries') ])
       .then(function(res){
         DATA.fns = (res[0].functions)||[]; DATA.conds = (res[1].conditions)||[];
         DATA.circuits = (res[2].circuits)||[]; DATA.relations = (res[3].relations)||[];
         DATA.meds = (res[4].medications)||[]; DATA.medLinks = (res[5].links)||[];
         DATA.sports = (res[7].sports)||[]; DATA.sports.forEach(function(s){ DATA.sportBySlug[s.slug]=s; });
+        DATA.sportInjuryLinks = (res[8]&&res[8].links)||[];
         // PR#119: fold the 12 catalog diagnoses into DATA.conds as condition-shaped
         // rows. `regions` (schematic DX keys) map to real BodyAtlas seed-ids so they
         // focus/tint the SAME 3D atlas as the existing conditions. _isDx/_dx keep the
@@ -18566,6 +18751,11 @@ window.pbMove = pbMove;
         DATA.medLinks.forEach(function(l){
           (DATA.medsByDiag[l.diagnosis_slug] = DATA.medsByDiag[l.diagnosis_slug] || []).push(l);
           (DATA.diagsByMed[l.medication_slug] = DATA.diagsByMed[l.medication_slug] || []).push(l);
+        });
+        // build both directions of the sport↔injury cross-link (common_injuries)
+        DATA.sportInjuryLinks.forEach(function(l){
+          (DATA.injuriesBySport[l.sport_slug] = DATA.injuriesBySport[l.sport_slug] || []).push(l.diagnosis_slug);
+          (DATA.sportsByInjury[l.diagnosis_slug] = DATA.sportsByInjury[l.diagnosis_slug] || []).push(l.sport_slug);
         });
         loaded = true; loading = false; cb&&cb();
       });
@@ -18663,7 +18853,20 @@ window.pbMove = pbMove;
     brain_memory_hippocampus:['hippocampus'], brain_emotion_amygdala:['amygdala'],
     brain_attention_prefrontal:['frontal-lobe'], brain_motor_basal_ganglia:['basal-ganglia'],
     brain_dopaminergic:['basal-ganglia','midbrain'], brain_serotonergic:['brainstem'],
-    brain_glutamatergic:['cortex'], brain_gabaergic:['cortex']
+    brain_glutamatergic:['cortex'], brain_gabaergic:['cortex'],
+    // ── Sports: precise muscle groups collapse to the single 'muscles' GLB layer
+    //    (no per-group meshes exist) — the chip label stays precise, the 3D tint
+    //    lights the whole muscle wrap. Brain sub-regions map to real brain meshes;
+    //    spine sub-regions to the real vertebral seeds. Specific limb joints
+    //    (knee/ankle/shoulder/elbow/wrist/hand/foot) and soft tissues have no mesh
+    //    → they pass through unmatched and render as chips only (by design).
+    quadriceps:['muscles'], hamstrings:['muscles'], calves:['muscles'], glutes:['muscles'],
+    hip_flexors:['muscles'], core:['muscles'], obliques:['muscles'], deltoids:['muscles'],
+    latissimus:['muscles'], trapezius:['muscles'], pectorals:['muscles'], biceps:['muscles'],
+    triceps:['muscles'], forearms:['muscles'], rotator_cuff:['muscles'], erector_spinae:['muscles'],
+    tibialis:['muscles'],
+    motor_cortex:['frontal-lobe'], prefrontal_cortex:['frontal-lobe'], parietal_cortex:['parietal-lobe'],
+    spine_lumbar:['lumbar-spine'], spine_cervical:['cervical-spine']
   };
   var MED_GREEN = 0x4fd67e, MED_RED = 0xe85d6f;
   // PR#119 (Issue#2): resolve a medication organ-slug to BodyAtlas seed-ids. Known
@@ -18903,6 +19106,13 @@ window.pbMove = pbMove;
       if(pos){ h+='<div class="med-eff pos"><span class="med-eff-h">🟢 '+esc(tr(T.sport_improves))+'</span></div><div style="font-size:10px;color:#8df0ad;margin:0.2rem 0;">'+esc(tr(T.sport_tissues_pos))+'</div>'+pos; }
       if(neg){ h+='<div class="med-eff neg" style="margin-top:0.5rem;"><span class="med-eff-h">🔴 '+esc(tr(T.sport_load))+'</span></div><div style="font-size:10px;color:#ff9aa8;margin:0.2rem 0;">'+esc(tr(T.sport_tissues_neg))+'</div>'+neg; }
       var warn=fld(s,'warning'); if(warn){ h+='<div class="med-warn">⚠️ '+esc(warn)+'</div>'; }
+      // Common injuries → clickable chips that jump to the injury diagnosis card
+      var inj=(DATA.injuriesBySport[s.slug]||[]);
+      if(inj.length){
+        h+='<div class="ha-side-h">🩹 '+esc(tr(T.sport_injuries))+'</div>';
+        h+=inj.map(function(dslug){ var c=DATA.condBySlug[dslug];
+          return '<span class="ha-chip link" onclick="haGoCondition(\''+esc(dslug)+'\')">'+esc(c?nm(c):dslug.replace(/-/g,' '))+'</span>'; }).join('');
+      }
       if(window.schedButtonHtml) h+=window.schedButtonHtml('sport', s.slug, nm(s));
       h+='<div class="med-disclaimer">'+esc(tr(T.sport_disclaimer))+'</div>';
       openDetail(h);
@@ -19003,6 +19213,13 @@ window.pbMove = pbMove;
           var pt=l.is_primary?' <span class="med-kind medication">'+esc(tr(T.primary_tag))+'</span>':'';
           return '<span class="ha-chip link" onclick="haGoMedication(\''+l.medication_slug+'\')">'+esc(nm(m))+pt+'</span>'; }).join('');
       }
+      // Related sports: sports whose characteristic injury IS this diagnosis → back to the sport card
+      var sportLinks=(DATA.sportsByInjury[c.slug]||[]);
+      if(sportLinks.length){
+        h+='<div class="ha-side-h">🏃 '+esc(tr(T.injury_sports))+'</div>';
+        h+=sportLinks.map(function(sslug){ var s=DATA.sportBySlug[sslug];
+          return '<span class="ha-chip link" onclick="haGoSport(\''+esc(sslug)+'\')">'+esc(s?nm(s):sslug.replace(/-/g,' '))+'</span>'; }).join('');
+      }
       // PR#119: catalog-diagnosis clinical detail (symptoms / complications from diagnoses.json)
       if(c._isDx && c._dx){
         if(c._dx.icd10){ h+='<div class="ha-side-meta">ICD-10: '+esc(c._dx.icd10)+'</div>'; }
@@ -19049,7 +19266,45 @@ window.pbMove = pbMove;
     brain_dopaminergic:{ru:'дофаминовая система',en:'dopaminergic system',es:'sistema dopaminérgico'},
     brain_serotonergic:{ru:'серотониновая система',en:'serotonergic system',es:'sistema serotoninérgico'},
     brain_glutamatergic:{ru:'глутаматная система',en:'glutamatergic system',es:'sistema glutamatérgico'},
-    brain_gabaergic:{ru:'ГАМК-система',en:'GABAergic system',es:'sistema GABAérgico'}
+    brain_gabaergic:{ru:'ГАМК-система',en:'GABAergic system',es:'sistema GABAérgico'},
+    // ── Sports: precise muscle groups, brain regions, spine + limb joints ──
+    quadriceps:{ru:'квадрицепсы',en:'quadriceps',es:'cuádriceps'},
+    hamstrings:{ru:'задняя поверхность бедра',en:'hamstrings',es:'isquiotibiales'},
+    calves:{ru:'икроножные мышцы',en:'calves',es:'gemelos'},
+    glutes:{ru:'ягодичные мышцы',en:'glutes',es:'glúteos'},
+    hip_flexors:{ru:'сгибатели бедра',en:'hip flexors',es:'flexores de cadera'},
+    core:{ru:'мышцы кора',en:'core',es:'core'},
+    obliques:{ru:'косые мышцы живота',en:'obliques',es:'oblicuos'},
+    deltoids:{ru:'дельтовидные мышцы',en:'deltoids',es:'deltoides'},
+    latissimus:{ru:'широчайшие мышцы спины',en:'lats',es:'dorsales'},
+    trapezius:{ru:'трапециевидные мышцы',en:'trapezius',es:'trapecio'},
+    pectorals:{ru:'грудные мышцы',en:'pectorals',es:'pectorales'},
+    biceps:{ru:'бицепсы',en:'biceps',es:'bíceps'},
+    triceps:{ru:'трицепсы',en:'triceps',es:'tríceps'},
+    forearms:{ru:'предплечья',en:'forearms',es:'antebrazos'},
+    rotator_cuff:{ru:'вращательная манжета',en:'rotator cuff',es:'manguito rotador'},
+    erector_spinae:{ru:'разгибатели спины',en:'erector spinae',es:'erectores de la columna'},
+    tibialis:{ru:'передняя большеберцовая мышца',en:'tibialis',es:'tibial anterior'},
+    motor_cortex:{ru:'моторная кора',en:'motor cortex',es:'corteza motora'},
+    prefrontal_cortex:{ru:'префронтальная кора',en:'prefrontal cortex',es:'corteza prefrontal'},
+    parietal_cortex:{ru:'теменная кора',en:'parietal cortex',es:'corteza parietal'},
+    hippocampus:{ru:'гиппокамп',en:'hippocampus',es:'hipocampo'},
+    cerebellum:{ru:'мозжечок',en:'cerebellum',es:'cerebelo'},
+    cardiovascular:{ru:'сердечно-сосудистая система',en:'cardiovascular system',es:'sistema cardiovascular'},
+    spine_lumbar:{ru:'поясничный отдел',en:'lumbar spine',es:'columna lumbar'},
+    spine_cervical:{ru:'шейный отдел',en:'cervical spine',es:'columna cervical'},
+    knee:{ru:'коленный сустав',en:'knee',es:'rodilla'},
+    ankle:{ru:'голеностоп',en:'ankle',es:'tobillo'},
+    shoulder:{ru:'плечевой сустав',en:'shoulder',es:'hombro'},
+    elbow:{ru:'локоть',en:'elbow',es:'codo'},
+    wrist:{ru:'запястье',en:'wrist',es:'muñeca'},
+    hand:{ru:'кисть',en:'hand',es:'mano'},
+    hip:{ru:'тазобедренный сустав',en:'hip',es:'cadera'},
+    foot:{ru:'стопа',en:'foot',es:'pie'},
+    achilles:{ru:'ахиллово сухожилие',en:'Achilles tendon',es:'tendón de Aquiles'},
+    plantar_fascia:{ru:'подошвенная фасция',en:'plantar fascia',es:'fascia plantar'},
+    nose:{ru:'нос',en:'nose',es:'nariz'},
+    orbital:{ru:'глазница',en:'eye socket',es:'órbita ocular'}
   };
   function organLabel(s){ var o=ORGAN_LABEL[s]; return o?tr(o):String(s||'').replace(/[_-]/g,' '); }
   var medQuery='', medCat='', medKind='';
@@ -19196,6 +19451,9 @@ window.pbMove = pbMove;
 
   /* ── cross-navigation ───────────────────────────────────────────────────── */
   window.haGoFunction=function(slug){ haSwitchTab('functions'); setTimeout(function(){ var i=document.getElementById('ha-fn-search'); if(i) i.value=''; fnQuery=''; fnCat=''; haSelectFunction(slug); },30); };
+  // Sports live inside the Functions tab under fnMode='sport' — switch tab, flip the
+  // Functions/Sports mode toggle, then open the sport detail card.
+  window.haGoSport=function(slug){ haSwitchTab('functions'); setTimeout(function(){ var i=document.getElementById('ha-fn-search'); if(i) i.value=''; fnQuery=''; if(typeof haFnMode==='function') haFnMode('sport'); if(typeof haSelectSport==='function') haSelectSport(slug); },40); };
   window.haGoCondition=function(slug){ haSwitchTab('conditions'); setTimeout(function(){ var i=document.getElementById('ha-cond-search'); if(i) i.value=''; condQuery=''; condCat=''; haSelectCondition(slug); },30); };
   window.haGoRegionMulti=function(csv){ var ids=(csv||'').split(',').filter(Boolean); haSwitchTab('anatomy'); setTimeout(function(){ focus(ids); },40); };
 
@@ -19207,6 +19465,7 @@ window.pbMove = pbMove;
   function localize(){
     var map=[['ha-tab-anatomy',T.tab_anatomy],['ha-tab-functions',T.tab_functions],['ha-tab-conditions',T.tab_conditions],['ha-tab-medications',T.tab_medications],['ha-tab-diet',T.tab_diet]];
     map.forEach(function(p){ var el=document.getElementById(p[0]); if(el){ var sp=el.querySelector('span'); if(sp) sp.textContent=tr(p[1]); } });
+    var as=document.getElementById('atlas-search-input'); if(as) as.placeholder=tr(T.atlas_search);
     var fs=document.getElementById('ha-fn-search'); if(fs) fs.placeholder=tr(T.fn_search);
     var cs=document.getElementById('ha-cond-search'); if(cs) cs.placeholder=tr(T.cond_search);
     var ms=document.getElementById('ha-med-search'); if(ms) ms.placeholder=tr(T.med_search);
