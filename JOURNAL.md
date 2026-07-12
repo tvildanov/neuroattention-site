@@ -92,3 +92,66 @@
 - decisions: Experimental backend сохранён для обратной совместимости; st._w=0 сброс для принудительного пересчёта pxPerDay в ensureView()
 - followups: проверить #133 на реальных данных (дублирующий Пуэльче) после деплоя
 - next_session: TODO-prod-hygiene (test-юзеры в БД) ждёт решения Тахира
+
+## 2026-07-11T23:15:00Z — claude-opus (Exercises & Tests feature)
+
+- did:
+  - New **Exercises & Tests** tool (Tools sub-tab «Упражнения и тесты»): 10
+    evidence-based canvas cognitive exercises — N-back, Stroop, ANT, SART, Corsi,
+    Digit Span, Go/No-Go, Task Switching, Trail Making A/B, Attentional Blink.
+  - assets/js/exercises/_engine.js + 10 self-contained modules (mount(host,opts,
+    onComplete) contract, 1-10 levels, 3-2-1 countdown, accuracy/RT/composite score).
+  - Backend: migration **060** (exercise_definitions + exercise_results, seeded from
+    api/exercises-seed.js w/ real clinical citations) + REST GET /api/exercises[/:slug],
+    POST /api/exercises/result (personal-best + percentile + Path mirror),
+    GET /api/me/exercises/results.
+  - Personal Path: kind='exercise' lane + «🧠 Упражнения» toggle (server whitelist
+    L8342/L8479 + evolution-path.js LAYERS/LAYER_YFRAC/nmPathColor/EVENT_LABELS).
+  - Course Builder: exercises embeddable as tool_task blocks (courseAddExercise picker
+    + inline cpRenderExercise/cpMountExercise/cpDisposeExercise player).
+  - i18n a.tools.exercises (ru/en/es). Launcher UI (grid → level + mini brain-atlas +
+    clinical evidence → play → result + POST).
+- changed: account.html, api/server.js, assets/js/evolution-path.js, api/exercises-seed.js
+  (new), assets/js/exercises/*.js (11 new), data/i18n/{ru,en,es}.json.
+- committed: feat/exercises-tests @ 09bdbe2 (MY files only, by explicit path).
+- verify: 10/10 modules register + mount clean (error-free console, correct control
+  counts, dispose fns) via standalone harness. Node --check passes on all JS. Visual/
+  gameplay + prod fresh-user pass DEFERRED (headless viewport is 0-width; and deploy
+  is on hold — see below).
+- decisions:
+  - Used migration **060** (actual next-free on main), NOT the task's guessed 062.
+  - **HOLD on merge/deploy/SW-bump.** File mtimes proved a CONCURRENT worker was
+    editing this SAME tree mid-session (api/library-seed.js @23:02, sw.js→v53 «Library
+    content pass» @23:04, new untracked api/library-ru/) — between my own edits. My
+    SW v52→v53 bump collided with theirs. Committed only my files, left their WIP
+    untouched. Did NOT push to main / deploy / run prod migrations.
+- followups:
+  - Reconcile ONE SW version covering BOTH features (their Library v53 + Exercises → v54)
+    before deploy; my commit has NO sw.js bump.
+  - After backend deploy: POST /api/run-migrations to create mig060 tables + seed 10 rows.
+  - Prod fresh-user pass (register throwaway, walk the real Tools→Упражнения UI, run an
+    exercise, confirm result saves + Path «Упражнения» marker appears).
+- next_session: coordinate merge with the concurrent Library pass; push branch + open PR.
+
+## 2026-07-12T00:05:00Z — claude-opus (Exercises addendum: 6 screening tests)
+
+- did: Added 6 validated screening self-report tests (kind='screening_test') to the
+  Exercises tab → 16 tools total: PHQ-9 (depression), GAD-7 (anxiety), ASRS-v1.1
+  (adult ADHD), PCL-5 (PTSD), MDQ (bipolar), AQ-10 (autism traits). Deliberately
+  EXCLUDED antisocial/"sociopathy" (no valid user-facing instrument; PCL-R is
+  clinician-only) per Nick's guidance.
+- verify: Item text + scoring VERIFIED against authoritative sources via 3 web-research
+  agents (Kroenke 2001, Spitzer 2006, Kessler 2005/WHO, Weathers 2013/NCPTSD,
+  Hirschfeld 2000, Allison 2012). 20 scoring reference cases pass. Full browser flow
+  verified: account.html loads clean (0 console errors), grid→screener→questionnaire,
+  submit-gating, PHQ-9 item-9 crisis banner fires.
+- changed: account.html, api/server.js (exercise_definitions.kind col), api/exercises-seed.js
+  (6 rows), + new assets/js/exercises/screening.js + screening-data.js (tri-lingual).
+- committed: feat/exercises-tests @ aa17876 (my files only; co-founder sw.js/library-seed.js
+  WIP still untouched; origin/main advanced to c623b08 Library A4 pass w/ SW v53).
+- decisions: kind='screening_test' column added to exercise_definitions (mig060 + ALTER).
+  Data-driven scoring (sum|threshold|aq10|mdq|pcl5). Every result shows NOT-A-DIAGNOSIS
+  disclaimer + citation + validity. Screeners course-embeddable too.
+- followups: UNCHANGED — SW must become v54 (v53 taken by merged Library pass); rebase
+  feat/exercises-tests onto origin/main before merge; run mig060 after backend deploy;
+  prod fresh-user pass. Deploy still HELD pending SW reconciliation + review.
