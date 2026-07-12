@@ -1027,6 +1027,21 @@ a.dash-tab:hover { text-decoration:none; }
         <div id="ext-req-mine"></div>
       </div>
     </div>
+
+    <!-- External Calendar OAuth — Google / Apple iCloud / Outlook. Rendered by the
+         standalone calSync module (the last script block before the body close).
+         Hidden until the EXTERNAL_CALENDARS flag is on server-side; the module
+         localizes all text. -->
+    <div class="dash-card glass-card-elevated" id="cal-connect-card" style="margin-top:1.5rem;display:none;">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;">
+        <span>📅</span><span id="cal-connect-title" style="font-size:15px;font-weight:600;color:var(--text-primary);">Подключенные календари</span>
+      </div>
+      <p id="cal-connect-sub" style="margin:0 0 0.9rem;font-size:12px;color:var(--text-muted);"></p>
+      <div id="cal-accounts-list" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+      <div id="cal-connect-buttons" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.9rem;"></div>
+      <div id="cal-sync-log" style="margin-top:0.9rem;font-size:11px;color:var(--text-muted);"></div>
+      <div id="cal-status-msg" style="margin-top:0.6rem;font-size:12px;"></div>
+    </div>
   </div>
 
   <!-- TAB: Program (modules) -->
@@ -5227,7 +5242,7 @@ function switchTab(id){
     evoMaybeShowCollective();
   }
   // PR#119: refresh the Profile-tab "Мои документы" section when Profile is shown.
-  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} }, 40); }
+  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} try{ window.calLoad && window.calLoad(); }catch(e){} }, 40); }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -20732,6 +20747,225 @@ window.pbMove = pbMove;
       .then(function(d){ if(d&&d.ok){ window.extAdminLoadQueue(); } else { alert((d&&d.error)||'Error'); } })
       .catch(function(){});
   };
+})();
+</script>
+
+<!-- ═══ External Calendar OAuth (Google / Apple iCloud / Outlook) ═══════════════
+     Standalone module: renders the "Connected calendars" card in the Profile
+     overview, drives the OAuth popup flow, the Apple CalDAV connect modal, on-demand
+     refresh, and disconnect. Trilingual via a local T map (avoids the a.* i18n
+     footgun). Reads API_BASE / naAuthHeaders / getLang defined earlier. -->
+<script>
+(function(){
+  var LANG = function(){ try { return (typeof getLang==='function'?getLang():'ru'); } catch(e){ return 'ru'; } };
+  var T = {
+    title:      { ru:'Подключенные календари', en:'Connected calendars', es:'Calendarios conectados' },
+    sub:        { ru:'События из внешних календарей появляются в «Пути развития» и «Календаре» с меткой 📥. Автосинк раз в 6 часов.',
+                  en:'Events from external calendars appear in your Evolution Path and Calendar tagged 📥. Auto-sync every 6 hours.',
+                  es:'Los eventos de calendarios externos aparecen en tu Camino y Calendario con la marca 📥. Sincronización cada 6 horas.' },
+    connect_g:  { ru:'Подключить Google Calendar', en:'Connect Google Calendar', es:'Conectar Google Calendar' },
+    connect_m:  { ru:'Подключить Outlook', en:'Connect Outlook', es:'Conectar Outlook' },
+    connect_a:  { ru:'Подключить Apple iCloud', en:'Connect Apple iCloud', es:'Conectar Apple iCloud' },
+    refresh:    { ru:'Обновить', en:'Refresh', es:'Actualizar' },
+    disconnect: { ru:'Отключить', en:'Disconnect', es:'Desconectar' },
+    never:      { ru:'ещё не синхронизировано', en:'not synced yet', es:'aún no sincronizado' },
+    last_sync:  { ru:'Синхр.:', en:'Last sync:', es:'Últ. sinc.:' },
+    reauth:     { ru:'⚠ требуется повторный вход', en:'⚠ needs re-auth', es:'⚠ requiere reconexión' },
+    syncing:    { ru:'Синхронизация…', en:'Syncing…', es:'Sincronizando…' },
+    synced:     { ru:'Готово: +%a новых, ~%u обновлено', en:'Done: +%a added, ~%u updated', es:'Listo: +%a nuevos, ~%u actualizados' },
+    confirm_dc: { ru:'Отключить этот календарь? Импортированные события будут удалены.', en:'Disconnect this calendar? Imported events will be removed.', es:'¿Desconectar este calendario? Los eventos importados se eliminarán.' },
+    provider_off:{ru:'провайдер не настроен (нет client_id)', en:'provider not configured (no client_id)', es:'proveedor no configurado (sin client_id)' },
+    apple_title:{ ru:'Подключить Apple iCloud', en:'Connect Apple iCloud', es:'Conectar Apple iCloud' },
+    apple_help: { ru:'Apple не поддерживает OAuth для сторонних приложений — это ограничение Apple. Нужен app-specific password: appleid.apple.com → «Вход и безопасность» → «Пароли приложений» → создать «NeuroAttention».',
+                  en:'Apple does not support OAuth for third-party apps — an Apple limitation. You need an app-specific password: appleid.apple.com → Sign-In & Security → App-Specific Passwords → create "NeuroAttention".',
+                  es:'Apple no admite OAuth para apps de terceros. Necesitas una contraseña específica de app: appleid.apple.com → Inicio de sesión y seguridad → Contraseñas de apps → crear "NeuroAttention".' },
+    apple_email:{ ru:'Apple ID (email)', en:'Apple ID (email)', es:'Apple ID (email)' },
+    apple_pass: { ru:'App-specific password', en:'App-specific password', es:'Contraseña específica de app' },
+    save:       { ru:'Подключить', en:'Connect', es:'Conectar' },
+    cancel:     { ru:'Отмена', en:'Cancel', es:'Cancelar' },
+    apple_fail: { ru:'Неверный Apple ID или app-specific password', en:'Wrong Apple ID or app-specific password', es:'Apple ID o contraseña incorrectos' },
+    log_head:   { ru:'История синхронизации', en:'Sync history', es:'Historial de sincronización' }
+  };
+  function t(k){ var e=T[k]||{}; return e[LANG()]||e.ru||k; }
+  function api(){ try { return API_BASE; } catch(e){ return 'https://neuroattention-api-production.up.railway.app'; } }
+  function hdrs(){ try { return naAuthHeaders(); } catch(e){ return {'Content-Type':'application/json'}; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function el(id){ return document.getElementById(id); }
+  function msg(text, ok){ var m=el('cal-status-msg'); if(m){ m.textContent=text||''; m.style.color=ok===false?'#ff6b6b':(ok?'#6be89b':'var(--text-muted)'); } }
+  function relTime(iso){
+    if(!iso) return t('never');
+    var d=new Date(iso), s=Math.floor((Date.now()-d.getTime())/1000);
+    if(isNaN(s)) return t('never');
+    if(s<60) return LANG()==='ru'?'только что':(LANG()==='es'?'ahora':'just now');
+    if(s<3600) return Math.floor(s/60)+(LANG()==='ru'?' мин назад':' min ago');
+    if(s<86400) return Math.floor(s/3600)+(LANG()==='ru'?' ч назад':' h ago');
+    return Math.floor(s/86400)+(LANG()==='ru'?' дн назад':' d ago');
+  }
+  var PROV_META = {
+    google:    { icon:'🟦', name:'Google Calendar' },
+    microsoft: { icon:'🟧', name:'Outlook' },
+    apple:     { icon:'', name:'Apple iCloud' }
+  };
+
+  var lastStatus = null;
+
+  window.calLoad = function(){
+    var card = el('cal-connect-card'); if(!card) return;
+    fetch(api()+'/api/me/calendars', { headers:hdrs() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d || !d.status){ card.style.display='none'; return; }
+        lastStatus = d.status;
+        if(!d.status.enabled){ card.style.display='none'; return; } // feature flag OFF → hide entirely
+        card.style.display='block';
+        el('cal-connect-title').textContent = t('title');
+        el('cal-connect-sub').textContent = t('sub');
+        renderAccounts(d.accounts||[]);
+        renderButtons(d.status.providers||{}, d.accounts||[]);
+        loadLog();
+      })
+      .catch(function(){ card.style.display='none'; });
+  };
+
+  function renderAccounts(accounts){
+    var wrap = el('cal-accounts-list'); if(!wrap) return;
+    if(!accounts.length){ wrap.innerHTML=''; return; }
+    wrap.innerHTML = accounts.map(function(a){
+      var meta = PROV_META[a.provider] || { icon:'📅', name:a.provider };
+      var reauth = a.needs_reauth ? ' <span style="color:#ff6b6b">'+t('reauth')+'</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:0.6rem 0.8rem;">'
+        + '<span style="font-size:15px">'+ (meta.icon||'📅') +'</span>'
+        + '<div style="flex:1;min-width:140px;"><div style="font-weight:600;font-size:13px;color:var(--text-primary)">'+esc(meta.name)+'</div>'
+        + '<div style="font-size:11px;color:var(--text-muted)">'+esc(a.account_email||'')+' · '+t('last_sync')+' '+relTime(a.last_sync_at)+reauth+'</div></div>'
+        + '<button data-sync="'+esc(a.provider)+'" style="'+btnCss()+'">'+t('refresh')+'</button>'
+        + '<button data-dc="'+a.id+'" style="'+btnCss(true)+'">'+t('disconnect')+'</button>'
+        + '</div>';
+    }).join('');
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-sync]'), function(b){ b.onclick=function(){ syncNow(b.getAttribute('data-sync')); }; });
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-dc]'), function(b){ b.onclick=function(){ disconnect(b.getAttribute('data-dc')); }; });
+  }
+
+  function btnCss(danger){
+    return 'background:'+(danger?'rgba(255,107,107,0.12)':'rgba(255,255,255,0.06)')+';color:'+(danger?'#ff8f8f':'var(--text-primary)')
+      +';border:1px solid '+(danger?'rgba(255,107,107,0.3)':'rgba(255,255,255,0.16)')+';border-radius:9px;padding:0.35rem 0.7rem;font-size:12px;cursor:pointer;font-family:inherit;';
+  }
+
+  function renderButtons(providers, accounts){
+    var wrap = el('cal-connect-buttons'); if(!wrap) return;
+    var html = '';
+    function btn(prov, label){
+      var cfg = providers[prov] || {};
+      if(!cfg.configured){
+        html += '<button disabled title="'+esc(t('provider_off'))+'" style="'+btnCss()+'opacity:0.45;cursor:not-allowed;">'+esc(label)+'</button>';
+      } else {
+        html += '<button data-connect="'+prov+'" style="'+btnCss()+'">'+esc(label)+'</button>';
+      }
+    }
+    btn('google', t('connect_g'));
+    btn('microsoft', t('connect_m'));
+    btn('apple', t('connect_a')); // apple always "configured" (needs only user app-password)
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-connect]'), function(b){
+      var p=b.getAttribute('data-connect');
+      b.onclick=function(){ p==='apple' ? openAppleModal() : startOAuth(p); };
+    });
+  }
+
+  function startOAuth(provider){
+    msg(t('syncing'));
+    fetch(api()+'/api/oauth/'+provider+'/authorize', { headers:hdrs() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.url){ msg(''); window.open(d.url, 'cal_oauth', 'width=520,height=680'); }
+        else { msg((d&&d.error)||'error', false); }
+      })
+      .catch(function(){ msg('error', false); });
+  }
+
+  // OAuth popup → server callback postMessages back here.
+  window.addEventListener('message', function(e){
+    if(!e.data || e.data.type!=='calendar-oauth') return;
+    if(e.data.ok){ msg(''); setTimeout(window.calLoad, 400); }
+    else { msg((e.data.detail||'error'), false); }
+  });
+
+  function syncNow(provider){
+    msg(t('syncing'));
+    fetch(api()+'/api/calendars/'+provider+'/sync', { method:'POST', headers:hdrs() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.ok){ msg(t('synced').replace('%a',d.added||0).replace('%u',d.updated||0), true); window.calLoad(); }
+        else { msg((d&&d.error)||'error', false); }
+      })
+      .catch(function(){ msg('error', false); });
+  }
+
+  function disconnect(id){
+    if(!confirm(t('confirm_dc'))) return;
+    fetch(api()+'/api/me/calendars/'+id, { method:'DELETE', headers:hdrs() })
+      .then(function(r){ return r.json(); })
+      .then(function(){ window.calLoad(); })
+      .catch(function(){});
+  }
+
+  function loadLog(){
+    var box = el('cal-sync-log'); if(!box) return;
+    fetch(api()+'/api/me/calendars/sync-log?limit=5', { headers:hdrs() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var rows = (d&&d.log)||[];
+        if(!rows.length){ box.innerHTML=''; return; }
+        box.innerHTML = '<div style="font-weight:600;margin-bottom:0.3rem;color:var(--text-muted)">'+t('log_head')+'</div>'
+          + rows.map(function(r){
+              var when=new Date(r.ran_at); var ws=isNaN(when.getTime())?'':when.toLocaleString();
+              var m=(PROV_META[r.provider]||{}).name||r.provider;
+              var res = r.error ? ('<span style="color:#ff6b6b">'+esc(r.error).slice(0,60)+'</span>') : ('+'+(r.events_added||0)+' / ~'+(r.events_updated||0));
+              return '<div>'+esc(ws)+' · '+esc(m)+' · '+res+'</div>';
+            }).join('');
+      })
+      .catch(function(){});
+  }
+
+  // ---- Apple CalDAV connect modal (built on demand) ----
+  function openAppleModal(){
+    if(el('cal-apple-modal')) el('cal-apple-modal').remove();
+    var ov=document.createElement('div');
+    ov.id='cal-apple-modal';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    ov.innerHTML='<div style="background:#0e141b;border:1px solid rgba(255,255,255,0.14);border-radius:16px;max-width:440px;width:100%;padding:1.4rem;">'
+      +'<h3 style="margin:0 0 0.6rem;font-size:16px;color:var(--text-primary)"> '+esc(t('apple_title'))+'</h3>'
+      +'<p style="margin:0 0 1rem;font-size:12px;line-height:1.5;color:var(--text-muted)">'+esc(t('apple_help'))
+      +' <a href="https://appleid.apple.com" target="_blank" rel="noopener" style="color:var(--accent-cyan)">appleid.apple.com ↗</a></p>'
+      +'<input id="cal-apple-email" type="email" placeholder="'+esc(t('apple_email'))+'" class="glass-input" style="width:100%;margin-bottom:0.6rem;" autocomplete="off">'
+      +'<input id="cal-apple-pass" type="password" placeholder="'+esc(t('apple_pass'))+'" class="glass-input" style="width:100%;margin-bottom:0.4rem;" autocomplete="off">'
+      +'<div id="cal-apple-err" style="font-size:12px;color:#ff6b6b;min-height:16px;margin-bottom:0.5rem;"></div>'
+      +'<div style="display:flex;gap:0.5rem;justify-content:flex-end;">'
+      +'<button id="cal-apple-cancel" style="'+btnCss()+'">'+esc(t('cancel'))+'</button>'
+      +'<button id="cal-apple-save" style="background:var(--accent-cyan);color:#04121a;border:none;border-radius:9px;padding:0.4rem 0.9rem;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">'+esc(t('save'))+'</button>'
+      +'</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.remove(); });
+    el('cal-apple-cancel').onclick=function(){ ov.remove(); };
+    el('cal-apple-save').onclick=function(){
+      var email=(el('cal-apple-email').value||'').trim();
+      var pass=(el('cal-apple-pass').value||'').trim();
+      var err=el('cal-apple-err');
+      if(!email||!pass){ err.textContent='—'; return; }
+      el('cal-apple-save').disabled=true; err.textContent=t('syncing');
+      fetch(api()+'/api/calendars/apple/connect', { method:'POST', headers:hdrs(), body:JSON.stringify({ email:email, app_password:pass }) })
+        .then(function(r){ return r.json().then(function(j){ return {status:r.status,j:j}; }); })
+        .then(function(res){
+          if(res.status===200 && res.j.ok){ ov.remove(); setTimeout(window.calLoad,400); }
+          else if(res.status===401){ err.textContent=t('apple_fail'); el('cal-apple-save').disabled=false; }
+          else { err.textContent=(res.j&&res.j.message)||(res.j&&res.j.error)||'error'; el('cal-apple-save').disabled=false; }
+        })
+        .catch(function(){ err.textContent='error'; el('cal-apple-save').disabled=false; });
+    };
+  }
+
+  // Load on first paint if the Profile tab is already visible.
+  if(document.readyState!=='loading'){ setTimeout(function(){ try{ window.calLoad(); }catch(e){} }, 300); }
+  else document.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ try{ window.calLoad(); }catch(e){} }, 300); });
 })();
 </script>
 </body>
