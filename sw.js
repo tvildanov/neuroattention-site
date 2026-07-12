@@ -118,7 +118,13 @@
 //      human_conditions, with a reverse "related sports" link on the diagnosis card.
 //      Migrations 060 (tissue precision) + 061 (sport_injuries + injury conditions).
 //      body-atlas.js?v=37→v38. Purges any stale account.html + body-atlas.js.
-var CACHE_NAME = 'na-practices-v53';
+// v54: Library content pass (Feat 2) — full A4-min articles, freely-licensed
+//      Wikimedia figures, bilingual EN/RU content (content.ru), a realtime
+//      cross-kind search bar (/api/library/search), and +15 evidence-based
+//      methods (CBT/DBT/ACT/IFS/EMDR/SE/MBSR/Vipassana/Wim Hof/TMS/
+//      neurofeedback/ketamine/psilocybin/MDMA/somatic-trauma). Re-run
+//      /api/run-migrations to refresh migration 058 seed. Purges stale account.html.
+var CACHE_NAME = 'na-practices-v54';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

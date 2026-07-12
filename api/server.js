@@ -11228,6 +11228,59 @@ app.get('/api/library', async (req, res) => {
   } catch (err) { console.error('GET /api/library:', err); res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/library/search?q=&lang=&limit= — ranked full-text search across ALL kinds.
+// Registered BEFORE /api/library/:kind so "search" is never matched as a kind.
+// Ranking: title match > kind/topic/synonym match > body match. Returns a flat,
+// ranked list with a short snippet for the realtime dropdown + results page.
+app.get('/api/library/search', async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().slice(0, 5);
+    const q = (req.query.q || '').toString().trim().toLowerCase();
+    const limit = Math.min(parseInt(req.query.limit, 10) || 25, 60);
+    if (q.length < 2) return res.json({ ok: true, q, lang, items: [] });
+    const kindLabel = { terms: 'terms glossary', articles: 'articles', theories: 'theories', research: 'research', functions: 'functions', methods: 'methods' };
+    const out = [];
+    for (const kind of Object.keys(LIBRARY_KINDS)) {
+      let rows;
+      try { rows = await libSelectAll(kind); } catch (e) { rows = []; }
+      for (const r of rows) {
+        const loc = libLocalize(r, lang);
+        const c = loc.content || {};
+        const title = String(libTitleOf(loc) || '');
+        const tl = title.toLowerCase();
+        // Secondary fields that deserve a mid-tier boost.
+        const secParts = [c.summary, c.definition, c.abbr, c.proponents, r.topic,
+          Array.isArray(c.synonyms) ? c.synonyms.join(' ') : '',
+          Array.isArray(r.related_slugs) ? r.related_slugs.join(' ') : '',
+          Array.isArray(r.authors) ? r.authors.join(' ') : ''].filter(Boolean).join(' • ');
+        const sl = secParts.toLowerCase();
+        const bodyStr = JSON.stringify(c).toLowerCase();
+        let score = 0;
+        if (tl === q) score += 200;
+        else if (tl.startsWith(q)) score += 140;
+        else if (tl.includes(q)) score += 100;
+        if ((kindLabel[kind] || kind).includes(q)) score += 25;
+        if (sl.includes(q)) score += 40;
+        if (!score && bodyStr.includes(q)) score += 12;
+        else if (score && bodyStr.includes(q)) score += 5;
+        if ((r.slug || '').includes(q)) score += 8;
+        if (!score) continue;
+        // Build a short snippet around the first body match.
+        let snippet = c.summary || c.definition || '';
+        if (!snippet && bodyStr.includes(q)) {
+          const plain = JSON.stringify(c).replace(/<[^>]*>/g, ' ').replace(/[{}\[\]"]/g, ' ').replace(/\s+/g, ' ');
+          const idx = plain.toLowerCase().indexOf(q);
+          if (idx >= 0) snippet = (idx > 40 ? '…' : '') + plain.slice(Math.max(0, idx - 40), idx + 80).trim() + '…';
+        }
+        snippet = String(snippet).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+        out.push({ kind, id: r.id, slug: r.slug, title, snippet, score });
+      }
+    }
+    out.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
+    res.json({ ok: true, q, lang, items: out.slice(0, limit).map(({ score, ...rest }) => rest) });
+  } catch (err) { console.error('GET /api/library/search:', err); res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/library/:kind?q=&lang= — list one kind (localized).
 app.get('/api/library/:kind', async (req, res) => {
   try {
