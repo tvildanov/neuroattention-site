@@ -20564,7 +20564,7 @@ window.pbMove = pbMove;
     var listEl = panel.querySelector('#lib-note-list');
     var countEl = panel.querySelector('#lib-notes-count');
     function reload(){
-      api('/api/library-notes/'+kind+'/'+encodeURIComponent(it.slug)).then(function(j){
+      api('/api/library-notes/'+kind+'/'+encodeURIComponent(it.slug), {headers:hdrs()}).then(function(j){
         var notes=(j.notes||[]); itemNotesCache[kind+'|'+it.slug]=notes;
         countEl.textContent = notes.length ? '· '+notes.length : '';
         listEl.innerHTML = notes.length ? notes.map(function(n){ return noteCardHtml(n,{}); }).join('')
@@ -20627,7 +20627,7 @@ window.pbMove = pbMove;
   function renderNotesTab(){
     var body = state.root && state.root.querySelector('#lib-body'); if(!body) return;
     body.innerHTML = '<div class="lib-empty">'+esc(L('loading'))+'</div>';
-    api('/api/library-notes').then(function(j){
+    api('/api/library-notes', {headers:hdrs()}).then(function(j){
       notesTabState.all = j.notes||[];
       paintNotesTab();
     }).catch(function(){ body.innerHTML='<div class="lib-empty">'+esc(L('could_not'))+'</div>'; });
