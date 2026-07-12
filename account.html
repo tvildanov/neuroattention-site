@@ -867,6 +867,9 @@ a.dash-tab:hover { text-decoration:none; }
       </div>
     </div>
 
+    <!-- P8d: "Continue where you stopped" — last started but unfinished course -->
+    <div id="resume-card-host" style="display:none;margin-bottom:1.5rem;"></div>
+
     <!-- RPG Dashboard: Персональная операционная система -->
     <div id="rpg-dashboard" style="display:none;">
       <p style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.18em;margin:0 0 0.5rem;font-family:'Space Grotesk',sans-serif;" data-i18n="a.profile.personal_os">Персональная операционная система вашей личности</p>
@@ -1610,6 +1613,17 @@ a.dash-tab:hover { text-decoration:none; }
         .atlas-sr-name{font-size:12.5px;color:var(--text-primary,#e8edf2);}
         .atlas-sr-grp{font-size:10px;color:var(--text-muted,#8c98a6);white-space:nowrap;}
         .atlas-sr-empty{padding:0.55rem 0.65rem;font-size:12px;color:var(--text-muted,#8c98a6);}
+        /* P8e: recent + favorites */
+        .atlas-sr-star{font-size:13px;line-height:1;cursor:pointer;color:var(--text-muted,#8c98a6);padding:0 .2rem;flex-shrink:0;}
+        .atlas-sr-star.on{color:#ffcf5a;}
+        .atlas-sr-star:hover{color:#ffcf5a;}
+        .atlas-sr-sec{padding:0.35rem 0.65rem 0.2rem;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent-cyan,#7fe8dd);display:flex;align-items:center;justify-content:space-between;}
+        .atlas-sr-sec .clr{cursor:pointer;color:var(--text-muted,#8c98a6);text-transform:none;letter-spacing:0;font-size:11px;}
+        .atlas-sr-sec .clr:hover{color:#ffb3bf;}
+        .atlas-sr.fav-row{cursor:grab;}
+        .atlas-sr.fav-row.dragging{opacity:.45;}
+        .atlas-sr.fav-row.drag-over{border-top:2px solid var(--accent-cyan,#39d3c3);}
+        .atlas-sr-drag{color:var(--text-muted,#8c98a6);font-size:12px;flex-shrink:0;cursor:grab;}
         @media(max-width:760px){.atlas-search{max-width:none;margin:0.4rem 0 0;flex-basis:100%;}}
         .ha-cats{display:flex;flex-wrap:wrap;gap:0.3rem;}
         .ha-cat{background:rgba(168,247,255,0.05);border:1px solid rgba(168,247,255,0.12);color:var(--text-muted,#8c98a6);border-radius:20px;font-size:10.5px;padding:0.22rem 0.55rem;cursor:pointer;transition:.15s;white-space:nowrap;}
@@ -1800,6 +1814,12 @@ a.dash-tab:hover { text-decoration:none; }
             </div>
             <div class="atlas-actions">
               <button class="atlas-btn" onclick="atlasResetView()">⟲ <span data-i18n="a.tools.anatomy_reset">Сбросить вид</span></button>
+              <select id="atlas-compare-mode" onchange="atlasCompareSetMode(this.value)" style="display:none;background:rgba(168,247,255,0.06);border:1px solid rgba(168,247,255,0.2);color:var(--text-primary,#e8edf2);border-radius:8px;padding:0.3rem 0.5rem;font-size:12px;font-family:inherit;">
+                <option value="diag-pop" data-i18n="a.tools.cmp_diag_pop">Мои диагнозы · Популяция</option>
+                <option value="before-now" data-i18n="a.tools.cmp_before_now">Раньше · Сейчас</option>
+                <option value="me-child" data-i18n="a.tools.cmp_me_child">Моё · Ребёнка</option>
+              </select>
+              <button class="atlas-btn" id="atlas-compare-btn" onclick="atlasToggleCompare()">⚖️ <span data-i18n="a.tools.compare">Сравнить</span></button>
             </div>
           </div>
           <div class="atlas-body">
@@ -1917,6 +1937,7 @@ a.dash-tab:hover { text-decoration:none; }
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             3D
           </button>
+          <button class="nm-3d-toggle" onclick="nmToggleDaySummary()" id="nm-daysummary-toggle" style="display:none;" data-i18n="a.tools.day_summary" title="День в одном экране">📅 Дневник дня</button>
           <button class="nm-fs-btn" onclick="nmToggleFullscreen()" id="nm-fs-toggle" style="display:none;" data-i18n="a.tools.fullscreen">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
             <span data-i18n="a.tools.fullscreen">На весь экран</span>
@@ -1926,6 +1947,7 @@ a.dash-tab:hover { text-decoration:none; }
         <div id="nm-graph-wrap" style="position:relative;width:100%;height:420px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04);">
           <canvas id="nm-canvas" style="width:100%;height:100%;"></canvas>
           <div id="nm-3d-container"></div>
+          <div id="nm-daysummary-view" style="display:none;position:absolute;inset:0;overflow:auto;padding:0.9rem 1rem;background:rgba(6,10,16,0.55);"></div>
           <div id="nm-tooltip" style="display:none;position:absolute;padding:0.6rem 0.85rem;border-radius:10px;background:rgba(10,12,18,0.92);border:1px solid rgba(255,255,255,0.12);font-size:12px;color:var(--text-primary);pointer-events:none;z-index:5;max-width:220px;line-height:1.4;"></div>
           <div id="nm-empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:1.2rem;">
             <!-- Onboarding card -->
@@ -5227,7 +5249,7 @@ function switchTab(id){
     evoMaybeShowCollective();
   }
   // PR#119: refresh the Profile-tab "Мои документы" section when Profile is shown.
-  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} }, 40); }
+  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} try{ window.renderResumeCard && window.renderResumeCard(); }catch(e){} }, 40); }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -5278,6 +5300,13 @@ window.evoOpenSource = function(ev){
     else if(src === 'point_ab' || src === 'pointab' || kind === 'point_ab'){ switchTab('tools'); setToolsMode('pointab'); }
     else if(src.indexOf('diary') === 0 || kind === 'insight'){ switchTab('tools'); setToolsMode('diary'); }
     else if(src === 'calendar'){ switchTab('tools'); setToolsMode('cal'); }
+    else if(src === 'library_note' || kind === 'note'){
+      // P8a: deep-link a note event back to its Library article (+ scroll/flash to the passage)
+      var p = ev.payload||{}; var lk = p.lib_kind||'terms', ls = p.article_slug||p.slug;
+      if(ls){ try{ if(typeof window.librarySetHighlight==='function') window.librarySetHighlight(lk, ls, p.selected_text||''); }catch(e){}
+        if(typeof window.libraryOpen==='function'){ window.libraryOpen(lk, ls); } else { switchTab('tools'); setToolsMode('library'); } }
+      else { switchTab('tools'); setToolsMode('library'); }
+    }
     else if(src === 'practice' || src === 'course_block' || kind === 'practice' || kind === 'block_done'){ switchTab('courses'); }
     else { switchTab('tools'); setToolsMode('nm'); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -9716,6 +9745,8 @@ function nmToggleLabels(){
 }
 
 function nmToggle3D(){
+  // Day-summary and 3D are mutually exclusive render modes.
+  if(nmDaySummaryMode){ var dv=document.getElementById('nm-daysummary-view'); if(dv){ dv.style.display='none'; dv.innerHTML=''; } var db=document.getElementById('nm-daysummary-toggle'); if(db) db.classList.remove('active'); nmDaySummaryMode=false; var cc=document.getElementById('nm-canvas'); if(cc) cc.style.display=''; }
   nm3DMode = !nm3DMode;
   var btn = document.getElementById('nm-3d-toggle');
   var container3d = document.getElementById('nm-3d-container');
@@ -9735,6 +9766,114 @@ function nmToggle3D(){
     container3d.innerHTML = '';
     buildNmGraph();
   }
+}
+
+// ── P8c: "Day summary" (Дневник дня) — a compact one-screen overview of a day ──
+// A NeuroMap render MODE (sibling of 2D/3D). Aggregates the already-loaded
+// nmV2Graph.chains for a single calendar day: top-3 emotions / sensations /
+// themes, total flow count, and a 6:00–24:00 time-strip with a dot per chain.
+var nmDaySummaryMode=false, nmDsDate=null;
+function nmDsDayStart(ms){ var d=new Date(ms); d.setHours(0,0,0,0); return d.getTime(); }
+function nmDsL(){
+  var L={
+    ru:{ title:'Дневник дня', none:'В этот день нет записей.', flows:'потоков за день', concepts:'концептов',
+      emotions:'Топ эмоций', sensations:'Топ ощущений', themes:'Топ тем', timeline:'Хронология дня', today:'Сегодня', at:'в' },
+    en:{ title:'Day summary', none:'No entries for this day.', flows:'flows this day', concepts:'concepts',
+      emotions:'Top emotions', sensations:'Top sensations', themes:'Top themes', timeline:'Day timeline', today:'Today', at:'at' },
+    es:{ title:'Diario del día', none:'No hay registros este día.', flows:'flujos del día', concepts:'conceptos',
+      emotions:'Emociones top', sensations:'Sensaciones top', themes:'Temas top', timeline:'Cronología del día', today:'Hoy', at:'a las' }
+  };
+  var lg=(window.getLang&&getLang())||'ru'; return L[lg]||L.ru;
+}
+function nmToggleDaySummary(){
+  var view=document.getElementById('nm-daysummary-view');
+  var canvas=document.getElementById('nm-canvas');
+  var c3d=document.getElementById('nm-3d-container');
+  var tip=document.getElementById('nm-tooltip');
+  var btn=document.getElementById('nm-daysummary-toggle');
+  if(!nmDaySummaryMode){
+    if(nm3DMode) nmToggle3D();                                   // leave 3D first (flag still false so no bounce)
+    nmDaySummaryMode=true;
+    if(nmAnimFrame){ cancelAnimationFrame(nmAnimFrame); nmAnimFrame=null; }
+    if(canvas) canvas.style.display='none';
+    if(c3d) c3d.classList.remove('active');
+    if(tip) tip.style.display='none';
+    if(btn) btn.classList.add('active');
+    if(nmDsDate==null) nmDsDate=nmDsDayStart(Date.now());
+    if(view) view.style.display='';
+    nmRenderDaySummary();
+  } else {
+    nmDaySummaryMode=false;
+    if(btn) btn.classList.remove('active');
+    if(view){ view.style.display='none'; view.innerHTML=''; }
+    if(canvas) canvas.style.display='';
+    buildNmGraph();
+  }
+}
+window.nmToggleDaySummary=nmToggleDaySummary;
+window.nmDsShift=function(delta){ if(nmDsDate==null) nmDsDate=nmDsDayStart(Date.now()); nmDsDate=nmDsDayStart(nmDsDate+delta*86400000); nmRenderDaySummary(); };
+window.nmDsSetDate=function(v){ if(!v) return; var d=new Date(v+'T00:00:00'); if(!isNaN(d.getTime())){ nmDsDate=nmDsDayStart(d.getTime()); nmRenderDaySummary(); } };
+function nmDsTopList(map, color){
+  var keys=Object.keys(map).sort(function(a,b){ return map[b]-map[a]; }).slice(0,3);
+  if(!keys.length) return '<div style="font-size:12px;color:var(--text-muted);padding:.2rem 0;">—</div>';
+  var max=map[keys[0]]||1;
+  return keys.map(function(k){ var w=Math.round((map[k]/max)*100);
+    return '<div style="margin:.3rem 0;"><div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-primary);"><span>'+
+      String(k).replace(/</g,'&lt;')+'</span><span style="color:var(--text-muted);">'+map[k]+'</span></div>'+
+      '<div style="height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin-top:.15rem;overflow:hidden;"><span style="display:block;height:100%;width:'+w+'%;background:'+color+';"></span></div></div>';
+  }).join('');
+}
+function nmRenderDaySummary(){
+  var view=document.getElementById('nm-daysummary-view'); if(!view) return;
+  var T=nmDsL();
+  var dayStart=nmDsDate, dayEnd=dayStart+86400000;
+  var chains=(window.nmV2Graph&&nmV2Graph.chains)||[];
+  var byId={}; ((window.nmV2Graph&&nmV2Graph.nodes)||[]).forEach(function(n){ byId[String(n.id)]=n; });
+  var emotions={}, sensations={}, themes={}, dots=[], concepts=0;
+  var dayChains=chains.filter(function(c){ var t=c.started_at?new Date(c.started_at).getTime():null; return t!=null && t>=dayStart && t<dayEnd; });
+  dayChains.forEach(function(c){
+    var t=new Date(c.started_at).getTime(); var dt=new Date(t);
+    var labels=[];
+    (c.node_ids||[]).forEach(function(nid){ var n=byId[String(nid)]; if(!n) return; concepts++;
+      var lb=n.label||''; if(lb) labels.push(lb);
+      if(n.type==='emotion') emotions[lb]=(emotions[lb]||0)+1;
+      else if(n.type==='sensation') sensations[lb]=(sensations[lb]||0)+1;
+      else if(n.type==='context'||n.type==='cause') themes[lb]=(themes[lb]||0)+1;
+      else if(n.type==='area' && nmAreaKind(n)==='sphere') themes[lb]=(themes[lb]||0)+1;
+    });
+    dots.push({ t:t, hh:dt.getHours()+dt.getMinutes()/60, time:('0'+dt.getHours()).slice(-2)+':'+('0'+dt.getMinutes()).slice(-2), labels:labels, src:c.source||'' });
+  });
+  // Header (date nav)
+  var dObj=new Date(dayStart); var iso=dObj.getFullYear()+'-'+('0'+(dObj.getMonth()+1)).slice(-2)+'-'+('0'+dObj.getDate()).slice(-2);
+  var isToday=dayStart===nmDsDayStart(Date.now());
+  var dateLabel=isToday?T.today:dObj.toLocaleDateString((window.getLang&&getLang())||'ru',{weekday:'short',day:'2-digit',month:'short'});
+  var head='<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.7rem;flex-wrap:wrap;">'+
+    '<div style="display:flex;align-items:center;gap:.4rem;">'+
+      '<button onclick="nmDsShift(-1)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);border-radius:8px;width:26px;height:26px;cursor:pointer;">‹</button>'+
+      '<b style="font-size:14px;color:var(--text-primary);">📅 '+dateLabel+'</b>'+
+      '<button onclick="nmDsShift(1)"'+(isToday?' disabled style="opacity:.35;"':' style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);border-radius:8px;width:26px;height:26px;cursor:pointer;"')+'>›</button>'+
+      '<input type="date" value="'+iso+'" max="'+(function(){var n=new Date();return n.getFullYear()+'-'+('0'+(n.getMonth()+1)).slice(-2)+'-'+('0'+n.getDate()).slice(-2);})()+'" onchange="nmDsSetDate(this.value)" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);border-radius:8px;padding:.2rem .4rem;font-size:11px;font-family:inherit;">'+
+    '</div>'+
+    '<div style="font-size:12px;color:var(--accent-cyan,#7fe8dd);">'+dayChains.length+' '+T.flows+' · '+concepts+' '+T.concepts+'</div>'+
+  '</div>';
+  if(!dayChains.length){ view.innerHTML=head+'<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:2rem 0;">'+T.none+'</div>'; return; }
+  // Three top-N columns
+  var cols='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.8rem;margin-bottom:1rem;">'+
+    '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#eabf78;margin-bottom:.2rem;">🔶 '+T.emotions+'</div>'+nmDsTopList(emotions,'#e8aa48')+'</div>'+
+    '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#7fd4e8;margin-bottom:.2rem;">🔵 '+T.sensations+'</div>'+nmDsTopList(sensations,'#78c8eb')+'</div>'+
+    '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#c3b0f0;margin-bottom:.2rem;">🟣 '+T.themes+'</div>'+nmDsTopList(themes,'#af96f0')+'</div>'+
+  '</div>';
+  // Time strip 6:00–24:00
+  var strip='<div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.3rem;">⏱ '+T.timeline+'</div>'+
+    '<div style="position:relative;height:52px;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:.3rem;">';
+  var H0=6, H1=24, span=H1-H0;
+  dots.forEach(function(d){ var frac=Math.max(0,Math.min(1,(d.hh-H0)/span));
+    var pv=d.time+' · '+d.labels.slice(0,5).join(' → ');
+    strip+='<span title="'+pv.replace(/"/g,'&quot;')+'" style="position:absolute;top:50%;left:'+(frac*100)+'%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--accent-cyan,#39d3c3);box-shadow:0 0 8px rgba(57,211,195,.6);cursor:pointer;"></span>';
+  });
+  strip+='</div><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);">'+
+    '<span>6:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>';
+  view.innerHTML=head+cols+strip;
 }
 
 function nmBuild3DGraph(){
@@ -10205,6 +10344,8 @@ function buildNmGraph(){
   if(fsToggle) fsToggle.style.display='';
   var toggle3d=document.getElementById('nm-3d-toggle');
   if(toggle3d) toggle3d.style.display='';
+  var toggleDs=document.getElementById('nm-daysummary-toggle');
+  if(toggleDs) toggleDs.style.display='';
   var toggleLabels=document.getElementById('nm-labels-toggle');
   if(toggleLabels){ toggleLabels.style.display=''; var _mt=nmLabelsMode==='all'?(rpgT('labels_all')||'Подписи: все'):nmLabelsMode==='top'?(rpgT('labels_top')||'Подписи: топ'):(rpgT('labels_off')||'Подписи: нет'); toggleLabels.textContent=_mt; if(nmLabelsMode!=='off') toggleLabels.classList.add('active'); else toggleLabels.classList.remove('active'); }
   var analyzeBtn=document.getElementById('nm-analyze-btn-wrap');
@@ -17942,7 +18083,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=31"></script>
+<script src="assets/js/evolution-path.js?v=32"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=10"></script>
@@ -18433,20 +18574,85 @@ window.pbMove = pbMove;
     starts.sort(byGrpLen); words.sort(byGrpLen); other.sort(byGrpLen);
     return starts.concat(words, other).slice(0, 40);
   }
+  // ── P8e: Recent searches + Favorites (localStorage) ──────────────────────
+  var ATLAS_RECENT_KEY='na_atlas_recent', ATLAS_FAV_KEY='na_atlas_favs';
+  function atlasLS(k){ try{ return JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){ return []; } }
+  function atlasLSSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v||[])); }catch(e){} }
+  function atlasLabelFor(id){ try{ return regionLabel(id); }catch(e){ return id; } }
+  function atlasRecordRecent(id, label){
+    if(!id) return; var list=atlasLS(ATLAS_RECENT_KEY).filter(function(x){ return x.id!==id; });
+    list.unshift({ id:id, label:label||atlasLabelFor(id) }); if(list.length>5) list=list.slice(0,5);
+    atlasLSSet(ATLAS_RECENT_KEY, list);
+  }
+  function atlasIsFav(id){ return atlasLS(ATLAS_FAV_KEY).some(function(x){ return x.id===id; }); }
+  function atlasToggleFav(id, label){
+    var list=atlasLS(ATLAS_FAV_KEY);
+    if(list.some(function(x){ return x.id===id; })) list=list.filter(function(x){ return x.id!==id; });
+    else list.push({ id:id, label:label||atlasLabelFor(id) });
+    atlasLSSet(ATLAS_FAV_KEY, list);
+  }
+  window.atlasToggleFavEvt = function(ev){
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+    var el=ev&&ev.currentTarget; if(!el) return;
+    atlasToggleFav(el.getAttribute('data-id'), el.getAttribute('data-label')||'');
+    // re-render whichever view is showing
+    var inp=document.getElementById('atlas-search-input');
+    if(inp && (inp.value||'').trim()) atlasSearchRender(window.__atlasSearchRows||[]);
+    else atlasRenderEmpty();
+  };
+  function starHtml(id, label){
+    return '<span class="atlas-sr-star'+(atlasIsFav(id)?' on':'')+'" data-id="'+String(id).replace(/"/g,'')+'" data-label="'+String(label||'').replace(/"/g,'&quot;')+'" onmousedown="atlasToggleFavEvt(event)" title="★">'+(atlasIsFav(id)?'★':'☆')+'</span>';
+  }
+  function rowHtml(e, i, extraCls){
+    return '<div class="atlas-sr'+(i===_atlasSel?' sel':'')+(extraCls||'')+'" data-id="'+String(e.id).replace(/"/g,'')+'" onmousedown="atlasSearchPick(event)">'+
+      '<span class="atlas-sr-name">'+(e.label||e.id).replace(/</g,'&lt;')+'</span>'+starHtml(e.id, e.label)+'</div>';
+  }
+  // Empty-query view: pinned Favorites (drag-reorder) + Recent
+  function atlasRenderEmpty(){
+    var dd=document.getElementById('atlas-search-dd'); if(!dd) return;
+    var favs=atlasLS(ATLAS_FAV_KEY), rec=atlasLS(ATLAS_RECENT_KEY), html='';
+    var LBL={ fav:{ru:'Избранное',en:'Favorites',es:'Favoritos'}, rec:{ru:'Недавние',en:'Recent',es:'Recientes'}, clr:{ru:'очистить',en:'clear',es:'borrar'} };
+    function L(o){ return o[lang()]||o.en; }
+    if(favs.length){
+      html+='<div class="atlas-sr-sec">★ '+L(LBL.fav)+'</div>';
+      html+=favs.map(function(e,i){ return '<div class="atlas-sr fav-row" draggable="true" data-idx="'+i+'" data-id="'+String(e.id).replace(/"/g,'')+'" onmousedown="atlasSearchPick(event)">'+
+        '<span class="atlas-sr-drag">⋮⋮</span><span class="atlas-sr-name">'+(e.label||e.id).replace(/</g,'&lt;')+'</span>'+starHtml(e.id, e.label)+'</div>'; }).join('');
+    }
+    if(rec.length){
+      html+='<div class="atlas-sr-sec">'+L(LBL.rec)+'<span class="clr" onmousedown="atlasClearRecent(event)">'+L(LBL.clr)+'</span></div>';
+      html+=rec.map(function(e,i){ return rowHtml(e, -1, ''); }).join('');
+    }
+    if(!html){ dd.classList.remove('open'); return; }
+    dd.innerHTML=html; dd.classList.add('open');
+    atlasWireFavDrag(dd);
+  }
+  window.atlasClearRecent=function(ev){ if(ev){ ev.preventDefault(); ev.stopPropagation(); } atlasLSSet(ATLAS_RECENT_KEY, []); atlasRenderEmpty(); };
+  // HTML5 drag reorder for the favorites rows
+  function atlasWireFavDrag(dd){
+    var dragIdx=-1;
+    dd.querySelectorAll('.fav-row').forEach(function(row){
+      row.addEventListener('dragstart', function(e){ dragIdx=parseInt(row.getAttribute('data-idx'),10); row.classList.add('dragging'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', String(dragIdx)); }catch(x){} });
+      row.addEventListener('dragend', function(){ row.classList.remove('dragging'); dd.querySelectorAll('.fav-row').forEach(function(r){ r.classList.remove('drag-over'); }); });
+      row.addEventListener('dragover', function(e){ e.preventDefault(); row.classList.add('drag-over'); try{ e.dataTransfer.dropEffect='move'; }catch(x){} });
+      row.addEventListener('dragleave', function(){ row.classList.remove('drag-over'); });
+      row.addEventListener('drop', function(e){ e.preventDefault(); e.stopPropagation();
+        var to=parseInt(row.getAttribute('data-idx'),10); if(isNaN(dragIdx)||dragIdx===to) return;
+        var favs=atlasLS(ATLAS_FAV_KEY); if(dragIdx<0||dragIdx>=favs.length) return;
+        var moved=favs.splice(dragIdx,1)[0]; favs.splice(to,0,moved); atlasLSSet(ATLAS_FAV_KEY, favs); atlasRenderEmpty();
+      });
+    });
+  }
   function atlasSearchRender(rows){
     var dd=document.getElementById('atlas-search-dd'); if(!dd) return;
     if(!rows.length){ dd.innerHTML='<div class="atlas-sr-empty">'+(lang()==='en'?'Nothing found':lang()==='es'?'Nada encontrado':'Ничего не найдено')+'</div>'; dd.classList.add('open'); return; }
-    dd.innerHTML = rows.map(function(e,i){
-      return '<div class="atlas-sr'+(i===_atlasSel?' sel':'')+'" data-id="'+String(e.id).replace(/"/g,'')+'" onmousedown="atlasSearchPick(event)">'+
-        '<span class="atlas-sr-name">'+(e.label||e.id).replace(/</g,'&lt;')+'</span></div>';
-    }).join('');
+    dd.innerHTML = rows.map(function(e,i){ return rowHtml(e, i, ''); }).join('');
     dd.classList.add('open');
   }
   window.atlasSearchInput = function(v){
     _atlasSel = -1; atlasLoadFine();
-    var rows = atlasSearchRank(v||'');
     var dd=document.getElementById('atlas-search-dd');
-    if(!(v||'').trim()){ if(dd) dd.classList.remove('open'); return; }
+    if(!(v||'').trim()){ atlasRenderEmpty(); return; }
+    var rows = atlasSearchRank(v||'');
     window.__atlasSearchRows = rows;
     atlasSearchRender(rows);
   };
@@ -18454,8 +18660,10 @@ window.pbMove = pbMove;
     if(ev){ ev.preventDefault(); }
     var el = ev && ev.currentTarget; var id = el && el.getAttribute('data-id'); if(!id) return;
     var dd=document.getElementById('atlas-search-dd'); if(dd) dd.classList.remove('open');
+    var label='';
     var inp=document.getElementById('atlas-search-input');
-    if(inp){ var e=(window.__atlasSearchRows||[]).filter(function(r){return r.id===id;})[0]; inp.value = e?e.label:''; }
+    if(inp){ var e=(window.__atlasSearchRows||[]).filter(function(r){return r.id===id;})[0]; if(!e){ e=atlasLS(ATLAS_FAV_KEY).concat(atlasLS(ATLAS_RECENT_KEY)).filter(function(r){return r.id===id;})[0]; } label=e?e.label:(el.querySelector('.atlas-sr-name')?el.querySelector('.atlas-sr-name').textContent:''); inp.value = label; }
+    atlasRecordRecent(id, label);
     try{ window.atlasOpenRegionCard(id); }catch(e){}
   };
   window.atlasSearchKey = function(ev){
@@ -18464,7 +18672,7 @@ window.pbMove = pbMove;
     if(!rows.length) return;
     if(ev.key==='ArrowDown'){ ev.preventDefault(); _atlasSel=Math.min(rows.length-1,_atlasSel+1); atlasSearchRender(rows); }
     else if(ev.key==='ArrowUp'){ ev.preventDefault(); _atlasSel=Math.max(0,_atlasSel-1); atlasSearchRender(rows); }
-    else if(ev.key==='Enter'){ ev.preventDefault(); var e=rows[_atlasSel>=0?_atlasSel:0]; if(e){ var inp=document.getElementById('atlas-search-input'); if(inp) inp.value=e.label; if(dd) dd.classList.remove('open'); try{ window.atlasOpenRegionCard(e.id); }catch(x){} } }
+    else if(ev.key==='Enter'){ ev.preventDefault(); var e=rows[_atlasSel>=0?_atlasSel:0]; if(e){ var inp=document.getElementById('atlas-search-input'); if(inp) inp.value=e.label; if(dd) dd.classList.remove('open'); atlasRecordRecent(e.id, e.label); try{ window.atlasOpenRegionCard(e.id); }catch(x){} } }
   };
   document.addEventListener('mousedown', function(ev){
     var wrap=document.getElementById('atlas-search'); if(!wrap) return;
@@ -18698,6 +18906,17 @@ window.pbMove = pbMove;
         else if(typeof window.mountAnatomyAtlas==='function'){ window.mountAnatomyAtlas(); setTimeout(function(){ if(window._anatomyAtlas){ apply(); setTimeout(apply,650); } },520); }
         showCombinedCard(claimed, seedToCond);
       },160);
+    }); });
+  };
+  // P8b: expose region unions for Compare mode WITHOUT side effects (no focus/tab switch).
+  // mine = union of my claimed diagnoses' affected regions; population = union of ALL
+  // catalog conditions (what CAN be affected). Both are BodyAtlas seed-id arrays.
+  window.haGetCompareData = function(cb){
+    ensureData(function(){ loadMine(function(){
+      var claimedConds = MINE.map(function(m){ return DATA.condBySlug[m.diagnosis_slug]; }).filter(Boolean);
+      var mineUnion=[]; claimedConds.forEach(function(c){ (c.affected_region_ids||[]).forEach(function(s){ if(mineUnion.indexOf(s)<0) mineUnion.push(s); }); });
+      var popUnion=[]; (DATA.conds||[]).forEach(function(c){ (c.affected_region_ids||[]).forEach(function(s){ if(popUnion.indexOf(s)<0) popUnion.push(s); }); });
+      try{ cb({ mine: mineUnion, population: popUnion, claimedNames: claimedConds.map(function(c){ return nm(c); }) }); }catch(e){}
     }); });
   };
   function showCombinedCard(claimed, seedToCond){
@@ -19971,6 +20190,34 @@ window.pbMove = pbMove;
   .lib-modal .lib-modal-foot button{border-radius:9px;padding:.5rem 1rem;font-size:13px;cursor:pointer;}
   .lib-modal .lib-save{background:var(--accent-cyan,#39d3c3);border:none;color:#04222b;font-weight:600;}
   .lib-modal .lib-cancel{background:none;border:1px solid rgba(255,255,255,.15);color:var(--text-muted);}
+  /* ── P8a Personal Notes ── */
+  #tools-library-content .lib-notes{margin-top:1.2rem;padding-top:1rem;border-top:1px dashed rgba(168,247,255,.22);}
+  #tools-library-content .lib-notes-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.6rem;}
+  #tools-library-content .lib-notes-head h4{margin:0;color:var(--accent-cyan,#7fe8dd);font-size:14px;}
+  #tools-library-content .lib-note-add{background:rgba(57,211,195,.14);border:1px solid rgba(57,211,195,.4);color:#eafffb;border-radius:9px;padding:.35rem .75rem;font-size:12px;cursor:pointer;}
+  #tools-library-content .lib-note-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-left:3px solid rgba(57,211,195,.5);border-radius:10px;padding:.6rem .8rem;margin:.5rem 0;}
+  #tools-library-content .lib-note-quote{font-size:12px;color:var(--text-dim,#9fb0bd);border-left:2px solid rgba(232,200,72,.5);padding-left:.5rem;margin-bottom:.35rem;font-style:italic;}
+  #tools-library-content .lib-note-body{font-size:13.5px;line-height:1.5;color:var(--text-primary,#dbe4ea);white-space:pre-wrap;}
+  #tools-library-content .lib-note-foot{display:flex;align-items:center;gap:.6rem;margin-top:.35rem;font-size:11px;color:var(--text-muted);}
+  #tools-library-content .lib-note-emo{background:rgba(232,170,72,.18);color:#eabf78;border-radius:6px;padding:.05rem .4rem;font-size:11px;}
+  #tools-library-content .lib-note-del{margin-left:auto;background:none;border:none;color:#ffb3bf;cursor:pointer;font-size:12px;opacity:.7;}
+  #tools-library-content .lib-note-del:hover{opacity:1;}
+  #tools-library-content .lib-note-form{background:rgba(57,211,195,.05);border:1px solid rgba(57,211,195,.3);border-radius:11px;padding:.7rem .8rem;margin:.5rem 0;}
+  #tools-library-content .lib-note-form textarea{width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:.5rem .6rem;font-size:13.5px;color:var(--text-primary);font-family:inherit;resize:vertical;min-height:64px;}
+  #tools-library-content .lib-note-form input{width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:.4rem .6rem;font-size:12.5px;color:var(--text-primary);font-family:inherit;margin-top:.4rem;}
+  #tools-library-content .lib-note-form-foot{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.55rem;}
+  #tools-library-content .lib-note-form-foot button{border-radius:8px;padding:.4rem .85rem;font-size:12.5px;cursor:pointer;}
+  #tools-library-content .lib-note-form-foot .save{background:var(--accent-cyan,#39d3c3);border:none;color:#04222b;font-weight:600;}
+  #tools-library-content .lib-note-form-foot .cancel{background:none;border:1px solid rgba(255,255,255,.15);color:var(--text-muted);}
+  #tools-library-content .lib-sel-add{position:absolute;z-index:60;background:var(--accent-cyan,#39d3c3);color:#04222b;border:none;border-radius:8px;padding:.3rem .7rem;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.4);white-space:nowrap;}
+  #tools-library-content .lib-notes-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem;}
+  #tools-library-content .lib-notes-toolbar input{flex:1;min-width:180px;background:rgba(168,247,255,.05);border:1px solid rgba(168,247,255,.18);border-radius:10px;padding:.5rem .8rem;font-size:13px;color:var(--text-primary);font-family:inherit;}
+  #tools-library-content .lib-notes-toolbar select{background:rgba(168,247,255,.05);border:1px solid rgba(168,247,255,.18);border-radius:10px;padding:.5rem .7rem;font-size:12.5px;color:var(--text-primary);font-family:inherit;}
+  #tools-library-content .lib-note-card.clickable{cursor:pointer;transition:.15s;}
+  #tools-library-content .lib-note-card.clickable:hover{border-left-color:rgba(57,211,195,.9);transform:translateY(-1px);}
+  #tools-library-content .lib-note-src{font-size:11.5px;color:var(--accent-cyan,#7fe8dd);margin-bottom:.3rem;}
+  @keyframes libNoteFlash{0%{background:rgba(232,200,72,.4);}100%{background:transparent;}}
+  #tools-library-content .lib-note-flash{animation:libNoteFlash 1.8s ease-out;border-radius:4px;}
 </style>
 <script>
 (function(){
@@ -19999,6 +20246,10 @@ window.pbMove = pbMove;
       steps:'Steps', findings:'Key findings', proponents:'Proponents', also:'Also', mechanism:'How it works',
       evidence:'Evidence', indications:'Indications', cautions:'Cautions & contraindications', category:'Category', regulatory:'Regulatory status',
       search_ph:'Search the library…', no_hits:'No matches', searching:'Searching…', in_:'in',
+      notes:'My notes', notes_one:'Note', notes_blurb:'Your personal notes across the library. Each note also appears on your Path.',
+      add_note:'＋ Note', note_ph:'Your note…', emo_ph:'Emotion (optional), e.g. curious, anxious…',
+      save_note:'Save', cancel:'Cancel', add_note_here:'Add a note', no_notes:'No notes yet. Select any text in an article and add your first note.',
+      sel_add:'＋ Add note', note_on:'on', delete_note_q:'Delete this note?', notes_search_ph:'Search my notes…', all_kinds:'All kinds',
       sec:{ terms:['Terms','Term','Glossary of key terms in attention, self-regulation and neuroscience.'],
         articles:['Articles','Article','Scientific articles — rich text with figures, or uploaded PDFs.'],
         theories:['Theories','Theory','Hypotheses & theories, including the leading theories of consciousness.'],
@@ -20010,6 +20261,10 @@ window.pbMove = pbMove;
       steps:'Шаги', findings:'Ключевые выводы', proponents:'Авторы', also:'Также', mechanism:'Как это работает',
       evidence:'Доказательная база', indications:'Показания', cautions:'Предостережения и противопоказания', category:'Категория', regulatory:'Регуляторный статус',
       search_ph:'Поиск по библиотеке…', no_hits:'Ничего не найдено', searching:'Идёт поиск…', in_:'в разделе',
+      notes:'Мои заметки', notes_one:'Заметка', notes_blurb:'Ваши личные заметки по всей библиотеке. Каждая заметка также появляется на вашем Пути.',
+      add_note:'＋ Заметка', note_ph:'Ваша заметка…', emo_ph:'Эмоция (необязательно), напр. интерес, тревога…',
+      save_note:'Сохранить', cancel:'Отмена', add_note_here:'Добавить заметку', no_notes:'Пока нет заметок. Выделите любой текст в статье и добавьте первую заметку.',
+      sel_add:'＋ Добавить заметку', note_on:'к', delete_note_q:'Удалить эту заметку?', notes_search_ph:'Поиск по заметкам…', all_kinds:'Все разделы',
       sec:{ terms:['Термины','Термин','Глоссарий ключевых понятий внимания, саморегуляции и нейронауки.'],
         articles:['Статьи','Статья','Научные статьи — развёрнутый текст с иллюстрациями или загруженные PDF.'],
         theories:['Теории','Теория','Гипотезы и теории, включая ведущие теории сознания.'],
@@ -20021,6 +20276,10 @@ window.pbMove = pbMove;
       steps:'Pasos', findings:'Hallazgos clave', proponents:'Autores', also:'También', mechanism:'Cómo funciona',
       evidence:'Evidencia', indications:'Indicaciones', cautions:'Precauciones y contraindicaciones', category:'Categoría', regulatory:'Estado regulatorio',
       search_ph:'Buscar en la biblioteca…', no_hits:'Sin resultados', searching:'Buscando…', in_:'en',
+      notes:'Mis notas', notes_one:'Nota', notes_blurb:'Tus notas personales en toda la biblioteca. Cada nota también aparece en tu Camino.',
+      add_note:'＋ Nota', note_ph:'Tu nota…', emo_ph:'Emoción (opcional), p. ej. curiosidad, ansiedad…',
+      save_note:'Guardar', cancel:'Cancelar', add_note_here:'Añadir una nota', no_notes:'Aún no hay notas. Selecciona cualquier texto en un artículo y añade tu primera nota.',
+      sel_add:'＋ Añadir nota', note_on:'en', delete_note_q:'¿Eliminar esta nota?', notes_search_ph:'Buscar en mis notas…', all_kinds:'Todos',
       sec:{ terms:['Términos','Término','Glosario de conceptos clave de atención, autorregulación y neurociencia.'],
         articles:['Artículos','Artículo','Artículos científicos — texto enriquecido con figuras, o PDF subidos.'],
         theories:['Teorías','Teoría','Hipótesis y teorías, incluidas las principales teorías de la conciencia.'],
@@ -20050,7 +20309,8 @@ window.pbMove = pbMove;
         '<div class="lib-body" id="lib-body"></div>'+
       '</div>';
     var nav = container.querySelector('#lib-nav');
-    nav.innerHTML = SECTIONS.map(function(s){ return '<button data-sec="'+s.key+'">'+s.icon+' '+esc(secLabel(s.key))+'</button>'; }).join('');
+    nav.innerHTML = SECTIONS.map(function(s){ return '<button data-sec="'+s.key+'">'+s.icon+' '+esc(secLabel(s.key))+'</button>'; }).join('')+
+      '<button data-sec="mynotes" class="lib-nav-notes">✍️ '+esc(L('notes'))+'</button>';
     nav.querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ openSection(b.getAttribute('data-sec')); }); });
     wireSearch(container);
     openSection(state.section);
@@ -20129,10 +20389,18 @@ window.pbMove = pbMove;
   function stashFnAtlas(){ if(libAtlasHolder && libAtlasHolder.__stash){ try{ libAtlasHolder.__stash.appendChild(libAtlasHolder); }catch(e){} } }
 
   function openSection(kind, after){
-    if(!SEC[kind]) kind='terms';
+    if(kind!=='mynotes' && !SEC[kind]) kind='terms';
     state.section = kind;
     stashFnAtlas();
     if(state.root){ state.root.querySelectorAll('#lib-nav button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sec')===kind); }); }
+    // ── "My Notes" pseudo-section (P8a) — its own view, not a /api/library/:kind list ──
+    if(kind==='mynotes'){
+      var blurbN = state.root && state.root.querySelector('#lib-blurb'); if(blurbN) blurbN.textContent = L('notes_blurb');
+      var addHostN = state.root && state.root.querySelector('#lib-add-host'); if(addHostN) addHostN.innerHTML='';
+      renderNotesTab();
+      if(typeof after==='function') after();
+      return;
+    }
     var blurb = state.root && state.root.querySelector('#lib-blurb'); if(blurb) blurb.textContent = secBlurb(kind);
     var addHost = state.root && state.root.querySelector('#lib-add-host');
     if(addHost){ addHost.innerHTML = isSuper() ? '<button class="lib-add" id="lib-add-btn">＋ '+esc(secOne(kind))+'</button>' : '';
@@ -20261,11 +20529,152 @@ window.pbMove = pbMove;
       var srcs = []; if(it.source_url) srcs.push(it.source_url); if(Array.isArray(c.sources)) srcs=srcs.concat(c.sources);
       if(srcs.length) h+=srcList(srcs);
     }
+    // ── P8a: Personal Notes panel (logged-in users) ──
+    if(window.currentUser){
+      h += '<div class="lib-notes" id="lib-notes-panel" data-kind="'+esc(kind)+'" data-slug="'+esc(it.slug)+'">'+
+        '<div class="lib-notes-head"><h4>✍️ '+esc(L('notes'))+' <span id="lib-notes-count"></span></h4>'+
+        '<button class="lib-note-add" id="lib-note-add">'+esc(L('add_note'))+'</button></div>'+
+        '<div id="lib-note-formhost"></div>'+
+        '<div id="lib-note-list"></div>'+
+      '</div>';
+    }
     h += adminRow(kind, it) + '</div>';
     body.innerHTML = h;
     wireDetail(kind, it);
     if(kind==='functions'){ var slot=state.root.querySelector('#lib-fn-atlas-slot'); if(slot) showFnAtlas(slot, it.body_regions||[]); }
+    if(window.currentUser) wireNotes(kind, it);
+    maybeHighlight(kind, it.slug);
   }
+
+  // ── P8a: Personal Notes ──────────────────────────────────────────────────
+  var itemNotesCache = {};
+  function noteTitleOf(kind, it){ var c=it.content||{}; return c.title||c.name||c.term||it.slug; }
+  function fmtNoteDate(ts){ try{ var d=new Date(ts); return d.toLocaleDateString(lang(), {day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString(lang(),{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+  function noteCardHtml(n, opts){ opts=opts||{};
+    var src = opts.showSource ? '<div class="lib-note-src">'+(SEC[n.kind]?SEC[n.kind].icon:'📄')+' '+esc(n.item_title||n.item_slug)+'</div>' : '';
+    var quote = n.selected_text ? '<div class="lib-note-quote">“'+esc(n.selected_text)+'”</div>' : '';
+    var emo = n.emotion ? '<span class="lib-note-emo">'+esc(n.emotion)+'</span>' : '';
+    return '<div class="lib-note-card'+(opts.clickable?' clickable':'')+'" data-id="'+n.id+'"'+(opts.clickable?' data-kind="'+esc(n.kind)+'" data-slug="'+esc(n.item_slug)+'"':'')+'>'+
+      src+quote+'<div class="lib-note-body">'+esc(n.note)+'</div>'+
+      '<div class="lib-note-foot">'+emo+'<span>'+esc(fmtNoteDate(n.created_at))+'</span>'+
+      '<button class="lib-note-del" data-id="'+n.id+'" title="'+esc(L('cancel'))+'">🗑</button></div>'+
+    '</div>'; }
+  function wireNotes(kind, it){
+    var panel = state.root.querySelector('#lib-notes-panel'); if(!panel) return;
+    var listEl = panel.querySelector('#lib-note-list');
+    var countEl = panel.querySelector('#lib-notes-count');
+    function reload(){
+      api('/api/library-notes/'+kind+'/'+encodeURIComponent(it.slug)).then(function(j){
+        var notes=(j.notes||[]); itemNotesCache[kind+'|'+it.slug]=notes;
+        countEl.textContent = notes.length ? '· '+notes.length : '';
+        listEl.innerHTML = notes.length ? notes.map(function(n){ return noteCardHtml(n,{}); }).join('')
+          : '<div class="lib-empty" style="padding:.6rem 0;">'+esc(L('no_notes'))+'</div>';
+        listEl.querySelectorAll('.lib-note-del').forEach(function(b){ b.addEventListener('click', function(ev){ ev.stopPropagation();
+          if(confirm(L('delete_note_q'))) delNote(b.getAttribute('data-id'), reload); }); });
+      }).catch(function(){ listEl.innerHTML=''; });
+    }
+    panel.querySelector('#lib-note-add').addEventListener('click', function(){ showNoteForm(kind, it, '', reload); });
+    // Text-selection → floating "add note" button
+    var detail = state.root.querySelector('.lib-detail');
+    if(detail){ detail.addEventListener('mouseup', function(){ setTimeout(function(){ handleSelection(kind, it, detail, reload); }, 10); }); }
+    if(!window.__libScrollHooked){ window.__libScrollHooked=true; document.addEventListener('scroll', removeSelBtn, true); }
+    reload();
+  }
+  var selBtn=null;
+  function removeSelBtn(){ if(selBtn){ try{ selBtn.remove(); }catch(e){} selBtn=null; } }
+  function handleSelection(kind, it, detail, reload){
+    var sel = window.getSelection && window.getSelection();
+    if(!sel || sel.isCollapsed){ removeSelBtn(); return; }
+    var text = (sel.toString()||'').trim();
+    if(text.length < 3){ removeSelBtn(); return; }
+    // selection must be inside the article detail
+    try{ if(!detail.contains(sel.anchorNode) || !detail.contains(sel.focusNode)){ removeSelBtn(); return; } }catch(e){ return; }
+    var rect; try{ rect = sel.getRangeAt(0).getBoundingClientRect(); }catch(e){ return; }
+    removeSelBtn();
+    selBtn = document.createElement('button');
+    selBtn.className='lib-sel-add'; selBtn.textContent=L('sel_add');
+    selBtn.style.left = (window.scrollX + rect.left) + 'px';
+    selBtn.style.top = (window.scrollY + rect.top - 38) + 'px';
+    selBtn.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    selBtn.addEventListener('click', function(){ var t=text; removeSelBtn(); try{ sel.removeAllRanges(); }catch(e){} showNoteForm(kind, it, t, reload); });
+    document.body.appendChild(selBtn);
+  }
+  function showNoteForm(kind, it, selected, reload){
+    removeSelBtn();
+    var host = state.root.querySelector('#lib-note-formhost'); if(!host) return;
+    host.innerHTML = '<div class="lib-note-form">'+
+      (selected?'<div class="lib-note-quote">“'+esc(selected)+'”</div>':'')+
+      '<textarea id="lib-note-text" placeholder="'+esc(L('note_ph'))+'"></textarea>'+
+      '<input type="text" id="lib-note-emo" placeholder="'+esc(L('emo_ph'))+'" autocomplete="off">'+
+      '<div class="lib-note-form-foot"><button class="cancel" id="lib-note-cancel">'+esc(L('cancel'))+'</button>'+
+      '<button class="save" id="lib-note-save">'+esc(L('save_note'))+'</button></div></div>';
+    var ta=host.querySelector('#lib-note-text'); ta.focus();
+    host.querySelector('#lib-note-cancel').addEventListener('click', function(){ host.innerHTML=''; });
+    host.querySelector('#lib-note-save').addEventListener('click', function(){
+      var note=(ta.value||'').trim(); if(!note){ ta.focus(); return; }
+      var emo=(host.querySelector('#lib-note-emo').value||'').trim();
+      var btn=host.querySelector('#lib-note-save'); btn.disabled=true; btn.textContent=L('save_note')+'…';
+      api('/api/library-notes', { method:'POST', headers:hdrs(), body:JSON.stringify({
+        kind:kind, item_slug:it.slug, item_title:noteTitleOf(kind,it), selected_text:selected||null, note:note, emotion:emo||null
+      })}).then(function(){ host.innerHTML=''; reload(); })
+        .catch(function(e){ btn.disabled=false; btn.textContent=L('save_note'); alert('Save failed: '+(e.message||e)); });
+    });
+  }
+  function delNote(id, done){ api('/api/library-notes/'+id, { method:'DELETE', headers:hdrs() }).then(function(){ done&&done(); }).catch(function(e){ alert('Delete failed: '+(e.message||e)); }); }
+
+  // ── "My Notes" tab: grid + search + kind filter ──
+  var notesTabState = { all:[], q:'', kind:'' };
+  function renderNotesTab(){
+    var body = state.root && state.root.querySelector('#lib-body'); if(!body) return;
+    body.innerHTML = '<div class="lib-empty">'+esc(L('loading'))+'</div>';
+    api('/api/library-notes').then(function(j){
+      notesTabState.all = j.notes||[];
+      paintNotesTab();
+    }).catch(function(){ body.innerHTML='<div class="lib-empty">'+esc(L('could_not'))+'</div>'; });
+  }
+  function paintNotesTab(){
+    var body = state.root && state.root.querySelector('#lib-body'); if(!body) return;
+    var kinds = SECTIONS.map(function(s){ return s.key; });
+    var opts = '<option value="">'+esc(L('all_kinds'))+'</option>'+kinds.map(function(k){ return '<option value="'+k+'"'+(notesTabState.kind===k?' selected':'')+'>'+SEC[k].icon+' '+esc(secLabel(k))+'</option>'; }).join('');
+    var toolbar = '<div class="lib-notes-toolbar"><input type="search" id="lib-notes-q" placeholder="'+esc(L('notes_search_ph'))+'" value="'+esc(notesTabState.q)+'"><select id="lib-notes-kind">'+opts+'</select></div>';
+    var q = notesTabState.q.toLowerCase();
+    var rows = notesTabState.all.filter(function(n){
+      if(notesTabState.kind && n.kind!==notesTabState.kind) return false;
+      if(!q) return true;
+      return ((n.note||'')+' '+(n.selected_text||'')+' '+(n.item_title||'')+' '+(n.emotion||'')).toLowerCase().indexOf(q)>=0;
+    });
+    var grid = rows.length ? '<div class="lib-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));">'+
+      rows.map(function(n){ return noteCardHtml(n,{showSource:true, clickable:true}); }).join('')+'</div>'
+      : '<div class="lib-empty">'+esc(L('no_notes'))+'</div>';
+    body.innerHTML = toolbar + grid;
+    var qi=body.querySelector('#lib-notes-q'); if(qi){ qi.addEventListener('input', function(){ notesTabState.q=qi.value; var pos=qi.selectionStart; paintNotesTab(); var qi2=state.root.querySelector('#lib-notes-q'); if(qi2){ qi2.focus(); try{ qi2.setSelectionRange(pos,pos); }catch(e){} } }); }
+    var ki=body.querySelector('#lib-notes-kind'); if(ki){ ki.addEventListener('change', function(){ notesTabState.kind=ki.value; paintNotesTab(); }); }
+    body.querySelectorAll('.lib-note-card.clickable').forEach(function(card){ card.addEventListener('click', function(){
+      var k=card.getAttribute('data-kind'), s=card.getAttribute('data-slug'); if(k&&s) openSection(k, function(){ openDetail(k, s); });
+    }); });
+    body.querySelectorAll('.lib-note-del').forEach(function(b){ b.addEventListener('click', function(ev){ ev.stopPropagation();
+      if(confirm(L('delete_note_q'))) delNote(b.getAttribute('data-id'), function(){ notesTabState.all=notesTabState.all.filter(function(x){ return String(x.id)!==String(b.getAttribute('data-id')); }); paintNotesTab(); }); }); });
+  }
+
+  // ── Deep-link highlight (from a Path note event) ──
+  var pendingHighlight = null;
+  function maybeHighlight(kind, slug){
+    if(!pendingHighlight || pendingHighlight.kind!==kind || pendingHighlight.slug!==slug) return;
+    var text = pendingHighlight.text; pendingHighlight = null;
+    if(!text){ var pnl=state.root.querySelector('#lib-notes-panel'); if(pnl) pnl.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+    setTimeout(function(){
+      var detail = state.root.querySelector('.lib-detail'); if(!detail) return;
+      var walker = document.createTreeWalker(detail, NodeFilter.SHOW_TEXT, null);
+      var node, needle=text.slice(0,40).toLowerCase();
+      while((node=walker.nextNode())){
+        if((node.nodeValue||'').toLowerCase().indexOf(needle)>=0 && node.parentElement){
+          var el=node.parentElement; el.classList.add('lib-note-flash'); el.scrollIntoView({behavior:'smooth',block:'center'});
+          setTimeout(function(){ try{ el.classList.remove('lib-note-flash'); }catch(e){} }, 2000); break;
+        }
+      }
+    }, 120);
+  }
+  window.librarySetHighlight = function(kind, slug, text){ pendingHighlight = { kind:kind, slug:slug, text:text||'' }; };
 
   // ── Persistent mini-atlas (one BodyAtlas instance, moved between function pages) ──
   var libAtlasHolder=null, libAtlasInst=null, libAtlasMounting=false;
@@ -20358,11 +20767,195 @@ window.pbMove = pbMove;
     Object.keys(cache).forEach(function(k){ delete cache[k]; });
     // Relocalize the chrome built once at mount: title, nav labels, search placeholder.
     var t=state.root.querySelector('.lib-head h2'); if(t) t.textContent='\u{1F4DA} '+L('title');
-    state.root.querySelectorAll('#lib-nav button').forEach(function(b){ var k=b.getAttribute('data-sec'); if(SEC[k]) b.innerHTML=SEC[k].icon+' '+esc(secLabel(k)); });
+    state.root.querySelectorAll('#lib-nav button').forEach(function(b){ var k=b.getAttribute('data-sec'); if(SEC[k]) b.innerHTML=SEC[k].icon+' '+esc(secLabel(k)); else if(k==='mynotes') b.innerHTML='✍️ '+esc(L('notes')); });
     var si=state.root.querySelector('#lib-search-input'); if(si) si.placeholder=L('search_ph');
     openSection(state.section);
   } });
 })();
+</script>
+
+<style>
+  #resume-card{display:flex;align-items:center;gap:1.1rem;padding:1.1rem 1.3rem;border-radius:16px;
+    border:1px solid rgba(57,211,195,.3);background:linear-gradient(135deg,rgba(57,211,195,.10),rgba(0,224,255,.04));flex-wrap:wrap;}
+  #resume-card .rc-cover{width:64px;height:64px;border-radius:12px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.05);}
+  #resume-card .rc-body{flex:1;min-width:200px;}
+  #resume-card .rc-kicker{font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:#39d3c3;margin:0 0 .25rem;font-family:'Space Grotesk',sans-serif;}
+  #resume-card .rc-name{margin:0;font-family:'Unbounded',sans-serif;font-weight:600;font-size:1.05rem;color:var(--text-primary);line-height:1.25;}
+  #resume-card .rc-prog{margin:.45rem 0 0;height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;}
+  #resume-card .rc-prog>span{display:block;height:100%;background:linear-gradient(90deg,#39d3c3,#00e0ff);}
+  #resume-card .rc-meta{margin:.35rem 0 0;font-size:12px;color:var(--text-muted);}
+  #resume-card .rc-play{background:#39d3c3;border:none;color:#04222b;font-weight:700;border-radius:11px;padding:.65rem 1.3rem;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap;}
+  #resume-card .rc-play:hover{filter:brightness(1.08);}
+</style>
+<script>
+  /* ── P8d: "Continue where you stopped" dashboard card ──────────────────────
+     Reads GET /api/users/me/resume (most recent unfinished course). The Play
+     button calls cpOpenCourse(slug) which auto-resumes at the first incomplete
+     block. Hidden entirely when there is nothing to resume. */
+  (function(){
+    function t(k,f){ try{ return (window.t&&window.t(k,f))||f; }catch(e){ return f; } }
+    function lang(){ try{ return (window.getLang&&window.getLang())||'ru'; }catch(e){ return 'ru'; } }
+    function courseName(c){ try{ if(window.courseTitle) return window.courseTitle(c, lang()); }catch(e){}
+      var lg=lang(); return c['name_'+lg]||c.name_ru||c.name_en||c.slug; }
+    var loaded=false;
+    window.renderResumeCard = function(force){
+      var host=document.getElementById('resume-card-host'); if(!host) return;
+      if(loaded && !force) return; loaded=true;
+      var api=(typeof AUTH_API!=='undefined'&&AUTH_API)?AUTH_API:'';
+      var hdr={}; try{ hdr=naAuthHeaders(); }catch(e){}
+      fetch(api+'/api/users/me/resume',{headers:hdr}).then(function(r){ return r.json(); }).then(function(j){
+        var rc=j&&j.resume; if(!rc || !rc.total_blocks){ host.style.display='none'; return; }
+        var pct=Math.min(100, Math.round((rc.done_blocks/rc.total_blocks)*100));
+        var cover=rc.cover_url?'<img class="rc-cover" src="'+rc.cover_url.replace(/"/g,'&quot;')+'" alt="" onerror="this.style.display=\'none\'">':'<div class="rc-cover"></div>';
+        host.innerHTML='<div id="resume-card">'+cover+
+          '<div class="rc-body"><p class="rc-kicker">'+t('a.courses.resume_title','Продолжить где остановились')+'</p>'+
+          '<p class="rc-name"></p>'+
+          '<div class="rc-prog"><span style="width:'+pct+'%"></span></div>'+
+          '<p class="rc-meta">'+rc.done_blocks+' / '+rc.total_blocks+' '+t('a.courses.resume_blocks','блоков')+' · '+pct+'%</p></div>'+
+          '<button class="rc-play" id="rc-play">▶ '+t('a.courses.resume_cta','Продолжить')+'</button></div>';
+        host.querySelector('.rc-name').textContent = courseName(rc);
+        host.style.display='';
+        var btn=host.querySelector('#rc-play');
+        if(btn) btn.addEventListener('click', function(){
+          try{ if(typeof switchTab==='function') switchTab('courses'); }catch(e){}
+          try{ if(typeof window.cpOpenCourse==='function') window.cpOpenCourse(rc.slug); }catch(e){ location.search='?course='+encodeURIComponent(rc.slug); }
+        });
+      }).catch(function(){ host.style.display='none'; });
+    };
+    // Re-render on language change (course name / labels)
+    document.addEventListener('langchange', function(){ if(document.getElementById('resume-card')) window.renderResumeCard(true); });
+    // Boot: overview is the default-active tab, so switchTab may not fire for it.
+    try{ window.addEventListener('load', function(){ setTimeout(function(){ try{ var tok=null; try{ tok=naGetToken(); }catch(e){} if(tok) window.renderResumeCard(); }catch(e){} }, 1300); }); }catch(e){}
+  })();
+</script>
+
+<style>
+  #atlas-viewport-2{position:relative;flex:1 1 0;min-width:0;border-left:1px solid rgba(168,247,255,.18);}
+  .atlas-cmp-label{position:absolute;top:8px;left:8px;z-index:6;background:rgba(10,14,20,.82);border:1px solid rgba(168,247,255,.22);border-radius:8px;padding:.3rem .6rem;font-size:11.5px;color:var(--text-primary,#e8edf2);pointer-events:none;max-width:70%;line-height:1.3;}
+  .atlas-cmp-label b{color:var(--accent-cyan,#7fe8dd);}
+  .atlas-cmp-note{position:absolute;inset:auto 8px 8px 8px;z-index:6;background:rgba(10,14,20,.82);border:1px solid rgba(232,170,72,.3);border-radius:8px;padding:.4rem .6rem;font-size:11px;color:#eabf78;}
+  #atlas-compare-btn.active{background:rgba(57,211,195,.2);border-color:rgba(57,211,195,.5);color:#eafffb;}
+</style>
+<script>
+  /* ── P8b: Anatomical Atlas — Compare mode ──────────────────────────────────
+     Splits #atlas-viewport into two side-by-side BodyAtlas instances and tints
+     each. Modes: my-diagnoses vs population, before(snapshot) vs now, me vs child.
+     Rotation/zoom is synced between the two views. A monthly auto-snapshot of the
+     user's claimed-diagnosis regions accrues so "Раньше vs Сейчас" has history. */
+  (function(){
+    var cmpOn=false, cmp2=null, cmpMode='diag-pop', cmpSyncing=false, cmpData=null, cmpSnaps=null;
+    function api(){ return (typeof AUTH_API!=='undefined'&&AUTH_API)?AUTH_API:''; }
+    function hdr(){ try{ return naAuthHeaders(); }catch(e){ return {'Content-Type':'application/json'}; } }
+    function lang(){ try{ return (window.getLang&&getLang())||'ru'; }catch(e){ return 'ru'; } }
+    function T(){ var L={
+      ru:{ mine:'Мои диагнозы', pop:'Общая популяция', before:'Раньше', now:'Сейчас', child:'Ребёнок',
+        no_snap:'Нет прошлого снимка для сравнения.', no_child:'Сравнение с ребёнком появится после настройки профиля ребёнка.',
+        no_diag:'У вас пока нет отмеченных диагнозов. Отметьте их во вкладке «Состояния».', affected:'затронуто', reference:'что может быть затронуто' },
+      en:{ mine:'My diagnoses', pop:'General population', before:'Before', now:'Now', child:'Child',
+        no_snap:'No earlier snapshot to compare against.', no_child:'Child comparison will appear after a child profile is set up.',
+        no_diag:'You have no claimed diagnoses yet. Mark them in the "Conditions" tab.', affected:'affected', reference:'may be affected' },
+      es:{ mine:'Mis diagnósticos', pop:'Población general', before:'Antes', now:'Ahora', child:'Niño',
+        no_snap:'No hay instantánea anterior para comparar.', no_child:'La comparación con el niño aparecerá tras configurar su perfil.',
+        no_diag:'Aún no tienes diagnósticos marcados. Márcalos en la pestaña «Estados».', affected:'afectado', reference:'puede verse afectado' }
+    }; return L[lang()]||L.ru; }
+
+    function tint(inst, spec){ if(!inst) return; var apply=function(){ try{ inst.tintRegions({positive:spec.positive||[], negative:spec.negative||[]}); }catch(e){} }; apply(); setTimeout(apply,450); setTimeout(apply,1100); setTimeout(apply,2100); }
+    function clearTint(inst){ if(!inst) return; try{ if(inst._clearFocusState) inst._clearFocusState(); else inst.resetRegions&&inst.resetRegions(); }catch(e){} }
+
+    function label(el, html){ if(el) el.innerHTML=html; }
+    function noteEl(vp, text){ var old=vp.querySelector('.atlas-cmp-note'); if(old) old.remove(); if(!text) return; var n=document.createElement('div'); n.className='atlas-cmp-note'; n.textContent=text; vp.appendChild(n); }
+
+    function applyMode(){
+      var vp=document.getElementById('atlas-viewport'), vp2=document.getElementById('atlas-viewport-2');
+      var primary=window._anatomyAtlas; if(!vp||!vp2) return;
+      var ll=document.getElementById('atlas-cmp-label-l'), lr=document.getElementById('atlas-cmp-label-r');
+      var t=T();
+      noteEl(vp,''); noteEl(vp2,'');
+      if(!window.haGetCompareData){ return; }
+      window.haGetCompareData(function(d){
+        cmpData=d;
+        if(cmpMode==='diag-pop'){
+          if(!d.mine.length){ noteEl(vp, t.no_diag); }
+          label(ll, '🔴 <b>'+t.mine+'</b><br>'+d.mine.length+' '+t.affected);
+          label(lr, '🟢 <b>'+t.pop+'</b><br>'+t.reference);
+          tint(primary, { negative:d.mine });
+          tint(cmp2,    { positive:d.population });
+        } else if(cmpMode==='before-now'){
+          loadSnaps(function(snaps){
+            var prev=(snaps&&snaps.length)?snaps[0]:null;
+            var prevNeg=prev&&prev.state?(prev.state.negative||[]):[];
+            var when=prev?new Date(prev.taken_at).toLocaleDateString(lang(),{day:'2-digit',month:'short',year:'2-digit'}):'';
+            label(ll, '🕘 <b>'+t.before+'</b>'+(when?'<br>'+when:''));
+            label(lr, '🔴 <b>'+t.now+'</b><br>'+d.mine.length+' '+t.affected);
+            if(!prev){ noteEl(vp, t.no_snap); clearTint(primary); }
+            else tint(primary, { negative:prevNeg });
+            tint(cmp2, { negative:d.mine });
+          });
+        } else { // me-child
+          label(ll, '🔴 <b>'+t.mine+'</b><br>'+d.mine.length+' '+t.affected);
+          label(lr, '👶 <b>'+t.child+'</b>');
+          tint(primary, { negative:d.mine });
+          clearTint(cmp2); noteEl(vp2, t.no_child);
+        }
+      });
+    }
+    function loadSnaps(cb){
+      fetch(api()+'/api/me/atlas-snapshots',{headers:hdr()}).then(function(r){return r.json();}).then(function(j){ cmpSnaps=j.snapshots||[]; cb(cmpSnaps); }).catch(function(){ cb([]); });
+    }
+
+    function syncFrom(src, dst){
+      if(!src||!dst||!src.controls||!dst.controls) return;
+      src.controls.addEventListener('change', function(){
+        if(cmpSyncing) return; cmpSyncing=true;
+        try{ dst.camera.position.copy(src.camera.position); dst.controls.target.copy(src.controls.target); dst.controls.update(); }catch(e){}
+        cmpSyncing=false;
+      });
+    }
+
+    window.atlasCompareSetMode = function(m){ cmpMode=m||'diag-pop'; if(cmpOn) applyMode(); };
+
+    window.atlasToggleCompare = function(){
+      var vp=document.getElementById('atlas-viewport'); if(!vp) return;
+      var btn=document.getElementById('atlas-compare-btn'), sel=document.getElementById('atlas-compare-mode');
+      if(!cmpOn){
+        if(!window.BodyAtlas || !window._anatomyAtlas){ return; }
+        cmpOn=true; if(btn) btn.classList.add('active'); if(sel){ sel.style.display=''; sel.value=cmpMode; }
+        // split
+        vp.style.flex='1 1 0'; vp.style.minWidth='0';
+        var vp2=document.createElement('div'); vp2.id='atlas-viewport-2';
+        vp.parentNode.insertBefore(vp2, vp.nextSibling);
+        // labels
+        var ll=document.createElement('div'); ll.id='atlas-cmp-label-l'; ll.className='atlas-cmp-label'; vp.appendChild(ll);
+        var lr=document.createElement('div'); lr.id='atlas-cmp-label-r'; lr.className='atlas-cmp-label'; vp2.appendChild(lr);
+        // second instance
+        try{
+          window.BodyAtlas.init(vp2, {mode:'full'}).then(function(inst){
+            cmp2=inst;
+            var go=function(){ applyMode(); syncFrom(window._anatomyAtlas, cmp2); syncFrom(cmp2, window._anatomyAtlas); };
+            try{ inst.on('ready', go); }catch(e){}
+            setTimeout(go, 900);
+          }).catch(function(){ noteEl(vp2,'3D ×'); });
+        }catch(e){}
+      } else {
+        cmpOn=false; if(btn) btn.classList.remove('active'); if(sel) sel.style.display='none';
+        try{ if(cmp2&&cmp2.destroy) cmp2.destroy(); }catch(e){} cmp2=null;
+        var vp2=document.getElementById('atlas-viewport-2'); if(vp2) vp2.remove();
+        var ll=document.getElementById('atlas-cmp-label-l'); if(ll) ll.remove();
+        vp.style.flex=''; vp.style.minWidth='';
+        clearTint(window._anatomyAtlas);
+      }
+    };
+
+    // Monthly auto-snapshot of claimed-diagnosis regions (server guards the 25-day cadence)
+    function autoSnapshot(){
+      if(!window.haGetCompareData) return;
+      window.haGetCompareData(function(d){
+        if(!d.mine||!d.mine.length) return;
+        fetch(api()+'/api/me/atlas-snapshots',{method:'POST',headers:hdr(),body:JSON.stringify({auto:true, label:'auto', state:{negative:d.mine, source:'auto'}})}).catch(function(){});
+      });
+    }
+    try{ window.addEventListener('load', function(){ setTimeout(function(){ try{ var tok=null; try{ tok=naGetToken(); }catch(e){} if(tok) autoSnapshot(); }catch(e){} }, 2600); }); }catch(e){}
+  })();
 </script>
 
 <script>
