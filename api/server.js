@@ -2710,7 +2710,55 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 061 (common_injuries): injuries', mig061.injuries_seeded, 'links', mig061.sport_injury_links);
     } catch (e) { mig061.error = e.message; console.error('migration 061 (common_injuries):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-061 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061 });
+    // ── migration 062 (P8a Library — Personal Notes) ────────────────────────
+    // Per-user notes attached to any Library item (term/theory/research/function/
+    // method). One row per note; a note optionally records the selected passage it
+    // was made against + the journey_events id it mirrored onto the Personal Path.
+    // (kind, item_slug) together identify the target — slugs are unique only WITHIN
+    // a kind, so both are needed. New feature: no backfill.
+    let mig062 = { ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS library_user_notes (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL,
+          item_slug TEXT NOT NULL,
+          item_title TEXT,
+          selected_text TEXT,
+          note TEXT NOT NULL,
+          emotion TEXT,
+          journey_event_id BIGINT,
+          created_at TIMESTAMPTZ DEFAULT now()
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS library_user_notes_user_idx ON library_user_notes(user_id, created_at DESC)`;
+      await sql`CREATE INDEX IF NOT EXISTS library_user_notes_item_idx ON library_user_notes(user_id, kind, item_slug)`;
+      mig062.ok = true;
+      console.log('migration 062 (library_user_notes): table ready');
+    } catch (e) { mig062.error = e.message; console.error('migration 062 (library_user_notes):', e.message); }
+
+    // ── migration 063 (P8b Atlas — Compare snapshots) ───────────────────────
+    // Point-in-time snapshots of a user's Anatomical-Atlas state (the set of tinted
+    // regions + their polarity), so Compare mode can render "Раньше vs Сейчас". One
+    // row per snapshot; `state` is JSONB { positive:[seedIds], negative:[seedIds],
+    // source } . A monthly auto-snapshot is taken client-side when the user has
+    // claimed diagnoses. New feature: no backfill.
+    let mig063 = { ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS atlas_snapshots (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          taken_at TIMESTAMPTZ DEFAULT now(),
+          label TEXT,
+          state JSONB NOT NULL DEFAULT '{}'::jsonb
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS atlas_snapshots_user_idx ON atlas_snapshots(user_id, taken_at DESC)`;
+      mig063.ok = true;
+      console.log('migration 063 (atlas_snapshots): table ready');
+    } catch (e) { mig063.error = e.message; console.error('migration 063 (atlas_snapshots):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-063 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -7498,6 +7546,29 @@ app.get('/api/courses', requireAuth, async (req, res) => {
   } catch (err) { console.error('GET /api/courses:', err); res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/users/me/resume — P8d "Continue where you stopped".
+// Returns the course the user most recently made progress in but has NOT finished
+// (some completed blocks, but fewer than the course's total). The client opens it
+// with cpOpenCourse(slug) which auto-resumes at the first incomplete block.
+app.get('/api/users/me/resume', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    const rows = await sql`
+      SELECT c.id, c.slug, c.name_ru, c.name_en, c.name_es, c.cover_url,
+             COUNT(cbp.id)::int AS done_blocks,
+             (SELECT COUNT(*) FROM course_blocks cb WHERE cb.course_id = c.id)::int AS total_blocks,
+             MAX(cbp.completed_at) AS last_at
+      FROM courses c
+      JOIN course_block_progress cbp ON cbp.course_id = c.id AND cbp.user_id = ${userId}
+      WHERE c.is_published = true
+      GROUP BY c.id
+      HAVING COUNT(cbp.id) < (SELECT COUNT(*) FROM course_blocks cb WHERE cb.course_id = c.id)
+      ORDER BY MAX(cbp.completed_at) DESC
+      LIMIT 1`;
+    res.json({ ok: true, resume: rows[0] || null });
+  } catch (err) { console.error('GET /api/users/me/resume:', err); res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/courses/:slug — get full course (with blocks) for the student
 app.get('/api/courses/:slug', requireAuth, async (req, res) => {
   try {
@@ -11375,6 +11446,136 @@ app.post('/api/library/:kind/:id/pdf', requireAuth, uploadLibrary.single('file')
     const rows = await libSetPdf(kind, id, url, req.file.originalname || safeName);
     res.json({ ok: true, item: rows[0], pdf_url: url });
   } catch (err) { console.error('POST /api/library/:kind/:id/pdf:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── P8a: Library Personal Notes ────────────────────────────────────────────
+// Per-user notes on any Library item. Every new note also mirrors onto the
+// Personal Path as a journey_events row (kind='note', layer='event', source=
+// 'library_note') so it shows on Path/Calendar and can deep-link back here.
+const LIB_NOTE_KINDS = ['terms', 'articles', 'theories', 'research', 'functions', 'methods'];
+
+// NOTE: paths are /api/library-notes (NOT /api/library/notes) so they don't collide
+// with the /api/library/:kind dynamic routes registered earlier.
+// GET /api/library-notes?kind= — all of my notes (for the "My Notes" sub-tab)
+app.get('/api/library-notes', requireAuth, async (req, res) => {
+  try {
+    const kind = LIB_NOTE_KINDS.includes(String(req.query.kind || '')) ? String(req.query.kind) : null;
+    const rows = kind
+      ? await sql`SELECT id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id, created_at
+                  FROM library_user_notes WHERE user_id = ${req.user.id} AND kind = ${kind}
+                  ORDER BY created_at DESC`
+      : await sql`SELECT id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id, created_at
+                  FROM library_user_notes WHERE user_id = ${req.user.id}
+                  ORDER BY created_at DESC`;
+    res.json({ ok: true, notes: rows });
+  } catch (err) { console.error('GET /api/library/notes:', err); res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/library-notes/:kind/:slug — my notes for one specific item (article panel)
+app.get('/api/library-notes/:kind/:slug', requireAuth, async (req, res) => {
+  try {
+    if (!LIB_NOTE_KINDS.includes(req.params.kind)) return res.status(404).json({ error: 'Unknown library kind' });
+    const rows = await sql`
+      SELECT id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id, created_at
+      FROM library_user_notes
+      WHERE user_id = ${req.user.id} AND kind = ${req.params.kind} AND item_slug = ${req.params.slug}
+      ORDER BY created_at DESC`;
+    res.json({ ok: true, notes: rows });
+  } catch (err) { console.error('GET /api/library/notes/:kind/:slug:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/library-notes — create a note (also mirrors to the Personal Path)
+app.post('/api/library-notes', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const kind = String(b.kind || '');
+    const slug = String(b.item_slug || '');
+    if (!LIB_NOTE_KINDS.includes(kind)) return res.status(400).json({ error: 'Unknown library kind' });
+    if (!/^[a-z0-9][a-z0-9-]{0,80}$/.test(slug)) return res.status(400).json({ error: 'Bad item slug' });
+    const note = String(b.note || '').trim().slice(0, 4000);
+    if (!note) return res.status(400).json({ error: 'Empty note' });
+    const selected = b.selected_text ? String(b.selected_text).slice(0, 2000) : null;
+    const itemTitle = b.item_title ? String(b.item_title).slice(0, 300) : null;
+    const emotion = b.emotion ? String(b.emotion).slice(0, 60) : null;
+
+    // Mirror onto the Personal Path. layer MUST be a lane bucket (event) or the
+    // evolution endpoint drops it. Emoji is embedded in payload.label to render.
+    const preview = note.length > 60 ? note.slice(0, 57) + '…' : note;
+    const label = '📖 ' + preview;
+    const jid = await logJourney(req.user.id, 'note', 'event', {
+      label,
+      source: 'library_note',
+      lib_kind: kind,
+      article_slug: slug,
+      article_title: itemTitle || slug,
+      route: '/library/' + kind + '/' + slug,
+      selected_text: selected || undefined,
+      emotion: emotion || undefined,
+      text: note
+    });
+
+    const rows = await sql`
+      INSERT INTO library_user_notes (user_id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id)
+      VALUES (${req.user.id}, ${kind}, ${slug}, ${itemTitle}, ${selected}, ${note}, ${emotion}, ${jid})
+      RETURNING id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id, created_at`;
+    res.json({ ok: true, note: rows[0] });
+  } catch (err) { console.error('POST /api/library/notes:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/library-notes/:id — delete my note (+ its Path mirror event)
+app.delete('/api/library-notes/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
+    const rows = await sql`SELECT journey_event_id FROM library_user_notes WHERE id = ${id} AND user_id = ${req.user.id}`;
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const jid = rows[0].journey_event_id;
+    await sql`DELETE FROM library_user_notes WHERE id = ${id} AND user_id = ${req.user.id}`;
+    if (jid) {
+      try { await sql`DELETE FROM journey_events WHERE id = ${jid} AND user_id = ${req.user.id}`; } catch (e) {}
+    }
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE /api/library/notes/:id:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── P8b: Atlas Compare snapshots ───────────────────────────────────────────
+// GET /api/me/atlas-snapshots — my saved atlas states (most recent first)
+app.get('/api/me/atlas-snapshots', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, taken_at, label, state FROM atlas_snapshots
+      WHERE user_id = ${req.user.id} ORDER BY taken_at DESC LIMIT 60`;
+    res.json({ ok: true, snapshots: rows });
+  } catch (err) { console.error('GET /api/me/atlas-snapshots:', err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/me/atlas-snapshots — save a snapshot { label, state:{positive,negative,source} }
+app.post('/api/me/atlas-snapshots', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const label = b.label ? String(b.label).slice(0, 120) : null;
+    const state = (b.state && typeof b.state === 'object') ? b.state : {};
+    // Guard the auto-snapshot: skip if an identical one was taken in the last 25 days.
+    if (b.auto) {
+      const recent = await sql`
+        SELECT id FROM atlas_snapshots WHERE user_id = ${req.user.id}
+          AND taken_at > now() - interval '25 days' ORDER BY taken_at DESC LIMIT 1`;
+      if (recent.length) return res.json({ ok: true, skipped: 'recent', snapshot: null });
+    }
+    const rows = await sql`
+      INSERT INTO atlas_snapshots (user_id, label, state)
+      VALUES (${req.user.id}, ${label}, ${JSON.stringify(state)}::jsonb)
+      RETURNING id, taken_at, label, state`;
+    res.json({ ok: true, snapshot: rows[0] });
+  } catch (err) { console.error('POST /api/me/atlas-snapshots:', err); res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/me/atlas-snapshots/:id
+app.delete('/api/me/atlas-snapshots/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id); if (!id) return res.status(400).json({ error: 'Bad id' });
+    await sql`DELETE FROM atlas_snapshots WHERE id = ${id} AND user_id = ${req.user.id}`;
+    res.json({ ok: true });
+  } catch (err) { console.error('DELETE /api/me/atlas-snapshots/:id:', err); res.status(500).json({ error: err.message }); }
 });
 
 // GET /api/external/events?layer=&from=&to=&limit= — global + this user's events
