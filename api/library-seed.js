@@ -1,14 +1,42 @@
-// api/library-seed.js — seed content for the Library tool (PR: library-tool).
+// api/library-seed.js — seed content for the Library tool (Feat 2 content pass).
 //
-// English-only for launch. The `content` column is JSONB keyed by language
-// ({ en: {...} }); ru/es translations slot in under new keys later without a
-// schema change. Migration 056 upserts every row here (ON CONFLICT (slug) DO
-// UPDATE) so re-running run-migrations refreshes copy.
+// The `content` column is JSONB keyed by language: { en:{...}, ru:{...} }. The
+// server localizes per request (?lang=) via libLocalize (content[lang]||content.en).
+// EN is authored inline below; RU translations live in the *_RU maps at the foot
+// and are merged onto each item by attachRu() before export — so each item ships
+// bilingual WITHOUT a schema change. Migration 058 upserts every row with
+// ON CONFLICT (slug) DO UPDATE, so re-running run-migrations refreshes all copy.
 //
-// Consciousness-theory content is sourced from Wikipedia + SEP/IEP + the 2025
-// Nature Cogitate paper (verified 2026-07). Contested claims are represented
-// honestly (Orch-OR = fringe; the 2023 IIT-vs-GNWT collaboration = "no clear
-// winner"; the IIT "pseudoscience" letter reported with both sides).
+// GROUNDING. Consciousness-theory content: Wikipedia + SEP/IEP + the 2025 Nature
+// Cogitate paper. Method facts (founders, regulatory dates, evidence quality) were
+// web-verified 2026-07 against Wikipedia, NIH/NIMH/NCBI, APA, MAPS and FDA sources;
+// contested points are stated honestly. Illustrations are freely-licensed Wikimedia
+// Commons files (see FIG) with credit lines; hotlinked via Special:FilePath.
+
+// ── Illustrations (freely-licensed Wikimedia Commons; url + credit line) ──────
+const FIG = {
+  microtubule:  { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Microtubule%20structure.png', credit:'Thomas Splettstoesser (scistyle.com) · CC BY-SA 4.0 · Wikimedia Commons' },
+  neuron:       { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Complete%20neuron%20cell%20diagram%20en.svg', credit:'Mariana Ruiz (LadyofHats) · Public domain · Wikimedia Commons' },
+  brainLateral: { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Blausen%200101%20Brain%20LateralView.png', credit:'BruceBlaus · CC BY 3.0 · Wikimedia Commons' },
+  pfc:          { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Prefrontal%20cortex.png', credit:'N. M. Zahr & E. V. Sullivan (NIH/NIAAA) · Public domain · Wikimedia Commons' },
+  amygdala:     { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Amygdala%20frontal%20view.png', credit:'Daniel Sabinasz · CC BY-SA 4.0 · Wikimedia Commons' },
+  hippocampus:  { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Gray739-emphasizing-hippocampus.png', credit:'Henry Vandyke Carter (Gray’s Anatomy) · Public domain · Wikimedia Commons' },
+  insula:       { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Human%20Insular%20Anatomy.png', credit:'Stephen Oppenheimer · CC BY 4.0 · Wikimedia Commons' },
+  dmn:          { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Default%20Mode%20Network%20Connectivity.png', credit:'Andreashorn · CC BY-SA 4.0 · Wikimedia Commons' },
+  tms:          { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Transcranial%20magnetic%20stimulation%20%28TMS%29.png', credit:'Ilovestarbies · CC BY-SA 4.0 · Wikimedia Commons' },
+  eeg:          { url:'https://commons.wikimedia.org/wiki/Special:FilePath/EEG%20cap.jpg', credit:'Thuglas · Public domain · Wikimedia Commons' },
+  psilocybin:   { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Psilocybin.svg', credit:'Harbin · Public domain · Wikimedia Commons' },
+  ketamine:     { url:'https://commons.wikimedia.org/wiki/Special:FilePath/%28RS%29-Ketamine-Structural%20Formulae%20V2.svg', credit:'Jü · Public domain · Wikimedia Commons' },
+  mdma:         { url:'https://commons.wikimedia.org/wiki/Special:FilePath/MDMA%20structure.svg', credit:'AlyInWikiWonderland · CC0 · Wikimedia Commons' },
+  synapse:      { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Synapse%20diagram.png', credit:'Dwindrim · CC BY-SA 1.0 · Wikimedia Commons' },
+  myelin:       { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Myelin%20sheath%20%281%29.svg', credit:'Ralph Walterberg · CC BY-SA 3.0 · Wikimedia Commons' },
+  wmModel:      { url:'https://commons.wikimedia.org/wiki/Special:FilePath/The%20Working%20Memory%20Model.svg', credit:'UX Stalin · CC BY-SA 4.0 · Wikimedia Commons' },
+  saccade:      { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Szakkad.jpg', credit:'SpooSpa / Simon Viktória · CC BY-SA 2.0 · Wikimedia Commons' },
+  meditation:   { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Meditation%20Focus%20Point.jpg', credit:'Bondigoldwiki · CC0 · Wikimedia Commons' },
+  gnw:          { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Global%20workspace%20architeture%20anatomical.jpg', credit:'Drking1234 · CC BY-SA 4.0 · Wikimedia Commons' },
+  phi:          { url:'https://commons.wikimedia.org/wiki/Special:FilePath/Phi-iit-symbol.svg', credit:'William Mayner (Wmayner) · CC BY-SA 4.0 · Wikimedia Commons' }
+};
+function fig(key, alt){ return Object.assign({ alt: alt || '' }, FIG[key]); }
 
 // ── Theories & hypotheses ────────────────────────────────────────────────
 const THEORIES = [
@@ -21,6 +49,7 @@ const THEORIES = [
     content: { en: {
       title: 'Integrated Information Theory (IIT)', abbr: 'IIT',
       proponents: 'Giulio Tononi (2004); Christof Koch, Marcello Massimini, Larissa Albantakis',
+      figure: fig('phi', 'The Φ (phi) symbol used by IIT to denote integrated information'),
       summary: 'IIT holds that consciousness IS integrated information — a system is conscious to the degree that it forms a unified causal structure that is "more than the sum of its parts." It starts from axioms about the phenomenology of experience and maps them onto physical postulates about a system’s cause-effect structure. The quantity of consciousness is measured by Φ ("phi"); its quality is the shape of the cause-effect structure itself.',
       key_points: [
         'Consciousness is identified with a maximally irreducible cause-effect structure (a "complex"), not with computation or behaviour.',
@@ -46,6 +75,7 @@ const THEORIES = [
     content: { en: {
       title: 'Global Workspace Theory (GWT)', abbr: 'GWT',
       proponents: 'Bernard Baars (~1988)',
+      figure: fig('gnw', 'Schematic of the global workspace architecture in the brain'),
       summary: 'GWT compares the mind to a theatre: a vast amount of unconscious parallel processing competes for access to a limited-capacity "global workspace," and whatever wins is "broadcast" widely, becoming conscious. Consciousness is the global availability ("fame in the brain") of information to many specialised processors — for report, memory, decision-making, and action.',
       key_points: [
         'Conscious contents are globally broadcast to many otherwise independent, unconscious specialist processes.',
@@ -69,6 +99,7 @@ const THEORIES = [
     content: { en: {
       title: 'Global Neuronal Workspace (GNW/GNWT)', abbr: 'GNWT',
       proponents: 'Stanislas Dehaene, Jean-Pierre Changeux, Lionel Naccache',
+      figure: fig('pfc', 'Prefrontal cortex, central to workspace "ignition" and broadcasting'),
       summary: 'GNWT is the neurobiologically specified, testable descendant of Baars’s GWT. Information becomes conscious when it is amplified and "ignited" into a network of long-range cortical neurons (especially fronto-parietal), making it globally available and reportable. Below a threshold, stimuli are processed unconsciously; crossing it triggers an all-or-none ignition that broadcasts the content workspace-wide.',
       key_points: [
         '"Global ignition": a nonlinear, all-or-none avalanche of sustained long-range fronto-parietal activity marks the transition to consciousness.',
@@ -92,6 +123,7 @@ const THEORIES = [
     content: { en: {
       title: 'Higher-Order Theories (HOT)', abbr: 'HOT',
       proponents: 'David Rosenthal (higher-order thought); Hakwan Lau (neural HOT); Peter Carruthers, William Lycan, Rocco Gennaro',
+      figure: fig('pfc', 'Prefrontal cortex, linked to the metacognitive "higher-order" representation'),
       summary: 'Higher-order theories say a mental state becomes conscious not by its first-order content alone but by being the target of a suitable higher-order representation — a thought or quasi-perception ABOUT that state. The difference between a conscious and an unconscious pain is that you are (non-inferentially) aware of yourself as being in it.',
       key_points: [
         'A state M is conscious iff it is represented by a higher-order state directed at M (the "transitivity principle").',
@@ -184,6 +216,7 @@ const THEORIES = [
     content: { en: {
       title: 'Orchestrated Objective Reduction (Orch-OR)', abbr: 'Orch-OR',
       proponents: 'Roger Penrose (physicist) & Stuart Hameroff (anaesthesiologist)',
+      figure: fig('microtubule', 'Microtubule — the cytoskeletal lattice Orch-OR proposes as the quantum substrate'),
       summary: 'Orch-OR claims consciousness arises from quantum computations inside neurons — specifically quantum-coherent states in microtubules (protein lattices of the cytoskeleton). Penrose argues from Gödelian and quantum-gravity considerations that understanding is non-computable; Hameroff supplies the biological substrate. Each "objective reduction" — a gravitationally-triggered self-collapse of the quantum state — is proposed to be a moment of conscious experience.',
       key_points: [
         'Consciousness = orchestrated sequences of objective-reduction events in neuronal microtubules.',
@@ -247,91 +280,313 @@ const THEORIES = [
 ];
 
 // ── Terms glossary ───────────────────────────────────────────────────────
+// Each term: a crisp one-line definition + a fuller `body_html` expansion (why
+// it matters, how it works) so a term page is a short article, not a dictionary line.
 const TERMS = [
   { slug: 'attention', sort_order: 10, related_slugs: ['selective-attention', 'executive-function', 'salience-network'],
     content: { en: { term: 'Attention', synonyms: ['attentional control', 'focus'],
-      definition: 'The cognitive process of selectively concentrating on a subset of available information while ignoring the rest. Attention allocates limited processing resources, and can be voluntary (top-down, goal-driven) or involuntary (bottom-up, stimulus-driven).' } } },
+      definition: 'The cognitive process of selectively concentrating on a subset of available information while ignoring the rest. Attention allocates limited processing resources, and can be voluntary (top-down, goal-driven) or involuntary (bottom-up, stimulus-driven).',
+      figure: fig('brainLateral', 'Lateral view of the human brain; attention relies on fronto-parietal networks'),
+      body_html: '<p>Attention is not a single faculty but a set of interacting systems — <em>alerting</em> (maintaining a vigilant state), <em>orienting</em> (selecting a source of information), and <em>executive control</em> (resolving conflict among responses). These map onto dorsal fronto-parietal and cingulo-opercular circuits with distinct neuromodulators.</p><p>Because executive attention overlaps heavily with self-regulation, it predicts learning and life outcomes, and is among the most transferable capacities to train.</p>' } } },
   { slug: 'selective-attention', sort_order: 20, related_slugs: ['attention', 'top-down-processing'],
     content: { en: { term: 'Selective attention', synonyms: ['focused attention'],
-      definition: 'The ability to prioritise one stream of information over competing streams — for example, following one voice in a noisy room. It is supported by top-down biasing signals from fronto-parietal networks.' } } },
+      definition: 'The ability to prioritise one stream of information over competing streams — for example, following one voice in a noisy room. It is supported by top-down biasing signals from fronto-parietal networks.',
+      body_html: '<p>The classic illustration is the "cocktail-party effect": we can lock onto a single conversation while filtering a roomful of others, yet still detect our own name in the ignored stream. Selective attention works by <em>biased competition</em> — top-down goals raise the gain on task-relevant representations so they win the competition for processing.</p>' } } },
   { slug: 'inhibitory-control', sort_order: 30, related_slugs: ['executive-function', 'self-regulation', 'prefrontal-cortex'],
     content: { en: { term: 'Inhibitory control', synonyms: ['response inhibition', 'behavioural inhibition'],
-      definition: 'A core executive function: the capacity to suppress prepotent, automatic, or impulsive responses in favour of a more appropriate or goal-directed one. It underlies self-control and is heavily dependent on prefrontal circuitry.' } } },
+      definition: 'A core executive function: the capacity to suppress prepotent, automatic, or impulsive responses in favour of a more appropriate or goal-directed one. It underlies self-control and is heavily dependent on prefrontal circuitry.',
+      body_html: '<p>Inhibitory control depends on the right inferior frontal cortex and connected basal-ganglia "stopping" circuits. It matures slowly through childhood and adolescence, tracking the protracted myelination of prefrontal cortex. Longitudinal research links early self-control to later health, wealth and wellbeing — making it a high-value target for training.</p>' } } },
   { slug: 'self-regulation', sort_order: 40, related_slugs: ['inhibitory-control', 'emotion-regulation', 'executive-function'],
     content: { en: { term: 'Self-regulation', synonyms: ['self-control', 'self-management'],
-      definition: 'The ability to monitor and modulate one’s own emotions, thoughts, attention, and behaviour to meet situational demands and long-term goals. It integrates inhibitory control, emotion regulation, and interoceptive awareness.' } } },
+      definition: 'The ability to monitor and modulate one’s own emotions, thoughts, attention, and behaviour to meet situational demands and long-term goals. It integrates inhibitory control, emotion regulation, and interoceptive awareness.',
+      body_html: '<p>Self-regulation is best understood as an integration rather than a single skill: prefrontal control regions guide attention, dampen limbic reactivity, and hold goals in mind while interoceptive signals make internal states available for adjustment. It is the common thread linking attention training, emotion work, and somatic practice in this app.</p>' } } },
   { slug: 'executive-function', sort_order: 50, related_slugs: ['working-memory', 'inhibitory-control', 'cognitive-flexibility'],
     content: { en: { term: 'Executive function', synonyms: ['executive control', 'cognitive control'],
-      definition: 'A family of top-down mental processes needed for concentration and deliberate thought: primarily working memory, inhibitory control, and cognitive flexibility. Higher-order executive functions (reasoning, planning, problem-solving) build on these.' } } },
+      definition: 'A family of top-down mental processes needed for concentration and deliberate thought: primarily working memory, inhibitory control, and cognitive flexibility. Higher-order executive functions (reasoning, planning, problem-solving) build on these.',
+      figure: fig('pfc', 'Prefrontal cortex, the seat of executive control'),
+      body_html: '<p>The influential Miyake/Diamond framework identifies three core executive functions — <strong>working memory</strong>, <strong>inhibitory control</strong>, and <strong>cognitive flexibility</strong> — from which the higher-order abilities of reasoning, planning and problem-solving are assembled. They are anchored in lateral prefrontal and anterior cingulate cortex and develop into early adulthood.</p>' } } },
   { slug: 'working-memory', sort_order: 60, related_slugs: ['executive-function', 'attention'],
     content: { en: { term: 'Working memory', synonyms: ['short-term active memory'],
-      definition: 'A limited-capacity system for temporarily holding and manipulating information in mind, such as keeping a phone number active while dialling. It is foundational for reasoning, comprehension, and learning.' } } },
+      definition: 'A limited-capacity system for temporarily holding and manipulating information in mind, such as keeping a phone number active while dialling. It is foundational for reasoning, comprehension, and learning.',
+      figure: fig('wmModel', 'Baddeley & Hitch multi-component model of working memory'),
+      body_html: '<p>Baddeley and Hitch’s influential model splits working memory into a <em>central executive</em> that directs attention and two "slave" stores — the <em>phonological loop</em> (verbal/acoustic) and the <em>visuospatial sketchpad</em> — later joined by an <em>episodic buffer</em> that binds information across them. Sustained dorsolateral-prefrontal and parietal activity holds these representations against interference.</p>' } } },
   { slug: 'cognitive-flexibility', sort_order: 70, related_slugs: ['executive-function'],
     content: { en: { term: 'Cognitive flexibility', synonyms: ['set-shifting', 'task-switching'],
-      definition: 'The capacity to shift between concepts, tasks, or perspectives, and to adapt behaviour to changing rules or demands. It is one of the three core executive functions.' } } },
+      definition: 'The capacity to shift between concepts, tasks, or perspectives, and to adapt behaviour to changing rules or demands. It is one of the three core executive functions.',
+      body_html: '<p>Cognitive flexibility is what lets us drop an outdated rule and adopt a new one — the ability measured by tasks like the Wisconsin Card Sorting Test. It carries a measurable "switch cost" (a brief slowing when changing set) and depends on frontoparietal control networks working with the basal ganglia.</p>' } } },
   { slug: 'neuroplasticity', sort_order: 80, related_slugs: ['myelination', 'long-term-potentiation'],
     content: { en: { term: 'Neuroplasticity', synonyms: ['brain plasticity', 'neural plasticity'],
-      definition: 'The brain’s lifelong ability to reorganise its structure, function, and connections in response to experience, learning, or injury. It ranges from synaptic changes to large-scale remapping of cortical areas.' } } },
+      definition: 'The brain’s lifelong ability to reorganise its structure, function, and connections in response to experience, learning, or injury. It ranges from synaptic changes to large-scale remapping of cortical areas.',
+      figure: fig('neuron', 'A neuron — plasticity ranges from synaptic strength to whole-cell and network change'),
+      body_html: '<p>Plasticity operates across scales: <em>synaptic</em> plasticity (strengthening/weakening of connections, e.g. long-term potentiation), <em>structural</em> plasticity (new dendritic spines, adult neurogenesis in the hippocampus), and <em>functional</em> remapping after injury. "Neurons that fire together, wire together" (Hebb’s rule) is the intuition behind why repeated, attentive practice reshapes the brain.</p>' } } },
   { slug: 'myelination', sort_order: 90, related_slugs: ['neuroplasticity'],
     content: { en: { term: 'Myelination', synonyms: ['myelinogenesis'],
-      definition: 'The process by which glial cells wrap axons in a fatty myelin sheath, dramatically increasing the speed and reliability of neural signal transmission. It continues into early adulthood, especially in prefrontal regions supporting self-control.' } } },
+      definition: 'The process by which glial cells wrap axons in a fatty myelin sheath, dramatically increasing the speed and reliability of neural signal transmission. It continues into early adulthood, especially in prefrontal regions supporting self-control.',
+      figure: fig('myelin', 'A myelinated axon; the sheath enables fast saltatory conduction'),
+      body_html: '<p>Myelin is laid down by oligodendrocytes in the central nervous system and Schwann cells in the periphery. By insulating the axon and forcing the signal to jump between gaps (nodes of Ranvier), it speeds conduction up to ~100-fold. Its protracted maturation in prefrontal cortex is one reason self-control keeps improving into the mid-twenties.</p>' } } },
   { slug: 'long-term-potentiation', sort_order: 100, related_slugs: ['neuroplasticity', 'hippocampus'],
     content: { en: { term: 'Long-term potentiation (LTP)', synonyms: ['synaptic strengthening'],
-      definition: 'A long-lasting increase in the strength of a synapse following high-frequency stimulation — a leading cellular mechanism of learning and memory, first characterised in the hippocampus.' } } },
+      definition: 'A long-lasting increase in the strength of a synapse following high-frequency stimulation — a leading cellular mechanism of learning and memory, first characterised in the hippocampus.',
+      figure: fig('synapse', 'A chemical synapse; LTP is a durable strengthening of such connections'),
+      body_html: '<p>LTP typically depends on NMDA-receptor activation acting as a "coincidence detector": when pre- and post-synaptic neurons are active together, calcium influx triggers the insertion of AMPA receptors and lasting strengthening. First described by Bliss and Lømo in 1973, it remains the best-studied cellular model of how experience is written into neural circuits.</p>' } } },
   { slug: 'interoception', sort_order: 110, related_slugs: ['self-regulation', 'emotion-regulation', 'insula'],
     content: { en: { term: 'Interoception', synonyms: ['internal bodily sensing'],
-      definition: 'The perception of the internal state of the body — heartbeat, breathing, hunger, temperature, visceral sensations. Interoceptive signals are central to emotion, self-awareness, and homeostatic regulation, and are integrated in the insular cortex.' } } },
+      definition: 'The perception of the internal state of the body — heartbeat, breathing, hunger, temperature, visceral sensations. Interoceptive signals are central to emotion, self-awareness, and homeostatic regulation, and are integrated in the insular cortex.',
+      figure: fig('insula', 'The insular cortex, where interoceptive signals are integrated into feeling'),
+      body_html: '<p>Visceral signals ascend through the brainstem and thalamus to the insular cortex, where they become the felt background of emotion and the sense of being a self in a body. Interoceptive <em>accuracy</em> (how well you detect signals such as your heartbeat) is linked to emotion regulation, and training interoceptive awareness is a foundation of the somatic methods in this app.</p>' } } },
   { slug: 'emotion-regulation', sort_order: 120, related_slugs: ['self-regulation', 'cognitive-reappraisal', 'amygdala'],
     content: { en: { term: 'Emotion regulation', synonyms: ['affect regulation'],
-      definition: 'The processes by which people influence which emotions they have, when they have them, and how they experience and express them. Strategies range from cognitive reappraisal to attentional deployment and response modulation.' } } },
+      definition: 'The processes by which people influence which emotions they have, when they have them, and how they experience and express them. Strategies range from cognitive reappraisal to attentional deployment and response modulation.',
+      body_html: '<p>Gross’s process model arranges regulation strategies along the timeline of an emotion: <em>situation selection/modification</em>, <em>attentional deployment</em>, <em>cognitive change</em> (reappraisal), and <em>response modulation</em> (e.g. suppression). Reappraisal — reinterpreting a situation before the feeling peaks — is consistently more effective and less costly than suppressing an emotion after it has arisen.</p>' } } },
   { slug: 'cognitive-reappraisal', sort_order: 130, related_slugs: ['emotion-regulation', 'prefrontal-cortex'],
     content: { en: { term: 'Cognitive reappraisal', synonyms: ['reframing'],
-      definition: 'An emotion-regulation strategy that changes the emotional impact of a situation by reinterpreting its meaning. It engages prefrontal control regions to modulate activity in the amygdala and other affective areas.' } } },
+      definition: 'An emotion-regulation strategy that changes the emotional impact of a situation by reinterpreting its meaning. It engages prefrontal control regions to modulate activity in the amygdala and other affective areas.',
+      body_html: '<p>Reappraisal is the deliberate act of finding a different, plausible meaning for an emotionally charged event — seeing a rejection as redirection, or nerves as excitement. Neuroimaging shows lateral and medial prefrontal cortex increasing their top-down control over the amygdala as the reinterpretation takes hold. It is a cornerstone technique in CBT.</p>' } } },
   { slug: 'prefrontal-cortex', sort_order: 140, related_slugs: ['executive-function', 'inhibitory-control'],
     content: { en: { term: 'Prefrontal cortex (PFC)', synonyms: ['frontal executive cortex'],
-      definition: 'The front-most region of the frontal lobes, central to executive function, working memory, decision-making, and the top-down control of attention and emotion. It is among the last brain regions to fully mature.' } } },
+      definition: 'The front-most region of the frontal lobes, central to executive function, working memory, decision-making, and the top-down control of attention and emotion. It is among the last brain regions to fully mature.',
+      figure: fig('pfc', 'The prefrontal cortex within the frontal lobe'),
+      body_html: '<p>The PFC is functionally subdivided: the <em>dorsolateral</em> PFC supports working memory and planning, the <em>ventromedial/orbitofrontal</em> PFC represents value and links emotion to decisions, and the <em>anterior cingulate</em> monitors conflict and effort. Its late myelination underlies the developmental trajectory of self-control.</p>' } } },
   { slug: 'amygdala', sort_order: 150, related_slugs: ['emotion-regulation', 'interoception'],
     content: { en: { term: 'Amygdala', synonyms: ['amygdaloid complex'],
-      definition: 'An almond-shaped set of nuclei in the medial temporal lobe that assigns emotional salience to stimuli — especially threat and fear — and coordinates rapid physiological and behavioural responses.' } } },
+      definition: 'An almond-shaped set of nuclei in the medial temporal lobe that assigns emotional salience to stimuli — especially threat and fear — and coordinates rapid physiological and behavioural responses.',
+      figure: fig('amygdala', 'Location of the amygdala within the temporal lobe'),
+      body_html: '<p>The amygdala acts as a rapid salience detector, able to trigger defensive responses via a fast subcortical "low road" before the cortex has fully processed a stimulus. It is not simply a "fear centre": it tags events of many kinds as significant and modulates memory so emotionally charged experiences are remembered vividly. Prefrontal regions regulate it during reappraisal.</p>' } } },
   { slug: 'hippocampus', sort_order: 160, related_slugs: ['long-term-potentiation', 'working-memory'],
     content: { en: { term: 'Hippocampus', synonyms: ['hippocampal formation'],
-      definition: 'A medial temporal lobe structure essential for forming new episodic and spatial memories and for spatial navigation. It is a key site of neuroplasticity and adult neurogenesis.' } } },
+      definition: 'A medial temporal lobe structure essential for forming new episodic and spatial memories and for spatial navigation. It is a key site of neuroplasticity and adult neurogenesis.',
+      figure: fig('hippocampus', 'The hippocampus, highlighted within the medial temporal lobe'),
+      body_html: '<p>The hippocampus binds the elements of an experience into a retrievable episodic memory and supports a cognitive "map" for navigation — the discovery of place cells and grid cells earned Nobel recognition in 2014. It is one of the few regions showing adult neurogenesis, and is especially vulnerable to chronic stress, which can shrink it.</p>' } } },
   { slug: 'salience-network', sort_order: 170, related_slugs: ['attention', 'interoception'],
     content: { en: { term: 'Salience network', synonyms: ['ventral attention network'],
-      definition: 'A large-scale brain network (anchored in the anterior insula and dorsal anterior cingulate cortex) that detects behaviourally relevant stimuli and switches control between the default-mode and executive networks.' } } },
+      definition: 'A large-scale brain network (anchored in the anterior insula and dorsal anterior cingulate cortex) that detects behaviourally relevant stimuli and switches control between the default-mode and executive networks.',
+      body_html: '<p>The salience network acts as a switchboard: when the anterior insula flags something important — internally or externally — it toggles the brain out of the inward-facing default-mode network and into the task-focused executive network. Dysfunction of this switching is implicated in a range of psychiatric conditions.</p>' } } },
   { slug: 'default-mode-network', sort_order: 180, related_slugs: ['salience-network'],
     content: { en: { term: 'Default-mode network (DMN)', synonyms: ['task-negative network'],
-      definition: 'A set of interacting brain regions most active during rest and internally-directed thought — self-reflection, mind-wandering, autobiographical memory, and imagining the future.' } } },
+      definition: 'A set of interacting brain regions most active during rest and internally-directed thought — self-reflection, mind-wandering, autobiographical memory, and imagining the future.',
+      figure: fig('dmn', 'Connectivity of the default-mode network'),
+      body_html: '<p>The DMN (medial prefrontal cortex, posterior cingulate/precuneus, and lateral parietal cortex) comes online when attention turns inward. It supports autobiographical memory, thinking about others, and mental time-travel, but its over-activity is linked to rumination; meditation is associated with quieter, less "sticky" DMN activity.</p>' } } },
   { slug: 'top-down-processing', sort_order: 190, related_slugs: ['attention', 'predictive-processing'],
     content: { en: { term: 'Top-down processing', synonyms: ['conceptually-driven processing'],
-      definition: 'Perception and cognition guided by prior knowledge, expectations, and goals, which bias how incoming sensory information is interpreted — contrasted with bottom-up, stimulus-driven processing.' } } },
+      definition: 'Perception and cognition guided by prior knowledge, expectations, and goals, which bias how incoming sensory information is interpreted — contrasted with bottom-up, stimulus-driven processing.',
+      body_html: '<p>Top-down processing is why an ambiguous smudge becomes a clear word once you know the context, and why we read past typos. In predictive-processing accounts it is the brain’s downward flow of predictions meeting the upward flow of sensory evidence; attention is the mechanism that decides how much weight each gets.</p>' } } },
   { slug: 'insula', sort_order: 200, related_slugs: ['interoception', 'salience-network'],
     content: { en: { term: 'Insular cortex', synonyms: ['insula'],
-      definition: 'A cortical region folded deep within the lateral sulcus that integrates interoceptive, emotional, and cognitive information, and contributes to subjective feelings and bodily self-awareness.' } } }
+      definition: 'A cortical region folded deep within the lateral sulcus that integrates interoceptive, emotional, and cognitive information, and contributes to subjective feelings and bodily self-awareness.',
+      figure: fig('insula', 'The insular cortex, buried within the lateral sulcus'),
+      body_html: '<p>Hidden beneath the frontal, temporal and parietal opercula, the insula is where bodily signals become felt experience. Its posterior part maps raw interoceptive states; its anterior part — a hub of the salience network — integrates them with emotion and cognition, and is consistently active in awareness of one’s own heartbeat, disgust, empathy and craving.</p>' } } }
 ];
 
-// ── Methods we work with (list expands over time) ────────────────────────
+// ── Methods we work with (evidence-based, somatic, contemplative, neuromodulation) ──
+// Facts (founders, regulatory dates, evidence quality) web-verified 2026-07.
 const METHODS = [
+  // — Original in-app somatic/cognitive practices —
   { slug: 'sensation-mapping', category: 'somatic', sort_order: 10,
     content: { en: { name: 'Sensation Mapping', summary: 'Locating and naming bodily sensations to build interoceptive awareness.',
       body_html: '<p>Sensation Mapping guides a person to notice where in the body a feeling lives, and to give it a precise name (warmth, tightness, buzzing). Repeated practice sharpens <em>interoception</em> — the felt sense of the body’s internal state — which is a foundation for emotion regulation and self-regulation.</p>',
-      steps: ['Pause and bring attention inward.', 'Scan the body and locate the strongest sensation.', 'Name its quality, intensity, and location.', 'Notice how it changes as you attend to it.'] } } },
+      mechanism: 'Directing attention to bodily signals strengthens insula-centred interoceptive networks, making internal states available for labelling and regulation.',
+      evidence: 'Grounded in interoception research; a supportive practice rather than a stand-alone clinical treatment.',
+      steps: ['Pause and bring attention inward.', 'Scan the body and locate the strongest sensation.', 'Name its quality, intensity, and location.', 'Notice how it changes as you attend to it.'],
+      sources: ['https://en.wikipedia.org/wiki/Interoception'] } } },
   { slug: 'emotion-differentiation', category: 'affective', sort_order: 20,
     content: { en: { name: 'Emotion Differentiation', summary: 'Distinguishing and labelling emotions with granularity.',
       body_html: '<p>Emotion Differentiation (emotional granularity) is the practice of resolving a vague affective state into specific, distinct emotions. Higher granularity is associated with better emotion regulation and resilience, because precisely-labelled emotions are easier to act on.</p>',
-      steps: ['Notice that an emotion is present.', 'Move beyond "good/bad" to a specific label.', 'Distinguish similar emotions (e.g. anxiety vs frustration).', 'Link the emotion to its trigger and bodily sensation.'] } } },
+      mechanism: 'Precisely labelling an emotion ("affect labelling") engages right ventrolateral prefrontal cortex and is associated with reduced amygdala reactivity.',
+      evidence: 'Correlational and experimental work links high emotional granularity to better coping and lower drinking/aggression under stress.',
+      steps: ['Notice that an emotion is present.', 'Move beyond "good/bad" to a specific label.', 'Distinguish similar emotions (e.g. anxiety vs frustration).', 'Link the emotion to its trigger and bodily sensation.'],
+      sources: ['https://en.wikipedia.org/wiki/Emotional_granularity'] } } },
   { slug: 'interoceptive-awareness-training', category: 'somatic', sort_order: 30,
     content: { en: { name: 'Interoceptive Awareness Training', summary: 'Systematic attention to internal bodily signals.',
       body_html: '<p>Interoceptive Awareness Training builds the capacity to detect, interpret, and regulate internal signals such as heartbeat, breath, and tension. It strengthens the insula-centred networks that underlie emotional and homeostatic regulation.</p>',
-      steps: ['Attend to the breath without changing it.', 'Track the heartbeat or pulse.', 'Notice hunger, temperature, and tension signals.', 'Practice returning attention gently when it wanders.'] } } },
+      mechanism: 'Repeated attention to visceral signals is thought to refine insular representations of the body and their coupling to prefrontal regulation.',
+      evidence: 'An active research area (e.g. in anxiety and eating disorders); promising but still maturing as a clinical target.',
+      steps: ['Attend to the breath without changing it.', 'Track the heartbeat or pulse.', 'Notice hunger, temperature, and tension signals.', 'Practice returning attention gently when it wanders.'],
+      sources: ['https://en.wikipedia.org/wiki/Interoception'] } } },
   { slug: 'attention-training', category: 'cognitive', sort_order: 40,
     content: { en: { name: 'Attention Training', summary: 'Exercising sustained and selective attention.',
       body_html: '<p>Attention Training uses focused practice — sustaining attention on a chosen object and redirecting it after distraction — to strengthen selective and sustained attention. Over time this supports the fronto-parietal control systems that regulate focus.</p>',
-      steps: ['Choose a single anchor for attention.', 'Sustain focus on the anchor.', 'Notice when attention drifts.', 'Return to the anchor without judgement.'] } } },
+      mechanism: 'Repeated engage–disengage–reorient cycles are proposed to strengthen fronto-parietal executive-attention circuitry.',
+      evidence: 'Focused-attention practice reliably improves attention on trained tasks; broad far-transfer to unrelated abilities is debated.',
+      steps: ['Choose a single anchor for attention.', 'Sustain focus on the anchor.', 'Notice when attention drifts.', 'Return to the anchor without judgement.'],
+      sources: ['https://en.wikipedia.org/wiki/Attention'] } } },
   { slug: 'cognitive-reappraisal-practice', category: 'cognitive', sort_order: 50,
     content: { en: { name: 'Cognitive Reappraisal Practice', summary: 'Reframing the meaning of a situation to change its emotional impact.',
       body_html: '<p>Cognitive Reappraisal Practice trains the deliberate reinterpretation of an emotionally charged situation. Engaging prefrontal control to reframe meaning reliably lowers the intensity of negative affect and is a cornerstone of many evidence-based interventions.</p>',
-      steps: ['Identify the situation and the emotion it evokes.', 'Surface the automatic interpretation.', 'Generate an alternative, plausible interpretation.', 'Notice the shift in emotional intensity.'] } } }
+      mechanism: 'Reinterpreting meaning recruits lateral/medial prefrontal cortex to down-regulate amygdala and other affective responses.',
+      evidence: 'One of the most robustly supported emotion-regulation strategies; more durable than expressive suppression.',
+      steps: ['Identify the situation and the emotion it evokes.', 'Surface the automatic interpretation.', 'Generate an alternative, plausible interpretation.', 'Notice the shift in emotional intensity.'],
+      sources: ['https://en.wikipedia.org/wiki/Cognitive_reappraisal'] } } },
+
+  // — Evidence-based psychotherapies —
+  { slug: 'cbt', category: 'cognitive', sort_order: 60,
+    content: { en: { name: 'Cognitive Behavioral Therapy (CBT)', founder: 'Aaron T. Beck (1960s–70s), building on Albert Ellis’s REBT (1950s)',
+      summary: 'A structured, present-focused psychotherapy that changes emotions and behaviour by identifying and modifying maladaptive thoughts.',
+      body_html: '<p><strong>Cognitive Behavioral Therapy</strong> rests on the idea that it is not events themselves but our <em>interpretations</em> of them that drive emotional and behavioural responses. Therapy makes these automatic thoughts and underlying beliefs explicit, tests them against evidence, and pairs cognitive change with behavioural experiments (such as graded exposure or activity scheduling).</p><p>It is time-limited, collaborative and skills-based, with homework between sessions. CBT is the most extensively researched form of psychotherapy and the template from which DBT, ACT and many digital-therapeutic programs descend.</p>',
+      mechanism: 'Restructuring cognitive distortions and changing behavioural patterns breaks the reinforcing loop between thoughts, feelings and actions.',
+      evidence: 'First-line, APA- and NICE-recommended for depression and anxiety disorders, with strong RCT and meta-analytic support.',
+      indications: ['Depression', 'Anxiety disorders (GAD, panic, social anxiety, phobias)', 'OCD and PTSD (specialised protocols)', 'Insomnia (CBT-I)'],
+      steps: ['Formulate the problem and set collaborative goals.', 'Catch automatic thoughts tied to distressing moments.', 'Examine the evidence for and against them.', 'Run behavioural experiments and practise new responses.'],
+      cautions: ['Requires engagement and sufficient cognitive capacity.', 'Not a stand-alone treatment for acute psychosis or acute crisis without adjunctive care.'],
+      sources: ['https://en.wikipedia.org/wiki/Cognitive_behavioral_therapy', 'https://www.apa.org/ptsd-guideline/treatments/cognitive-behavioral-therapy'] } } },
+  { slug: 'dbt', category: 'behavioral', sort_order: 70,
+    content: { en: { name: 'Dialectical Behavior Therapy (DBT)', founder: 'Marsha M. Linehan (developed late 1980s; manual 1993)',
+      summary: 'A CBT-derived therapy that balances acceptance and change through four skills modules, developed for chronic suicidality and borderline personality disorder.',
+      body_html: '<p><strong>Dialectical Behavior Therapy</strong> adds to CBT a core dialectic: radical <em>acceptance</em> of the person as they are, held in tension with the demand for <em>change</em>. Standard DBT combines weekly individual therapy, a skills group, between-session phone coaching, and a therapist consultation team.</p><p>Its skills are organised into four modules — <em>mindfulness</em>, <em>distress tolerance</em>, <em>emotion regulation</em>, and <em>interpersonal effectiveness</em> — that give emotionally dysregulated clients concrete tools for surviving crises without self-harm.</p>',
+      mechanism: 'Teaching acceptance and concrete regulation skills reduces emotion dysregulation and the impulsive behaviours it drives.',
+      evidence: 'The gold-standard, empirically supported treatment for borderline personality disorder; strong RCT evidence for reducing self-harm and suicidal behaviour.',
+      indications: ['Borderline personality disorder', 'Chronic suicidality and self-harm', 'Emotion dysregulation', 'Adapted for eating disorders and substance use'],
+      steps: ['Stabilise safety and target life-threatening behaviours first.', 'Build mindfulness as the foundation skill.', 'Add distress-tolerance skills for crises.', 'Develop emotion-regulation and interpersonal skills.'],
+      cautions: ['Resource-intensive; requires commitment to the full program.', 'Standard DBT is not designed as a stand-alone for primary psychotic disorders.'],
+      sources: ['https://en.wikipedia.org/wiki/Dialectical_behavior_therapy', 'https://www.nimh.nih.gov/health/topics/borderline-personality-disorder'] } } },
+  { slug: 'act', category: 'cognitive', sort_order: 80,
+    content: { en: { name: 'Acceptance and Commitment Therapy (ACT)', founder: 'Steven C. Hayes with Kirk Strosahl and Kelly Wilson (1980s–90s)',
+      summary: 'A "third-wave" behavioural therapy that increases psychological flexibility through acceptance, mindfulness and values-based action rather than by disputing thought content.',
+      body_html: '<p><strong>Acceptance and Commitment Therapy</strong> departs from classic CBT: instead of arguing with distressing thoughts, it teaches people to accept inner experiences, "defuse" from unhelpful thoughts (seeing them as thoughts rather than truths), and commit to actions guided by chosen <em>values</em>.</p><p>Its target is <em>psychological flexibility</em> — the ability to stay in contact with the present moment and act meaningfully even when uncomfortable thoughts and feelings are present — organised around six processes often drawn as the "hexaflex."</p>',
+      mechanism: 'Building psychological flexibility (acceptance + defusion + values-based commitment) reduces the behavioural impact of distressing inner experiences.',
+      evidence: 'APA Division 12 lists strong research support for chronic pain and modest support for depression; evidence is mixed/emerging for other conditions.',
+      indications: ['Chronic pain', 'Depression and anxiety', 'Stress and workplace wellbeing', 'Adjustment to chronic illness'],
+      steps: ['Notice experiential avoidance and its costs.', 'Practise acceptance and cognitive defusion.', 'Contact the present moment (mindfulness).', 'Clarify values and commit to concrete action.'],
+      cautions: ['Few absolute contraindications.', 'Adapt for severe cognitive impairment or acute crisis needing more directive intervention.'],
+      sources: ['https://en.wikipedia.org/wiki/Acceptance_and_commitment_therapy', 'https://div12.org/treatment/acceptance-and-commitment-therapy-for-chronic-pain/'] } } },
+  { slug: 'ifs', category: 'psychotherapy', sort_order: 90,
+    content: { en: { name: 'Internal Family Systems (IFS)', founder: 'Richard C. Schwartz (1980s; formalised 1990s)',
+      summary: 'A parts-based psychotherapy that models the psyche as a core "Self" plus subpersonalities, and heals by unburdening protective and wounded parts.',
+      body_html: '<p><strong>Internal Family Systems</strong> views the mind as naturally multiple: a set of "parts" (protectors, managers, exiles) organised around a calm, compassionate core called the <em>Self</em>. Symptoms are seen as the work of protective parts carrying burdens from past experience.</p><p>Therapy helps the client access Self-energy and, from that grounded place, get to know and "unburden" the parts — so protectors can relax and wounded exiles can heal. It has become widely used in trauma work.</p>',
+      mechanism: 'Accessing a compassionate "Self" to relate to and unburden protective/wounded parts is proposed to resolve internal conflict driving symptoms.',
+      evidence: 'Emerging and still limited; listed on the U.S. NREPP registry as evidence-based in 2015, but robust RCT evidence remains thin relative to CBT/DBT.',
+      indications: ['Trauma and complex trauma', 'Depression and anxiety', 'Inner conflict and self-criticism'],
+      steps: ['Identify a part and how you feel toward it.', 'Ask protective parts for a little space (access Self).', 'Get to know the part’s fear and role with curiosity.', 'Witness and unburden the wounded part it protects.'],
+      cautions: ['Caution with severe dissociative disorders and active psychosis — the parts framework can be destabilising without careful adaptation.'],
+      sources: ['https://en.wikipedia.org/wiki/Internal_Family_Systems_Model', 'https://ifs-institute.com/'] } } },
+
+  // — Trauma & somatic —
+  { slug: 'emdr', category: 'trauma', sort_order: 100,
+    content: { en: { name: 'EMDR — Eye Movement Desensitization and Reprocessing', founder: 'Francine Shapiro (discovered 1987; first RCT 1989)',
+      figure: fig('saccade', 'Eye-movement scanpath — EMDR uses guided bilateral eye movements'),
+      summary: 'A structured trauma therapy in which recalling a distressing memory while performing bilateral stimulation (usually guided eye movements) desensitises and reprocesses it.',
+      body_html: '<p><strong>EMDR</strong> asks the client to hold a traumatic memory in mind while tracking the therapist’s fingers (or another bilateral cue) in a rhythmic left–right pattern. Across sets, the memory’s vividness and emotional charge typically diminish and a more adaptive belief can take its place. It follows a fixed eight-phase protocol from history-taking through installation and closure.</p><p>EMDR is one of the most widely recommended trauma therapies. The <em>specific</em> contribution of the eye movements — versus the exposure and reprocessing they accompany — remains scientifically debated.</p>',
+      mechanism: 'Recalling a memory while performing bilateral stimulation is proposed to tax working memory, reducing the memory’s vividness and enabling adaptive reprocessing.',
+      evidence: 'Strong RCT support for PTSD; recommended for PTSD by the APA, WHO and VA/DoD guidelines.',
+      indications: ['Post-traumatic stress disorder (PTSD)', 'Single- and multiple-incident trauma', 'Distressing memories and phobias (adjunct)'],
+      steps: ['History-taking and treatment planning.', 'Preparation and stabilisation/resourcing.', 'Assessment of the target memory (image, belief, body).', 'Desensitisation with bilateral stimulation, then installation, body scan and closure.'],
+      cautions: ['Caution with dissociative disorders, active psychosis, acute suicidality and unstable medical conditions.', 'Requires stabilisation before reprocessing.'],
+      sources: ['https://en.wikipedia.org/wiki/Eye_movement_desensitization_and_reprocessing', 'https://www.apa.org/ptsd-guideline/treatments/eye-movement-reprocessing'] } } },
+  { slug: 'somatic-experiencing', category: 'somatic', sort_order: 110,
+    content: { en: { name: 'Somatic Experiencing (SE)', founder: 'Peter A. Levine (from the 1970s; Waking the Tiger, 1997)',
+      summary: 'A body-oriented trauma approach that resolves the residue of overwhelming events by gently completing thwarted survival responses held in the nervous system.',
+      body_html: '<p><strong>Somatic Experiencing</strong> proposes that trauma is not stored in the event but in a nervous system left in incomplete "fight, flight or freeze" activation. Rather than re-telling the story in detail, SE tracks bodily sensations and works in small, titrated doses — <em>pendulating</em> between activation and calm — so the survival energy can discharge without overwhelming the client.</p><p>Techniques include tracking interoceptive sensation, "pendulation," and "titration" to keep the client within a tolerable window of arousal.</p>',
+      mechanism: 'Titrated attention to bodily sensation is proposed to discharge incomplete autonomic survival activation and restore self-regulation.',
+      evidence: 'Emerging; a small number of RCTs/studies suggest benefit for PTSD symptoms, but the overall evidence base is preliminary.',
+      indications: ['PTSD and trauma', 'Stress- and freeze-related dysregulation'],
+      steps: ['Establish safety and resources.', 'Track present-moment bodily sensation.', 'Pendulate between activation and settling.', 'Titrate exposure to keep arousal tolerable and allow discharge.'],
+      cautions: ['Avoid flooding/re-traumatisation.', 'Requires stabilisation in severe dissociation, acute psychosis or medical instability.'],
+      sources: ['https://en.wikipedia.org/wiki/Somatic_experiencing', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4316402/'] } } },
+  { slug: 'somatic-trauma-therapy', category: 'somatic', sort_order: 120,
+    content: { en: { name: 'Somatic Trauma Therapy', founder: 'Babette Rothschild (early-to-mid 1990s; The Body Remembers, 2000)',
+      summary: 'An integrative, body-aware trauma approach that prioritises nervous-system regulation and safety so trauma can be processed without overwhelm.',
+      body_html: '<p><strong>Somatic Trauma Therapy</strong> integrates body awareness with talk therapy, emphasising the ability to "put on the brakes" — to slow and contain arousal — before and during trauma processing. Rothschild’s work stresses that safety and dual awareness (staying connected to the present while touching the past) prevent re-traumatisation.</p><p>It draws on psychophysiology and attachment theory and is typically used as a careful, paced adjunct within trauma treatment.</p>',
+      mechanism: 'Building nervous-system regulation and "braking" skills allows trauma material to be processed within a tolerable window of arousal.',
+      evidence: 'Minimal formal RCT evidence; primarily clinical and theoretical literature rather than controlled trials.',
+      indications: ['Trauma and PTSD (paced, adjunctive)', 'Autonomic dysregulation'],
+      steps: ['Build resources and "braking" skills first.', 'Maintain dual awareness of present and past.', 'Titrate contact with trauma material.', 'Return to regulation before closing.'],
+      cautions: ['Risk of re-traumatisation if activation is not carefully titrated.', 'Requires stabilisation in severe dissociation or acute crisis.'],
+      sources: ['https://en.wikipedia.org/wiki/Babette_Rothschild', 'https://www.somatictraumatherapy.com/'] } } },
+
+  // — Contemplative —
+  { slug: 'mbsr', category: 'contemplative', sort_order: 130,
+    content: { en: { name: 'Mindfulness-Based Stress Reduction (MBSR)', founder: 'Jon Kabat-Zinn (1979, UMass Medical School)',
+      figure: fig('meditation', 'Mindfulness practice — sustained, non-judgemental present-moment attention'),
+      summary: 'A structured 8-week secular program of mindfulness meditation and body awareness that reduces stress reactivity.',
+      body_html: '<p><strong>MBSR</strong> is a standardised, secular 8-week course that trains present-moment, non-judgemental awareness through practices such as the <em>body scan</em>, sitting meditation, and gentle mindful movement (yoga). Kabat-Zinn developed it in a hospital pain clinic; it became the template for the wider field of mindfulness-based interventions (including MBCT for depression relapse).</p><p>The aim is not to empty the mind but to change one’s <em>relationship</em> to thoughts and sensations — meeting them with awareness rather than automatic reactivity.</p>',
+      mechanism: 'Training non-reactive present-moment awareness is proposed to improve attentional and emotional regulation and reduce rumination and stress reactivity.',
+      evidence: 'Moderate-to-strong evidence for reducing stress, anxiety and depressive symptoms and for coping with chronic pain; effect sizes are moderate and heterogeneous.',
+      indications: ['Stress', 'Anxiety and depressive symptoms', 'Chronic pain (coping)'],
+      steps: ['Practise the body scan daily.', 'Build a sitting meditation on breath and sensation.', 'Add mindful movement/yoga.', 'Bring informal mindfulness into everyday activity.'],
+      cautions: ['Caution in acute psychosis, current mania and severe/acute PTSD, where intensive meditation can transiently worsen distress.'],
+      sources: ['https://en.wikipedia.org/wiki/Mindfulness-based_stress_reduction', 'https://www.nccih.nih.gov/health/meditation-and-mindfulness-effectiveness-and-safety'] } } },
+  { slug: 'vipassana', category: 'contemplative', sort_order: 140,
+    content: { en: { name: 'Vipassana Meditation', founder: 'Ancient Buddhist practice; modern retreat form popularised by S. N. Goenka (from 1969)',
+      figure: fig('meditation', 'Seated meditation, the posture of Vipassana practice'),
+      summary: 'An insight-meditation practice of sustained, non-reactive observation of bodily sensation and mental phenomena to see their impermanent nature.',
+      body_html: '<p><strong>Vipassana</strong> ("insight" / "seeing things as they really are") is one of the oldest Buddhist meditation techniques. In the widely-taught Goenka form it is learned on silent 10-day residential retreats: practitioners first steady attention on the breath, then systematically sweep attention through the body, observing sensations without craving or aversion.</p><p>The stated aim is <em>insight</em> into impermanence and the reduction of habitual reactivity, cultivated through equanimity toward whatever arises.</p>',
+      mechanism: 'Sustained non-reactive observation of sensation is proposed to weaken habitual craving/aversion patterns and increase equanimity.',
+      evidence: 'Limited and mixed clinical evidence; some studies suggest benefits for well-being and substance use, but rigorous RCTs are sparse.',
+      indications: ['Well-being and stress (non-clinical)', 'Studied for substance-use and prison-rehabilitation settings'],
+      steps: ['Steady attention on the natural breath.', 'Sweep attention systematically through the body.', 'Observe each sensation without reacting.', 'Cultivate equanimity toward pleasant and unpleasant alike.'],
+      cautions: ['Intensive silent retreats can precipitate or worsen episodes in people with serious psychiatric conditions (psychosis, severe depression, PTSD).', 'Rare meditation-related adverse events are reported.'],
+      sources: ['https://en.wikipedia.org/wiki/Vipassana', 'https://www.dhamma.org/'] } } },
+  { slug: 'wim-hof-method', category: 'somatic', sort_order: 150,
+    content: { en: { name: 'Wim Hof Method', founder: 'Wim Hof (developed and popularised from the 1990s–2000s)',
+      summary: 'A wellness practice combining cyclic controlled hyperventilation, cold exposure and focused commitment, associated with transient sympathetic and immune modulation.',
+      body_html: '<p>The <strong>Wim Hof Method</strong> has three pillars: a specific <em>breathing</em> technique (rounds of deep over-breathing followed by breath retention), gradual <em>cold exposure</em> (cold showers, ice baths), and <em>commitment/focus</em>. A landmark study (Kox et al., PNAS 2014) found trained individuals could voluntarily raise adrenaline and blunt the inflammatory response to an injected endotoxin.</p><p>Reported benefits (stress resilience, mood, recovery) are popular but not established as medical treatments; the well-controlled evidence base is small.</p>',
+      mechanism: 'Cyclic hyperventilation plus cold exposure transiently activates the sympathetic nervous system and can modulate the innate immune/stress response.',
+      evidence: 'Limited; small studies show voluntary adrenaline release and dampened endotoxin-induced inflammation, but clinical benefits are not established.',
+      indications: ['Stress resilience and wellbeing (non-clinical)'],
+      steps: ['Learn the breathing only in a safe, seated/lying position.', 'Perform rounds of deep breathing then breath retention.', 'Introduce cold exposure gradually.', 'Never rush cold or breath-holds; build tolerance over time.'],
+      cautions: ['DANGER: never do the breathing in or near water, while driving, or standing (fainting/drowning risk).', 'Caution with cardiovascular disease, epilepsy/seizures and pregnancy.'],
+      sources: ['https://www.pnas.org/doi/10.1073/pnas.1322174111', 'https://en.wikipedia.org/wiki/Wim_Hof'] } } },
+
+  // — Neuromodulation —
+  { slug: 'tms', category: 'neuromodulation', sort_order: 160,
+    content: { en: { name: 'Transcranial Magnetic Stimulation (TMS)', founder: 'Technique introduced by Anthony Barker et al. (Sheffield, 1985)',
+      figure: fig('tms', 'Transcranial magnetic stimulation over the scalp'),
+      summary: 'A non-invasive neuromodulation therapy that uses pulsed magnetic fields to modulate cortical excitability, most established for treatment-resistant depression.',
+      body_html: '<p><strong>Transcranial Magnetic Stimulation</strong> delivers focal magnetic pulses through a coil held against the scalp; these induce electrical currents that raise or lower excitability in the targeted cortex. Repetitive TMS (rTMS) over the left dorsolateral prefrontal cortex is an established treatment for depression that has not responded to medication.</p><p>Courses typically run daily over several weeks; newer accelerated and theta-burst protocols shorten this. TMS is generally well-tolerated, with headache and scalp discomfort the most common side effects and a small seizure risk.</p>',
+      mechanism: 'Pulsed magnetic fields induce focal cortical currents that modulate excitability and, over a course, network activity — typically targeting left DLPFC in depression.',
+      evidence: 'Strong RCT support for major depressive disorder; also FDA-cleared for OCD, migraine and smoking cessation.',
+      indications: ['Treatment-resistant major depression', 'OCD (specific protocol)', 'Migraine; smoking cessation'],
+      steps: ['Screen for metal implants and seizure risk.', 'Map the motor threshold to calibrate dose.', 'Localise the target (e.g. left DLPFC).', 'Deliver daily sessions over several weeks.'],
+      cautions: ['Contraindicated with ferromagnetic/conductive metal or active implants near the coil (cochlear implants, deep-brain/vagus-nerve stimulators, aneurysm clips).', 'Seizure risk — caution with epilepsy or seizure-threshold-lowering conditions/drugs.'],
+      sources: ['https://www.psychiatry.org/patients-families/transcranial-magnetic-stimulation', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8864803/'] } } },
+  { slug: 'neurofeedback', category: 'neuromodulation', sort_order: 170,
+    content: { en: { name: 'Neurofeedback (EEG biofeedback)', founder: 'No single founder; foundational work by Joe Kamiya (1960s) and M. Barry Sterman (early 1970s)',
+      figure: fig('eeg', 'An EEG cap — neurofeedback trains self-regulation of brain activity'),
+      summary: 'A biofeedback technique that shows real-time brain activity (usually EEG) so a person can learn to self-regulate specific brainwave patterns.',
+      body_html: '<p><strong>Neurofeedback</strong> turns an ongoing brain signal — most often the EEG — into a real-time display (a sound, a game, a bar) that rewards the desired pattern. Through operant conditioning the user gradually learns to shift their own brain activity, for example increasing sensorimotor rhythm or altering frontal theta/beta ratios.</p><p>It is most studied in ADHD, where results are genuinely mixed: open-label trials look favourable, but well-controlled double-blind trials often show no advantage over sham for core symptoms. It is generally low-risk.</p>',
+      mechanism: 'Operant conditioning of a real-time brain signal trains the user to self-regulate targeted oscillatory patterns.',
+      evidence: 'Mixed; sham-controlled trials in ADHD frequently fail to beat placebo for core symptoms — efficacy remains contested.',
+      indications: ['ADHD (contested)', 'Relaxation/self-regulation training', 'Explored for epilepsy, anxiety'],
+      steps: ['Assess and set a training target (e.g. an EEG band).', 'Place sensors and establish a baseline.', 'Reward movement toward the target in real time.', 'Repeat across many sessions to consolidate learning.'],
+      cautions: ['Generally low-risk; transient fatigue or headache reported.', 'Caution with seizure disorders. Device efficacy claims for specific disorders are not FDA-established.'],
+      sources: ['https://en.wikipedia.org/wiki/Neurofeedback', 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6538359/'] } } },
+
+  // — Pharmacological / psychedelic-assisted (with harm-reduction framing) —
+  { slug: 'ketamine-assisted-therapy', category: 'psychedelic', sort_order: 180,
+    content: { en: { name: 'Ketamine-Assisted Therapy', founder: 'Rapid antidepressant effect shown by Berman & Krystal et al. (Yale, 2000); ketamine first FDA-approved as an anaesthetic in 1970',
+      figure: fig('ketamine', 'Ketamine — an NMDA-receptor antagonist with rapid antidepressant effects'),
+      summary: 'Supervised use of ketamine (an NMDA-receptor antagonist) to produce rapid antidepressant and anti-suicidal effects, often paired with psychological support.',
+      body_html: '<p><strong>Ketamine-assisted therapy</strong> uses sub-anaesthetic ketamine — a dissociative anaesthetic — for its fast-acting antidepressant effect, which can appear within hours rather than the weeks typical of standard antidepressants. Racemic IV/IM ketamine for depression is used off-label; the S-enantiomer <em>esketamine</em> (Spravato) is an FDA-approved nasal spray delivered under supervision.</p><p>Sessions involve monitored dosing (dissociation, sedation and blood-pressure rise are expected) and, in psychotherapy-integrated models, preparation and integration around the dosing itself. Ketamine is a controlled substance with abuse potential.</p>',
+      mechanism: 'NMDA-receptor antagonism triggers a downstream glutamate surge and rapid synaptogenesis (AMPA/BDNF–mTOR signalling), producing fast-onset antidepressant effects.',
+      evidence: 'Strong evidence for rapid, short-lived antidepressant/anti-suicidal effects in treatment-resistant depression; benefits wane without maintenance.',
+      regulatory: 'Esketamine (Spravato) FDA-approved 5 Mar 2019 (with an oral antidepressant) for treatment-resistant depression; 3 Aug 2020 for MDD with acute suicidal ideation; 21 Jan 2025 as monotherapy. Restricted REMS program. Racemic ketamine is not FDA-approved for depression.',
+      indications: ['Treatment-resistant depression', 'Major depression with acute suicidal ideation (esketamine)'],
+      steps: ['Medical and psychiatric screening.', 'Preparation and intention-setting.', 'Monitored dosing with vitals and support.', 'Integration of the experience over following days.'],
+      cautions: ['Contraindicated with aneurysmal vascular disease, arteriovenous malformation or history of intracerebral haemorrhage.', 'Caution with hypertension/cardiovascular disease; risk of dissociation, sedation and abuse (Schedule III). Medical supervision required.'],
+      sources: ['https://www.fda.gov/news-events/press-announcements/fda-approves-new-nasal-spray-medication-treatment-resistant-depression-available-only-certified', 'https://www.drugs.com/history/spravato.html'] } } },
+  { slug: 'psilocybin-assisted-therapy', category: 'psychedelic', sort_order: 190,
+    content: { en: { name: 'Psilocybin-Assisted Therapy', founder: 'Psilocybin isolated by Albert Hofmann (1958); modern therapeutic research revived by Roland Griffiths (Johns Hopkins, from 2006)',
+      figure: fig('psilocybin', 'Psilocybin — a serotonergic (5-HT2A) psychedelic under clinical investigation'),
+      summary: 'Investigational therapy pairing a supported psilocybin session with preparation and integration psychotherapy, studied for treatment-resistant and major depression.',
+      body_html: '<p><strong>Psilocybin-assisted therapy</strong> combines one or two supervised dosing sessions with a serotonergic psychedelic and a psychotherapy scaffold of <em>preparation</em> before and <em>integration</em> afterward. During dosing the client typically rests with eyeshades and music while a trained dyad provides support.</p><p>It is <em>not</em> an approved treatment. Trials for depression have shown promising phase-2 and early phase-3 results, but it remains investigational and is delivered only within research or specially regulated settings.</p>',
+      mechanism: 'Serotonin 5-HT2A receptor agonism produces altered cognition/perception and a window of increased neural plasticity, leveraged by accompanying psychological support.',
+      evidence: 'Emerging but promising for treatment-resistant and major depression (positive phase-2 and early phase-3 signals); not yet an established standard of care.',
+      regulatory: 'NOT FDA-approved. FDA Breakthrough Therapy designation to COMPASS Pathways (COMP360) for treatment-resistant depression in Oct 2018 and to the Usona Institute for major depression in 2019; phase-3 trials ongoing.',
+      indications: ['Treatment-resistant depression (investigational)', 'Major depressive disorder (investigational)'],
+      steps: ['Screening and medical/psychiatric evaluation.', 'Preparation sessions to build safety and intention.', 'Supported dosing session with monitoring.', 'Integration psychotherapy to consolidate insight.'],
+      cautions: ['Contraindicated/high-caution with personal or family history of psychosis, schizophrenia or bipolar disorder.', 'Cardiac caution (5-HT2B valvulopathy risk with repeated dosing); serotonergic drug interactions; transient blood-pressure rise. Legally restricted.'],
+      sources: ['https://en.wikipedia.org/wiki/Psilocybin', 'https://ir.compasspathways.com/'] } } },
+  { slug: 'mdma-assisted-therapy', category: 'psychedelic', sort_order: 200,
+    content: { en: { name: 'MDMA-Assisted Therapy', founder: 'MDMA first synthesised at Merck (1912); modern PTSD clinical program driven by MAPS / Rick Doblin (from the 1980s)',
+      figure: fig('mdma', 'MDMA — an entactogen studied as an adjunct to trauma psychotherapy'),
+      summary: 'Investigational trauma therapy using MDMA to support processing during psychotherapy for PTSD; not FDA-approved.',
+      body_html: '<p><strong>MDMA-assisted therapy</strong> pairs a small number of supervised MDMA sessions with intensive trauma-focused psychotherapy. MDMA’s release of serotonin and oxytocin is thought to reduce fear and increase trust and openness, allowing traumatic material to be revisited with less overwhelm.</p><p>Two phase-3 trials for PTSD reported positive results, but in <strong>August 2024 the FDA issued a Complete Response Letter to Lykos Therapeutics</strong>, declining approval and requesting at least one additional phase-3 trial amid concerns about trial design, functional unblinding and data integrity. MDMA remains a Schedule I substance.</p>',
+      mechanism: 'MDMA releases serotonin (plus norepinephrine/dopamine) and oxytocin, proposed to reduce the fear response and increase trust/openness during trauma-focused psychotherapy.',
+      evidence: 'Two positive phase-3 RCTs for PTSD, but the FDA raised design, unblinding and safety/data-integrity concerns; promising but the regulatory bar was not met.',
+      regulatory: 'NOT approved. FDA issued a Complete Response Letter to Lykos Therapeutics (announced 9 Aug 2024) for midomafetamine (MDMA) for PTSD, requesting another phase-3 trial. MDMA remains Schedule I.',
+      indications: ['Post-traumatic stress disorder (investigational)'],
+      steps: ['Screening and preparation with a therapist dyad.', 'Supervised, day-long dosing sessions.', 'Non-directive support during the experience.', 'Integration sessions between and after dosing.'],
+      cautions: ['Cardiovascular risk (hypertension, tachycardia, arrhythmia) and hyperthermia.', 'Serotonin-syndrome risk, especially with SSRIs/MAOIs; abuse potential. Legally restricted (Schedule I).'],
+      sources: ['https://maps.org/mdma/', 'https://www.prnewswire.com/news-releases/lykos-therapeutics-announces-complete-response-letter-for-midomafetamine-capsules-for-ptsd-302219182.html'] } } }
 ];
 
 // ── Research summaries (article format) ──────────────────────────────────
@@ -339,12 +594,14 @@ const RESEARCH = [
   { slug: 'attention-networks-overview', topic: 'attention', sort_order: 10,
     source_url: 'https://en.wikipedia.org/wiki/Attention', authors: [],
     content: { en: { title: 'The organisation of attention networks',
+      figure: fig('brainLateral', 'Attention networks span dorsal fronto-parietal and cingulo-opercular cortex'),
       summary: 'A synthesis of how the brain implements attention across distinct but interacting networks.',
       body_html: '<p>Contemporary models divide attention into partly separable networks: an <strong>alerting</strong> system (maintaining a vigilant state), an <strong>orienting</strong> system (selecting information from sensory input), and an <strong>executive control</strong> system (resolving conflict among responses). These map onto fronto-parietal and cingulo-opercular circuitry with distinct neuromodulators.</p><p>Top-down (goal-driven) and bottom-up (stimulus-driven) control interact continuously, and their balance is a strong predictor of performance on tasks requiring focus.</p>',
       findings: ['Attention is not a single faculty but a set of interacting networks.', 'Dorsal fronto-parietal regions support voluntary orienting; a ventral network detects salient events.', 'Executive attention is closely tied to self-regulation and school/work outcomes.'] } } },
   { slug: 'inhibitory-control-development', topic: 'inhibitory_control', sort_order: 20,
     source_url: 'https://en.wikipedia.org/wiki/Inhibitory_control', authors: [],
     content: { en: { title: 'Inhibitory control and its development',
+      figure: fig('pfc', 'Prefrontal maturation tracks the slow development of inhibitory control'),
       summary: 'How response inhibition matures and why it matters for life outcomes.',
       body_html: '<p>Inhibitory control — suppressing prepotent responses in favour of goal-appropriate ones — depends on right inferior frontal cortex and connected basal-ganglia circuits. It develops steadily through childhood and adolescence, tracking the protracted maturation of prefrontal cortex.</p><p>Longitudinal work links early self-control to later health, wealth, and wellbeing, making inhibitory control a high-value target for intervention.</p>',
       findings: ['Right inferior frontal cortex is a hub for response inhibition.', 'Inhibitory control matures slowly, alongside prefrontal myelination.', 'Early self-control predicts a broad range of adult outcomes.'] } } },
@@ -357,6 +614,7 @@ const RESEARCH = [
   { slug: 'conscious-activation-of-ns-areas', topic: 'conscious_activation', sort_order: 40,
     source_url: 'https://en.wikipedia.org/wiki/Neurofeedback', authors: [],
     content: { en: { title: 'Conscious, voluntary activation of specific nervous-system areas',
+      figure: fig('eeg', 'Real-time EEG feedback lets people learn to regulate targeted activity'),
       summary: 'Evidence that people can learn to modulate targeted brain regions through feedback and attention.',
       body_html: '<p>Real-time neurofeedback and interoceptive training show that individuals can learn to up- or down-regulate activity in specific regions — for example the amygdala or anterior insula — when given a signal of their own neural state. Voluntary, attention-guided regulation of bodily and neural signals is a form of conscious activation with therapeutic potential.</p><p>Effects are typically modest and require practice, and rigorous sham-controlled designs remain important.</p>',
       findings: ['Neurofeedback can teach voluntary regulation of targeted regions.', 'Attention and interoception are the levers of conscious activation.', 'Sham-controlled trials are essential to separate specific from placebo effects.'] } } },
@@ -369,6 +627,7 @@ const RESEARCH = [
   { slug: 'iit-pseudoscience-debate', topic: 'consciousness', sort_order: 60,
     source_url: 'https://en.wikipedia.org/wiki/Integrated_information_theory', authors: [],
     content: { en: { title: 'The 2023 "IIT is pseudoscience" open letter and the debate it sparked',
+      figure: fig('phi', 'IIT’s Φ symbol — at the centre of the 2023 "pseudoscience" dispute'),
       summary: 'A high-profile dispute over whether a leading consciousness theory is properly scientific.',
       body_html: '<p>In September 2023, an open letter signed by 124 researchers argued that Integrated Information Theory should be labelled "pseudoscience" — not that its conclusions are false, but that, as promoted, it is not properly testable and receives attention disproportionate to its empirical support. Its central complaints were that Φ is effectively unfalsifiable for real systems and that IIT entails an uncomfortable commitment to panpsychism.</p><p>The reaction was itself divided. Defenders including Anil Seth argued that "even if IIT is wrong, that does not make it pseudoscience," and figures such as David Chalmers and Philip Goff defended it as a legitimate, if bold, research programme. A survey of consciousness researchers found only a small minority fully endorsed the "pseudoscience" label — the field did not broadly accept it.</p>',
       findings: ['124 researchers signed the 2023 open letter.', 'Core objections: unfalsifiability of Φ and the panpsychism implication.', 'Prominent defenders pushed back; most researchers did not endorse the label.', 'Illustrates how "is it science?" itself becomes a live question at the frontier.'] } } }
@@ -385,6 +644,7 @@ const FUNCTIONS = [
       body_html: '<p><strong>Attention</strong> is the cognitive process of selectively concentrating on some information while filtering out the rest. It is not a single faculty but a set of interacting systems — alerting (staying vigilant), orienting (selecting a source), and executive control (resolving conflict).</p><p>Voluntary, goal-driven (top-down) attention is supported by a dorsal fronto-parietal network, while a ventral network detects unexpected, salient events (bottom-up). The <em>thalamus</em> gates and relays the signals these networks act on. Attention is tightly coupled to working memory and to self-regulation.</p>' } } },
   { slug: 'working-memory', sort_order: 20, body_regions: ['frontal-lobe', 'parietal-lobe'],
     content: { en: { name: 'Working memory',
+      figure: fig('wmModel', 'Baddeley & Hitch multi-component model of working memory'),
       summary: 'Temporarily holding and manipulating information in mind.',
       body_html: '<p><strong>Working memory</strong> is a limited-capacity system for holding information active and manipulating it over seconds — keeping a phone number in mind while dialling, or tracking the thread of a sentence. It is foundational for reasoning, comprehension, and learning.</p><p>Sustained activity in the <em>dorsolateral prefrontal cortex</em> and <em>posterior parietal cortex</em> maintains representations, while attention and executive control protect them from interference.</p>' } } },
   { slug: 'executive-control', sort_order: 30, body_regions: ['frontal-lobe', 'cingulate', 'basal-ganglia'],
@@ -393,6 +653,7 @@ const FUNCTIONS = [
       body_html: '<p><strong>Executive control</strong> (cognitive control) is the family of top-down processes that let us override habits and pursue goals. Its core components are inhibitory control (suppressing prepotent responses), updating (working-memory maintenance), and shifting (cognitive flexibility).</p><p>The <em>lateral prefrontal cortex</em> and <em>anterior cingulate cortex</em> implement control and monitor for conflict, working with the <em>basal ganglia</em> to gate which actions are released. Executive control matures slowly, tracking prefrontal myelination into early adulthood.</p>' } } },
   { slug: 'language', sort_order: 40, body_regions: ['frontal-lobe', 'temporal-lobe', 'parietal-lobe'],
     content: { en: { name: 'Language',
+      figure: fig('brainLateral', 'Language spans left frontal (Broca) and temporal (Wernicke) cortex'),
       summary: 'Comprehending and producing structured, meaningful communication.',
       body_html: '<p><strong>Language</strong> spans comprehension and production of speech, reading, and writing. Classically, <em>Broca’s area</em> (inferior frontal) supports production and syntax, and <em>Wernicke’s area</em> (posterior temporal) supports comprehension, connected by the arcuate fasciculus.</p><p>Modern accounts describe a distributed left-lateralised network across frontal, temporal, and parietal cortex, integrating sound, meaning, and grammar in real time.</p>' } } },
   { slug: 'motor-planning', sort_order: 50, body_regions: ['frontal-lobe', 'cerebellum', 'basal-ganglia', 'parietal-lobe'],
@@ -401,6 +662,7 @@ const FUNCTIONS = [
       body_html: '<p><strong>Motor planning</strong> transforms an intention into an ordered sequence of muscle commands. The <em>premotor</em> and <em>supplementary motor</em> areas of the frontal lobe assemble the plan, the <em>basal ganglia</em> select and scale it, and the <em>cerebellum</em> tunes its timing and coordination.</p><p>Parietal cortex supplies the spatial and proprioceptive information the plan needs, so that movements are shaped to the body and the world.</p>' } } },
   { slug: 'emotion-regulation', sort_order: 60, body_regions: ['frontal-lobe', 'amygdala', 'cingulate', 'insula'],
     content: { en: { name: 'Emotion regulation',
+      figure: fig('amygdala', 'The amygdala, regulated top-down by prefrontal cortex during reappraisal'),
       summary: 'Influencing which emotions arise, and how they are experienced and expressed.',
       body_html: '<p><strong>Emotion regulation</strong> is the set of processes by which we shape our emotional responses — through reappraisal, attentional deployment, or response modulation. Effective regulation is central to wellbeing and mental health.</p><p>The <em>prefrontal cortex</em> exerts top-down control over the <em>amygdala</em>, which assigns emotional salience; the <em>anterior cingulate</em> monitors affective conflict and the <em>insula</em> integrates the bodily (interoceptive) side of feeling. Cognitive reappraisal is among the most durable strategies.</p>' } } },
   { slug: 'decision-making', sort_order: 70, body_regions: ['frontal-lobe', 'basal-ganglia', 'cingulate'],
@@ -413,12 +675,12 @@ const FUNCTIONS = [
       body_html: '<p><strong>Theory of mind</strong> (mentalising) is the capacity to understand that others have beliefs, desires, and intentions different from one’s own. It underpins empathy, cooperation, and social prediction.</p><p>A dedicated social-cognition network is engaged: the <em>medial prefrontal cortex</em>, the <em>temporo-parietal junction</em> (at the temporal–parietal border), the posterior <em>superior temporal sulcus</em>, and the precuneus/cingulate.</p>' } } },
   { slug: 'interoception', sort_order: 90, body_regions: ['insula', 'cingulate', 'thalamus', 'medulla'],
     content: { en: { name: 'Interoception',
+      figure: fig('insula', 'The insula, where visceral signals become felt experience'),
       summary: 'Sensing the internal physiological state of the body.',
       body_html: '<p><strong>Interoception</strong> is the perception of the body’s internal state — heartbeat, breathing, hunger, temperature, and visceral sensations. It is a foundation for emotion, bodily self-awareness, and homeostatic regulation.</p><p>Visceral signals ascend via the brainstem (<em>medulla</em>) and <em>thalamus</em> to the <em>insular cortex</em>, where they are integrated into felt experience; the <em>anterior cingulate</em> links interoceptive states to motivation and control. Training interoceptive awareness is a core method in self-regulation work.</p>' } } }
 ];
 
 // ── Scientific articles (rich content w/ inline SVG figure) ──────────────
-// Inline SVG keeps the "article with images" demo self-contained and offline.
 const ARTICLES = [
   { slug: 'what-is-attention', format: 'rich', sort_order: 10, authors: ['NeuroAttention'],
     source_url: 'https://en.wikipedia.org/wiki/Attention', cover_url: '',
@@ -470,5 +732,34 @@ const ARTICLES = [
         '<p>The framework unifies perception, action, and attention as different ways of minimising prediction error — and connects, at its most ambitious, to the Free Energy Principle and to theories of consciousness. See the <em>Theories</em> section for how these ideas extend to conscious experience.</p>'
     } } }
 ];
+
+// ── Russian translations (merged onto content.ru by attachRu) ────────────
+// Faithful translations of the EN content above, keyed by slug. Figures are
+// shared from EN automatically. Neuroscience/clinical terms use standard
+// Russian equivalents.
+const THEORIES_RU  = require('./library-ru/theories.js');
+const TERMS_RU     = require('./library-ru/terms.js');
+const METHODS_RU   = require('./library-ru/methods.js');
+const RESEARCH_RU  = require('./library-ru/research.js');
+const FUNCTIONS_RU = require('./library-ru/functions.js');
+const ARTICLES_RU  = require('./library-ru/articles.js');
+
+// Merge each *_RU map onto its array's items as content.ru; share the EN figure.
+function attachRu(arr, ruMap) {
+  for (const it of arr) {
+    const en = (it.content && it.content.en) || {};
+    const ru = ruMap[it.slug];
+    if (!ru) continue;
+    if (en.figure && !ru.figure) ru.figure = en.figure; // one image, both languages
+    it.content.ru = ru;
+  }
+  return arr;
+}
+attachRu(THEORIES, THEORIES_RU);
+attachRu(TERMS, TERMS_RU);
+attachRu(METHODS, METHODS_RU);
+attachRu(RESEARCH, RESEARCH_RU);
+attachRu(FUNCTIONS, FUNCTIONS_RU);
+attachRu(ARTICLES, ARTICLES_RU);
 
 module.exports = { THEORIES, TERMS, METHODS, RESEARCH, FUNCTIONS, ARTICLES };
