@@ -132,3 +132,26 @@
   - Prod fresh-user pass (register throwaway, walk the real Tools→Упражнения UI, run an
     exercise, confirm result saves + Path «Упражнения» marker appears).
 - next_session: coordinate merge with the concurrent Library pass; push branch + open PR.
+
+## 2026-07-12T00:05:00Z — claude-opus (Exercises addendum: 6 screening tests)
+
+- did: Added 6 validated screening self-report tests (kind='screening_test') to the
+  Exercises tab → 16 tools total: PHQ-9 (depression), GAD-7 (anxiety), ASRS-v1.1
+  (adult ADHD), PCL-5 (PTSD), MDQ (bipolar), AQ-10 (autism traits). Deliberately
+  EXCLUDED antisocial/"sociopathy" (no valid user-facing instrument; PCL-R is
+  clinician-only) per Nick's guidance.
+- verify: Item text + scoring VERIFIED against authoritative sources via 3 web-research
+  agents (Kroenke 2001, Spitzer 2006, Kessler 2005/WHO, Weathers 2013/NCPTSD,
+  Hirschfeld 2000, Allison 2012). 20 scoring reference cases pass. Full browser flow
+  verified: account.html loads clean (0 console errors), grid→screener→questionnaire,
+  submit-gating, PHQ-9 item-9 crisis banner fires.
+- changed: account.html, api/server.js (exercise_definitions.kind col), api/exercises-seed.js
+  (6 rows), + new assets/js/exercises/screening.js + screening-data.js (tri-lingual).
+- committed: feat/exercises-tests @ aa17876 (my files only; co-founder sw.js/library-seed.js
+  WIP still untouched; origin/main advanced to c623b08 Library A4 pass w/ SW v53).
+- decisions: kind='screening_test' column added to exercise_definitions (mig060 + ALTER).
+  Data-driven scoring (sum|threshold|aq10|mdq|pcl5). Every result shows NOT-A-DIAGNOSIS
+  disclaimer + citation + validity. Screeners course-embeddable too.
+- followups: UNCHANGED — SW must become v54 (v53 taken by merged Library pass); rebase
+  feat/exercises-tests onto origin/main before merge; run mig060 after backend deploy;
+  prod fresh-user pass. Deploy still HELD pending SW reconciliation + review.
