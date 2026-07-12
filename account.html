@@ -1008,6 +1008,20 @@ a.dash-tab:hover { text-decoration:none; }
       <div id="profile-docs-list" style="display:none;margin-top:0.85rem;"></div>
     </div>
 
+    <!-- Wearable devices (Oura + WHOOP OAuth). Feature-flagged: the card stays
+         hidden until WEARABLES_ENABLED is on server-side (or the user already has a
+         device connected). HRV/sleep/recovery flow into the Path + NeuroMap. -->
+    <div class="dash-card glass-card-elevated" id="wear-card" style="margin-top:1.5rem;display:none;">
+      <div style="display:flex;align-items:center;gap:0.5rem;font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:0.35rem;">
+        <span>📱</span><span data-i18n="a.wearables.title">Подключенные устройства</span>
+      </div>
+      <div id="wear-list" style="margin-top:0.6rem;display:flex;flex-direction:column;gap:0.55rem;"></div>
+      <div id="wear-add" style="margin-top:0.7rem;display:flex;flex-wrap:wrap;gap:0.5rem;"></div>
+      <p id="wear-note" style="margin:0.85rem 0 0;font-size:12px;color:var(--text-muted);line-height:1.45;" data-i18n="a.wearables.note">Автосинк раз в 6 часов. Данные HRV, сна и восстановления интегрируются в Нейрокарту и Личный Путь как метрический слой.</p>
+      <button id="wear-synclog-toggle" onclick="wearToggleLog()" style="margin-top:0.6rem;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline;text-underline-offset:2px;" data-i18n="a.wearables.sync_log">Журнал синхронизации</button>
+      <div id="wear-synclog" style="display:none;margin-top:0.55rem;font-size:11.5px;color:var(--text-muted);"></div>
+    </div>
+
     <!-- My extension requests — the user's own "please add X" submissions with
          live statuses. Hidden until the user has ≥1 request. -->
     <div class="dash-card glass-card-elevated" id="ext-req-card" style="margin-top:1.5rem;display:none;">
@@ -1057,7 +1071,12 @@ a.dash-tab:hover { text-decoration:none; }
       <button class="dash-tab active" id="evo-subtab-personal" onclick="evoSwitchSub('personal')" data-i18n="a.evo.personal_path">Личный путь</button>
       <button class="dash-tab" id="evo-subtab-collective" onclick="evoSwitchSub('collective')" style="display:none;" data-i18n="a.evo.collective_path">Коллективный путь</button>
       <button class="dash-tab" id="evo-subtab-family" onclick="evoSwitchSub('family')" data-i18n="a.evo.family_team">Семья и команда</button>
+      <!-- Wearables recovery layer toggle. Hidden until the user has device data. -->
+      <button class="dash-tab" id="evo-layer-recovery" onclick="wearToggleRecoveryLayer(this)" style="display:none;margin-left:auto;" title="Oura / WHOOP"><span style="opacity:0.9;">🫀</span> <span data-i18n="a.wearables.layer_recovery">Восстановление</span></button>
     </div>
+    <!-- Recovery ribbon: one cell per day, green(>70)/yellow(50-70)/red(<50); hover
+         shows HRV / RHR / sleep. Populated by wearRenderRecoveryBar (wearables). -->
+    <div id="wear-recovery-bar" style="display:none;margin-bottom:1rem;"></div>
     <div id="evo-path"></div>
     <div id="collective-path" style="display:none;"></div>
     <div id="family-team" style="display:none;"></div>
@@ -2049,6 +2068,9 @@ a.dash-tab:hover { text-decoration:none; }
         <div id="nm-node-info" style="display:none;margin-top:1rem;padding:1.1rem 1.25rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;position:relative;">
           <button onclick="nmCloseNodeInfo()" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px 8px;line-height:1;">&times;</button>
           <div id="nm-ni-header"></div>
+          <!-- Wearables: physical state (HRV / sleep / recovery) on the node's day.
+               Populated by wearFillPhysState; hidden when there is no device data. -->
+          <div id="nm-ni-phys" style="display:none;margin-top:0.85rem;padding:0.7rem 0.85rem;border:1px solid rgba(108,232,155,0.22);background:rgba(108,232,155,0.06);border-radius:10px;"></div>
           <button id="nm-ni-chains-toggle" onclick="nmToggleChainList()" style="display:none;margin-top:0.9rem;width:100%;text-align:left;padding:0.55rem 0.75rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:var(--text-primary);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;"></button>
           <div id="nm-ni-chain-list" style="display:none;margin-top:0.6rem;flex-direction:column;gap:0.3rem;"></div>
           <div id="nm-ni-mini" style="display:none;margin-top:0.8rem;">
@@ -5249,7 +5271,7 @@ function switchTab(id){
     evoMaybeShowCollective();
   }
   // PR#119: refresh the Profile-tab "Мои документы" section when Profile is shown.
-  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} try{ window.renderResumeCard && window.renderResumeCard(); }catch(e){} }, 40); }
+  if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} try{ window.renderResumeCard && window.renderResumeCard(); }catch(e){} try{ window.wearLoad && window.wearLoad(); }catch(e){} }, 40); }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -10036,8 +10058,10 @@ function nmShowNodeInfo(node){
   document.getElementById('nm-ni-mini').style.display='none';
   document.getElementById('nm-ni-chains-toggle').style.display='none';
   nmNiChainData=null; nmDestroyMini3D();
+  try{ var _ph=document.getElementById('nm-ni-phys'); if(_ph){ _ph.style.display='none'; _ph.innerHTML=''; } }catch(e){}
   panel.style.display='block';
   nmFetchNodeChains(node.dbId);
+  try{ window.wearFillPhysState && window.wearFillPhysState(node); }catch(e){}
 }
 // back-compat alias for any caller still using the old name
 function nmShowNodePopup(node){ nmShowNodeInfo(node); }
@@ -21325,6 +21349,243 @@ window.pbMove = pbMove;
       .then(function(d){ if(d&&d.ok){ window.extAdminLoadQueue(); } else { alert((d&&d.error)||'Error'); } })
       .catch(function(){});
   };
+})();
+</script>
+
+<!-- ═══ Wearable devices (Oura + WHOOP) — Profile → Подключенные устройства ═══
+     Self-contained module. Talks to /api/me/wearables + /api/wearables/:provider/*.
+     Feature-flag aware: the card stays hidden until the server reports the feature
+     enabled (or the user already has a device connected). See WEARABLES-OAUTH-REPORT.md. -->
+<script>
+(function(){
+  var API = (window.API_BASE || 'https://neuroattention-api-production.up.railway.app');
+  function T(k, fb){ try{ var v = window.t && window.t(k); return (v && v!==k) ? v : fb; }catch(e){ return fb; } }
+  function hdr(){ try{ return naAuthHeaders(); }catch(e){ return {'Content-Type':'application/json'}; } }
+  var PROV = {
+    oura:  { name:'Oura Ring', icon:'💍' },
+    whoop: { name:'WHOOP',     icon:'🎽' }
+  };
+  var _status = null, _accounts = [];
+
+  function ago(iso){
+    if(!iso) return T('a.wearables.never','ещё не синхронизировано');
+    var s = Math.max(0, (Date.now() - new Date(iso).getTime())/1000);
+    if(s < 90) return T('a.wearables.just_now','только что');
+    if(s < 3600) return Math.round(s/60) + ' ' + T('a.wearables.min_ago','мин назад');
+    if(s < 86400) return Math.round(s/3600) + ' ' + T('a.wearables.hr_ago','ч назад');
+    return Math.round(s/86400) + ' ' + T('a.wearables.day_ago','дн назад');
+  }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  window.wearLoad = function(){
+    if(!naGetToken || !naGetToken()) return;
+    fetch(API + '/api/me/wearables', { headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d || !d.ok) return;
+        _status = d.status || {}; _accounts = d.accounts || [];
+        wearRender();
+      })
+      .catch(function(){});
+  };
+
+  function wearRender(){
+    var card = document.getElementById('wear-card'); if(!card) return;
+    var enabled = _status && _status.enabled;
+    // Keep the section hidden entirely until the feature is turned on server-side,
+    // unless the user already has a device connected (so they never lose access).
+    if(!enabled && !_accounts.length){ card.style.display = 'none'; return; }
+    card.style.display = 'block';
+
+    var list = document.getElementById('wear-list');
+    var byProv = {}; _accounts.forEach(function(a){ byProv[a.provider] = a; });
+    if(!_accounts.length){
+      list.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">' + esc(T('a.wearables.none','Пока нет подключённых устройств.')) + '</div>';
+    } else {
+      list.innerHTML = _accounts.map(function(a){
+        var p = PROV[a.provider] || { name:a.provider, icon:'📟' };
+        var reauth = a.needs_reauth;
+        var badge = reauth
+          ? '<span style="color:#f0a04b;">⚠ ' + esc(T('a.wearables.reauth','нужно переподключить')) + '</span>'
+          : '<span style="color:#6be89b;">✅ ' + esc(T('a.wearables.connected','Подключено')) + '</span>';
+        var sync = reauth ? '' : ' · ' + esc(T('a.wearables.last_sync','Синхр.')) + ': ' + esc(ago(a.last_sync_at));
+        return '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.1);border-radius:12px;background:rgba(255,255,255,0.03);">'
+          + '<span style="font-size:18px;">' + p.icon + '</span>'
+          + '<span style="font-weight:600;color:var(--text-primary);">' + esc(p.name) + '</span>'
+          + '<span style="font-size:12px;color:var(--text-muted);">' + badge + sync + '</span>'
+          + '<span style="margin-left:auto;display:flex;gap:0.3rem;">'
+          + (reauth
+              ? '<button class="btn btn-ghost" style="font-size:12px;padding:0.25rem 0.6rem;" onclick="wearConnect(\'' + a.provider + '\')">' + esc(T('a.wearables.reconnect','Переподключить')) + '</button>'
+              : '<button class="btn btn-ghost" title="' + esc(T('a.wearables.refresh','Синхронизировать')) + '" style="font-size:14px;padding:0.25rem 0.55rem;" onclick="wearSync(\'' + a.provider + '\', this)">🔄</button>')
+          + '<button class="btn btn-ghost" title="' + esc(T('a.wearables.disconnect','Отключить')) + '" style="font-size:14px;padding:0.25rem 0.55rem;" onclick="wearDisconnect(' + a.id + ')">🗑</button>'
+          + '</span></div>';
+      }).join('');
+    }
+
+    // Add-device buttons for providers that are configured & not yet connected.
+    var add = document.getElementById('wear-add');
+    var provs = (_status && _status.providers) || {};
+    var btns = [];
+    Object.keys(PROV).forEach(function(k){
+      if(byProv[k]) return;                       // already connected
+      var conf = provs[k] && provs[k].configured;
+      var label = '＋ ' + (PROV[k].icon) + ' ' + PROV[k].name;
+      if(conf && enabled){
+        btns.push('<button class="btn btn-primary" style="font-size:13px;padding:0.4rem 0.9rem;" onclick="wearConnect(\'' + k + '\')">' + esc(label) + '</button>');
+      } else {
+        btns.push('<button class="btn btn-ghost" disabled title="' + esc(T('a.wearables.soon','Скоро')) + '" style="font-size:13px;padding:0.4rem 0.9rem;opacity:0.55;cursor:not-allowed;">' + esc(label) + '</button>');
+      }
+    });
+    add.innerHTML = btns.join('');
+  }
+
+  window.wearConnect = function(provider){
+    fetch(API + '/api/wearables/' + provider + '/authorize', { headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.ok && d.url){
+          window.open(d.url, 'wear_oauth', 'width=520,height=680');
+        } else {
+          alert((d && d.error) || 'Error');
+        }
+      })
+      .catch(function(){ alert('Network error'); });
+  };
+
+  window.wearSync = function(provider, btn){
+    if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
+    fetch(API + '/api/wearables/' + provider + '/sync', { method:'POST', headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(){ setTimeout(window.wearLoad, 400); })
+      .catch(function(){})
+      .then(function(){ if(btn){ btn.disabled = false; btn.textContent = '🔄'; } });
+  };
+
+  window.wearDisconnect = function(id){
+    if(!confirm(T('a.wearables.confirm_disconnect','Отключить это устройство? Все его данные (HRV, сон, восстановление) будут удалены.'))) return;
+    fetch(API + '/api/me/wearables/' + id, { method:'DELETE', headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(){ window.wearLoad(); })
+      .catch(function(){});
+  };
+
+  window.wearToggleLog = function(){
+    var box = document.getElementById('wear-synclog'); if(!box) return;
+    var open = box.style.display !== 'none';
+    if(open){ box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = '<span style="color:var(--text-muted);">…</span>';
+    fetch(API + '/api/me/wearables/sync-log?limit=15', { headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var log = (d && d.log) || [];
+        if(!log.length){ box.innerHTML = '<span style="color:var(--text-muted);">' + esc(T('a.wearables.log_empty','Записей пока нет.')) + '</span>'; return; }
+        box.innerHTML = log.map(function(e){
+          var p = (PROV[e.provider] || {}).name || e.provider;
+          var res = e.error
+            ? '<span style="color:#f0a04b;">' + esc(e.error).slice(0,60) + '</span>'
+            : ('+' + (e.metrics_added||0) + ' / ~' + (e.metrics_updated||0));
+          return '<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' + esc(ago(e.ran_at)) + ' · ' + esc(p) + ' · ' + res + '</div>';
+        }).join('');
+      })
+      .catch(function(){ box.innerHTML = '<span style="color:var(--text-muted);">error</span>'; });
+  };
+
+  // ── Recovery band colour: green >70, yellow 50-70, red <50 ──
+  function recColor(v){
+    if(v == null) return 'rgba(255,255,255,0.10)';
+    if(v >= 70) return '#6be89b';
+    if(v >= 50) return '#f0c95c';
+    return '#f0736b';
+  }
+  function fmtSleep(min){
+    if(min == null) return '—';
+    var h = Math.floor(min/60), m = Math.round(min%60);
+    return h + T('a.wearables.h_short','ч') + ' ' + (m<10?'0':'') + m + T('a.wearables.m_short','м');
+  }
+
+  // Toggle + render the Personal-Path recovery ribbon.
+  window.wearToggleRecoveryLayer = function(btn){
+    var bar = document.getElementById('wear-recovery-bar'); if(!bar) return;
+    var on = bar.getAttribute('data-on') === '1';
+    if(on){ bar.style.display='none'; bar.setAttribute('data-on','0'); if(btn) btn.classList.remove('active'); return; }
+    bar.setAttribute('data-on','1'); if(btn) btn.classList.add('active');
+    bar.style.display='block';
+    bar.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:0.4rem 0;">…</div>';
+    var to = new Date(), from = new Date(Date.now() - 60*864e5); // last 60 days
+    var q = '?from=' + from.toISOString() + '&to=' + to.toISOString();
+    fetch(API + '/api/me/health-metrics/daily' + q, { headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ wearRenderRecoveryBar((d && d.days) || []); })
+      .catch(function(){ bar.innerHTML = ''; });
+  };
+
+  function wearRenderRecoveryBar(days){
+    var bar = document.getElementById('wear-recovery-bar'); if(!bar) return;
+    if(!days.length){
+      bar.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:0.5rem 0.7rem;border:1px dashed rgba(255,255,255,0.12);border-radius:10px;">' + esc(T('a.wearables.none','Пока нет данных с устройства.')) + '</div>';
+      return;
+    }
+    var cells = days.map(function(dd){
+      var tip = dd.day
+        + ' · ' + T('a.wearables.recovery','Восстановление') + ': ' + (dd.recovery!=null?dd.recovery+'%':'—')
+        + ' · ' + T('a.wearables.hrv','HRV') + ': ' + (dd.hrv!=null?dd.hrv+' ms':'—')
+        + ' · ' + T('a.wearables.rhr','RHR') + ': ' + (dd.rhr!=null?dd.rhr+' bpm':'—')
+        + ' · ' + T('a.wearables.sleep','Сон') + ': ' + fmtSleep(dd.sleep_duration_min);
+      return '<div title="' + esc(tip) + '" style="flex:1 1 8px;min-width:7px;height:26px;border-radius:4px;background:' + recColor(dd.recovery) + ';opacity:' + (dd.recovery!=null?0.92:0.4) + ';"></div>';
+    }).join('');
+    bar.innerHTML =
+      '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
+      + '<span style="font-size:12px;font-weight:600;color:var(--text-primary);">🫀 ' + esc(T('a.wearables.layer_recovery','Восстановление')) + '</span>'
+      + '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;">'
+        + '<span style="color:#6be89b;">■</span> &gt;70 &nbsp; <span style="color:#f0c95c;">■</span> 50–70 &nbsp; <span style="color:#f0736b;">■</span> &lt;50</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:2px;align-items:flex-end;padding:0.5rem 0.6rem;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:rgba(255,255,255,0.02);">' + cells + '</div>';
+  }
+
+  // NeuroMap info-panel: physical state on the node's most-recent day.
+  window.wearFillPhysState = function(node){
+    var box = document.getElementById('nm-ni-phys'); if(!box) return;
+    box.style.display='none'; box.innerHTML='';
+    if(!node) return;
+    var day = (node.last_seen || node.first_seen || '').slice(0,10);
+    if(!day) return;
+    var from = day + 'T00:00:00Z', to = day + 'T23:59:59Z';
+    fetch(API + '/api/me/health-metrics/daily?from=' + from + '&to=' + to, { headers: hdr() })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var dd = (d && d.days || []).filter(function(x){ return x.day === day; })[0];
+        if(!dd || (dd.recovery==null && dd.hrv==null && dd.sleep_duration_min==null)) return; // silent when no data
+        var parts = [];
+        if(dd.recovery!=null) parts.push('<b style="color:' + recColor(dd.recovery) + ';">' + dd.recovery + '%</b> ' + esc(T('a.wearables.recovery','восстановление')));
+        if(dd.hrv!=null) parts.push('<b>' + dd.hrv + ' ms</b> ' + esc(T('a.wearables.hrv','HRV')));
+        if(dd.rhr!=null) parts.push('<b>' + dd.rhr + ' bpm</b> ' + esc(T('a.wearables.rhr','пульс покоя')));
+        if(dd.sleep_duration_min!=null) parts.push('<b>' + fmtSleep(dd.sleep_duration_min) + '</b> ' + esc(T('a.wearables.sleep','сон')));
+        box.innerHTML =
+          '<div style="font-size:11px;color:var(--text-dim,#8a93a6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;">🫀 ' + esc(T('a.wearables.phys_state','Физическое состояние в этот день')) + '</div>'
+          + '<div style="font-size:13px;color:var(--text-primary);line-height:1.7;">' + parts.join(' &nbsp;·&nbsp; ') + '</div>';
+        box.style.display='block';
+      })
+      .catch(function(){});
+  };
+
+  // Reveal the Path recovery-layer toggle only when the user has device data.
+  function wearRevealPathToggle(){
+    var btn = document.getElementById('evo-layer-recovery'); if(!btn) return;
+    btn.style.display = _accounts.length ? 'inline-flex' : 'none';
+  }
+  var _wearRenderInner = wearRender;
+  wearRender = function(){ _wearRenderInner(); try{ wearRevealPathToggle(); }catch(e){} };
+
+  // Refresh after an OAuth popup reports success.
+  window.addEventListener('message', function(ev){
+    try{
+      if(ev.data && ev.data.type === 'wearable-oauth'){
+        if(ev.data.ok){ setTimeout(window.wearLoad, 600); }
+        else if(ev.data.detail){ console.warn('[wearables] connect failed:', ev.data.detail); }
+      }
+    }catch(e){}
+  });
 })();
 </script>
 </body>

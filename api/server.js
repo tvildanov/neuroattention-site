@@ -146,6 +146,12 @@ if (!JWT_SECRET) {
 }
 const sql = neon(process.env.DATABASE_URL);
 
+// Wearable OAuth integration (Oura + WHOOP). Self-contained service; gated behind
+// WEARABLES_ENABLED (default OFF). Syncs HRV/sleep/recovery into health_metrics and
+// surfaces them on the Personal Path + NeuroMap. See WEARABLES-OAUTH-REPORT.md.
+const wearablesSvc = require('./services/wearables');
+wearablesSvc.init({ sql });
+
 // Load vocabulary aliases for node normalization
 const fs = require('fs');
 const path = require('path');
@@ -2758,7 +2764,66 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 063 (atlas_snapshots): table ready');
     } catch (e) { mig063.error = e.message; console.error('migration 063 (atlas_snapshots):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-063 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063 });
+    // ── Migration 065 (Wearable OAuth: Oura + WHOOP) ───────────────────────────
+    // 062-063 taken by P8 (library notes / atlas snapshots); 064 reserved for the
+    // parallel unified-events (P6). This block is additive + idempotent: it CREATEs
+    // the shared `oauth_tokens` table IF NOT EXISTS (identical schema to the parallel
+    // external-calendar feature — whichever lands first wins, the other is a no-op)
+    // plus its own `health_metrics` + `wearable_sync_log` tables. Gated feature is
+    // inert until WEARABLES_ENABLED=true. See WEARABLES-OAUTH-REPORT.md.
+    let mig065 = { tables: 0, indexes: 0 };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS oauth_tokens (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          provider TEXT NOT NULL,
+          access_token TEXT,
+          refresh_token TEXT,
+          token_expires_at TIMESTAMPTZ,
+          scope TEXT,
+          account_email TEXT,
+          extra JSONB,
+          needs_reauth BOOLEAN DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          last_sync_at TIMESTAMPTZ,
+          UNIQUE(user_id, provider, account_email)
+        )`; mig065.tables++;
+      await sql`
+        CREATE TABLE IF NOT EXISTS health_metrics (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          provider TEXT NOT NULL,
+          metric_kind TEXT NOT NULL,
+          value DOUBLE PRECISION,
+          measured_at TIMESTAMPTZ NOT NULL,
+          synced_at TIMESTAMPTZ DEFAULT now(),
+          external_id TEXT,
+          raw_data JSONB,
+          UNIQUE(user_id, provider, metric_kind, measured_at, external_id)
+        )`; mig065.tables++;
+      await sql`
+        CREATE TABLE IF NOT EXISTS wearable_sync_log (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          provider TEXT,
+          ran_at TIMESTAMPTZ DEFAULT now(),
+          metrics_added INT,
+          metrics_updated INT,
+          duration_ms INT,
+          error TEXT
+        )`; mig065.tables++;
+      const wIdx = [
+        sql`CREATE INDEX IF NOT EXISTS oauth_tokens_user_idx ON oauth_tokens(user_id)`,
+        sql`CREATE INDEX IF NOT EXISTS health_metrics_user_time_idx ON health_metrics(user_id, measured_at DESC)`,
+        sql`CREATE INDEX IF NOT EXISTS health_metrics_user_kind_time_idx ON health_metrics(user_id, metric_kind, measured_at DESC)`,
+        sql`CREATE INDEX IF NOT EXISTS wearable_sync_log_user_idx ON wearable_sync_log(user_id, ran_at DESC)`,
+      ];
+      for (const i of wIdx) { try { await i; mig065.indexes++; } catch (ie) { mig065.skipped = (mig065.skipped || 0) + 1; console.error('mig065 idx:', ie.message); } }
+      console.log('migration 065 (wearables): tables', mig065.tables, 'idx', mig065.indexes);
+    } catch (e) { mig065.error = e.message; console.error('migration 065 (wearables):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-065 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -11794,8 +11859,170 @@ function startSoftDeleteCron() {
   setTimeout(sweep, 30 * 1000);   // first pass shortly after boot
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WEARABLE OAUTH (Oura + WHOOP) — gated behind WEARABLES_ENABLED (default OFF).
+// Routes are namespaced under /api/wearables/:provider so they never collide with
+// the parallel external-calendar feature's /api/oauth/:provider handler (P7); all
+// helper symbols are `wear*`-prefixed for the same reason. HRV/sleep/recovery land
+// in health_metrics and surface on the Personal Path + NeuroMap. See the report.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Callback base MUST exactly match a Redirect URI registered in each provider's
+// OAuth app. Defaults to the Railway API origin. Reuses OAUTH_REDIRECT_BASE if the
+// calendar feature already set it; else its own env, else the default.
+const WEAR_REDIRECT_BASE = process.env.OAUTH_REDIRECT_BASE || 'https://neuroattention-api-production.up.railway.app';
+function wearRedirectUri(provider) { return `${WEAR_REDIRECT_BASE}/api/wearables/${provider}/callback`; }
+
+// Short-lived signed state = anti-CSRF + user reference carried through the redirect
+// (a popup cannot send an Authorization header). WHOOP requires state length ≥8; a
+// signed JWT is always well over that.
+function wearSignState(userId, provider) {
+  return jwt.sign({ sub: userId, provider, purpose: 'wear_oauth_state' }, JWT_SECRET, { expiresIn: '10m' });
+}
+function wearVerifyState(state, provider) {
+  try {
+    const p = jwt.verify(state, JWT_SECRET);
+    if (p.purpose !== 'wear_oauth_state' || p.provider !== provider) return null;
+    return p.sub;
+  } catch (e) { return null; }
+}
+function wearablesEnabled(res) {
+  if (!wearablesSvc.enabled()) { res.status(503).json({ error: 'feature_disabled', flag: 'WEARABLES_ENABLED' }); return false; }
+  return true;
+}
+// HTML the OAuth popup renders, then postMessages its opener + closes.
+function wearPopupHtml(ok, detail) {
+  const msg = JSON.stringify({ type: 'wearable-oauth', ok, detail: detail || '' });
+  const origin = JSON.stringify(FRONTEND_URL);
+  const text = ok ? 'Устройство подключено. Можно закрыть окно.' : ('Не удалось подключить: ' + (detail || ''));
+  return `<!doctype html><meta charset="utf-8"><title>NeuroAttention</title>
+<body style="font-family:system-ui;background:#0b0f14;color:#e8f0f5;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">
+<div><p style="font-size:15px">${text}</p></div>
+<script>try{if(window.opener)window.opener.postMessage(${msg}, ${origin});}catch(e){}setTimeout(function(){window.close();},1200);</script>`;
+}
+
+// List connected devices + provider availability (safe: NO tokens). Always 200 so
+// the UI can render an accurate off/empty state.
+app.get('/api/me/wearables', requireAuth, async (req, res) => {
+  try {
+    const status = wearablesSvc.providerStatus();
+    let accounts = [];
+    try { accounts = await wearablesSvc.store.listForUser(req.user.id); } catch (e) { /* pre-migration */ }
+    res.json({ ok: true, status, accounts });
+  } catch (err) {
+    console.error('GET /api/me/wearables:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Recent sync log.
+app.get('/api/me/wearables/sync-log', requireAuth, async (req, res) => {
+  try {
+    let log = [];
+    try { log = await wearablesSvc.store.recentSyncLog(req.user.id, req.query.limit); } catch (e) {}
+    res.json({ ok: true, log });
+  } catch (err) { res.status(500).json({ error: 'Internal error' }); }
+});
+
+// Raw health metrics (optional ?kind=hrv&from=ISO&to=ISO).
+app.get('/api/me/health-metrics', requireAuth, async (req, res) => {
+  try {
+    let metrics = [];
+    try {
+      metrics = await wearablesSvc.store.getMetrics(req.user.id, {
+        kind: req.query.kind || null, from: req.query.from || null, to: req.query.to || null,
+      });
+    } catch (e) { /* pre-migration */ }
+    res.json({ ok: true, metrics });
+  } catch (err) { res.status(500).json({ error: 'Internal error' }); }
+});
+
+// Daily digest — one snapshot per day (recovery/hrv/rhr/sleep). Consumed by the
+// Personal Path recovery band AND the NeuroMap physical-state panel.
+app.get('/api/me/health-metrics/daily', requireAuth, async (req, res) => {
+  try {
+    let rows = [];
+    try {
+      rows = await wearablesSvc.store.getMetrics(req.user.id, {
+        kind: null, from: req.query.from || null, to: req.query.to || null,
+      });
+    } catch (e) { /* pre-migration */ }
+    res.json({ ok: true, days: wearablesSvc.dailyDigest(rows) });
+  } catch (err) { res.status(500).json({ error: 'Internal error' }); }
+});
+
+// Begin an OAuth flow: return the provider consent URL for the client popup.
+app.get('/api/wearables/:provider/authorize', requireAuth, async (req, res) => {
+  if (!wearablesEnabled(res)) return;
+  const provider = req.params.provider;
+  if (!wearablesSvc.PROVIDER_NAMES.includes(provider)) return res.status(404).json({ error: 'unknown_provider' });
+  const mod = wearablesSvc.getProvider(provider);
+  if (!mod.configured()) return res.status(503).json({ error: 'provider_not_configured', provider });
+  const state = wearSignState(req.user.id, provider);
+  const url = mod.authUrl({ state, redirectUri: wearRedirectUri(provider) });
+  res.json({ ok: true, url });
+});
+
+// OAuth redirect target — provider sends the user back here with ?code&state.
+// No requireAuth (the browser follows a redirect); the signed state carries the user.
+app.get('/api/wearables/:provider/callback', async (req, res) => {
+  const provider = req.params.provider;
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  try {
+    if (!wearablesSvc.enabled()) return res.status(503).send(wearPopupHtml(false, 'feature disabled'));
+    if (!wearablesSvc.PROVIDER_NAMES.includes(provider)) return res.status(404).send(wearPopupHtml(false, 'unknown provider'));
+    if (req.query.error) return res.send(wearPopupHtml(false, String(req.query.error).slice(0, 120)));
+    const userId = wearVerifyState(req.query.state, provider);
+    if (!userId) return res.status(400).send(wearPopupHtml(false, 'invalid state'));
+    const mod = wearablesSvc.getProvider(provider);
+    const tok = await mod.exchangeCode({ code: req.query.code, redirectUri: wearRedirectUri(provider) });
+    const id = await wearablesSvc.store.saveToken({
+      userId, provider,
+      accessToken: tok.accessToken, refreshToken: tok.refreshToken,
+      expiresAt: tok.expiresAt, scope: tok.scope, accountEmail: tok.accountEmail,
+    });
+    // Kick an initial backfill sync in the background — don't block the popup close.
+    wearablesSvc.store.getFullToken(id, userId).then(row => row && wearablesSvc.syncToken(row)).catch(() => {});
+    res.send(wearPopupHtml(true, tok.accountEmail || provider));
+  } catch (err) {
+    console.error('wearable OAuth callback ' + provider + ':', err.message);
+    res.status(500).send(wearPopupHtml(false, err.message.slice(0, 140)));
+  }
+});
+
+// On-demand sync (Refresh button). Owner-scoped. :provider = oura|whoop|all.
+app.post('/api/wearables/:provider/sync', requireAuth, async (req, res) => {
+  if (!wearablesEnabled(res)) return;
+  try {
+    const provider = req.params.provider === 'all' ? null : req.params.provider;
+    if (provider && !wearablesSvc.getProvider(provider)) return res.status(404).json({ error: 'unknown_provider' });
+    const results = await wearablesSvc.syncUser(req.user.id, provider);
+    const added = results.reduce((a, r) => a + (r.added || 0), 0);
+    const updated = results.reduce((a, r) => a + (r.updated || 0), 0);
+    res.json({ ok: true, results, added, updated });
+  } catch (err) {
+    console.error('POST /api/wearables/sync:', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Disconnect a device: delete the token + all metrics it produced.
+app.delete('/api/me/wearables/:id', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'bad id' });
+    const r = await wearablesSvc.store.deleteToken(id, req.user.id);
+    if (!r.ok) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/me/wearables/:id:', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
   try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
+  try { wearablesSvc.startCron(); } catch (e) { console.warn('[wearables] cron start failed:', e.message); }
 });
