@@ -2637,7 +2637,80 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 059 (extension_requests): table ready');
     } catch (e) { mig059.error = e.message; console.error('migration 059 (extension_requests):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-059 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059 });
+    // ── migration 060 (Sports tissue precision) ─────────────────────────────
+    // Re-assert per-organ target tissues for the 16 sports. mig056 already re-seeds
+    // from sports-seed.js on every run (ON CONFLICT DO UPDATE), but this explicit,
+    // idempotent pass GUARANTEES the precise arrays land even on a rolling deploy
+    // where an older container seeded coarse tissues first. Source of truth =
+    // sports-seed.js SPORTS.
+    let mig060 = { tissues_updated: 0 };
+    try {
+      const { SPORTS: SP060 } = require('./sports-seed.js');
+      for (const s of SP060) {
+        try {
+          await sql`UPDATE sports SET
+              target_tissues_positive = ${s.target_tissues_positive || []}::text[],
+              target_tissues_negative = ${s.target_tissues_negative || []}::text[]
+            WHERE slug = ${s.slug}`;
+          mig060.tissues_updated++;
+        } catch (se) { mig060.skipped = (mig060.skipped || 0) + 1; }
+      }
+      console.log('migration 060 (sport tissue precision): updated', mig060.tissues_updated);
+    } catch (e) { mig060.error = e.message; console.error('migration 060 (sport tissues):', e.message); }
+
+    // ── migration 061 (Sports common_injuries) ──────────────────────────────
+    // Adds the common_injuries denorm column + sport_injuries link table, seeds
+    // new sports-injury rows into human_conditions (concussion, ACL tear, …) and
+    // wires each sport to its characteristic injuries. Injury conditions are real
+    // human_conditions rows so they render in the Conditions list, are claimable,
+    // and back-link from the diagnosis card. Idempotent (ON CONFLICT upserts).
+    let mig061 = { injuries_seeded: 0, sport_injury_links: 0 };
+    try {
+      await sql`ALTER TABLE sports ADD COLUMN IF NOT EXISTS common_injuries TEXT[] DEFAULT '{}'`;
+      await sql`CREATE TABLE IF NOT EXISTS sport_injuries (
+        sport_slug TEXT NOT NULL,
+        diagnosis_slug TEXT NOT NULL,
+        PRIMARY KEY (sport_slug, diagnosis_slug)
+      )`;
+      const { INJURY_CONDITIONS, SPORT_INJURIES } = require('./sports-seed.js');
+      for (const c of (INJURY_CONDITIONS || [])) {
+        try {
+          await sql`INSERT INTO human_conditions
+              (slug, name_en, name_ru, name_es, category, description_en, description_ru, description_es,
+               affected_region_ids, impact_summary_en, impact_summary_ru, impact_summary_es,
+               recommendations_en, recommendations_ru, recommendations_es, is_neurodevelopmental, severity_default)
+            VALUES (${c.slug}, ${c.name_en}, ${c.name_ru}, ${c.name_es}, ${c.category},
+               ${c.desc_en}, ${c.desc_ru}, ${c.desc_es}, ${c.regions || []}::text[],
+               ${c.imp_en}, ${c.imp_ru}, ${c.imp_es}, ${c.rec_en}, ${c.rec_ru}, ${c.rec_es}, FALSE, ${c.severity || 'moderate'})
+            ON CONFLICT (slug) DO UPDATE SET
+               name_en = EXCLUDED.name_en, name_ru = EXCLUDED.name_ru, name_es = EXCLUDED.name_es,
+               category = EXCLUDED.category, description_en = EXCLUDED.description_en,
+               description_ru = EXCLUDED.description_ru, description_es = EXCLUDED.description_es,
+               affected_region_ids = EXCLUDED.affected_region_ids,
+               impact_summary_en = EXCLUDED.impact_summary_en, impact_summary_ru = EXCLUDED.impact_summary_ru,
+               impact_summary_es = EXCLUDED.impact_summary_es, recommendations_en = EXCLUDED.recommendations_en,
+               recommendations_ru = EXCLUDED.recommendations_ru, recommendations_es = EXCLUDED.recommendations_es,
+               severity_default = EXCLUDED.severity_default`;
+          mig061.injuries_seeded++;
+        } catch (ie) { mig061.skipped = (mig061.skipped || 0) + 1; }
+      }
+      for (const sportSlug of Object.keys(SPORT_INJURIES || {})) {
+        const injuries = SPORT_INJURIES[sportSlug] || [];
+        try {
+          await sql`UPDATE sports SET common_injuries = ${injuries}::text[] WHERE slug = ${sportSlug}`;
+        } catch (ue) { /* sport row may be missing pre-056 */ }
+        for (const diagSlug of injuries) {
+          try {
+            await sql`INSERT INTO sport_injuries (sport_slug, diagnosis_slug)
+              VALUES (${sportSlug}, ${diagSlug}) ON CONFLICT DO NOTHING`;
+            mig061.sport_injury_links++;
+          } catch (le) { mig061.skipped = (mig061.skipped || 0) + 1; }
+        }
+      }
+      console.log('migration 061 (common_injuries): injuries', mig061.injuries_seeded, 'links', mig061.sport_injury_links);
+    } catch (e) { mig061.error = e.message; console.error('migration 061 (common_injuries):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-061 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -10749,10 +10822,26 @@ app.get('/api/sports/:slug', async (req, res) => {
     try {
       diagnoses = await sql`SELECT diagnosis_slug, is_primary FROM diagnosis_sports WHERE sport_id = ${rows[0].id}`;
     } catch (e) { /* join table optional */ }
-    res.json({ ok: true, sport: rows[0], diagnoses });
+    let injuries = [];
+    try {
+      injuries = await sql`SELECT diagnosis_slug FROM sport_injuries WHERE sport_slug = ${slug}`;
+    } catch (e) { /* sport_injuries table optional (pre-mig061) */ }
+    res.json({ ok: true, sport: rows[0], diagnoses, injuries });
   } catch (err) {
     if (/relation .*sports.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sports table not migrated' });
     console.error('GET /api/sports/:slug:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/sport-injuries — bulk sport↔injury map (mirrors /api/medication-links).
+// The client builds both directions: injuries-per-sport and sports-per-injury.
+app.get('/api/sport-injuries', async (req, res) => {
+  try {
+    const rows = await sql`SELECT sport_slug, diagnosis_slug FROM sport_injuries`;
+    res.json({ ok: true, links: rows });
+  } catch (err) {
+    if (/relation .*sport_injuries.* does not exist/i.test(err.message)) return res.status(503).json({ error: 'sport_injuries not migrated', links: [] });
+    console.error('GET /api/sport-injuries:', err); res.status(500).json({ error: err.message });
   }
 });
 

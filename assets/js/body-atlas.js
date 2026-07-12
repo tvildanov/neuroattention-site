@@ -1275,7 +1275,13 @@
       if (T) { var wantBlend = solid ? T.NormalBlending : T.AdditiveBlending; if (mat.blending !== wantBlend) { mat.blending = wantBlend; mat.needsUpdate = true; } }
       mat.depthWrite = solid;
       mat.transparent = !solid;
+      // P2b: at slider 0 the x-ray shader still leaves a ~5% residual (uGlow*0.06 additive
+      // term) so the region reads as a faint ghost rather than gone. Drop the mesh entirely
+      // (visible=false) at k<=0 so "прозрачность 0" = fully invisible, matching the hide
+      // checkbox; any k>0 restores it. Kept in sync with _regState().visible below.
+      m.visible = k > 0;
     });
+    if (this._regionStates[regionId]) this._regionStates[regionId].visible = k > 0;
     if (this._requestRender) this._requestRender();
     return this;
   };
@@ -1285,6 +1291,7 @@
   Atlas.prototype.clearRegionOverride = function (regionId) {
     var T = window.THREE;
     this._forEachRegionMesh(regionId, function (m) {
+      m.visible = true;   // P2b: undo a slider-0 / hide-checkbox visible=false when the card closes
       var mat = m.material; if (!mat || !mat.uniforms) return;
       var ud = m.userData;
       if (mat.uniforms.uOpacity && ud._baseOpacity != null) mat.uniforms.uOpacity.value = ud._baseOpacity;
