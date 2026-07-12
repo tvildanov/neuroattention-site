@@ -2837,6 +2837,7 @@ app.post('/api/run-migrations', async (req, res) => {
           name_en TEXT NOT NULL,
           name_ru TEXT,
           category TEXT,
+          kind TEXT DEFAULT 'exercise',
           short_description_en TEXT,
           short_description_ru TEXT,
           measures TEXT[],
@@ -2846,6 +2847,8 @@ app.post('/api/run-migrations', async (req, res) => {
           target_regions TEXT[],
           sort_order INT DEFAULT 100
         )`;
+      // kind (exercise | screening_test) — added after the table may already exist
+      await sql`ALTER TABLE exercise_definitions ADD COLUMN IF NOT EXISTS kind TEXT DEFAULT 'exercise'`;
       await sql`
         CREATE TABLE IF NOT EXISTS exercise_results (
           id BIGSERIAL PRIMARY KEY,
@@ -2866,16 +2869,16 @@ app.post('/api/run-migrations', async (req, res) => {
         try {
           await sql`
             INSERT INTO exercise_definitions
-              (slug, name_en, name_ru, category, short_description_en, short_description_ru,
+              (slug, name_en, name_ru, category, kind, short_description_en, short_description_ru,
                measures, clinical_evidence, min_level, max_level, target_regions, sort_order)
             VALUES
-              (${e.slug}, ${e.name_en}, ${e.name_ru}, ${e.category},
+              (${e.slug}, ${e.name_en}, ${e.name_ru}, ${e.category}, ${e.kind || 'exercise'},
                ${e.short_description_en}, ${e.short_description_ru},
                ${e.measures}, ${e.clinical_evidence}, ${e.min_level}, ${e.max_level},
                ${e.target_regions}, ${e.sort_order})
             ON CONFLICT (slug) DO UPDATE SET
               name_en = EXCLUDED.name_en, name_ru = EXCLUDED.name_ru,
-              category = EXCLUDED.category,
+              category = EXCLUDED.category, kind = EXCLUDED.kind,
               short_description_en = EXCLUDED.short_description_en,
               short_description_ru = EXCLUDED.short_description_ru,
               measures = EXCLUDED.measures, clinical_evidence = EXCLUDED.clinical_evidence,
@@ -11051,11 +11054,16 @@ app.post('/api/exercises/result', requireAuth, async (req, res) => {
     // mirror onto the Personal Path (kind='exercise', own lane)
     let journeyId = null;
     try {
-      const def = await sql`SELECT name_ru, name_en FROM exercise_definitions WHERE slug = ${slug}`;
+      const def = await sql`SELECT name_ru, name_en, kind FROM exercise_definitions WHERE slug = ${slug}`;
       const nm = def[0] ? (def[0].name_ru || def[0].name_en || slug) : slug;
-      const label = nm + ' · lvl ' + level + (score != null ? ' · ' + Math.round(score) : '');
+      const isScreen = def[0] && def[0].kind === 'screening_test';
+      const band = (b.raw_data && b.raw_data.band) ? String(b.raw_data.band) : null;
+      // Screeners: "PHQ-9 · 14 (band)". Exercises: "N-back · lvl 3 · 78".
+      const label = isScreen
+        ? nm + (score != null ? ' · ' + Math.round(score) : '') + (band ? ' · ' + band : '')
+        : nm + ' · lvl ' + level + (score != null ? ' · ' + Math.round(score) : '');
       journeyId = await logJourney(userId, 'exercise', 'exercise',
-        { label, icon: '🧠', exercise_slug: slug, level, score, accuracy: acc, reaction_time_avg: rt },
+        { label, icon: isScreen ? '🩺' : '🧠', exercise_slug: slug, level, score, accuracy: acc, reaction_time_avg: rt, screening: !!isScreen },
         new Date().toISOString(), null, null);
     } catch (je) { console.warn('exercise → path:', je.message); }
 

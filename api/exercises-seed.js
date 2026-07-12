@@ -105,6 +105,70 @@ const EXERCISES = [
     measures: ['temporal_attention', 'attentional_capacity'],
     clinical_evidence: 'Raymond, Shapiro & Arnell (1992, JEP:HPP) — the temporal-attention limit; altered in ADHD and schizophrenia.',
     min_level: 1, max_level: 10, target_regions: ['brain'], sort_order: 100
+  },
+
+  // ── Validated screening self-report questionnaires (kind='screening_test') ──
+  // NOT diagnostic. Each auto-scores to a probability band; full item text +
+  // scoring live client-side in assets/js/exercises/screening-data.js.
+  {
+    slug: 'phq-9',
+    name_en: 'PHQ-9 · Depression screen', name_ru: 'PHQ-9 · скрининг депрессии',
+    category: 'screening', kind: 'screening_test',
+    short_description_en: '9-item depression severity screen (past 2 weeks).',
+    short_description_ru: 'Скрининг тяжести депрессии, 9 пунктов (за 2 недели).',
+    measures: ['depression'],
+    clinical_evidence: 'Kroenke, Spitzer & Williams (2001, J Gen Intern Med). Cutoff ≥10: sensitivity 88%, specificity 88% for major depression. Public-domain screener, NOT a diagnosis.',
+    min_level: 1, max_level: 1, target_regions: ['brain'], sort_order: 210
+  },
+  {
+    slug: 'gad-7',
+    name_en: 'GAD-7 · Anxiety screen', name_ru: 'GAD-7 · скрининг тревоги',
+    category: 'screening', kind: 'screening_test',
+    short_description_en: '7-item generalized-anxiety screen (past 2 weeks).',
+    short_description_ru: 'Скрининг генерализованной тревоги, 7 пунктов (за 2 недели).',
+    measures: ['anxiety'],
+    clinical_evidence: 'Spitzer, Kroenke, Williams & Löwe (2006, Arch Intern Med). Cutoff ≥10: sensitivity 89%, specificity 82% for GAD. Public-domain screener, NOT a diagnosis.',
+    min_level: 1, max_level: 1, target_regions: ['brain'], sort_order: 220
+  },
+  {
+    slug: 'asrs-v1-1',
+    name_en: 'ASRS-v1.1 · Adult ADHD screen', name_ru: 'ASRS-v1.1 · скрининг СДВГ',
+    category: 'screening', kind: 'screening_test',
+    short_description_en: 'WHO 6-item adult ADHD self-report screener (Part A).',
+    short_description_ru: 'Скрининг СДВГ у взрослых (ВОЗ), 6 пунктов (часть A).',
+    measures: ['adhd', 'inattention', 'hyperactivity'],
+    clinical_evidence: 'Kessler et al. (2005, Psychol Med), WHO Adult ADHD Self-Report Scale. 6-item screener: sensitivity 68.7%, specificity 99.5%. NOT a diagnosis.',
+    min_level: 1, max_level: 1, target_regions: ['brain'], sort_order: 230
+  },
+  {
+    slug: 'pcl-5',
+    name_en: 'PCL-5 · PTSD screen', name_ru: 'PCL-5 · скрининг ПТСР',
+    category: 'screening', kind: 'screening_test',
+    short_description_en: '20-item PTSD checklist for DSM-5 (past month).',
+    short_description_ru: 'Контрольный список ПТСР по DSM-5, 20 пунктов (за месяц).',
+    measures: ['ptsd', 'trauma'],
+    clinical_evidence: 'Weathers et al. (2013), National Center for PTSD (public domain). Provisional-PTSD cutoff 31–33 (default 33); α≈0.94. NOT a diagnosis.',
+    min_level: 1, max_level: 1, target_regions: ['brain'], sort_order: 240
+  },
+  {
+    slug: 'mdq',
+    name_en: 'MDQ · Bipolar screen', name_ru: 'MDQ · скрининг биполярного расстройства',
+    category: 'screening', kind: 'screening_test',
+    short_description_en: 'Mood Disorder Questionnaire — bipolar-spectrum screen.',
+    short_description_ru: 'Опросник расстройств настроения — скрининг биполярного спектра.',
+    measures: ['bipolar', 'mania'],
+    clinical_evidence: 'Hirschfeld et al. (2000, Am J Psychiatry). Positive = ≥7/13 symptoms + same period + moderate/serious impairment; sensitivity ~73%, specificity ~90%. NOT a diagnosis.',
+    min_level: 1, max_level: 1, target_regions: ['brain'], sort_order: 250
+  },
+  {
+    slug: 'aq-10',
+    name_en: 'AQ-10 · Autism-traits screen', name_ru: 'AQ-10 · скрининг аутистических черт',
+    category: 'screening', kind: 'screening_test',
+    short_description_en: '10-item adult autism-spectrum quotient screener.',
+    short_description_ru: 'Скрининг аутистических черт у взрослых, 10 пунктов.',
+    measures: ['autism_traits'],
+    clinical_evidence: 'Allison, Auyeung & Baron-Cohen (2012, JAACAP), AQ-10 short form. Cutoff ≥6 → consider specialist referral; sensitivity 0.88. NOT a diagnosis.',
+    min_level: 1, max_level: 1, target_regions: ['brain'], sort_order: 260
   }
 ];
 
