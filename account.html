@@ -19686,6 +19686,22 @@ window.pbMove = pbMove;
   #tools-library-content .lib-adminrow button{border-radius:8px;padding:.35rem .8rem;font-size:12px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-primary);}
   #tools-library-content .lib-adminrow button.del{background:rgba(240,90,110,.14);border-color:rgba(240,90,110,.4);color:#ffb3bf;}
   #tools-library-content .lib-empty{color:var(--text-muted);font-size:13px;padding:1.5rem 0;text-align:center;}
+  /* Search bar + realtime dropdown */
+  #tools-library-content .lib-search{position:relative;}
+  #tools-library-content .lib-search input{width:100%;box-sizing:border-box;background:rgba(168,247,255,.05);border:1px solid rgba(168,247,255,.18);border-radius:11px;padding:.6rem .9rem;font-size:14px;color:var(--text-primary,#e8edf2);font-family:inherit;}
+  #tools-library-content .lib-search input:focus{outline:none;border-color:rgba(57,211,195,.55);background:rgba(57,211,195,.07);}
+  #tools-library-content .lib-search-drop{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:50;background:#0e161c;border:1px solid rgba(168,247,255,.22);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.5);max-height:60vh;overflow:auto;padding:.3rem;}
+  #tools-library-content .lib-search-msg{padding:.7rem .9rem;color:var(--text-muted);font-size:12.5px;}
+  #tools-library-content .lib-search-hit{padding:.5rem .7rem;border-radius:9px;cursor:pointer;}
+  #tools-library-content .lib-search-hit:hover{background:rgba(57,211,195,.12);}
+  #tools-library-content .lib-search-hit-t{font-size:13.5px;font-weight:600;color:var(--text-primary,#e8edf2);line-height:1.3;}
+  #tools-library-content .lib-search-hit-m{font-size:11.5px;color:var(--text-muted);margin-top:.15rem;line-height:1.35;}
+  #tools-library-content .lib-search-hit-s{color:var(--text-dim,#9fb0bd);}
+  #tools-library-content .lib-search-drop mark{background:rgba(232,200,72,.32);color:inherit;border-radius:3px;padding:0 .1em;}
+  /* Illustrative figure */
+  #tools-library-content .lib-fig{margin:1rem 0;text-align:center;}
+  #tools-library-content .lib-fig img{max-width:100%;max-height:420px;border-radius:12px;background:#fff;}
+  #tools-library-content .lib-fig figcaption{font-size:11px;color:var(--text-muted);margin-top:.35rem;line-height:1.4;}
   .lib-modal-ov{position:fixed;inset:0;background:rgba(4,8,12,.72);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto;}
   .lib-modal{background:#0e161c;border:1px solid rgba(168,247,255,.16);border-radius:16px;max-width:640px;width:100%;padding:1.3rem 1.4rem;}
   .lib-modal h3{margin:0 0 .8rem;font-size:16px;}
@@ -19717,6 +19733,48 @@ window.pbMove = pbMove;
   var SEC = {}; SECTIONS.forEach(function(s){ SEC[s.key]=s; });
   var cache = {}; var state = { section:'terms', root:null };
 
+  // ── Library UI strings (localized; content itself is localized server-side) ──
+  var LT = {
+    en: { title:'Library', loading:'Loading…', empty:'Nothing here yet.', could_not:'Could not load',
+      sources:'Sources', related:'Related terms', key_points:'Key points', criticisms:'Criticisms & open debates',
+      steps:'Steps', findings:'Key findings', proponents:'Proponents', also:'Also', mechanism:'How it works',
+      evidence:'Evidence', indications:'Indications', cautions:'Cautions & contraindications', category:'Category', regulatory:'Regulatory status',
+      search_ph:'Search the library…', no_hits:'No matches', searching:'Searching…', in_:'in',
+      sec:{ terms:['Terms','Term','Glossary of key terms in attention, self-regulation and neuroscience.'],
+        articles:['Articles','Article','Scientific articles — rich text with figures, or uploaded PDFs.'],
+        theories:['Theories','Theory','Hypotheses & theories, including the leading theories of consciousness.'],
+        research:['Research','Research entry','Summaries of key research on attention, inhibition and self-regulation.'],
+        functions:['Functions','Function','Cognitive functions, each with a mini brain atlas of its regions.'],
+        methods:['Methods','Method','The methods we work with — evidence-based, somatic and contemplative.'] } },
+    ru: { title:'Библиотека', loading:'Загрузка…', empty:'Пока пусто.', could_not:'Не удалось загрузить',
+      sources:'Источники', related:'Смежные термины', key_points:'Ключевые положения', criticisms:'Критика и открытые вопросы',
+      steps:'Шаги', findings:'Ключевые выводы', proponents:'Авторы', also:'Также', mechanism:'Как это работает',
+      evidence:'Доказательная база', indications:'Показания', cautions:'Предостережения и противопоказания', category:'Категория', regulatory:'Регуляторный статус',
+      search_ph:'Поиск по библиотеке…', no_hits:'Ничего не найдено', searching:'Идёт поиск…', in_:'в разделе',
+      sec:{ terms:['Термины','Термин','Глоссарий ключевых понятий внимания, саморегуляции и нейронауки.'],
+        articles:['Статьи','Статья','Научные статьи — развёрнутый текст с иллюстрациями или загруженные PDF.'],
+        theories:['Теории','Теория','Гипотезы и теории, включая ведущие теории сознания.'],
+        research:['Исследования','Исследование','Обзоры ключевых исследований внимания, торможения и саморегуляции.'],
+        functions:['Функции','Функция','Когнитивные функции, каждая — с мини-атласом своих зон мозга.'],
+        methods:['Методы','Метод','Методы, с которыми мы работаем — доказательные, телесные и созерцательные.'] } },
+    es: { title:'Biblioteca', loading:'Cargando…', empty:'Aún no hay nada.', could_not:'No se pudo cargar',
+      sources:'Fuentes', related:'Términos relacionados', key_points:'Puntos clave', criticisms:'Críticas y debates abiertos',
+      steps:'Pasos', findings:'Hallazgos clave', proponents:'Autores', also:'También', mechanism:'Cómo funciona',
+      evidence:'Evidencia', indications:'Indicaciones', cautions:'Precauciones y contraindicaciones', category:'Categoría', regulatory:'Estado regulatorio',
+      search_ph:'Buscar en la biblioteca…', no_hits:'Sin resultados', searching:'Buscando…', in_:'en',
+      sec:{ terms:['Términos','Término','Glosario de conceptos clave de atención, autorregulación y neurociencia.'],
+        articles:['Artículos','Artículo','Artículos científicos — texto enriquecido con figuras, o PDF subidos.'],
+        theories:['Teorías','Teoría','Hipótesis y teorías, incluidas las principales teorías de la conciencia.'],
+        research:['Investigación','Entrada','Resúmenes de investigaciones clave sobre atención, inhibición y autorregulación.'],
+        functions:['Funciones','Función','Funciones cognitivas, cada una con un mini-atlas cerebral de sus regiones.'],
+        methods:['Métodos','Método','Los métodos con los que trabajamos — basados en evidencia, somáticos y contemplativos.'] } }
+  };
+  function LTd(){ return LT[lang()] || LT.en; }
+  function L(k){ var d=LTd(); return (d && d[k]!=null) ? d[k] : (LT.en[k]!=null?LT.en[k]:k); }
+  function secLabel(kind){ var d=LTd(); return (d.sec[kind]&&d.sec[kind][0]) || SEC[kind].label; }
+  function secOne(kind){ var d=LTd(); return (d.sec[kind]&&d.sec[kind][1]) || SEC[kind].one; }
+  function secBlurb(kind){ var d=LTd(); return (d.sec[kind]&&d.sec[kind][2]) || SEC[kind].blurb; }
+
   window.mountLibraryTool = function(container){
     if(!container) return;
     state.root = container;
@@ -19724,16 +19782,63 @@ window.pbMove = pbMove;
     container.dataset.libMounted='1';
     container.innerHTML =
       '<div class="lib-wrap">'+
-        '<div class="lib-head"><div><h2>📚 Library</h2><p id="lib-blurb"></p></div><div id="lib-add-host"></div></div>'+
+        '<div class="lib-head"><div><h2>📚 '+esc(L('title'))+'</h2><p id="lib-blurb"></p></div><div id="lib-add-host"></div></div>'+
+        '<div class="lib-search" id="lib-search-wrap">'+
+          '<input type="search" id="lib-search-input" autocomplete="off" spellcheck="false">'+
+          '<div class="lib-search-drop" id="lib-search-drop" style="display:none;"></div>'+
+        '</div>'+
         '<div class="lib-nav" id="lib-nav"></div>'+
         '<div class="lib-body" id="lib-body"></div>'+
       '</div>';
     var nav = container.querySelector('#lib-nav');
-    nav.innerHTML = SECTIONS.map(function(s){ return '<button data-sec="'+s.key+'">'+s.icon+' '+esc(s.label)+'</button>'; }).join('');
+    nav.innerHTML = SECTIONS.map(function(s){ return '<button data-sec="'+s.key+'">'+s.icon+' '+esc(secLabel(s.key))+'</button>'; }).join('');
     nav.querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ openSection(b.getAttribute('data-sec')); }); });
+    wireSearch(container);
     openSection(state.section);
     handlePendingDeepLink();
   };
+
+  // ── Realtime search across all kinds (GET /api/library/search) ──
+  var searchTimer=null, searchSeq=0;
+  function wireSearch(container){
+    var input=container.querySelector('#lib-search-input');
+    var drop=container.querySelector('#lib-search-drop');
+    if(!input||!drop) return;
+    input.placeholder = L('search_ph');
+    function hide(){ drop.style.display='none'; drop.innerHTML=''; }
+    input.addEventListener('input', function(){
+      var q=(input.value||'').trim();
+      if(searchTimer) clearTimeout(searchTimer);
+      if(q.length<2){ hide(); return; }
+      drop.style.display=''; drop.innerHTML='<div class="lib-search-msg">'+esc(L('searching'))+'</div>';
+      var mySeq=++searchSeq;
+      searchTimer=setTimeout(function(){
+        api('/api/library/search?lang='+encodeURIComponent(lang())+'&q='+encodeURIComponent(q))
+          .then(function(j){ if(mySeq!==searchSeq) return; renderSearchDrop(drop, j.items||[], q); })
+          .catch(function(){ if(mySeq!==searchSeq) return; hide(); });
+      }, 220);
+    });
+    input.addEventListener('keydown', function(e){ if(e.key==='Escape'){ input.value=''; hide(); } });
+    document.addEventListener('click', function(e){ if(!container.contains(e.target)|| (e.target!==input && !drop.contains(e.target) && e.target!==drop)){ if(e.target!==input) hide(); } });
+  }
+  function highlight(text, q){ text=esc(text||''); if(!q) return text;
+    try{ var re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'); return text.replace(re,'<mark>$1</mark>'); }catch(e){ return text; } }
+  function renderSearchDrop(drop, items, q){
+    if(!items.length){ drop.innerHTML='<div class="lib-search-msg">'+esc(L('no_hits'))+'</div>'; drop.style.display=''; return; }
+    drop.innerHTML = items.map(function(it){
+      return '<div class="lib-search-hit" data-kind="'+esc(it.kind)+'" data-slug="'+esc(it.slug)+'">'+
+        '<div class="lib-search-hit-t">'+highlight(it.title,q)+'</div>'+
+        '<div class="lib-search-hit-m">'+SEC[it.kind].icon+' '+esc(secLabel(it.kind))+(it.snippet?' · <span class="lib-search-hit-s">'+highlight(it.snippet,q)+'</span>':'')+'</div>'+
+      '</div>';
+    }).join('');
+    drop.style.display='';
+    drop.querySelectorAll('.lib-search-hit').forEach(function(el){ el.addEventListener('click', function(){
+      var kind=el.getAttribute('data-kind'), slug=el.getAttribute('data-slug');
+      drop.style.display='none';
+      var input=state.root&&state.root.querySelector('#lib-search-input'); if(input) input.value='';
+      openSection(kind, function(){ openDetail(kind, slug); });
+    }); });
+  }
 
   // Anatomy atlas function slug → Library function slug (only where a real
   // library page exists; other atlas functions show no «Learn more» button).
@@ -19769,17 +19874,17 @@ window.pbMove = pbMove;
     state.section = kind;
     stashFnAtlas();
     if(state.root){ state.root.querySelectorAll('#lib-nav button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sec')===kind); }); }
-    var blurb = state.root && state.root.querySelector('#lib-blurb'); if(blurb) blurb.textContent = SEC[kind].blurb;
+    var blurb = state.root && state.root.querySelector('#lib-blurb'); if(blurb) blurb.textContent = secBlurb(kind);
     var addHost = state.root && state.root.querySelector('#lib-add-host');
-    if(addHost){ addHost.innerHTML = isSuper() ? '<button class="lib-add" id="lib-add-btn">＋ Add '+esc(SEC[kind].one)+'</button>' : '';
+    if(addHost){ addHost.innerHTML = isSuper() ? '<button class="lib-add" id="lib-add-btn">＋ '+esc(secOne(kind))+'</button>' : '';
       var ab = addHost.querySelector('#lib-add-btn'); if(ab) ab.addEventListener('click', function(){ openEditor(kind, null); }); }
     var body = state.root && state.root.querySelector('#lib-body'); if(!body) return;
-    body.innerHTML = '<div class="lib-empty">Loading…</div>';
+    body.innerHTML = '<div class="lib-empty">'+esc(L('loading'))+'</div>';
     loadSection(kind, function(items){
       if(state.section!==kind) return;
       renderList(kind, items);
       if(typeof after==='function') after();
-    }, function(err){ body.innerHTML = '<div class="lib-empty">Could not load ('+esc(err.message||'error')+')</div>'; });
+    }, function(err){ body.innerHTML = '<div class="lib-empty">'+esc(L('could_not'))+' ('+esc(err.message||'error')+')</div>'; });
   }
 
   function loadSection(kind, ok, fail){
@@ -19794,7 +19899,7 @@ window.pbMove = pbMove;
 
   function renderList(kind, items){
     var body = state.root.querySelector('#lib-body'); if(!body) return;
-    if(!items || !items.length){ body.innerHTML='<div class="lib-empty">Nothing here yet.</div>'; return; }
+    if(!items || !items.length){ body.innerHTML='<div class="lib-empty">'+esc(L('empty'))+'</div>'; return; }
     var html = '<div class="lib-grid">'+items.map(function(it){
       var badge = (kind==='theories' && it.content && it.content.status) ? '<span class="lib-badge '+esc(it.content.status)+'">'+esc(it.content.status)+'</span>' : '';
       var abbr = (kind==='theories' && it.content && it.content.abbr) ? ' · '+esc(it.content.abbr) : '';
@@ -19817,7 +19922,7 @@ window.pbMove = pbMove;
       .then(function(j){ renderDetail(kind, j.item); }).catch(function(){});
   }
 
-  function backBtn(kind){ return '<button class="lib-back" id="lib-back">← '+esc(SEC[kind].label)+'</button>'; }
+  function backBtn(kind){ return '<button class="lib-back" id="lib-back">← '+esc(secLabel(kind))+'</button>'; }
   function adminRow(kind, it){ if(!isSuper()) return '';
     return '<div class="lib-adminrow"><button id="lib-edit">✎ Edit</button><button class="del" id="lib-del">🗑 Delete</button></div>'; }
 
@@ -19828,8 +19933,13 @@ window.pbMove = pbMove;
     state.root.querySelectorAll('[data-term]').forEach(function(ch){ ch.addEventListener('click', function(){ openDetail('terms', ch.getAttribute('data-term')); }); });
   }
 
-  function srcList(urls){ if(!urls||!urls.length) return ''; return '<h4>Sources</h4><div class="lib-src">'+urls.map(function(u){ return '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u)+'</a>'; }).join('')+'</div>'; }
+  function srcList(urls){ if(!urls||!urls.length) return ''; return '<h4>'+esc(L('sources'))+'</h4><div class="lib-src">'+urls.map(function(u){ return '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(u)+'</a>'; }).join('')+'</div>'; }
   function listBlock(title, arr){ if(!arr||!arr.length) return ''; return '<h4>'+esc(title)+'</h4><ul>'+arr.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'; }
+  // Illustrative image stored in content.figure = { url, credit, alt }. Freely-
+  // licensed (Wikimedia Commons etc.); no-referrer keeps hotlinking polite.
+  function figureBlock(c){ var f=c&&c.figure; if(!f||!f.url) return '';
+    return '<figure class="lib-fig"><img src="'+esc(f.url)+'" alt="'+esc(f.alt||'')+'" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.style.display=\'none\'">'+
+      (f.credit?'<figcaption>'+esc(f.credit)+'</figcaption>':'')+'</figure>'; }
 
   function renderDetail(kind, it){
     stashFnAtlas();
@@ -19837,29 +19947,45 @@ window.pbMove = pbMove;
     var h = '<div class="lib-detail">'+backBtn(kind);
     if(kind==='terms'){
       h += '<h3>'+esc(c.term||it.slug)+'</h3>';
-      if(c.synonyms&&c.synonyms.length) h+='<div class="lib-meta">Also: '+c.synonyms.map(esc).join(', ')+'</div>';
+      if(c.synonyms&&c.synonyms.length) h+='<div class="lib-meta">'+esc(L('also'))+': '+c.synonyms.map(esc).join(', ')+'</div>';
+      h += figureBlock(c);
       h += '<p>'+esc(c.definition||'')+'</p>';
-      if(it.related_slugs&&it.related_slugs.length){ h+='<h4>Related terms</h4><div>'+it.related_slugs.map(function(s){ return '<span class="lib-chip" data-term="'+esc(s)+'">'+esc(s.replace(/-/g,' '))+'</span>'; }).join('')+'</div>'; }
+      if(c.body_html) h+=c.body_html;
+      if(it.related_slugs&&it.related_slugs.length){ h+='<h4>'+esc(L('related'))+'</h4><div>'+it.related_slugs.map(function(s){ return '<span class="lib-chip" data-term="'+esc(s)+'">'+esc(s.replace(/-/g,' '))+'</span>'; }).join('')+'</div>'; }
+      h += srcList(c.sources);
     } else if(kind==='theories'){
       h += '<h3>'+esc(c.title||it.slug)+'</h3>';
       var meta=[]; if(it.status) meta.push('<span class="lib-badge '+esc(it.status)+'">'+esc(it.status)+'</span>'); if(c.abbr) meta.push(esc(c.abbr));
       if(meta.length) h+='<div style="margin:.2rem 0 .5rem;">'+meta.join(' &nbsp; ')+'</div>';
-      if(c.proponents) h+='<div class="lib-meta"><b>Proponents:</b> '+esc(c.proponents)+'</div>';
+      if(c.proponents) h+='<div class="lib-meta"><b>'+esc(L('proponents'))+':</b> '+esc(c.proponents)+'</div>';
+      h += figureBlock(c);
       if(c.summary) h+='<p>'+esc(c.summary)+'</p>';
-      h += listBlock('Key points', c.key_points);
-      h += listBlock('Criticisms & open debates', c.criticisms);
-      h += srcList(it.sources);
+      if(c.body_html) h+=c.body_html;
+      h += listBlock(L('key_points'), c.key_points);
+      h += listBlock(L('criticisms'), c.criticisms);
+      h += srcList((it.sources&&it.sources.length)?it.sources:c.sources);
     } else if(kind==='functions'){
       h += '<h3>'+esc(c.name||it.slug)+'</h3>';
       if(c.summary) h+='<div class="lib-meta">'+esc(c.summary)+'</div>';
       h += '<div class="lib-fn-atlas" id="lib-fn-atlas-slot"></div>';
+      h += figureBlock(c);
       if(c.body_html) h+=c.body_html;
       if(it.body_regions&&it.body_regions.length) h+='<div style="margin-top:.5rem;">'+it.body_regions.map(function(r){ return '<span class="lib-chip static">'+esc(r.replace(/-/g,' '))+'</span>'; }).join('')+'</div>';
+      h += srcList(c.sources);
     } else if(kind==='methods'){
       h += '<h3>'+esc(c.name||it.slug)+'</h3>';
-      if(c.summary) h+='<div class="lib-meta">'+esc(c.summary)+'</div>';
+      var mm=[]; if(c.founder) mm.push(esc(c.founder)); if(it.category) mm.push(esc(it.category));
+      if(mm.length) h+='<div class="lib-meta">'+mm.join(' · ')+'</div>';
+      if(c.summary) h+='<div class="lib-meta"><em>'+esc(c.summary)+'</em></div>';
+      h += figureBlock(c);
       if(c.body_html) h+=c.body_html;
-      if(c.steps&&c.steps.length){ h+='<h4>Steps</h4><ol>'+c.steps.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ol>'; }
+      if(c.mechanism) h+='<h4>'+esc(L('mechanism'))+'</h4><p>'+esc(c.mechanism)+'</p>';
+      if(c.evidence) h+='<h4>'+esc(L('evidence'))+'</h4><p>'+esc(c.evidence)+'</p>';
+      if(c.regulatory) h+='<h4>'+esc(L('regulatory'))+'</h4><p>'+esc(c.regulatory)+'</p>';
+      h += listBlock(L('indications'), c.indications);
+      if(c.steps&&c.steps.length){ h+='<h4>'+esc(L('steps'))+'</h4><ol>'+c.steps.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ol>'; }
+      h += listBlock(L('cautions'), c.cautions);
+      h += srcList(c.sources);
     } else { // articles + research
       h += '<h3>'+esc(c.title||it.slug)+'</h3>';
       var m=[]; if(it.authors&&it.authors.length) m.push(it.authors.map(esc).join(', ')); if(it.topic) m.push(esc(it.topic));
@@ -19869,10 +19995,12 @@ window.pbMove = pbMove;
              '<iframe src="'+esc(it.pdf_url)+'" style="width:100%;height:70vh;border:1px solid rgba(255,255,255,.1);border-radius:10px;margin-top:.5rem;"></iframe>';
       } else {
         if(c.summary) h+='<p><em>'+esc(c.summary)+'</em></p>';
+        h += figureBlock(c);
         if(c.body_html) h+=c.body_html;
-        h += listBlock('Key findings', c.findings);
+        h += listBlock(L('findings'), c.findings);
       }
-      if(it.source_url) h+=srcList([it.source_url]);
+      var srcs = []; if(it.source_url) srcs.push(it.source_url); if(Array.isArray(c.sources)) srcs=srcs.concat(c.sources);
+      if(srcs.length) h+=srcList(srcs);
     }
     h += adminRow(kind, it) + '</div>';
     body.innerHTML = h;
@@ -19967,7 +20095,14 @@ window.pbMove = pbMove;
       .then(function(){ delete cache[kind]; openSection(kind); }).catch(function(e){ alert('Delete failed: '+(e.message||e)); });
   }
 
-  document.addEventListener('langchange', function(){ if(state.root && state.root.dataset.libMounted==='1' && state.root.style.display!=='none'){ Object.keys(cache).forEach(function(k){ delete cache[k]; }); openSection(state.section); } });
+  document.addEventListener('langchange', function(){ if(state.root && state.root.dataset.libMounted==='1' && state.root.style.display!=='none'){
+    Object.keys(cache).forEach(function(k){ delete cache[k]; });
+    // Relocalize the chrome built once at mount: title, nav labels, search placeholder.
+    var t=state.root.querySelector('.lib-head h2'); if(t) t.textContent='\u{1F4DA} '+L('title');
+    state.root.querySelectorAll('#lib-nav button').forEach(function(b){ var k=b.getAttribute('data-sec'); if(SEC[k]) b.innerHTML=SEC[k].icon+' '+esc(secLabel(k)); });
+    var si=state.root.querySelector('#lib-search-input'); if(si) si.placeholder=L('search_ph');
+    openSection(state.section);
+  } });
 })();
 </script>
 

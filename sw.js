@@ -111,7 +111,13 @@
 //      Sun/etc. panel showed the wrong day. renderActive() now stamps a request
 //      token (S._seq) and every async painter bails if it is stale.
 //      external-field.js?v=8→v9.
-var CACHE_NAME = 'na-practices-v52';
+// v53: Library content pass (Feat 2) — full A4-min articles, freely-licensed
+//      Wikimedia figures, bilingual EN/RU content (content.ru), a realtime
+//      cross-kind search bar (/api/library/search), and +15 evidence-based
+//      methods (CBT/DBT/ACT/IFS/EMDR/SE/MBSR/Vipassana/Wim Hof/TMS/
+//      neurofeedback/ketamine/psilocybin/MDMA/somatic-trauma). Re-run
+//      /api/run-migrations to refresh migration 058 seed. Purges stale account.html.
+var CACHE_NAME = 'na-practices-v53';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
