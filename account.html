@@ -1327,6 +1327,7 @@ a.dash-tab:hover { text-decoration:none; }
       <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;">External Field</a>
       <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=internal-field" onclick="event.preventDefault();setToolsMode('internal-field');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.internal_field">Внутреннее воздействие</a>
       <a class="dash-tab dash-subtab" id="tools-mode-library" href="?tool=library" onclick="event.preventDefault();setToolsMode('library');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.library">Library</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-exercises" href="?tool=exercises" onclick="event.preventDefault();setToolsMode('exercises');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.exercises">Упражнения и тесты</a>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -1546,6 +1547,9 @@ a.dash-tab:hover { text-decoration:none; }
 
     <!-- ── Library tool (PR Library): terms · articles · theories · research · functions · methods ── -->
     <div id="tools-library-content" style="display:none;"></div>
+
+    <!-- ── Exercises & Tests tool (migration 060): 10 canvas cognitive exercises ── -->
+    <div id="tools-exercises-content" style="display:none;"></div>
 
     <!-- ── Anatomy Atlas tool (3D BodyAtlas) ── -->
     <div id="tools-anatomy-content" style="display:none;">
@@ -5249,6 +5253,7 @@ function switchTab(id){
                    : document.querySelector('#tools-mode-external.active') ? 'external'
                    : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
                    : document.querySelector('#tools-mode-library.active') ? 'library'
+                   : document.querySelector('#tools-mode-exercises.active') ? 'exercises'
                    : 'nm';
     setToolsMode(activeMode);
   }
@@ -5844,8 +5849,10 @@ function setToolsMode(mode){
   var anatomyContent = document.getElementById('tools-anatomy-content');
   var btnLibrary = document.getElementById('tools-mode-library');
   var libraryContent = document.getElementById('tools-library-content');
+  var btnExercises = document.getElementById('tools-mode-exercises');
+  var exercisesContent = document.getElementById('tools-exercises-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy,btnLibrary].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy,btnLibrary,btnExercises].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
@@ -5855,10 +5862,17 @@ function setToolsMode(mode){
   if(externalContent) externalContent.style.display='none';
   if(anatomyContent) anatomyContent.style.display='none';
   if(libraryContent) libraryContent.style.display='none';
+  if(exercisesContent) exercisesContent.style.display='none';
   if(mode==='library'){
     if(btnLibrary){ btnLibrary.classList.add('active'); btnLibrary.style.borderBottomColor='var(--accent-cyan)'; }
     if(libraryContent){ libraryContent.style.display='';
       setTimeout(function(){ try{ if(typeof window.mountLibraryTool==='function') window.mountLibraryTool(libraryContent); }catch(e){ console.warn('library mount', e); } }, 40);
+    }
+  }
+  if(mode==='exercises'){
+    if(btnExercises){ btnExercises.classList.add('active'); btnExercises.style.borderBottomColor='var(--accent-cyan)'; }
+    if(exercisesContent){ exercisesContent.style.display='';
+      setTimeout(function(){ try{ if(typeof window.mountExercisesTool==='function') window.mountExercisesTool(exercisesContent); }catch(e){ console.warn('exercises mount', e); } }, 40);
     }
   }
   if(mode==='anatomy'){
@@ -5921,6 +5935,7 @@ function toolsExpandActive(){
     external: { id: 'tools-external-content', title: 'External Field' },
     anatomy:  { id: 'tools-anatomy-content', title: 'Анатомический атлас' },
     library:  { id: 'tools-library-content', title: 'Library' },
+    exercises:{ id: 'tools-exercises-content', title: 'Упражнения и тесты' },
     diary:    { id: 'tools-cal-diary-wrap',  title: 'Дневник' }
   };
   // External Field was missing here, so its «Раскрыть» fell through to the
@@ -5931,6 +5946,7 @@ function toolsExpandActive(){
              : document.querySelector('#tools-mode-external.active') ? 'external'
              : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
              : document.querySelector('#tools-mode-library.active') ? 'library'
+             : document.querySelector('#tools-mode-exercises.active') ? 'exercises'
              : 'nm';
   var info = map[active]; if (!info) return;
   var src = document.getElementById(info.id); if (!src) return;
@@ -13727,7 +13743,8 @@ window.TOOL_TASK_META = {
   neuromap_event:   { tool: 'neuromap',  nm: 'event',   title_ru: 'Задание · Нейромап (событие)', icon: '📍', label_ru: 'Нейромап · событие' },
   neuromap_thought: { tool: 'neuromap',  nm: 'thought', title_ru: 'Задание · Нейромап (мысль)', icon: '💭', label_ru: 'Нейромап · мысль' },
   'human-atlas':    { tool: 'anatomy',   title_ru: 'Задание · Атлас человека', icon: '🧬', label_ru: 'Атлас человека' },
-  'library':        { tool: 'library',   title_ru: 'Задание · Библиотека', icon: '📚', label_ru: 'Библиотека' }
+  'library':        { tool: 'library',   title_ru: 'Задание · Библиотека', icon: '📚', label_ru: 'Библиотека' },
+  'exercise':       { tool: 'exercises', title_ru: 'Задание · Упражнение', icon: '🧠', label_ru: 'Упражнение / тест' }
 };
 // Localized instrument label for a tool_task kind. Falls back to label_ru.
 function cpToolLabel(kind){
@@ -13745,7 +13762,7 @@ function courseAddToolTask(parentBlockId){
   ov.style.zIndex = '10050';
   // human-atlas has its own mode+entity picker (courseAddHumanAtlas); the rest are
   // one-click instrument embeds.
-  var kinds = Object.keys(window.TOOL_TASK_META).filter(function(k){ return k !== 'human-atlas' && k !== 'library'; });
+  var kinds = Object.keys(window.TOOL_TASK_META).filter(function(k){ return k !== 'human-atlas' && k !== 'library' && k !== 'exercise'; });
   ov.innerHTML = '<div class="rpg-modal" style="max-width:360px;">' +
     '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">Задание из инструмента</h3>' +
     '<p style="margin:0 0 1rem;font-size:12px;color:var(--text-muted);">Ученик выполнит инструмент прямо в плеере курса.</p>' +
@@ -13755,6 +13772,7 @@ function courseAddToolTask(parentBlockId){
           m.icon + '&nbsp; ' + m.label_ru + '</button>'; }).join('') +
       '<button class="btn btn-ghost" id="tt-pick-ha" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">🧬&nbsp; Атлас человека…</button>' +
       '<button class="btn btn-ghost" id="tt-pick-lib" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">📚&nbsp; Библиотека…</button>' +
+      '<button class="btn btn-ghost" id="tt-pick-ex" style="justify-content:flex-start;font-size:13px;padding:0.55rem 0.8rem;">🧠&nbsp; Упражнение / тест…</button>' +
     '</div>' +
     '<button class="btn btn-ghost" id="tt-cancel" style="margin-top:0.9rem;font-size:12px;">Отмена</button></div>';
   document.body.appendChild(ov);
@@ -13763,6 +13781,7 @@ function courseAddToolTask(parentBlockId){
   ov.querySelector('#tt-cancel').addEventListener('click', close);
   ov.querySelector('#tt-pick-ha').addEventListener('click', function(){ close(); courseAddHumanAtlas(parentBlockId); });
   ov.querySelector('#tt-pick-lib').addEventListener('click', function(){ close(); courseAddLibrary(parentBlockId); });
+  ov.querySelector('#tt-pick-ex').addEventListener('click', function(){ close(); courseAddExercise(parentBlockId); });
   ov.querySelectorAll('.tt-pick').forEach(function(b){
     b.addEventListener('click', function(){
       courseAddBlock('tool_task', parentBlockId, b.getAttribute('data-kind'));
@@ -13876,6 +13895,52 @@ function courseAddLibrary(parentBlockId){
   });
 }
 window.courseAddLibrary = courseAddLibrary;
+
+// Picker: embed a cognitive Exercise/Test as a course block (mig060). Author
+// chooses one of the 10 exercises + a difficulty level; player runs it inline.
+function courseAddExercise(parentBlockId){
+  if (!courseState.currentCourse) { alert('Сначала выбери или создай курс'); return; }
+  var base = (typeof AUTH_API!=='undefined' && AUTH_API) ? AUTH_API : (window.AUTH_API||'');
+  var list = null;
+  var ov = document.createElement('div'); ov.className='rpg-modal-overlay'; ov.style.zIndex='10050';
+  ov.innerHTML = '<div class="rpg-modal" style="max-width:440px;">' +
+    '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">🧠 Упражнение — блок курса</h3>' +
+    '<p style="margin:0 0 0.8rem;font-size:12px;color:var(--text-muted);">Выбери упражнение и уровень — студент выполнит его прямо в плеере курса.</p>' +
+    '<select id="ex-c-item" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.5rem;font-size:13px;box-sizing:border-box;margin-bottom:0.6rem;"><option value="">— загрузка… —</option></select>' +
+    '<label style="display:flex;align-items:center;gap:0.6rem;font-size:13px;color:var(--text-muted);margin-bottom:0.9rem;">Уровень <input id="ex-c-lvl" type="range" min="1" max="10" value="3" style="flex:1;"> <span id="ex-c-lvlv" style="font-weight:700;color:var(--text-primary);">3</span></label>' +
+    '<div style="display:flex;gap:0.5rem;"><button class="btn btn-solid" id="ex-c-add" style="flex:1;font-size:13px;padding:0.5rem;">Добавить блок</button>' +
+    '<button class="btn btn-ghost" id="ex-c-cancel" style="font-size:12px;">Отмена</button></div></div>';
+  document.body.appendChild(ov);
+  function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
+  ov.querySelector('#ex-c-cancel').addEventListener('click', close);
+  var itemSel = ov.querySelector('#ex-c-item'), lvl = ov.querySelector('#ex-c-lvl'), lvlv = ov.querySelector('#ex-c-lvlv');
+  lvl.addEventListener('input', function(){ lvlv.textContent = lvl.value; });
+  fetch(base+'/api/exercises').then(function(r){return r.ok?r.json():{};}).then(function(d){
+    list = (d && d.exercises) || [];
+    itemSel.innerHTML = list.length ? list.map(function(it){
+      var nm = it.name_ru || it.name_en || it.slug;
+      return '<option value="'+it.slug+'" data-title="'+String(nm).replace(/"/g,'&quot;')+'">'+nm+'</option>';
+    }).join('') : '<option value="">— пусто —</option>';
+  }).catch(function(){ itemSel.innerHTML='<option value="">— ошибка —</option>'; });
+  ov.querySelector('#ex-c-add').addEventListener('click', function(){
+    var slug = itemSel.value; if(!slug){ alert('Выбери упражнение'); return; }
+    var opt = itemSel.options[itemSel.selectedIndex];
+    var title = (opt && opt.getAttribute('data-title')) || slug;
+    var level = parseInt(lvl.value,10)||3;
+    var body = {
+      block_type: 'tool_task', tool_kind: 'exercise',
+      tool_config: { slug: slug, level: level, title: title },
+      title_ru: 'Упражнение · ' + title + ' · ур. ' + level,
+      payload: { instruction_ru: '', instruction_en: '', instruction_es: '' }, points: 5
+    };
+    if (parentBlockId) body.parent_block_id = parentBlockId;
+    courseApi('/api/admin/courses/' + courseState.currentCourse.id + '/blocks', { method:'POST', body: body })
+      .then(function(d){ courseState.currentBlocks.push(d.block); renderCourseBlocks(); close(); })
+      .catch(function(e){ alert(e.message); });
+  });
+}
+window.courseAddExercise = courseAddExercise;
 window.courseAddToolTask = courseAddToolTask;
 
 function courseAddBlock(blockType, parentBlockId, toolKind){
@@ -14536,6 +14601,7 @@ function cpOpenFullscreen(){
 function cpEscHandler(e){ if (e.key === 'Escape') cpClose(); }
 function cpClose(){
   if (typeof cpCancelAutoAdvance === 'function') cpCancelAutoAdvance();
+  cpDisposeExercise();     // mig060: stop any running exercise RAF/timers
   cpDisposeHumanAtlas();   // PACK 9: free the inline 3D atlas GPU resources on close
   cpDisposeNeuromap();     // PR#87: restore the relocated NeuroMap survey panel
   var modal = document.getElementById('coursePlayerModal');
@@ -14614,6 +14680,7 @@ function cpBlockDisplayTitle(block, uiLang){
 
 function cpRenderBlock(){
   cpCancelAutoAdvance();   // clear any pending auto-advance toast on (re)render
+  cpDisposeExercise();     // mig060: stop any running exercise from the prior block
   cpDisposeHumanAtlas();   // PACK 9: tear down any inline 3D atlas from the prior block
   cpDisposeNeuromap();     // PR#87: return the relocated NeuroMap survey to its modal
   var area = document.getElementById('cp-block-area');
@@ -14799,6 +14866,9 @@ function cpRenderBlock(){
       // area chips show localized (not Russian) labels even if the course opens
       // before the page-init load finished.
       setTimeout(cpMountNeuromap, 30);
+    } else if (bt === 'tool_task' && block.tool_kind === 'exercise') {
+      // mig060: mount the canvas exercise inline in the player.
+      setTimeout(function(){ cpMountExercise(block); }, 40);
     }
     // 3.5: when we LAND here via auto-advance, start the next audio/video itself
     // (give the DOM ~0.6s to mount the element). If the browser blocks autoplay,
@@ -14878,6 +14948,7 @@ function cpRenderToolTask(block, p, lang){
   var kind = block.tool_kind || 'sensation_map';
   if (kind === 'human-atlas') return cpRenderHumanAtlas(block, p, lang);
   if (kind === 'library') return cpRenderLibrary(block, p, lang);
+  if (kind === 'exercise') return cpRenderExercise(block, p, lang);
   // B п.1: sensation_map mounts the REAL mini Sensation Map (silhouettes + regions),
   // not a textarea. Mounted by the post-render hook (cpMountSensationMap).
   if (kind === 'sensation_map') return cpRenderSensationMap(block, p, lang);
@@ -15485,6 +15556,62 @@ function cpRenderLibrary(block, p, lang){
     + '<textarea id="cp-response" rows="4" placeholder="'+(lang==='en'?'Your notes…':lang==='es'?'Tus notas…':'Твои заметки…')+'" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.6rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
 }
 window.cpRenderLibrary = cpRenderLibrary;
+
+// ── Inline cognitive Exercise inside the course player (mig060) ──────────────
+// A tool_task/exercise block renders the exercise canvas inline; when the learner
+// finishes, the score fills #cp-response so Next records the attempt, and the
+// result is POSTed to /api/exercises/result (which also mirrors onto the Path).
+function cpDisposeExercise(){
+  try{ if(coursePlayer && typeof coursePlayer._exDispose==='function') coursePlayer._exDispose(); }catch(e){}
+  if(coursePlayer) coursePlayer._exDispose = null;
+}
+window.cpDisposeExercise = cpDisposeExercise;
+
+function cpRenderExercise(block, p, lang){
+  var cfg = block.tool_config || {};
+  var slug = cfg.slug || '', level = parseInt(cfg.level,10)||3, title = cfg.title || slug;
+  var instr = p['instruction_'+lang] || p.instruction_ru || p.instruction_en || '';
+  var esc1 = function(s){ return (s==null?'':String(s)).replace(/</g,'&lt;'); };
+  var exLbl = lang==='en'?'Exercise':lang==='es'?'Ejercicio':'Упражнение';
+  var lvLbl = lang==='en'?'Level':lang==='es'?'Nivel':'Уровень';
+  coursePlayer._exCfg = { slug:slug, level:level, title:title, lang:lang };
+  return '<div style="padding:0.3rem 0 0.1rem;">'
+    + '<div style="font-size:10px;color:var(--accent-cyan);font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.4rem;">🧠 '+exLbl+' · '+esc1(title)+' · '+lvLbl+' '+level+'</div>'
+    + (instr ? '<div style="font-size:14px;line-height:1.65;color:var(--text-secondary);white-space:pre-wrap;margin-bottom:0.7rem;">'+esc1(instr)+'</div>' : '')
+    + '<div id="cp-ex-host" style="background:rgba(0,0,0,0.15);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:0.6rem;"></div>'
+    + '<div id="cp-ex-result" style="margin-top:0.6rem;font-size:13px;color:var(--text-muted);min-height:1.2em;"></div>'
+    + '<textarea id="cp-response" rows="2" style="display:none;"></textarea></div>';
+}
+window.cpRenderExercise = cpRenderExercise;
+
+function cpMountExercise(block){
+  cpDisposeExercise();
+  var cfg = coursePlayer._exCfg || {};
+  var host = document.getElementById('cp-ex-host');
+  if(!host) return;
+  var mod = (window.NAExercises && window.NAExercises.get) ? window.NAExercises.get(cfg.slug) : null;
+  if(!mod){ host.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:1rem;">Exercise unavailable ('+(cfg.slug||'')+')</div>'; return; }
+  var lang = cfg.lang || ((typeof getLang==='function')?getLang():'ru');
+  var API = (typeof API_BASE!=='undefined') ? API_BASE : '';
+  try {
+    var dispose = mod.mount(host, { level:cfg.level||3, lang:lang, t:(window.t||function(k){return k;}) }, function(result){
+      var resEl = document.getElementById('cp-ex-result');
+      var doneLbl = lang==='en'?'Done':lang==='es'?'Hecho':'Готово';
+      var scLbl = lang==='en'?'score':lang==='es'?'puntos':'очки';
+      if(resEl) resEl.innerHTML = '✓ '+doneLbl+': '+Math.round(result.score||0)+' '+scLbl+
+        (result.accuracy!=null?(' · '+Math.round(result.accuracy*100)+'%'):'');
+      var ta = document.getElementById('cp-response');
+      if(ta) ta.value = JSON.stringify({ exercise:cfg.slug, level:cfg.level, score:result.score, accuracy:result.accuracy, reaction_time_avg:result.reaction_time_avg });
+      try {
+        fetch(API+'/api/exercises/result', { method:'POST', headers:(typeof naAuthHeaders==='function'?naAuthHeaders():{'Content-Type':'application/json'}),
+          body: JSON.stringify({ exercise_slug:cfg.slug, level:cfg.level, score:result.score, accuracy:result.accuracy,
+            reaction_time_avg:result.reaction_time_avg, duration_ms:result.duration_ms, raw_data:result.raw_data }) }).catch(function(){});
+      } catch(e){}
+    });
+    coursePlayer._exDispose = dispose;
+  } catch(e){ console.warn('cpMountExercise', e); host.innerHTML='<div style="color:#f85149;font-size:12px;">'+(e.message||'error')+'</div>'; }
+}
+window.cpMountExercise = cpMountExercise;
 
 // PACK 9 / PR#86: inline 3D atlas lifecycle inside the course player ──────────
 // A dedicated BodyAtlas instance lives in #cp-ha-embed for the duration of a
@@ -18112,6 +18239,18 @@ window.pbMove = pbMove;
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=10"></script>
 <script src="assets/js/body-atlas.js?v=38"></script>
+<!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
+<script src="assets/js/exercises/_engine.js?v=1"></script>
+<script src="assets/js/exercises/n-back.js?v=1"></script>
+<script src="assets/js/exercises/stroop.js?v=1"></script>
+<script src="assets/js/exercises/ant.js?v=1"></script>
+<script src="assets/js/exercises/sart.js?v=1"></script>
+<script src="assets/js/exercises/corsi.js?v=1"></script>
+<script src="assets/js/exercises/digit-span.js?v=1"></script>
+<script src="assets/js/exercises/go-no-go.js?v=1"></script>
+<script src="assets/js/exercises/task-switching.js?v=1"></script>
+<script src="assets/js/exercises/trail-making.js?v=1"></script>
+<script src="assets/js/exercises/attentional-blink.js?v=1"></script>
 <script>
 /* ── Anatomy Atlas controller (uses window.BodyAtlas) ── */
 (function(){
@@ -21586,6 +21725,231 @@ window.pbMove = pbMove;
       }
     }catch(e){}
   });
+})();
+</script>
+
+<!-- ══ Exercises & Tests launcher (migration 066) ══════════════════════════ -->
+<style>
+  #tools-exercises-content .ex-wrap{max-width:1100px;margin:0 auto}
+  #tools-exercises-content .ex-head h2{margin:0 0 .3rem;font-size:1.5rem}
+  #tools-exercises-content .ex-head p{margin:0 0 .4rem;color:var(--text-muted,#9aa4b2);font-size:.95rem}
+  #tools-exercises-content .ex-disc{font-size:.8rem;color:#8b949e;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.18);border-radius:8px;padding:.5rem .8rem;margin:.6rem 0 1.2rem}
+  #tools-exercises-content .ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  #tools-exercises-content .ex-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;display:flex;flex-direction:column;gap:8px}
+  #tools-exercises-content .ex-card:hover{transform:translateY(-2px);border-color:rgba(124,158,246,.6);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  #tools-exercises-content .ex-card .ex-ic{font-size:1.8rem}
+  #tools-exercises-content .ex-card .ex-nm{font-weight:700;font-size:1.05rem}
+  #tools-exercises-content .ex-card .ex-cat{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;opacity:.85}
+  #tools-exercises-content .ex-card .ex-sd{font-size:.85rem;color:#9aa4b2;line-height:1.35;flex:1}
+  #tools-exercises-content .ex-card .ex-best{font-size:.78rem;color:#7c9ef6;font-weight:600}
+  #tools-exercises-content .ex-back{background:none;border:none;color:#7c9ef6;cursor:pointer;font-size:.9rem;padding:.3rem 0;margin-bottom:.5rem}
+  #tools-exercises-content .ex-launch{display:grid;grid-template-columns:1fr 320px;gap:24px}
+  @media(max-width:760px){#tools-exercises-content .ex-launch{grid-template-columns:1fr}}
+  #tools-exercises-content .ex-launch h3{margin:.2rem 0 .4rem;font-size:1.4rem}
+  #tools-exercises-content .ex-measures{display:flex;flex-wrap:wrap;gap:6px;margin:.6rem 0}
+  #tools-exercises-content .ex-chip{font-size:.75rem;background:rgba(124,158,246,.14);border:1px solid rgba(124,158,246,.3);color:#aab8f0;border-radius:20px;padding:.2rem .6rem}
+  #tools-exercises-content .ex-cite{font-size:.82rem;color:#8b949e;border-left:3px solid rgba(124,158,246,.4);padding:.3rem .8rem;margin:.8rem 0;line-height:1.4}
+  #tools-exercises-content .ex-atlas{background:rgba(124,158,246,.05);border:1px solid rgba(124,158,246,.18);border-radius:14px;padding:16px;text-align:center;align-self:start}
+  #tools-exercises-content .ex-atlas svg{max-width:200px;width:100%}
+  #tools-exercises-content .ex-level-row{display:flex;align-items:center;gap:12px;margin:1rem 0}
+  #tools-exercises-content .ex-level-row input{flex:1}
+  #tools-exercises-content .ex-lvl-val{font-weight:800;font-size:1.3rem;color:#7c9ef6;min-width:2ch;text-align:center}
+  #tools-exercises-content .ex-host{margin:0 auto;max-width:640px}
+  #tools-exercises-content .ex-result{max-width:520px;margin:0 auto;text-align:center}
+  #tools-exercises-content .ex-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:1.4rem 0}
+  #tools-exercises-content .ex-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px}
+  #tools-exercises-content .ex-stat b{display:block;font-size:1.7rem;color:#7c9ef6}
+  #tools-exercises-content .ex-stat span{font-size:.78rem;color:#9aa4b2}
+  #tools-exercises-content .ex-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+</style>
+<script>
+(function(){
+  var API = (typeof API_BASE!=='undefined') ? API_BASE : 'https://neuroattention-api-production.up.railway.app';
+  function lang(){ try { return (typeof getLang==='function'?getLang():'ru'); } catch(e){ return 'ru'; } }
+  function hdr(){ try { return naAuthHeaders(); } catch(e){ return {'Content-Type':'application/json'}; } }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  var CAT = {
+    attention:  { ic:'🎯', col:'#58a6ff', ru:'Внимание',  en:'Attention',  es:'Atención' },
+    memory:     { ic:'🧩', col:'#3fb950', ru:'Память',    en:'Memory',     es:'Memoria' },
+    executive:  { ic:'🔀', col:'#bc8cff', ru:'Управление',en:'Executive',  es:'Ejecutivo' },
+    inhibition: { ic:'✋', col:'#e3b341', ru:'Торможение', en:'Inhibition', es:'Inhibición' },
+    speed:      { ic:'⚡', col:'#f778ba', ru:'Скорость',  en:'Speed',      es:'Velocidad' }
+  };
+  var ICON = { 'n-back':'🔢','stroop':'🎨','ant':'➡️','sart':'⏱️','corsi':'🟦','digit-span':'🧮',
+    'go-no-go':'🚦','task-switching':'🔀','trail-making':'✏️','attentional-blink':'👁️' };
+
+  var T = {
+    ru:{ title:'Упражнения и тесты', sub:'10 научно обоснованных когнитивных упражнений: внимание, память, управляющие функции.',
+      disc:'Это тренажёры и самопроверки, не медицинская диагностика. Задания основаны на классических научных парадигмах (СДВГ, память, внимание).',
+      best:'Рекорд', measuresTitle:'Тренирует', evidence:'Научная основа', level:'Уровень', start:'Начать',
+      trains:'Область мозга', brain:'Мозг (когнитивные сети)', back:'← Ко всем упражнениям',
+      score:'Очки', acc:'Точность', rt:'Реакция', pb:'Личный рекорд', pct:'Лучше, чем', of:'игроков',
+      again:'Ещё раз', toGrid:'К списку', toPath:'На карту прогресса', saving:'Сохраняем…', saved:'Результат сохранён',
+      done:'Готово!', loading:'Загрузка…', failLoad:'Не удалось загрузить упражнения.', missing:'Упражнение не найдено.' },
+    en:{ title:'Exercises & Tests', sub:'10 evidence-based cognitive exercises: attention, memory, executive function.',
+      disc:'These are trainers and self-checks, not a medical diagnosis. Tasks are based on classic research paradigms (ADHD, memory, attention).',
+      best:'Best', measuresTitle:'Trains', evidence:'Evidence base', level:'Level', start:'Start',
+      trains:'Brain area', brain:'Brain (cognitive networks)', back:'← All exercises',
+      score:'Score', acc:'Accuracy', rt:'Reaction', pb:'Personal best', pct:'Better than', of:'players',
+      again:'Again', toGrid:'Back to list', toPath:'Progress map', saving:'Saving…', saved:'Result saved',
+      done:'Done!', loading:'Loading…', failLoad:'Could not load exercises.', missing:'Exercise not found.' },
+    es:{ title:'Ejercicios y tests', sub:'10 ejercicios cognitivos basados en evidencia: atención, memoria, función ejecutiva.',
+      disc:'Son entrenadores y autoevaluaciones, no un diagnóstico médico. Basados en paradigmas científicos clásicos (TDAH, memoria, atención).',
+      best:'Récord', measuresTitle:'Entrena', evidence:'Base científica', level:'Nivel', start:'Empezar',
+      trains:'Área cerebral', brain:'Cerebro (redes cognitivas)', back:'← Todos los ejercicios',
+      score:'Puntos', acc:'Precisión', rt:'Reacción', pb:'Récord personal', pct:'Mejor que', of:'jugadores',
+      again:'Otra vez', toGrid:'A la lista', toPath:'Mapa de progreso', saving:'Guardando…', saved:'Resultado guardado',
+      done:'¡Hecho!', loading:'Cargando…', failLoad:'No se pudieron cargar los ejercicios.', missing:'Ejercicio no encontrado.' }
+  };
+  function L(k){ var d=T[lang()]||T.en; return d[k]!=null?d[k]:(T.en[k]||k); }
+  function nm(row){ return (lang()==='ru' && row.name_ru) ? row.name_ru : (row.name_en||row.slug); }
+  function sd(row){ return (lang()==='ru' && row.short_description_ru) ? row.short_description_ru : (row.short_description_en||''); }
+  function catLabel(c){ var m=CAT[c]; return m?(m[lang()]||m.en):c; }
+
+  // stylised brain SVG (the "mini-atlas": every task targets cognitive brain nets)
+  function brainSVG(col){ col=col||'#7c9ef6';
+    return '<svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
+      '<defs><radialGradient id="exbg" cx="50%" cy="40%" r="70%">'+
+      '<stop offset="0%" stop-color="'+col+'" stop-opacity="0.55"/><stop offset="100%" stop-color="'+col+'" stop-opacity="0.06"/></radialGradient></defs>'+
+      '<path d="M100 18c-22 0-34 12-38 22-14 2-26 14-26 30 0 12 6 20 12 25-2 14 8 30 28 30 8 8 34 10 44-2 20 4 34-12 32-28 8-6 12-14 12-24 0-16-12-28-26-30-4-10-16-22-38-23z" fill="url(#exbg)" stroke="'+col+'" stroke-width="2.2"/>'+
+      '<path d="M100 20v118M74 44c10 6 10 18 0 24m0 14c12 4 12 18 0 24M126 44c-10 6-10 18 0 24m0 14c-12 4-12 18 0 24" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-opacity="0.6" stroke-linecap="round"/>'+
+      '</svg>';
+  }
+
+  var host = null, defs = [], bests = {};
+
+  window.mountExercisesTool = function(container){
+    if(!container) return;
+    host = container;
+    renderGrid(true);
+    loadData();
+  };
+
+  function loadData(){
+    Promise.all([
+      fetch(API+'/api/exercises').then(function(r){return r.json();}).catch(function(){return {exercises:[]};}),
+      fetch(API+'/api/me/exercises/results?limit=1',{headers:hdr()}).then(function(r){return r.json();}).catch(function(){return {bests:[]};})
+    ]).then(function(res){
+      defs = (res[0]&&res[0].exercises)||[];
+      bests = {}; ((res[1]&&res[1].bests)||[]).forEach(function(b){ bests[b.exercise_slug]=b.best; });
+      renderGrid(false);
+    });
+  }
+
+  function renderGrid(loading){
+    if(!host) return;
+    var cards = loading ? '<p style="color:#9aa4b2">'+esc(L('loading'))+'</p>'
+      : (defs.length ? defs.map(cardHTML).join('') : '<p style="color:#9aa4b2">'+esc(L('failLoad'))+'</p>');
+    host.innerHTML =
+      '<div class="ex-wrap"><div class="ex-head"><h2>🧠 '+esc(L('title'))+'</h2><p>'+esc(L('sub'))+'</p>'+
+      '<div class="ex-disc">⚠️ '+esc(L('disc'))+'</div></div>'+
+      '<div class="ex-grid">'+cards+'</div></div>';
+    host.querySelectorAll('.ex-card').forEach(function(c){ c.addEventListener('click',function(){ openLauncher(c.getAttribute('data-slug')); }); });
+  }
+  function cardHTML(row){
+    var c=CAT[row.category]||{ic:'🧠',col:'#7c9ef6'}; var b=bests[row.slug];
+    return '<div class="ex-card" data-slug="'+esc(row.slug)+'">'+
+      '<div class="ex-ic">'+(ICON[row.slug]||c.ic)+'</div>'+
+      '<div class="ex-nm">'+esc(nm(row))+'</div>'+
+      '<div class="ex-cat" style="color:'+c.col+'">'+c.ic+' '+esc(catLabel(row.category))+'</div>'+
+      '<div class="ex-sd">'+esc(sd(row))+'</div>'+
+      (b!=null?'<div class="ex-best">★ '+esc(L('best'))+': '+Math.round(b)+'</div>':'')+
+      '</div>';
+  }
+
+  function openLauncher(slug){
+    var row = defs.filter(function(d){return d.slug===slug;})[0];
+    if(!row){ renderGrid(false); return; }
+    var c=CAT[row.category]||{col:'#7c9ef6'};
+    var meas = (row.measures||[]).map(function(m){ return '<span class="ex-chip">'+esc(String(m).replace(/_/g,' '))+'</span>'; }).join('');
+    var lvMin=row.min_level||1, lvMax=row.max_level||10, lv=Math.min(lvMax, Math.max(lvMin, 3));
+    host.innerHTML =
+      '<div class="ex-wrap"><button class="ex-back">'+esc(L('back'))+'</button>'+
+      '<div class="ex-launch"><div>'+
+        '<div class="ex-cat" style="color:'+c.col+'">'+(CAT[row.category]?CAT[row.category].ic:'')+' '+esc(catLabel(row.category))+'</div>'+
+        '<h3>'+(ICON[row.slug]||'')+' '+esc(nm(row))+'</h3>'+
+        '<p style="color:#c9d1d9">'+esc(sd(row))+'</p>'+
+        '<div style="font-weight:700;margin-top:.8rem;font-size:.85rem;color:#9aa4b2">'+esc(L('measuresTitle'))+'</div>'+
+        '<div class="ex-measures">'+meas+'</div>'+
+        '<div style="font-weight:700;font-size:.85rem;color:#9aa4b2">'+esc(L('evidence'))+'</div>'+
+        '<div class="ex-cite">'+esc(row.clinical_evidence||'')+'</div>'+
+        '<div class="ex-level-row"><label style="font-weight:700">'+esc(L('level'))+'</label>'+
+          '<input type="range" min="'+lvMin+'" max="'+lvMax+'" value="'+lv+'" class="ex-lvl">'+
+          '<span class="ex-lvl-val">'+lv+'</span></div>'+
+        '<button class="btn btn-primary ex-start" style="min-width:180px;font-size:1.05rem;padding:.7rem 1.6rem">▶ '+esc(L('start'))+'</button>'+
+      '</div>'+
+      '<div class="ex-atlas">'+brainSVG(c.col)+'<div style="font-weight:700;margin-top:.5rem;font-size:.85rem">'+esc(L('trains'))+'</div>'+
+        '<div style="color:#9aa4b2;font-size:.82rem">'+esc(L('brain'))+'</div></div>'+
+      '</div></div>';
+    host.querySelector('.ex-back').addEventListener('click',function(){ renderGrid(false); });
+    var rng=host.querySelector('.ex-lvl'), val=host.querySelector('.ex-lvl-val');
+    rng.addEventListener('input',function(){ val.textContent=rng.value; });
+    host.querySelector('.ex-start').addEventListener('click',function(){ startPlay(row, parseInt(rng.value,10)); });
+  }
+
+  var disposeFn = null;
+  function startPlay(row, level){
+    var mod = (window.NAExercises && window.NAExercises.get) ? window.NAExercises.get(row.slug) : null;
+    if(!mod){ host.innerHTML='<div class="ex-wrap"><p style="color:#f85149">'+esc(L('missing'))+' ('+esc(row.slug)+')</p><button class="btn btn-ghost ex-back2">'+esc(L('back'))+'</button></div>';
+      host.querySelector('.ex-back2').addEventListener('click',function(){ renderGrid(false); }); return; }
+    host.innerHTML='<div class="ex-wrap"><button class="ex-back">'+esc(L('back'))+'</button>'+
+      '<h3 style="text-align:center">'+(ICON[row.slug]||'')+' '+esc(nm(row))+' · '+esc(L('level'))+' '+level+'</h3>'+
+      '<div class="ex-host"></div></div>';
+    host.querySelector('.ex-back').addEventListener('click',function(){ safeDispose(); renderGrid(false); });
+    var hostEl = host.querySelector('.ex-host');
+    try {
+      disposeFn = mod.mount(hostEl, { level:level, lang:lang(), t:(window.t||function(k){return k;}) }, function(result){
+        safeDispose(); showResult(row, level, result);
+      });
+    } catch(e){ console.warn('exercise mount', e); hostEl.innerHTML='<p style="color:#f85149">error: '+esc(e.message)+'</p>'; }
+  }
+  function safeDispose(){ try { if(typeof disposeFn==='function') disposeFn(); } catch(e){} disposeFn=null; }
+
+  function showResult(row, level, result){
+    var acc = result.accuracy==null ? '—' : Math.round(result.accuracy*100)+'%';
+    var rt  = result.reaction_time_avg==null ? '—' : Math.round(result.reaction_time_avg)+' ms';
+    var sc  = result.score==null ? '—' : Math.round(result.score);
+    host.innerHTML=
+      '<div class="ex-wrap"><div class="ex-result">'+
+        '<div style="font-size:2.4rem">🎉</div>'+
+        '<h3>'+esc(L('done'))+'</h3>'+
+        '<div style="color:#9aa4b2">'+esc(nm(row))+' · '+esc(L('level'))+' '+level+'</div>'+
+        '<div class="ex-stats">'+
+          '<div class="ex-stat"><b>'+sc+'</b><span>'+esc(L('score'))+'</span></div>'+
+          '<div class="ex-stat"><b>'+acc+'</b><span>'+esc(L('acc'))+'</span></div>'+
+          '<div class="ex-stat"><b>'+rt+'</b><span>'+esc(L('rt'))+'</span></div>'+
+        '</div>'+
+        '<div class="ex-saveline" style="color:#9aa4b2;font-size:.85rem;min-height:1.2em">'+esc(L('saving'))+'</div>'+
+        '<div class="ex-actions">'+
+          '<button class="btn btn-primary ex-again">↻ '+esc(L('again'))+'</button>'+
+          '<button class="btn btn-ghost ex-tolist">'+esc(L('toGrid'))+'</button>'+
+          '<button class="btn btn-ghost ex-topath">'+esc(L('toPath'))+'</button>'+
+        '</div>'+
+      '</div></div>';
+    host.querySelector('.ex-again').addEventListener('click',function(){ startPlay(row, level); });
+    host.querySelector('.ex-tolist').addEventListener('click',function(){ loadData(); });
+    host.querySelector('.ex-topath').addEventListener('click',function(){ try{ if(typeof switchTab==='function') switchTab('evolution'); }catch(e){} });
+    saveResult(row.slug, level, result);
+  }
+
+  function saveResult(slug, level, result){
+    var line = host && host.querySelector('.ex-saveline');
+    fetch(API+'/api/exercises/result', { method:'POST', headers:hdr(), body: JSON.stringify({
+      exercise_slug:slug, level:level, score:result.score, accuracy:result.accuracy,
+      reaction_time_avg:result.reaction_time_avg, duration_ms:result.duration_ms, raw_data:result.raw_data
+    })}).then(function(r){return r.json();}).then(function(j){
+      if(!line) return;
+      if(j && j.ok){
+        var extra = '';
+        if(j.personal_best!=null) extra += ' · '+L('pb')+': '+Math.round(j.personal_best);
+        if(j.percentile!=null && j.attempts>3) extra += ' · '+L('pct')+' '+j.percentile+'% '+L('of');
+        line.textContent = '✓ '+L('saved')+extra;
+        line.style.color = '#3fb950';
+        if(j.personal_best!=null) bests[slug] = j.personal_best;
+      } else { line.textContent=''; }
+    }).catch(function(){ if(line) line.textContent=''; });
+  }
 })();
 </script>
 </body>

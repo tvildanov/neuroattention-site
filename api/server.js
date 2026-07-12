@@ -2823,7 +2823,71 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 065 (wearables): tables', mig065.tables, 'idx', mig065.indexes);
     } catch (e) { mig065.error = e.message; console.error('migration 065 (wearables):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-065 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065 });
+    // ── migration 066 (Exercises & Tests): 10 evidence-based cognitive tasks ──
+    // exercise_definitions is the catalog (seeded from exercises-seed.js);
+    // exercise_results stores per-attempt scores for the progress + personal-best.
+    // (060 taken by sports tissues, 061 injuries, 062 library notes, 063 atlas
+    // snapshots, 065 wearables — this feature renumbered to 066 on rebase.)
+    let mig066 = { definitions: 0, skipped: 0 };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS exercise_definitions (
+          id BIGSERIAL PRIMARY KEY,
+          slug TEXT UNIQUE NOT NULL,
+          name_en TEXT NOT NULL,
+          name_ru TEXT,
+          category TEXT,
+          short_description_en TEXT,
+          short_description_ru TEXT,
+          measures TEXT[],
+          clinical_evidence TEXT,
+          min_level INT DEFAULT 1,
+          max_level INT DEFAULT 10,
+          target_regions TEXT[],
+          sort_order INT DEFAULT 100
+        )`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS exercise_results (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          exercise_slug TEXT NOT NULL,
+          level INT,
+          score DOUBLE PRECISION,
+          duration_ms INT,
+          reaction_time_avg DOUBLE PRECISION,
+          accuracy DOUBLE PRECISION,
+          raw_data JSONB,
+          completed_at TIMESTAMPTZ DEFAULT now()
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS exercise_results_user_time_idx ON exercise_results(user_id, completed_at DESC)`;
+      await sql`CREATE INDEX IF NOT EXISTS exercise_results_user_slug_idx ON exercise_results(user_id, exercise_slug)`;
+      const { EXERCISES } = require('./exercises-seed.js');
+      for (const e of (EXERCISES || [])) {
+        try {
+          await sql`
+            INSERT INTO exercise_definitions
+              (slug, name_en, name_ru, category, short_description_en, short_description_ru,
+               measures, clinical_evidence, min_level, max_level, target_regions, sort_order)
+            VALUES
+              (${e.slug}, ${e.name_en}, ${e.name_ru}, ${e.category},
+               ${e.short_description_en}, ${e.short_description_ru},
+               ${e.measures}, ${e.clinical_evidence}, ${e.min_level}, ${e.max_level},
+               ${e.target_regions}, ${e.sort_order})
+            ON CONFLICT (slug) DO UPDATE SET
+              name_en = EXCLUDED.name_en, name_ru = EXCLUDED.name_ru,
+              category = EXCLUDED.category,
+              short_description_en = EXCLUDED.short_description_en,
+              short_description_ru = EXCLUDED.short_description_ru,
+              measures = EXCLUDED.measures, clinical_evidence = EXCLUDED.clinical_evidence,
+              min_level = EXCLUDED.min_level, max_level = EXCLUDED.max_level,
+              target_regions = EXCLUDED.target_regions, sort_order = EXCLUDED.sort_order`;
+          mig066.definitions++;
+        } catch (e2) { mig066.skipped++; }
+      }
+      console.log('migration 066 (exercises): definitions ready');
+    } catch (e) { mig066.error = e.message; console.error('migration 066 (exercises):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-066 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -8486,7 +8550,7 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
       (linksByEvent[b] = linksByEvent[b] || []).push({ to: a, kind: l.kind, weight: l.weight });
     });
 
-    const layers = { practice:[], emotion:[], event:[], thought:[], sensation:[], insight:[], xp_gain:[] };
+    const layers = { practice:[], emotion:[], event:[], thought:[], sensation:[], insight:[], xp_gain:[], exercise:[] };
 
     // PR93: resolve course/block titles for course-linked events (block_done +
     // tool_task) so the timeline never shows a raw 'block_done' id. Caller's UI
@@ -8623,7 +8687,7 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
     // Flat chronological event stream (everything except the xp curve) — used by
     // the tunnel/field views and the click-to-detail logic on the frontend.
     const events = [];
-    ['practice','emotion','event','thought','sensation','insight'].forEach(k => {
+    ['practice','emotion','event','thought','sensation','insight','exercise'].forEach(k => {
       layers[k].forEach(it => events.push(Object.assign({ layer: k }, it)));
     });
     events.sort((a, b) => new Date(a.t) - new Date(b.t));
@@ -10911,6 +10975,121 @@ app.get('/api/me/diet/events', requireAuth, async (req, res) => {
   } catch (err) {
     if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'diet tables not migrated', events: [] });
     console.error('GET /api/me/diet/events:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Exercises & Tests (migration 060) ──────────────────────────────────────
+// exercise_definitions is the read-only catalog (10 cognitive tasks). Results
+// are per-attempt scores; the client reads personal-best + a rough percentile.
+
+// GET /api/exercises?category= — the catalog (ordered).
+app.get('/api/exercises', async (req, res) => {
+  try {
+    const cat = (req.query.category || '').trim();
+    const rows = cat
+      ? await sql`SELECT * FROM exercise_definitions WHERE category = ${cat} ORDER BY sort_order, id`
+      : await sql`SELECT * FROM exercise_definitions ORDER BY sort_order, id`;
+    res.json({ ok: true, exercises: rows });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'exercise tables not migrated', exercises: [] });
+    console.error('GET /api/exercises:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/exercises/:slug — one definition.
+app.get('/api/exercises/:slug', async (req, res) => {
+  try {
+    const rows = await sql`SELECT * FROM exercise_definitions WHERE slug = ${req.params.slug}`;
+    if (!rows.length) return res.status(404).json({ error: 'not found' });
+    res.json({ ok: true, exercise: rows[0] });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'exercise tables not migrated' });
+    console.error('GET /api/exercises/:slug:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/exercises/result — save one attempt, return personal-best + percentile.
+// Also mirrors the result onto the Personal Path as kind='exercise'.
+app.post('/api/exercises/result', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const b = req.body || {};
+    const slug = String(b.exercise_slug || '').slice(0, 64);
+    if (!slug) return res.status(400).json({ error: 'exercise_slug required' });
+    const level = Math.max(1, Math.min(10, parseInt(b.level, 10) || 1));
+    const score = (b.score == null || isNaN(+b.score)) ? null : +b.score;
+    const dur = (b.duration_ms == null || isNaN(+b.duration_ms)) ? null : Math.round(+b.duration_ms);
+    const rt = (b.reaction_time_avg == null || isNaN(+b.reaction_time_avg)) ? null : +b.reaction_time_avg;
+    const acc = (b.accuracy == null || isNaN(+b.accuracy)) ? null : +b.accuracy;
+    const raw = JSON.stringify(b.raw_data || {});
+
+    const ins = await sql`
+      INSERT INTO exercise_results
+        (user_id, exercise_slug, level, score, duration_ms, reaction_time_avg, accuracy, raw_data)
+      VALUES (${userId}, ${slug}, ${level}, ${score}, ${dur}, ${rt}, ${acc}, ${raw}::jsonb)
+      RETURNING id, completed_at`;
+
+    // personal best (this exercise, any level) + attempt count
+    const best = await sql`SELECT MAX(score) AS best, COUNT(*) AS attempts
+                           FROM exercise_results WHERE user_id = ${userId} AND exercise_slug = ${slug}`;
+    // rough percentile vs everyone's best-per-user for this exercise+level band
+    let percentile = null;
+    try {
+      if (score != null) {
+        const pc = await sql`
+          WITH bests AS (
+            SELECT user_id, MAX(score) AS s FROM exercise_results
+            WHERE exercise_slug = ${slug} GROUP BY user_id
+          )
+          SELECT
+            (SELECT COUNT(*) FROM bests WHERE s <= ${score})::float AS below,
+            (SELECT COUNT(*) FROM bests)::float AS total`;
+        if (pc[0] && pc[0].total > 0) percentile = Math.round((pc[0].below / pc[0].total) * 100);
+      }
+    } catch (pe) { /* percentile is best-effort */ }
+
+    // mirror onto the Personal Path (kind='exercise', own lane)
+    let journeyId = null;
+    try {
+      const def = await sql`SELECT name_ru, name_en FROM exercise_definitions WHERE slug = ${slug}`;
+      const nm = def[0] ? (def[0].name_ru || def[0].name_en || slug) : slug;
+      const label = nm + ' · lvl ' + level + (score != null ? ' · ' + Math.round(score) : '');
+      journeyId = await logJourney(userId, 'exercise', 'exercise',
+        { label, icon: '🧠', exercise_slug: slug, level, score, accuracy: acc, reaction_time_avg: rt },
+        new Date().toISOString(), null, null);
+    } catch (je) { console.warn('exercise → path:', je.message); }
+
+    res.json({
+      ok: true, id: ins[0] && ins[0].id, journey_id: journeyId,
+      personal_best: best[0] ? best[0].best : null,
+      attempts: best[0] ? Number(best[0].attempts) : 1,
+      percentile
+    });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'exercise tables not migrated' });
+    console.error('POST /api/exercises/result:', err); res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/me/exercises/results?slug=&limit= — this user's recent attempts + bests.
+app.get('/api/me/exercises/results', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const slug = (req.query.slug || '').trim();
+    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit, 10) || 50));
+    const rows = slug
+      ? await sql`SELECT id, exercise_slug, level, score, accuracy, reaction_time_avg, duration_ms, completed_at
+                  FROM exercise_results WHERE user_id = ${userId} AND exercise_slug = ${slug}
+                  ORDER BY completed_at DESC LIMIT ${limit}`
+      : await sql`SELECT id, exercise_slug, level, score, accuracy, reaction_time_avg, duration_ms, completed_at
+                  FROM exercise_results WHERE user_id = ${userId}
+                  ORDER BY completed_at DESC LIMIT ${limit}`;
+    const bests = await sql`SELECT exercise_slug, MAX(score) AS best, COUNT(*) AS attempts
+                            FROM exercise_results WHERE user_id = ${userId} GROUP BY exercise_slug`;
+    res.json({ ok: true, results: rows, bests });
+  } catch (err) {
+    if (/does not exist/i.test(err.message)) return res.status(503).json({ error: 'exercise tables not migrated', results: [], bests: [] });
+    console.error('GET /api/me/exercises/results:', err); res.status(500).json({ error: err.message });
   }
 });
 
