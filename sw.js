@@ -124,7 +124,11 @@
 //      methods (CBT/DBT/ACT/IFS/EMDR/SE/MBSR/Vipassana/Wim Hof/TMS/
 //      neurofeedback/ketamine/psilocybin/MDMA/somatic-trauma). Re-run
 //      /api/run-migrations to refresh migration 058 seed. Purges stale account.html.
-var CACHE_NAME = 'na-practices-v54';
+// v55: External Calendar OAuth — Profile "Connected calendars" card (Google /
+//      Apple iCloud CalDAV / Outlook), OAuth popup flow, on-demand + 6h-cron sync.
+//      Imported events land on the Path + Calendar tagged 📥. Migration 063 +
+//      EXTERNAL_CALENDARS flag (default OFF). Purges stale account.html.
+var CACHE_NAME = 'na-practices-v55';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

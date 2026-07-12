@@ -146,6 +146,12 @@ if (!JWT_SECRET) {
 }
 const sql = neon(process.env.DATABASE_URL);
 
+// External Calendar OAuth (Google / Apple iCloud CalDAV / Microsoft Outlook).
+// Self-contained service; gated behind EXTERNAL_CALENDARS (default OFF). See
+// EXTERNAL-CALENDAR-OAUTH-REPORT.md for the provider setup + rollout plan.
+const calendarSvc = require('./services/calendar');
+calendarSvc.init({ sql });
+
 // Load vocabulary aliases for node normalization
 const fs = require('fs');
 const path = require('path');
@@ -2710,7 +2716,64 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 061 (common_injuries): injuries', mig061.injuries_seeded, 'links', mig061.sport_injury_links);
     } catch (e) { mig061.error = e.message; console.error('migration 061 (common_injuries):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-061 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061 });
+    // ── Migration 063 (External Calendar OAuth) ────────────────────────────────
+    // 062 is reserved for the parallel unified-events refactor (P6). This block is
+    // additive + idempotent and does NOT depend on 062 running first: the two
+    // journey_events columns it needs beyond core (`source`, `title`) are ensured
+    // here IF NOT EXISTS, so mig062 and mig063 can land in either order.
+    let mig063 = { tables: 0, columns: 0, indexes: 0 };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS oauth_tokens (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          provider TEXT NOT NULL,
+          access_token TEXT,
+          refresh_token TEXT,
+          token_expires_at TIMESTAMPTZ,
+          scope TEXT,
+          account_email TEXT,
+          extra JSONB,
+          needs_reauth BOOLEAN DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          last_sync_at TIMESTAMPTZ,
+          UNIQUE(user_id, provider, account_email)
+        )`; mig063.tables++;
+      await sql`
+        CREATE TABLE IF NOT EXISTS calendar_sync_log (
+          id BIGSERIAL PRIMARY KEY,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          provider TEXT,
+          ran_at TIMESTAMPTZ DEFAULT now(),
+          events_added INT,
+          events_updated INT,
+          events_deleted INT,
+          duration_ms INT,
+          error TEXT
+        )`; mig063.tables++;
+      const cols = [
+        // journey_events: dedup + provenance columns for imported events.
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS source TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS title TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS imported_event_id TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS oauth_provider TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS oauth_account_email TEXT`,
+        // calendar_events: same dedup key so the month grid mirror upserts cleanly.
+        sql`ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS imported_event_id TEXT`,
+        sql`ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS oauth_provider TEXT`,
+      ];
+      for (const c of cols) { try { await c; mig063.columns++; } catch (ce) { mig063.skipped = (mig063.skipped || 0) + 1; console.error('mig063 col:', ce.message); } }
+      const idx = [
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS je_imported_uniq ON journey_events(user_id, oauth_provider, imported_event_id) WHERE imported_event_id IS NOT NULL`,
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS cal_imported_uniq ON calendar_events(user_id, oauth_provider, imported_event_id) WHERE imported_event_id IS NOT NULL`,
+        sql`CREATE INDEX IF NOT EXISTS oauth_tokens_user_idx ON oauth_tokens(user_id)`,
+        sql`CREATE INDEX IF NOT EXISTS calendar_sync_log_user_idx ON calendar_sync_log(user_id, ran_at DESC)`,
+      ];
+      for (const i of idx) { try { await i; mig063.indexes++; } catch (ie) { mig063.skipped = (mig063.skipped || 0) + 1; console.error('mig063 idx:', ie.message); } }
+      console.log('migration 063 (external calendars): tables', mig063.tables, 'cols', mig063.columns, 'idx', mig063.indexes);
+    } catch (e) { mig063.error = e.message; console.error('migration 063 (external calendars):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-063 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig063 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4381,6 +4444,165 @@ app.get('/api/calendar', requireAuth, async (req, res) => {
     res.json({ ok: true, data, count: rows.length });
   } catch (err) {
     console.error('GET /api/calendar:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTERNAL CALENDAR OAUTH (Google / Apple iCloud CalDAV / Microsoft Outlook)
+// Gated behind EXTERNAL_CALENDARS (default OFF). Imported events land on the
+// Personal Path (journey_events source='imported_calendar') + the month grid
+// (calendar_events event_type='imported'), tagged 📥. See the report for setup.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Callback base MUST exactly match the Authorized redirect URI registered with
+// each provider. Defaults to the Railway API origin.
+const OAUTH_REDIRECT_BASE = process.env.OAUTH_REDIRECT_BASE || 'https://neuroattention-api-production.up.railway.app';
+function oauthRedirectUri(provider) { return `${OAUTH_REDIRECT_BASE}/api/oauth/${provider}/callback`; }
+
+// Short-lived signed state = anti-CSRF + user reference carried through the
+// redirect (a popup cannot send an Authorization header to the provider).
+function signOauthState(userId, provider) {
+  return jwt.sign({ sub: userId, provider, purpose: 'oauth_state' }, JWT_SECRET, { expiresIn: '10m' });
+}
+function verifyOauthState(state, provider) {
+  try {
+    const p = jwt.verify(state, JWT_SECRET);
+    if (p.purpose !== 'oauth_state' || p.provider !== provider) return null;
+    return p.sub;
+  } catch (e) { return null; }
+}
+function calendarsEnabled(res) {
+  if (!calendarSvc.enabled()) { res.status(503).json({ error: 'feature_disabled', flag: 'EXTERNAL_CALENDARS' }); return false; }
+  return true;
+}
+// Minimal HTML the OAuth popup renders, then postMessages its opener + closes.
+function oauthPopupHtml(ok, detail) {
+  const msg = JSON.stringify({ type: 'calendar-oauth', ok, detail: detail || '' });
+  const origin = JSON.stringify(FRONTEND_URL);
+  const text = ok ? 'Календарь подключён. Можно закрыть окно.' : ('Не удалось подключить: ' + (detail || ''));
+  return `<!doctype html><meta charset="utf-8"><title>NeuroAttention</title>
+<body style="font-family:system-ui;background:#0b0f14;color:#e8f0f5;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">
+<div><p style="font-size:15px">${text}</p></div>
+<script>try{if(window.opener)window.opener.postMessage(${msg}, ${origin});}catch(e){}setTimeout(function(){window.close();},1200);</script>`;
+}
+
+// List the user's connected calendars + provider availability (safe: NO tokens).
+// Always 200 (even when disabled) so the UI can render an accurate empty/off state.
+app.get('/api/me/calendars', requireAuth, async (req, res) => {
+  try {
+    const status = calendarSvc.providerStatus();
+    let accounts = [];
+    try { accounts = await calendarSvc.store.listForUser(req.user.id); } catch (e) { /* pre-migration */ }
+    res.json({ ok: true, status, accounts });
+  } catch (err) {
+    console.error('GET /api/me/calendars:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Recent sync log for the connected calendars.
+app.get('/api/me/calendars/sync-log', requireAuth, async (req, res) => {
+  try {
+    let log = [];
+    try { log = await calendarSvc.store.recentSyncLog(req.user.id, req.query.limit); } catch (e) {}
+    res.json({ ok: true, log });
+  } catch (err) { res.status(500).json({ error: 'Internal error' }); }
+});
+
+// Begin an OAuth flow: return the provider consent URL for the client to open in a
+// popup. provider ∈ google | microsoft.
+app.get('/api/oauth/:provider/authorize', requireAuth, async (req, res) => {
+  if (!calendarsEnabled(res)) return;
+  const provider = req.params.provider;
+  if (!calendarSvc.OAUTH_PROVIDERS.includes(provider)) return res.status(404).json({ error: 'unknown_provider' });
+  const mod = calendarSvc.getProvider(provider);
+  if (!mod.configured()) return res.status(503).json({ error: 'provider_not_configured', provider });
+  const state = signOauthState(req.user.id, provider);
+  const url = mod.authUrl({ state, redirectUri: oauthRedirectUri(provider) });
+  res.json({ ok: true, url });
+});
+
+// OAuth redirect target — provider sends the user back here with ?code&state. No
+// requireAuth (the browser follows a redirect); the signed state carries the user.
+app.get('/api/oauth/:provider/callback', async (req, res) => {
+  const provider = req.params.provider;
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  try {
+    if (!calendarSvc.enabled()) return res.status(503).send(oauthPopupHtml(false, 'feature disabled'));
+    if (!calendarSvc.OAUTH_PROVIDERS.includes(provider)) return res.status(404).send(oauthPopupHtml(false, 'unknown provider'));
+    if (req.query.error) return res.send(oauthPopupHtml(false, String(req.query.error).slice(0, 120)));
+    const userId = verifyOauthState(req.query.state, provider);
+    if (!userId) return res.status(400).send(oauthPopupHtml(false, 'invalid state'));
+    const mod = calendarSvc.getProvider(provider);
+    const tok = await mod.exchangeCode({ code: req.query.code, redirectUri: oauthRedirectUri(provider) });
+    const id = await calendarSvc.store.saveToken({
+      userId, provider,
+      accessToken: tok.accessToken, refreshToken: tok.refreshToken,
+      expiresAt: tok.expiresAt, scope: tok.scope, accountEmail: tok.accountEmail,
+    });
+    // Kick an initial sync in the background — don't block the popup close.
+    calendarSvc.store.getFullToken(id, userId).then(row => row && calendarSvc.syncToken(row)).catch(() => {});
+    res.send(oauthPopupHtml(true, tok.accountEmail || provider));
+  } catch (err) {
+    console.error('OAuth callback ' + provider + ':', err.message);
+    res.status(500).send(oauthPopupHtml(false, err.message.slice(0, 140)));
+  }
+});
+
+// Apple iCloud via CalDAV + app-specific password (Apple has no consumer OAuth).
+app.post('/api/calendars/apple/connect', requireAuth, async (req, res) => {
+  if (!calendarsEnabled(res)) return;
+  try {
+    const email = (req.body.email || '').trim().toLowerCase();
+    const appPassword = (req.body.app_password || req.body.appSpecificPassword || '').trim();
+    if (!email || !appPassword) return res.status(400).json({ error: 'email and app_password required' });
+    let disco;
+    try { disco = await calendarSvc.getProvider('apple').connect({ email, appPassword }); }
+    catch (e) {
+      if (e.authFailed) return res.status(401).json({ error: 'apple_auth_failed', message: 'Неверный email или app-specific password' });
+      return res.status(502).json({ error: 'apple_connect_failed', message: e.message });
+    }
+    const id = await calendarSvc.store.saveToken({
+      userId: req.user.id, provider: 'apple',
+      accessToken: null, refreshToken: appPassword, // app password stored (encrypted) as the credential
+      expiresAt: null, scope: 'caldav', accountEmail: email,
+      extra: { home: disco.homeUrl, principal: disco.principalUrl },
+    });
+    calendarSvc.store.getFullToken(id, req.user.id).then(row => row && calendarSvc.syncToken(row)).catch(() => {});
+    res.json({ ok: true, id, account_email: email });
+  } catch (err) {
+    console.error('POST /api/calendars/apple/connect:', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// On-demand sync (Refresh button). Owner-scoped. provider optional (all if omitted).
+app.post('/api/calendars/:provider/sync', requireAuth, async (req, res) => {
+  if (!calendarsEnabled(res)) return;
+  try {
+    const provider = req.params.provider === 'all' ? null : req.params.provider;
+    if (provider && !calendarSvc.getProvider(provider)) return res.status(404).json({ error: 'unknown_provider' });
+    const results = await calendarSvc.syncUser(req.user.id, provider);
+    const added = results.reduce((a, r) => a + (r.added || 0), 0);
+    const updated = results.reduce((a, r) => a + (r.updated || 0), 0);
+    res.json({ ok: true, results, added, updated });
+  } catch (err) {
+    console.error('POST /api/calendars/sync:', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Disconnect a calendar: delete the token + the events it imported.
+app.delete('/api/me/calendars/:id', requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'bad id' });
+    const r = await calendarSvc.store.deleteToken(id, req.user.id);
+    if (!r.ok) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/me/calendars/:id:', err.message);
     res.status(500).json({ error: 'Internal error' });
   }
 });
@@ -11597,4 +11819,5 @@ app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
   try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
+  try { calendarSvc.startCron(); } catch (e) { console.warn('[calendar] cron start failed:', e.message); }
 });
