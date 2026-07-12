@@ -540,8 +540,8 @@
   function canOpenSource(ev) {
     var s = (ev.source || '') + '';
     return s.indexOf('neuromap') === 0 || s === 'sensation' || s === 'practice' ||
-      s === 'course_block' || s.indexOf('diary') === 0 || s === 'calendar' ||
-      ev.kind === 'practice' || ev.kind === 'block_done' || ev.kind === 'xp_gain' || ev.kind === 'insight';
+      s === 'course_block' || s.indexOf('diary') === 0 || s === 'calendar' || s === 'library_note' ||
+      ev.kind === 'practice' || ev.kind === 'block_done' || ev.kind === 'xp_gain' || ev.kind === 'insight' || ev.kind === 'note';
   }
   function openInSource(ev) {
     if (typeof window.evoOpenSource === 'function') { try { window.evoOpenSource(ev); return; } catch (e) {} }
