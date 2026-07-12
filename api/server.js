@@ -392,10 +392,12 @@ app.post('/api/run-migrations', async (req, res) => {
     await sql`CREATE INDEX IF NOT EXISTS idx_ese_layer_time ON external_signal_events (layer, timestamp DESC)`;
     // dedup_key makes the poller idempotent (same external event never doubles)
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_ese_dedup ON external_signal_events (dedup_key) WHERE dedup_key IS NOT NULL`;
-    // PR FIX #4: purge stale GraceDB Mock-Data-Challenge / Test replays that the
-    // old poller ingested hourly (dedup_key gracedb:MS… / gracedb:TS…). The poller
-    // now filters these out, but the historical rows still polluted the Cosmos layer.
-    try { await sql`DELETE FROM external_signal_events WHERE layer = 'cosmos' AND (dedup_key LIKE 'gracedb:MS%' OR dedup_key LIKE 'gracedb:TS%' OR dedup_key LIKE 'gracedb:T0%')`; } catch (e) {}
+    // Nick P6-final: the Cosmos (LIGO/Virgo GW) layer is RETIRED. Purge every
+    // historical cosmos row (was: only the GraceDB MDC/Test replays). No new
+    // cosmos events are ingested (gracedb source + poller entry removed). The
+    // layer value stays in the CHECK constraint — harmless, and dropping a CHECK
+    // value would need a table rewrite for zero benefit once the rows are gone.
+    try { await sql`DELETE FROM external_signal_events WHERE layer = 'cosmos'`; } catch (e) {}
     await sql`CREATE TABLE IF NOT EXISTS external_field_subscriptions (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       config JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -2890,7 +2892,155 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 066 (exercises): definitions ready');
     } catch (e) { mig066.error = e.message; console.error('migration 066 (exercises):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-066 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066 });
+    // ── migration 067 (Unified events model — Phase 1 FOUNDATION) ─────────────
+    // PURELY ADDITIVE. Extends journey_events into the single source-of-truth for
+    // Calendar / Path / NeuroMap events. Idempotent (ADD COLUMN IF NOT EXISTS).
+    // Deliberate deviations from the original spec (see PR notes / morning report):
+    //   • occurred_at already exists (TIMESTAMP) → NOT re-added, NOT retyped to
+    //     TIMESTAMPTZ (retyping a populated column locks + risks tz drift).
+    //   • NO CHECK constraint on `kind`. kind is free-form TEXT today (diet,
+    //     sensation, emotion, block_done, …). A restrictive CHECK would REJECT
+    //     existing kinds → regression with no Phase-1 upside.
+    //   • chain_id is a BARE BIGINT, NOT a FK to nm_chains(id). This codebase
+    //     manages node/chain/event lifecycle via CODE-LEVEL propagation (the
+    //     PR#118 delete contract), not DB cascades; a bare column is idempotent
+    //     and cannot fail on constraint-add against historical rows.
+    //   • idx_journey_events_user_time (user_id, occurred_at DESC) already exists
+    //     → the spec's je_occurred_at would be a duplicate, skipped.
+    // NOTHING here changes runtime behaviour on its own — the new columns are
+    // written only by createEvent()/the unified path, which is gated behind the
+    // EVENTS_UNIFIED flag (default OFF).
+    let mig067 = { columns_ensured: 0, indexes_ensured: 0 };
+    try {
+      const cols = [
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS title TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS notes TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS valence_plus INT DEFAULT 0`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS valence_minus INT DEFAULT 0`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS chain_id BIGINT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS practice_id BIGINT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS source TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS recurrence_rule TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS related_user_id UUID`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS related_dependent_id BIGINT`,
+        // P6 (External Field auto-import) dedup key: stable id of the upstream
+        // event (flare id, USGS event id, moon-phase key, GW event id).
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS external_event_id TEXT`,
+        // P7 (external calendars OAuth, SEPARATE session) — writers there set these
+        // so imported calendar events dedup + carry provenance. We only lay the
+        // schema; P7 owns oauth_tokens + the Google/Apple/Outlook integrations.
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS imported_event_id TEXT`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS oauth_provider TEXT`,
+        // Post-event nudge bookkeeping: set true when a nudge has been raised for
+        // this event, so the nightly sweep never double-nudges (see nudge endpoint).
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS nudged_at TIMESTAMPTZ`,
+        // Materialized External-Field events (Nick P6-final): intensity is the
+        // numeric strength (earthquake MMI / flare M-equivalent / eclipse magnitude /
+        // moon illumination %); metadata carries the CME cone geometry / MMI method /
+        // phase / eclipse type. Both nullable → no-op for every organic event.
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS intensity NUMERIC`,
+        sql`ALTER TABLE journey_events ADD COLUMN IF NOT EXISTS metadata JSONB`,
+      ];
+      for (const c of cols) { try { await c; mig067.columns_ensured++; } catch (ce) { mig067.skipped = (mig067.skipped || 0) + 1; console.error('mig067 col:', ce.message); } }
+      const idx = [
+        sql`CREATE INDEX IF NOT EXISTS je_source ON journey_events(user_id, source)`,
+        sql`CREATE INDEX IF NOT EXISTS je_user_kind ON journey_events(user_id, kind)`,
+        sql`CREATE INDEX IF NOT EXISTS je_chain ON journey_events(chain_id)`,
+        // Dedup guard for auto-import (P6) + calendar import (P7): one row per
+        // (user, source, upstream id). Partial → only constrains imported rows,
+        // never the millions of NULL organic events. Safe to create (all NULL today).
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS je_external_dedup ON journey_events(user_id, source, external_event_id) WHERE external_event_id IS NOT NULL`,
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS je_imported_dedup ON journey_events(user_id, oauth_provider, imported_event_id) WHERE imported_event_id IS NOT NULL`,
+      ];
+      for (const i of idx) { try { await i; mig067.indexes_ensured++; } catch (ie) { mig067.skipped = (mig067.skipped || 0) + 1; console.error('mig067 idx:', ie.message); } }
+      // 7-day cache of parsed USGS ShakeMap MMI grids, keyed by USGS event id, so
+      // the per-user earthquake-intensity filter never hammers USGS on re-runs.
+      try {
+        await sql`CREATE TABLE IF NOT EXISTS shakemap_cache (
+          eventid TEXT PRIMARY KEY,
+          grid JSONB NOT NULL,
+          fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+        mig067.shakemap_cache = true;
+      } catch (se) { mig067.skipped = (mig067.skipped || 0) + 1; console.error('mig067 shakemap_cache:', se.message); }
+      console.log('migration 067 (unified events schema): cols', mig067.columns_ensured, 'idx', mig067.indexes_ensured);
+    } catch (e) { mig067.error = e.message; console.error('migration 067 (unified events):', e.message); }
+
+    // ── migration 068 (Event templates — quick calendar-event presets) ────────
+    // Additive. Two new tables + a 12-row global catalog seed. Titles are
+    // tri-lingual (title_ru/en/es) per the i18n footgun rule — a monolingual
+    // default would show Russian inside the EN/ES UI. Idempotent: ON CONFLICT
+    // (slug) DO UPDATE refreshes copy/icon/duration on re-run.
+    let mig068 = { tables: 0, templates_seeded: 0 };
+    try {
+      await sql`CREATE TABLE IF NOT EXISTS event_templates (
+        id BIGSERIAL PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        title_ru TEXT NOT NULL, title_en TEXT NOT NULL, title_es TEXT NOT NULL,
+        default_kind TEXT NOT NULL DEFAULT 'manual_event',
+        default_duration INT,                       -- minutes, NULL = unset
+        default_valence_plus INT DEFAULT 0,
+        default_valence_minus INT DEFAULT 0,
+        icon TEXT,
+        sort_order INT DEFAULT 100,
+        is_active BOOLEAN DEFAULT true,
+        created_by UUID,                            -- NULL = system seed
+        created_at TIMESTAMPTZ DEFAULT now()
+      )`; mig068.tables++;
+      await sql`CREATE TABLE IF NOT EXISTS user_template_usage (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        template_slug TEXT NOT NULL,
+        used_count INT DEFAULT 0,
+        last_used_at TIMESTAMPTZ DEFAULT now(),
+        PRIMARY KEY (user_id, template_slug)
+      )`; mig068.tables++;
+      await sql`CREATE INDEX IF NOT EXISTS utu_recent ON user_template_usage(user_id, last_used_at DESC)`;
+      // [slug, ru, en, es, kind, durationMin, v+, v-, icon, sort]
+      const TEMPLATES = [
+        ['birthday','День рождения','Birthday','Cumpleaños','birthday',null,1,0,'🎂',10],
+        ['breakfast','Завтрак','Breakfast','Desayuno','manual_event',30,0,0,'🍳',20],
+        ['lunch','Обед','Lunch','Almuerzo','manual_event',30,0,0,'🍽️',30],
+        ['dinner','Ужин','Dinner','Cena','manual_event',30,0,0,'🍲',40],
+        ['walk','Прогулка','Walk','Paseo','manual_event',45,1,0,'🚶',50],
+        ['work','Работа','Work','Trabajo','manual_event',480,0,0,'💼',60],
+        ['date','Свидание','Date','Cita','manual_event',120,1,0,'❤️',70],
+        ['workout','Тренировка','Workout','Entrenamiento','manual_event',60,1,0,'🏋️',80],
+        ['sleep','Сон','Sleep','Sueño','manual_event',480,0,0,'😴',90],
+        ['meeting','Встреча','Meeting','Reunión','manual_event',60,0,0,'🤝',100],
+        ['commute','Дорога','Commute','Viaje','manual_event',60,0,0,'🚗',110],
+        ['practice','Практика','Practice','Práctica','manual_event',null,0,0,'📿',130],
+      ];
+      // Nick P6-final: retire 'meditation' + 'personal' (12 templates kept). DELETE
+      // so a re-run prunes rows seeded by the earlier 14-template version.
+      try { await sql`DELETE FROM event_templates WHERE slug IN ('meditation','personal')`; } catch (de) { console.error('mig template prune:', de.message); }
+      for (const t of TEMPLATES) {
+        try {
+          await sql`INSERT INTO event_templates
+              (slug, title_ru, title_en, title_es, default_kind, default_duration, default_valence_plus, default_valence_minus, icon, sort_order)
+            VALUES (${t[0]}, ${t[1]}, ${t[2]}, ${t[3]}, ${t[4]}, ${t[5]}, ${t[6]}, ${t[7]}, ${t[8]}, ${t[9]})
+            ON CONFLICT (slug) DO UPDATE SET
+              title_ru=EXCLUDED.title_ru, title_en=EXCLUDED.title_en, title_es=EXCLUDED.title_es,
+              default_kind=EXCLUDED.default_kind, default_duration=EXCLUDED.default_duration,
+              default_valence_plus=EXCLUDED.default_valence_plus, default_valence_minus=EXCLUDED.default_valence_minus,
+              icon=EXCLUDED.icon, sort_order=EXCLUDED.sort_order`;
+          mig068.templates_seeded++;
+        } catch (te) { mig068.skipped = (mig068.skipped || 0) + 1; console.error('mig068 template:', te.message); }
+      }
+      console.log('migration 068 (event templates): tables', mig068.tables, 'seeded', mig068.templates_seeded);
+    } catch (e) { mig068.error = e.message; console.error('migration 068 (event templates):', e.message); }
+
+    // ── migration 069 (own-birthday support: users.birth_date) ────────────────
+    // Additive nullable column so a user can record their own DOB (Profile UI is
+    // Phase-2 frontend, designed not built). NULL = unset → birthday seed is a
+    // no-op for that user. Family/child birthdays come from dependent_profiles.
+    let mig069 = { ok: false };
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE`;
+      mig069.ok = true;
+      console.log('migration 069 (users.birth_date): ok');
+    } catch (e) { mig069.error = e.message; console.error('migration 069 (users.birth_date):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-069 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -4598,6 +4748,121 @@ app.delete('/api/calendar/:id', requireAuth, async (req, res) => {
   }
 });
 
+// ── Unified events: manual calendar/life event (Phase 1) ─────────────────────
+// The single write path for a user-created event, straight into the extended
+// journey_events (via createEvent → migration-062 columns). Coherent on its own:
+// the event lands on the Personal Path immediately (the Path reads journey_events).
+// GATED behind EVENTS_UNIFIED so it can never create split-brain state while the
+// legacy calendar_events / neuro_resource_diary stores are still authoritative.
+// Delete reuses the existing, proven POST /api/me/journey-event/:id/delete cascade.
+app.post('/api/events/manual', requireAuth, async (req, res) => {
+  if (!eventsUnified(req.user.id)) return res.status(503).json({ error: 'unified events disabled', flag: 'EVENTS_UNIFIED' });
+  try {
+    const b = req.body || {};
+    const title = (b.title || '').toString().trim();
+    if (!title) return res.status(400).json({ error: 'title required' });
+    const dep = await resolveDependentId(req.user.id, b.dependent_id);
+    const durMin = Number.isFinite(+b.duration) ? Math.max(0, Math.trunc(+b.duration)) : null;
+    const payload = { label: title };                 // legacy Path renderer reads payload.label
+    if (durMin != null) payload.duration = durMin;
+    if (b.template_slug) payload.template_slug = String(b.template_slug).slice(0, 40);
+    const id = await createEvent({
+      user_id: req.user.id,
+      kind: (b.kind || 'manual_event').toString().slice(0, 40),
+      layer: 'event',                 // rides the generic Path 'event' lane
+      source: (b.source || 'calendar').toString().slice(0, 40),
+      title,
+      notes: b.notes != null ? String(b.notes) : null,
+      occurred_at: b.occurred_at || b.date || null,
+      valence_plus: b.valence_plus,
+      valence_minus: b.valence_minus,
+      recurrence_rule: b.recurrence_rule ? String(b.recurrence_rule).slice(0, 300) : null,
+      related_user_id: b.related_user_id || null,
+      related_dependent_id: b.related_dependent_id || null,
+      dependent_id: dep,
+      payload,
+    });
+    if (!id) return res.status(500).json({ error: 'write failed' });
+    // Track template usage so GET /api/event-templates can surface "recent". Best-
+    // effort — a tracking failure must never fail the event write.
+    if (b.template_slug) {
+      try {
+        const slug = String(b.template_slug).slice(0, 40);
+        await sql`INSERT INTO user_template_usage (user_id, template_slug, used_count, last_used_at)
+                  VALUES (${req.user.id}, ${slug}, 1, now())
+                  ON CONFLICT (user_id, template_slug)
+                  DO UPDATE SET used_count = user_template_usage.used_count + 1, last_used_at = now()`;
+      } catch (te) { console.warn('template usage:', te.message); }
+    }
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('POST /api/events/manual:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// GET /api/event-templates — global preset catalog + this user's recent top-5.
+// UNGATED (harmless read-only catalog; the actual event write stays gated in
+// /api/events/manual). Resilient: pre-migration it returns empty, never 500s.
+app.get('/api/event-templates', requireAuth, async (req, res) => {
+  const lang = (req.query.lang || 'ru').toString().slice(0, 2);
+  const col = lang === 'en' ? 'title_en' : lang === 'es' ? 'title_es' : 'title_ru';
+  try {
+    const rows = await sql`SELECT slug, title_ru, title_en, title_es, default_kind,
+        default_duration, default_valence_plus, default_valence_minus, icon, sort_order
+      FROM event_templates WHERE is_active = true ORDER BY sort_order ASC, slug ASC`;
+    const catalog = rows.map(r => ({
+      slug: r.slug,
+      title: r[col] || r.title_ru,
+      kind: r.default_kind,
+      duration: r.default_duration,
+      valence_plus: r.default_valence_plus,
+      valence_minus: r.default_valence_minus,
+      icon: r.icon,
+    }));
+    // recent = most-used in the last 30 days, top 5
+    let recent = [];
+    try {
+      const ru = await sql`SELECT template_slug FROM user_template_usage
+        WHERE user_id = ${req.user.id} AND last_used_at > now() - interval '30 days'
+        ORDER BY used_count DESC, last_used_at DESC LIMIT 5`;
+      const bySlug = Object.fromEntries(catalog.map(c => [c.slug, c]));
+      recent = ru.map(x => bySlug[x.template_slug]).filter(Boolean);
+    } catch (_) { /* usage table optional */ }
+    res.json({ catalog, recent });
+  } catch (e) {
+    // pre-migration063 → tables absent; degrade to empty rather than error.
+    res.json({ catalog: [], recent: [], unavailable: true });
+  }
+});
+
+// POST /api/admin/event-templates — superadmin adds/updates a global template.
+app.post('/api/admin/event-templates', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  try {
+    const b = req.body || {};
+    const slug = (b.slug || '').toString().trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+    if (!slug) return res.status(400).json({ error: 'slug required' });
+    const durMin = Number.isFinite(+b.default_duration) ? Math.trunc(+b.default_duration) : null;
+    await sql`INSERT INTO event_templates
+        (slug, title_ru, title_en, title_es, default_kind, default_duration,
+         default_valence_plus, default_valence_minus, icon, sort_order, created_by)
+      VALUES (${slug}, ${b.title_ru || b.title || slug}, ${b.title_en || b.title || slug},
+         ${b.title_es || b.title || slug}, ${(b.default_kind || 'manual_event').toString().slice(0,40)},
+         ${durMin}, ${Math.trunc(+b.default_valence_plus) || 0}, ${Math.trunc(+b.default_valence_minus) || 0},
+         ${b.icon || null}, ${Math.trunc(+b.sort_order) || 100}, ${req.user.id})
+      ON CONFLICT (slug) DO UPDATE SET
+        title_ru=EXCLUDED.title_ru, title_en=EXCLUDED.title_en, title_es=EXCLUDED.title_es,
+        default_kind=EXCLUDED.default_kind, default_duration=EXCLUDED.default_duration,
+        default_valence_plus=EXCLUDED.default_valence_plus, default_valence_minus=EXCLUDED.default_valence_minus,
+        icon=EXCLUDED.icon, sort_order=EXCLUDED.sort_order`;
+    res.json({ ok: true, slug });
+  } catch (err) {
+    console.error('POST /api/admin/event-templates:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // ── COURSE PROGRESS PERSISTENCE ──
 // Save/upsert course progress
 app.post('/api/progress/save', requireAuth, async (req, res) => {
@@ -6160,6 +6425,128 @@ async function logJourney(userId, kind, layer, payload, occurredAt, dependentId,
                   VALUES (${userId}, ${kind}, ${layer || kind}, ${body}::jsonb, now(), ${dep}, ${sid}) RETURNING id`;
     return rows[0] ? rows[0].id : null;
   } catch (e) { console.warn('logJourney(' + kind + '):', e.message); return null; }
+}
+
+// ── Unified events model — Phase 1 (foundation) ──────────────────────────────
+// EVENTS_UNIFIED gates the migration from the 4 parallel event stores
+// (neuro_resource_diary, calendar_events, journey_events, nm_*) onto a single
+// source of truth: journey_events extended by migration 067. Default OFF so the
+// entire refactor is a NO-OP until Nick flips it on Railway. Rollback = unset it.
+// (This codebase has no prior env-flag precedent — the established toggle pattern
+// is the system_settings DB table via getCollectivePublished(); an env flag is
+// used here per the brief because it needs zero DB round-trip on the hot read
+// path and flips with a single Railway var. See morning report for the trade-off.)
+// EVENTS_UNIFIED_WHITELIST (comma-separated user_ids) gates the rollout AHEAD of
+// the global flag: while it is non-empty the feature is ON *only* for the listed
+// users (Nick first), and OFF for everyone else EVEN IF EVENTS_UNIFIED=true. When
+// the whitelist is cleared, the global EVENTS_UNIFIED flag governs everyone. The
+// whitelist branch is evaluated BEFORE the env flag is read (Nick sanity-check #2).
+function unifiedWhitelist() {
+  return new Set(String(process.env.EVENTS_UNIFIED_WHITELIST || '').split(',').map(s => s.trim()).filter(Boolean));
+}
+function eventsUnified(userId) {
+  const wl = unifiedWhitelist();
+  if (wl.size) return !!(userId && wl.has(String(userId)));   // whitelist phase → ONLY listed users
+  return process.env.EVENTS_UNIFIED === 'true';               // global phase
+}
+// "Is the feature live for anyone?" — used by the nightly job's early-return so it
+// still runs while the whitelist is the only thing enabling the feature.
+function eventsUnifiedActive() {
+  return unifiedWhitelist().size > 0 || process.env.EVENTS_UNIFIED === 'true';
+}
+
+// createEvent — the single unified write path for the extended journey_events row.
+// SUPERSET of logJourney(): it fills the migration-062 columns
+// (title/notes/valence_plus/valence_minus/chain_id/practice_id/source/
+// recurrence_rule/related_user_id/related_dependent_id) AND — critically — still
+// mirrors title/source/valence/text/label into `payload`, because every CURRENT
+// reader (the Path, the calendar, hover tooltips) reads `payload->>'title'`,
+// `payload->>'source'`, `payload->>'valence'`, etc. Writing only the new columns
+// would blank those readers. Dual-writing keeps flag-OFF and mid-migration reads
+// identical to today. Fault-tolerant like logJourney: never throws into its caller.
+async function createEvent(opts) {
+  try {
+    const o = opts || {};
+    if (!o.user_id || !o.kind) return null;
+    // neon's HTTP template only accepts VALUES, not nested sql`` fragments, so we
+    // resolve the default timestamp in JS (mirrors logJourney's two-branch trick
+    // without needing a second full query).
+    let whenIso = new Date().toISOString();
+    if (o.occurred_at) { const d = new Date(o.occurred_at); if (!isNaN(d.getTime())) whenIso = d.toISOString(); }
+    const dep = (o.dependent_id != null && !isNaN(parseInt(o.dependent_id, 10))) ? parseInt(o.dependent_id, 10) : null;
+    const sid = o.session_id ? String(o.session_id).slice(0, 80) : null;
+    const vPlus = Number.isFinite(+o.valence_plus) ? Math.trunc(+o.valence_plus) : 0;
+    const vMinus = Number.isFinite(+o.valence_minus) ? Math.trunc(+o.valence_minus) : 0;
+    const chainId = (o.chain_id != null && !isNaN(parseInt(o.chain_id, 10))) ? parseInt(o.chain_id, 10) : null;
+    const practiceId = (o.practice_id != null && !isNaN(parseInt(o.practice_id, 10))) ? parseInt(o.practice_id, 10) : null;
+    const relDep = (o.related_dependent_id != null && !isNaN(parseInt(o.related_dependent_id, 10))) ? parseInt(o.related_dependent_id, 10) : null;
+    const relUser = (o.related_user_id && /^[0-9a-f-]{36}$/i.test(String(o.related_user_id))) ? String(o.related_user_id) : null;
+    // Back-compat: promote the structured fields into payload too, without
+    // clobbering caller-supplied payload keys.
+    const payload = Object.assign({}, o.payload || {});
+    if (o.title != null && payload.title == null) payload.title = o.title;
+    if (o.source != null && payload.source == null) payload.source = o.source;
+    if (o.notes != null && payload.notes == null) payload.notes = o.notes;
+    const body = JSON.stringify(payload);
+    // intensity (numeric: magnitude / flare-class / MMI) + metadata (JSONB:
+    // CME angle / MMI value / phase / eclipse type) — first-class columns for
+    // materialized External-Field events (Nick P6-final). Both nullable.
+    const intensity = (o.intensity != null && Number.isFinite(+o.intensity)) ? +o.intensity : null;
+    const metaBody = o.metadata != null ? JSON.stringify(o.metadata) : null;
+    const rows = await sql`
+      INSERT INTO journey_events
+        (user_id, kind, layer, payload, occurred_at, dependent_id, session_id,
+         title, notes, valence_plus, valence_minus, chain_id, practice_id, source,
+         recurrence_rule, related_user_id, related_dependent_id,
+         external_event_id, imported_event_id, oauth_provider, intensity, metadata)
+      VALUES
+        (${o.user_id}, ${o.kind}, ${o.layer || o.kind}, ${body}::jsonb,
+         ${whenIso}, ${dep}, ${sid},
+         ${o.title || null}, ${o.notes || null}, ${vPlus}, ${vMinus}, ${chainId}, ${practiceId}, ${o.source || null},
+         ${o.recurrence_rule || null}, ${relUser}, ${relDep},
+         ${o.external_event_id || null}, ${o.imported_event_id || null}, ${o.oauth_provider || null},
+         ${intensity}, ${metaBody}::jsonb)
+      RETURNING id`;
+    return rows[0] ? rows[0].id : null;
+  } catch (e) { console.warn('createEvent(' + (opts && opts.kind) + '):', e.message); return null; }
+}
+
+// expandRecurrence — turn ONE recurring template event (a birthday) into the
+// concrete occurrences that fall inside [fromIso, toIso]. Deliberately NOT the
+// full `rrule` npm package: birthdays are the only recurrence we ship in Phase 2
+// and they are pure FREQ=YEARLY;BYMONTH=M;BYMONTHDAY=D — a native expander avoids
+// a runtime dependency + sandbox install and cannot fail on network. If richer
+// rules (weekly/interval/until) are ever needed, swap this for `rrule` behind the
+// same signature. Returns an array of ISO timestamps (occurrences), time-of-day
+// copied from the template's occurred_at. Leap-day (Feb 29) occurrences are
+// emitted only in leap years (iCal semantics), never coerced to Feb 28.
+function expandRecurrence(ev, fromIso, toIso) {
+  try {
+    const rule = ev && ev.recurrence_rule;
+    if (!rule) return [];
+    const parts = {};
+    String(rule).split(';').forEach(kv => { const [k, v] = kv.split('='); if (k) parts[k.trim().toUpperCase()] = (v || '').trim(); });
+    if ((parts.FREQ || '').toUpperCase() !== 'YEARLY') return []; // only yearly supported here
+    const anchor = new Date(ev.occurred_at);
+    if (isNaN(anchor.getTime())) return [];
+    const month = parts.BYMONTH ? parseInt(parts.BYMONTH, 10) : (anchor.getUTCMonth() + 1); // 1-12
+    const day = parts.BYMONTHDAY ? parseInt(parts.BYMONTHDAY, 10) : anchor.getUTCDate();     // 1-31
+    if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31)) return [];
+    const from = new Date(fromIso), to = new Date(toIso);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return [];
+    const hh = anchor.getUTCHours(), mm = anchor.getUTCMinutes();
+    const out = [];
+    // never emit an occurrence before the template's own first year (a person
+    // born in 2021 has no birthday in 2020, even if the view window reaches back).
+    const startYear = Math.max(from.getUTCFullYear(), anchor.getUTCFullYear());
+    for (let y = startYear; y <= to.getUTCFullYear(); y++) {
+      const d = new Date(Date.UTC(y, month - 1, day, hh, mm, 0));
+      // reject rolled-over dates (e.g. Feb 29 in a non-leap year becomes Mar 1)
+      if (d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) continue;
+      if (d >= from && d <= to) out.push(d.toISOString());
+    }
+    return out;
+  } catch (e) { console.warn('expandRecurrence:', e.message); return []; }
 }
 
 // PR#109 (#3): connect this flow's new journey events to any earlier events of the
@@ -8418,13 +8805,7 @@ function overlayThreshold(r) {
     if (/high|severe|extreme/i.test(sev)) return { pass: true, color: 'red' };
     return { pass: false };
   }
-  if (layer === 'cosmos') {
-    if (et === 'gw_candidate') {
-      if (/terrestrial|uncertain|retract/i.test(title + ' ' + sev + ' ' + desc)) return { pass: false };
-      return { pass: true, color: /BBH|BNS|NSBH/i.test(title + ' ' + sev + ' ' + desc) ? 'orange' : 'yellow' };
-    }
-    return { pass: false };
-  }
+  if (layer === 'cosmos') return { pass: false }; // Cosmos layer retired (Nick P6-final)
   if (layer === 'social') {
     if (/crisis|disaster|war|conflict|election|emergency|attack|flood|wildfire/i.test(title + ' ' + desc)) return { pass: true, color: 'orange' };
     return { pass: false };
@@ -10645,9 +11026,11 @@ const EXT_SOURCES = {
   noaa:    { load: () => require('./services/external/noaa'),    everyMs: 10 * 60 * 1000 },
   donki:   { load: () => require('./services/external/donki'),   everyMs: 60 * 60 * 1000 },
   usgs:    { load: () => require('./services/external/usgs'),    everyMs: 15 * 60 * 1000 },
-  gracedb: { load: () => require('./services/external/gracedb'), everyMs: 5 * 60 * 1000 },
+  // gracedb (LIGO/Virgo/KAGRA GW) removed — Nick P6-final: Cosmos layer retired.
   gdelt:   { load: () => require('./services/external/gdelt'),   everyMs: 60 * 60 * 1000 },
-  moon:    { load: () => require('./services/external/moon'),    everyMs: 24 * 60 * 60 * 1000 }
+  moon:    { load: () => require('./services/external/moon'),    everyMs: 24 * 60 * 60 * 1000 },
+  // eclipses (solar+lunar) feed the moon layer — authoritative NASA canon table.
+  eclipse: { load: () => require('./services/external/eclipse'), everyMs: 24 * 60 * 60 * 1000 }
 };
 
 async function extInsert(ev) {
@@ -10671,7 +11054,6 @@ function extSignificant(ev) {
   if (ev.event_type === 'cme' || ev.event_type === 'geomagnetic_storm') return true;
   if (ev.layer === 'earth' && /Kp(\d)/.test(ev.severity || '')) { const kp = parseFloat((ev.severity.match(/Kp(\d+(\.\d+)?)/) || [])[1]); return kp >= 5; }
   if (ev.event_type === 'earthquake') { const m = parseFloat((ev.severity || '').replace('M', '')); return m >= 5.5; }
-  if (ev.event_type === 'gw_candidate') return true;
   return false;
 }
 function extNotifyBody(ev) {
@@ -10679,7 +11061,6 @@ function extNotifyBody(ev) {
   if (ev.event_type === 'cme') return 'Coronal mass ejection recorded. Source: ' + ev.source + '. Event saved to External Field timeline.';
   if (ev.layer === 'earth' && /Kp/.test(ev.severity || '')) return 'Geomagnetic activity increased: ' + ev.severity + '. Event saved to External Field timeline.';
   if (ev.event_type === 'earthquake') return ev.title + '. Source: USGS. Event saved to Earth layer.';
-  if (ev.event_type === 'gw_candidate') return 'Gravitational-wave candidate detected by LVK public alerts. Event saved to Cosmos layer. Biological relevance is not assumed.';
   return ev.title + '. Event saved to External Field timeline.';
 }
 async function extNotify(ev, eventId) {
@@ -11879,9 +12260,9 @@ app.get('/api/external/events', requireAuth, async (req, res) => {
 const EXT_HISTORY_SOURCES = {
   sun:    ['noaa', 'donki'],   // NOAA 7-day flares (keyless) + DONKI archive (needs NASA key)
   earth:  ['usgs', 'donki'],   // USGS quakes (keyless, deep archive) + DONKI storms
-  cosmos: ['gracedb'],
+  // cosmos layer retired (Nick P6-final) — no GraceDB source.
   social: ['gdelt'],
-  moon:   ['moon']             // pure astronomy, always available
+  moon:   ['moon', 'eclipse']  // pure astronomy + NASA eclipse canon, always available
 };
 function extDayKey(ts) { try { const d = new Date(ts); return isNaN(d) ? null : d.toISOString().slice(0, 10); } catch (e) { return null; } }
 function extDayList(from, to) {
@@ -11977,6 +12358,349 @@ app.post('/api/admin/external/poll', requireAuth, async (req, res) => {
     (events || []).forEach(function (e) { if (e && e.event_type) byType[e.event_type] = (byType[e.event_type] || 0) + 1; });
     res.json({ ok: true, source: src, fetched: (events || []).length, added, byType, usingKey: process.env.NASA_API_KEY ? 'env' : 'DEMO_KEY' });
   } catch (err) { console.error('POST /api/admin/external/poll:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── P6: External Field auto-import (strongest events → first-class journey_events)
+// Only the STRONGEST external events become materialized events (nudgeable,
+// chainable); everything else stays a read-time overlay via overlayThreshold().
+// Opt-in per user: config.autoImport === true (the prefs toggle sets it) AND the
+// specific layer enabled. Dedup by external_event_id = the upstream dedup_key
+// (backed by the je_external_dedup partial unique index). Thresholds here per brief.
+// Thresholds (Nick P6-final). Moon: only full/new phase + eclipses. Sun: X always,
+// M only if coincident with an Earth-directed CME (DONKI). Earth: perceived MMI ≥ III
+// at the user's coords (ShakeMap), M5+ prefilter, no-location fallback M7+.
+const EXT_IMPORT = {
+  quakeMinMagPrefilter: 5.0,   // USGS M5+ prefilter before per-user MMI
+  quakeMinMMI: 3.0,            // materialize if perceived intensity ≥ III at user coords
+  quakeNoLocMinMag: 7.0,       // no user location → M7+ global rule
+  cmeWindowDays: 4,            // ± days around an M-flare to look for a coincident CME
+};
+
+// Flare class → a single monotonic numeric ("M-equivalent"): M5.0→5.0, X1→10, X2→20.
+function flareClassNumber(sev) {
+  const m = String(sev || '').match(/([A-Z])\s*([\d.]+)?/i);
+  if (!m) return null;
+  const letter = m[1].toUpperCase(), num = parseFloat(m[2] || '0') || 0;
+  if (letter === 'X') return 10 * (num || 1);
+  if (letter === 'M') return num;
+  if (letter === 'C') return num / 10;
+  return num / 100; // A/B — negligible
+}
+
+// Solar B0 (heliographic latitude of disk centre, ±7.25°) — compact seasonal
+// approximation: 0 near Jun 6 / Dec 7, +7.25° near Sep 8, −7.25° near Mar 6.
+// Earth sits at (lat=B0, lon=0) in Stonyhurst — the Sun–Earth line is lon 0.
+function solarB0Deg(date) {
+  const d = new Date(date); if (isNaN(d)) return 0;
+  const start = Date.UTC(d.getUTCFullYear(), 0, 0);
+  const doy = (d.getTime() - start) / 86400000;
+  return 7.25 * Math.sin(2 * Math.PI * (doy - 157) / 365.25);
+}
+function angularSepDeg(latA, lonA, latB, lonB) {
+  const r = Math.PI / 180;
+  const c = Math.sin(latA * r) * Math.sin(latB * r) + Math.cos(latA * r) * Math.cos(latB * r) * Math.cos((lonA - lonB) * r);
+  return Math.acos(Math.min(1, Math.max(-1, c))) / r;
+}
+
+// Is an M-class flare at flareIso coincident with an Earth-directed CME? Pulls
+// DONKI /CME for ±cmeWindowDays, keeps most-accurate analyses with a full
+// (lat,lon,halfAngle) apex, and tests whether Earth (lat=B0, lon=0) lies inside the
+// CME cone (angular separation ≤ halfAngle). Returns the best matching CME, or null.
+// Conservative: no confirmable Earth-directed CME → null → the M-flare is NOT imported.
+async function earthDirectedCmeNear(flareIso, nasaKey) {
+  try {
+    const donki = require('./services/external/donki');
+    const t = new Date(flareIso).getTime();
+    const from = new Date(t - EXT_IMPORT.cmeWindowDays * 864e5).toISOString().slice(0, 10);
+    const to = new Date(t + EXT_IMPORT.cmeWindowDays * 864e5).toISOString().slice(0, 10);
+    const analyses = await donki.fetchCmeAnalyses({ from, to, nasaKey });
+    const b0 = solarB0Deg(flareIso);
+    let best = null;
+    for (const a of analyses) {
+      if (a.latitude == null || a.longitude == null || a.halfAngle == null) continue;
+      const sep = angularSepDeg(a.latitude, a.longitude, b0, 0);
+      if (sep > a.halfAngle) continue;                       // Earth outside the cone
+      const score = (a.isMostAccurate ? 1e6 : 0) - Math.abs((new Date(a.analysisTime || a.startTime).getTime()) - t) / 1e6 + (a.speed || 0) / 1e4;
+      if (!best || score > best._score) best = Object.assign({ _score: score, sepDeg: sep }, a);
+    }
+    return best;
+  } catch (e) { console.warn('earthDirectedCmeNear:', e.message); return null; }
+}
+
+// 7-day cache of parsed ShakeMap MMI grids (server owns sql; the module is pure).
+// Returns a parsed grid {lonMin,latMin,lonMax,latMax,nlon,nlat,mmi[]} or null
+// (no ShakeMap / parse failure — caller falls back to Bakun–Wentworth).
+async function getCachedShakeGrid(eventid) {
+  const shakemap = require('./services/external/shakemap');
+  try {
+    const rows = await sql`SELECT grid, fetched_at FROM shakemap_cache WHERE eventid = ${eventid}`;
+    if (rows.length) {
+      const age = Date.now() - new Date(rows[0].fetched_at).getTime();
+      if (age < 7 * 864e5) {
+        const g = rows[0].grid;
+        if (g && g.ok === false) return null;                 // cached "no shakemap"
+        if (g && Array.isArray(g.mmi)) return { lonMin: g.lonMin, latMin: g.latMin, lonMax: g.lonMax, latMax: g.latMax, nlon: g.nlon, nlat: g.nlat, mmi: g.mmi };
+      }
+    }
+  } catch (e) { /* table missing pre-migration → fetch live */ }
+  const res = await shakemap.fetchGrid(eventid);
+  try {
+    if (res.ok) {
+      const g = res.grid;
+      const store = { ok: true, lonMin: g.lonMin, latMin: g.latMin, lonMax: g.lonMax, latMax: g.latMax, nlon: g.nlon, nlat: g.nlat, mmi: Array.from(g.mmi) };
+      await sql`INSERT INTO shakemap_cache (eventid, grid, fetched_at) VALUES (${eventid}, ${JSON.stringify(store)}::jsonb, now())
+        ON CONFLICT (eventid) DO UPDATE SET grid = EXCLUDED.grid, fetched_at = now()`;
+      return { lonMin: g.lonMin, latMin: g.latMin, lonMax: g.lonMax, latMax: g.latMax, nlon: g.nlon, nlat: g.nlat, mmi: store.mmi };
+    }
+    await sql`INSERT INTO shakemap_cache (eventid, grid, fetched_at) VALUES (${eventid}, ${JSON.stringify({ ok: false, reason: res.reason })}::jsonb, now())
+      ON CONFLICT (eventid) DO UPDATE SET grid = EXCLUDED.grid, fetched_at = now()`;
+  } catch (e) { /* cache write best-effort */ }
+  return null;
+}
+
+// Classify a user-agnostic strong event (moon phase / eclipse / sun flare) into a
+// materialization descriptor {source, sourceTag, intensity, metadata}, or null.
+// Earthquakes are per-user (MMI) and handled separately. cmeMemo caches CME lookups.
+async function classifyGlobalEvent(e, nasaKey, cmeMemo) {
+  const et = e.event_type, sev = String(e.severity || ''), title = String(e.title || '');
+  const raw = e.raw_payload || {};
+  const date = String(e.timestamp || '').slice(0, 10);
+  if (e.layer === 'moon' && et === 'eclipse') {
+    const mag = raw.magnitude != null ? Number(raw.magnitude) : null;
+    return { source: 'external_eclipse', sourceTag: 'eclipse', intensity: mag,
+      metadata: { eclipse_kind: raw.kind || null, eclipse_type: raw.type || sev, magnitude: mag, date } };
+  }
+  if (e.layer === 'moon' && et === 'moon_phase') {
+    const isNewFull = /\b(new|full)\b/i.test(sev + ' ' + title) || /полнолун|новолун/i.test(title);
+    if (!isNewFull) return null;
+    const phase = /full|полнолун/i.test(sev + ' ' + title) ? 'full' : 'new';
+    const illum = raw.illumination != null ? Math.round(Number(raw.illumination) * 100) : (phase === 'full' ? 100 : 0);
+    return { source: 'external_moon', sourceTag: 'moon', intensity: illum, metadata: { phase, illumination_pct: illum, date } };
+  }
+  if (e.layer === 'sun' && et === 'flare') {
+    const m = sev.match(/([A-X])\s*([\d.]+)?/i); if (!m) return null;
+    const letter = m[1].toUpperCase();
+    if (letter === 'X') {
+      return { source: 'external_sun_flare', sourceTag: 'sun', intensity: flareClassNumber(sev),
+        metadata: { flare_class: sev, earth_directed: null, reason: 'x_class_always', date } };
+    }
+    if (letter === 'M') {
+      const memoKey = e.dedup_key || (title + date);
+      let cme = cmeMemo.has(memoKey) ? cmeMemo.get(memoKey) : await earthDirectedCmeNear(e.timestamp, nasaKey);
+      cmeMemo.set(memoKey, cme);
+      if (!cme) return null;                                 // M-flare w/o Earth-directed CME → skip
+      return { source: 'external_sun_flare', sourceTag: 'sun', intensity: flareClassNumber(sev),
+        metadata: { flare_class: sev, earth_directed: true, date,
+          cme: { activityID: cme.activityID, speed: cme.speed, halfAngle: cme.halfAngle, latitude: cme.latitude, longitude: cme.longitude, sep_deg: Math.round(cme.sepDeg * 10) / 10 } } };
+    }
+  }
+  return null;
+}
+
+async function runEventAutoImport(days) {
+  const win = Math.max(1, Math.min(31, parseInt(days, 10) || 7));
+  const sinceIso = new Date(Date.now() - win * 86400000).toISOString();
+  const nasaKey = process.env.NASA_API_KEY || 'DEMO_KEY';
+  const subs = await sql`SELECT user_id, config FROM external_field_subscriptions`;
+  const events = await sql`SELECT layer, event_type, title, severity, timestamp, dedup_key, latitude, longitude, raw_payload
+    FROM external_signal_events WHERE user_id IS NULL AND timestamp >= ${sinceIso} ORDER BY timestamp ASC`;
+
+  // 1) user-agnostic strong events (moon / eclipse / sun) — classified once.
+  const cmeMemo = new Map();
+  const globalStrong = [];
+  for (const e of events) {
+    if (!e.dedup_key || e.event_type === 'earthquake') continue;
+    const c = await classifyGlobalEvent(e, nasaKey, cmeMemo);
+    if (c) globalStrong.push(Object.assign({ e }, c));
+  }
+
+  // 2) earthquake candidates (M5+ prefilter) — ShakeMap grids fetched once per event.
+  const shakemap = require('./services/external/shakemap');
+  const quakeCands = [];
+  for (const e of events) {
+    if (e.event_type !== 'earthquake' || !e.dedup_key) continue;
+    const mag = parseFloat(String(e.severity || '').replace(/[^\d.]/g, '')) || 0;
+    if (mag < EXT_IMPORT.quakeMinMagPrefilter) continue;
+    const eventid = String(e.dedup_key).replace(/^usgs:/, '');
+    const grid = await getCachedShakeGrid(eventid);
+    quakeCands.push({ e, mag, lat: e.latitude != null ? Number(e.latitude) : null, lon: e.longitude != null ? Number(e.longitude) : null, grid });
+  }
+
+  let created = 0, usersTouched = 0;
+  for (const s of subs) {
+    if (!eventsUnified(s.user_id)) continue;                  // whitelist/flag gate, per-user, BEFORE any write
+    const cfg = s.config || {};
+    if (cfg.autoImport !== true) continue;                    // global opt-in
+    const existing = await sql`SELECT external_event_id FROM journey_events
+      WHERE user_id = ${s.user_id} AND source LIKE 'external_%' AND external_event_id IS NOT NULL
+        AND occurred_at >= ${sinceIso}`;
+    const have = new Set(existing.map(r => r.external_event_id));
+    const urow = await sql`SELECT location_lat, location_lon FROM users WHERE id = ${s.user_id}`;
+    const uLat = urow.length && urow[0].location_lat != null ? Number(urow[0].location_lat) : null;
+    const uLon = urow.length && urow[0].location_lon != null ? Number(urow[0].location_lon) : null;
+    const layerEnabled = (k) => { const lc = cfg[k]; return lc && lc.enabled !== false; };
+    let uc = 0;
+
+    // 2a) moon / eclipse / sun
+    for (const g of globalStrong) {
+      const layerKey = g.sourceTag === 'eclipse' ? 'moon' : g.sourceTag;   // eclipse rides moon layer
+      if (!layerEnabled(layerKey)) continue;
+      if (have.has(g.e.dedup_key)) continue;
+      const id = await createEvent({
+        user_id: s.user_id, kind: 'external', layer: 'event', source: g.source,
+        title: g.e.title, occurred_at: g.e.timestamp, external_event_id: g.e.dedup_key,
+        intensity: g.intensity, metadata: g.metadata,
+        payload: { source: g.sourceTag, event_type: g.e.event_type, label: g.e.title, external_event_id: g.e.dedup_key, intensity: g.intensity, meta: g.metadata },
+      });
+      if (id) { uc++; have.add(g.e.dedup_key); }
+    }
+
+    // 2b) earthquakes — perceived intensity (MMI) at the user's coordinates
+    if (layerEnabled('earth')) {
+      for (const q of quakeCands) {
+        if (have.has(q.e.dedup_key)) continue;
+        let pass = false, intensity = null, metadata = null;
+        if (uLat != null && uLon != null && q.lat != null && q.lon != null) {
+          let mmi = q.grid ? shakemap.mmiAtGrid(q.grid, uLat, uLon) : null;
+          let method = 'shakemap', extra = null;
+          if (mmi == null) { const dist = shakemap.haversineKm(uLat, uLon, q.lat, q.lon); mmi = shakemap.bakunWentworthMMI(q.mag, dist); method = 'bakun_wentworth'; extra = { distance_km: Math.round(dist) }; }
+          if (mmi != null && mmi >= EXT_IMPORT.quakeMinMMI) { pass = true; intensity = Math.round(mmi * 10) / 10; metadata = Object.assign({ mmi: intensity, method, magnitude: q.mag }, extra || {}); }
+        } else if (q.mag >= EXT_IMPORT.quakeNoLocMinMag) {
+          pass = true; intensity = q.mag; metadata = { magnitude: q.mag, rule: 'no_location_m7' };
+        }
+        if (!pass) continue;
+        const md = Object.assign({ date: String(q.e.timestamp).slice(0, 10) }, metadata);
+        const id = await createEvent({
+          user_id: s.user_id, kind: 'external', layer: 'event', source: 'external_earthquake',
+          title: q.e.title, occurred_at: q.e.timestamp, external_event_id: q.e.dedup_key,
+          intensity, metadata: md,
+          payload: { source: 'earth', event_type: 'earthquake', label: q.e.title, external_event_id: q.e.dedup_key, intensity, meta: md },
+        });
+        if (id) { uc++; have.add(q.e.dedup_key); }
+      }
+    }
+
+    if (uc) { created += uc; usersTouched++; }
+  }
+  return { window_days: win, global_strong: globalStrong.length, quake_candidates: quakeCands.length, users_imported: usersTouched, events_created: created };
+}
+app.post('/api/admin/events/auto-import', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  if (!eventsUnifiedActive()) return res.status(503).json({ error: 'unified events disabled', flag: 'EVENTS_UNIFIED' });
+  try { res.json({ ok: true, ...(await runEventAutoImport((req.body && req.body.days) || 7)) }); }
+  catch (err) { console.error('auto-import:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── P6/2b: Post-event nudge sweep. Raises a `post_event_nudge` notification (via
+// the EXISTING notifications table + GET /api/notifications UI) for yesterday's
+// events that have no chain yet — inviting the user to add emotion/sensation/
+// context, or delete a no-show. Two passes: (1) stored one-off events, deduped by
+// nudged_at; (2) recurring birthday occurrences that fell yesterday, deduped by a
+// per-(event,occurrence-date) notification check (the template row is reused each
+// year, so nudged_at can't guard it).
+function nudgeQuestion(kind, payload) {
+  const src = payload && payload.source;
+  if (kind === 'external') {
+    if (src === 'moon') return { qkey: 'nudge_moon', ru: 'Как прошло ваше полнолуние? Какие эмоции или ощущения возникли?' };
+    if (src === 'sun') return { qkey: 'nudge_sun', ru: 'Заметили влияние солнечной активности?' };
+    if (src === 'earth') return { qkey: 'nudge_quake', ru: 'Как вы отреагировали на новость о землетрясении?' };
+    if (src === 'eclipse') return { qkey: 'nudge_eclipse', ru: 'Затмение — что вы отметили в своём состоянии?' };
+    return { qkey: 'nudge_external', ru: 'Как это событие на вас повлияло?' };
+  }
+  if (kind === 'birthday' || kind === 'family_birthday') return { qkey: 'nudge_birthday', ru: 'Как прошёл день рождения? Что чувствовали?' };
+  return { qkey: 'nudge_generic', ru: 'Как прошло? Добавьте эмоцию, ощущение или контекст.' };
+}
+async function runNudgeSweep() {
+  let nudged = 0;
+  // Pass 1 — one-off events yesterday, not chained, not yet nudged, no context.
+  const oneoff = await sql`SELECT id, user_id, kind, title, payload FROM journey_events
+    WHERE kind IN ('manual_event','imported_calendar','external')
+      AND chain_id IS NULL AND nudged_at IS NULL
+      AND occurred_at >= now() - interval '2 days' AND occurred_at < now()
+      AND (payload->>'context') IS NULL`;
+  for (const ev of oneoff) {
+    try {
+      if (!eventsUnified(ev.user_id)) continue;               // whitelist/flag gate, per-user
+      const q = nudgeQuestion(ev.kind, ev.payload || {});
+      await sql`INSERT INTO notifications (user_id, kind, payload)
+        VALUES (${ev.user_id}, 'post_event_nudge', ${JSON.stringify({ event_id: ev.id, title: ev.title, event_kind: ev.kind, question: q })}::jsonb)`;
+      await sql`UPDATE journey_events SET nudged_at = now() WHERE id = ${ev.id}`;
+      nudged++;
+    } catch (e) { console.warn('nudge oneoff:', e.message); }
+  }
+  // Pass 2 — recurring birthdays whose occurrence fell yesterday.
+  const now = new Date();
+  const yStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)).toISOString();
+  const tStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const bdays = await sql`SELECT id, user_id, kind, title, payload, occurred_at, recurrence_rule
+    FROM journey_events WHERE kind IN ('birthday','family_birthday') AND recurrence_rule IS NOT NULL`;
+  for (const ev of bdays) {
+    try {
+      if (!eventsUnified(ev.user_id)) continue;               // whitelist/flag gate, per-user
+      const occ = expandRecurrence(ev, yStart, tStart).filter(iso => iso >= yStart && iso < tStart);
+      if (!occ.length) continue;
+      const occDate = occ[0].slice(0, 10);
+      const dup = await sql`SELECT 1 FROM notifications WHERE user_id = ${ev.user_id}
+        AND kind = 'post_event_nudge' AND payload->>'event_id' = ${String(ev.id)}
+        AND payload->>'occurrence' = ${occDate} LIMIT 1`;
+      if (dup.length) continue;
+      const q = nudgeQuestion(ev.kind, ev.payload || {});
+      await sql`INSERT INTO notifications (user_id, kind, payload)
+        VALUES (${ev.user_id}, 'post_event_nudge', ${JSON.stringify({ event_id: ev.id, title: ev.title, event_kind: ev.kind, occurrence: occDate, question: q })}::jsonb)`;
+      nudged++;
+    } catch (e) { console.warn('nudge bday:', e.message); }
+  }
+  return { oneoff: oneoff.length, birthdays: bdays.length, nudged };
+}
+app.post('/api/admin/nudge/sweep', requireAuth, async (req, res) => {
+  const caller = await requireSuperadmin(req, res); if (!caller) return;
+  if (!eventsUnifiedActive()) return res.status(503).json({ error: 'unified events disabled', flag: 'EVENTS_UNIFIED' });
+  try { res.json({ ok: true, ...(await runNudgeSweep()) }); }
+  catch (err) { console.error('nudge sweep:', err); res.status(500).json({ error: err.message }); }
+});
+
+// ── 2a: seed the caller's OWN + family birthdays as recurring template events.
+// Own DOB from users.birth_date (mig069); family from dependent_profiles.birth_date.
+// Idempotent: one birthday event per subject (guarded by a subject marker in
+// payload). NULL birth dates are silently skipped.
+app.post('/api/me/birthdays/seed', requireAuth, async (req, res) => {
+  if (!eventsUnified(req.user.id)) return res.status(503).json({ error: 'unified events disabled', flag: 'EVENTS_UNIFIED' });
+  try {
+    const me = req.user.id;
+    let created = 0;
+    const mkRule = (d) => `FREQ=YEARLY;BYMONTH=${d.getUTCMonth() + 1};BYMONTHDAY=${d.getUTCDate()}`;
+    // own
+    const urow = await sql`SELECT birth_date, display_name FROM users WHERE id = ${me}`;
+    if (urow.length && urow[0].birth_date) {
+      const exists = await sql`SELECT 1 FROM journey_events WHERE user_id = ${me}
+        AND kind = 'birthday' AND payload->>'subject' = 'self' LIMIT 1`;
+      if (!exists.length) {
+        const d = new Date(urow[0].birth_date);
+        const id = await createEvent({
+          user_id: me, kind: 'birthday', layer: 'event', source: 'birthday',
+          title: 'День рождения', occurred_at: d.toISOString(), recurrence_rule: mkRule(d),
+          related_user_id: me, payload: { subject: 'self', label: '🎂 День рождения' },
+        });
+        if (id) created++;
+      }
+    }
+    // family / children
+    const deps = await sql`SELECT id, name, birth_date FROM dependent_profiles
+      WHERE owner_user_id = ${me} AND deleted_at IS NULL AND birth_date IS NOT NULL`;
+    for (const dp of deps) {
+      const exists = await sql`SELECT 1 FROM journey_events WHERE user_id = ${me}
+        AND kind = 'family_birthday' AND related_dependent_id = ${dp.id} LIMIT 1`;
+      if (exists.length) continue;
+      const d = new Date(dp.birth_date);
+      const id = await createEvent({
+        user_id: me, kind: 'family_birthday', layer: 'event', source: 'birthday',
+        title: `${dp.name} — день рождения`, occurred_at: d.toISOString(), recurrence_rule: mkRule(d),
+        related_dependent_id: dp.id, payload: { subject: 'dependent', dependent_id: dp.id, label: `🎂 ${dp.name}` },
+      });
+      if (id) created++;
+    }
+    res.json({ ok: true, created });
+  } catch (err) { console.error('birthdays/seed:', err); res.status(500).json({ error: err.message }); }
 });
 
 // GET/POST /api/external/subscriptions — per-layer config (enabled / showOnPath / notify)
@@ -12207,9 +12931,33 @@ app.delete('/api/me/wearables/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Unified-events nightly jobs (P6 auto-import + post-event nudge). Registered
+// always, but every tick early-returns unless EVENTS_UNIFIED is on — so with the
+// flag off this is a pure no-op. Fires ~hourly and self-guards against running
+// more than once per UTC day (a rolling deploy restarts the process, resetting a
+// naive 24h interval to odd times; the day-guard keeps it to one run/day). A real
+// external cron can replace this later by hitting the admin endpoints.
+let _unifiedJobsLastDay = null;
+function startUnifiedEventJobs() {
+  if (!process.env.DATABASE_URL) return;
+  const tick = async () => {
+    try {
+      if (!eventsUnifiedActive()) return;                     // runs while whitelist OR global flag is on; per-user gate is inside the sweeps
+      const day = new Date().toISOString().slice(0, 10);
+      if (_unifiedJobsLastDay === day) return;
+      _unifiedJobsLastDay = day;
+      const imp = await runEventAutoImport(1);
+      const nud = await runNudgeSweep();
+      console.log('[unified-jobs] import', JSON.stringify(imp), 'nudge', JSON.stringify(nud));
+    } catch (e) { console.warn('[unified-jobs] tick failed:', e.message); }
+  };
+  setInterval(tick, 60 * 60 * 1000); // hourly probe; day-guard limits real work to 1/day
+}
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
   try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
   try { wearablesSvc.startCron(); } catch (e) { console.warn('[wearables] cron start failed:', e.message); }
+  try { startUnifiedEventJobs(); } catch (e) { console.warn('[unified-jobs] start failed:', e.message); }
 });
