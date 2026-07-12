@@ -18,7 +18,7 @@
   var I18N = {
     en: {
       title: 'External Field', sub: 'Objective external events & environmental parameters. Observational data — no interpretation.',
-      foot: 'Sources: NOAA SWPC · NASA DONKI · USGS · LIGO/Virgo/KAGRA · GDELT · Open-Meteo. Times in your local timezone.',
+      foot: 'Sources: NOAA SWPC · NASA DONKI · USGS · GDELT · Open-Meteo. Times in your local timezone.',
       setLoc: 'Set location', subsTitle: 'Subscriptions', loading: 'Loading…',
       tab: { sun: 'Sun', moon: 'Moon', earth: 'Earth', weather: 'Weather', cosmos: 'Cosmos', social: 'Social Events', experimental: 'Experimental' },
       noData: 'Data not available', awaitNext: 'Awaiting next poll cycle.', srcEmpty: 'Source API returned no events in this window.',
@@ -61,7 +61,7 @@
     },
     ru: {
       title: 'Внешнее поле', sub: 'Объективные внешние события и параметры среды. Наблюдательные данные — без интерпретации.',
-      foot: 'Источники: NOAA SWPC · NASA DONKI · USGS · LIGO/Virgo/KAGRA · GDELT · Open-Meteo. Время — в вашем часовом поясе.',
+      foot: 'Источники: NOAA SWPC · NASA DONKI · USGS · GDELT · Open-Meteo. Время — в вашем часовом поясе.',
       setLoc: 'Указать локацию', subsTitle: 'Подписки', loading: 'Загрузка…',
       tab: { sun: 'Солнце', moon: 'Луна', earth: 'Земля', weather: 'Погода', cosmos: 'Космос', social: 'Соц. события', experimental: 'Экспериментальные' },
       noData: 'Данных пока нет', awaitNext: 'Ожидаем следующий цикл опроса.', srcEmpty: 'Источник не вернул событий в этом окне.',
@@ -104,7 +104,7 @@
     },
     es: {
       title: 'Campo Externo', sub: 'Eventos externos objetivos y parámetros ambientales. Datos observacionales — sin interpretación.',
-      foot: 'Fuentes: NOAA SWPC · NASA DONKI · USGS · LIGO/Virgo/KAGRA · GDELT · Open-Meteo. Horas en tu zona local.',
+      foot: 'Fuentes: NOAA SWPC · NASA DONKI · USGS · GDELT · Open-Meteo. Horas en tu zona local.',
       setLoc: 'Definir ubicación', subsTitle: 'Suscripciones', loading: 'Cargando…',
       tab: { sun: 'Sol', moon: 'Luna', earth: 'Tierra', weather: 'Clima', cosmos: 'Cosmos', social: 'Eventos sociales', experimental: 'Experimental' },
       noData: 'Datos no disponibles', awaitNext: 'Esperando el próximo ciclo de sondeo.', srcEmpty: 'La fuente no devolvió eventos en esta ventana.',
@@ -157,12 +157,13 @@
     return (cur != null ? cur : (fb != null ? fb : path));
   }
 
-  // NOTE: the 'experimental' layer is intentionally NOT listed here — its UI tab
-  // was removed (#132). renderExperimental() and its i18n/config keys are kept
-  // intact below because selectTab()/dispatch still reference them defensively.
+  // NOTE: 'experimental' (#132) and 'cosmos' (Nick P6-final — LIGO/GW layer
+  // retired) are intentionally NOT listed here. Their render*() and i18n/config
+  // keys are kept intact below because selectTab()/dispatch still reference them
+  // defensively, but neither has a UI tab and the backend no longer feeds cosmos.
   var LAYERS = [
     { key: 'sun', icon: '☀' }, { key: 'moon', icon: '☾' }, { key: 'earth', icon: '⊕' },
-    { key: 'weather', icon: '🌦' }, { key: 'cosmos', icon: '✦' }, { key: 'social', icon: '🌐' }
+    { key: 'weather', icon: '🌦' }, { key: 'social', icon: '🌐' }
   ];
 
   // dateMode: 'today' = live per-day view (unchanged default). 'day' = a single
