@@ -32,6 +32,7 @@
     { key: 'sensation', label: { ru: 'Ощущения',  en: 'Sensations', es: 'Sensaciones' } },
     { key: 'insight',   label: { ru: 'Инсайты',   en: 'Insights',   es: 'Insights' } },
     { key: 'xp_gain',   label: { ru: 'XP и уровень', en: 'XP & level', es: 'XP y nivel' } },
+    { key: 'exercise',  label: { ru: '🧠 Упражнения', en: '🧠 Exercises', es: '🧠 Ejercicios' } },
     // Part B — scheduled applications of functions / sports / medications. These
     // ride on-the-fly events from GET /api/me/schedule/events (never journey_events)
     // and default to OFF (st.hidden seeded true in mountEvolutionPath) so an existing
@@ -44,7 +45,7 @@
   var SCHED_COL = { sched_function: 'rgb(120,200,235)', sched_sport: 'rgb(112,202,132)', sched_medication: 'rgb(150,170,255)' };
   // vertical placement of each scatter layer inside the tunnel field (0=top..1=bottom)
   var LAYER_YFRAC = { insight: 0.16, thought: 0.32, emotion: 0.46, practice: 0.50, sensation: 0.64, event: 0.80,
-    sched_function: 0.88, sched_sport: 0.92, sched_medication: 0.96 };
+    exercise: 0.72, sched_function: 0.88, sched_sport: 0.92, sched_medication: 0.96 };
 
   // D п.17/18: «Персонаж» (field) mode removed; its stat-card moved into the
   // detailed «Путь развития» view (formerly «Тоннель»).
@@ -122,7 +123,8 @@
     achievement:     { ru: 'Достижение', en: 'Achievement', es: 'Logro' },
     diary:           { ru: 'Дневник нейроресурса', en: 'Neuro-resource diary', es: 'Diario' },
     diary_legacy:    { ru: 'Дневник нейроресурса', en: 'Neuro-resource diary', es: 'Diario' },
-    calendar:        { ru: 'Календарь', en: 'Calendar', es: 'Calendario' }
+    calendar:        { ru: 'Календарь', en: 'Calendar', es: 'Calendario' },
+    exercise:        { ru: 'Упражнение', en: 'Exercise', es: 'Ejercicio' }
   };
   function humanLabel(key, lang) {
     var m = EVENT_LABELS[key];
@@ -756,7 +758,8 @@
     lav:    'rgb(175,150,240)', // life-sphere / image
     green:  'rgb(112,202,132)', // cause / meaning
     violet: 'rgb(166,112,226)', // concept / thought
-    rose:   'rgb(240,130,166)'  // action / practice / diary event
+    rose:   'rgb(240,130,166)', // action / practice / diary event
+    indigo: 'rgb(124,158,246)'  // cognitive exercise
   };
   function nmPathColor(e) {
     var p = (e && e.payload) || {};
@@ -779,6 +782,7 @@
     if (k === 'sensation') return NMP.cyan;                   // generic sensation kind
     if (k === 'practice' || nt === 'practice' || nt === 'action') return NMP.rose;
     if (k === 'insight') return NMP.cyan;
+    if (k === 'exercise') return NMP.indigo;                  // cognitive exercise
     if (k === 'event') return NMP.rose;                       // diary event / action
     return 'rgba(255,255,255,0.55)';
   }
