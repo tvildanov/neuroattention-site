@@ -1,0 +1,33 @@
+{
+  "folders": [
+    {
+      "name": "neuroattention-site",
+      "path": "."
+    },
+    {
+      "name": "neuroattention-anatomy",
+      "path": "../neuroattention-anatomy"
+    },
+    {
+      "name": "neuroattention-emdr-studio",
+      "path": "../neuroattention-emdr-studio"
+    },
+    {
+      "name": "neuroattention-knowledge",
+      "path": "../neuroattention-knowledge"
+    },
+    {
+      "name": "neuroattention-lab",
+      "path": "../neuroattention-lab"
+    },
+    {
+      "name": "neuroattention-spatial",
+      "path": "../neuroattention-spatial"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.git": true
+    }
+  }
+}

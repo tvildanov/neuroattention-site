@@ -1,0 +1,11 @@
+{
+  "name": "neuroattention",
+  "install": "echo \"[neuroattention] multi-repo environment ready\" && ls -1 .. 2>/dev/null || ls -1 /agent/repos 2>/dev/null || true",
+  "repositoryDependencies": [
+    "tvildanov/neuroattention-anatomy",
+    "tvildanov/neuroattention-emdr-studio",
+    "tvildanov/neuroattention-knowledge",
+    "tvildanov/neuroattention-lab",
+    "tvildanov/neuroattention-spatial"
+  ]
+}

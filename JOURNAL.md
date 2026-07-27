@@ -7,6 +7,40 @@
 
 ---
 
+## 2026-07-27T21:46+0000 — cursor_cloud (оператор: Tyler / Auto)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-07-27T21:46:00Z
+
+### did
+- Зафиксировал имя среды Cloud Agents как **`neuroattention`** (вместо «Neural Attention»).
+- Добавил `.cursor/environment.json` с `name: neuroattention` и `repositoryDependencies` на все sibling-репо.
+- Добавил multi-root `neuroattention.code-workspace` на шесть репозиториев.
+- Написал инструкцию доступа для Никиты (мобильный / веб): `docs/neuroattention-cloud-env.md`.
+- На VM собрал локальный хаб `~/neuroattention/` с symlink на все репо.
+
+### changed
+- `.cursor/environment.json` (новый)
+- `neuroattention.code-workspace` (новый)
+- `docs/neuroattention-cloud-env.md` (новый)
+- `JOURNAL.md` (эта запись)
+
+### decisions
+- Каноническое имя среды и папки проекта: **`neuroattention`** (lowercase, без пробела).
+- Multi-repo VM уже существует в Cursor Cloud; переименование display name в dashboard — ручной шаг владельца.
+- Доступ Никиты = Cursor Team seat + GitHub write на `tvildanov/neuroattention-*` + https://cursor.com/agents
+
+### followups
+- В dashboard переименовать среду в `neuroattention` и сохранить как Team.
+- Пригласить Никиту в Cursor Team и выдать GitHub write.
+- (Опционально) включить Team follow-ups.
+
+### next_session
+- Подтвердить, что Никита видит среду `neuroattention` с веба/мобильного и может пушить изменения.
+
+---
+
 ## 2026-07-09T23:24-0400 — abacus_nikita (оператор: Никита)
 
 - **project:** neuro
