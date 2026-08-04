@@ -7,6 +7,31 @@
 
 ---
 
+## 2026-08-04T17:25+0000 — cursor_cloud (оператор: Ник)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-04T17:25:00Z
+
+### did
+- BUG-21: упражнения показывали «не найдено» — GitHub Pages/Jekyll не отдавал файл `_engine.js` (имена с `_` скрываются). Переименовал в `engine.js`, добавил `.nojekyll`, SW v59.
+
+### changed
+- `assets/js/exercises/_engine.js` → `engine.js`
+- `account.html` script src
+- `sw.js` CACHE_NAME v58→v59
+- `.nojekyll` (новый)
+
+### followups
+- После деплоя: hard-refresh + проверить Start на любом из 10 упражнений.
+- Дальше: BUG-29, BUG-28, BUG-04.
+
+### next_session
+- Продолжить топ критичных багов из nick-bugs-backlog.
+
+---
+
+
 ## 2026-07-09T23:24-0400 — abacus_nikita (оператор: Никита)
 
 - **project:** neuro
