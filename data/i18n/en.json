@@ -1035,7 +1035,7 @@
   "a.protocol.homework": "Homework assignments",
   "a.protocol.practices_not_loaded": "Practices not loaded yet",
   "a.protocol.practices_admin_msg": "Audio practices will appear here when added by an administrator.",
-  "a.tools.neuromap": "NeuroMap",
+  "a.tools.neuromap": "Neuro Map",
   "a.tools.calendar": "Calendar",
   "a.tools.diary": "Diary",
   "a.tools.anatomy": "Anatomy",
@@ -1120,7 +1120,7 @@
   "a.tools.today": "Today",
   "a.tools.no_records": "No records",
   "a.tools.analysis_title": "Neuro-resource movement analysis",
-  "a.tools.neuromap_title": "NeuroMap",
+  "a.tools.neuromap_title": "Neuro Map",
   "a.tools.neuromap_desc": "The neural circuit of your personality. A map of thoughts, emotions, and states",
   "a.tools.view_day": "Day",
   "a.tools.view_week": "Week",
@@ -1882,5 +1882,6 @@
   "a.wearables.phys_state": "Physical state that day",
   "a.wearables.no_data_day": "No device data for this day",
   "a.wearables.h_short": "h",
-  "a.wearables.m_short": "m"
+  "a.wearables.m_short": "m",
+  "a.tools.external_field": "External Field"
 }

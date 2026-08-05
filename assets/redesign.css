@@ -1038,3 +1038,12 @@ body.method-flashlight {
    so his head fits the circle and matches the other two team photos. Applies at
    every width (the crop was off on desktop too). */
 .team-photo img[src*="takhir"] { object-position: center 18%; }
+
+
+/* BUG-18: custom cursor alone — hide OS arrow/hand on clickable UI */
+@media (hover: hover) and (pointer: fine) {
+  a, button, label, input, select, textarea, summary,
+  .dash-tab, .dash-subtab, .btn, [role="button"], [onclick] {
+    cursor: none !important;
+  }
+}

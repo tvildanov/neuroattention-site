@@ -1033,7 +1033,7 @@
   "a.protocol.homework": "Домашние задания",
   "a.protocol.practices_not_loaded": "Практики пока не загружены",
   "a.protocol.practices_admin_msg": "Аудиопрактики появятся здесь, когда будут добавлены администратором.",
-  "a.tools.neuromap": "NeuroMap",
+  "a.tools.neuromap": "Нейрокарта",
   "a.tools.calendar": "Календарь",
   "a.tools.diary": "Дневник",
   "a.tools.anatomy": "Анатомия",
@@ -1118,7 +1118,7 @@
   "a.tools.today": "Сегодня",
   "a.tools.no_records": "Нет записей",
   "a.tools.analysis_title": "Анализ движения нейроресурса",
-  "a.tools.neuromap_title": "NeuroMap",
+  "a.tools.neuromap_title": "Нейрокарта",
   "a.tools.neuromap_desc": "Нейронный контур твоей личности. Карта мыслей, эмоций и состояний",
   "a.tools.view_day": "День",
   "a.tools.view_week": "Неделя",
@@ -1871,5 +1871,6 @@
   "a.wearables.phys_state": "Физическое состояние в этот день",
   "a.wearables.no_data_day": "Нет данных с устройства за этот день",
   "a.wearables.h_short": "ч",
-  "a.wearables.m_short": "м"
+  "a.wearables.m_short": "м",
+  "a.tools.external_field": "Внешнее воздействие"
 }

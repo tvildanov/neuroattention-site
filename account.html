@@ -45,7 +45,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
-<link rel="stylesheet" href="assets/redesign.css" />
+<link rel="stylesheet" href="assets/redesign.css?v=2" />
 <link rel="stylesheet" href="data/css/mycelium.css?v=17" />
 <style>
 /* ── Auth ── */
@@ -1324,7 +1324,7 @@ a.dash-tab:hover { text-decoration:none; }
            them; setToolsMode('sensation'|'diary') and ?tool= deep-links now redirect
            to NeuroMap and pop the matching overlay. -->
       <a class="dash-tab dash-subtab" id="tools-mode-pointab" href="?tool=pointab" onclick="event.preventDefault();setToolsMode('pointab');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tabs.pointab">Точка А → B</a>
-      <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;">External Field</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-external" href="?tool=external" onclick="event.preventDefault();setToolsMode('external');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.external_field">Внешнее воздействие</a>
       <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=internal-field" onclick="event.preventDefault();setToolsMode('internal-field');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.internal_field">Внутреннее воздействие</a>
       <a class="dash-tab dash-subtab" id="tools-mode-library" href="?tool=library" onclick="event.preventDefault();setToolsMode('library');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.library">Library</a>
       <a class="dash-tab dash-subtab" id="tools-mode-exercises" href="?tool=exercises" onclick="event.preventDefault();setToolsMode('exercises');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.exercises">Упражнения и тесты</a>
@@ -8484,12 +8484,19 @@ function nmSaveSurvey(){
   // re-appears in future pickers coloured by that valence.
   function _uaMeta(label, base){ base=base||{}; if(nmVocabValence.hasOwnProperty(label)) base.user_added=true; return base; }
   function _uaVal(label, fallback){ return nmVocabValence.hasOwnProperty(label) ? nmVocabValence[label] : fallback; }
+  // BUG-20: keep parallel images (past/future) as forks off ONE emotion node —
+  // do not re-emit the emotion for every cartesian row (Path dedupe then stuck the
+  // second image at the chain end).
+  var _emoSeen={};
   chains.forEach(function(c){
     var emValence=c.emotion?(isNegEmotion(c.emotion)?'negative':'positive'):'neutral';
-    if(c.emotion) v2Chain.push({type:'emotion',label:c.emotion,valence:emValence,metadata:{emoji:EMOJI_EMOTIONS[c.emotion]||''}});
+    if(c.emotion && !_emoSeen[c.emotion]){
+      _emoSeen[c.emotion]=1;
+      v2Chain.push({type:'emotion',label:c.emotion,valence:emValence,metadata:{emoji:EMOJI_EMOTIONS[c.emotion]||''}});
+    }
     // PR#104 (#2): area from the emotion walkthrough = a LIFE SPHERE (семья/работа/…),
     // tag area_kind:'sphere' so it lands in layer 3 ("Образы"), not layer 1 sensations.
-    if(c.area) v2Chain.push({type:'area',label:c.area,valence:_uaVal(c.area,'neutral'),metadata:_uaMeta(c.area,{emoji:EMOJI_AREAS[c.area]||'',area_kind:'sphere'})});
+    if(c.area) v2Chain.push({type:'area',label:c.area,valence:_uaVal(c.area,'neutral'),metadata:_uaMeta(c.area,{emoji:EMOJI_AREAS[c.area]||'',area_kind:'sphere',parallel_fork:true})});
     if(c.cause) v2Chain.push({type:'cause',label:c.cause,valence:_uaVal(c.cause,emValence),metadata:_uaMeta(c.cause,{})});
     if(c.thought){
       var thNeg=NM_THOUGHTS.indexOf(c.thought)<15;
@@ -14515,9 +14522,10 @@ function cpOpenCourse(slug, startIdx){
       coursePlayer.previewMode = false; // real run — DO write completion/progress
       coursePlayer.progress = {};
       (d.progress || []).forEach(function(p){ coursePlayer.progress[p.block_id] = p; });
-      // Find first uncompleted block, else start from 0
-      var firstIdx = coursePlayer.blocks.findIndex(function(b){ return !coursePlayer.progress[b.id]; });
+      // BUG-19: skip section headers — resume at the next real practice/lesson.
+      var firstIdx = coursePlayer.blocks.findIndex(function(b){ return b.block_type !== 'section' && !coursePlayer.progress[b.id]; });
       coursePlayer.idx = firstIdx < 0 ? 0 : firstIdx;
+      window._cpSkipSection = true;
       // Deep-link to a specific lesson when ?block=N was supplied (clamped to range).
       if (typeof startIdx === 'number' && startIdx >= 0 && startIdx < coursePlayer.blocks.length) coursePlayer.idx = startIdx;
       coursePlayer.currentIdx = coursePlayer.idx;
@@ -14844,6 +14852,11 @@ function cpRenderBlock(){
     if (bt === 'audio' || bt === 'practice' || bt === 'sound_cue') {
       media = area.querySelector('audio');
       if (media) media.addEventListener('ended', cpScheduleAutoAdvance);
+      // BUG-17: if practice has no playable audio, still advance after ~5s (cancellable by Next).
+      else if (bt === 'practice') {
+        try { clearTimeout(window._cpPracticeFallback); } catch(e){}
+        window._cpPracticeFallback = setTimeout(function(){ try{ cpScheduleAutoAdvance(); }catch(e){} }, 5000);
+      }
     } else if (bt === 'video') {
       media = area.querySelector('video');
       if (media) media.addEventListener('ended', cpScheduleAutoAdvance);
@@ -18236,11 +18249,11 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=32"></script>
+<script src="assets/js/evolution-path.js?v=33"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=11"></script>
-<script src="assets/js/body-atlas.js?v=38"></script>
+<script src="assets/js/body-atlas.js?v=39"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=2"></script>
 <script src="assets/js/exercises/n-back.js?v=2"></script>
@@ -18611,8 +18624,22 @@ window.pbMove = pbMove;
   // card content, mini-viewer, opacity slider and stacking are identical to a 3D click.
   window.atlasOpenRegionCard = function(regionId){
     if(!regionId || !atlas) return;
+    // BUG-02: first search click must load/show the layer + focus the mesh (not only the text card).
+    // Prefer the shared Anatomy focus() path used by Conditions/Functions.
+    try {
+      var focusId = String(regionId).replace(/^(organs|muscles|skeleton|nervous|vessels)_/i,'').replace(/_/g,'-');
+      if (typeof focus === 'function') focus([focusId]);
+      else if (atlas.focusRegions) {
+        try {
+          var Ls = atlas.layersForSeedIds ? (atlas.layersForSeedIds([focusId])||[]) : [];
+          Ls.forEach(function(l){ try{ atlas.toggleLayer(l, true); }catch(e){} });
+        } catch(e){}
+        try { if (/lobe|insula|hippocamp|amygdala|cortex|brain|cerebell|thalam|hypothal|ganglia|fornix|callosum|brainstem|midbrain|pons|medulla/i.test(focusId)) atlas.enterBrainDetail && atlas.enterBrainDetail(); } catch(e){}
+        atlas.focusRegions([focusId]);
+      }
+    } catch(e){}
     var mesh=null;
-    try{ if(atlas._forEachRegionMesh){ atlas._forEachRegionMesh(regionId, function(m){ if(!mesh && m.isMesh) mesh=m; }); } }catch(e){}
+    try{ if(atlas._forEachRegionMesh){ atlas._forEachRegionMesh(regionId, function(m){ if(!mesh && m.isMesh) mesh=m; }); if(!mesh) atlas._forEachRegionMesh(String(regionId).replace(/_/g,'-'), function(m){ if(!mesh && m.isMesh) mesh=m; }); } }catch(e){}
     var ud = mesh && mesh.userData ? mesh.userData : {};
     onClick({ id: regionId, object: mesh||null, names: ud.names||null, point: null, layer: ud.layer||'', level: 'region' });
   };
@@ -18693,7 +18720,7 @@ window.pbMove = pbMove;
     Object.keys(ATLAS_SEARCH_NAMES).forEach(function(id){
       var n = ATLAS_SEARCH_NAMES[id];
       idx.push({ id:id, label:(n[lang()]||n.ru), grp:(n.g||1),
-        hay:((n.ru||'')+' '+(n.en||'')+' '+(n.es||'')+' '+id.replace(/-/g,' ')+' '+(n.syn||'')).toLowerCase() });
+        hay:((n.ru||'')+' '+(n.en||'')+' '+(n.es||'')+' '+id.replace(/-/g,' ')+' '+(n.syn||'')).toLowerCase().replace(/ё/g,'е') });
       seen[id] = 1;
     });
     // any SEED_REGION_INFO key not curated → derive a title-cased label so it's still findable
@@ -18707,6 +18734,10 @@ window.pbMove = pbMove;
     _atlasIndex = idx;
   }
   // Merge the fine mesh dictionaries (individual muscles, bones, brain gyri) once.
+  function atlasFold(s){ return String(s||'').toLowerCase().replace(/ё/g,'е'); }
+  function atlasCanonId(id){
+    return String(id||'').replace(/^(organs|muscles|skeleton|nervous|vessels)_/i,'').replace(/_/g,'-').toLowerCase();
+  }
   function atlasLoadFine(){
     if(_atlasFineLoaded) return; _atlasFineLoaded = true;
     // fine anatomy dicts are static Pages assets, fetched relative to account.html
@@ -18715,27 +18746,37 @@ window.pbMove = pbMove;
       .then(function(res){
         if(!_atlasIndex) atlasBuildIndex();
         var ru = res[0]||{}, es = res[1]||{}, brain = (res[2]&&res[2].regions)||{}, have = {};
-        _atlasIndex.forEach(function(e){ have[e.id]=1; });
-        function push(id, rn, en, esn){ if(!id||have[id]) return; have[id]=1;
-          var label = (lang()==='ru'?rn:lang()==='es'?esn:en) || en || rn || regionLabel(id);
-          _atlasIndex.push({ id:id, label:label, grp:3, hay:((rn||'')+' '+(en||'')+' '+(esn||'')+' '+id.replace(/_/g,' ')).toLowerCase() }); }
+        _atlasIndex.forEach(function(e){ have[e.id]=1; have[atlasCanonId(e.id)]=1; });
+        // curated labels (to skip fine duplicates that only restate the same organ)
+        var curatedLabels = {};
+        _atlasIndex.forEach(function(e){ if(e.grp<=2){ curatedLabels[atlasFold(e.label)]=1; } });
+        function push(id, rn, en, esn){
+          if(!id) return;
+          var canon = atlasCanonId(id);
+          if(have[id] || have[canon]) return; // BUG-01: skip organs_lungs when lungs exists
+          var label = (lang()==='ru'?rn:lang()==='es'?esn:en) || en || rn || regionLabel(canon);
+          if(curatedLabels[atlasFold(label)] || curatedLabels[atlasFold(en)] || curatedLabels[atlasFold(rn)]) return;
+          have[id]=1; have[canon]=1;
+          _atlasIndex.push({ id:canon, label:label, grp:3, hay:atlasFold((rn||'')+' '+(en||'')+' '+(esn||'')+' '+canon.replace(/-/g,' ')+' '+id.replace(/_/g,' ')) }); }
         Object.keys(ru).forEach(function(k){ push(k, ru[k], regionLabel(k.replace(/_/g,'-')), es[k]); });
         Object.keys(brain).forEach(function(k){ var b=brain[k]||{}; push(k, b.ru, b.en, b.es); });
+        // if user is mid-typing, re-render search with the richer index
+        try{ var inp=document.getElementById('atlas-search-input'); if(inp&&inp.value){ var ev=document.createEvent('Event'); /* noop: input handler will re-rank on next key */ } }catch(e){}
       });
   }
   function atlasSearchRank(q){
     if(!_atlasIndex) atlasBuildIndex();
-    q = q.trim().toLowerCase(); if(!q) return [];
+    q = atlasFold(q.trim()); if(!q) return [];
     var toks = q.split(/\s+/).filter(Boolean);
     var starts = [], words = [], other = [];
     for(var i=0;i<_atlasIndex.length;i++){
-      var e=_atlasIndex[i], lb=e.label.toLowerCase();
+      var e=_atlasIndex[i], lb=atlasFold(e.label), hay=atlasFold(e.hay);
       // every query token must appear somewhere in the searchable text (AND match),
-      // so "правое полушарие" / "insular cortex" / "foot muscle" all resolve.
-      var all=true; for(var t=0;t<toks.length;t++){ if(e.hay.indexOf(toks[t])<0){ all=false; break; } }
+      // so "правое полушарие" / "insular cortex" / "лёгкие" all resolve (ё→е).
+      var all=true; for(var ti=0;ti<toks.length;ti++){ if(hay.indexOf(toks[ti])<0){ all=false; break; } }
       if(!all) continue;
       if(lb.indexOf(q)===0) starts.push(e);
-      else if(lb.indexOf(q)>=0 || e.hay.indexOf(q)>=0) words.push(e);
+      else if(lb.indexOf(q)>=0 || hay.indexOf(q)>=0) words.push(e);
       else other.push(e);
     }
     function byGrpLen(a,b){ return (a.grp-b.grp) || (a.label.length-b.label.length); }
@@ -19247,11 +19288,14 @@ window.pbMove = pbMove;
     //    spine sub-regions to the real vertebral seeds. Specific limb joints
     //    (knee/ankle/shoulder/elbow/wrist/hand/foot) and soft tissues have no mesh
     //    → they pass through unmatched and render as chips only (by design).
-    quadriceps:['muscles'], hamstrings:['muscles'], calves:['muscles'], glutes:['muscles'],
-    hip_flexors:['muscles'], core:['muscles'], obliques:['muscles'], deltoids:['muscles'],
-    latissimus:['muscles'], trapezius:['muscles'], pectorals:['muscles'], biceps:['muscles'],
-    triceps:['muscles'], forearms:['muscles'], rotator_cuff:['muscles'], erector_spinae:['muscles'],
-    tibialis:['muscles'],
+    // BUG-06: map to organ-group tags (arm/leg/core/back) so tint lights the right muscle band,
+    // not the entire muscles GLB envelope.
+    quadriceps:['leg-muscles'], hamstrings:['leg-muscles'], calves:['leg-muscles'], glutes:['leg-muscles'],
+    hip_flexors:['leg-muscles'], tibialis:['leg-muscles'],
+    core:['core-muscles'], obliques:['core-muscles'], pectorals:['core-muscles'],
+    deltoids:['arm-muscles'], biceps:['arm-muscles'], triceps:['arm-muscles'], forearms:['arm-muscles'],
+    rotator_cuff:['arm-muscles'],
+    latissimus:['back-muscles'], trapezius:['back-muscles'], erector_spinae:['back-muscles'],
     motor_cortex:['frontal-lobe'], prefrontal_cortex:['frontal-lobe'], parietal_cortex:['parietal-lobe'],
     spine_lumbar:['lumbar-spine'], spine_cervical:['cervical-spine']
   };
@@ -19841,7 +19885,19 @@ window.pbMove = pbMove;
   // Sports live inside the Functions tab under fnMode='sport' — switch tab, flip the
   // Functions/Sports mode toggle, then open the sport detail card.
   window.haGoSport=function(slug){ haSwitchTab('functions'); setTimeout(function(){ var i=document.getElementById('ha-fn-search'); if(i) i.value=''; fnQuery=''; if(typeof haFnMode==='function') haFnMode('sport'); if(typeof haSelectSport==='function') haSelectSport(slug); },40); };
-  window.haGoCondition=function(slug){ haSwitchTab('conditions'); setTimeout(function(){ var i=document.getElementById('ha-cond-search'); if(i) i.value=''; condQuery=''; condCat=''; haSelectCondition(slug); },30); };
+  window.haGoCondition=function(slug){
+    // BUG-07: push a history entry so browser Back returns to the previous Internal Field card
+    // instead of jumping to the site home / seeming logout.
+    try{ history.pushState({ha:'conditions',slug:slug,from:'sport'},'',location.pathname+location.search+'#tools'); }catch(e){}
+    haSwitchTab('conditions'); setTimeout(function(){ var i=document.getElementById('ha-cond-search'); if(i) i.value=''; condQuery=''; condCat=''; haSelectCondition(slug); },30);
+  };
+  try{
+    window.addEventListener('popstate', function(ev){
+      if(!ev.state || !ev.state.ha) return;
+      if(ev.state.ha==='conditions'){ try{ haSwitchTab('conditions'); }catch(e){} }
+      if(ev.state.ha==='functions' || ev.state.from==='sport'){ try{ haSwitchTab('functions'); if(typeof haFnMode==='function') haFnMode('sport'); }catch(e){} }
+    });
+  }catch(e){}
   window.haGoRegionMulti=function(csv){ var ids=(csv||'').split(',').filter(Boolean); haSwitchTab('anatomy'); setTimeout(function(){ focus(ids); },40); };
 
   /* ── detail panel ───────────────────────────────────────────────────────── */
@@ -20784,7 +20840,18 @@ window.pbMove = pbMove;
       var btn=host.querySelector('#lib-note-save'); btn.disabled=true; btn.textContent=L('save_note')+'…';
       api('/api/library-notes', { method:'POST', headers:hdrs(), body:JSON.stringify({
         kind:kind, item_slug:it.slug, item_title:noteTitleOf(kind,it), selected_text:selected||null, note:note, emotion:emo||null
-      })}).then(function(){ host.innerHTML=''; reload(); })
+      })}).then(function(){
+        // BUG-15: also drop a NeuroMap node so the note is not Path-only.
+        try{
+          if(typeof window.nmAppendV2==='function'){
+            var chain=[];
+            if(emo) chain.push({type:'emotion',label:emo,valence:'neutral',metadata:{source:'library_note'}});
+            chain.push({type:'thought',label:note.slice(0,120),valence:'neutral',metadata:{source:'library_note',lib_kind:kind,article_slug:it.slug}});
+            window.nmAppendV2(chain);
+          }
+        }catch(e){}
+        host.innerHTML=''; reload();
+      })
         .catch(function(e){ btn.disabled=false; btn.textContent=L('save_note'); alert('Save failed: '+(e.message||e)); });
     });
   }
@@ -21088,20 +21155,33 @@ window.pbMove = pbMove;
       if(!cmpOn){
         if(!window.BodyAtlas || !window._anatomyAtlas){ return; }
         cmpOn=true; if(btn) btn.classList.add('active'); if(sel){ sel.style.display=''; sel.value=cmpMode; }
+        // BUG-09: clear leftover Sports/Med tint (e.g. boxing) so Compare starts clean.
+        try{ if(typeof medClearTint==='function') medClearTint(); }catch(e){}
+        try{ window.__medTint=null; curSport=null; }catch(e){}
+        try{ clearTint(window._anatomyAtlas); }catch(e){}
         // split
         vp.style.flex='1 1 0'; vp.style.minWidth='0';
         var vp2=document.createElement('div'); vp2.id='atlas-viewport-2';
         vp.parentNode.insertBefore(vp2, vp.nextSibling);
-        // labels
+        // labels + close X
         var ll=document.createElement('div'); ll.id='atlas-cmp-label-l'; ll.className='atlas-cmp-label'; vp.appendChild(ll);
         var lr=document.createElement('div'); lr.id='atlas-cmp-label-r'; lr.className='atlas-cmp-label'; vp2.appendChild(lr);
+        var cx=document.createElement('button'); cx.id='atlas-cmp-close'; cx.type='button'; cx.setAttribute('aria-label','Close compare');
+        cx.textContent='✕'; cx.style.cssText='position:absolute;top:8px;right:8px;z-index:8;background:rgba(10,14,20,.85);border:1px solid rgba(168,247,255,.3);border-radius:8px;color:#e8edf2;cursor:pointer;padding:.25rem .55rem;font-size:13px;';
+        cx.onclick=function(ev){ ev.preventDefault(); ev.stopPropagation(); try{ window.atlasToggleCompare(); }catch(e){} };
+        vp2.style.position='relative'; vp2.appendChild(cx);
         // second instance
         try{
           window.BodyAtlas.init(vp2, {mode:'full'}).then(function(inst){
             cmp2=inst;
-            var go=function(){ applyMode(); syncFrom(window._anatomyAtlas, cmp2); syncFrom(cmp2, window._anatomyAtlas); };
+            var go=function(){
+              applyMode(); syncFrom(window._anatomyAtlas, cmp2); syncFrom(cmp2, window._anatomyAtlas);
+              // BUG-09: recompute camera aspect after flex split (fixes stretched left body).
+              try{ window._anatomyAtlas && window._anatomyAtlas._resize && window._anatomyAtlas._resize(); }catch(e){}
+              try{ cmp2 && cmp2._resize && cmp2._resize(); }catch(e){}
+            };
             try{ inst.on('ready', go); }catch(e){}
-            setTimeout(go, 900);
+            setTimeout(go, 50); setTimeout(go, 400); setTimeout(go, 900);
           }).catch(function(){ noteEl(vp2,'3D ×'); });
         }catch(e){}
       } else {
@@ -21109,8 +21189,10 @@ window.pbMove = pbMove;
         try{ if(cmp2&&cmp2.destroy) cmp2.destroy(); }catch(e){} cmp2=null;
         var vp2=document.getElementById('atlas-viewport-2'); if(vp2) vp2.remove();
         var ll=document.getElementById('atlas-cmp-label-l'); if(ll) ll.remove();
+        var cx=document.getElementById('atlas-cmp-close'); if(cx) cx.remove();
         vp.style.flex=''; vp.style.minWidth='';
         clearTint(window._anatomyAtlas);
+        try{ window._anatomyAtlas && window._anatomyAtlas._resize && window._anatomyAtlas._resize(); }catch(e){}
       }
     };
 
@@ -22047,12 +22129,12 @@ window.pbMove = pbMove;
     var tone = (result.band_obj&&result.band_obj.tone)||'ok';
     var toneCol = {good:'#3fb950',ok:'#58a6ff',warn:'#e3b341',bad:'#f85149'}[tone]||'#7c9ef6';
     var crisis = (result.flags||[]).filter(function(f){return f.crisis;});
-    var flagHtml = crisis.length ? '<div style="background:rgba(248,81,73,.12);border:1px solid #f85149;border-radius:10px;padding:.8rem 1rem;margin:1rem 0;color:#ffb3ad;font-weight:600;text-align:left">🆘 '+esc(crisis[0].message)+'</div>' : '';
+    var flagHtml = crisis.length ? '<div style="background:rgba(232,180,100,.08);border:1px solid rgba(232,180,100,.35);border-radius:10px;padding:.8rem 1rem;margin:1rem 0;color:#e8d5b0;font-weight:500;text-align:left;line-height:1.45"><div style="font-size:.78rem;opacity:.85;margin-bottom:.35rem">'+(lang()==='ru'?'Важно: общий уровень может быть «минимальным», но ответ на пункт о самоповреждении всегда требует внимания — это норма клинической логики PHQ-9.':lang()==='es'?'Importante: el nivel general puede ser «mínimo», pero el ítem de autolesión siempre requiere atención — lógica clínica del PHQ-9.':'Important: overall level can be “minimal”, but the self-harm item always needs attention — standard PHQ-9 clinical logic.')+'</div>'+esc(crisis[0].message)+'</div>' : '';
     var data = screenerData(row.slug);
     host.innerHTML=
       '<div class="ex-wrap"><div class="ex-result" style="max-width:600px">'+
         '<div class="ex-cat" style="color:#e3b341">🩺 '+esc(nm(row))+'</div>'+
-        '<div style="font-size:2.6rem;font-weight:800;color:'+toneCol+';margin:.4rem 0">'+esc(band)+'</div>'+
+        '<div style="font-size:1.45rem;font-weight:650;color:'+toneCol+';margin:.4rem 0;letter-spacing:-0.01em">'+esc(band)+'</div>'+
         '<div style="font-size:1rem;color:#9aa4b2">'+esc(L('yourResult'))+': <b style="color:#e6edf3">'+Math.round(result.score)+'</b></div>'+
         (result.interpretation?'<p style="color:#c9d1d9;margin:.8rem 0;text-align:left;background:rgba(255,255,255,.03);border-radius:10px;padding:.7rem 1rem"><b>'+esc(L('interpLbl'))+':</b> '+esc(result.interpretation)+'</p>':'')+
         flagHtml+

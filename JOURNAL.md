@@ -7,6 +7,32 @@
 
 ---
 
+## 2026-08-05T03:50+0000 — cursor_cloud (оператор: Ник)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-05T03:50:00Z
+
+### did
+- Пакетный фикс багов из nick-bugs-backlog (после BUG-21): Path zoom/toggles/moon, Atlas search/hide/sports/compare, courses continue/auto-advance, i18n, cursor, solar M5+, library→calendar, PHQ crisis UX, NeuroMap parallel emotion emit.
+
+### changed
+- assets/js/evolution-path.js, assets/js/body-atlas.js, api/server.js, account.html, data/i18n/{ru,en,es}.json, assets/redesign.css, sw.js (v60)
+
+### deferred / later
+- BUG-13 Library A4 deep content rewrite
+- BUG-14 notes → full NeuroMap emotion chains UI
+- BUG-22 global custom icons (emoji overhaul)
+- BUG-05 lobe/surface hide groups (architecture)
+- FEATURE-10/11/12 enhancements
+- BUG-25 full createEvent unification for all sources (needs flag rollout)
+
+### next_session
+- Nick verify checklist once; then Sketch tool.
+
+---
+
+
 ## 2026-08-04T17:25+0000 — cursor_cloud (оператор: Ник)
 
 - **project:** neuro

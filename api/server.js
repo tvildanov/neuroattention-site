@@ -9112,6 +9112,9 @@ app.get('/api/users/me/evolution', requireAuth, async (req, res) => {
                                         AND layer = ANY(${onPath}::text[])
                                         AND timestamp >= ${fromIso} AND timestamp <= ${toIso}
                                       ORDER BY timestamp ASC`);
+        // BUG-28: seed empty arrays for every subscribed layer so Path toggles appear
+        // even when the current window has zero passing events.
+        onPath.forEach(k => { overlays[k] = overlays[k] || []; });
         ovRows.forEach(r => {
           const th = overlayThreshold(r);
           if (!th.pass) return;
@@ -12151,6 +12154,16 @@ app.post('/api/library-notes', requireAuth, async (req, res) => {
       INSERT INTO library_user_notes (user_id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id)
       VALUES (${req.user.id}, ${kind}, ${slug}, ${itemTitle}, ${selected}, ${note}, ${emotion}, ${jid})
       RETURNING id, kind, item_slug, item_title, selected_text, note, emotion, journey_event_id, created_at`;
+    // BUG-15: also mirror onto calendar_events so the note appears on the Calendar day.
+    try {
+      const now = new Date();
+      const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');
+      const dateKey = y + '-' + m + '-' + d;
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      await sql`INSERT INTO calendar_events (user_id, date_key, time, title, event_type, duration)
+        VALUES (${req.user.id}, ${dateKey}, ${hh + ':' + mm}, ${label}, ${'library_note'}, ${''})`;
+    } catch (ce) { console.warn('library note calendar mirror:', ce.message); }
     res.json({ ok: true, note: rows[0] });
   } catch (err) { console.error('POST /api/library/notes:', err); res.status(500).json({ error: err.message }); }
 });
@@ -12485,13 +12498,15 @@ async function classifyGlobalEvent(e, nasaKey, cmeMemo) {
         metadata: { flare_class: sev, earth_directed: null, reason: 'x_class_always', date } };
     }
     if (letter === 'M') {
+      const mag = parseFloat(m[2] || '0') || 0;
+      // BUG-26: import M5+ always (product rule). Earth-directed CME still recorded when known.
       const memoKey = e.dedup_key || (title + date);
       let cme = cmeMemo.has(memoKey) ? cmeMemo.get(memoKey) : await earthDirectedCmeNear(e.timestamp, nasaKey);
       cmeMemo.set(memoKey, cme);
-      if (!cme) return null;                                 // M-flare w/o Earth-directed CME → skip
-      return { source: 'external_sun_flare', sourceTag: 'sun', intensity: flareClassNumber(sev),
-        metadata: { flare_class: sev, earth_directed: true, date,
-          cme: { activityID: cme.activityID, speed: cme.speed, halfAngle: cme.halfAngle, latitude: cme.latitude, longitude: cme.longitude, sep_deg: Math.round(cme.sepDeg * 10) / 10 } } };
+      if (!cme && mag < 5.0) return null;                    // weak M without CME → skip
+      const meta = { flare_class: sev, earth_directed: !!cme, reason: cme ? 'm_with_cme' : 'm5_plus', date };
+      if (cme) meta.cme = { activityID: cme.activityID, speed: cme.speed, halfAngle: cme.halfAngle, latitude: cme.latitude, longitude: cme.longitude, sep_deg: Math.round(cme.sepDeg * 10) / 10 };
+      return { source: 'external_sun_flare', sourceTag: 'sun', intensity: flareClassNumber(sev), metadata: meta };
     }
   }
   return null;
