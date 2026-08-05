@@ -711,10 +711,14 @@
     var nowT = Math.max(dom.to, evs.length ? evs[evs.length - 1].t : dom.to);
     if (nowT <= originT) nowT = originT + DAY_MS;
     var spanDays = (nowT - originT) / DAY_MS;
+    // BUG-29: zoom period buttons must respect the ACCOUNT lifespan (registration→now),
+    // not the remaining earliest-event span. After deleting a far endpoint, spanDays
+    // could collapse to ~1 day and make week/month/year look dead.
+    var accountDays = (reg && nowT > reg) ? ((nowT - reg) / DAY_MS) : spanDays;
+    var zoomCapDays = Math.max(spanDays, accountDays);
     if (!st.view || st.view._fieldW == null) {
-      // period = how far to zoom out, but never wider than the real span (+10%) —
-      // so a 2-week-old account doesn't render its events squished at the right.
-      var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
+      // period = how far to zoom out, but never wider than the account/journey span (+10%).
+      var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, zoomCapDays * 1.1));
       var pxPerDay = (x1 - x0) / days;
       // _basePxPerDay = the period's fit-to-view zoom; the live zoom factor Z used
       // by the renderer (3.1) is pxPerDay / _basePxPerDay, so the branch geometry,
@@ -1435,7 +1439,8 @@
       else if (p0 < 0.5 && 0.5 <= p1) hit = 2;
       else if (p0 < 0.75 && 0.75 <= p1) hit = 3;
       if (hit < 0) continue;
-      if (onlyMajor && (hit === 1 || hit === 3)) continue;
+      // BUG-27: product wants ONLY new + full (and eclipses elsewhere) — never quarters.
+      if (hit === 1 || hit === 3) continue;
       var X = (ms + DAY_MS / 2 - view.originT) / DAY_MS * view.pxPerDay + view.panX;   // glyph over local noon
       if (X < x0 - 6 || X > x1 + 6) continue;
       ctx.strokeStyle = C.lineMuted; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
@@ -2707,7 +2712,9 @@
     if (subTop) { originT = Math.min(originT, subTop.view.originT); nowT = Math.max(nowT, subTop.view.nowT); }
     if (nowT <= originT) nowT = originT + DAY_MS;
     var spanDays = (nowT - originT) / DAY_MS;
-    var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, spanDays * 1.1));
+    var regDual = st.user && st.user.createdAt ? tms(st.user.createdAt) : 0;
+    var accountDays = (regDual && nowT > regDual) ? ((nowT - regDual) / DAY_MS) : spanDays;
+    var days = Math.min(PERIOD_DAYS[st.period] || 30, Math.max(1, Math.max(spanDays, accountDays) * 1.1));
     var pxPerDay = (x1 - x0) / days;
     var panX = (x1 - 40) - (nowT - originT) / DAY_MS * pxPerDay;
     var subs = subTop ? [subTop, subBot] : [subBot];
@@ -2865,7 +2872,13 @@
     // their own quick-toggle here, alongside the personal layers — a session-local
     // override of overlay visibility (doesn't change the External Field setting).
     var ovData = (st.data && st.data.overlays) || {};
-    var extKeys = OVERLAY_ORDER.filter(function (k) { return ovData[k] && ovData[k].length; });
+    // BUG-28: show toggles for every subscribed overlay layer the server returned
+    // (even if currently empty / filtered). Presence in overlays{} = subscribed.
+    var extKeys = OVERLAY_ORDER.filter(function (k) { return Object.prototype.hasOwnProperty.call(ovData, k); });
+    if (!extKeys.length && ovData && typeof ovData === 'object') {
+      // fallback: any keys the server sent outside OVERLAY_ORDER
+      extKeys = Object.keys(ovData);
+    }
     var extRows = extKeys.map(function (k) {
       var on = !st.hidden[k];
       var nm = OVERLAY_LABEL[k] ? (OVERLAY_LABEL[k][lang] || OVERLAY_LABEL[k].ru) : k;

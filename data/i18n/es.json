@@ -1035,7 +1035,7 @@
   "a.protocol.homework": "Tareas para casa",
   "a.protocol.practices_not_loaded": "Las prácticas aún no se han cargado",
   "a.protocol.practices_admin_msg": "Las prácticas de audio aparecerán aquí cuando las agregue un administrador.",
-  "a.tools.neuromap": "NeuroMap",
+  "a.tools.neuromap": "Neuromapa",
   "a.tools.calendar": "Calendario",
   "a.tools.diary": "Diario",
   "a.tools.anatomy": "Anatomía",
@@ -1120,7 +1120,7 @@
   "a.tools.today": "Hoy",
   "a.tools.no_records": "Sin registros",
   "a.tools.analysis_title": "Análisis del movimiento de neuro-recursos",
-  "a.tools.neuromap_title": "NeuroMap",
+  "a.tools.neuromap_title": "Neuromapa",
   "a.tools.neuromap_desc": "El circuito neural de tu personalidad. Un mapa de pensamientos, emociones y estados",
   "a.tools.view_day": "Día",
   "a.tools.view_week": "Semana",
@@ -1882,5 +1882,6 @@
   "a.wearables.phys_state": "Estado físico ese día",
   "a.wearables.no_data_day": "Sin datos del dispositivo ese día",
   "a.wearables.h_short": "h",
-  "a.wearables.m_short": "m"
+  "a.wearables.m_short": "m",
+  "a.tools.external_field": "Campo externo"
 }

@@ -1191,6 +1191,12 @@
       if (targets[norm(ud.coarseId)]) return true;
       if (targets[norm(ud.originalName)]) return true;
       if (targets[norm(ud.organ)]) return true;   // sub-layer organ groups (muscles, spinal-cord)
+      // BUG-04: brain-detail meshes store bare `slug` and regionId with _l/_r side —
+      // match those so hide/focus actually finds gyri (not just translucent x-ray leftovers).
+      if (targets[norm(ud.slug)]) return true;
+      var rid = String(ud.regionId || '');
+      var bare = rid.replace(/[._-]([lr])$/i, '');
+      if (bare && bare !== rid && targets[norm(bare)]) return true;
       return false;
     }
     // First pass: collect every root node (Mesh or Group) whose own userData
