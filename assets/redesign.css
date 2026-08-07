@@ -1047,3 +1047,82 @@ body.method-flashlight {
     cursor: none !important;
   }
 }
+
+/* ── Monad LK tab (superadmin/founder) ── */
+.monad-lk { max-width: 980px; }
+.monad-lk-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+.monad-lk-title { margin:0; font-family:'Unbounded',sans-serif; font-size:1.25rem; }
+.monad-status-bar { margin:0.35rem 0 0; font-size:12px; color:var(--text-muted); line-height:1.5; }
+.monad-status-bar a { color:var(--accent-cyan,#0ef); }
+.monad-ok { color:#0e9; }
+.monad-warn { color:#f6a; }
+.monad-muted { color:var(--text-dim,#888); font-size:12px; }
+.monad-panel { display:none; }
+.monad-panel.active { display:block; }
+.monad-chat-log {
+  min-height: 220px; max-height: 420px; overflow:auto;
+  padding:1rem; border-radius:14px; border:1px solid rgba(255,255,255,0.08);
+  background:rgba(0,0,0,0.25); margin-bottom:0.75rem;
+}
+.monad-msg { margin-bottom:0.75rem; padding:0.65rem 0.85rem; border-radius:12px; max-width:92%; }
+.monad-msg-you { margin-left:auto; background:rgba(0,224,255,0.12); border:1px solid rgba(0,224,255,0.25); }
+.monad-msg-monad { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+.monad-msg-err { background:rgba(255,80,120,0.12); border:1px solid rgba(255,80,120,0.3); }
+.monad-msg-body { white-space:pre-wrap; font-size:14px; line-height:1.45; }
+.monad-msg-meta { margin-top:0.35rem; font-size:11px; color:var(--text-dim,#888); }
+.monad-chat-compose { display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap; }
+.monad-chat-compose textarea {
+  flex:1; min-width:220px; resize:vertical; border-radius:12px; padding:0.75rem;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);
+  color:var(--text-primary,#eee); font:inherit;
+}
+.monad-vert-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:0.75rem;
+}
+.monad-nucleus {
+  border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:0.65rem;
+  background:rgba(255,255,255,0.02);
+}
+.monad-nucleus-head { display:flex; justify-content:space-between; gap:0.5rem; font-size:12px; font-weight:600; margin-bottom:0.4rem; }
+.monad-branch { display:flex; align-items:center; gap:0.35rem; font-size:11px; padding:0.15rem 0; opacity:0.95; }
+.monad-branch.empty { opacity:0.35; }
+.monad-branch .dot { width:7px; height:7px; border-radius:50%; background:#555; flex-shrink:0; }
+.monad-branch .dot.active { background:#0e9; box-shadow:0 0 6px rgba(0,238,153,0.5); }
+.monad-branch .dot.training, .monad-branch .dot.certifying { background:#fc0; }
+.monad-branch .dot.retired, .monad-branch .dot.suspended { background:#666; }
+.monad-branch .bn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.monad-horiz-wrap { display:flex; justify-content:center; }
+.monad-horiz-ring {
+  position:relative; width:min(520px,92vw); aspect-ratio:1; border-radius:50%;
+  border:1px dashed rgba(0,224,255,0.25); margin:0.5rem auto 1rem;
+}
+.monad-dom-center {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:88px; height:88px; border-radius:50%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background:radial-gradient(circle at 30% 30%,rgba(0,224,255,0.35),rgba(0,0,0,0.6));
+  border:1px solid rgba(0,224,255,0.45); text-align:center;
+}
+.monad-dom-label { font-family:'Unbounded',sans-serif; font-size:14px; letter-spacing:0.08em; }
+.monad-person {
+  position:absolute; transform:translate(-50%,-50%); width:96px; text-align:center;
+  padding:0.35rem 0.4rem; border-radius:10px; background:rgba(0,0,0,0.55);
+  border:1px solid rgba(255,255,255,0.12); font-size:11px;
+}
+.monad-person.me { border-color:rgba(0,224,255,0.55); box-shadow:0 0 12px rgba(0,224,255,0.25); }
+.monad-person-name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.monad-eq { display:flex; flex-direction:column; gap:0.55rem; }
+.monad-eq-row { display:grid; grid-template-columns:110px 1fr 44px; gap:0.6rem; align-items:center; }
+.monad-eq-label { font-size:12px; }
+.monad-eq-bar { height:10px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; }
+.monad-eq-fill {
+  height:100%; border-radius:999px;
+  background:linear-gradient(90deg,#0ef,#0e9);
+  transition:width 0.4s ease;
+}
+.monad-eq-val { font-size:11px; color:var(--text-muted); text-align:right; }
+@media (max-width:560px) {
+  .monad-eq-row { grid-template-columns:1fr; gap:0.2rem; }
+  .monad-horiz-ring { width:min(360px,94vw); }
+  .monad-person { width:78px; font-size:10px; }
+}
