@@ -1196,7 +1196,7 @@
   "a.admin.th_contact": "Контакт",
   "a.admin.th_role": "Роль",
   "a.admin.th_program": "Программа",
-  "a.admin.th_access": "Доступ",
+  "a.admin.th_access": "Доступ / Монада",
   "a.admin.access_limited": "Доступ ограничен",
   "a.admin.access_limited_desc": "Доступ к инструментам ограничен",
   "a.admin.view_mode": "Режим просмотра:",
@@ -1891,5 +1891,12 @@
   "a.monad.sent_ok": "Семя посажено в Monad. Агенты подхватят.",
   "a.monad.vertical_note": "Вертикаль 7×7 — MVP: ядра × до 7 агентов по доменам. Полная матрица — в спеках Monad.",
   "a.monad.more_humans": "Ещё людей за кольцом",
-  "a.monad.rhythm_note": "Ритм пока синтетический (из статусов агентов), пока Monad не отдаёт JSON /api/rhythm."
+  "a.monad.rhythm_note": "Ритм пока синтетический (из статусов агентов), пока Monad не отдаёт JSON /api/rhythm.",
+  "a.admin.monad_col": "Монада",
+  "a.admin.monad_always": "Суперадмин/founder — всегда",
+  "a.admin.monad_grant_tip": "Открыть вкладку Монада этому пользователю",
+  "a.admin.monad_human_prompt": "ID человека в Monad (например nastya). Можно оставить пустым и заполнить позже:",
+  "a.admin.monad_granted": "Доступ к Манаде открыт",
+  "a.admin.monad_revoked": "Доступ к Манаде закрыт",
+  "a.admin.monad_error": "Ошибка доступа Monad"
 }

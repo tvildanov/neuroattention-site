@@ -1198,7 +1198,7 @@
   "a.admin.th_contact": "Contacto",
   "a.admin.th_role": "Rol",
   "a.admin.th_program": "Programa",
-  "a.admin.th_access": "Acceso",
+  "a.admin.th_access": "Acceso / Mónada",
   "a.admin.access_limited": "Acceso limitado",
   "a.admin.access_limited_desc": "El acceso a las herramientas está limitado",
   "a.admin.view_mode": "Modo de visualización:",
@@ -1902,5 +1902,12 @@
   "a.monad.sent_ok": "Semilla plantada en Monad. Los agentes la tomarán.",
   "a.monad.vertical_note": "Vertical 7×7 — MVP: núcleos × hasta 7 agentes por dominio.",
   "a.monad.more_humans": "Más personas fuera del anillo",
-  "a.monad.rhythm_note": "Ritmo sintético desde estados de agentes hasta que Monad tenga JSON /api/rhythm."
+  "a.monad.rhythm_note": "Ritmo sintético desde estados de agentes hasta que Monad tenga JSON /api/rhythm.",
+  "a.admin.monad_col": "Mónada",
+  "a.admin.monad_always": "Superadmin/founder — siempre",
+  "a.admin.monad_grant_tip": "Abrir pestaña Mónada a este usuario",
+  "a.admin.monad_human_prompt": "ID humano en Monad (ej. nastya). Vacío = más tarde:",
+  "a.admin.monad_granted": "Acceso a Mónada concedido",
+  "a.admin.monad_revoked": "Acceso a Mónada revocado",
+  "a.admin.monad_error": "Error de acceso Monad"
 }

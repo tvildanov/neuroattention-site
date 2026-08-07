@@ -1198,7 +1198,7 @@
   "a.admin.th_contact": "Contact",
   "a.admin.th_role": "Role",
   "a.admin.th_program": "Program",
-  "a.admin.th_access": "Access",
+  "a.admin.th_access": "Access / Monad",
   "a.admin.access_limited": "Access Limited",
   "a.admin.access_limited_desc": "Access to tools is limited",
   "a.admin.view_mode": "View Mode:",
@@ -1902,5 +1902,12 @@
   "a.monad.sent_ok": "Seed planted in Monad. Agents will pick it up.",
   "a.monad.vertical_note": "Vertical 7×7 — MVP: nuclei × up to 7 agents by domain. Full matrix lives in Monad specs.",
   "a.monad.more_humans": "More humans beyond the ring",
-  "a.monad.rhythm_note": "Rhythm is synthetic from agent statuses until Monad ships JSON /api/rhythm."
+  "a.monad.rhythm_note": "Rhythm is synthetic from agent statuses until Monad ships JSON /api/rhythm.",
+  "a.admin.monad_col": "Monad",
+  "a.admin.monad_always": "Superadmin/founder — always",
+  "a.admin.monad_grant_tip": "Grant Monad tab to this user",
+  "a.admin.monad_human_prompt": "Monad human id (e.g. nastya). Leave blank to set later:",
+  "a.admin.monad_granted": "Monad access granted",
+  "a.admin.monad_revoked": "Monad access revoked",
+  "a.admin.monad_error": "Monad access error"
 }
