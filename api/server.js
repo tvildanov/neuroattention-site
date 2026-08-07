@@ -3054,7 +3054,18 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 070 (users.monad_human_id): ok');
     } catch (e) { mig070.error = e.message; console.error('migration 070 (users.monad_human_id):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-070 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070 });
+    // ── migration 071 (Monad LK: per-user access flag for non-superadmins) ───
+    // Superadmin/founder always have access. Others need monad_access=true
+    // (toggled in Администрирование → Пользователи).
+    let mig071 = { ok: false };
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_access BOOLEAN NOT NULL DEFAULT false`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_users_monad_access ON users(monad_access) WHERE monad_access = true`;
+      mig071.ok = true;
+      console.log('migration 071 (users.monad_access): ok');
+    } catch (e) { mig071.error = e.message; console.error('migration 071 (users.monad_access):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-071 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3190,16 +3201,18 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
       SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
-             location_lat, location_lon, location_city, location_country, monad_human_id
+             location_lat, location_lon, location_city, location_country,
+             monad_human_id, monad_access
       FROM users WHERE id = ${req.user.id}
     `;
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     const user = rows[0];
     user.monad_human_resolved = monadSvc.resolveHumanId(user);
+    user.monad_tab = ['superadmin', 'founder'].includes(user.role) || !!user.monad_access;
     res.json({ user });
   } catch (err) {
     console.error('GET /api/auth/me:', err);
-    // Fallback if mig070 not applied yet (column missing)
+    // Fallback if mig070/071 not applied yet (column missing)
     try {
       const rows = await sql`
         SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
@@ -3209,7 +3222,9 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       if (!rows.length) return res.status(404).json({ error: 'User not found' });
       const user = rows[0];
       user.monad_human_id = null;
+      user.monad_access = false;
       user.monad_human_resolved = monadSvc.resolveHumanId(user);
+      user.monad_tab = ['superadmin', 'founder'].includes(user.role);
       return res.json({ user });
     } catch (e2) {
       res.status(500).json({ error: 'Internal error' });
@@ -4940,21 +4955,32 @@ async function requireSuperadmin(req, res) {
   return caller[0];
 }
 
-/** Monad LK tab: Nick gate — superadmin or founder only (not specialists/clients). */
+/** Monad LK tab: superadmin/founder always; others need users.monad_access. */
 async function requireMonadAccess(req, res) {
   let caller;
   try {
-    caller = await sql`SELECT id, email, role, display_name, monad_human_id FROM users WHERE id = ${req.user.id}`;
+    caller = await sql`SELECT id, email, role, display_name, monad_human_id, monad_access FROM users WHERE id = ${req.user.id}`;
   } catch (e) {
-    // mig070 may not be applied yet
-    caller = await sql`SELECT id, email, role, display_name FROM users WHERE id = ${req.user.id}`;
-    if (caller[0]) caller[0].monad_human_id = null;
+    // mig070/071 may not be applied yet
+    try {
+      caller = await sql`SELECT id, email, role, display_name, monad_human_id FROM users WHERE id = ${req.user.id}`;
+      if (caller[0]) caller[0].monad_access = false;
+    } catch (e2) {
+      caller = await sql`SELECT id, email, role, display_name FROM users WHERE id = ${req.user.id}`;
+      if (caller[0]) { caller[0].monad_human_id = null; caller[0].monad_access = false; }
+    }
   }
-  if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
-    res.status(403).json({ error: 'Monad tab is for superadmins only' });
+  if (!caller.length) {
+    res.status(403).json({ error: 'Forbidden' });
     return null;
   }
-  return caller[0];
+  const u = caller[0];
+  const privileged = ['superadmin', 'founder'].includes(u.role);
+  if (!privileged && !u.monad_access) {
+    res.status(403).json({ error: 'Monad tab access not granted' });
+    return null;
+  }
+  return u;
 }
 // Cascade hard-delete of one user's data + the row. Best-effort per table so a
 // missing table never aborts the whole purge. Used by the cron after 1h.
@@ -10828,28 +10854,28 @@ app.get('/api/admin/users', requireAuth, async (req, res) => {
     if (roleArr && like) {
       [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
       users = await sql`
-        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url, monad_access, monad_human_id
         FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[]) AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else if (roleArr) {
       [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[])`;
       users = await sql`
-        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url, monad_access, monad_human_id
         FROM users WHERE deleted_at IS NULL AND role = ANY(${roleArr}::text[])
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else if (like) {
       [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})`;
       users = await sql`
-        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url, monad_access, monad_human_id
         FROM users WHERE deleted_at IS NULL AND (LOWER(email) LIKE ${like} OR LOWER(display_name) LIKE ${like} OR phone LIKE ${like})
         ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     } else {
       [countR] = await sql`SELECT COUNT(*) AS cnt FROM users WHERE deleted_at IS NULL`;
       users = await sql`
-        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url
+        SELECT id, email, display_name, role, phone, created_at, last_login_at, avatar_url, monad_access, monad_human_id
         FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT ${lim} OFFSET ${off}
       `;
     }
@@ -11062,6 +11088,51 @@ app.patch('/api/admin/users/:id/role', requireAuth, async (req, res) => {
     res.json({ ok: true, old_role: oldRole, new_role: role });
   } catch (err) {
     console.error('PATCH /api/admin/users/:id/role:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/users/:id/monad-access — grant/revoke Monad LK tab (superadmin/founder)
+// body: { monad_access: boolean, monad_human_id?: string|null }
+app.patch('/api/admin/users/:id/monad-access', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT id, role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Only superadmin/founder can grant Monad access' });
+    }
+    const targetId = req.params.id;
+    const [target] = await sql`SELECT id, email, role, monad_access, monad_human_id FROM users WHERE id = ${targetId}`;
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    let access = target.monad_access;
+    if (typeof req.body?.monad_access === 'boolean') access = req.body.monad_access;
+
+    let humanId = target.monad_human_id;
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'monad_human_id')) {
+      const raw = req.body.monad_human_id;
+      if (raw == null || raw === '') humanId = null;
+      else {
+        humanId = String(raw).trim().toLowerCase();
+        if (!/^[a-z0-9_]{2,40}$/.test(humanId)) {
+          return res.status(400).json({ error: 'monad_human_id must be slug like nastya / nikita' });
+        }
+      }
+    }
+
+    // Privileged roles always have tab access — flag is informational/redundant.
+    if (['superadmin', 'founder'].includes(target.role)) access = true;
+
+    await sql`UPDATE users SET monad_access = ${!!access}, monad_human_id = ${humanId} WHERE id = ${targetId}`;
+    console.log(`[MONAD ACCESS] ${caller[0].id} → ${targetId} access=${!!access} human=${humanId}`);
+    res.json({
+      ok: true,
+      user_id: targetId,
+      monad_access: !!access,
+      monad_human_id: humanId,
+      email: target.email,
+    });
+  } catch (err) {
+    console.error('PATCH /api/admin/users/:id/monad-access:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -13062,6 +13133,7 @@ app.get('/api/monad/status', requireAuth, async (req, res) => {
       dashboard_url: monadSvc.MONAD_DASHBOARD,
       human_id: humanId,
       monad_human_id: caller.monad_human_id || null,
+      monad_access: !!(caller.monad_access || ['superadmin', 'founder'].includes(caller.role)),
       email: caller.email,
       role: caller.role,
       note: monadSvc.configured()

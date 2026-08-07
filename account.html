@@ -2603,7 +2603,7 @@ a.dash-tab:hover { text-decoration:none; }
           <button class="btn btn-solid" id="admin-bulk-del" onclick="adminBulkDelete()" style="background:#c0392b;border-color:#c0392b;font-size:12px;padding:0.3rem 0.7rem;opacity:0.55;" disabled>🗑 <span data-i18n="a.admin.bulk_delete">Удалить выбранные</span> (<span id="admin-bulk-del-count">0</span>)</button>
         </div>
         <table class="admin-table" id="admin-full-users-table">
-          <thead><tr><th style="width:28px;text-align:center;"><input type="checkbox" id="admin-users-selall" title="Выбрать все на странице" onclick="adminToggleSelectAll(this.checked)"></th><th data-i18n="a.admin.th_name">Имя</th><th data-i18n="a.admin.th_contact">Контакт</th><th data-i18n="a.admin.th_role">Роль</th><th data-i18n="a.admin.th_program">Программа</th><th data-i18n="a.admin.th_access">Доступ</th><th></th></tr></thead>
+          <thead><tr><th style="width:28px;text-align:center;"><input type="checkbox" id="admin-users-selall" title="Выбрать все на странице" onclick="adminToggleSelectAll(this.checked)"></th><th data-i18n="a.admin.th_name">Имя</th><th data-i18n="a.admin.th_contact">Контакт</th><th data-i18n="a.admin.th_role">Роль</th><th data-i18n="a.admin.th_program">Программа</th><th data-i18n="a.admin.th_access">Доступ / Монада</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
         <!-- Restricted message for basic admins -->
@@ -3261,6 +3261,9 @@ function naAdaptUser(apiUser){
     role: dashRole,
     serverRole: serverRole,
     avatar_url: apiUser.avatar_url || null,
+    monad_access: !!apiUser.monad_access,
+    monad_tab: !!apiUser.monad_tab || ['superadmin', 'founder'].includes(serverRole) || !!apiUser.monad_access,
+    monad_human_id: apiUser.monad_human_id || null,
     program: null,        // will come from subscription system later
     specialistId: null,
     allowSpecialist: false,
@@ -4631,14 +4634,12 @@ function renderAdminUsersList(list,admin){
   list.forEach(function(u){
     var roleLbl=ROLE_LABELS[u.role];
     var roleText=typeof roleLbl==='function'?roleLbl():roleLbl||u.role;
-    var accessText=isFounder?'<span style="color:var(--accent-cyan);">'+t('a.admin.access_full','Полный')+'</span>':'<span style="color:var(--text-dim);">—</span>';
     var name=u.display_name||u.email||'—';
     var contact=u.email||u.phone||'—';
 
     // Program / activity indicator
     var progText='—';
     var indicators=[];
-    // Pack 21: paid program shown first as colored badge
     if(u.has_paid_program && u.purchased_product){
       var prodMap={lab:'Lab',rehab:'Rehab',attention:'Attention',recovery:'Recovery'};
       var prodLabel=prodMap[u.purchased_product]||u.purchased_product;
@@ -4648,6 +4649,31 @@ function renderAdminUsersList(list,admin){
     if(u.nm_entries_count>0) indicators.push('<span style="color:var(--accent-violet);">NM:'+u.nm_entries_count+'</span>');
     if(u.diary_entries_count>0) indicators.push('<span style="color:var(--accent-amber);">D:'+u.diary_entries_count+'</span>');
     if(indicators.length) progText=indicators.join(' ');
+
+    // Access cell: Monad tab grant (superadmin/founder always on; others checkbox)
+    var accessText;
+    var privilegedRole = (u.role === 'superadmin' || u.role === 'founder');
+    var hasMonad = privilegedRole || !!u.monad_access;
+    if (isSuperadmin) {
+      if (privilegedRole) {
+        accessText = '<label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:11px;color:var(--accent-cyan);" title="'+t('a.admin.monad_always','Суперадмин/founder — всегда')+'">'
+          + '<input type="checkbox" checked disabled> '+t('a.admin.monad_col','Монада')
+          + (u.monad_human_id ? ' <span style="opacity:0.7">('+String(u.monad_human_id).replace(/[<>]/g,'')+')</span>' : '')
+          + '</label>';
+      } else {
+        accessText = '<label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:11px;" onclick="event.stopPropagation();" title="'+t('a.admin.monad_grant_tip','Открыть вкладку Монада этому пользователю')+'">'
+          + '<input type="checkbox" class="admin-monad-chk" data-uid="'+u.id+'"'+(hasMonad?' checked':'')+'> '
+          + t('a.admin.monad_col','Монада')
+          + '</label>';
+        if (u.monad_human_id) {
+          accessText += '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">'+String(u.monad_human_id).replace(/[<>]/g,'')+'</div>';
+        }
+      }
+    } else {
+      accessText = hasMonad
+        ? '<span style="color:var(--accent-cyan);">'+t('a.admin.monad_col','Монада')+'</span>'
+        : '<span style="color:var(--text-dim);">—</span>';
+    }
 
     // Role cell: dropdown for superadmin, plain text for others
     var roleCell;
@@ -4719,6 +4745,53 @@ function renderAdminUsersList(list,admin){
           sel.value=sel.getAttribute('data-prev')||sel.value;
         });
         sel.setAttribute('data-prev',sel.value);
+      });
+    }
+
+    // Monad access checkboxes
+    var mChks=tbody.querySelectorAll('.admin-monad-chk');
+    for(var mi=0;mi<mChks.length;mi++){
+      mChks[mi].addEventListener('click',function(e){ e.stopPropagation(); });
+      mChks[mi].addEventListener('change',function(){
+        var chk=this;
+        var uid=chk.getAttribute('data-uid');
+        var on=!!chk.checked;
+        var token=localStorage.getItem('na_token');
+        var body={ monad_access: on };
+        // If granting and no human linked yet, ask once for Monad human_id slug
+        if(on){
+          var cached=(typeof adminUsersCache!=='undefined'?adminUsersCache:[]).filter(function(x){return x.id===uid;})[0];
+          if(cached && !cached.monad_human_id){
+            var slug=window.prompt(t('a.admin.monad_human_prompt','ID человека в Monad (например nastya). Можно оставить пустым и заполнить позже:'), '');
+            if(slug===null){ chk.checked=!on; return; }
+            if(String(slug).trim()) body.monad_human_id=String(slug).trim().toLowerCase();
+          }
+        }
+        fetch(AUTH_API+'/api/admin/users/'+uid+'/monad-access',{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+          body:JSON.stringify(body)
+        }).then(function(r){
+          if(!r.ok) return r.json().then(function(d){ throw new Error(d.error||r.status); });
+          return r.json();
+        }).then(function(d){
+          if(typeof adminUsersCache!=='undefined'){
+            adminUsersCache.forEach(function(x){
+              if(x.id===uid){ x.monad_access=!!d.monad_access; if(d.monad_human_id!==undefined) x.monad_human_id=d.monad_human_id; }
+            });
+          }
+          var toast=document.createElement('div');
+          toast.textContent=on
+            ? t('a.admin.monad_granted','Доступ к Манаде открыт')
+            : t('a.admin.monad_revoked','Доступ к Манаде закрыт');
+          toast.style.cssText='position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:var(--accent-cyan);color:#000;padding:0.6rem 1.5rem;border-radius:8px;font-size:13px;z-index:99999;';
+          document.body.appendChild(toast);
+          setTimeout(function(){ toast.remove(); },2500);
+          if(typeof populateUsersList==='function'&&currentUser) populateUsersList(currentUser);
+        }).catch(function(e){
+          alert(t('a.admin.monad_error','Ошибка доступа Monad')+': '+e.message);
+          chk.checked=!on;
+        });
       });
     }
   }
@@ -18299,7 +18372,7 @@ window.pbMove = pbMove;
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=11"></script>
 <script src="assets/js/body-atlas.js?v=39"></script>
-<script src="assets/js/monad-lk.js?v=1"></script>
+<script src="assets/js/monad-lk.js?v=2"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=2"></script>
 <script src="assets/js/exercises/n-back.js?v=2"></script>
