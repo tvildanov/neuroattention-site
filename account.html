@@ -850,6 +850,7 @@ a.dash-tab:hover { text-decoration:none; }
     <!-- PR#119: the standalone "Diagnoses" tab was removed. Diagnoses now live in
          Tools → Internal Field → "Диагнозы и состояния". #diagnoses redirects there. -->
     <a class="dash-tab" href="#enroll" data-tab="enroll" data-i18n="a.tabs.enroll">Выбрать программу</a>
+    <a class="dash-tab" href="#monad" data-tab="monad" id="tab-btn-monad" style="display:none;" data-i18n="a.tabs.monad">Монада</a>
     <a class="dash-tab" href="#administration" data-tab="administration" id="tab-btn-admin" style="display:none;" data-i18n="a.tabs.admin">Администрирование</a>
   </div>
 
@@ -2416,6 +2417,43 @@ a.dash-tab:hover { text-decoration:none; }
     </div>
   </div>
 
+  <!-- TAB: Monad (founder/superadmin only) — chat + vertical/horizontal + rhythm -->
+  <div class="tab-panel" id="tab-monad">
+    <div class="monad-lk">
+      <div class="monad-lk-header">
+        <div>
+          <h2 class="monad-lk-title" data-i18n="a.monad.title">Монада</h2>
+          <p id="monad-status-bar" class="monad-status-bar" data-i18n="a.monad.loading">Загрузка…</p>
+        </div>
+        <button type="button" id="monad-refresh" class="btn btn-ghost" style="font-size:12px;" data-i18n="a.monad.refresh">Обновить</button>
+      </div>
+      <div class="dash-tabs monad-subtabs" style="margin-bottom:1rem;">
+        <button type="button" class="dash-tab monad-subtab active" data-monad-sub="chat" data-i18n="a.monad.sub.chat">Чат</button>
+        <button type="button" class="dash-tab monad-subtab" data-monad-sub="vertical" data-i18n="a.monad.sub.vertical">Вертикаль</button>
+        <button type="button" class="dash-tab monad-subtab" data-monad-sub="horizontal" data-i18n="a.monad.sub.horizontal">Горизонталь</button>
+        <button type="button" class="dash-tab monad-subtab" data-monad-sub="rhythm" data-i18n="a.monad.sub.rhythm">Ритм</button>
+      </div>
+
+      <div class="monad-panel active" id="monad-panel-chat">
+        <div id="monad-chat-log" class="monad-chat-log" aria-live="polite"></div>
+        <div class="monad-chat-compose">
+          <textarea id="monad-chat-input" rows="3" data-i18n-placeholder="a.monad.placeholder" placeholder="Напиши Манаде…"></textarea>
+          <button type="button" id="monad-chat-send" class="btn btn-primary" data-i18n="a.monad.send">Отправить</button>
+        </div>
+      </div>
+
+      <div class="monad-panel" id="monad-panel-vertical">
+        <div id="monad-vertical"></div>
+      </div>
+      <div class="monad-panel" id="monad-panel-horizontal">
+        <div id="monad-horizontal"></div>
+      </div>
+      <div class="monad-panel" id="monad-panel-rhythm">
+        <div id="monad-rhythm"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- TAB: Administration (for admin roles) -->
   <div class="tab-panel" id="tab-administration">
     <div id="admin-embed-container">
@@ -3296,6 +3334,11 @@ function onLogin(user){
       setupAdminDashboard(user);
     }
   } catch(e){ console.warn('onLogin admin setup error:', e); }
+
+  // Monad tab — founder/superadmin only
+  try {
+    if (window.MonadLK && typeof window.MonadLK.onLogin === 'function') window.MonadLK.onLogin(user);
+  } catch(e){ console.warn('onLogin MonadLK error:', e); }
 
   showSection('client');
 
@@ -5277,6 +5320,8 @@ function switchTab(id){
   }
   // PR#119: refresh the Profile-tab "Мои документы" section when Profile is shown.
   if(id==='overview'){ setTimeout(function(){ try{ window.profileLoadDocs && window.profileLoadDocs(); }catch(e){} try{ window.extLoadMine && window.extLoadMine(); }catch(e){} try{ window.renderResumeCard && window.renderResumeCard(); }catch(e){} try{ window.wearLoad && window.wearLoad(); }catch(e){} }, 40); }
+  // Monad LK tab
+  if(id==='monad'){ setTimeout(function(){ try{ if(window.MonadLK && window.MonadLK.onTab) window.MonadLK.onTab(); }catch(e){ console.warn('monad tab:', e); } }, 40); }
   // Scroll active tab into view in mobile bottom-nav
   var activeBtn = document.querySelector('#client-dashboard .dash-tab.active');
   if(activeBtn) activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -18254,6 +18299,7 @@ window.pbMove = pbMove;
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=11"></script>
 <script src="assets/js/body-atlas.js?v=39"></script>
+<script src="assets/js/monad-lk.js?v=1"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=2"></script>
 <script src="assets/js/exercises/n-back.js?v=2"></script>

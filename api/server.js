@@ -152,6 +152,9 @@ const sql = neon(process.env.DATABASE_URL);
 const wearablesSvc = require('./services/wearables');
 wearablesSvc.init({ sql });
 
+// Monad MCP client (site → Monad). Key stays server-side (MONAD_API_KEY).
+const monadSvc = require('./services/monad');
+
 // Load vocabulary aliases for node normalization
 const fs = require('fs');
 const path = require('path');
@@ -3040,7 +3043,18 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 069 (users.birth_date): ok');
     } catch (e) { mig069.error = e.message; console.error('migration 069 (users.birth_date):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-069 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069 });
+    // ── migration 070 (Monad LK: link site profile → Monad human_id) ─────────
+    // Optional override of EMAIL_HUMAN_MAP in api/services/monad.js. Used by the
+    // superadmin-only «Монада» tab so Nastya's cabinet talks as nastya, Nick as nikita.
+    let mig070 = { ok: false };
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_human_id TEXT`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_users_monad_human ON users(monad_human_id) WHERE monad_human_id IS NOT NULL`;
+      mig070.ok = true;
+      console.log('migration 070 (users.monad_human_id): ok');
+    } catch (e) { mig070.error = e.message; console.error('migration 070 (users.monad_human_id):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-070 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3176,14 +3190,30 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
       SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
-             location_lat, location_lon, location_city, location_country
+             location_lat, location_lon, location_city, location_country, monad_human_id
       FROM users WHERE id = ${req.user.id}
     `;
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
-    res.json({ user: rows[0] });
+    const user = rows[0];
+    user.monad_human_resolved = monadSvc.resolveHumanId(user);
+    res.json({ user });
   } catch (err) {
     console.error('GET /api/auth/me:', err);
-    res.status(500).json({ error: 'Internal error' });
+    // Fallback if mig070 not applied yet (column missing)
+    try {
+      const rows = await sql`
+        SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
+               location_lat, location_lon, location_city, location_country
+        FROM users WHERE id = ${req.user.id}
+      `;
+      if (!rows.length) return res.status(404).json({ error: 'User not found' });
+      const user = rows[0];
+      user.monad_human_id = null;
+      user.monad_human_resolved = monadSvc.resolveHumanId(user);
+      return res.json({ user });
+    } catch (e2) {
+      res.status(500).json({ error: 'Internal error' });
+    }
   }
 });
 
@@ -4907,6 +4937,23 @@ app.get('/api/progress', requireAuth, async (req, res) => {
 async function requireSuperadmin(req, res) {
   const caller = await sql`SELECT id, role FROM users WHERE id = ${req.user.id}`;
   if (!caller.length || caller[0].role !== 'superadmin') { res.status(403).json({ error: 'Forbidden' }); return null; }
+  return caller[0];
+}
+
+/** Monad LK tab: Nick gate — superadmin or founder only (not specialists/clients). */
+async function requireMonadAccess(req, res) {
+  let caller;
+  try {
+    caller = await sql`SELECT id, email, role, display_name, monad_human_id FROM users WHERE id = ${req.user.id}`;
+  } catch (e) {
+    // mig070 may not be applied yet
+    caller = await sql`SELECT id, email, role, display_name FROM users WHERE id = ${req.user.id}`;
+    if (caller[0]) caller[0].monad_human_id = null;
+  }
+  if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+    res.status(403).json({ error: 'Monad tab is for superadmins only' });
+    return null;
+  }
   return caller[0];
 }
 // Cascade hard-delete of one user's data + the row. Best-effort per table so a
@@ -12968,6 +13015,267 @@ function startUnifiedEventJobs() {
   };
   setInterval(tick, 60 * 60 * 1000); // hourly probe; day-guard limits real work to 1/day
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MONAD LK — site → Monad MCP proxy (superadmin/founder only)
+// Spec: docs/MONAD-LK.md · seeds LK MONAD v0.2
+// ═══════════════════════════════════════════════════════════════════════════
+
+function normalizeAgents(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.agents)) return raw.agents;
+  if (raw && Array.isArray(raw.items)) return raw.items;
+  return [];
+}
+function normalizeHumans(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.humans)) return raw.humans;
+  if (raw && Array.isArray(raw.items)) return raw.items;
+  return [];
+}
+
+/** Heuristic: map agent domains → vertical nucleus ids for the 7×7 MVP grid. */
+function nucleusForAgent(agent) {
+  const blob = `${agent.agent_id || ''} ${(agent.domains || []).join(' ')} ${(agent.name || '')}`.toLowerCase();
+  if (/body|anatomy|health|wear|sport|medic|rehab|physio/.test(blob)) return 'body';
+  if (/emotion|feel|empath|mood|psych|trauma/.test(blob)) return 'emotion';
+  if (/attention|neuro|focus|cognit|exercis|perception/.test(blob)) return 'attention';
+  if (/meaning|canon|know|method|learn|course|content|protocol/.test(blob)) return 'meaning';
+  if (/relation|social|family|team|human|comms|telegram/.test(blob)) return 'relation';
+  if (/action|code|devops|repair|finance|order|build|agent/.test(blob)) return 'action';
+  return 'field';
+}
+
+async function loadCallerForMonad(req, res) {
+  return requireMonadAccess(req, res);
+}
+
+// GET /api/monad/status — configured? which human am I?
+app.get('/api/monad/status', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const humanId = monadSvc.resolveHumanId(caller);
+    res.json({
+      ok: true,
+      configured: monadSvc.configured(),
+      mcp_url: monadSvc.MONAD_MCP_URL,
+      dashboard_url: monadSvc.MONAD_DASHBOARD,
+      human_id: humanId,
+      monad_human_id: caller.monad_human_id || null,
+      email: caller.email,
+      role: caller.role,
+      note: monadSvc.configured()
+        ? (humanId ? null : 'No Monad human linked — set users.monad_human_id or add email to EMAIL_HUMAN_MAP')
+        : 'Set MONAD_API_KEY on Railway (neuroattention-api)',
+    });
+  } catch (err) {
+    console.error('GET /api/monad/status:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+// GET /api/monad/agents
+app.get('/api/monad/agents', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const raw = await monadSvc.mcpCall('list_agents', {});
+    const agents = normalizeAgents(raw);
+    const humanId = monadSvc.resolveHumanId(caller);
+    const mine = humanId ? agents.filter((a) => a.owner === humanId) : [];
+    res.json({
+      ok: true,
+      human_id: humanId,
+      total: agents.length,
+      mine_count: mine.length,
+      agents: agents.map((a) => ({
+        agent_id: a.agent_id,
+        name: a.name,
+        platform: a.platform,
+        status: a.status,
+        owner: a.owner,
+        domains: a.domains || [],
+        nucleus: nucleusForAgent(a),
+      })),
+    });
+  } catch (err) {
+    console.error('GET /api/monad/agents:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// GET /api/monad/humans
+app.get('/api/monad/humans', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const raw = await monadSvc.mcpCall('list_humans', { limit: 100 });
+    const humans = normalizeHumans(raw);
+    res.json({
+      ok: true,
+      me: monadSvc.resolveHumanId(caller),
+      humans: humans.map((h) => ({
+        human_id: h.human_id,
+        display_name: h.display_name,
+        role: h.role,
+        status: h.status,
+        metadata: h.metadata || {},
+        identities_count: Array.isArray(h.identities) ? h.identities.length : 0,
+      })),
+    });
+  } catch (err) {
+    console.error('GET /api/monad/humans:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// GET /api/monad/architecture — vertical 7×7 + horizontal 12+1 payloads for viz
+app.get('/api/monad/architecture', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const [agentsRaw, humansRaw] = await Promise.all([
+      monadSvc.mcpCall('list_agents', {}),
+      monadSvc.mcpCall('list_humans', { limit: 100 }),
+    ]);
+    const agents = normalizeAgents(agentsRaw);
+    const humans = normalizeHumans(humansRaw);
+    const humanId = monadSvc.resolveHumanId(caller);
+
+    const byNucleus = {};
+    for (const n of monadSvc.VERTICAL_NUCLEI) byNucleus[n.id] = [];
+    for (const a of agents) {
+      const nid = nucleusForAgent(a);
+      if (!byNucleus[nid]) byNucleus[nid] = [];
+      byNucleus[nid].push({
+        agent_id: a.agent_id,
+        name: a.name,
+        status: a.status,
+        owner: a.owner,
+      });
+    }
+
+    // Vertical: 7 nuclei × up to 7 "branches" (top agents per nucleus)
+    const vertical = monadSvc.VERTICAL_NUCLEI.map((n) => {
+      const list = byNucleus[n.id] || [];
+      const active = list.filter((x) => x.status === 'active').length;
+      const branches = list
+        .slice()
+        .sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1))
+        .slice(0, 7)
+        .map((x, i) => ({ branch: i + 1, ...x }));
+      while (branches.length < 7) {
+        branches.push({ branch: branches.length + 1, agent_id: null, name: '—', status: 'empty', owner: null });
+      }
+      return { ...n, total: list.length, active, branches };
+    });
+
+    // Horizontal: humans around DOM (cap 12 for the classic 12+1 ring; rest listed)
+    const ring = humans.filter((h) => h.status !== 'retired').slice(0, 12);
+    const horizontal = {
+      center: { id: 'dom', label: 'DOM', note: '12+1 — collective centre' },
+      persons: ring.map((h) => ({
+        human_id: h.human_id,
+        display_name: h.display_name,
+        role: h.role,
+        status: h.status,
+        is_me: h.human_id === humanId,
+        agents: agents.filter((a) => a.owner === h.human_id).length,
+      })),
+      extra_humans: Math.max(0, humans.length - ring.length),
+    };
+
+    res.json({ ok: true, human_id: humanId, vertical, horizontal, agent_total: agents.length, human_total: humans.length });
+  } catch (err) {
+    console.error('GET /api/monad/architecture:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// GET /api/monad/rhythm — equalizer layers (synthetic until Monad ships JSON rhythm)
+app.get('/api/monad/rhythm', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const agents = normalizeAgents(await monadSvc.mcpCall('list_agents', {}));
+    const rhythm = monadSvc.synthRhythm(agents);
+    res.json({ ok: true, human_id: monadSvc.resolveHumanId(caller), rhythm });
+  } catch (err) {
+    console.error('GET /api/monad/rhythm:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// POST /api/monad/message — plant_seed into Monad as the linked human
+// body: { text, title?, priority?, create_handoff?, to_agent? }
+app.post('/api/monad/message', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const humanId = monadSvc.resolveHumanId(caller);
+    if (!humanId) {
+      return res.status(400).json({
+        error: 'No Monad human linked to this profile',
+        code: 'NO_HUMAN_LINK',
+        hint: 'Set users.monad_human_id or add your email to EMAIL_HUMAN_MAP',
+      });
+    }
+    const text = String((req.body && (req.body.text || req.body.body || req.body.description)) || '').trim();
+    if (!text || text.length < 2) return res.status(400).json({ error: 'text required' });
+    const title = String((req.body && req.body.title) || text.slice(0, 80)).trim().slice(0, 200);
+    const priority = Math.min(10, Math.max(1, parseInt((req.body && req.body.priority) || 5, 10) || 5));
+    const createHandoff = req.body && req.body.create_handoff === false ? false : true;
+    const toAgent = req.body && req.body.to_agent ? String(req.body.to_agent).slice(0, 64) : undefined;
+
+    const args = {
+      planted_by: monadSvc.resolvePlantedBy(humanId),
+      human_id: humanId,
+      title: `[LK] ${title}`,
+      description: [
+        text,
+        '',
+        `— via NeuroAttention LK`,
+        `site_user: ${caller.email}`,
+        `human_id: ${humanId}`,
+        `at: ${new Date().toISOString()}`,
+      ].join('\n'),
+      domain: 'neuro',
+      priority,
+      create_handoff: createHandoff,
+      tags: ['neuroattention', 'lk', 'from_cabinet'],
+    };
+    if (toAgent) args.to_agent = toAgent;
+
+    const result = await monadSvc.mcpCall('plant_seed', args);
+    res.json({ ok: true, human_id: humanId, result });
+  } catch (err) {
+    console.error('POST /api/monad/message:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR', details: err.details });
+  }
+});
+
+// PATCH /api/monad/link — set own monad_human_id (or another user if superadmin)
+// body: { human_id, user_id? }
+app.patch('/api/monad/link', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const humanId = String((req.body && req.body.human_id) || '').trim().toLowerCase();
+    if (!/^[a-z0-9_]{2,40}$/.test(humanId) && humanId !== '') {
+      return res.status(400).json({ error: 'human_id must be slug like nikita / nastya' });
+    }
+    let targetId = caller.id;
+    if (req.body && req.body.user_id && req.body.user_id !== caller.id) {
+      if (caller.role !== 'superadmin') return res.status(403).json({ error: 'Only superadmin can link other users' });
+      targetId = req.body.user_id;
+    }
+    const value = humanId || null;
+    await sql`UPDATE users SET monad_human_id = ${value} WHERE id = ${targetId}`;
+    res.json({ ok: true, user_id: targetId, monad_human_id: value });
+  } catch (err) {
+    console.error('PATCH /api/monad/link:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
