@@ -7,6 +7,37 @@
 
 ---
 
+## 2026-08-07T07:55+0000 — cursor_cloud (оператор: Ник)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-07T07:55:00Z
+
+### did
+- Объяснил «синтетический ритм» (эквалайзер из статусов агентов, пока нет JSON rhythm у Monad).
+- Посадил seed + handoff в Monad/Cowork: вставить `MONAD_API_KEY` на Railway neuroattention-api (companion + claude_cowork).
+- Добавил галочку `monad_access` в админке (mig071 + PATCH + UI) — суперадмин открывает вкладку Монада выбранным пользователям.
+- Написал night plan + `docs/SKETCH-BRIEF.md` (Sketch не стартуем без ответов Ника).
+
+### changed
+- api/server.js, account.html, assets/js/monad-lk.js, migrations/071_monad_access.sql
+- data/i18n/{ru,en,es}.json, docs/MONAD-LK.md, docs/SKETCH-BRIEF.md, sw.js (v62), JOURNAL.md
+
+### decisions
+- Доступ к вкладке = роль superadmin/founder ИЛИ `users.monad_access`.
+- Привязка human_id отдельна (email map / prompt при выдаче галочки).
+- Sketch: сначала brief, не код.
+
+### followups
+- Cowork/Tahir: Railway key.
+- Nick: emails участников Monad.
+- Утром: verify Monad tab + bug checklist.
+
+### next_session
+- Confirm key live; grant access to Nastya when email arrives.
+
+---
+
 ## 2026-08-07T07:40+0000 — cursor_cloud (оператор: Ник)
 
 - **project:** neuro

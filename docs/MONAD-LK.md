@@ -34,7 +34,7 @@
 4. **Движение агентов** — пока Office Тахира; позже 3D-территория  
 5. **Написать Манаде** — сообщение → plant_seed / send_message / handoff  
 
-Права: не всем, только с явным доступом. Ты уточнил: **сначала только суперадмины** (на сайте: роли `superadmin` / `founder`).
+Права: вкладка у **superadmin/founder** всегда; остальным — галочка `monad_access` в Администрирование → Пользователи.
 
 Спеки (в репо `tvildanov/monad`, не в site):  
 `docs/monada-core/X-living-rhythm-architecture.md`, `XI-monad-ui-and-rhythm-viz.md`, `IV-layers-7x7.md`.
@@ -70,11 +70,11 @@
    ```
    MONAD_API_KEY=monad_…   (тот же ключ из AGENTS.md или отдельный service-ключ)
    ```
-   Опционально: `MONAD_MCP_URL=https://monad-server-production.up.railway.app/mcp`
+   Опционально: `MONAD_MCP_URL=https://monad-server-production.up.railway.app/mcp`  
+   **Запрос уже посажен в Monad** (seed `seed_msin6h2r_5e5bb7f0` → companion + handoff → `claude_cowork` на Маке Тахира).
 2. После деплоя API один раз вызвать миграции:  
-   `POST https://neuroattention-api-production.up.railway.app/api/run-migrations`  
-   (как обычно делаем после шипа)
-3. **Подтвердить карту людей** (email сайта → human_id Monad), особенно **email Насти**.
+   `POST https://neuroattention-api-production.up.railway.app/api/run-migrations`
+3. **Карта людей** (email сайта → human_id Monad) + галочка доступа в админке.
 4. **Позже:** попросить Monad сделать JSON для ритма (вместо синтеза).
 
 Если ключ уже стоит на Railway — напиши «ключ есть», проверю с прода.
