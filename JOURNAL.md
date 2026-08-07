@@ -7,6 +7,39 @@
 
 ---
 
+## 2026-08-07T07:40+0000 — cursor_cloud (оператор: Ник)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-07T07:40:00Z
+
+### did
+- Приоритет Ника: подключить Monad к ЛК neuroattention.org (баги отложены).
+- Достал из Monad доступ/задание (humans nikita/nastya/takhir, seeds LK MONAD v0.2, MCP URL + key policy).
+- Собрал вкладку «Монада» (только superadmin/founder): чат plant_seed, вертикаль 7×7, горизонталь 12+1, ритм-эквалайзер (синтетика).
+- API-прокси `/api/monad/*` + `users.monad_human_id` (mig070). Ключ только server-side.
+
+### changed
+- api/services/monad.js, api/server.js, api/.env.example, migrations/070_monad_human_id.sql
+- account.html, assets/js/monad-lk.js, assets/redesign.css, data/i18n/{ru,en,es}.json
+- docs/MONAD-LK.md, sw.js (v61), JOURNAL.md
+
+### decisions
+- Доступ вкладки: `superadmin` + `founder` (Ник: «только суперадмины»).
+- Сообщение из чата → `plant_seed` (не массовый spawn агентов).
+- Ритм MVP synthetic_from_agents до появления JSON rhythm у Monad.
+
+### followups
+- Тахир/Ник: поставить `MONAD_API_KEY` на Railway neuroattention-api.
+- POST `/api/run-migrations` после деплоя API.
+- Email Насти → `monad_human_id=nastya`.
+- Потом: пройти чеклист багов Ника.
+
+### next_session
+- Проверить прод после ключа; при необходимости донастроить карту людей.
+
+---
+
 ## 2026-08-05T03:50+0000 — cursor_cloud (оператор: Ник)
 
 - **project:** neuro
