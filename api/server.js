@@ -3065,7 +3065,25 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 071 (users.monad_access): ok');
     } catch (e) { mig071.error = e.message; console.error('migration 071 (users.monad_access):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-071 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071 });
+    // ── migration 072 (Sketch tool: per-user saved sketches) ──────────────────
+    let mig072 = { ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS user_sketches (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL DEFAULT '',
+          strokes JSONB NOT NULL DEFAULT '[]'::jsonb,
+          png_data_url TEXT,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          updated_at TIMESTAMPTZ DEFAULT now()
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_user_sketches_user ON user_sketches(user_id, updated_at DESC)`;
+      mig072.ok = true;
+      console.log('migration 072 (user_sketches): ok');
+    } catch (e) { mig072.error = e.message; console.error('migration 072 (user_sketches):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-072 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -13088,6 +13106,92 @@ function startUnifiedEventJobs() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SKETCH TOOL — freehand canvas saved per user
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.get('/api/sketches', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, title, created_at, updated_at,
+             (png_data_url IS NOT NULL) AS has_png,
+             jsonb_array_length(COALESCE(strokes, '[]'::jsonb)) AS stroke_count
+      FROM user_sketches
+      WHERE user_id = ${req.user.id}
+      ORDER BY updated_at DESC
+      LIMIT 100
+    `;
+    res.json({ ok: true, sketches: rows });
+  } catch (err) {
+    console.error('GET /api/sketches:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/sketches/:id', requireAuth, async (req, res) => {
+  try {
+    const [row] = await sql`
+      SELECT id, title, strokes, png_data_url, created_at, updated_at
+      FROM user_sketches
+      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+    `;
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, sketch: row });
+  } catch (err) {
+    console.error('GET /api/sketches/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/sketches', requireAuth, async (req, res) => {
+  try {
+    const title = String((req.body && req.body.title) || '').trim().slice(0, 120);
+    const strokes = Array.isArray(req.body && req.body.strokes) ? req.body.strokes : [];
+    if (strokes.length > 5000) return res.status(400).json({ error: 'Too many strokes' });
+    let png = req.body && req.body.png_data_url;
+    if (png != null) {
+      png = String(png);
+      if (png && !png.startsWith('data:image/png;base64,')) png = null;
+      if (png && png.length > 3_000_000) png = null; // drop oversized preview
+    }
+    const id = req.body && req.body.id ? String(req.body.id) : null;
+    if (id) {
+      const [upd] = await sql`
+        UPDATE user_sketches
+        SET title = ${title || 'Untitled'}, strokes = ${JSON.stringify(strokes)}::jsonb,
+            png_data_url = ${png || null}, updated_at = now()
+        WHERE id = ${id} AND user_id = ${req.user.id}
+        RETURNING id, title, created_at, updated_at
+      `;
+      if (!upd) return res.status(404).json({ error: 'Not found' });
+      return res.json({ ok: true, sketch: upd });
+    }
+    const [ins] = await sql`
+      INSERT INTO user_sketches (user_id, title, strokes, png_data_url)
+      VALUES (${req.user.id}, ${title || 'Untitled'}, ${JSON.stringify(strokes)}::jsonb, ${png || null})
+      RETURNING id, title, created_at, updated_at
+    `;
+    res.status(201).json({ ok: true, sketch: ins });
+  } catch (err) {
+    console.error('POST /api/sketches:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/sketches/:id', requireAuth, async (req, res) => {
+  try {
+    const del = await sql`
+      DELETE FROM user_sketches WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      RETURNING id
+    `;
+    if (!del.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, deleted: del[0].id });
+  } catch (err) {
+    console.error('DELETE /api/sketches/:id:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MONAD LK — site → Monad MCP proxy (superadmin/founder only)
 // Spec: docs/MONAD-LK.md · seeds LK MONAD v0.2
 // ═══════════════════════════════════════════════════════════════════════════
@@ -13264,17 +13368,23 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/monad/rhythm — equalizer layers (synthetic until Monad ships JSON rhythm)
+// GET /api/monad/rhythm — live system rhythm from Monad dashboard (or /api/rhythm when shipped)
 app.get('/api/monad/rhythm', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
-    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
-    const agents = normalizeAgents(await monadSvc.mcpCall('list_agents', {}));
-    const rhythm = monadSvc.synthRhythm(agents);
+    let rhythm;
+    try {
+      rhythm = await monadSvc.getRhythm();
+    } catch (e1) {
+      // Last resort: list_agents synth (needs key)
+      if (!monadSvc.configured()) throw e1;
+      const agents = normalizeAgents(await monadSvc.mcpCall('list_agents', {}));
+      rhythm = monadSvc.synthRhythm(agents);
+    }
     res.json({ ok: true, human_id: monadSvc.resolveHumanId(caller), rhythm });
   } catch (err) {
     console.error('GET /api/monad/rhythm:', err);
-    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+    res.status(502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
   }
 });
 

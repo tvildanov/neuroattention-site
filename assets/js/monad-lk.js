@@ -198,19 +198,39 @@
     var host = document.getElementById('monad-rhythm');
     if (!host || !rhythm) return;
     var lang = (document.documentElement.lang || 'ru').slice(0, 2);
-    var html = '<div class="monad-eq">';
+    var html = '';
+    if (rhythm.system) {
+      html += '<div class="monad-sys-status">';
+      html += '<div><strong>' + esc(t('a.monad.system_rhythm', 'Ритм системы Monad')) + '</strong> ';
+      html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span></div>';
+      if (rhythm.system.meta) html += '<div class="monad-muted">' + esc(rhythm.system.meta) + '</div>';
+      html += '</div>';
+    }
+    html += '<div class="monad-eq">';
     (rhythm.layers || []).forEach(function (L) {
       var label = L[lang] || L.ru || L.id;
-      var pct = Math.round((L.level || 0) * 100);
-      html += '<div class="monad-eq-row">';
+      var unavailable = L.available === false || L.level == null;
+      var pct = unavailable ? 0 : Math.round((L.level || 0) * 100);
+      html += '<div class="monad-eq-row' + (unavailable ? ' unavailable' : '') + '">';
       html += '<div class="monad-eq-label">' + esc(label) + '</div>';
       html += '<div class="monad-eq-bar"><div class="monad-eq-fill" style="width:' + pct + '%"></div></div>';
-      html += '<div class="monad-eq-val">' + pct + '%</div>';
+      html += '<div class="monad-eq-val">' + (unavailable ? 'n/a' : (pct + '%')) + '</div>';
       html += '</div>';
     });
     html += '</div>';
+    if (rhythm.agents && rhythm.agents.length) {
+      html += '<div class="monad-agent-rhythm" style="margin-top:1rem;">';
+      html += '<div class="monad-muted" style="margin-bottom:0.4rem;">' + esc(t('a.monad.agents_in_window', 'Агенты в окне')) + '</div>';
+      html += '<table class="monad-mini-table"><thead><tr><th>agent</th><th>act/min</th><th>drift</th><th>seen</th></tr></thead><tbody>';
+      rhythm.agents.slice(0, 12).forEach(function (a) {
+        html += '<tr><td><code>' + esc(a.agent_id) + '</code></td><td>' + esc(a.actions_per_min != null ? a.actions_per_min : '—') +
+          '</td><td>' + esc(a.drift || '—') + '</td><td>' + esc(a.last_seen || '—') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
     html += '<p class="monad-muted" style="margin-top:0.75rem;">' +
-      esc(rhythm.note || t('a.monad.rhythm_note', 'Ритм пока синтетический (из статусов агентов), пока Monad не отдаёт JSON /api/rhythm.')) +
+      esc(rhythm.note || '') +
+      (rhythm.source ? ' · source=' + rhythm.source : '') +
       '</p>';
     host.innerHTML = html;
   }
