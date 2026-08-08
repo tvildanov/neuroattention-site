@@ -29,7 +29,8 @@
         sunrise: 'Sunrise', sunset: 'Sunset', recent: 'Recent solar events', flares: 'Solar flares', cmes: 'Coronal mass ejections',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (latest)', sdoOpen: 'Open full SDO image ↗',
         windField: 'within typical range', xrayQuiet: 'background / quiet',
-        flareQuiet: 'No significant flares or CMEs recorded in the last 7 days — a quiet stretch of solar activity.' },
+        flareQuiet: 'No significant flares or CMEs recorded in the last 7 days — a quiet stretch of solar activity.',
+        timeline: 'Solar activity timeline', timelineHint: 'Scroll to zoom · drag to pan · bar height = intensity (B→X)', timelineEmpty: 'No flares or CMEs in this window.' },
       moon: { phase: 'Phase', illum: 'Illumination', age: 'Lunar age', moonrise: 'Moonrise', moonset: 'Moonset', timeline: 'Lunar timeline',
         days: 'd', computed: 'Computed astronomically (always available).', alwaysUp: 'up all day', alwaysDown: 'below horizon', defaultLoc: 'default location',
         phases: { 'New Moon': 'New Moon', 'Waxing Crescent': 'Waxing Crescent', 'First Quarter': 'First Quarter', 'Waxing Gibbous': 'Waxing Gibbous', 'Full Moon': 'Full Moon', 'Waning Gibbous': 'Waning Gibbous', 'Last Quarter': 'Last Quarter', 'Waning Crescent': 'Waning Crescent' } },
@@ -72,7 +73,8 @@
         sunrise: 'Восход', sunset: 'Закат', recent: 'Недавние солнечные события', flares: 'Солнечные вспышки', cmes: 'Корональные выбросы массы',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (актуальное)', sdoOpen: 'Открыть полное изображение SDO ↗',
         windField: 'в пределах нормы', xrayQuiet: 'фон / спокойно',
-        flareQuiet: 'За последние 7 дней значимых вспышек и выбросов не зафиксировано — затишье солнечной активности.' },
+        flareQuiet: 'За последние 7 дней значимых вспышек и выбросов не зафиксировано — затишье солнечной активности.',
+        timeline: 'Шкала солнечной активности', timelineHint: 'Колёсико — зум · перетаскивание — панорама · высота столбика = сила (B→X)', timelineEmpty: 'В этом окне вспышек и CME нет.' },
       moon: { phase: 'Фаза', illum: 'Освещённость', age: 'Возраст Луны', moonrise: 'Восход Луны', moonset: 'Заход Луны', timeline: 'Лунная хроника',
         days: 'дн', computed: 'Рассчитано астрономически (доступно всегда).', alwaysUp: 'весь день над горизонтом', alwaysDown: 'за горизонтом', defaultLoc: 'локация по умолчанию',
         phases: { 'New Moon': 'Новолуние', 'Waxing Crescent': 'Растущий серп', 'First Quarter': 'Первая четверть', 'Waxing Gibbous': 'Растущая Луна', 'Full Moon': 'Полнолуние', 'Waning Gibbous': 'Убывающая Луна', 'Last Quarter': 'Последняя четверть', 'Waning Crescent': 'Убывающий серп' } },
@@ -115,7 +117,8 @@
         sunrise: 'Amanecer', sunset: 'Atardecer', recent: 'Eventos solares recientes', flares: 'Fulguraciones solares', cmes: 'Eyecciones de masa coronal',
         sdoCap: 'Solar Dynamics Observatory — AIA 193 Å (reciente)', sdoOpen: 'Abrir imagen completa de SDO ↗',
         windField: 'dentro del rango típico', xrayQuiet: 'fondo / tranquilo',
-        flareQuiet: 'No se han registrado fulguraciones ni CME significativas en los últimos 7 días — un periodo de calma solar.' },
+        flareQuiet: 'No se han registrado fulguraciones ni CME significativas en los últimos 7 días — un periodo de calma solar.',
+        timeline: 'Línea de actividad solar', timelineHint: 'Rueda — zoom · arrastra — pan · altura = intensidad (B→X)', timelineEmpty: 'Sin fulguraciones ni CME en esta ventana.' },
       moon: { phase: 'Fase', illum: 'Iluminación', age: 'Edad lunar', moonrise: 'Salida de la Luna', moonset: 'Puesta de la Luna', timeline: 'Cronología lunar',
         days: 'd', computed: 'Calculado astronómicamente (siempre disponible).', alwaysUp: 'sobre el horizonte todo el día', alwaysDown: 'bajo el horizonte', defaultLoc: 'ubicación por defecto',
         phases: { 'New Moon': 'Luna nueva', 'Waxing Crescent': 'Creciente', 'First Quarter': 'Cuarto creciente', 'Waxing Gibbous': 'Gibosa creciente', 'Full Moon': 'Luna llena', 'Waning Gibbous': 'Gibosa menguante', 'Last Quarter': 'Cuarto menguante', 'Waning Crescent': 'Menguante' } },
@@ -162,8 +165,8 @@
   // keys are kept intact below because selectTab()/dispatch still reference them
   // defensively, but neither has a UI tab and the backend no longer feeds cosmos.
   var LAYERS = [
-    { key: 'sun', icon: '☀' }, { key: 'moon', icon: '☾' }, { key: 'earth', icon: '⊕' },
-    { key: 'weather', icon: '🌦' }, { key: 'social', icon: '🌐' }
+    { key: 'sun', icon: 'sun' }, { key: 'moon', icon: 'moon' }, { key: 'earth', icon: 'earth' },
+    { key: 'weather', icon: 'weather' }, { key: 'social', icon: 'social' }
   ];
 
   // dateMode: 'today' = live per-day view (unchanged default). 'day' = a single
@@ -194,7 +197,8 @@
   /* ── shell ─────────────────────────────────────────────────────────────── */
   function shell() {
     var tabs = LAYERS.map(function (l) {
-      return '<button class="ef-tab" data-ef="' + l.key + '"><span class="ef-tab-ic">' + l.icon + '</span>' + esc(t('tab.' + l.key)) + '</button>';
+      var ic = (window.NAIcons && NAIcons.html) ? NAIcons.html(l.icon, { size: 14, color: 'currentColor', wrapClass: 'na-ic ef-tab-ic' }) : ('<span class="ef-tab-ic">●</span>');
+      return '<button class="ef-tab" data-ef="' + l.key + '">' + ic + esc(t('tab.' + l.key)) + '</button>';
     }).join('');
     return '' +
       '<div class="ef-root">' +
@@ -202,7 +206,7 @@
           '<div><h3 class="ef-title">' + esc(t('title')) + '</h3><p class="ef-sub">' + esc(t('sub')) + '</p></div>' +
           '<div class="ef-head-actions">' +
             '<button class="ef-loc-btn" id="ef-loc-btn"></button>' +
-            '<button class="ef-gear" id="ef-gear" title="' + esc(t('subsTitle')) + '">⚙</button>' +
+            '<button class="ef-gear" id="ef-gear" title="' + esc(t('subsTitle')) + '">' + ((window.NAIcons && NAIcons.svg) ? NAIcons.svg('gear', { size: 16 }) : '⚙') + '</button>' +
           '</div>' +
         '</div>' +
         '<div class="ef-tabs">' + tabs + '</div>' +
@@ -322,8 +326,14 @@
   }
 
   /* ── historical render (past date / range) ──────────────────────────────── */
-  function dayHeader(iso) { return '<div class="ef-hist-head">📅 ' + esc(fmtDay(iso)) + '</div>'; }
-  function rangeHeader(r) { return '<div class="ef-hist-head">📅 ' + esc(fmtDay(r.from)) + ' — ' + esc(fmtDay(r.to)) + '</div>'; }
+  function dayHeader(iso) {
+    var ic = (window.NAIcons && NAIcons.html) ? NAIcons.html('calendar', { size: 14, wrapClass: 'na-ic' }) : '';
+    return '<div class="ef-hist-head">' + ic + ' ' + esc(fmtDay(iso)) + '</div>';
+  }
+  function rangeHeader(r) {
+    var ic = (window.NAIcons && NAIcons.html) ? NAIcons.html('calendar', { size: 14, wrapClass: 'na-ic' }) : '';
+    return '<div class="ef-hist-head">' + ic + ' ' + esc(fmtDay(r.from)) + ' — ' + esc(fmtDay(r.to)) + '</div>';
+  }
   // group events by UTC calendar day (matches the server's day cache); newest first
   function groupedTimeline(events) {
     if (!events || !events.length) return emptyState(t('srcEmpty'));
@@ -366,7 +376,17 @@
       .then(function (d) {
         if (seq !== S._seq || !content || !document.body.contains(content)) return;
         var events = (d && d.events) || [];
+        if (S.dateMode === 'range' && key === 'sun') {
+          content.innerHTML = rangeHeader(r) + historyStats(key, events) + '<div id="ef-sun-htl"></div>';
+          mountSunHTimeline(content.querySelector('#ef-sun-htl'), events, { from: r.from, to: r.to });
+          return;
+        }
         if (S.dateMode === 'range') { content.innerHTML = rangeHeader(r) + groupedTimeline(events); return; }
+        if (key === 'sun') {
+          content.innerHTML = dayHeader(r.from) + (events.length ? historyStats(key, events) : '') + '<div id="ef-sun-htl"></div>';
+          mountSunHTimeline(content.querySelector('#ef-sun-htl'), events, { from: r.from, to: r.to });
+          return;
+        }
         content.innerHTML = dayHeader(r.from) + (events.length ? historyStats(key, events) : '') + timeline(events, t('hist.none'));
       })
       .catch(function () { if (content) content.innerHTML = emptyState(t('awaitNext')); });
@@ -563,6 +583,171 @@
   }
   var ZONE = { blue: '#4ea3ff', green: '#56F2A6', yellow: '#ffd24a', orange: '#ff9f43', red: '#ff5d5d', violet: '#b07cff', grey: '#7d8a99' };
 
+
+  /* ── Horizontal solar timeline (Path-like pan/zoom + intensity bars) ─────
+   * Same interaction grammar as Evolution Path: wheel zoom about cursor,
+   * drag to pan. Intensity from flare class (B/C/M/X) or CME as mid bar. */
+  var SUN_DAY_MS = 864e5, SUN_MIN_PXPD = 4, SUN_MAX_PXPD = 2400;
+  function sunSevColor(sev) {
+    var s = String(sev || '').toUpperCase();
+    if (s[0] === 'X') return '#ff5a5a';
+    if (s[0] === 'M') return '#ffcf4d';
+    if (s[0] === 'C') return '#6fe39b';
+    if (s[0] === 'B') return '#7fb8ff';
+    if (s.indexOf('CME') >= 0) return '#b07cff';
+    return '#8fd0ff';
+  }
+  function sunIntensity(e) {
+    if (!e) return 0.2;
+    if (e.event_type === 'cme') return 0.55;
+    var p = classPos(e.severity);
+    if (p == null) return 0.25;
+    return Math.max(0.12, Math.min(1, (p + 0.2) / 4));
+  }
+  function mountSunHTimeline(host, events, range) {
+    if (!host) return;
+    events = (events || []).filter(function (e) { return e && e.timestamp && (e.event_type === 'flare' || e.event_type === 'cme'); });
+    if (!events.length) {
+      host.innerHTML = '<div class="ef-empty">' + esc(t('sun.timelineEmpty')) + '</div>';
+      return;
+    }
+    host.innerHTML =
+      '<div class="ef-htl">' +
+        '<canvas class="ef-htl-canvas"></canvas>' +
+        '<div class="ef-htl-hint">' + esc(t('sun.timelineHint')) + '</div>' +
+        '<div class="ef-htl-tip" hidden></div>' +
+      '</div>';
+    var wrap = host.querySelector('.ef-htl');
+    var cv = host.querySelector('.ef-htl-canvas');
+    var tip = host.querySelector('.ef-htl-tip');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var Wcss = Math.max(280, wrap.clientWidth || host.clientWidth || 640);
+    var Hcss = 148;
+    cv.width = Math.round(Wcss * dpr); cv.height = Math.round(Hcss * dpr);
+    cv.style.width = Wcss + 'px'; cv.style.height = Hcss + 'px';
+    var ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var times = events.map(function (e) { return +new Date(e.timestamp); }).filter(isFinite);
+    var tMin = Math.min.apply(null, times), tMax = Math.max.apply(null, times);
+    if (range && range.from && range.to) {
+      var rf = +new Date(range.from + 'T00:00:00'), rt = +new Date(range.to + 'T23:59:59');
+      if (isFinite(rf) && isFinite(rt) && rt > rf) { tMin = Math.min(tMin, rf); tMax = Math.max(tMax, rt); }
+    }
+    if (!(tMax > tMin)) tMax = tMin + SUN_DAY_MS;
+    // pad 6%
+    var pad = (tMax - tMin) * 0.06; tMin -= pad; tMax += pad;
+    var spanDays = (tMax - tMin) / SUN_DAY_MS;
+    var view = { originT: tMin, pxPerDay: (Wcss - 24) / Math.max(spanDays, 0.5), panX: 12 };
+    var hover = -1;
+
+    function sx(ts) { return (ts - view.originT) / SUN_DAY_MS * view.pxPerDay + view.panX; }
+    function draw() {
+      ctx.clearRect(0, 0, Wcss, Hcss);
+      // track
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(0, 28, Wcss, Hcss - 48);
+      // day grid
+      var day0 = Math.floor(tMin / SUN_DAY_MS) * SUN_DAY_MS;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+      ctx.fillStyle = 'rgba(180,190,200,0.7)'; ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+      for (var d = day0; d <= tMax + SUN_DAY_MS; d += SUN_DAY_MS) {
+        var x = sx(d);
+        if (x < -40 || x > Wcss + 40) continue;
+        ctx.beginPath(); ctx.moveTo(x, 28); ctx.lineTo(x, Hcss - 20); ctx.stroke();
+        var lab = new Date(d);
+        var txt; try { txt = lab.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }); } catch (e) { txt = lab.toISOString().slice(5, 10); }
+        ctx.fillText(txt, x + 4, Hcss - 6);
+      }
+      // baseline
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath(); ctx.moveTo(0, Hcss - 20); ctx.lineTo(Wcss, Hcss - 20); ctx.stroke();
+      // events as intensity bars
+      events.forEach(function (e, i) {
+        var ts = +new Date(e.timestamp); if (!isFinite(ts)) return;
+        var x = sx(ts);
+        var inten = sunIntensity(e);
+        var h = 18 + inten * 72;
+        var y = Hcss - 20 - h;
+        var col = sunSevColor(e.event_type === 'cme' ? 'CME' : e.severity);
+        ctx.fillStyle = col;
+        ctx.globalAlpha = i === hover ? 1 : 0.85;
+        var bw = Math.max(3, Math.min(10, view.pxPerDay * 0.08));
+        if (e.event_type === 'cme') {
+          // diamond
+          ctx.beginPath();
+          ctx.moveTo(x, y); ctx.lineTo(x + bw, y + h / 2); ctx.lineTo(x, y + h); ctx.lineTo(x - bw, y + h / 2);
+          ctx.closePath(); ctx.fill();
+        } else {
+          ctx.fillRect(x - bw / 2, y, bw, h);
+        }
+        ctx.globalAlpha = 1;
+        if (inten >= 0.55 || i === hover) {
+          ctx.fillStyle = '#e8edf2';
+          ctx.font = '10px JetBrains Mono, ui-monospace, monospace';
+          var label = e.event_type === 'cme' ? 'CME' : String(e.severity || '');
+          ctx.fillText(label, x + bw / 2 + 3, y + 10);
+        }
+      });
+      // legend
+      ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
+      [['B', '#7fb8ff'], ['C', '#6fe39b'], ['M', '#ffcf4d'], ['X', '#ff5a5a'], ['CME', '#b07cff']].forEach(function (pair, i) {
+        var lx = 10 + i * 52;
+        ctx.fillStyle = pair[1]; ctx.fillRect(lx, 8, 10, 10);
+        ctx.fillStyle = 'rgba(200,210,220,0.85)'; ctx.fillText(pair[0], lx + 14, 17);
+      });
+    }
+    function hit(mx) {
+      var best = -1, bestD = 14;
+      events.forEach(function (e, i) {
+        var x = sx(+new Date(e.timestamp));
+        var d = Math.abs(x - mx);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      return best;
+    }
+    function onWheel(ev) {
+      ev.preventDefault();
+      var rect = cv.getBoundingClientRect();
+      var atX = ev.clientX - rect.left;
+      var tUnder = view.originT + (atX - view.panX) / view.pxPerDay * SUN_DAY_MS;
+      var factor = Math.pow(1.0018, -ev.deltaY);
+      var next = Math.max(SUN_MIN_PXPD, Math.min(SUN_MAX_PXPD, view.pxPerDay * factor));
+      view.pxPerDay = next;
+      view.panX = atX - (tUnder - view.originT) / SUN_DAY_MS * view.pxPerDay;
+      draw();
+    }
+    var drag = null;
+    function onDown(ev) {
+      drag = { x: ev.clientX, pan: view.panX };
+      try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+    }
+    function onMove(ev) {
+      var rect = cv.getBoundingClientRect();
+      var mx = ev.clientX - rect.left;
+      if (drag) {
+        view.panX = drag.pan + (ev.clientX - drag.x);
+        draw();
+        return;
+      }
+      var h = hit(mx);
+      if (h !== hover) { hover = h; draw(); }
+      if (h >= 0) {
+        var e = events[h];
+        tip.hidden = false;
+        tip.innerHTML = '<b>' + esc(e.event_type === 'cme' ? 'CME' : (e.severity || 'flare')) + '</b> · ' +
+          esc(fmtTime(e.timestamp)) + '<br>' + esc(e.title_translated || efTr(e.title) || '');
+        tip.style.left = Math.min(Wcss - 180, Math.max(8, mx - 40)) + 'px';
+      } else tip.hidden = true;
+    }
+    function onUp() { drag = null; }
+    cv.addEventListener('wheel', onWheel, { passive: false });
+    cv.addEventListener('pointerdown', onDown);
+    cv.addEventListener('pointermove', onMove);
+    cv.addEventListener('pointerup', onUp);
+    cv.addEventListener('pointerleave', function () { tip.hidden = true; hover = -1; draw(); });
+    draw();
+  }
+
   /* ── Sun ────────────────────────────────────────────────────────────────── */
   function classPos(cls) { // 'B5.9'→0.59, 'C2'→1.2, 'M1.8'→2.18, 'X3'→3.3
     var m = /^([ABCMX])\s*([\d.]+)?/i.exec(String(cls || '')); if (!m) return null;
@@ -600,12 +785,14 @@
       // stretch rather than leaving two bare dashes with no explanation.
       if (!flares.length && !cmes.length) html += '<div class="ef-quiet-note">' + esc(t('sun.flareQuiet')) + '</div>';
       // sunrise/sunset
-      html += hasLocation() ? '<div class="ef-suntimes" id="ef-suntimes"><span>☀ ' + esc(t('sun.sunrise')) + ': <b>—</b></span><span>🌇 ' + esc(t('sun.sunset')) + ': <b>—</b></span></div>'
+      var sunIc = (window.NAIcons && NAIcons.html) ? NAIcons.html('sun', { size: 14 }) : '';
+      var setIc = (window.NAIcons && NAIcons.html) ? NAIcons.html('sunset', { size: 14 }) : '';
+      html += hasLocation() ? '<div class="ef-suntimes" id="ef-suntimes"><span>' + sunIc + ' ' + esc(t('sun.sunrise')) + ': <b>—</b></span><span>' + setIc + ' ' + esc(t('sun.sunset')) + ': <b>—</b></span></div>'
                             : '<div class="ef-need-loc">' + esc(t('needLoc')) + '</div>';
-      // grouped recent events
-      html += '<h4 class="ef-h4">' + esc(t('sun.flares')) + '</h4>' + timeline(flares, t('srcEmpty'));
-      html += '<h4 class="ef-h4">' + esc(t('sun.cmes')) + '</h4>' + timeline(cmes, t('srcEmpty'));
+      // Horizontal Path-like activity strip (flares + CMEs) — Nick 2026-08-08
+      html += '<h4 class="ef-h4">' + esc(t('sun.timeline')) + '</h4><div id="ef-sun-htl"></div>';
       body.innerHTML = html;
+      mountSunHTimeline(body.querySelector('#ef-sun-htl'), flares.concat(cmes), null);
       if (hasLocation()) fillSunWindow();
     });
   }

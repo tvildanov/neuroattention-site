@@ -46,7 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css?v=2" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=17" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=18" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -1553,13 +1553,18 @@ a.dash-tab:hover { text-decoration:none; }
     <!-- ── Exercises & Tests tool (migration 060): 10 canvas cognitive exercises ── -->
     <div id="tools-exercises-content" style="display:none;"></div>
 
-    <!-- Sketch tool -->
+    <!-- Sketch tool: real product = layers + annotate 3D body model (see docs/SKETCH-BRIEF.md).
+         Current freehand canvas is temporary scratchpad only — not the Sketch product. -->
     <div id="tools-sketch-content" style="display:none;">
       <div class="sketch-wrap">
+        <div class="sketch-brief-card" style="margin-bottom:1rem;padding:1rem 1.1rem;border-radius:14px;border:1px solid rgba(168,247,255,0.18);background:rgba(168,247,255,0.05);">
+          <h2 style="margin:0 0 0.35rem;font-size:1.15rem;" data-i18n="a.sketch.title">Скетч</h2>
+          <p style="margin:0 0 0.55rem;font-size:13px;color:var(--text-secondary);line-height:1.55;" data-i18n="a.sketch.sub">Инструмент для работы со слоями и рисования поверх 3D-модели тела (как в атласе). Сейчас ниже — временная рисовалка; сам Скетч в сборке. Нужен исходный файл брифа — перезалей, пожалуйста.</p>
+        </div>
         <div class="sketch-head">
           <div>
-            <h2 style="margin:0 0 0.25rem;" data-i18n="a.sketch.title">Скетч</h2>
-            <p style="margin:0;font-size:13px;color:var(--text-muted);" data-i18n="a.sketch.sub">Быстрый набросок. Сохраняется в твоём профиле.</p>
+            <h3 style="margin:0 0 0.25rem;font-size:0.95rem;color:var(--text-muted);" data-i18n="a.sketch.scratch_title">Временная рисовалка</h3>
+            <p style="margin:0;font-size:12px;color:var(--text-dim);" data-i18n="a.sketch.scratch_sub">Не продукт «Скетч». Просто черновик на холсте.</p>
           </div>
           <input id="sketch-title" type="text" maxlength="120" data-i18n-placeholder="a.sketch.title_ph" placeholder="Название…" style="min-width:180px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:0.45rem 0.75rem;color:var(--text-primary);font:inherit;">
         </div>
@@ -18416,22 +18421,23 @@ window.pbMove = pbMove;
 <script src="assets/js/evolution-path.js?v=33"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
-<script src="assets/js/external-field.js?v=11"></script>
+<script src="assets/js/na-icons.js?v=1"></script>
+<script src="assets/js/external-field.js?v=12"></script>
 <script src="assets/js/body-atlas.js?v=39"></script>
 <script src="assets/js/monad-lk.js?v=3"></script>
-<script src="assets/js/sketch-tool.js?v=1"></script>
+<script src="assets/js/sketch-tool.js?v=2"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
-<script src="assets/js/exercises/engine.js?v=2"></script>
-<script src="assets/js/exercises/n-back.js?v=2"></script>
-<script src="assets/js/exercises/stroop.js?v=2"></script>
-<script src="assets/js/exercises/ant.js?v=2"></script>
-<script src="assets/js/exercises/sart.js?v=2"></script>
-<script src="assets/js/exercises/corsi.js?v=2"></script>
-<script src="assets/js/exercises/digit-span.js?v=2"></script>
-<script src="assets/js/exercises/go-no-go.js?v=2"></script>
-<script src="assets/js/exercises/task-switching.js?v=2"></script>
-<script src="assets/js/exercises/trail-making.js?v=2"></script>
-<script src="assets/js/exercises/attentional-blink.js?v=2"></script>
+<script src="assets/js/exercises/engine.js?v=3"></script>
+<script src="assets/js/exercises/n-back.js?v=3"></script>
+<script src="assets/js/exercises/stroop.js?v=3"></script>
+<script src="assets/js/exercises/ant.js?v=3"></script>
+<script src="assets/js/exercises/sart.js?v=3"></script>
+<script src="assets/js/exercises/corsi.js?v=3"></script>
+<script src="assets/js/exercises/digit-span.js?v=3"></script>
+<script src="assets/js/exercises/go-no-go.js?v=3"></script>
+<script src="assets/js/exercises/task-switching.js?v=3"></script>
+<script src="assets/js/exercises/trail-making.js?v=3"></script>
+<script src="assets/js/exercises/attentional-blink.js?v=3"></script>
 <!-- Validated screening tests (PHQ-9/GAD-7/ASRS/PCL-5/MDQ/AQ-10) -->
 <script src="assets/js/exercises/screening-data.js?v=2"></script>
 <script src="assets/js/exercises/screening.js?v=2"></script>
@@ -22043,16 +22049,20 @@ window.pbMove = pbMove;
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
   var CAT = {
-    attention:  { ic:'🎯', col:'#58a6ff', ru:'Внимание',  en:'Attention',  es:'Atención' },
-    memory:     { ic:'🧩', col:'#3fb950', ru:'Память',    en:'Memory',     es:'Memoria' },
-    executive:  { ic:'🔀', col:'#bc8cff', ru:'Управление',en:'Executive',  es:'Ejecutivo' },
-    inhibition: { ic:'✋', col:'#e3b341', ru:'Торможение', en:'Inhibition', es:'Inhibición' },
-    speed:      { ic:'⚡', col:'#f778ba', ru:'Скорость',  en:'Speed',      es:'Velocidad' },
-    screening:  { ic:'🩺', col:'#e3b341', ru:'Скрининг',  en:'Screening',  es:'Cribado' }
+    attention:  { ic:'attention', col:'#58a6ff', ru:'Внимание',  en:'Attention',  es:'Atención' },
+    memory:     { ic:'memory', col:'#3fb950', ru:'Память',    en:'Memory',     es:'Memoria' },
+    executive:  { ic:'executive', col:'#bc8cff', ru:'Управление',en:'Executive',  es:'Ejecutivo' },
+    inhibition: { ic:'inhibition', col:'#e3b341', ru:'Торможение', en:'Inhibition', es:'Inhibición' },
+    speed:      { ic:'speed', col:'#f778ba', ru:'Скорость',  en:'Speed',      es:'Velocidad' },
+    screening:  { ic:'screening', col:'#e3b341', ru:'Скрининг',  en:'Screening',  es:'Cribado' }
   };
-  var ICON = { 'n-back':'🔢','stroop':'🎨','ant':'➡️','sart':'⏱️','corsi':'🟦','digit-span':'🧮',
-    'go-no-go':'🚦','task-switching':'🔀','trail-making':'✏️','attentional-blink':'👁️',
-    'phq-9':'🌧️','gad-7':'😰','asrs-v1-1':'⚡','pcl-5':'🛡️','mdq':'🎢','aq-10':'🧭' };
+  var ICON = { 'n-back':'n-back','stroop':'stroop','ant':'ant','sart':'sart','corsi':'corsi','digit-span':'digit-span',
+    'go-no-go':'go-no-go','task-switching':'task-switching','trail-making':'trail-making','attentional-blink':'attentional-blink',
+    'phq-9':'phq-9','gad-7':'gad-7','asrs-v1-1':'asrs-v1-1','pcl-5':'pcl-5','mdq':'mdq','aq-10':'aq-10' };
+  function exIc(name, col, size){
+    if(window.NAIcons && NAIcons.html) return NAIcons.html(name, { size: size||22, color: col||'currentColor', wrapClass:'na-ic ex-ic-svg' });
+    return '<span class="na-ic">●</span>';
+  }
   function isScreener(row){ return (row.kind==='screening_test') || (row.category==='screening'); }
 
   var T = {
@@ -22061,31 +22071,34 @@ window.pbMove = pbMove;
       best:'Рекорд', measuresTitle:'Тренирует', evidence:'Научная основа', level:'Уровень', start:'Начать',
       trains:'Область мозга', brain:'Мозг (когнитивные сети)', back:'← Ко всем упражнениям',
       score:'Очки', acc:'Точность', rt:'Реакция', pb:'Личный рекорд', pct:'Лучше, чем', of:'игроков',
-      again:'Ещё раз', toGrid:'К списку', toPath:'На карту прогресса', saving:'Сохраняем…', saved:'Результат сохранён',
+      again:'Ещё раз', toGrid:'К упражнению', toList:'Ко всем упражнениям', toPath:'На карту прогресса', saving:'Сохраняем…', saved:'Результат сохранён',
       done:'Готово!', loading:'Загрузка…', failLoad:'Не удалось загрузить упражнения.', missing:'Упражнение не найдено.',
       screenTitle:'Скрининг-тесты', screenDisc:'Научно валидированные опросники. Показывают лишь вероятность, а не диагноз — консультация с врачом обязательна.',
       startTest:'Пройти тест', items:'вопросов', source:'Источник', validityLbl:'Валидность', yourResult:'Ваш результат',
-      interpLbl:'Интерпретация', positive:'Положительный скрининг', negative:'Отрицательный скрининг' },
+      interpLbl:'Интерпретация', positive:'Положительный скрининг', negative:'Отрицательный скрининг',
+      exitPlay:'← К упражнению' },
     en:{ title:'Exercises & Tests', sub:'10 evidence-based cognitive exercises: attention, memory, executive function.',
       disc:'These are trainers and self-checks, not a medical diagnosis. Tasks are based on classic research paradigms (ADHD, memory, attention).',
       best:'Best', measuresTitle:'Trains', evidence:'Evidence base', level:'Level', start:'Start',
       trains:'Brain area', brain:'Brain (cognitive networks)', back:'← All exercises',
       score:'Score', acc:'Accuracy', rt:'Reaction', pb:'Personal best', pct:'Better than', of:'players',
-      again:'Again', toGrid:'Back to list', toPath:'Progress map', saving:'Saving…', saved:'Result saved',
+      again:'Again', toGrid:'Back to exercise', toList:'All exercises', toPath:'Progress map', saving:'Saving…', saved:'Result saved',
       done:'Done!', loading:'Loading…', failLoad:'Could not load exercises.', missing:'Exercise not found.',
       screenTitle:'Screening tests', screenDisc:'Scientifically validated questionnaires. They indicate likelihood, not a diagnosis — a professional evaluation is essential.',
       startTest:'Take the test', items:'items', source:'Source', validityLbl:'Validity', yourResult:'Your result',
-      interpLbl:'Interpretation', positive:'Positive screen', negative:'Negative screen' },
+      interpLbl:'Interpretation', positive:'Positive screen', negative:'Negative screen',
+      exitPlay:'← Back to exercise' },
     es:{ title:'Ejercicios y tests', sub:'10 ejercicios cognitivos basados en evidencia: atención, memoria, función ejecutiva.',
       disc:'Son entrenadores y autoevaluaciones, no un diagnóstico médico. Basados en paradigmas científicos clásicos (TDAH, memoria, atención).',
       best:'Récord', measuresTitle:'Entrena', evidence:'Base científica', level:'Nivel', start:'Empezar',
       trains:'Área cerebral', brain:'Cerebro (redes cognitivas)', back:'← Todos los ejercicios',
       score:'Puntos', acc:'Precisión', rt:'Reacción', pb:'Récord personal', pct:'Mejor que', of:'jugadores',
-      again:'Otra vez', toGrid:'A la lista', toPath:'Mapa de progreso', saving:'Guardando…', saved:'Resultado guardado',
+      again:'Otra vez', toGrid:'Al ejercicio', toList:'Todos los ejercicios', toPath:'Mapa de progreso', saving:'Guardando…', saved:'Resultado guardado',
       done:'¡Hecho!', loading:'Cargando…', failLoad:'No se pudieron cargar los ejercicios.', missing:'Ejercicio no encontrado.',
       screenTitle:'Tests de cribado', screenDisc:'Cuestionarios científicamente validados. Indican probabilidad, no un diagnóstico — la evaluación profesional es esencial.',
       startTest:'Hacer el test', items:'ítems', source:'Fuente', validityLbl:'Validez', yourResult:'Tu resultado',
-      interpLbl:'Interpretación', positive:'Cribado positivo', negative:'Cribado negativo' }
+      interpLbl:'Interpretación', positive:'Cribado positivo', negative:'Cribado negativo',
+      exitPlay:'← Al ejercicio' }
   };
   function L(k){ var d=T[lang()]||T.en; return d[k]!=null?d[k]:(T.en[k]||k); }
   function nm(row){ return (lang()==='ru' && row.name_ru) ? row.name_ru : (row.name_en||row.slug); }
@@ -22132,14 +22145,14 @@ window.pbMove = pbMove;
     else {
       body = '<div class="ex-grid">'+cog.map(cardHTML).join('')+'</div>';
       if(scr.length){
-        body += '<div class="ex-sech">🩺 '+esc(L('screenTitle'))+'</div>'+
-          '<div class="ex-disc">⚠️ '+esc(L('screenDisc'))+'</div>'+
+        body += '<div class="ex-sech">'+exIc('screening','#e3b341',18)+' '+esc(L('screenTitle'))+'</div>'+
+          '<div class="ex-disc">'+exIc('warn','#e3b341',16)+' '+esc(L('screenDisc'))+'</div>'+
           '<div class="ex-grid">'+scr.map(cardHTML).join('')+'</div>';
       }
     }
     host.innerHTML =
-      '<div class="ex-wrap"><div class="ex-head"><h2>🧠 '+esc(L('title'))+'</h2><p>'+esc(L('sub'))+'</p>'+
-      '<div class="ex-disc">⚠️ '+esc(L('disc'))+'</div></div>'+body+'</div>';
+      '<div class="ex-wrap"><div class="ex-head"><h2>'+exIc('brain','#7c9ef6',26)+' '+esc(L('title'))+'</h2><p>'+esc(L('sub'))+'</p>'+
+      '<div class="ex-disc">'+exIc('warn','#e3b341',16)+' '+esc(L('disc'))+'</div></div>'+body+'</div>';
     host.querySelectorAll('.ex-card').forEach(function(c){ c.addEventListener('click',function(){
       var slug=c.getAttribute('data-slug');
       var row=defs.filter(function(d){return d.slug===slug;})[0];
@@ -22147,11 +22160,12 @@ window.pbMove = pbMove;
     }); });
   }
   function cardHTML(row){
-    var c=CAT[row.category]||{ic:'🧠',col:'#7c9ef6'}; var b=bests[row.slug];
+    var c=CAT[row.category]||{ic:'brain',col:'#7c9ef6'}; var b=bests[row.slug];
+    var icName = ICON[row.slug]||c.ic;
     return '<div class="ex-card" data-slug="'+esc(row.slug)+'">'+
-      '<div class="ex-ic">'+(ICON[row.slug]||c.ic)+'</div>'+
+      '<div class="ex-ic">'+exIc(icName,c.col,28)+'</div>'+
       '<div class="ex-nm">'+esc(nm(row))+'</div>'+
-      '<div class="ex-cat" style="color:'+c.col+'">'+c.ic+' '+esc(catLabel(row.category))+'</div>'+
+      '<div class="ex-cat" style="color:'+c.col+'">'+exIc(c.ic,c.col,14)+' '+esc(catLabel(row.category))+'</div>'+
       '<div class="ex-sd">'+esc(sd(row))+'</div>'+
       (b!=null?'<div class="ex-best">★ '+esc(L('best'))+': '+Math.round(b)+'</div>':'')+
       '</div>';
@@ -22166,8 +22180,8 @@ window.pbMove = pbMove;
     host.innerHTML =
       '<div class="ex-wrap"><button class="ex-back">'+esc(L('back'))+'</button>'+
       '<div class="ex-launch"><div>'+
-        '<div class="ex-cat" style="color:'+c.col+'">'+(CAT[row.category]?CAT[row.category].ic:'')+' '+esc(catLabel(row.category))+'</div>'+
-        '<h3>'+(ICON[row.slug]||'')+' '+esc(nm(row))+'</h3>'+
+        '<div class="ex-cat" style="color:'+c.col+'">'+(CAT[row.category]?exIc(CAT[row.category].ic,c.col,14):'')+' '+esc(catLabel(row.category))+'</div>'+
+        '<h3 style="display:flex;align-items:center;gap:.5rem">'+exIc(ICON[row.slug]||'brain',c.col,26)+' '+esc(nm(row))+'</h3>'+
         '<p style="color:#c9d1d9">'+esc(sd(row))+'</p>'+
         '<div style="font-weight:700;margin-top:.8rem;font-size:.85rem;color:#9aa4b2">'+esc(L('measuresTitle'))+'</div>'+
         '<div class="ex-measures">'+meas+'</div>'+
@@ -22190,12 +22204,12 @@ window.pbMove = pbMove;
   var disposeFn = null;
   function startPlay(row, level){
     var mod = (window.NAExercises && window.NAExercises.get) ? window.NAExercises.get(row.slug) : null;
-    if(!mod){ host.innerHTML='<div class="ex-wrap"><p style="color:#f85149">'+esc(L('missing'))+' ('+esc(row.slug)+')</p><button class="btn btn-ghost ex-back2">'+esc(L('back'))+'</button></div>';
-      host.querySelector('.ex-back2').addEventListener('click',function(){ renderGrid(false); }); return; }
-    host.innerHTML='<div class="ex-wrap"><button class="ex-back">'+esc(L('back'))+'</button>'+
-      '<h3 style="text-align:center">'+(ICON[row.slug]||'')+' '+esc(nm(row))+' · '+esc(L('level'))+' '+level+'</h3>'+
-      '<div class="ex-host"></div></div>';
-    host.querySelector('.ex-back').addEventListener('click',function(){ safeDispose(); renderGrid(false); });
+    if(!mod){ host.innerHTML='<div class="ex-wrap"><p style="color:#f85149">'+esc(L('missing'))+' ('+esc(row.slug)+')</p><button class="btn btn-ghost ex-back2">'+esc(L('exitPlay'))+'</button></div>';
+      host.querySelector('.ex-back2').addEventListener('click',function(){ openLauncher(row.slug); }); return; }
+    host.innerHTML='<div class="ex-wrap"><button class="ex-back">'+esc(L('exitPlay'))+'</button>'+
+      '<h3 style="text-align:center;display:flex;align-items:center;justify-content:center;gap:.45rem">'+exIc(ICON[row.slug]||'brain','#7c9ef6',22)+' '+esc(nm(row))+' · '+esc(L('level'))+' '+level+'</h3>'+
+      '<div class="ex-host" style="position:relative"></div></div>';
+    host.querySelector('.ex-back').addEventListener('click',function(){ safeDispose(); openLauncher(row.slug); });
     var hostEl = host.querySelector('.ex-host');
     try {
       disposeFn = mod.mount(hostEl, { level:level, lang:lang(), t:(window.t||function(k){return k;}) }, function(result){
@@ -22211,7 +22225,7 @@ window.pbMove = pbMove;
     var sc  = result.score==null ? '—' : Math.round(result.score);
     host.innerHTML=
       '<div class="ex-wrap"><div class="ex-result">'+
-        '<div style="font-size:2.4rem">🎉</div>'+
+        '<div style="margin-bottom:.4rem">'+exIc('party','#3fb950',36)+'</div>'+
         '<h3>'+esc(L('done'))+'</h3>'+
         '<div style="color:#9aa4b2">'+esc(nm(row))+' · '+esc(L('level'))+' '+level+'</div>'+
         '<div class="ex-stats">'+
@@ -22222,11 +22236,13 @@ window.pbMove = pbMove;
         '<div class="ex-saveline" style="color:#9aa4b2;font-size:.85rem;min-height:1.2em">'+esc(L('saving'))+'</div>'+
         '<div class="ex-actions">'+
           '<button class="btn btn-primary ex-again">↻ '+esc(L('again'))+'</button>'+
-          '<button class="btn btn-ghost ex-tolist">'+esc(L('toGrid'))+'</button>'+
+          '<button class="btn btn-ghost ex-toex">'+esc(L('toGrid'))+'</button>'+
+          '<button class="btn btn-ghost ex-tolist">'+esc(L('toList'))+'</button>'+
           '<button class="btn btn-ghost ex-topath">'+esc(L('toPath'))+'</button>'+
         '</div>'+
       '</div></div>';
     host.querySelector('.ex-again').addEventListener('click',function(){ startPlay(row, level); });
+    host.querySelector('.ex-toex').addEventListener('click',function(){ openLauncher(row.slug); });
     host.querySelector('.ex-tolist').addEventListener('click',function(){ loadData(); });
     host.querySelector('.ex-topath').addEventListener('click',function(){ try{ if(typeof switchTab==='function') switchTab('evolution'); }catch(e){} });
     saveResult(row.slug, level, result);
@@ -22261,14 +22277,14 @@ window.pbMove = pbMove;
     host.innerHTML =
       '<div class="ex-wrap"><button class="ex-back">'+esc(L('back'))+'</button>'+
       '<div style="max-width:640px">'+
-        '<div class="ex-cat" style="color:#e3b341">🩺 '+esc(L('screenTitle'))+'</div>'+
-        '<h3>'+(ICON[row.slug]||'🩺')+' '+esc(nm(row))+'</h3>'+
+        '<div class="ex-cat" style="color:#e3b341">'+exIc('screening','#e3b341',14)+' '+esc(L('screenTitle'))+'</div>'+
+        '<h3 style="display:flex;align-items:center;gap:.5rem">'+exIc(ICON[row.slug]||'screening','#e3b341',26)+' '+esc(nm(row))+'</h3>'+
         '<p style="color:#c9d1d9">'+esc(sd(row))+'</p>'+
         '<div class="ex-measures">'+meas+(nItems?'<span class="ex-chip">'+nItems+' '+esc(L('items'))+'</span>':'')+'</div>'+
         '<div style="font-weight:700;font-size:.85rem;color:#9aa4b2">'+esc(L('source'))+'</div>'+
         '<div class="ex-cite">'+esc(row.clinical_evidence||(data&&data.citation)||'')+'</div>'+
         (data&&data.validity?'<div style="font-size:.82rem;color:#8b949e;margin-bottom:.6rem;"><b>'+esc(L('validityLbl'))+':</b> '+esc(L2(data.validity))+'</div>':'')+
-        '<div class="ex-disc">⚠️ '+esc(data?L2(data.disclaimer):L('screenDisc'))+'</div>'+
+        '<div class="ex-disc">'+exIc('warn','#e3b341',14)+' '+esc(data?L2(data.disclaimer):L('screenDisc'))+'</div>'+
         '<button class="btn btn-primary ex-startscr" style="min-width:180px;font-size:1.05rem;padding:.7rem 1.6rem">'+esc(L('startTest'))+'</button>'+
       '</div></div>';
     host.querySelector('.ex-back').addEventListener('click',function(){ renderGrid(false); });
@@ -22278,8 +22294,8 @@ window.pbMove = pbMove;
 
   function runScreener(row){
     if(!(window.NAScreeners&&window.NAScreeners.mount)){ host.innerHTML='<div class="ex-wrap"><p style="color:#f85149">'+esc(L('missing'))+'</p></div>'; return; }
-    host.innerHTML='<div class="ex-wrap"><button class="ex-back">'+esc(L('back'))+'</button>'+
-      '<h3 style="margin:.2rem 0 1rem">'+(ICON[row.slug]||'🩺')+' '+esc(nm(row))+'</h3>'+
+    host.innerHTML='<div class="ex-wrap"><button class="ex-back">'+esc(L('exitPlay'))+'</button>'+
+      '<h3 style="margin:.2rem 0 1rem;display:flex;align-items:center;gap:.45rem">'+exIc(ICON[row.slug]||'screening','#e3b341',22)+' '+esc(nm(row))+'</h3>'+
       '<div class="ex-scrhost"></div></div>';
     host.querySelector('.ex-back').addEventListener('click',function(){ openScreener(row.slug); });
     var h=host.querySelector('.ex-scrhost');
@@ -22299,21 +22315,23 @@ window.pbMove = pbMove;
     var data = screenerData(row.slug);
     host.innerHTML=
       '<div class="ex-wrap"><div class="ex-result" style="max-width:600px">'+
-        '<div class="ex-cat" style="color:#e3b341">🩺 '+esc(nm(row))+'</div>'+
+        '<div class="ex-cat" style="color:#e3b341">'+exIc('screening','#e3b341',14)+' '+esc(nm(row))+'</div>'+
         '<div style="font-size:1.45rem;font-weight:650;color:'+toneCol+';margin:.4rem 0;letter-spacing:-0.01em">'+esc(band)+'</div>'+
         '<div style="font-size:1rem;color:#9aa4b2">'+esc(L('yourResult'))+': <b style="color:#e6edf3">'+Math.round(result.score)+'</b></div>'+
         (result.interpretation?'<p style="color:#c9d1d9;margin:.8rem 0;text-align:left;background:rgba(255,255,255,.03);border-radius:10px;padding:.7rem 1rem"><b>'+esc(L('interpLbl'))+':</b> '+esc(result.interpretation)+'</p>':'')+
         flagHtml+
-        '<div class="ex-disc" style="text-align:left">⚠️ '+esc(data?L2(data.disclaimer):'')+'</div>'+
+        '<div class="ex-disc" style="text-align:left">'+exIc('warn','#e3b341',14)+' '+esc(data?L2(data.disclaimer):'')+'</div>'+
         '<div class="ex-cite" style="text-align:left">'+esc(data&&data.citation||row.clinical_evidence||'')+'</div>'+
         '<div class="ex-saveline" style="color:#9aa4b2;font-size:.85rem;min-height:1.2em;margin-top:.6rem">'+esc(L('saving'))+'</div>'+
         '<div class="ex-actions">'+
           '<button class="btn btn-primary ex-again">↻ '+esc(L('again'))+'</button>'+
-          '<button class="btn btn-ghost ex-tolist">'+esc(L('toGrid'))+'</button>'+
+          '<button class="btn btn-ghost ex-toex">'+esc(L('toGrid'))+'</button>'+
+          '<button class="btn btn-ghost ex-tolist">'+esc(L('toList'))+'</button>'+
           '<button class="btn btn-ghost ex-topath">'+esc(L('toPath'))+'</button>'+
         '</div>'+
       '</div></div>';
     host.querySelector('.ex-again').addEventListener('click',function(){ runScreener(row); });
+    host.querySelector('.ex-toex').addEventListener('click',function(){ openScreener(row.slug); });
     host.querySelector('.ex-tolist').addEventListener('click',function(){ loadData(); });
     host.querySelector('.ex-topath').addEventListener('click',function(){ try{ if(typeof switchTab==='function') switchTab('evolution'); }catch(e){} });
     // persist (score = raw total; raw_data carries band + responses)

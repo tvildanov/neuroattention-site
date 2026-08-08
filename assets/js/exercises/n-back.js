@@ -5,9 +5,9 @@
   var R = window.NAExercises;
   var LETTERS = ['C', 'H', 'K', 'L', 'Q', 'R', 'S', 'T', 'B', 'F', 'M', 'N', 'P', 'W', 'X', 'Z'];
   var CTRL = {
-    ru: 'Нажмите ПРОБЕЛ (или кнопку «Совпадение»), когда буква совпадает с той, что была N шагов назад.',
-    en: 'Press SPACE (or the "Match" button) when the letter matches the one N steps back.',
-    es: 'Pulsa ESPACIO (o el botón «Coincide») cuando la letra coincida con la de N pasos atrás.'
+    ru: 'На экране одна за другой появляются буквы. Когда текущая буква совпадает с той, что была N шагов назад, нажмите «Совпадение» или пробел. N указан в заголовке.',
+    en: 'Letters appear one by one. When the current letter matches the one from N steps earlier, press Match or Space. N is shown in the title.',
+    es: 'Aparecen letras una a una. Cuando la letra actual coincide con la de N pasos atrás, pulsa Coincide o Espacio. N está en el título.'
   };
 
   R.register('n-back', {
@@ -32,7 +32,7 @@
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
       var seq = [], responded = false, idx = -1, alive = true;
-      var timers = [], t0 = 0, stimAt = 0;
+      var timers = [], t0 = 0, stopReady = null, stimAt = 0;
       var hits = 0, miss = 0, fa = 0, cr = 0, rts = [];
 
       // build sequence with ~30% targets
@@ -94,19 +94,14 @@
       window.addEventListener('keydown', onKey);
       function cleanup() {
         timers.forEach(clearTimeout); timers = [];
+        if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; }
         window.removeEventListener('keydown', onKey);
       }
 
-      // instructions → countdown → run
-      R.splash(ctx, w, h, n + '-back',
-        [R.L(CTRL, lang)],
-        lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      var stopCd;
-      timers.push(setTimeout(function () {
-        stopCd = R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); next(); });
-      }, 1400));
+      stopReady = R.awaitReady(host, ctx, w, h, n + '-back',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); next(); });
 
-      return function () { alive = false; if (stopCd) stopCd(); cleanup(); };
+      return function () { alive = false; cleanup(); };
     }
   });
 })();

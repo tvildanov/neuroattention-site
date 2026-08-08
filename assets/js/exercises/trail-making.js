@@ -5,9 +5,9 @@
   var R = window.NAExercises;
   var LETTERS = { ru: ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З'], en: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], es: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] };
   var CTRL = {
-    ru: 'Соединяйте кружки по порядку, кликая по ним. Ошибка — кружок мигнёт красным.',
-    en: 'Connect the circles in order by clicking. A wrong click flashes red.',
-    es: 'Conecta los círculos en orden haciendo clic. Un error parpadea en rojo.'
+    ru: 'Кликайте кружки по порядку как можно быстрее. В варианте A: 1→2→3… В варианте B: 1→А→2→Б→3… Ошибка подсветит кружок красным.',
+    en: 'Click the circles in order as fast as you can. Trail A: 1→2→3… Trail B: 1→A→2→B→3… A mistake flashes red.',
+    es: 'Haz clic en los círculos en orden lo más rápido posible. A: 1→2→3… B: 1→A→2→B→3… Un error parpadea en rojo.'
   };
   R.register('trail-making', {
     controls: CTRL,
@@ -37,7 +37,7 @@
         if (okp) nodes.push({ x: x, y: y, label: labels[nodes.length] });
       }
 
-      var alive = true, cursor = 0, errors = 0, t0 = 0, started = false, timers = [], flashIdx = -1;
+      var alive = true, cursor = 0, errors = 0, t0 = 0, started = false, timers = [], flashIdx = -1, stopReady = null;
       function draw() {
         R.clear(ctx, w, h);
         R.hud(ctx, w, h, (trailB ? 'Trail B' : 'Trail A'), started ? ((lang === 'ru' ? 'Время ' : 'Time ') + ((performance.now() - t0) / 1000).toFixed(1) + 's') : '');
@@ -80,13 +80,12 @@
           raw_data: { trail: trailB ? 'B' : 'A', targets: nodes.length, errors: errors, time_s: R.round(secs, 1) }
         });
       }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; cv.removeEventListener('pointerdown', click); }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } cv.removeEventListener('pointerdown', click); }
       cv.addEventListener('pointerdown', click);
 
-      R.splash(ctx, w, h, trailB ? 'Trail Making B' : 'Trail Making A',
+      stopReady = R.awaitReady(host, ctx, w, h, trailB ? 'Trail Making B' : 'Trail Making A',
         [R.L(CTRL, lang), trailB ? (lang === 'ru' ? 'Порядок: 1 → А → 2 → Б → 3 …' : '1 → A → 2 → B → 3 …') : (lang === 'ru' ? 'Порядок: 1 → 2 → 3 …' : '1 → 2 → 3 …')],
-        lang === 'ru' ? 'Кликните «1», чтобы начать' : 'Click "1" to start');
-      timers.push(setTimeout(draw, 2400));
+        lang, function () { draw(); }, { skipCountdown: true });
       return function () { alive = false; cancelAnimationFrame(rafId); cleanup(); };
     }
   });

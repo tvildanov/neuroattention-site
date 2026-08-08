@@ -1901,7 +1901,7 @@
   "a.admin.monad_error": "Ошибка доступа Monad",
   "a.tools.sketch": "Скетч",
   "a.sketch.title": "Скетч",
-  "a.sketch.sub": "Быстрый набросок. Сохраняется в твоём профиле.",
+  "a.sketch.sub": "Инструмент для слоёв и рисования поверх 3D-модели тела. Сейчас ниже — временная рисовалка; сам Скетч в сборке. Перезалей исходный бриф, пожалуйста.",
   "a.sketch.title_ph": "Название…",
   "a.sketch.pen": "Карандаш",
   "a.sketch.eraser": "Ластик",
@@ -1923,5 +1923,7 @@
   "a.sketch.delete_confirm": "Удалить этот скетч?",
   "a.sketch.untitled": "Без названия",
   "a.monad.system_rhythm": "Ритм системы Monad",
-  "a.monad.agents_in_window": "Агенты в окне"
+  "a.monad.agents_in_window": "Агенты в окне",
+  "a.sketch.scratch_title": "Временная рисовалка",
+  "a.sketch.scratch_sub": "Не продукт «Скетч». Просто черновик на холсте."
 }

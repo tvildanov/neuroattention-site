@@ -4,9 +4,9 @@
 (function () {
   var R = window.NAExercises;
   var CTRL = {
-    ru: 'Подсказка «ЦВЕТ» → нажмите цвет фигуры. «ФОРМА» → нажмите форму. Правило меняется.',
-    en: 'Cue "COLOUR" → pick the shape\'s colour. "SHAPE" → pick its shape. The rule switches.',
-    es: 'Pista «COLOR» → elige el color. «FORMA» → elige la forma. La regla cambia.'
+    ru: 'Сверху подсказка: «ЦВЕТ» — выбирайте цвет фигуры; «ФОРМА» — выбирайте форму. Правило иногда меняется — переключайтесь внимательно.',
+    en: 'The cue says the rule: COLOUR → pick the shape’s colour; SHAPE → pick its shape. The rule switches — stay flexible.',
+    es: 'La pista indica la regla: COLOR → elige el color; FORMA → elige la forma. La regla cambia — mantente flexible.'
   };
   var T = {
     color: { ru: 'ЦВЕТ', en: 'COLOUR', es: 'COLOR' },
@@ -30,7 +30,7 @@
       var bA = mk('A'), bB = mk('B'); host.appendChild(pad);
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
-      var idx = -1, alive = true, awaiting = false, responded = false, stimAt = 0, dTimer = 0, timers = [], t0 = 0;
+      var idx = -1, alive = true, awaiting = false, responded = false, stimAt = 0, dTimer = 0, timers = [], t0 = 0, stopReady = null;
       var cfg = [], correct = 0, errors = 0, rtSwitch = [], rtRepeat = [];
 
       for (var i = 0; i < trials; i++) {
@@ -86,10 +86,10 @@
           raw_data: { trials: trials, correct: correct, errors: errors, switch_cost_ms: cost }
         });
       }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; bA.disabled = bB.disabled = true; }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } bA.disabled = bB.disabled = true; }
 
-      R.splash(ctx, w, h, 'Task Switching', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () { R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); bA.disabled = bB.disabled = false; next(); }); }, 1800));
+      stopReady = R.awaitReady(host, ctx, w, h, 'Task Switching',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); bA.disabled = bB.disabled = false; next(); });
       return function () { alive = false; cleanup(); };
     }
   });

@@ -4,9 +4,9 @@
 (function () {
   var R = window.NAExercises;
   var CTRL = {
-    ru: 'Кликните по ЗЕЛЁНОМУ кругу. На КРАСНЫЙ — не реагируйте.',
-    en: 'Click the GREEN circle. Do NOT click the RED one.',
-    es: 'Haz clic en el círculo VERDE. NO hagas clic en el ROJO.'
+    ru: 'Когда появляется ЗЕЛЁНЫЙ круг — быстро кликните по нему. Когда КРАСНЫЙ — не кликайте. Главное — успеть остановиться на красном.',
+    en: 'Click quickly when a GREEN circle appears. Do not click when it is RED. The hard part is withholding on red.',
+    es: 'Haz clic rápido en el círculo VERDE. No hagas clic en el ROJO. Lo difícil es frenar ante el rojo.'
   };
   R.register('go-no-go', {
     controls: CTRL,
@@ -23,7 +23,7 @@
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
 
       var idx = -1, alive = true, isGo = false, visible = false, responded = false, stimAt = 0;
-      var timers = [], t0 = 0, hits = 0, comm = 0, omit = 0, correctNo = 0, rts = [];
+      var timers = [], t0 = 0, stopReady = null, hits = 0, comm = 0, omit = 0, correctNo = 0, rts = [];
 
       function drawBlank(msg) { R.clear(ctx, w, h); R.hud(ctx, w, h, (lang === 'ru' ? 'Проба ' : 'Trial ') + Math.max(idx + 1, 1) + '/' + trials, 'Go / No-Go'); if (msg) R.text(ctx, msg, w / 2, h / 2, { size: 40, color: '#30363d' }); }
       function drawStim() {
@@ -66,11 +66,11 @@
           raw_data: { trials: trials, go: nGo, nogo: nNo, hits: hits, commission_errors: comm, omission_errors: omit, correct_rejections: correctNo }
         });
       }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; cv.removeEventListener('pointerdown', click); }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } cv.removeEventListener('pointerdown', click); }
       cv.addEventListener('pointerdown', click);
 
-      R.splash(ctx, w, h, 'Go / No-Go', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () { R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); next(); }); }, 1500));
+      stopReady = R.awaitReady(host, ctx, w, h, 'Go / No-Go',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); next(); });
       return function () { alive = false; cleanup(); };
     }
   });
