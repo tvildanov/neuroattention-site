@@ -1910,9 +1910,9 @@
   "a.admin.monad_granted": "Acceso a Mónada concedido",
   "a.admin.monad_revoked": "Acceso a Mónada revocado",
   "a.admin.monad_error": "Error de acceso Monad",
-  "a.tools.sketch": "Boceto",
-  "a.sketch.title": "Boceto",
-  "a.sketch.sub": "Boceto rápido. Se guarda en tu perfil.",
+  "a.tools.sketch": "Sketch",
+  "a.sketch.title": "Sketch",
+  "a.sketch.sub": "Dibujo por capas sobre un modelo 3D del cuerpo. Abajo hay un bloc temporal; el Sketch real está en construcción. Vuelve a subir el brief original.",
   "a.sketch.title_ph": "Título…",
   "a.sketch.pen": "Lápiz",
   "a.sketch.eraser": "Borrador",
@@ -1934,5 +1934,7 @@
   "a.sketch.delete_confirm": "¿Eliminar este boceto?",
   "a.sketch.untitled": "Sin título",
   "a.monad.system_rhythm": "Ritmo del sistema Monad",
-  "a.monad.agents_in_window": "Agentes en ventana"
+  "a.monad.agents_in_window": "Agentes en ventana",
+  "a.sketch.scratch_title": "Bloc temporal",
+  "a.sketch.scratch_sub": "No es el producto Sketch — solo un borrador en lienzo."
 }

@@ -6,9 +6,9 @@
   var R = window.NAExercises;
   var POOL = 'ABCDEFGHJKLMNPRSTUVWZ'.split('');
   var CTRL = {
-    ru: 'Смотрите на поток букв. Запомните БЕЛУЮ букву и заметьте, была ли «X» после неё.',
-    en: 'Watch the letter stream. Note the WHITE letter, and whether an "X" followed it.',
-    es: 'Observa el flujo. Fíjate en la letra BLANCA y si apareció una «X» después.'
+    ru: 'Буквы проносятся очень быстро. Запомните БЕЛУЮ букву и скажите, была ли после неё буква X. Вторую цель легко пропустить — это нормально, так устроено задание.',
+    en: 'Letters flash very quickly. Note the WHITE letter and whether an X followed it. Missing the second target is common — that is the effect being measured.',
+    es: 'Las letras pasan muy rápido. Nota la letra BLANCA y si después hubo una X. Fallar la segunda meta es frecuente: eso mide el efecto.'
   };
   R.register('attentional-blink', {
     controls: CTRL,
@@ -25,7 +25,7 @@
       host.appendChild(pad);
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
-      var alive = true, timers = [], t0 = 0, round = 0;
+      var alive = true, timers = [], t0 = 0, round = 0, stopReady = null;
       var t1correct = 0, t2attempts = 0, t2correct = 0, byLag = { short: { n: 0, ok: 0 }, long: { n: 0, ok: 0 } };
       var cur = null;
 
@@ -105,10 +105,10 @@
           raw_data: { rounds: rounds, t1_accuracy: R.round(acc, 2), t2_accuracy: R.round(t2acc, 2), blink_effect: blink }
         });
       }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } }
 
-      R.splash(ctx, w, h, 'Attentional Blink', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () { R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); runStream(); }); }, 1900));
+      stopReady = R.awaitReady(host, ctx, w, h, 'Attentional Blink',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); runStream(); });
       return function () { alive = false; cleanup(); };
     }
   });

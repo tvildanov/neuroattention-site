@@ -10,9 +10,9 @@
     { key: 'yellow', hex: '#e3b341', ru: 'жёлтый', en: 'yellow', es: 'amarillo' }
   ];
   var CTRL = {
-    ru: 'Нажимайте кнопку ЦВЕТА, которым написано слово (не читайте само слово).',
-    en: 'Click the button matching the INK colour of the word (ignore what it says).',
-    es: 'Pulsa el botón del COLOR de la tinta de la palabra (ignora lo que dice).'
+    ru: 'На экране цветное слово. Нажимайте кнопку того цвета, которым написано слово — не того, что написано буквами. Например, слово «красный» синими чернилами → жмите «синий».',
+    en: 'A colour word appears. Tap the button for the ink colour, not the word meaning. Example: “red” written in blue → tap blue.',
+    es: 'Aparece una palabra de color. Pulsa el botón del color de la tinta, no del significado. Ejemplo: «rojo» en azul → pulsa azul.'
   };
 
   R.register('stroop', {
@@ -40,7 +40,7 @@
       });
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
-      var idx = -1, alive = true, awaiting = false, stimAt = 0, dTimer = 0, timers = [];
+      var idx = -1, alive = true, awaiting = false, stimAt = 0, dTimer = 0, timers = [], stopReady = null;
       var t0 = 0, correct = 0, rtC = [], rtI = [], nInc = 0, errors = 0, order = [];
 
       for (var i = 0; i < trials; i++) {
@@ -89,12 +89,14 @@
           raw_data: { trials: trials, correct: correct, errors: errors, incongruent: nInc, stroop_effect_ms: effect }
         });
       }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; btns.forEach(function (b) { b.disabled = true; }); }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } btns.forEach(function (b) { b.disabled = true; }); }
 
-      R.splash(ctx, w, h, 'Stroop', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () {
-        R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); btns.forEach(function (b) { b.disabled = false; }); next(); });
-      }, 1600));
+      stopReady = R.awaitReady(host, ctx, w, h, 'Stroop',
+        [R.L(CTRL, lang)], lang, function () {
+          t0 = performance.now();
+          btns.forEach(function (b) { b.disabled = false; });
+          next();
+        });
 
       return function () { alive = false; cleanup(); };
     }

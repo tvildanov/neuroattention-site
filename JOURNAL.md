@@ -289,3 +289,42 @@
 - followups: UNCHANGED — SW must become v54 (v53 taken by merged Library pass); rebase
   feat/exercises-tests onto origin/main before merge; run mig060 after backend deploy;
   prod fresh-user pass. Deploy still HELD pending SW reconciliation + review.
+
+---
+
+## 2026-08-08T21:09:26Z — cursor_cloud (explore subagent)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-08T21:09:26Z
+
+### did
+- Explored evolution-path.js pan/zoom (ensureView, wireCanvasPanZoom, overlaySeverityColor/drawOverlayTracks) for External Field Sun timeline reuse.
+- Mapped external-field.js renderSun + timeline() vertical flare/CME list structure.
+- Inventoried emoji maps: exercises ICON/CAT, EF tab icons, sketch (almost none), monad-lk (none).
+- Located Sketch handoff docs mentioning 3D/layers/anatomy (SKETCH-BRIEF.md out-of-scope; feat-anatomy-atlas-handoff.md is anatomy not sketch).
+- Listed exercises-seed.js short_description_ru; found Tools→Sketch registration in account.html.
+
+### changed
+- (read-only explore; JOURNAL.md only)
+
+### files
+- assets/js/evolution-path.js, assets/js/external-field.js, api/exercises-seed.js, account.html, docs/SKETCH-BRIEF.md, feat-anatomy-atlas-handoff.md, assets/js/sketch-tool.js, assets/js/monad-lk.js
+
+### decisions
+- []
+
+### followups
+- Parent can implement Sun horizontal timeline reusing ensureView + wheel zoom + overlaySeverityColor markers.
+
+### next_session
+- Implement External Field Sun events horizontal timeline if tasked.
+
+## 2026-08-08 — Nick feedback batch (exercises / EF sun / icons / sketch / monad)
+
+1. **Exercises:** longer natural RU instructions; splash stays until «Понял(а), начать»; after finish / mid-exit → back to **that exercise launcher** (not full grid).
+2. **Corsi:** real drawn cubes (not circles) + copy about кубики.
+3. **Icons:** `assets/js/na-icons.js` stroke set (index-style) for exercises + EF tabs (emoji chrome removed there).
+4. **EF Sun:** Path-like horizontal intensity timeline (pan/zoom) instead of vertical flare list for today + history.
+5. **Sketch:** brief rewritten — doodle is temporary; need original handoff re-upload for layers+3D.
+6. **Monad:** `nilta95@mail.ru` → `nastya` (+ mig073 access); `/health` exposes `monad_configured`.

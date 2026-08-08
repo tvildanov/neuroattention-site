@@ -4,9 +4,9 @@
 (function () {
   var R = window.NAExercises;
   var CTRL = {
-    ru: 'Запомните цифры, затем введите их. С уровня 6 — в ОБРАТНОМ порядке.',
-    en: 'Memorise the digits, then type them. From level 6 — in REVERSE order.',
-    es: 'Memoriza los dígitos y escríbelos. Desde el nivel 6 — en orden INVERSO.'
+    ru: 'Запомните цифры, которые появятся по очереди, затем введите их в том же порядке. С уровня 6 — введите в обратном порядке (с конца).',
+    en: 'Memorise the digits shown one by one, then type them in order. From level 6 — type them in reverse.',
+    es: 'Memoriza los dígitos uno a uno y escríbelos en orden. Desde el nivel 6 — en orden inverso.'
   };
   R.register('digit-span', {
     controls: CTRL,
@@ -29,7 +29,7 @@
       wrap.appendChild(inp); wrap.appendChild(ok); host.appendChild(wrap);
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
-      var alive = true, phase = 'idle', seq = [], timers = [], t0 = 0;
+      var alive = true, phase = 'idle', seq = [], timers = [], t0 = 0, stopReady = null;
       var fails = 0, maxSpan = 0, total = 0, correct = 0;
 
       function showPrompt() {
@@ -81,11 +81,11 @@
         });
       }
       function onKey(e) { if (e.key === 'Enter') submit(); }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; ok.removeEventListener('click', submit); inp.removeEventListener('keydown', onKey); }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } ok.removeEventListener('click', submit); inp.removeEventListener('keydown', onKey); }
       ok.addEventListener('click', submit); inp.addEventListener('keydown', onKey);
 
-      R.splash(ctx, w, h, 'Digit Span', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () { R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); playSeq(); }); }, 1700));
+      stopReady = R.awaitReady(host, ctx, w, h, 'Digit Span',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); playSeq(); });
       return function () { alive = false; cleanup(); };
     }
   });
