@@ -143,6 +143,39 @@
     if (footer) R.text(ctx, footer, w / 2, h - 40, { size: 15, color: '#58a6ff', weight: '600' });
   };
 
+  /* ---- Ready gate: keep instructions until the person taps «Understood» ——
+   * Then optional 3-2-1 countdown and gameplay. Replaces the old timed splash
+   * that vanished before anyone could finish reading (Nick 2026-08-08). */
+  R.awaitReady = function (host, ctx, w, h, title, lines, lang, onReady, opts) {
+    opts = opts || {};
+    R.splash(ctx, w, h, title, lines, null);
+    var wrap = document.createElement('div');
+    wrap.className = 'ex-ready-gate';
+    wrap.style.cssText = 'position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;pointer-events:none;z-index:5;';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary ex-ready-btn';
+    btn.style.cssText = 'pointer-events:auto;min-width:200px;font-size:1rem;padding:0.65rem 1.4rem;box-shadow:0 8px 28px rgba(0,0,0,.45);';
+    btn.textContent = lang === 'ru' ? 'Понял(а), начать' : (lang === 'es' ? 'Entendido, empezar' : 'Got it — start');
+    wrap.appendChild(btn);
+    var prevPos = host.style.position;
+    if (!prevPos || prevPos === 'static') host.style.position = 'relative';
+    host.appendChild(wrap);
+    var disposed = false;
+    function go() {
+      if (disposed) return;
+      disposed = true;
+      try { wrap.remove(); } catch (e) {}
+      if (opts.skipCountdown) { onReady(); return; }
+      R.countdown(ctx, w, h, opts.countdown || 3, onReady, { hint: opts.hint });
+    }
+    btn.addEventListener('click', go);
+    return function () {
+      disposed = true;
+      try { wrap.remove(); } catch (e) {}
+    };
+  };
+
   /* ---- localized string helper (module-local dicts) ---------------- */
   R.L = function (dict, lang) {
     return (dict && (dict[lang] || dict.en || dict.ru)) || '';

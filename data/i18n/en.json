@@ -1912,7 +1912,7 @@
   "a.admin.monad_error": "Monad access error",
   "a.tools.sketch": "Sketch",
   "a.sketch.title": "Sketch",
-  "a.sketch.sub": "Quick freehand sketch. Saved to your profile.",
+  "a.sketch.sub": "Layered drawing on a 3D body model. Below is a temporary scratchpad only — the real Sketch tool is being built. Please re-upload the original brief.",
   "a.sketch.title_ph": "Title…",
   "a.sketch.pen": "Pen",
   "a.sketch.eraser": "Eraser",
@@ -1934,5 +1934,7 @@
   "a.sketch.delete_confirm": "Delete this sketch?",
   "a.sketch.untitled": "Untitled",
   "a.monad.system_rhythm": "Monad system rhythm",
-  "a.monad.agents_in_window": "Agents in window"
+  "a.monad.agents_in_window": "Agents in window",
+  "a.sketch.scratch_title": "Temporary scratchpad",
+  "a.sketch.scratch_sub": "Not the Sketch product — a plain canvas draft."
 }

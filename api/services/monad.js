@@ -15,6 +15,7 @@ const EMAIL_HUMAN_MAP = {
   'domunity@icloud.com': 'nikita',
   'tvildanov@mac.com': 'takhir',
   'tyler@appliance-repair.me': 'takhir',
+  'nilta95@mail.ru': 'nastya',
 };
 
 function configured() {

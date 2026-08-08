@@ -4,9 +4,9 @@
 (function () {
   var R = window.NAExercises;
   var CTRL = {
-    ru: 'Нажимайте ПРОБЕЛ на каждую цифру, КРОМЕ 3. На «3» — не реагируйте.',
-    en: 'Press SPACE for every digit EXCEPT 3. Withhold on "3".',
-    es: 'Pulsa ESPACIO en cada dígito EXCEPTO el 3. No reacciones ante el «3».'
+    ru: 'Цифры мелькают одна за другой. На каждую цифру жмите «Реакция» или пробел — кроме цифры 3. Когда видите 3, ничего не нажимайте.',
+    en: 'Digits flash one by one. Press Respond / Space for every digit except 3. On 3, do nothing.',
+    es: 'Aparecen dígitos. Pulsa Responder / Espacio en todos excepto el 3. Ante el 3, no pulses.'
   };
   R.register('sart', {
     controls: CTRL,
@@ -27,7 +27,7 @@
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
       var idx = -1, alive = true, cur = 0, isTarget = false, awaiting = false, responded = false, stimAt = 0;
-      var timers = [], t0 = 0, hits = 0, comm = 0, omit = 0, correctNo = 0, rts = [], seq = [];
+      var timers = [], t0 = 0, stopReady = null, hits = 0, comm = 0, omit = 0, correctNo = 0, rts = [], seq = [];
       // font size varies (classic SART) to stress the digit MEANING not shape
       var sizes = [64, 80, 100, 120, 140];
 
@@ -71,11 +71,11 @@
         });
       }
       function onKey(e) { if (e.code === 'Space') { e.preventDefault(); respond(); } }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; window.removeEventListener('keydown', onKey); }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } window.removeEventListener('keydown', onKey); }
       window.addEventListener('keydown', onKey); btn.addEventListener('click', respond); cv.addEventListener('pointerdown', respond);
 
-      R.splash(ctx, w, h, 'SART', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () { R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); next(); }); }, 1600));
+      stopReady = R.awaitReady(host, ctx, w, h, 'SART',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); next(); });
       return function () { alive = false; cleanup(); };
     }
   });

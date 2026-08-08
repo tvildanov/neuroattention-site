@@ -306,7 +306,14 @@ const uploadLibrary = multer({
 });
 
 // Health check
-app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/health', (req, res) => {
+  let monadConfigured = false;
+  try {
+    const monad = require('./services/monad');
+    monadConfigured = !!(monad && typeof monad.configured === 'function' && monad.configured());
+  } catch (_) { monadConfigured = !!process.env.MONAD_API_KEY; }
+  res.json({ ok: true, monad_configured: monadConfigured });
+});
 
 // ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
 app.post('/api/run-migrations', async (req, res) => {
@@ -3083,7 +3090,20 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 072 (user_sketches): ok');
     } catch (e) { mig072.error = e.message; console.error('migration 072 (user_sketches):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-072 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072 });
+    // ── migration 073: Nastya email → monad human + access ──────────────────
+    const mig073 = { id: '073_nastya_monad_link', ok: false };
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_human_id TEXT`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_access BOOLEAN NOT NULL DEFAULT false`;
+      await sql`
+        UPDATE users
+        SET monad_human_id = 'nastya', monad_access = TRUE
+        WHERE lower(email) = 'nilta95@mail.ru'`;
+      mig073.ok = true;
+      console.log('migration 073 (nastya monad link): ok');
+    } catch (e) { mig073.error = e.message; console.error('migration 073 (nastya monad link):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-073 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });

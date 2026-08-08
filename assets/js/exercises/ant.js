@@ -5,9 +5,9 @@
 (function () {
   var R = window.NAExercises;
   var CTRL = {
-    ru: 'Определите направление ЦЕНТРАЛЬНОЙ стрелки: ← или →. Крайние стрелки — помеха.',
-    en: 'Report the CENTRE arrow direction: ← or →. The outer arrows are distractors.',
-    es: 'Indica la dirección de la flecha CENTRAL: ← o →. Las flechas externas distraen.'
+    ru: 'Смотрите на ряд из пяти стрелок. Ответьте, куда смотрит ЦЕНТРАЛЬНАЯ стрелка — влево или вправо. Боковые стрелки могут мешать: не обращайте на них внимания.',
+    en: 'Look at a row of five arrows. Report only the CENTRE arrow’s direction (left or right). Ignore the flankers.',
+    es: 'Mira una fila de cinco flechas. Indica solo la dirección de la flecha CENTRAL. Ignora las laterales.'
   };
   R.register('ant', {
     controls: CTRL,
@@ -25,7 +25,7 @@
       var bL = mk('←', 'L'), bR = mk('→', 'R'); host.appendChild(pad);
 
       var f = R.fitCanvas(cv), ctx = f.ctx, w = f.w, h = f.h;
-      var idx = -1, alive = true, awaiting = false, responded = false, stimAt = 0, dTimer = 0, timers = [], t0 = 0;
+      var idx = -1, alive = true, awaiting = false, responded = false, stimAt = 0, dTimer = 0, timers = [], t0 = 0, stopReady = null;
       var cfg = [], correct = 0, errors = 0, rows = {};
       var CUES = ['none', 'center', 'spatial'], FL = ['cong', 'incong'];
 
@@ -102,11 +102,11 @@
         });
       }
       function onKey(e) { if (e.key === 'ArrowLeft') answer('L'); else if (e.key === 'ArrowRight') answer('R'); }
-      function cleanup() { timers.forEach(clearTimeout); timers = []; window.removeEventListener('keydown', onKey); bL.disabled = bR.disabled = true; }
+      function cleanup() { timers.forEach(clearTimeout); timers = []; if (stopReady) { try { stopReady(); } catch (e) {} stopReady = null; } window.removeEventListener('keydown', onKey); bL.disabled = bR.disabled = true; }
       window.addEventListener('keydown', onKey);
 
-      R.splash(ctx, w, h, 'ANT', [R.L(CTRL, lang)], lang === 'ru' ? 'Начинаем…' : 'Starting…');
-      timers.push(setTimeout(function () { R.countdown(ctx, w, h, 3, function () { t0 = performance.now(); bL.disabled = bR.disabled = false; next(); }); }, 1700));
+      stopReady = R.awaitReady(host, ctx, w, h, 'ANT',
+        [R.L(CTRL, lang)], lang, function () { t0 = performance.now(); bL.disabled = bR.disabled = false; next(); });
       return function () { alive = false; cleanup(); };
     }
   });
