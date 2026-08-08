@@ -124,7 +124,8 @@
 //      methods (CBT/DBT/ACT/IFS/EMDR/SE/MBSR/Vipassana/Wim Hof/TMS/
 //      neurofeedback/ketamine/psilocybin/MDMA/somatic-trauma). Re-run
 //      /api/run-migrations to refresh migration 058 seed. Purges stale account.html.
-var CACHE_NAME = 'na-practices-v63';
+// v64: exercises ready-gate + Corsi cubes + EF sun horizontal timeline + NAIcons + Nastya monad map.
+var CACHE_NAME = 'na-practices-v64';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
