@@ -1329,6 +1329,7 @@ a.dash-tab:hover { text-decoration:none; }
       <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=internal-field" onclick="event.preventDefault();setToolsMode('internal-field');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.internal_field">Внутреннее воздействие</a>
       <a class="dash-tab dash-subtab" id="tools-mode-library" href="?tool=library" onclick="event.preventDefault();setToolsMode('library');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.library">Library</a>
       <a class="dash-tab dash-subtab" id="tools-mode-exercises" href="?tool=exercises" onclick="event.preventDefault();setToolsMode('exercises');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.exercises">Упражнения и тесты</a>
+      <a class="dash-tab dash-subtab" id="tools-mode-sketch" href="?tool=sketch" onclick="event.preventDefault();setToolsMode('sketch');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sketch">Скетч</a>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -1551,6 +1552,40 @@ a.dash-tab:hover { text-decoration:none; }
 
     <!-- ── Exercises & Tests tool (migration 060): 10 canvas cognitive exercises ── -->
     <div id="tools-exercises-content" style="display:none;"></div>
+
+    <!-- Sketch tool -->
+    <div id="tools-sketch-content" style="display:none;">
+      <div class="sketch-wrap">
+        <div class="sketch-head">
+          <div>
+            <h2 style="margin:0 0 0.25rem;" data-i18n="a.sketch.title">Скетч</h2>
+            <p style="margin:0;font-size:13px;color:var(--text-muted);" data-i18n="a.sketch.sub">Быстрый набросок. Сохраняется в твоём профиле.</p>
+          </div>
+          <input id="sketch-title" type="text" maxlength="120" data-i18n-placeholder="a.sketch.title_ph" placeholder="Название…" style="min-width:180px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:0.45rem 0.75rem;color:var(--text-primary);font:inherit;">
+        </div>
+        <div class="sketch-toolbar">
+          <button type="button" class="btn btn-ghost sketch-tool-btn active" data-sketch-tool="pen" data-i18n="a.sketch.pen">Карандаш</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn" data-sketch-tool="eraser" data-i18n="a.sketch.eraser">Ластик</button>
+          <div id="sketch-colors" class="sketch-colors"></div>
+          <label class="sketch-size-label"><span data-i18n="a.sketch.size">Толщина</span>
+            <input id="sketch-size" type="range" min="1" max="24" value="3">
+          </label>
+          <button type="button" class="btn btn-ghost" id="sketch-undo" data-i18n="a.sketch.undo">↩</button>
+          <button type="button" class="btn btn-ghost" id="sketch-clear" data-i18n="a.sketch.clear">Очистить</button>
+          <button type="button" class="btn btn-ghost" id="sketch-new" data-i18n="a.sketch.new">Новый</button>
+          <button type="button" class="btn btn-solid" id="sketch-save" data-i18n="a.sketch.save">Сохранить</button>
+          <button type="button" class="btn btn-ghost" id="sketch-delete" style="color:var(--accent-rose);" data-i18n="a.sketch.delete">Удалить</button>
+          <span id="sketch-status" class="monad-muted"></span>
+        </div>
+        <div class="sketch-canvas-wrap">
+          <canvas id="sketch-canvas"></canvas>
+        </div>
+        <div class="sketch-side">
+          <h4 style="margin:0.75rem 0 0.4rem;font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);" data-i18n="a.sketch.saved_list">Сохранённые</h4>
+          <div id="sketch-list"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- ── Anatomy Atlas tool (3D BodyAtlas) ── -->
     <div id="tools-anatomy-content" style="display:none;">
@@ -5370,6 +5405,7 @@ function switchTab(id){
                    : document.querySelector('#tools-mode-anatomy.active') ? 'anatomy'
                    : document.querySelector('#tools-mode-library.active') ? 'library'
                    : document.querySelector('#tools-mode-exercises.active') ? 'exercises'
+                   : document.querySelector('#tools-mode-sketch.active') ? 'sketch'
                    : 'nm';
     setToolsMode(activeMode);
   }
@@ -5969,8 +6005,10 @@ function setToolsMode(mode){
   var libraryContent = document.getElementById('tools-library-content');
   var btnExercises = document.getElementById('tools-mode-exercises');
   var exercisesContent = document.getElementById('tools-exercises-content');
+  var btnSketch = document.getElementById('tools-mode-sketch');
+  var sketchContent = document.getElementById('tools-sketch-content');
   // Reset all sub-tab buttons
-  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy,btnLibrary,btnExercises].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
+  [btnNm,btnDiary,btnSensation,btnPointab,btnExternal,btnAnatomy,btnLibrary,btnExercises,btnSketch].forEach(function(b){ if(b){ b.classList.remove('active'); b.style.borderBottomColor='transparent'; }});
   // Hide all content
   if(nmContent) nmContent.style.display='none';
   if(calDiaryWrap) calDiaryWrap.style.display='none';
@@ -5981,6 +6019,13 @@ function setToolsMode(mode){
   if(anatomyContent) anatomyContent.style.display='none';
   if(libraryContent) libraryContent.style.display='none';
   if(exercisesContent) exercisesContent.style.display='none';
+  if(sketchContent) sketchContent.style.display='none';
+  if(mode==='sketch'){
+    if(btnSketch){ btnSketch.classList.add('active'); btnSketch.style.borderBottomColor='var(--accent-cyan)'; }
+    if(sketchContent){ sketchContent.style.display='';
+      setTimeout(function(){ try{ if(typeof window.mountSketchTool==='function') window.mountSketchTool(sketchContent); }catch(e){ console.warn('sketch mount', e); } }, 40);
+    }
+  }
   if(mode==='library'){
     if(btnLibrary){ btnLibrary.classList.add('active'); btnLibrary.style.borderBottomColor='var(--accent-cyan)'; }
     if(libraryContent){ libraryContent.style.display='';
@@ -6054,6 +6099,7 @@ function toolsExpandActive(){
     anatomy:  { id: 'tools-anatomy-content', title: 'Анатомический атлас' },
     library:  { id: 'tools-library-content', title: 'Library' },
     exercises:{ id: 'tools-exercises-content', title: 'Упражнения и тесты' },
+    sketch:   { id: 'tools-sketch-content', title: 'Скетч' },
     diary:    { id: 'tools-cal-diary-wrap',  title: 'Дневник' }
   };
   // External Field was missing here, so its «Раскрыть» fell through to the
@@ -18372,7 +18418,8 @@ window.pbMove = pbMove;
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/external-field.js?v=11"></script>
 <script src="assets/js/body-atlas.js?v=39"></script>
-<script src="assets/js/monad-lk.js?v=2"></script>
+<script src="assets/js/monad-lk.js?v=3"></script>
+<script src="assets/js/sketch-tool.js?v=1"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=2"></script>
 <script src="assets/js/exercises/n-back.js?v=2"></script>

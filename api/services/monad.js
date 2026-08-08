@@ -8,6 +8,7 @@
 const MONAD_MCP_URL = process.env.MONAD_MCP_URL || 'https://monad-server-production.up.railway.app/mcp';
 const MONAD_API_KEY = process.env.MONAD_API_KEY || '';
 const MONAD_DASHBOARD = process.env.MONAD_DASHBOARD_URL || 'https://monad-server-production.up.railway.app/dashboard';
+const MONAD_BASE = process.env.MONAD_BASE_URL || 'https://monad-server-production.up.railway.app';
 
 // Default email → human_id map (overridable via users.monad_human_id).
 const EMAIL_HUMAN_MAP = {
@@ -124,16 +125,118 @@ const RHYTHM_LAYERS = [
   { id: 'agent', ru: 'Агенты', en: 'Agents', es: 'Agentes' },
 ];
 
+const STATUS_LEVEL = {
+  harmonic: 0.85,
+  drifting: 0.55,
+  dissonant: 0.3,
+  silence: 0.1,
+};
+
+/**
+ * REAL system rhythm already computed by monad-server and shown on /dashboard
+ * ("Ритм системы": harmonic|drifting|dissonant|silence + per-agent actions/min).
+ * There is still NO JSON /api/rhythm — we parse the public HTML until Monad ships it.
+ * This is NOT the biological equalizer (circ/breath/heart) from spec XI — that layer
+ * set is still not exposed as live data (confirmed 2026-08-08).
+ */
+async function fetchSystemRhythm() {
+  const headers = { Accept: 'text/html' };
+  if (MONAD_API_KEY) headers['X-API-Key'] = MONAD_API_KEY;
+  const res = await fetch(MONAD_DASHBOARD, { headers });
+  if (!res.ok) throw new Error('Monad dashboard HTTP ' + res.status);
+  const html = await res.text();
+  const i = html.indexOf('Ритм системы');
+  if (i < 0) throw new Error('Rhythm block not found on dashboard');
+  const j = html.indexOf('<h2>', i + 1);
+  const block = html.slice(i, j > i ? j : i + 12000);
+
+  const statusM = block.match(/badge-rhythm-(\w+)/);
+  const status = statusM ? statusM[1] : 'unknown';
+  const metaM = block.match(/окно:\s*([^<]+)/i);
+  const meta = metaM ? metaM[1].replace(/\s+/g, ' ').trim() : '';
+  const agents = [];
+  const rowRe = /<tr>\s*<td><code>([^<]+)<\/code><\/td>\s*<td>([^<]*)<\/td>\s*<td>([^<]*)<\/td>\s*<td[^>]*>([^<]*)<\/td>\s*<td[^>]*>([^<]*)<\/td>\s*<td[^>]*>([^<]*)<\/td>/g;
+  let m;
+  while ((m = rowRe.exec(block))) {
+    const actions = parseFloat(String(m[2]).replace(',', '.'));
+    const expected = parseFloat(String(m[3]).replace(',', '.'));
+    agents.push({
+      agent_id: m[1],
+      actions_per_min: Number.isFinite(actions) ? actions : null,
+      expected_per_min: Number.isFinite(expected) ? expected : null,
+      drift: (m[4] || '').trim(),
+      last_seen: (m[5] || '').trim(),
+      err_rate: (m[6] || '').trim(),
+    });
+  }
+
+  // Map real system status → equalizer bars (honest: agent-ops rhythm, not body sensors).
+  const base = STATUS_LEVEL[status] != null ? STATUS_LEVEL[status] : 0.4;
+  const maxAct = Math.max(0.01, ...agents.map((a) => a.actions_per_min || 0));
+  const avgAct = agents.length
+    ? agents.reduce((s, a) => s + (a.actions_per_min || 0), 0) / agents.length
+    : 0;
+  const collisionsM = meta.match(/коллизий[^0-9]*(\d+)/i);
+  const collisions = collisionsM ? parseInt(collisionsM[1], 10) : 0;
+  const collisionPenalty = Math.min(0.4, collisions / 200);
+
+  const layers = RHYTHM_LAYERS.map((L) => {
+    let level = base;
+    if (L.id === 'agent') level = Math.min(1, avgAct / Math.max(0.5, maxAct * 0.5));
+    else if (L.id === 'social') level = Math.max(0.05, base - collisionPenalty);
+    else if (L.id === 'action' || L.id === 'ultradian') level = Math.min(1, base + (avgAct > 1 ? 0.1 : 0));
+    else if (L.id === 'metab') level = Math.max(0.1, 1 - collisionPenalty);
+    // circ/breath/heart: NOT measured by Monad yet — mark unavailable (null level)
+    else if (L.id === 'circ' || L.id === 'breath' || L.id === 'heart') {
+      return { ...L, level: null, available: false };
+    }
+    return { ...L, level: Math.max(0, Math.min(1, +level.toFixed(3))), available: true };
+  });
+
+  return {
+    source: 'dashboard_system_rhythm',
+    note: 'Live «Ритм системы» from Monad dashboard (agent actions/drift). Biological layers (circ/breath/heart) are not in Monad API yet — asked Monad for JSON /api/rhythm.',
+    updated_at: new Date().toISOString(),
+    system: {
+      status,
+      meta,
+      collisions_per_hour: collisions,
+      agents_in_window: agents.length,
+      dashboard_url: MONAD_DASHBOARD,
+    },
+    agents,
+    layers,
+  };
+}
+
+/** Try JSON /api/rhythm first; fall back to dashboard HTML parse. */
+async function getRhythm() {
+  try {
+    const headers = { Accept: 'application/json' };
+    if (MONAD_API_KEY) headers['X-API-Key'] = MONAD_API_KEY;
+    const res = await fetch(MONAD_BASE + '/api/rhythm', { headers });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        source: 'monad_api_rhythm',
+        note: 'Native JSON /api/rhythm from monad-server',
+        updated_at: new Date().toISOString(),
+        ...data,
+      };
+    }
+  } catch (_) { /* fall through */ }
+  return fetchSystemRhythm();
+}
+
 function synthRhythm(agents) {
   const list = Array.isArray(agents) ? agents : [];
   const active = list.filter((a) => a.status === 'active').length;
   const training = list.filter((a) => /train|certif/i.test(a.status || '')).length;
   const retired = list.filter((a) => /retir|suspend/i.test(a.status || '')).length;
   const total = Math.max(1, list.length);
-  // Pseudo-levels 0..1 until Monad ships /api/rhythm JSON.
   return {
     source: 'synthetic_from_agents',
-    note: 'Real rhythm JSON endpoint not yet on monad-server — using agent status mix.',
+    note: 'Fallback only if dashboard parse fails.',
     updated_at: new Date().toISOString(),
     layers: RHYTHM_LAYERS.map((L, i) => {
       let level = 0.25;
@@ -159,6 +262,9 @@ module.exports = {
   VERTICAL_NUCLEI,
   RHYTHM_LAYERS,
   synthRhythm,
+  fetchSystemRhythm,
+  getRhythm,
   MONAD_DASHBOARD,
   MONAD_MCP_URL,
+  MONAD_BASE,
 };
