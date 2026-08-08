@@ -7,6 +7,25 @@
 
 ---
 
+## 2026-08-08T07:00+0000 — cursor_cloud (оператор: Ник)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-08T07:00:00Z
+
+### did
+- Проверил ритм Monad: `/api/rhythm` 404; live «Ритм системы» есть только в HTML dashboard (agent-ops). Bio equalizer (circ/breath/heart) — на бумаге. Переключил LK на парсинг dashboard + n/a для bio-слоёв. Попросил Monad JSON API (seed_msk0ga82).
+- Проверил Railway ключ: **НЕ готов**. Cowork: нет доступа к ключу, нужно решение Тахира. Эскалировал companion (seed_msk0g9vw).
+- Стартовал Sketch MVP (Tools → Скетч) с дефолтами из brief; кликабельная ссылка в docs/SKETCH-BRIEF.md.
+
+### changed
+- api/services/monad.js (getRhythm/fetchSystemRhythm), api/server.js (sketches + mig072 + rhythm), assets/js/monad-lk.js, assets/js/sketch-tool.js, account.html, redesign.css, i18n, docs/*, sw.js v63
+
+### next_session
+- Tahir inserts MONAD_API_KEY; Nick tries Sketch + Monad rhythm tab.
+
+---
+
 ## 2026-08-07T07:55+0000 — cursor_cloud (оператор: Ник)
 
 - **project:** neuro
