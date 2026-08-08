@@ -59,7 +59,8 @@
 
 Чат шлёт `plant_seed` с `human_id` твоего профиля и тегами `neuroattention/lk`.
 
-Ритм **пока синтетический** (из статусов агентов) — у Monad ещё нет JSON `/api/rhythm`.
+Ритм (2026-08-08): с dashboard берём **живой «Ритм системы»** (agent-ops).  
+JSON `/api/rhythm` у Monad всё ещё 404. Слои circ/breath/heart в спеке XI — пока без live-данных (`n/a` во вкладке). Запрос JSON посажен в Monad.
 
 ---
 
