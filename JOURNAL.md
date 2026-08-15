@@ -7,6 +7,40 @@
 
 ---
 
+## 2026-08-15T16:10+0000 — cursor_cloud (research: BodyAtlas → Sketch reuse)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-15T16:10:27Z",
+  "did": [
+    "Read body-atlas.js (~2348 lines / ~135 KB) for Sketch Three.js reuse",
+    "Mapped window.BodyAtlas API + Atlas.prototype init/render/layers/destroy",
+    "Confirmed no screenshot/export API; noted makeRegionMiniViewer mesh-share pattern",
+    "Checked #tools-sketch-content markup (scratch 2D canvas only)"
+  ],
+  "changed": [],
+  "files": [
+    "assets/js/body-atlas.js",
+    "account.html (#tools-sketch-content ~1558-1598)",
+    "docs/SKETCH-BRIEF.md",
+    "assets/js/sketch-tool.js"
+  ],
+  "decisions": [
+    "First Sketch PR: wrap BodyAtlas (init+overlay canvas), do not extract three-core.js yet",
+    "Screenshot = new helper on renderer.domElement (preserveDrawingBuffer or force render) — none exists today"
+  ],
+  "followups": [
+    "Optional: expose SEED_REGION_INFO on window.BodyAtlas (today only Atlas.SEED_REGION_INFO inside IIFE)",
+    "Add atlas.screenshot()/toDataURL when Sketch save needs bake PNG"
+  ],
+  "next_session": "Sketch MVP: mount BodyAtlas in tools-sketch-content + transparent draw overlay"
+}
+```
+
+---
+
 ## 2026-08-08T07:00+0000 — cursor_cloud (оператор: Ник)
 
 - **project:** neuro
@@ -365,3 +399,10 @@
 - Replaced emoji chrome in HA tabs, EF location/sun/moon/warn, Path overlay HTML toggles.
 - Boot-time light sync for exercise seed + Nastya (so we don’t depend only on the long migration endpoint).
 - Sketch tab: roadmap bullets for layers+3D; still waiting on Nick’s original handoff file.
+
+## 2026-08-15 — Sketch brief restored + Monad multi-chat
+
+- Nick re-uploaded `nick-handoff-brief-2026-07-12` → copied to `docs/`, Sketch ТЗ rewritten from §6.
+- Clarified Monad `/api/rhythm` 404 (dashboard live OK; JSON missing) → `docs/MONAD-TAHIR-HANDOFF.md` for Tahir+Monad.
+- Monad LK: multiple chats/tasks, pinned context, file/image uploads, poll shared_context for replies (mig074).
+- Sketch Phase 0/1 shell: 5-layer panel + Atlas viewport placeholder.
