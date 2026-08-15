@@ -1559,12 +1559,25 @@ a.dash-tab:hover { text-decoration:none; }
       <div class="sketch-wrap">
         <div class="sketch-brief-card" style="margin-bottom:1rem;padding:1rem 1.1rem;border-radius:14px;border:1px solid rgba(168,247,255,0.18);background:rgba(168,247,255,0.05);">
           <h2 style="margin:0 0 0.35rem;font-size:1.15rem;" data-i18n="a.sketch.title">Скетч</h2>
-          <p style="margin:0 0 0.55rem;font-size:13px;color:var(--text-secondary);line-height:1.55;" data-i18n="a.sketch.sub">Инструмент для работы со слоями и рисования поверх 3D-модели тела (как в атласе). Сейчас ниже — временная рисовалка; сам Скетч в сборке. Нужен исходный файл брифа — перезалей, пожалуйста.</p>
+          <p style="margin:0 0 0.55rem;font-size:13px;color:var(--text-secondary);line-height:1.55;" data-i18n="a.sketch.sub">Слои + рисование поверх 3D-Атласа (и скринов сайта). Полное ТЗ — в docs/SKETCH-BRIEF.md из handoff Ника 2026-07-12. Ниже — каркас Phase 0/1; старая рисовалка временно сохранена.</p>
           <ul class="sketch-roadmap" style="margin:0;padding-left:1.1rem;font-size:12.5px;color:var(--text-muted);line-height:1.55;">
-            <li data-i18n="a.sketch.road1">Слои поверх 3D-тела (атлас)</li>
-            <li data-i18n="a.sketch.road2">Аннотации на меше / ракурсе камеры</li>
-            <li data-i18n="a.sketch.road3">Сохранение сцены + слоёв в профиль</li>
+            <li data-i18n="a.sketch.road1">5 слоёв (фон / модель / 3 рисующих) + z-порядок</li>
+            <li data-i18n="a.sketch.road2">Копии из Атласа / Библиотеки / скрин всего ЛК</li>
+            <li data-i18n="a.sketch.road3">То же 3D-ядро, что Атлас (без нового движка)</li>
           </ul>
+          <div id="sketch-phase1-shell" class="sketch-phase1-shell" style="margin-top:0.9rem;display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:0.75rem;">
+            <div id="sketch-3d-host" class="sketch-3d-host" style="min-height:280px;border-radius:14px;border:1px dashed rgba(168,247,255,0.28);background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:13px;text-align:center;padding:1rem;">
+              <span data-i18n="a.sketch.viewport_ph">Скоро: окно Атласа + прозрачный слой рисования поверх.</span>
+            </div>
+            <div class="sketch-layers-panel" style="border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:0.6rem;background:rgba(255,255,255,0.02);">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:0.45rem;" data-i18n="a.sketch.layers">Слои</div>
+              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_bg">1 · Фон</span></label>
+              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_model">2 · Модель / изображение</span></label>
+              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_d1">3 · Рисунок 1</span></label>
+              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_d2">4 · Рисунок 2</span></label>
+              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_d3">5 · Рисунок 3</span></label>
+            </div>
+          </div>
         </div>
         <div class="sketch-head">
           <div>
@@ -2480,10 +2493,31 @@ a.dash-tab:hover { text-decoration:none; }
       </div>
 
       <div class="monad-panel active" id="monad-panel-chat">
-        <div id="monad-chat-log" class="monad-chat-log" aria-live="polite"></div>
-        <div class="monad-chat-compose">
-          <textarea id="monad-chat-input" rows="3" data-i18n-placeholder="a.monad.placeholder" placeholder="Напиши Манаде…"></textarea>
-          <button type="button" id="monad-chat-send" class="btn btn-primary" data-i18n="a.monad.send">Отправить</button>
+        <div class="monad-chat-layout">
+          <aside class="monad-chat-sidebar">
+            <div class="monad-chat-side-actions">
+              <button type="button" id="monad-chat-new" class="btn btn-primary" style="width:100%;font-size:12px;" data-i18n="a.monad.new_chat">+ Новый чат</button>
+            </div>
+            <div id="monad-chat-list" class="monad-chat-list"></div>
+          </aside>
+          <div class="monad-chat-main">
+            <div class="monad-chat-toolbar">
+              <div id="monad-pinned" class="monad-pinned"></div>
+              <div class="monad-chat-toolbar-btns">
+                <button type="button" id="monad-pin-add" class="btn btn-ghost" style="font-size:11px;" data-i18n="a.monad.pin_add">+ Контекст</button>
+                <button type="button" id="monad-chat-archive" class="btn btn-ghost" style="font-size:11px;" data-i18n="a.monad.archive">Скрыть чат</button>
+              </div>
+            </div>
+            <div id="monad-chat-log" class="monad-chat-log" aria-live="polite"></div>
+            <div id="monad-attach-bar" class="monad-attach-bar"></div>
+            <div class="monad-chat-compose">
+              <input type="file" id="monad-chat-file" accept="image/*,.pdf,.txt,.md,.csv,.json" multiple hidden>
+              <button type="button" id="monad-chat-attach" class="btn btn-ghost" style="font-size:12px;" data-i18n="a.monad.attach">Файл</button>
+              <textarea id="monad-chat-input" rows="3" data-i18n-placeholder="a.monad.placeholder" placeholder="Напиши Манаде…"></textarea>
+              <button type="button" id="monad-chat-send" class="btn btn-primary" data-i18n="a.monad.send">Отправить</button>
+            </div>
+            <p class="monad-muted" style="margin:0.4rem 0 0;font-size:11px;" data-i18n="a.monad.chat_hint">Несколько чатов = разные задачи. Вложения и закреплённый контекст уходят вместе с сообщением. Ответы Манады подтянутся, когда она запишет их обратно (задание для Тахира).</p>
+          </div>
         </div>
       </div>
 
@@ -18448,8 +18482,8 @@ window.pbMove = pbMove;
 
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=39"></script>
-<script src="assets/js/monad-lk.js?v=3"></script>
-<script src="assets/js/sketch-tool.js?v=2"></script>
+<script src="assets/js/monad-lk.js?v=4"></script>
+<script src="assets/js/sketch-tool.js?v=3"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>
 <script src="assets/js/exercises/n-back.js?v=3"></script>
