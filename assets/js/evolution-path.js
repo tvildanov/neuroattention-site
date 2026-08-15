@@ -635,7 +635,12 @@
   var DAY_MS = 864e5, HOUR_MS = 36e5, MIN_MS = 6e4;
   // ── PR5: External Field overlay layers (bottom-zone tracks) ──
   var OVERLAY_ORDER = ['sun', 'moon', 'earth', 'weather', 'cosmos', 'social', 'experimental'];
-  var OVERLAY_ICON = { sun: '☀', moon: '☾', earth: '⊕', weather: '🌦', cosmos: '✦', social: '🌐', experimental: '⚡' };
+  var OVERLAY_ICON = { sun: 'sun', moon: 'moon', earth: 'earth', weather: 'weather', cosmos: 'cosmos', social: 'social', experimental: 'experimental' };
+  var OVERLAY_GLYPH = { sun: '☀', moon: '☾', earth: '⊕', weather: '🌦', cosmos: '✦', social: '🌐', experimental: '⚡' };
+  function overlayIconHtml(k, size) {
+    if (window.NAIcons && NAIcons.html) return NAIcons.html(OVERLAY_ICON[k] || k, { size: size || 14, color: 'currentColor', wrapClass: 'na-ic' });
+    return '<span>' + (OVERLAY_GLYPH[k] || '•') + '</span>';
+  }
   var OVERLAY_LABEL = {
     sun:    { ru: 'Солнце',  en: 'Sun',     es: 'Sol' },
     moon:   { ru: 'Луна',    en: 'Moon',    es: 'Luna' },
@@ -815,7 +820,7 @@
     var ovData = (data && data.overlays) || {};
     var ovLayers = [];
     var ovHidden = st.hidden || {};
-    OVERLAY_ORDER.forEach(function (k) { var evs = ovData[k]; if (evs && evs.length && !ovHidden[k]) ovLayers.push({ key: k, icon: OVERLAY_ICON[k], events: evs }); });
+    OVERLAY_ORDER.forEach(function (k) { var evs = ovData[k]; if (evs && evs.length && !ovHidden[k]) ovLayers.push({ key: k, icon: OVERLAY_GLYPH[k] || OVERLAY_ICON[k], events: evs }); });
     if (isMobile && ovLayers.length > 3) ovLayers = ovLayers.slice(0, 3);   // mobile: cap visible tracks
     var fullBot = H - padBot, hasOverlay = ovLayers.length > 0;
     var fieldBot = hasOverlay ? Math.round(fieldTop + (fullBot - fieldTop) * 0.70) : fullBot;
@@ -1276,7 +1281,7 @@
     var host = stageOf(container);
     var old = host.querySelector('.evo-ov-card'); if (old) old.remove();
     var ev = marker.ev, lab = OVERLAY_LABEL[marker.layer] ? (OVERLAY_LABEL[marker.layer][lang] || OVERLAY_LABEL[marker.layer].ru) : marker.layer;
-    var icon = OVERLAY_ICON[marker.layer] || '•';
+    var icon = (window.NAIcons ? overlayIconHtml(marker.layer, 14) : (OVERLAY_GLYPH[marker.layer] || '•'));
     var when = '';
     try { when = new Date(ev.t).toLocaleString(lang === 'en' ? 'en-US' : lang === 'es' ? 'es-ES' : 'ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) {}
     var sev = ev.severity ? '<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;font-size:10px;background:' + marker.color + '22;color:' + marker.color + ';border:1px solid ' + marker.color + '55;">' + escapeHtml(String(ev.severity)) + '</span>' : '';
@@ -2883,7 +2888,7 @@
       var on = !st.hidden[k];
       var nm = OVERLAY_LABEL[k] ? (OVERLAY_LABEL[k][lang] || OVERLAY_LABEL[k].ru) : k;
       return '<label class="evo-lt-row"><input type="checkbox" data-layer="' + k + '"' + (on ? ' checked' : '') + '>' +
-        '<span>' + OVERLAY_ICON[k] + ' ' + nm + '</span></label>';
+        '<span class="evo-ov-lab">' + overlayIconHtml(k, 13) + ' ' + nm + '</span></label>';
     }).join('');
     box.innerHTML = '<div class="evo-lt-title">' + L(STR.layersTitle, lang) + '</div>' +
       LAYERS.map(function (l) {

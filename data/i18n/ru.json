@@ -1265,7 +1265,7 @@
   "a.courses.cp_block_sound_cue": "Звуковой сигнал",
   "a.courses.cp_block_tool_task": "Задание из инструмента",
   "a.courses.cp_block_untitled": "(без названия)",
-  "a.courses.cp_complete_title": "🎉 Курс завершён!",
+  "a.courses.cp_complete_title": "Курс завершён!",
   "a.courses.cp_complete_sub": "Спасибо за участие.",
   "a.courses.cp_back_to_courses": "← Назад в Курсы",
   "a.courses.cp_section_playlist": "📦 Раздел · плейлист",
@@ -1925,5 +1925,8 @@
   "a.monad.system_rhythm": "Ритм системы Monad",
   "a.monad.agents_in_window": "Агенты в окне",
   "a.sketch.scratch_title": "Временная рисовалка",
-  "a.sketch.scratch_sub": "Не продукт «Скетч». Просто черновик на холсте."
+  "a.sketch.scratch_sub": "Не продукт «Скетч». Просто черновик на холсте.",
+  "a.sketch.road1": "Слои поверх 3D-тела (атлас)",
+  "a.sketch.road2": "Аннотации на меше / ракурсе камеры",
+  "a.sketch.road3": "Сохранение сцены + слоёв в профиль"
 }

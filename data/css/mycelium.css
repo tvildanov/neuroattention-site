@@ -851,3 +851,9 @@ a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
   color: #cdcdd6; cursor: pointer; transition: all 0.15s;
 }
 .sm-iconpick button.sel, .sm-iconpick button:hover { border-color: rgba(94,224,255,0.6); color: #fff; background: rgba(94,224,255,0.08); }
+
+/* HA / Internal Field tab icons (NAIcons) */
+.ha-tab { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ha-tab-ic { display: inline-flex; align-items: center; line-height: 0; }
+.ha-tab-ic svg { display: block; }
+.evo-ov-lab { display: inline-flex; align-items: center; gap: 0.3rem; }

@@ -125,7 +125,8 @@
 //      neurofeedback/ketamine/psilocybin/MDMA/somatic-trauma). Re-run
 //      /api/run-migrations to refresh migration 058 seed. Purges stale account.html.
 // v64: exercises ready-gate + Corsi cubes + EF sun horizontal timeline + NAIcons + Nastya monad map.
-var CACHE_NAME = 'na-practices-v64';
+// v65: HA/EF/Path chrome → NAIcons; boot seed sync for exercises+Nastya.
+var CACHE_NAME = 'na-practices-v65';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

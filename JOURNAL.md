@@ -328,3 +328,40 @@
 4. **EF Sun:** Path-like horizontal intensity timeline (pan/zoom) instead of vertical flare list for today + history.
 5. **Sketch:** brief rewritten — doodle is temporary; need original handoff re-upload for layers+3D.
 6. **Monad:** `nilta95@mail.ru` → `nastya` (+ mig073 access); `/health` exposes `monad_configured`.
+
+---
+
+## 2026-08-15T15:43:10Z — cursor_cloud (emoji chrome inventory)
+
+- **project:** neuro
+- **agent:** cursor_cloud
+- **at:** 2026-08-15T15:43:10Z
+
+### did
+- Inventoried remaining UI-chrome emoji in account.html, external-field.js, evolution-path.js; confirmed monad-lk.js / sketch-tool.js / index.html / method.html have none.
+- Mapped each to existing NAIcons keys or noted new keys needed; prioritized a one-PR safe set (HA tabs, EF leftovers, OVERLAY_ICON HTML+toast, warn/check) excluding pickers/achievements/archetypes/joint reactions.
+
+### changed
+- JOURNAL.md only (read-only inventory)
+
+### files
+- account.html, assets/js/external-field.js, assets/js/evolution-path.js, assets/js/na-icons.js, assets/js/monad-lk.js, assets/js/sketch-tool.js
+
+### decisions
+- Exercises grid already on NAIcons (exIc); leftover chrome is HA tabs + EF body copy + Path overlay glyphs + NM toast/onboard.
+- Canvas OVERLAY_ICON uses ctx.fillText — HTML rail/card can swap to NAIcons immediately; canvas needs Path2D or keep text glyphs until stroke draw helper exists.
+
+### followups
+- One PR: HA tabs (new keys anatomy/heart/conditions/pills/diet), EF 📍/☀/🌇/🌙/🌑/⚠, OVERLAY_ICON HTML sites + nmShowToast party/check, dx warn→warn.
+- Defer: admin chrome, course block-type emoji map, emotion pickers, badge_emoji, archetype CHARACTER_TYPES, cpJointReact, canvas moon phase glyphs.
+
+### next_session
+- Implement prioritized replacements if tasked.
+
+## 2026-08-15 — Follow-up: migrations + more NAIcons + Sketch roadmap
+
+- Ran prod `/api/run-migrations` → mig066 seed upsert + mig073 Nastya link OK; exercise RU copy live.
+- Expanded `na-icons.js` (anatomy/heart/conditions/pills/diet/pin/…).
+- Replaced emoji chrome in HA tabs, EF location/sun/moon/warn, Path overlay HTML toggles.
+- Boot-time light sync for exercise seed + Nastya (so we don’t depend only on the long migration endpoint).
+- Sketch tab: roadmap bullets for layers+3D; still waiting on Nick’s original handoff file.

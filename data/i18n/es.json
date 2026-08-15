@@ -1267,7 +1267,7 @@
   "a.courses.cp_block_sound_cue": "Señal sonora",
   "a.courses.cp_block_tool_task": "Tarea de herramienta",
   "a.courses.cp_block_untitled": "(sin título)",
-  "a.courses.cp_complete_title": "🎉 ¡Curso completado!",
+  "a.courses.cp_complete_title": "¡Curso completado!",
   "a.courses.cp_complete_sub": "Gracias por participar.",
   "a.courses.cp_back_to_courses": "← Volver a Cursos",
   "a.courses.cp_section_playlist": "📦 Sección · lista",
@@ -1936,5 +1936,8 @@
   "a.monad.system_rhythm": "Ritmo del sistema Monad",
   "a.monad.agents_in_window": "Agentes en ventana",
   "a.sketch.scratch_title": "Bloc temporal",
-  "a.sketch.scratch_sub": "No es el producto Sketch — solo un borrador en lienzo."
+  "a.sketch.scratch_sub": "No es el producto Sketch — solo un borrador en lienzo.",
+  "a.sketch.road1": "Capas sobre el cuerpo 3D (atlas)",
+  "a.sketch.road2": "Anotaciones en la malla / vista de cámara",
+  "a.sketch.road3": "Guardar escena + capas en tu perfil"
 }
