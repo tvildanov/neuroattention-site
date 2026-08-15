@@ -190,6 +190,10 @@
     }, opts || {})).then(function (r) { return r.json(); });
   }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function efIc(name, size) {
+    if (window.NAIcons && NAIcons.html) return NAIcons.html(name, { size: size || 14, color: 'currentColor', wrapClass: 'na-ic' });
+    return '';
+  }
   function fmtTime(ts) { var d = new Date(ts); if (isNaN(d)) return ''; try { return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return d.toISOString().slice(0, 16).replace('T', ' '); } }
   function fmtHM(ts, tz) { var d = new Date(ts); if (isNaN(d)) return '—'; try { var o = { hour: '2-digit', minute: '2-digit' }; if (tz) o.timeZone = tz; return d.toLocaleTimeString(locale(), o); } catch (e) { return '—'; } }
   function hasLocation() { return S.user && S.user.location_lat != null && S.user.location_lon != null; }
@@ -239,7 +243,7 @@
 
   function renderLocBtn() {
     var b = S.container.querySelector('#ef-loc-btn'); if (!b) return;
-    b.innerHTML = hasLocation() ? '📍 ' + esc(S.user.location_city || (S.user.location_lat.toFixed(2) + ', ' + S.user.location_lon.toFixed(2))) : '📍 ' + esc(t('setLoc'));
+    b.innerHTML = efIc('pin', 13) + ' ' + (hasLocation() ? esc(S.user.location_city || (S.user.location_lat.toFixed(2) + ', ' + S.user.location_lon.toFixed(2))) : esc(t('setLoc')));
   }
 
   function selectTab(key) {
@@ -415,7 +419,7 @@
   }
   function renderWeatherHistory(content) {
     if (!hasLocation()) {
-      content.innerHTML = '<div class="ef-prompt"><div class="ef-prompt-ic">📍</div><p>' + esc(t('weather.enterLoc')) + '</p>' +
+      content.innerHTML = '<div class="ef-prompt"><div class="ef-prompt-ic">' + efIc('pin', 28) + '</div><p>' + esc(t('weather.enterLoc')) + '</p>' +
         '<button class="btn btn-solid ef-prompt-btn" id="ef-prompt-loc">' + esc(t('setLoc')) + '</button></div>';
       var b = content.querySelector('#ef-prompt-loc'); if (b) b.addEventListener('click', openLocationModal);
       return;
@@ -427,7 +431,7 @@
       '&hourly=temperature_2m,surface_pressure,relative_humidity_2m';
     fetch(url).then(function (x) { return x.json(); }).then(function (d) {
       if (seq !== S._seq || !content || !document.body.contains(content)) return;
-      var loc = '<div class="ef-loc-line">📍 ' + esc(u.location_city || (u.location_lat.toFixed(2) + ', ' + u.location_lon.toFixed(2))) + '</div>';
+      var loc = '<div class="ef-loc-line">' + efIc('pin', 13) + ' ' + esc(u.location_city || (u.location_lat.toFixed(2) + ', ' + u.location_lon.toFixed(2))) + '</div>';
       var daily = d && d.daily, hourly = d && d.hourly;
       if (!daily || !daily.time || !daily.time.length) { content.innerHTML = (S.dateMode === 'range' ? rangeHeader(r) : dayHeader(r.from)) + loc + emptyState(t('srcEmpty')); return; }
       var html;
@@ -809,7 +813,7 @@
       .then(function (r) { return r.json(); }).then(function (d) {
         var box = S.container.querySelector('#ef-suntimes'); if (!box || !d.daily) return;
         var sr = d.daily.sunrise && d.daily.sunrise[0], ss = d.daily.sunset && d.daily.sunset[0];
-        box.innerHTML = '<span>☀ ' + esc(t('sun.sunrise')) + ': <b>' + fmtHM(sr) + '</b></span><span>🌇 ' + esc(t('sun.sunset')) + ': <b>' + fmtHM(ss) + '</b></span>';
+        box.innerHTML = '<span>' + efIc('sun', 14) + ' ' + esc(t('sun.sunrise')) + ': <b>' + fmtHM(sr) + '</b></span><span>' + efIc('sunset', 14) + ' ' + esc(t('sun.sunset')) + ': <b>' + fmtHM(ss) + '</b></span>';
       }).catch(function () {});
   }
 
@@ -872,10 +876,10 @@
       }
     } catch (e) {}
     var locName = loc.city || (loc.lat.toFixed(2) + ', ' + loc.lon.toFixed(2));
-    var locLine = '<div class="ef-foot-inline" style="margin-top:6px">📍 ' + esc(locName) +
+    var locLine = '<div class="ef-foot-inline" style="margin-top:6px">' + efIc('pin', 12) + ' ' + esc(locName) +
       (loc.isDefault ? ' · ' + esc(t('moon.defaultLoc')) : '') + '</div>';
-    return '<div class="ef-suntimes" id="ef-moontimes"><span>🌙 ' + esc(t('moon.moonrise')) + ': <b>' + esc(rise) +
-      '</b></span><span>🌑 ' + esc(t('moon.moonset')) + ': <b>' + esc(set) + '</b></span></div>' + locLine;
+    return '<div class="ef-suntimes" id="ef-moontimes"><span>' + efIc('moon', 14) + ' ' + esc(t('moon.moonrise')) + ': <b>' + esc(rise) +
+      '</b></span><span>' + efIc('moon', 14) + ' ' + esc(t('moon.moonset')) + ': <b>' + esc(set) + '</b></span></div>' + locLine;
   }
 
   /* ── Earth ──────────────────────────────────────────────────────────────── */
@@ -946,7 +950,7 @@
   /* ── Weather / Local Environment (client-side Open-Meteo) ───────────────── */
   function renderWeather(body) {
     if (!hasLocation()) {
-      body.innerHTML = '<div class="ef-prompt"><div class="ef-prompt-ic">📍</div><p>' + esc(t('weather.enterLoc')) + '</p>' +
+      body.innerHTML = '<div class="ef-prompt"><div class="ef-prompt-ic">' + efIc('pin', 28) + '</div><p>' + esc(t('weather.enterLoc')) + '</p>' +
         '<button class="btn btn-solid ef-prompt-btn" id="ef-prompt-loc">' + esc(t('setLoc')) + '</button></div>';
       var b = body.querySelector('#ef-prompt-loc'); if (b) b.addEventListener('click', openLocationModal);
       return;
@@ -958,7 +962,7 @@
       fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + u.location_lat + '&longitude=' + u.location_lon + '&current=pm2_5,pm10,ozone,nitrogen_dioxide,carbon_monoxide&timezone=auto').then(function (r) { return r.json(); }).catch(function () { return null; })
     ]).then(function (res) {
       var w = res[0] && res[0].current, hourly = res[0] && res[0].hourly, aq = res[1] && res[1].current;
-      var html = '<div class="ef-loc-line">📍 ' + esc(u.location_city || (u.location_lat.toFixed(2) + ', ' + u.location_lon.toFixed(2))) + '</div>';
+      var html = '<div class="ef-loc-line">' + efIc('pin', 13) + ' ' + esc(u.location_city || (u.location_lat.toFixed(2) + ', ' + u.location_lon.toFixed(2))) + '</div>';
       if (!w && !aq) { body.innerHTML = html + emptyState(t('srcEmpty')); return; }
       // last-24h sparklines
       var last24 = function (arr) { return (arr || []).slice(-24); };
@@ -1073,7 +1077,7 @@
       return '<div class="ef-harm"><div class="ef-harm-bar" style="height:' + (60 - i * 10) + '%"></div><div class="ef-harm-hz">' + h + '</div></div>';
     }).join('');
     var notifyChecked = (S.config.experimental && S.config.experimental.notify) ? ' checked' : '';
-    var html = '<div class="ef-warn">⚠ ' + esc(t('exp.warn')) + '</div>';
+    var html = '<div class="ef-warn">' + efIc('warn', 14) + ' ' + esc(t('exp.warn')) + '</div>';
     // Schumann — disabled, no validated source
     html += '<div class="ef-exp-block"><div class="ef-exp-h">' + esc(t('exp.schumann')) + '</div>' +
       '<div class="ef-exp-desc">' + esc(t('exp.schDesc')) + '</div>' +

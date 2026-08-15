@@ -1267,7 +1267,7 @@
   "a.courses.cp_block_sound_cue": "Sound cue",
   "a.courses.cp_block_tool_task": "Tool task",
   "a.courses.cp_block_untitled": "(untitled)",
-  "a.courses.cp_complete_title": "🎉 Course complete!",
+  "a.courses.cp_complete_title": "Course complete!",
   "a.courses.cp_complete_sub": "Thank you for taking part.",
   "a.courses.cp_back_to_courses": "← Back to Courses",
   "a.courses.cp_section_playlist": "📦 Section · playlist",
@@ -1936,5 +1936,8 @@
   "a.monad.system_rhythm": "Monad system rhythm",
   "a.monad.agents_in_window": "Agents in window",
   "a.sketch.scratch_title": "Temporary scratchpad",
-  "a.sketch.scratch_sub": "Not the Sketch product — a plain canvas draft."
+  "a.sketch.scratch_sub": "Not the Sketch product — a plain canvas draft.",
+  "a.sketch.road1": "Layers on the 3D body (atlas)",
+  "a.sketch.road2": "Annotations on the mesh / camera view",
+  "a.sketch.road3": "Save scene + layers to your profile"
 }

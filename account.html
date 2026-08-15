@@ -46,7 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css?v=2" />
-<link rel="stylesheet" href="data/css/mycelium.css?v=18" />
+<link rel="stylesheet" href="data/css/mycelium.css?v=19" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -1073,7 +1073,7 @@ a.dash-tab:hover { text-decoration:none; }
       <button class="dash-tab" id="evo-subtab-collective" onclick="evoSwitchSub('collective')" style="display:none;" data-i18n="a.evo.collective_path">Коллективный путь</button>
       <button class="dash-tab" id="evo-subtab-family" onclick="evoSwitchSub('family')" data-i18n="a.evo.family_team">Семья и команда</button>
       <!-- Wearables recovery layer toggle. Hidden until the user has device data. -->
-      <button class="dash-tab" id="evo-layer-recovery" onclick="wearToggleRecoveryLayer(this)" style="display:none;margin-left:auto;" title="Oura / WHOOP"><span style="opacity:0.9;">🫀</span> <span data-i18n="a.wearables.layer_recovery">Восстановление</span></button>
+      <button class="dash-tab" id="evo-layer-recovery" onclick="wearToggleRecoveryLayer(this)" style="display:none;margin-left:auto;" title="Oura / WHOOP"><span class="ha-tab-ic" data-na-ic="heart" style="opacity:0.9;"></span> <span data-i18n="a.wearables.layer_recovery">Восстановление</span></button>
     </div>
     <!-- Recovery ribbon: one cell per day, green(>70)/yellow(50-70)/red(<50); hover
          shows HRV / RHR / sleep. Populated by wearRenderRecoveryBar (wearables). -->
@@ -1560,6 +1560,11 @@ a.dash-tab:hover { text-decoration:none; }
         <div class="sketch-brief-card" style="margin-bottom:1rem;padding:1rem 1.1rem;border-radius:14px;border:1px solid rgba(168,247,255,0.18);background:rgba(168,247,255,0.05);">
           <h2 style="margin:0 0 0.35rem;font-size:1.15rem;" data-i18n="a.sketch.title">Скетч</h2>
           <p style="margin:0 0 0.55rem;font-size:13px;color:var(--text-secondary);line-height:1.55;" data-i18n="a.sketch.sub">Инструмент для работы со слоями и рисования поверх 3D-модели тела (как в атласе). Сейчас ниже — временная рисовалка; сам Скетч в сборке. Нужен исходный файл брифа — перезалей, пожалуйста.</p>
+          <ul class="sketch-roadmap" style="margin:0;padding-left:1.1rem;font-size:12.5px;color:var(--text-muted);line-height:1.55;">
+            <li data-i18n="a.sketch.road1">Слои поверх 3D-тела (атлас)</li>
+            <li data-i18n="a.sketch.road2">Аннотации на меше / ракурсе камеры</li>
+            <li data-i18n="a.sketch.road3">Сохранение сцены + слоёв в профиль</li>
+          </ul>
         </div>
         <div class="sketch-head">
           <div>
@@ -1864,11 +1869,11 @@ a.dash-tab:hover { text-decoration:none; }
         <p style="font-size:13px;color:var(--text-muted);margin:0 0 1rem;line-height:1.55;" data-i18n="a.tools.anatomy_subtitle">Интерактивное 3D-тело: вращай, переключай слои, нажми на голову — погрузишься в детальный мозг. Слои мышц, скелета и нервной системы — анатомически точные схемы.</p>
         <div class="atlas-shell">
           <div class="ha-tabs">
-            <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')">🫀 <span data-i18n="a.ha.tab_anatomy">Анатомический атлас</span></button>
-            <button class="ha-tab" id="ha-tab-functions" onclick="haSwitchTab('functions')">🧠 <span data-i18n="a.ha.tab_functions">Функции человека</span></button>
-            <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')">🩺 <span data-i18n="a.ha.tab_conditions">Диагнозы и состояния</span></button>
-            <button class="ha-tab" id="ha-tab-medications" onclick="haSwitchTab('medications')">💊 <span data-i18n="a.ha.tab_medications">Препараты и вещества</span></button>
-            <button class="ha-tab" id="ha-tab-diet" onclick="haSwitchTab('diet')">🥗 <span data-i18n="a.ha.tab_diet">Тип питания</span></button>
+            <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')"><span class="ha-tab-ic" data-na-ic="anatomy"></span> <span data-i18n="a.ha.tab_anatomy">Анатомический атлас</span></button>
+            <button class="ha-tab" id="ha-tab-functions" onclick="haSwitchTab('functions')"><span class="ha-tab-ic" data-na-ic="brain"></span> <span data-i18n="a.ha.tab_functions">Функции человека</span></button>
+            <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')"><span class="ha-tab-ic" data-na-ic="conditions"></span> <span data-i18n="a.ha.tab_conditions">Диагнозы и состояния</span></button>
+            <button class="ha-tab" id="ha-tab-medications" onclick="haSwitchTab('medications')"><span class="ha-tab-ic" data-na-ic="pills"></span> <span data-i18n="a.ha.tab_medications">Препараты и вещества</span></button>
+            <button class="ha-tab" id="ha-tab-diet" onclick="haSwitchTab('diet')"><span class="ha-tab-ic" data-na-ic="diet"></span> <span data-i18n="a.ha.tab_diet">Тип питания</span></button>
           </div>
           <div class="atlas-topbar" id="ha-topbar">
             <h3 data-i18n="a.tools.anatomy_title">Анатомический атлас</h3>
@@ -1921,9 +1926,9 @@ a.dash-tab:hover { text-decoration:none; }
                    These master toggles let the user drop the skeleton / muscle wraps entirely so
                    the tinted internals read cleanly. Shown only on the Medications tab, default ON. -->
               <div id="med-layer-toggles" style="position:absolute;top:10px;left:10px;z-index:6;display:none;flex-direction:column;gap:5px;background:rgba(12,16,24,0.74);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.09);border-radius:11px;padding:8px 10px;">
-                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-skeleton" checked onchange="medToggleLayer('skeleton',this.checked)" style="accent-color:#FF6B6B;margin:0;"> <span data-i18n="a.med.layer_skeleton">🦴 Скелет</span></label>
-                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-muscles" checked onchange="medToggleLayer('muscles',this.checked)" style="accent-color:#FF6B6B;margin:0;"> <span data-i18n="a.med.layer_muscles">💪 Мускулатура</span></label>
-                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-internal" checked onchange="medToggleLayer('internal',this.checked)" style="accent-color:#6BE89B;margin:0;"> <span data-i18n="a.med.layer_internal">🫀 Внутренние</span></label>
+                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-skeleton" checked onchange="medToggleLayer('skeleton',this.checked)" style="accent-color:#FF6B6B;margin:0;"> <span data-i18n="a.med.layer_skeleton"><span class="ha-tab-ic" data-na-ic="skeleton"></span> Скелет</span></label>
+                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-muscles" checked onchange="medToggleLayer('muscles',this.checked)" style="accent-color:#FF6B6B;margin:0;"> <span data-i18n="a.med.layer_muscles"><span class="ha-tab-ic" data-na-ic="muscles"></span> Мускулатура</span></label>
+                <label style="display:flex;align-items:center;gap:6px;color:#cdd6e4;cursor:pointer;font-size:11.5px;"><input type="checkbox" id="med-lt-internal" checked onchange="medToggleLayer('internal',this.checked)" style="accent-color:#6BE89B;margin:0;"> <span data-i18n="a.med.layer_internal"><span class="ha-tab-ic" data-na-ic="heart"></span> Внутренние</span></label>
               </div>
               <div class="atlas-region-panel" id="atlas-region-panel">
                 <button class="arp-x" onclick="atlasCloseRegion()">×</button>
@@ -8700,9 +8705,9 @@ function nmShowToast(isFirst){
   toast.id='nm-toast';
   toast.style.cssText='position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;z-index:10000;background:rgba(10,14,20,0.95);border:1px solid rgba(0,224,255,0.2);border-radius:14px;padding:0.85rem 1.4rem;display:flex;align-items:center;gap:0.6rem;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:340px;';
   if(isFirst){
-    toast.innerHTML='<span style="font-size:20px;">🎉</span><div><div style="font-size:13px;font-weight:600;color:var(--text-primary);">Первая запись создана!</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Ваша НейроКарта начинает строиться</div></div>';
+    toast.innerHTML='<span style="font-size:20px;line-height:0">'+(window.NAIcons?NAIcons.svg('party',{size:22,color:'#3fb950'}):'★')+'</span><div><div style="font-size:13px;font-weight:600;color:var(--text-primary);">Первая запись создана!</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Ваша НейроКарта начинает строиться</div></div>';
   } else {
-    toast.innerHTML='<span style="font-size:18px;">✓</span><div style="font-size:13px;color:var(--text-primary);">Карта дня обновлена</div>';
+    toast.innerHTML='<span style="font-size:18px;line-height:0">'+(window.NAIcons?NAIcons.svg('check',{size:18,color:'#3fb950'}):'✓')+'</span><div style="font-size:13px;color:var(--text-primary);">Карта дня обновлена</div>';
   }
   document.body.appendChild(toast);
   requestAnimationFrame(function(){
@@ -13984,9 +13989,9 @@ function courseAddHumanAtlas(parentBlockId){
     '<h3 style="margin:0 0 0.25rem;font-size:15px;color:var(--text-primary);">🧬 Атлас человека — блок курса</h3>' +
     '<p style="margin:0 0 0.8rem;font-size:12px;color:var(--text-muted);">Выбери режим и объект — студент увидит его в 3D-атласе.</p>' +
     '<div style="display:flex;gap:0.4rem;margin-bottom:0.8rem;" id="ha-mode-row">' +
-      '<button class="btn btn-ghost ha-mode-b active" data-mode="anatomy" style="flex:1;font-size:12px;">🫀 Анатомия</button>' +
+      '<button class="btn btn-ghost ha-mode-b active" data-mode="anatomy" style="flex:1;font-size:12px;">'+(window.NAIcons?NAIcons.html('anatomy',{size:13}):'')+' Анатомия</button>' +
       '<button class="btn btn-ghost ha-mode-b" data-mode="function" style="flex:1;font-size:12px;">🧠 Функция</button>' +
-      '<button class="btn btn-ghost ha-mode-b" data-mode="condition" style="flex:1;font-size:12px;">🩺 Состояние</button>' +
+      '<button class="btn btn-ghost ha-mode-b" data-mode="condition" style="flex:1;font-size:12px;">'+(window.NAIcons?NAIcons.html('conditions',{size:13}):'')+' Состояние</button>' +
     '</div>' +
     '<select id="ha-entity" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);padding:0.5rem;font-size:13px;box-sizing:border-box;margin-bottom:0.9rem;"></select>' +
     '<div style="display:flex;gap:0.5rem;"><button class="btn btn-solid" id="ha-add" style="flex:1;font-size:13px;padding:0.5rem;">Добавить блок</button>' +
@@ -14874,7 +14879,7 @@ function cpRenderBlock(){
   }
   if (!block) {
     area.innerHTML = '<div style="text-align:center;padding:3rem 1rem;">'
-      + '<h3 style="font-size:18px;">' + t('a.courses.cp_complete_title','🎉 Курс завершён!') + '</h3>'
+      + '<h3 style="font-size:18px;">' + (window.NAIcons?NAIcons.html('party',{size:20}):'')+' '+t('a.courses.cp_complete_title','Курс завершён!') + '</h3>'
       + '<p style="color:var(--text-muted);margin:0.5rem 0 1.25rem;">' + t('a.courses.cp_complete_sub','Спасибо за участие.') + '</p>'
       + '<button class="btn btn-solid" onclick="cpClose(); if(typeof switchTab===\'function\') switchTab(\'courses\');" style="font-size:13px;padding:0.6rem 1.25rem;">' + t('a.courses.cp_back_to_courses','← Назад в Курсы') + '</button>'
       + '</div>';
@@ -18418,11 +18423,30 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=33"></script>
+<script src="assets/js/evolution-path.js?v=34"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
-<script src="assets/js/na-icons.js?v=1"></script>
-<script src="assets/js/external-field.js?v=12"></script>
+<script src="assets/js/na-icons.js?v=2"></script>
+
+<script>
+(function hydrateNaIcons(){
+  function paint(){
+    if(!window.NAIcons) return;
+    document.querySelectorAll('[data-na-ic]').forEach(function(el){
+      if(el.getAttribute('data-na-ic-done')) return;
+      var name = el.getAttribute('data-na-ic');
+      el.innerHTML = NAIcons.svg(name, { size: Number(el.getAttribute('data-na-ic-size')||14), color: 'currentColor' });
+      el.setAttribute('data-na-ic-done','1');
+      el.classList.add('na-ic');
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
+  else paint();
+  window.hydrateNaIcons = paint;
+})();
+</script>
+
+<script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=39"></script>
 <script src="assets/js/monad-lk.js?v=3"></script>
 <script src="assets/js/sketch-tool.js?v=2"></script>
@@ -19084,7 +19108,7 @@ window.pbMove = pbMove;
     organ_vis_hint:{ru:'Прозрачность слоя: полностью / полупрозрачно / скрыть',en:'Layer transparency: full / semi / hidden',es:'Transparencia de capa: completa / media / oculta'},
     layer_skeleton:{ru:'🦴 Скелет',en:'🦴 Skeleton',es:'🦴 Esqueleto'},
     layer_muscles:{ru:'💪 Мускулатура',en:'💪 Muscles',es:'💪 Músculos'},
-    layer_internal:{ru:'🫀 Внутренние',en:'🫀 Internal',es:'🫀 Internos'},
+    layer_internal:{ru:'Внутренние',en:'Internal',es:'Internos'},
     eff_pos:{ru:'Основной терапевтический эффект',en:'Primary therapeutic effect',es:'Efecto terapéutico principal'},
     eff_pos_sub:{ru:'Действие вещества',en:'How it acts',es:'Cómo actúa'},
     eff_neg:{ru:'Основные побочные эффекты',en:'Main side effects',es:'Efectos secundarios principales'},
@@ -20389,7 +20413,7 @@ window.pbMove = pbMove;
       var d=(DIETS||[]).filter(function(x){return x.slug===PRIMARY;})[0];
       b.innerHTML = T('a.diet.your_diet','Твой тип питания:')+' <b>'+esc(d?pick(d,'name'):PRIMARY)+'</b>';
     } else {
-      b.innerHTML = '🥗 '+T('a.diet.no_primary','Ты ещё не выбрал основной тип питания. Открой карточку, чтобы установить.');
+      b.innerHTML = (window.NAIcons?NAIcons.html('diet',{size:14}):'')+' '+T('a.diet.no_primary','Ты ещё не выбрал основной тип питания. Открой карточку, чтобы установить.');
     }
   }
 
@@ -21934,7 +21958,7 @@ window.pbMove = pbMove;
     }).join('');
     bar.innerHTML =
       '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
-      + '<span style="font-size:12px;font-weight:600;color:var(--text-primary);">🫀 ' + esc(T('a.wearables.layer_recovery','Восстановление')) + '</span>'
+      + '<span style="font-size:12px;font-weight:600;color:var(--text-primary);display:inline-flex;align-items:center;gap:0.3rem;">' + (window.NAIcons?NAIcons.html('heart',{size:13}):'') + ' ' + esc(T('a.wearables.layer_recovery','Восстановление')) + '</span>'
       + '<span style="font-size:11px;color:var(--text-muted);margin-left:auto;">'
         + '<span style="color:#6be89b;">■</span> &gt;70 &nbsp; <span style="color:#f0c95c;">■</span> 50–70 &nbsp; <span style="color:#f0736b;">■</span> &lt;50</span>'
       + '</div>'
@@ -21960,7 +21984,7 @@ window.pbMove = pbMove;
         if(dd.rhr!=null) parts.push('<b>' + dd.rhr + ' bpm</b> ' + esc(T('a.wearables.rhr','пульс покоя')));
         if(dd.sleep_duration_min!=null) parts.push('<b>' + fmtSleep(dd.sleep_duration_min) + '</b> ' + esc(T('a.wearables.sleep','сон')));
         box.innerHTML =
-          '<div style="font-size:11px;color:var(--text-dim,#8a93a6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;">🫀 ' + esc(T('a.wearables.phys_state','Физическое состояние в этот день')) + '</div>'
+          '<div style="font-size:11px;color:var(--text-dim,#8a93a6);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem;display:flex;align-items:center;gap:0.3rem;">' + (window.NAIcons?NAIcons.html('heart',{size:12}):'') + ' ' + esc(T('a.wearables.phys_state','Физическое состояние в этот день')) + '</div>'
           + '<div style="font-size:13px;color:var(--text-primary);line-height:1.7;">' + parts.join(' &nbsp;·&nbsp; ') + '</div>';
         box.style.display='block';
       })
