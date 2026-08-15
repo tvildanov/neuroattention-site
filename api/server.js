@@ -13485,4 +13485,45 @@ app.listen(PORT, () => {
   try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
   try { wearablesSvc.startCron(); } catch (e) { console.warn('[wearables] cron start failed:', e.message); }
   try { startUnifiedEventJobs(); } catch (e) { console.warn('[unified-jobs] start failed:', e.message); }
+  // Lightweight idempotent sync so exercise copy + Nastya monad link don't wait
+  // on the huge /api/run-migrations pipeline (Nick 2026-08-15).
+  setTimeout(() => {
+    (async () => {
+      try {
+        await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_human_id TEXT`;
+        await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_access BOOLEAN NOT NULL DEFAULT false`;
+        await sql`
+          UPDATE users
+          SET monad_human_id = 'nastya', monad_access = TRUE
+          WHERE lower(email) = 'nilta95@mail.ru'`;
+        try {
+          const { EXERCISES } = require('./exercises-seed.js');
+          for (const e of (EXERCISES || [])) {
+            await sql`
+              INSERT INTO exercise_definitions
+                (slug, name_en, name_ru, category, kind, short_description_en, short_description_ru,
+                 measures, clinical_evidence, min_level, max_level, target_regions, sort_order)
+              VALUES
+                (${e.slug}, ${e.name_en}, ${e.name_ru}, ${e.category}, ${e.kind || 'exercise'},
+                 ${e.short_description_en}, ${e.short_description_ru},
+                 ${e.measures}, ${e.clinical_evidence}, ${e.min_level}, ${e.max_level},
+                 ${e.target_regions}, ${e.sort_order})
+              ON CONFLICT (slug) DO UPDATE SET
+                name_en = EXCLUDED.name_en, name_ru = EXCLUDED.name_ru,
+                category = EXCLUDED.category, kind = EXCLUDED.kind,
+                short_description_en = EXCLUDED.short_description_en,
+                short_description_ru = EXCLUDED.short_description_ru,
+                measures = EXCLUDED.measures, clinical_evidence = EXCLUDED.clinical_evidence,
+                min_level = EXCLUDED.min_level, max_level = EXCLUDED.max_level,
+                target_regions = EXCLUDED.target_regions, sort_order = EXCLUDED.sort_order`;
+          }
+        } catch (seedErr) {
+          console.warn('[boot] exercise seed sync skipped:', seedErr.message);
+        }
+        console.log('[boot] exercise seed + nastya monad link synced');
+      } catch (e) {
+        console.warn('[boot] light sync failed:', e.message);
+      }
+    })();
+  }, 2500);
 });
