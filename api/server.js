@@ -304,6 +304,11 @@ const uploadLibrary = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 }
 });
+// Monad LK chat attachments (images / PDF / small docs) — public R2 under monad-chat/
+const uploadMonadChat = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024 }
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -3103,7 +3108,39 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 073 (nastya monad link): ok');
     } catch (e) { mig073.error = e.message; console.error('migration 073 (nastya monad link):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-073 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073 });
+    // ── migration 074: Monad LK multi-chat threads ───────────────────────────
+    const mig074 = { id: '074_monad_chats', ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS monad_chats (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL DEFAULT '',
+          project_slug TEXT,
+          pinned_context JSONB NOT NULL DEFAULT '[]'::jsonb,
+          archived BOOLEAN NOT NULL DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          updated_at TIMESTAMPTZ DEFAULT now()
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_monad_chats_user ON monad_chats(user_id, updated_at DESC)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS monad_chat_messages (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          chat_id UUID NOT NULL REFERENCES monad_chats(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          role TEXT NOT NULL CHECK (role IN ('you','monad','system','err')),
+          text TEXT NOT NULL DEFAULT '',
+          attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+          seed_id TEXT,
+          meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ DEFAULT now()
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_monad_chat_messages_chat ON monad_chat_messages(chat_id, created_at ASC)`;
+      mig074.ok = true;
+      console.log('migration 074 (monad_chats): ok');
+    } catch (e) { mig074.error = e.message; console.error('migration 074 (monad_chats):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-074 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -13409,7 +13446,7 @@ app.get('/api/monad/rhythm', requireAuth, async (req, res) => {
 });
 
 // POST /api/monad/message — plant_seed into Monad as the linked human
-// body: { text, title?, priority?, create_handoff?, to_agent? }
+// body: { text, title?, priority?, create_handoff?, to_agent?, chat_id?, attachments?, pinned_context? }
 app.post('/api/monad/message', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
@@ -13428,31 +13465,270 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     const priority = Math.min(10, Math.max(1, parseInt((req.body && req.body.priority) || 5, 10) || 5));
     const createHandoff = req.body && req.body.create_handoff === false ? false : true;
     const toAgent = req.body && req.body.to_agent ? String(req.body.to_agent).slice(0, 64) : undefined;
+    const chatId = req.body && req.body.chat_id ? String(req.body.chat_id) : null;
+    const attachments = Array.isArray(req.body && req.body.attachments) ? req.body.attachments.slice(0, 8) : [];
+    const pinned = Array.isArray(req.body && req.body.pinned_context) ? req.body.pinned_context.slice(0, 12) : [];
+
+    let chat = null;
+    if (chatId) {
+      const rows = await sql`SELECT * FROM monad_chats WHERE id = ${chatId} AND user_id = ${caller.id} AND archived = false`;
+      chat = rows[0] || null;
+      if (!chat) return res.status(404).json({ error: 'chat not found' });
+    }
+
+    const projectSlug = (chat && chat.project_slug) || (chatId ? ('lk-chat-' + String(chatId).replace(/-/g, '').slice(0, 12)) : undefined);
+    const descParts = [text, '', '— via NeuroAttention LK', `site_user: ${caller.email}`, `human_id: ${humanId}`];
+    if (chatId) descParts.push(`chat_id: ${chatId}`);
+    if (chat && chat.title) descParts.push(`chat_title: ${chat.title}`);
+    if (pinned.length) {
+      descParts.push('', 'Pinned context:');
+      pinned.forEach((p, i) => {
+        const label = (p && (p.title || p.label || p.key)) || ('item ' + (i + 1));
+        const body = (p && (p.text || p.body || p.value)) || '';
+        descParts.push(`- ${label}${body ? ': ' + String(body).slice(0, 500) : ''}`);
+      });
+    }
+    if (attachments.length) {
+      descParts.push('', 'Attachments:');
+      attachments.forEach((a) => {
+        const name = (a && (a.name || a.filename)) || 'file';
+        const url = (a && (a.url || a.href)) || '';
+        descParts.push(`- ${name}${url ? ' → ' + url : ''}`);
+      });
+    }
+    descParts.push(`at: ${new Date().toISOString()}`);
+
+    const tags = ['neuroattention', 'lk', 'from_cabinet'];
+    if (chatId) tags.push('chat:' + chatId);
 
     const args = {
       planted_by: monadSvc.resolvePlantedBy(humanId),
       human_id: humanId,
       title: `[LK] ${title}`,
-      description: [
-        text,
-        '',
-        `— via NeuroAttention LK`,
-        `site_user: ${caller.email}`,
-        `human_id: ${humanId}`,
-        `at: ${new Date().toISOString()}`,
-      ].join('\n'),
+      description: descParts.join('\n'),
       domain: 'neuro',
       priority,
       create_handoff: createHandoff,
-      tags: ['neuroattention', 'lk', 'from_cabinet'],
+      tags,
     };
     if (toAgent) args.to_agent = toAgent;
+    if (projectSlug) args.project_id = projectSlug;
 
     const result = await monadSvc.mcpCall('plant_seed', args);
-    res.json({ ok: true, human_id: humanId, result });
+    let seedId = null;
+    try {
+      if (result && result.seed_id) seedId = result.seed_id;
+      else if (result && result.id) seedId = result.id;
+    } catch (_) {}
+
+    let savedMsg = null;
+    if (chat) {
+      const inserted = await sql`
+        INSERT INTO monad_chat_messages (chat_id, user_id, role, text, attachments, seed_id, meta)
+        VALUES (
+          ${chat.id}, ${caller.id}, 'you', ${text},
+          ${JSON.stringify(attachments)}::jsonb, ${seedId},
+          ${JSON.stringify({ human_id: humanId, planted: true })}::jsonb
+        )
+        RETURNING *`;
+      savedMsg = inserted[0];
+      await sql`UPDATE monad_chats SET updated_at = now(),
+        title = CASE WHEN title = '' OR title = 'Новый чат' OR title = 'New chat' THEN ${title.slice(0, 120)} ELSE title END
+        WHERE id = ${chat.id}`;
+      // Ack-style system line so the thread shows Monad accepted the seed
+      await sql`
+        INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
+        VALUES (
+          ${chat.id}, ${caller.id}, 'monad',
+          ${'Семя посажено. Агенты Манады подхватят. Ответ появится в этом чате, когда Манада запишет его в shared_context (см. docs/MONAD-TAHIR-HANDOFF.md).'},
+          ${seedId},
+          ${JSON.stringify({ ack: true, human_id: humanId })}::jsonb
+        )`;
+    }
+
+    res.json({ ok: true, human_id: humanId, result, seed_id: seedId, chat_id: chat ? chat.id : null, message: savedMsg });
   } catch (err) {
     console.error('POST /api/monad/message:', err);
     res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR', details: err.details });
+  }
+});
+
+// ── Monad LK multi-chat CRUD ────────────────────────────────────────────────
+app.get('/api/monad/chats', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const rows = await sql`
+      SELECT c.*,
+        (SELECT count(*)::int FROM monad_chat_messages m WHERE m.chat_id = c.id) AS message_count,
+        (SELECT m.text FROM monad_chat_messages m WHERE m.chat_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_text
+      FROM monad_chats c
+      WHERE c.user_id = ${caller.id} AND c.archived = false
+      ORDER BY c.updated_at DESC
+      LIMIT 100`;
+    res.json({ ok: true, chats: rows });
+  } catch (err) {
+    console.error('GET /api/monad/chats:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.post('/api/monad/chats', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const title = String((req.body && req.body.title) || 'Новый чат').trim().slice(0, 120) || 'Новый чат';
+    const pinned = Array.isArray(req.body && req.body.pinned_context) ? req.body.pinned_context : [];
+    const slug = 'lk-chat-' + require('crypto').randomBytes(6).toString('hex');
+    const rows = await sql`
+      INSERT INTO monad_chats (user_id, title, project_slug, pinned_context)
+      VALUES (${caller.id}, ${title}, ${slug}, ${JSON.stringify(pinned)}::jsonb)
+      RETURNING *`;
+    // Best-effort: mirror as Monad project board card
+    try {
+      if (monadSvc.configured()) {
+        const humanId = monadSvc.resolveHumanId(caller);
+        if (humanId) {
+          await monadSvc.mcpCall('upsert_project', {
+            human_id: humanId,
+            id: slug,
+            title: title,
+            status: 'active',
+            domain: 'neuro',
+            actor_agent: monadSvc.resolvePlantedBy(humanId),
+            notes: 'NeuroAttention LK chat thread',
+          });
+        }
+      }
+    } catch (e) { console.warn('upsert_project for chat:', e.message); }
+    res.json({ ok: true, chat: rows[0] });
+  } catch (err) {
+    console.error('POST /api/monad/chats:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.get('/api/monad/chats/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const [chat] = await sql`SELECT * FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
+    if (!chat) return res.status(404).json({ error: 'not found' });
+    const messages = await sql`
+      SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at ASC LIMIT 500`;
+    res.json({ ok: true, chat, messages });
+  } catch (err) {
+    console.error('GET /api/monad/chats/:id:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.patch('/api/monad/chats/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const [chat] = await sql`SELECT * FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
+    if (!chat) return res.status(404).json({ error: 'not found' });
+    const title = req.body && req.body.title != null ? String(req.body.title).trim().slice(0, 120) : chat.title;
+    const pinned = req.body && Array.isArray(req.body.pinned_context) ? req.body.pinned_context : chat.pinned_context;
+    const archived = req.body && typeof req.body.archived === 'boolean' ? req.body.archived : chat.archived;
+    const rows = await sql`
+      UPDATE monad_chats SET title = ${title}, pinned_context = ${JSON.stringify(pinned || [])}::jsonb,
+        archived = ${!!archived}, updated_at = now()
+      WHERE id = ${chat.id}
+      RETURNING *`;
+    res.json({ ok: true, chat: rows[0] });
+  } catch (err) {
+    console.error('PATCH /api/monad/chats/:id:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.delete('/api/monad/chats/:id', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    await sql`UPDATE monad_chats SET archived = true, updated_at = now() WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/monad/chats/:id:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+// Upload attachment for a chat message (image/pdf/text) → public R2
+app.post('/api/monad/chats/:id/upload', requireAuth, uploadMonadChat.single('file'), async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const [chat] = await sql`SELECT id FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
+    if (!chat) return res.status(404).json({ error: 'chat not found' });
+    if (!req.file) return res.status(400).json({ error: 'file required' });
+    if (!r2Configured) return res.status(503).json({ error: 'R2 not configured' });
+    const orig = String(req.file.originalname || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 80);
+    const key = `monad-chat/${caller.id}/${chat.id}/${Date.now()}-${orig}`;
+    const url = await uploadToR2(key, req.file.buffer, req.file.mimetype || 'application/octet-stream');
+    res.json({
+      ok: true,
+      attachment: {
+        name: req.file.originalname || orig,
+        url,
+        mime: req.file.mimetype || 'application/octet-stream',
+        size: req.file.size,
+      },
+    });
+  } catch (err) {
+    console.error('POST /api/monad/chats/:id/upload:', err);
+    res.status(500).json({ error: err.message || 'Upload failed' });
+  }
+});
+
+// Poll Monad shared_context for replies written back into this chat
+app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const [chat] = await sql`SELECT * FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
+    if (!chat) return res.status(404).json({ error: 'not found' });
+    if (!monadSvc.configured()) return res.json({ ok: true, imported: 0, note: 'MONAD_API_KEY missing' });
+
+    let imported = 0;
+    try {
+      const prefix = `neuroattention.lk.chat.${chat.id}.`;
+      const raw = await monadSvc.mcpCall('read_context', {
+        key_prefix: prefix,
+        category: 'lk_chat',
+        limit: 100,
+        min_importance: 1,
+      });
+      const items = Array.isArray(raw) ? raw
+        : (raw && Array.isArray(raw.items) ? raw.items
+          : (raw && Array.isArray(raw.entries) ? raw.entries
+            : (raw && Array.isArray(raw.context) ? raw.context : [])));
+      for (const it of items) {
+        const key = it.key || it.id || '';
+        const val = it.value != null ? it.value : it;
+        const text = (typeof val === 'string') ? val
+          : (val && (val.text || val.body || val.message)) || '';
+        if (!text) continue;
+        const role = (val && val.role === 'you') ? 'you' : 'monad';
+        // de-dupe by meta.source_key
+        const exists = await sql`
+          SELECT 1 FROM monad_chat_messages
+          WHERE chat_id = ${chat.id} AND meta->>'source_key' = ${String(key)}
+          LIMIT 1`;
+        if (exists.length) continue;
+        await sql`
+          INSERT INTO monad_chat_messages (chat_id, user_id, role, text, meta)
+          VALUES (
+            ${chat.id}, ${caller.id}, ${role}, ${String(text).slice(0, 20000)},
+            ${JSON.stringify({ source_key: key, from_poll: true })}::jsonb
+          )`;
+        imported++;
+      }
+      if (imported) await sql`UPDATE monad_chats SET updated_at = now() WHERE id = ${chat.id}`;
+    } catch (e) {
+      return res.json({ ok: true, imported: 0, note: e.message });
+    }
+    const messages = await sql`
+      SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at ASC LIMIT 500`;
+    res.json({ ok: true, imported, messages });
+  } catch (err) {
+    console.error('POST /api/monad/chats/:id/poll:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
   }
 });
 
@@ -13497,6 +13773,35 @@ app.listen(PORT, () => {
           SET monad_human_id = 'nastya', monad_access = TRUE
           WHERE lower(email) = 'nilta95@mail.ru'`;
         try {
+          await sql`
+            CREATE TABLE IF NOT EXISTS monad_chats (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              title TEXT NOT NULL DEFAULT '',
+              project_slug TEXT,
+              pinned_context JSONB NOT NULL DEFAULT '[]'::jsonb,
+              archived BOOLEAN NOT NULL DEFAULT false,
+              created_at TIMESTAMPTZ DEFAULT now(),
+              updated_at TIMESTAMPTZ DEFAULT now()
+            )`;
+          await sql`CREATE INDEX IF NOT EXISTS idx_monad_chats_user ON monad_chats(user_id, updated_at DESC)`;
+          await sql`
+            CREATE TABLE IF NOT EXISTS monad_chat_messages (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              chat_id UUID NOT NULL REFERENCES monad_chats(id) ON DELETE CASCADE,
+              user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              role TEXT NOT NULL CHECK (role IN ('you','monad','system','err')),
+              text TEXT NOT NULL DEFAULT '',
+              attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+              seed_id TEXT,
+              meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+              created_at TIMESTAMPTZ DEFAULT now()
+            )`;
+          await sql`CREATE INDEX IF NOT EXISTS idx_monad_chat_messages_chat ON monad_chat_messages(chat_id, created_at ASC)`;
+        } catch (chatErr) {
+          console.warn('[boot] monad_chats ensure skipped:', chatErr.message);
+        }
+        try {
           const { EXERCISES } = require('./exercises-seed.js');
           for (const e of (EXERCISES || [])) {
             await sql`
@@ -13520,7 +13825,7 @@ app.listen(PORT, () => {
         } catch (seedErr) {
           console.warn('[boot] exercise seed sync skipped:', seedErr.message);
         }
-        console.log('[boot] exercise seed + nastya monad link synced');
+        console.log('[boot] exercise seed + nastya monad link + monad_chats synced');
       } catch (e) {
         console.warn('[boot] light sync failed:', e.message);
       }
