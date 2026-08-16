@@ -7,6 +7,43 @@
 
 ---
 
+## 2026-08-16T17:28+0000 — cursor_cloud (research: Sketch implementation map)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-16T17:28:54Z",
+  "did": [
+    "Mapped /api/sketches CRUD + mig072 user_sketches columns",
+    "Located BodyAtlas mount sites (course player ~15871, Internal Field ~18622, Library functions ~21159)",
+    "Confirmed no html2canvas/dom-to-image in project; PNG via canvas.toDataURL only",
+    "Found Library figureBlock hook (.lib-fig) for create-copy",
+    "Catalogued floating UI: .ext-fab, .cp-restore-pill, .nm-mini-inset, .lib-sel-add",
+    "Measured #tools-sketch-content block 1558–1611"
+  ],
+  "changed": [],
+  "files": [
+    "api/server.js",
+    "migrations/072_user_sketches.sql",
+    "account.html",
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "docs/SKETCH-BRIEF.md"
+  ],
+  "decisions": [
+    "Recommend EXTEND sketch-tool.js (keep API CRUD), not full replace — mount BodyAtlas into #sketch-3d-host + overlay canvas"
+  ],
+  "followups": [
+    "Phase 1: BodyAtlas.init(#sketch-3d-host) + transparent draw layer",
+    "Phase 2: create-copy on .lib-fig / atlas + LK floating screenshot FAB (clone .ext-fab pattern)"
+  ],
+  "next_session": "Implement Sketch Phase 1 overlay on BodyAtlas"
+}
+```
+
+---
+
 ## 2026-08-15T16:10+0000 — cursor_cloud (research: BodyAtlas → Sketch reuse)
 
 ```json
