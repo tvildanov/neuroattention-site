@@ -45,7 +45,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
-<link rel="stylesheet" href="assets/redesign.css?v=2" />
+<link rel="stylesheet" href="assets/redesign.css?v=3" />
 <link rel="stylesheet" href="data/css/mycelium.css?v=19" />
 <style>
 /* ── Auth ── */
@@ -1074,6 +1074,7 @@ a.dash-tab:hover { text-decoration:none; }
       <button class="dash-tab" id="evo-subtab-family" onclick="evoSwitchSub('family')" data-i18n="a.evo.family_team">Семья и команда</button>
       <!-- Wearables recovery layer toggle. Hidden until the user has device data. -->
       <button class="dash-tab" id="evo-layer-recovery" onclick="wearToggleRecoveryLayer(this)" style="display:none;margin-left:auto;" title="Oura / WHOOP"><span class="ha-tab-ic" data-na-ic="heart" style="opacity:0.9;"></span> <span data-i18n="a.wearables.layer_recovery">Восстановление</span></button>
+      <button type="button" class="dash-tab" id="evo-sketch-copy" onclick="try{var el=document.querySelector('#evo-path .myc-evo-canvas')||document.getElementById('evo-path');window.SketchTool&&SketchTool.fromElement(el,'Путь');}catch(e){}" data-i18n="a.sketch.create_copy">Создать копию</button>
     </div>
     <!-- Recovery ribbon: one cell per day, green(>70)/yellow(50-70)/red(<50); hover
          shows HRV / RHR / sleep. Populated by wearRenderRecoveryBar (wearables). -->
@@ -1556,56 +1557,64 @@ a.dash-tab:hover { text-decoration:none; }
     <!-- Sketch tool: real product = layers + annotate 3D body model (see docs/SKETCH-BRIEF.md).
          Current freehand canvas is temporary scratchpad only — not the Sketch product. -->
     <div id="tools-sketch-content" style="display:none;">
-      <div class="sketch-wrap">
-        <div class="sketch-brief-card" style="margin-bottom:1rem;padding:1rem 1.1rem;border-radius:14px;border:1px solid rgba(168,247,255,0.18);background:rgba(168,247,255,0.05);">
-          <h2 style="margin:0 0 0.35rem;font-size:1.15rem;" data-i18n="a.sketch.title">Скетч</h2>
-          <p style="margin:0 0 0.55rem;font-size:13px;color:var(--text-secondary);line-height:1.55;" data-i18n="a.sketch.sub">Слои + рисование поверх 3D-Атласа (и скринов сайта). Полное ТЗ — в docs/SKETCH-BRIEF.md из handoff Ника 2026-07-12. Ниже — каркас Phase 0/1; старая рисовалка временно сохранена.</p>
-          <ul class="sketch-roadmap" style="margin:0;padding-left:1.1rem;font-size:12.5px;color:var(--text-muted);line-height:1.55;">
-            <li data-i18n="a.sketch.road1">5 слоёв (фон / модель / 3 рисующих) + z-порядок</li>
-            <li data-i18n="a.sketch.road2">Копии из Атласа / Библиотеки / скрин всего ЛК</li>
-            <li data-i18n="a.sketch.road3">То же 3D-ядро, что Атлас (без нового движка)</li>
-          </ul>
-          <div id="sketch-phase1-shell" class="sketch-phase1-shell" style="margin-top:0.9rem;display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:0.75rem;">
-            <div id="sketch-3d-host" class="sketch-3d-host" style="min-height:280px;border-radius:14px;border:1px dashed rgba(168,247,255,0.28);background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:13px;text-align:center;padding:1rem;">
-              <span data-i18n="a.sketch.viewport_ph">Скоро: окно Атласа + прозрачный слой рисования поверх.</span>
-            </div>
-            <div class="sketch-layers-panel" style="border-radius:12px;border:1px solid rgba(255,255,255,0.08);padding:0.6rem;background:rgba(255,255,255,0.02);">
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:0.45rem;" data-i18n="a.sketch.layers">Слои</div>
-              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_bg">1 · Фон</span></label>
-              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_model">2 · Модель / изображение</span></label>
-              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_d1">3 · Рисунок 1</span></label>
-              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_d2">4 · Рисунок 2</span></label>
-              <label class="sketch-layer-row"><input type="checkbox" checked disabled> <span data-i18n="a.sketch.layer_d3">5 · Рисунок 3</span></label>
-            </div>
-          </div>
-        </div>
+      <div class="sketch-wrap sketch-wrap-full">
         <div class="sketch-head">
           <div>
-            <h3 style="margin:0 0 0.25rem;font-size:0.95rem;color:var(--text-muted);" data-i18n="a.sketch.scratch_title">Временная рисовалка</h3>
-            <p style="margin:0;font-size:12px;color:var(--text-dim);" data-i18n="a.sketch.scratch_sub">Не продукт «Скетч». Просто черновик на холсте.</p>
+            <h2 style="margin:0 0 0.25rem;font-size:1.15rem;" data-i18n="a.sketch.title">Скетч</h2>
+            <p style="margin:0;font-size:12.5px;color:var(--text-secondary);line-height:1.5;" data-i18n="a.sketch.sub">Слои и кисти поверх того же 3D-Атласа (и скринов ЛК). Без нового 3D-движка.</p>
           </div>
           <input id="sketch-title" type="text" maxlength="120" data-i18n-placeholder="a.sketch.title_ph" placeholder="Название…" style="min-width:180px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:0.45rem 0.75rem;color:var(--text-primary);font:inherit;">
         </div>
         <div class="sketch-toolbar">
-          <button type="button" class="btn btn-ghost sketch-tool-btn active" data-sketch-tool="pen" data-i18n="a.sketch.pen">Карандаш</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn active" id="sketch-mode-3d" data-i18n="a.sketch.mode_3d">3D</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn" id="sketch-mode-2d" data-i18n="a.sketch.mode_2d">2D</button>
+          <span class="sketch-toolbar-sep"></span>
+          <button type="button" class="btn btn-ghost sketch-tool-btn active" id="sketch-interact-draw" data-i18n="a.sketch.draw_mode">Рисовать</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn" id="sketch-interact-orbit" data-i18n="a.sketch.orbit_mode">Вращать 3D</button>
+          <span class="sketch-toolbar-sep"></span>
+          <button type="button" class="btn btn-ghost sketch-tool-btn active" data-sketch-tool="pen" data-i18n="a.sketch.pen">Ручка</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn" data-sketch-tool="marker" data-i18n="a.sketch.marker">Фломастер</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn" data-sketch-tool="highlighter" data-i18n="a.sketch.highlighter">Маркер</button>
+          <button type="button" class="btn btn-ghost sketch-tool-btn" data-sketch-tool="pencil" data-i18n="a.sketch.pencil">Карандаш</button>
           <button type="button" class="btn btn-ghost sketch-tool-btn" data-sketch-tool="eraser" data-i18n="a.sketch.eraser">Ластик</button>
           <div id="sketch-colors" class="sketch-colors"></div>
           <label class="sketch-size-label"><span data-i18n="a.sketch.size">Толщина</span>
-            <input id="sketch-size" type="range" min="1" max="24" value="3">
+            <input id="sketch-size" type="range" min="1" max="48" value="3" step="0.5">
           </label>
-          <button type="button" class="btn btn-ghost" id="sketch-undo" data-i18n="a.sketch.undo">↩</button>
+          <label class="sketch-size-label"><span data-i18n="a.sketch.opacity">Прозрачность</span>
+            <input id="sketch-opacity" type="range" min="5" max="100" value="100">
+          </label>
+          <button type="button" class="btn btn-ghost" id="sketch-undo" title="Undo">↩</button>
+          <button type="button" class="btn btn-ghost" id="sketch-redo" title="Redo">↪</button>
           <button type="button" class="btn btn-ghost" id="sketch-clear" data-i18n="a.sketch.clear">Очистить</button>
           <button type="button" class="btn btn-ghost" id="sketch-new" data-i18n="a.sketch.new">Новый</button>
           <button type="button" class="btn btn-solid" id="sketch-save" data-i18n="a.sketch.save">Сохранить</button>
+          <button type="button" class="btn btn-ghost" id="sketch-save-template" data-i18n="a.sketch.save_template">Как шаблон</button>
+          <button type="button" class="btn btn-ghost" id="sketch-publish" style="display:none;" data-i18n="a.sketch.publish">Опубликовать</button>
+          <button type="button" class="btn btn-ghost" id="sketch-export" data-i18n="a.sketch.export">PNG</button>
           <button type="button" class="btn btn-ghost" id="sketch-delete" style="color:var(--accent-rose);" data-i18n="a.sketch.delete">Удалить</button>
           <span id="sketch-status" class="monad-muted"></span>
         </div>
-        <div class="sketch-canvas-wrap">
-          <canvas id="sketch-canvas"></canvas>
-        </div>
-        <div class="sketch-side">
-          <h4 style="margin:0.75rem 0 0.4rem;font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);" data-i18n="a.sketch.saved_list">Сохранённые</h4>
-          <div id="sketch-list"></div>
+        <div class="sketch-workspace">
+          <div id="sketch-stage" class="sketch-stage">
+            <div id="sketch-bg" class="sketch-bg"></div>
+            <div id="sketch-3d-host" class="sketch-3d-host"></div>
+            <div id="sketch-media-wrap" class="sketch-media-wrap" style="display:none;">
+              <img id="sketch-media-img" alt="">
+            </div>
+            <canvas id="sketch-cv-media-mask" class="sketch-draw-cv"></canvas>
+            <canvas id="sketch-cv-d0" class="sketch-draw-cv"></canvas>
+            <canvas id="sketch-cv-d1" class="sketch-draw-cv"></canvas>
+            <canvas id="sketch-cv-d2" class="sketch-draw-cv"></canvas>
+          </div>
+          <aside class="sketch-side-panel">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:0.45rem;" data-i18n="a.sketch.layers">Слои</div>
+            <div id="sketch-layers-panel" class="sketch-layers-panel"></div>
+            <h4 style="margin:1rem 0 0.4rem;font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);" data-i18n="a.sketch.templates">Шаблоны</h4>
+            <div id="sketch-templates"></div>
+            <h4 style="margin:1rem 0 0.4rem;font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);" data-i18n="a.sketch.saved_list">Сохранённые</h4>
+            <div id="sketch-list"></div>
+          </aside>
         </div>
       </div>
     </div>
@@ -1895,6 +1904,7 @@ a.dash-tab:hover { text-decoration:none; }
               <div class="atlas-search-dd" id="atlas-search-dd"></div>
             </div>
             <div class="atlas-actions">
+              <button class="atlas-btn" type="button" onclick="try{window.SketchTool&&SketchTool.fromAtlas();}catch(e){}" title="Создать копию в Скетч">⎘ <span data-i18n="a.sketch.create_copy">Создать копию</span></button>
               <button class="atlas-btn" onclick="atlasResetView()">⟲ <span data-i18n="a.tools.anatomy_reset">Сбросить вид</span></button>
               <select id="atlas-compare-mode" onchange="atlasCompareSetMode(this.value)" style="display:none;background:rgba(168,247,255,0.06);border:1px solid rgba(168,247,255,0.2);color:var(--text-primary,#e8edf2);border-radius:8px;padding:0.3rem 0.5rem;font-size:12px;font-family:inherit;">
                 <option value="diag-pop" data-i18n="a.tools.cmp_diag_pop">Мои диагнозы · Популяция</option>
@@ -2014,6 +2024,7 @@ a.dash-tab:hover { text-decoration:none; }
         </div>
         <!-- 3D toggle + Fullscreen button -->
         <div style="display:flex;justify-content:flex-end;margin-bottom:0.4rem;gap:0.3rem;">
+          <button type="button" class="nm-3d-toggle" onclick="try{var el=document.getElementById('nm-canvas')||document.getElementById('tools-nm-content');window.SketchTool&&SketchTool.fromElement(el,'NeuroMap');}catch(e){}" data-i18n="a.sketch.create_copy">Создать копию</button>
           <button class="nm-3d-toggle nm-labels-toggle" onclick="nmToggleLabels()" id="nm-labels-toggle" style="display:none;font-size:10px;" data-i18n="a.tools.labels_always">Подписи: всегда</button>
           <button class="nm-3d-toggle" onclick="nmToggle3D()" id="nm-3d-toggle" style="display:none;">
             <svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -18481,9 +18492,9 @@ window.pbMove = pbMove;
 </script>
 
 <script src="assets/js/external-field.js?v=13"></script>
-<script src="assets/js/body-atlas.js?v=39"></script>
+<script src="assets/js/body-atlas.js?v=40"></script>
 <script src="assets/js/monad-lk.js?v=4"></script>
-<script src="assets/js/sketch-tool.js?v=3"></script>
+<script src="assets/js/sketch-tool.js?v=4"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>
 <script src="assets/js/exercises/n-back.js?v=3"></script>
@@ -20767,6 +20778,14 @@ window.pbMove = pbMove;
       '<button data-sec="mynotes" class="lib-nav-notes">✍️ '+esc(L('notes'))+'</button>';
     nav.querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ openSection(b.getAttribute('data-sec')); }); });
     wireSearch(container);
+    container.addEventListener('click', function(ev){
+      var btn = ev.target && ev.target.closest ? ev.target.closest('[data-sketch-copy]') : null;
+      if(!btn) return;
+      ev.preventDefault(); ev.stopPropagation();
+      var fig = btn.closest('.lib-fig');
+      var url = fig && fig.getAttribute('data-fig-url');
+      if(url && window.SketchTool && SketchTool.fromImageUrl) SketchTool.fromImageUrl(url, 'Library');
+    });
     openSection(state.section);
     handlePendingDeepLink();
   };
@@ -20919,7 +20938,9 @@ window.pbMove = pbMove;
   // Illustrative image stored in content.figure = { url, credit, alt }. Freely-
   // licensed (Wikimedia Commons etc.); no-referrer keeps hotlinking polite.
   function figureBlock(c){ var f=c&&c.figure; if(!f||!f.url) return '';
-    return '<figure class="lib-fig"><img src="'+esc(f.url)+'" alt="'+esc(f.alt||'')+'" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.style.display=\'none\'">'+
+    return '<figure class="lib-fig" data-fig-url="'+esc(f.url)+'">'+
+      '<img src="'+esc(f.url)+'" alt="'+esc(f.alt||'')+'" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.style.display=\'none\'">'+
+      '<button type="button" class="lib-fig-copy" data-sketch-copy="1">'+(typeof t==='function'?t('a.sketch.create_copy','Создать копию'):'Создать копию')+'</button>'+
       (f.credit?'<figcaption>'+esc(f.credit)+'</figcaption>':'')+'</figure>'; }
 
   function renderDetail(kind, it){

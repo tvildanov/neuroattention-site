@@ -1093,8 +1093,6 @@ body.method-flashlight {
 .monad-attach-bar { display:flex; flex-wrap:wrap; gap:0.35rem; margin:0 0 0.45rem; }
 .monad-msg-atts { margin-top:0.4rem; display:flex; flex-wrap:wrap; gap:0.4rem; }
 .monad-msg-img { max-width:180px; max-height:120px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); }
-.sketch-layer-row { display:flex; align-items:center; gap:0.4rem; font-size:12px; color:var(--text-secondary); margin:0.25rem 0; }
-@media (max-width:720px){ #sketch-phase1-shell { grid-template-columns:1fr !important; } }
 .monad-msg { margin-bottom:0.75rem; padding:0.65rem 0.85rem; border-radius:12px; max-width:92%; }
 .monad-msg-you { margin-left:auto; background:rgba(0,224,255,0.12); border:1px solid rgba(0,224,255,0.25); }
 .monad-msg-monad { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
@@ -1159,20 +1157,68 @@ body.method-flashlight {
 }
 
 /* ── Sketch tool ── */
-.sketch-wrap { max-width: 960px; }
+.sketch-wrap { max-width: 1100px; }
+.sketch-wrap-full { max-width: 1200px; }
 .sketch-head { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; margin-bottom:0.75rem; }
 .sketch-toolbar { display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; margin-bottom:0.75rem; }
+.sketch-toolbar-sep { width:1px; height:22px; background:rgba(255,255,255,0.12); margin:0 0.15rem; }
 .sketch-tool-btn.active { border-color: rgba(0,224,255,0.55) !important; color: var(--accent-cyan,#0ef) !important; }
 .sketch-colors { display:flex; gap:0.3rem; align-items:center; }
 .sketch-color { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,0.15); cursor:pointer; padding:0; }
 .sketch-color.active { outline:2px solid var(--accent-cyan,#0ef); outline-offset:1px; }
 .sketch-size-label { display:flex; align-items:center; gap:0.4rem; font-size:12px; color:var(--text-muted); }
+.sketch-workspace { display:grid; grid-template-columns:minmax(0,1fr) 230px; gap:0.85rem; align-items:start; }
+@media (max-width:900px){ .sketch-workspace { grid-template-columns:1fr; } }
+.sketch-stage { position:relative; border-radius:14px; border:1px solid rgba(255,255,255,0.1); overflow:hidden; background:#0b1016; touch-action:none; min-height:320px; }
+.sketch-bg, .sketch-3d-host, .sketch-media-wrap, .sketch-draw-cv {
+  position:absolute; inset:0; width:100%; height:100%;
+}
+.sketch-3d-host { z-index:2; }
+.sketch-media-wrap { z-index:3; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.sketch-media-wrap img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+.sketch-draw-cv { z-index:5; cursor:crosshair; touch-action:none; }
+.sketch-side-panel {
+  border-radius:12px; border:1px solid rgba(255,255,255,0.08); padding:0.7rem;
+  background:rgba(255,255,255,0.02); max-height:70vh; overflow:auto;
+}
+.sketch-layer-card {
+  border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:0.45rem 0.5rem; margin:0.35rem 0;
+  background:rgba(0,0,0,0.18);
+}
+.sketch-layer-card.active { border-color:rgba(0,224,255,0.4); }
+.sketch-layer-top { display:flex; justify-content:space-between; gap:0.35rem; align-items:center; font-size:12px; }
+.sketch-layer-move button {
+  border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:var(--text-muted);
+  border-radius:6px; width:22px; height:22px; cursor:pointer; line-height:1;
+}
+.sketch-layer-select { width:100%; margin-top:0.35rem; font-size:11px !important; padding:0.25rem 0.4rem !important; }
 .sketch-canvas-wrap { border-radius:14px; border:1px solid rgba(255,255,255,0.1); overflow:hidden; background:#0b1016; touch-action:none; }
 #sketch-canvas { display:block; width:100%; cursor:crosshair; touch-action:none; }
 .sketch-list-item { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; gap:0.15rem; margin:0.3rem 0; padding:0.55rem 0.7rem; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:var(--text-primary); cursor:pointer; font:inherit; }
 .sketch-list-item:hover { border-color:rgba(0,224,255,0.35); }
 .sketch-list-title { font-size:13px; font-weight:600; }
 .sketch-list-meta { font-size:11px; color:var(--text-dim); }
+.sketch-layer-row { display:flex; align-items:center; gap:0.4rem; font-size:12px; color:var(--text-secondary); margin:0.25rem 0; }
+.lib-fig { position:relative; }
+.lib-fig-copy {
+  position:absolute; top:8px; right:8px; z-index:2; opacity:0; pointer-events:none;
+  border:1px solid rgba(168,247,255,0.35); background:rgba(0,0,0,0.65); color:#e8edf2;
+  border-radius:999px; padding:0.35rem 0.7rem; font-size:11px; cursor:pointer; backdrop-filter:blur(8px);
+  transition:opacity .15s;
+}
+.lib-fig:hover .lib-fig-copy { opacity:1; pointer-events:auto; }
+.sketch-fab{
+  position:fixed; bottom:22px; left:22px; z-index:901; display:inline-flex; align-items:center; gap:6px;
+  padding:10px 16px; border-radius:24px; border:1px solid rgba(168,247,255,0.3);
+  background:linear-gradient(135deg,rgba(0,229,255,0.18),rgba(120,110,255,0.18));
+  color:var(--text-primary,#e8edf2); font-size:13px; font-weight:600; font-family:inherit; cursor:pointer;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 8px 26px rgba(0,0,0,0.45);
+  opacity:0; visibility:hidden; pointer-events:none; transform:translateY(10px);
+  transition:opacity .2s,transform .2s,visibility .2s,border-color .15s;
+}
+.sketch-fab.sketch-fab-on{ opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0); }
+.sketch-fab:hover{ border-color:rgba(0,229,255,0.65); }
+@media(max-width:760px){ .sketch-fab{ bottom:76px; left:14px; padding:9px 13px; font-size:12px; } }
 .monad-sys-status { margin-bottom:0.85rem; padding:0.65rem 0.85rem; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); }
 .monad-badge { display:inline-block; padding:0.1rem 0.5rem; border-radius:999px; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; }
 .monad-badge.status-harmonic { background:rgba(14,238,153,0.15); color:#0e9; }

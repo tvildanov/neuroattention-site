@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Задание для Тахира + Монады — NeuroAttention</title>
+  <meta name="robots" content="noindex">
+  <style>
+    :root { color-scheme: dark; --bg:#0b1016; --card:#121821; --text:#e8edf2; --muted:#9aa7b5; --line:rgba(168,247,255,.18); --accent:#0ef; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:radial-gradient(120% 80% at 50% -10%,rgba(0,224,255,.12),transparent 55%), var(--bg); color:var(--text); }
+    .wrap { max-width:860px; margin:0 auto; padding:28px 18px 64px; }
+    h1 { font-size:1.55rem; margin:0 0 .4rem; letter-spacing:.01em; }
+    .meta { color:var(--muted); font-size:.92rem; margin-bottom:1.2rem; }
+    .actions { display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0 1.4rem; }
+    a.btn, button.btn {
+      display:inline-flex; align-items:center; gap:.4rem; padding:.65rem 1rem; border-radius:12px;
+      border:1px solid var(--line); background:rgba(0,224,255,.12); color:var(--text); text-decoration:none; cursor:pointer; font:inherit;
+    }
+    a.btn.solid { background:linear-gradient(135deg,rgba(0,224,255,.35),rgba(120,110,255,.28)); border-color:rgba(0,224,255,.45); font-weight:600; }
+    a.btn:hover, button.btn:hover { border-color:rgba(0,224,255,.65); }
+    article { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:1.25rem 1.35rem; }
+    article h2 { font-size:1.15rem; margin:1.4rem 0 .55rem; }
+    article h2:first-child { margin-top:0; }
+    article p, article li { color:#d5dde6; }
+    article code, article pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.86rem; }
+    article pre { overflow:auto; padding:.85rem 1rem; border-radius:12px; background:#0a0f14; border:1px solid rgba(255,255,255,.08); }
+    article table { width:100%; border-collapse:collapse; font-size:.92rem; }
+    article th, article td { border:1px solid rgba(255,255,255,.1); padding:.45rem .55rem; text-align:left; vertical-align:top; }
+    article th { background:rgba(255,255,255,.04); }
+    .note { margin-top:1.2rem; padding:.85rem 1rem; border-radius:12px; background:rgba(0,224,255,.08); border:1px solid var(--line); color:var(--muted); font-size:.92rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Задание для Тахира + Монады</h1>
+    <p class="meta">От: Ник / NeuroAttention · Кому: Тахир + агенты Monad · Живой ритм и живой чат с сайта</p>
+    <div class="actions">
+      <a class="btn solid" href="monad-tahir-handoff.md" download="MONAD-TAHIR-HANDOFF.md">⬇ Скачать .md</a>
+      <a class="btn" href="docs/MONAD-TAHIR-HANDOFF.md" download="MONAD-TAHIR-HANDOFF.md">Скачать из docs/</a>
+      <a class="btn" href="https://neuroattention.org/account.html">Открыть личный кабинет</a>
+      <button type="button" class="btn" id="copy-link">Скопировать ссылку</button>
+    </div>
+    <article id="body">
+      <p>Загрузка текста…</p>
+    </article>
+    <p class="note">Эта страница лежит на самом сайте NeuroAttention — её можно открыть и скачать без GitHub. Тот же текст уходит Тахиру в Monad как семя (plant_seed), чтобы он прочитал задание из своего inbox.</p>
+  </div>
+  <script>
+  (function () {
+    var btn = document.getElementById('copy-link');
+    if (btn) btn.addEventListener('click', function () {
+      var url = location.href.split('#')[0];
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () { btn.textContent = 'Скопировано'; });
+      } else {
+        prompt('Скопируйте ссылку:', url);
+      }
+    });
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function inline(s) {
+      return esc(s)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function mdToHtml(md) {
+      var lines = String(md || '').replace(/\r\n/g, '\n').split('\n');
+      var html = [];
+      var i = 0;
+      var inUl = false, inOl = false, inTable = false, inCode = false, codeBuf = [];
+      function closeLists() {
+        if (inUl) { html.push('</ul>'); inUl = false; }
+        if (inOl) { html.push('</ol>'); inOl = false; }
+      }
+      function closeTable() {
+        if (inTable) { html.push('</tbody></table>'); inTable = false; }
+      }
+      while (i < lines.length) {
+        var line = lines[i];
+        if (inCode) {
+          if (/^```/.test(line)) {
+            html.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
+            codeBuf = []; inCode = false;
+          } else codeBuf.push(line);
+          i++; continue;
+        }
+        if (/^```/.test(line)) {
+          closeLists(); closeTable();
+          inCode = true; codeBuf = []; i++; continue;
+        }
+        if (/^\|/.test(line)) {
+          closeLists();
+          if (!inTable) {
+            html.push('<table><thead>');
+            var cells = line.split('|').slice(1, -1);
+            html.push('<tr>' + cells.map(function (c) { return '<th>' + inline(c.trim()) + '</th>'; }).join('') + '</tr></thead><tbody>');
+            inTable = true;
+            if (i + 1 < lines.length && /^\|[\s\-:|]+$/.test(lines[i + 1])) i++;
+          } else if (!/^\|[\s\-:|]+$/.test(line)) {
+            var cells2 = line.split('|').slice(1, -1);
+            html.push('<tr>' + cells2.map(function (c) { return '<td>' + inline(c.trim()) + '</td>'; }).join('') + '</tr>');
+          }
+          i++; continue;
+        } else closeTable();
+
+        if (/^##\s+/.test(line)) { closeLists(); html.push('<h2>' + inline(line.replace(/^##\s+/, '')) + '</h2>'); i++; continue; }
+        if (/^#\s+/.test(line)) { closeLists(); html.push('<h1>' + inline(line.replace(/^#\s+/, '')) + '</h1>'); i++; continue; }
+        if (/^---+$/.test(line.trim())) { closeLists(); html.push('<hr>'); i++; continue; }
+        if (/^\d+\.\s+/.test(line)) {
+          closeTable();
+          if (!inOl) { closeLists(); html.push('<ol>'); inOl = true; }
+          html.push('<li>' + inline(line.replace(/^\d+\.\s+/, '')) + '</li>');
+          i++; continue;
+        }
+        if (/^[-*]\s+/.test(line)) {
+          closeTable();
+          if (!inUl) { closeLists(); html.push('<ul>'); inUl = true; }
+          html.push('<li>' + inline(line.replace(/^[-*]\s+/, '')) + '</li>');
+          i++; continue;
+        }
+        if (!line.trim()) { closeLists(); html.push(''); i++; continue; }
+        closeLists();
+        html.push('<p>' + inline(line) + '</p>');
+        i++;
+      }
+      closeLists(); closeTable();
+      if (inCode) html.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
+      return html.join('\n');
+    }
+
+    fetch('monad-tahir-handoff.md', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function (md) { document.getElementById('body').innerHTML = mdToHtml(md); })
+      .catch(function (err) {
+        document.getElementById('body').innerHTML =
+          '<p>Не удалось загрузить markdown. Откройте напрямую: ' +
+          '<a href="monad-tahir-handoff.md">monad-tahir-handoff.md</a> (' + esc(err.message) + ')</p>';
+      });
+  })();
+  </script>
+</body>
+</html>
