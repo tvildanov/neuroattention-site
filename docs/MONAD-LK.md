@@ -63,7 +63,8 @@
 - `domunity@icloud.com` → `nikita`
 - `tvildanov@mac.com` / `tyler@appliance-repair.me` → `takhir`
 - `nilta95@mail.ru` → `nastya` (+ `monad_access` авто)
-- **Егор / другие люди:** Админка → Пользователи → галочка Monad + `monad_human_id` (или скажи email — добавим в `EMAIL_HUMAN_MAP`)
+- `mysolopoetry@proton.me` → `egor` (+ `monad_access` авто при регистрации / boot)
+- **Другие люди:** Админка → Пользователи → галочка Monad + `monad_human_id` (или скажи email — добавим в `EMAIL_HUMAN_MAP`)
 
 Чат шлёт `plant_seed` с `human_id` твоего профиля и тегами `neuroattention/lk` + `chat:<uuid>`.
 
