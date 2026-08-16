@@ -7,6 +7,82 @@
 
 ---
 
+## 2026-08-16 — Sketch full + Tahir handoff delivery
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-16T18:30:00Z",
+  "did": [
+    "Built Sketch core on BodyAtlas: 5 layers, brushes, undo/redo 50, templates, PNG export",
+    "Added create-copy hooks (Atlas/Library/NeuroMap/Path) + floating LK capture FAB",
+    "Published open downloadable handoff page monad-tahir-handoff.html + .md",
+    "Boot + API deliverTahirHandoff plant_seed to human takhir",
+    "mig075 scene/is_template/is_public + site_one_shots"
+  ],
+  "changed": [
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "account.html",
+    "assets/redesign.css",
+    "api/server.js",
+    "monad-tahir-handoff.html",
+    "monad-tahir-handoff.md"
+  ],
+  "decisions": [
+    "Reuse BodyAtlas (no new Three engine); screenshot via preserveDrawingBuffer in sketch mode",
+    "Handoff for Nick/Tahir served from site root (not GitHub docs) + Monad inbox seed"
+  ],
+  "followups": [
+    "glb export",
+    "sharing/stream",
+    "Egor email → EMAIL_HUMAN_MAP when known",
+    "Monad /api/rhythm JSON + write_context replies"
+  ],
+  "next_session": "Verify Sketch on prod hard-refresh; confirm Tahir seed landed"
+}
+```
+
+---
+
+## 2026-08-16T17:28+0000 — cursor_cloud (research: Sketch implementation map)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-16T17:28:54Z",
+  "did": [
+    "Mapped /api/sketches CRUD + mig072 user_sketches columns",
+    "Located BodyAtlas mount sites (course player ~15871, Internal Field ~18622, Library functions ~21159)",
+    "Confirmed no html2canvas/dom-to-image in project; PNG via canvas.toDataURL only",
+    "Found Library figureBlock hook (.lib-fig) for create-copy",
+    "Catalogued floating UI: .ext-fab, .cp-restore-pill, .nm-mini-inset, .lib-sel-add",
+    "Measured #tools-sketch-content block 1558–1611"
+  ],
+  "changed": [],
+  "files": [
+    "api/server.js",
+    "migrations/072_user_sketches.sql",
+    "account.html",
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "docs/SKETCH-BRIEF.md"
+  ],
+  "decisions": [
+    "Recommend EXTEND sketch-tool.js (keep API CRUD), not full replace — mount BodyAtlas into #sketch-3d-host + overlay canvas"
+  ],
+  "followups": [
+    "Phase 1: BodyAtlas.init(#sketch-3d-host) + transparent draw layer",
+    "Phase 2: create-copy on .lib-fig / atlas + LK floating screenshot FAB (clone .ext-fab pattern)"
+  ],
+  "next_session": "Implement Sketch Phase 1 overlay on BodyAtlas"
+}
+```
+
+---
+
 ## 2026-08-15T16:10+0000 — cursor_cloud (research: BodyAtlas → Sketch reuse)
 
 ```json

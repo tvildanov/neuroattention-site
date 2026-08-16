@@ -39,7 +39,7 @@
 4. **Движение агентов** — пока Office Тахира; позже 3D-территория  
 5. **Написать Манаде** — сообщение → plant_seed / send_message / handoff  
 
-Права: вкладка у **superadmin/founder** всегда; остальным — галочка `monad_access` в Администрирование → Пользователи.
+Права: вкладка у **superadmin/founder** всегда; остальным — галочка `monad_access` в Администрирование → Пользователи (+ при желании `monad_human_id`).
 
 Спеки (в репо `tvildanov/monad`, не в site):  
 `docs/monada-core/X-living-rhythm-architecture.md`, `XI-monad-ui-and-rhythm-viz.md`, `IV-layers-7x7.md`.
@@ -50,22 +50,25 @@
 
 | Часть | Где |
 |-------|-----|
-| Вкладка **Монада** в ЛК | `account.html` — видна только founder/superadmin |
+| Вкладка **Монада** в ЛК | `account.html` — founder/superadmin + `monad_access` |
 | Подокна Чат / Вертикаль / Горизонталь / Ритм | `assets/js/monad-lk.js` + CSS |
-| API-прокси (ключ только на сервере) | `/api/monad/status`, `/agents`, `/humans`, `/architecture`, `/rhythm`, `/message`, `/link` |
+| Несколько чатов, вложения, pin-context | mig074 + `/api/monad/chats*` |
+| API-прокси (ключ только на сервере) | `/api/monad/status`, `/agents`, `/humans`, `/architecture`, `/rhythm`, `/message`, `/link`, `/deliver-tahir-handoff` |
 | Клиент MCP | `api/services/monad.js` |
 | Привязка профиля → human | `users.monad_human_id` (mig070) + карта email→human |
+| Открытый handoff для Тахира | https://neuroattention.org/monad-tahir-handoff.html (+ `.md` скачать) |
 | Документация секрета | `api/.env.example`, этот файл |
 
 Карта по умолчанию:
 - `domunity@icloud.com` → `nikita`
 - `tvildanov@mac.com` / `tyler@appliance-repair.me` → `takhir`
-- Настя: пока нет email на сайте — после регистрации ей ставят `monad_human_id=nastya` (или скажи email — добавим в карту)
+- `nilta95@mail.ru` → `nastya` (+ `monad_access` авто)
+- **Егор / другие люди:** Админка → Пользователи → галочка Monad + `monad_human_id` (или скажи email — добавим в `EMAIL_HUMAN_MAP`)
 
-Чат шлёт `plant_seed` с `human_id` твоего профиля и тегами `neuroattention/lk`.
+Чат шлёт `plant_seed` с `human_id` твоего профиля и тегами `neuroattention/lk` + `chat:<uuid>`.
 
-Ритм (2026-08-08): с dashboard берём **живой «Ритм системы»** (agent-ops).  
-JSON `/api/rhythm` у Monad всё ещё 404. Слои circ/breath/heart в спеке XI — пока без live-данных (`n/a` во вкладке). Запрос JSON посажен в Monad.
+Ритм: с dashboard берём **живой «Ритм системы»**.  
+JSON `/api/rhythm` у Monad всё ещё 404 — задание Тахиру: `docs/MONAD-TAHIR-HANDOFF.md` / открытая страница выше.
 
 ---
 

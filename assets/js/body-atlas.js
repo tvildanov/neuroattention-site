@@ -332,7 +332,13 @@
     // (PR #34), cached wheel pivot (PR #37) and 15Hz hover throttle (PR #37)
     // already cut render frequency dramatically, so high-DPR frames are rare
     // enough that quality wins over the small fragment-rate cost.
-    this.renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    // preserveDrawingBuffer when Sketch / export needs reliable toDataURL screenshots
+    this.renderer = new T.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+      preserveDrawingBuffer: !!(this.opts.preserveDrawingBuffer || this.opts.mode === 'sketch')
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
     this.renderer.setSize(w, h);
     this.renderer.setClearColor(0x000000, 0);
@@ -2283,6 +2289,18 @@
       else if (o.userData._sexHidden) { o.userData._sexHidden = false; o.visible = true; }
     });
     if (this._requestRender) this._requestRender();
+  };
+
+  /** PNG (or other) data URL of the current WebGL frame — used by Sketch «создать копию». */
+  Atlas.prototype.screenshot = function (mime) {
+    if (!this.renderer || !this.scene || !this.camera || this._destroyed) return null;
+    try {
+      if (this.controls && this.controls.update) this.controls.update();
+      this.renderer.render(this.scene, this.camera);
+      return this.renderer.domElement.toDataURL(mime || 'image/png');
+    } catch (e) {
+      return null;
+    }
   };
 
   Atlas.prototype.destroy = function () {
