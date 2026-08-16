@@ -16,6 +16,7 @@ const EMAIL_HUMAN_MAP = {
   'tvildanov@mac.com': 'takhir',
   'tyler@appliance-repair.me': 'takhir',
   'nilta95@mail.ru': 'nastya',
+  'mysolopoetry@proton.me': 'egor',
 };
 
 function configured() {
