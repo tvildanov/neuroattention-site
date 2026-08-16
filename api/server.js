@@ -3157,7 +3157,20 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 075 (sketch scene/templates): ok');
     } catch (e) { mig075.error = e.message; console.error('migration 075 (sketch scene/templates):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-075 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075 });
+    // ── migration 076: Egor email → monad human + access ─────────────────────
+    const mig076 = { id: '076_egor_monad_link', ok: false };
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_human_id TEXT`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS monad_access BOOLEAN NOT NULL DEFAULT false`;
+      await sql`
+        UPDATE users
+        SET monad_human_id = 'egor', monad_access = TRUE
+        WHERE lower(email) = 'mysolopoetry@proton.me'`;
+      mig076.ok = true;
+      console.log('migration 076 (egor monad link): ok');
+    } catch (e) { mig076.error = e.message; console.error('migration 076 (egor monad link):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-076 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075, mig076 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -3241,12 +3254,28 @@ app.post('/api/auth/register', async (req, res) => {
       RETURNING id, email, display_name, phone, role, created_at, location_country, location_city, location_lat, location_lon
     `;
     const user = inserted[0];
+    // Known Monad humans (Nick/Tahir/Nastya/Egor…): grant tab + persona on signup
+    try {
+      const mapped = (monadSvc.EMAIL_HUMAN_MAP || {})[email];
+      if (mapped) {
+        await sql`
+          UPDATE users
+          SET monad_human_id = ${mapped}, monad_access = TRUE
+          WHERE id = ${user.id}`;
+        user.monad_human_id = mapped;
+        user.monad_access = true;
+      }
+    } catch (mapErr) {
+      console.warn('[register] monad map link skipped:', mapErr.message);
+    }
     const token = signToken(user);
 
     res.status(201).json({
       token,
       user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: null,
-              location_country: user.location_country, location_city: user.location_city, location_lat: user.location_lat, location_lon: user.location_lon }
+              location_country: user.location_country, location_city: user.location_city, location_lat: user.location_lat, location_lon: user.location_lon,
+              monad_human_id: user.monad_human_id || null, monad_access: !!user.monad_access,
+              monad_tab: ['superadmin', 'founder'].includes(user.role) || !!user.monad_access }
     });
   } catch (err) {
     console.error('POST /api/auth/register:', err);
@@ -13993,6 +14022,10 @@ app.listen(PORT, () => {
           UPDATE users
           SET monad_human_id = 'nastya', monad_access = TRUE
           WHERE lower(email) = 'nilta95@mail.ru'`;
+        await sql`
+          UPDATE users
+          SET monad_human_id = 'egor', monad_access = TRUE
+          WHERE lower(email) = 'mysolopoetry@proton.me'`;
         try {
           await sql`
             CREATE TABLE IF NOT EXISTS monad_chats (
@@ -14053,7 +14086,7 @@ app.listen(PORT, () => {
         } catch (seedErr) {
           console.warn('[boot] exercise seed sync skipped:', seedErr.message);
         }
-        console.log('[boot] exercise seed + nastya monad link + monad_chats synced');
+        console.log('[boot] exercise seed + nastya/egor monad link + monad_chats synced');
         try {
           const handoff = await deliverTahirHandoff({ force: false });
           console.log('[boot] tahir handoff deliver:', JSON.stringify({
