@@ -3,6 +3,8 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { neon } = require('@neondatabase/serverless');
 
 const app = express();
@@ -156,8 +158,6 @@ wearablesSvc.init({ sql });
 const monadSvc = require('./services/monad');
 
 // Load vocabulary aliases for node normalization
-const fs = require('fs');
-const path = require('path');
 let vocabAliases = {};
 try {
   const vocabPath = path.join(__dirname, 'neuromap-vocabulary.json');
@@ -3140,7 +3140,24 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 074 (monad_chats): ok');
     } catch (e) { mig074.error = e.message; console.error('migration 074 (monad_chats):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-074 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074 });
+    // ── migration 075: Sketch scene + templates + public publish ─────────────
+    const mig075 = { id: '075_sketch_scene_templates', ok: false };
+    try {
+      await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS scene JSONB NOT NULL DEFAULT '{}'::jsonb`;
+      await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS is_template BOOLEAN NOT NULL DEFAULT false`;
+      await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_user_sketches_public ON user_sketches(is_public, updated_at DESC) WHERE is_public = true`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS site_one_shots (
+          id TEXT PRIMARY KEY,
+          meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+          delivered_at TIMESTAMPTZ DEFAULT now()
+        )`;
+      mig075.ok = true;
+      console.log('migration 075 (sketch scene/templates): ok');
+    } catch (e) { mig075.error = e.message; console.error('migration 075 (sketch scene/templates):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-075 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -13170,6 +13187,8 @@ app.get('/api/sketches', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
       SELECT id, title, created_at, updated_at,
+             COALESCE(is_template, false) AS is_template,
+             COALESCE(is_public, false) AS is_public,
              (png_data_url IS NOT NULL) AS has_png,
              jsonb_array_length(COALESCE(strokes, '[]'::jsonb)) AS stroke_count
       FROM user_sketches
@@ -13184,18 +13203,60 @@ app.get('/api/sketches', requireAuth, async (req, res) => {
   }
 });
 
+// Public + own templates (must be before :id)
+app.get('/api/sketches/templates', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT id, title, created_at, updated_at, user_id,
+             COALESCE(is_template, false) AS is_template,
+             COALESCE(is_public, false) AS is_public,
+             (png_data_url IS NOT NULL) AS has_png
+      FROM user_sketches
+      WHERE (is_public = true)
+         OR (user_id = ${req.user.id} AND is_template = true)
+      ORDER BY is_public DESC, updated_at DESC
+      LIMIT 100
+    `;
+    res.json({ ok: true, templates: rows });
+  } catch (err) {
+    // Columns may be missing before mig075 — fall back to empty
+    if (/is_public|is_template|scene/i.test(err.message || '')) {
+      return res.json({ ok: true, templates: [], note: 'run migrations for templates' });
+    }
+    console.error('GET /api/sketches/templates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/sketches/:id', requireAuth, async (req, res) => {
   try {
     const [row] = await sql`
-      SELECT id, title, strokes, png_data_url, created_at, updated_at
+      SELECT id, title, strokes, scene, png_data_url, created_at, updated_at,
+             COALESCE(is_template, false) AS is_template,
+             COALESCE(is_public, false) AS is_public, user_id
       FROM user_sketches
-      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      WHERE id = ${req.params.id}
+        AND (user_id = ${req.user.id} OR is_public = true)
     `;
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true, sketch: row });
   } catch (err) {
-    console.error('GET /api/sketches/:id:', err);
-    res.status(500).json({ error: err.message });
+    // Pre-mig075 fallback without scene/public columns
+    try {
+      const [row] = await sql`
+        SELECT id, title, strokes, png_data_url, created_at, updated_at, user_id
+        FROM user_sketches
+        WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      `;
+      if (!row) return res.status(404).json({ error: 'Not found' });
+      row.scene = {};
+      row.is_template = false;
+      row.is_public = false;
+      return res.json({ ok: true, sketch: row });
+    } catch (e2) {
+      console.error('GET /api/sketches/:id:', err);
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
@@ -13210,26 +13271,95 @@ app.post('/api/sketches', requireAuth, async (req, res) => {
       if (png && !png.startsWith('data:image/png;base64,')) png = null;
       if (png && png.length > 3_000_000) png = null; // drop oversized preview
     }
+    let scene = (req.body && req.body.scene && typeof req.body.scene === 'object') ? req.body.scene : {};
+    // Strip huge embedded images from scene if somehow oversized
+    try {
+      const raw = JSON.stringify(scene);
+      if (raw.length > 4_500_000) {
+        if (scene.layers && scene.layers.media) scene.layers.media.imageDataUrl = null;
+      }
+    } catch (_) { scene = {}; }
+    const asTemplate = !!(req.body && req.body.is_template);
     const id = req.body && req.body.id ? String(req.body.id) : null;
     if (id) {
       const [upd] = await sql`
         UPDATE user_sketches
         SET title = ${title || 'Untitled'}, strokes = ${JSON.stringify(strokes)}::jsonb,
-            png_data_url = ${png || null}, updated_at = now()
+            scene = ${JSON.stringify(scene)}::jsonb,
+            png_data_url = ${png || null},
+            is_template = CASE WHEN ${asTemplate} THEN true ELSE is_template END,
+            updated_at = now()
         WHERE id = ${id} AND user_id = ${req.user.id}
-        RETURNING id, title, created_at, updated_at
+        RETURNING id, title, created_at, updated_at, is_template, is_public
       `;
       if (!upd) return res.status(404).json({ error: 'Not found' });
       return res.json({ ok: true, sketch: upd });
     }
     const [ins] = await sql`
-      INSERT INTO user_sketches (user_id, title, strokes, png_data_url)
-      VALUES (${req.user.id}, ${title || 'Untitled'}, ${JSON.stringify(strokes)}::jsonb, ${png || null})
-      RETURNING id, title, created_at, updated_at
+      INSERT INTO user_sketches (user_id, title, strokes, scene, png_data_url, is_template)
+      VALUES (
+        ${req.user.id}, ${title || 'Untitled'}, ${JSON.stringify(strokes)}::jsonb,
+        ${JSON.stringify(scene)}::jsonb, ${png || null}, ${asTemplate}
+      )
+      RETURNING id, title, created_at, updated_at, is_template, is_public
     `;
     res.status(201).json({ ok: true, sketch: ins });
   } catch (err) {
+    // Fallback without scene columns
+    if (/scene|is_template|is_public/i.test(err.message || '')) {
+      try {
+        const title = String((req.body && req.body.title) || '').trim().slice(0, 120);
+        const strokes = Array.isArray(req.body && req.body.strokes) ? req.body.strokes : [];
+        let png = req.body && req.body.png_data_url;
+        if (png != null) {
+          png = String(png);
+          if (png && !png.startsWith('data:image/png;base64,')) png = null;
+          if (png && png.length > 3_000_000) png = null;
+        }
+        const id = req.body && req.body.id ? String(req.body.id) : null;
+        if (id) {
+          const [upd] = await sql`
+            UPDATE user_sketches
+            SET title = ${title || 'Untitled'}, strokes = ${JSON.stringify(strokes)}::jsonb,
+                png_data_url = ${png || null}, updated_at = now()
+            WHERE id = ${id} AND user_id = ${req.user.id}
+            RETURNING id, title, created_at, updated_at
+          `;
+          if (!upd) return res.status(404).json({ error: 'Not found' });
+          return res.json({ ok: true, sketch: upd, note: 'run mig075 for scene/templates' });
+        }
+        const [ins] = await sql`
+          INSERT INTO user_sketches (user_id, title, strokes, png_data_url)
+          VALUES (${req.user.id}, ${title || 'Untitled'}, ${JSON.stringify(strokes)}::jsonb, ${png || null})
+          RETURNING id, title, created_at, updated_at
+        `;
+        return res.status(201).json({ ok: true, sketch: ins, note: 'run mig075 for scene/templates' });
+      } catch (e2) {
+        console.error('POST /api/sketches fallback:', e2);
+        return res.status(500).json({ error: e2.message });
+      }
+    }
     console.error('POST /api/sketches:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/sketches/:id/publish', requireAuth, async (req, res) => {
+  try {
+    const caller = await sql`SELECT id, role FROM users WHERE id = ${req.user.id}`;
+    if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
+      return res.status(403).json({ error: 'Only superadmin/founder can publish templates' });
+    }
+    const [upd] = await sql`
+      UPDATE user_sketches
+      SET is_public = true, is_template = true, updated_at = now()
+      WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+      RETURNING id, title, is_public, is_template, updated_at
+    `;
+    if (!upd) return res.status(404).json({ error: 'Not found' });
+    res.json({ ok: true, sketch: upd });
+  } catch (err) {
+    console.error('POST /api/sketches/:id/publish:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -13755,6 +13885,97 @@ app.patch('/api/monad/link', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * Deliver MONAD-TAHIR-HANDOFF into Tahir's Monad inbox (plant_seed → human takhir).
+ * Idempotent via site_one_shots unless force=true.
+ * Superadmin can also POST /api/monad/deliver-tahir-handoff { force?: true }.
+ */
+async function deliverTahirHandoff(opts) {
+  opts = opts || {};
+  if (!monadSvc.configured()) return { ok: false, skipped: true, reason: 'MONAD_NOT_CONFIGURED' };
+  await sql`
+    CREATE TABLE IF NOT EXISTS site_one_shots (
+      id TEXT PRIMARY KEY,
+      meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+      delivered_at TIMESTAMPTZ DEFAULT now()
+    )`;
+  const shotId = 'monad_tahir_handoff_v1';
+  if (!opts.force) {
+    const [existing] = await sql`SELECT id, delivered_at FROM site_one_shots WHERE id = ${shotId}`;
+    if (existing) return { ok: true, already: true, delivered_at: existing.delivered_at };
+  }
+  const pageUrl = (FRONTEND_URL || 'https://neuroattention.org').replace(/\/$/, '') + '/monad-tahir-handoff.html';
+  const mdUrl = (FRONTEND_URL || 'https://neuroattention.org').replace(/\/$/, '') + '/monad-tahir-handoff.md';
+  let bodyText = '';
+  const candidates = [
+    path.join(__dirname, '..', 'docs', 'MONAD-TAHIR-HANDOFF.md'),
+    path.join(__dirname, '..', 'monad-tahir-handoff.md'),
+    path.join(__dirname, 'MONAD-TAHIR-HANDOFF.md'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) { bodyText = fs.readFileSync(p, 'utf8'); break; }
+    } catch (_) {}
+  }
+  if (!bodyText) {
+    bodyText = [
+      '# Задание для Тахира + Монады — живой ритм и живой чат с сайта',
+      '',
+      'Полный текст (открыть / скачать):',
+      pageUrl,
+      mdUrl,
+      '',
+      'Нужно:',
+      '1) GET /api/rhythm на monad-server → JSON (сейчас 404).',
+      '2) Ответы агентов в shared_context по ключу neuroattention.lk.chat.<uuid>.…',
+      '3) Проверка: сообщение из вкладки Монада ЛК → семя → ответ обратно в тот же чат.',
+      '',
+      'Сайт уже: plant_seed, multi-chat, poll read_context, live rhythm с dashboard.',
+    ].join('\n');
+  } else {
+    bodyText = bodyText + '\n\n---\nОткрытая страница для Ника/Тахира: ' + pageUrl + '\nСкачать .md: ' + mdUrl + '\n';
+  }
+  if (bodyText.length > 12000) bodyText = bodyText.slice(0, 11800) + '\n\n…(обрезано; полный текст: ' + pageUrl + ')\n';
+
+  const humanId = 'takhir';
+  const args = {
+    planted_by: monadSvc.resolvePlantedBy(humanId),
+    human_id: humanId,
+    title: '[NeuroAttention] Задание: /api/rhythm + ответы в ЛК-чат',
+    description: bodyText,
+    domain: 'neuro',
+    priority: 8,
+    create_handoff: true,
+    tags: ['neuroattention', 'handoff', 'tahir', 'lk', 'rhythm', 'from_site'],
+    project_id: 'neuroattention-lk-monad-handoff',
+  };
+  const result = await monadSvc.mcpCall('plant_seed', args);
+  let seedId = null;
+  try {
+    if (result && result.seed_id) seedId = result.seed_id;
+    else if (result && result.id) seedId = result.id;
+  } catch (_) {}
+  await sql`
+    INSERT INTO site_one_shots (id, meta)
+    VALUES (${shotId}, ${JSON.stringify({ seed_id: seedId, page_url: pageUrl, at: new Date().toISOString() })}::jsonb)
+    ON CONFLICT (id) DO UPDATE SET meta = EXCLUDED.meta, delivered_at = now()`;
+  return { ok: true, seed_id: seedId, page_url: pageUrl, result };
+}
+
+app.post('/api/monad/deliver-tahir-handoff', requireAuth, async (req, res) => {
+  try {
+    const rows = await sql`SELECT id, role FROM users WHERE id = ${req.user.id}`;
+    if (!rows.length || !['superadmin', 'founder'].includes(rows[0].role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const out = await deliverTahirHandoff({ force: !!(req.body && req.body.force) });
+    res.json(out);
+  } catch (err) {
+    console.error('POST /api/monad/deliver-tahir-handoff:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
@@ -13802,6 +14023,13 @@ app.listen(PORT, () => {
           console.warn('[boot] monad_chats ensure skipped:', chatErr.message);
         }
         try {
+          await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS scene JSONB NOT NULL DEFAULT '{}'::jsonb`;
+          await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS is_template BOOLEAN NOT NULL DEFAULT false`;
+          await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false`;
+        } catch (skErr) {
+          console.warn('[boot] sketch columns ensure skipped:', skErr.message);
+        }
+        try {
           const { EXERCISES } = require('./exercises-seed.js');
           for (const e of (EXERCISES || [])) {
             await sql`
@@ -13826,6 +14054,14 @@ app.listen(PORT, () => {
           console.warn('[boot] exercise seed sync skipped:', seedErr.message);
         }
         console.log('[boot] exercise seed + nastya monad link + monad_chats synced');
+        try {
+          const handoff = await deliverTahirHandoff({ force: false });
+          console.log('[boot] tahir handoff deliver:', JSON.stringify({
+            ok: handoff.ok, already: !!handoff.already, seed_id: handoff.seed_id || null, skipped: !!handoff.skipped
+          }));
+        } catch (hErr) {
+          console.warn('[boot] tahir handoff deliver failed:', hErr.message);
+        }
       } catch (e) {
         console.warn('[boot] light sync failed:', e.message);
       }

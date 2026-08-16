@@ -1,5 +1,9 @@
 # Задание для Тахира + Монады — живой ритм и живой чат с сайта
 
+> **Открыть / скачать без GitHub:** https://neuroattention.org/monad-tahir-handoff.html  
+> Файл: https://neuroattention.org/monad-tahir-handoff.md  
+> Этот же текст уходит в Monad inbox Тахира (`plant_seed` → `human_id: takhir`) при деплое API.
+
 **От:** Ник / NeuroAttention site  
 **Кому:** Тахир + агенты Monad (companion / claude_cowork / monad-server)  
 **Дата:** 2026-08-15  
