@@ -7,6 +7,45 @@
 
 ---
 
+## 2026-08-16 — Sketch full + Tahir handoff delivery
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-16T18:30:00Z",
+  "did": [
+    "Built Sketch core on BodyAtlas: 5 layers, brushes, undo/redo 50, templates, PNG export",
+    "Added create-copy hooks (Atlas/Library/NeuroMap/Path) + floating LK capture FAB",
+    "Published open downloadable handoff page monad-tahir-handoff.html + .md",
+    "Boot + API deliverTahirHandoff plant_seed to human takhir",
+    "mig075 scene/is_template/is_public + site_one_shots"
+  ],
+  "changed": [
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "account.html",
+    "assets/redesign.css",
+    "api/server.js",
+    "monad-tahir-handoff.html",
+    "monad-tahir-handoff.md"
+  ],
+  "decisions": [
+    "Reuse BodyAtlas (no new Three engine); screenshot via preserveDrawingBuffer in sketch mode",
+    "Handoff for Nick/Tahir served from site root (not GitHub docs) + Monad inbox seed"
+  ],
+  "followups": [
+    "glb export",
+    "sharing/stream",
+    "Egor email → EMAIL_HUMAN_MAP when known",
+    "Monad /api/rhythm JSON + write_context replies"
+  ],
+  "next_session": "Verify Sketch on prod hard-refresh; confirm Tahir seed landed"
+}
+```
+
+---
+
 ## 2026-08-16T17:28+0000 — cursor_cloud (research: Sketch implementation map)
 
 ```json
