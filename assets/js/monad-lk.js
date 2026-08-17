@@ -226,9 +226,13 @@
 
     var visible = [];
     var hiddenTech = [];
+    var lastVis = null;
     STATE.messages.forEach(function (m, idx) {
-      if (isTechMessage(m)) hiddenTech.push({ m: m, idx: idx });
-      else visible.push({ m: m, idx: idx });
+      if (isTechMessage(m)) { hiddenTech.push({ m: m, idx: idx }); return; }
+      var body = displayText(m);
+      if (lastVis && lastVis.role === m.role && displayText(lastVis) === body && (m.role === 'monad' || m.role === 'system')) return;
+      lastVis = m;
+      visible.push({ m: m, idx: idx });
     });
 
     if (!visible.length && !STATE.showTech) {
@@ -256,7 +260,7 @@
           return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + '</a>';
         }).join(' ') + '</div>';
       }
-      var details = techDetails(m);
+      var details = STATE.showTech ? techDetails(m) : '';
       var techToggle = details
         ? ('<details class="monad-tech"><summary>' + esc(t('a.monad.tech_details', 'Тех. детали')) + '</summary>' +
           '<div class="monad-msg-meta">' + esc(details) + '</div></details>')

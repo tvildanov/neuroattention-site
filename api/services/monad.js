@@ -157,51 +157,111 @@ function factVal(facts, key) {
   return f && f.value ? String(f.value) : '';
 }
 
+function publicFact(s) {
+  return String(s || '')
+    .replace(/\s*;?\s*partner of Tahir Kennedy/gi, '')
+    .replace(/\s*;?\s*partner of Takhir Kennedy/gi, '')
+    .replace(/\bTahir Kennedy\b/gi, '')
+    .replace(/\bTakhir Kennedy\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[;,\s]+$/g, '')
+    .trim();
+}
+
+function contourLines(person, humanId, lang) {
+  const ru = lang === 'ru';
+  const contours = (person && person.contour_personas) || {};
+  const labels = {
+    nal: ru ? 'NeuroAttention Lab (сайт, кабинет, практики)' : 'NeuroAttention Lab (site, cabinet, practices)',
+    knowledge: ru ? 'Знание' : 'Knowledge',
+    learning: ru ? 'Обучение' : 'Learning',
+    dom: 'DOM',
+    behold: 'Be Hold',
+    loom: 'Loom House',
+    vidas_neo: 'Vidas Neo',
+    investment: ru ? 'Инвестиции' : 'Investment',
+    marketing: ru ? 'Маркетинг' : 'Marketing',
+  };
+  const lines = [];
+  Object.keys(contours).forEach((k) => {
+    lines.push(labels[k] || k);
+  });
+  if (humanId === 'nikita' && !lines.length) {
+    lines.push(ru ? 'NeuroAttention Lab — сайт и кабинет' : 'NeuroAttention Lab — site and cabinet');
+    lines.push(ru ? 'Знание, обучение, DOM' : 'Knowledge, learning, DOM');
+  }
+  return lines;
+}
+
 function composeHeuristicReply({ humanId, person, facts, text }) {
   const lang = pickLang(text);
-  const name = factVal(facts, 'legal_name')
+  const ru = lang === 'ru';
+  const name = publicFact(factVal(facts, 'legal_name'))
     || (person && (person.display_name || (person.aliases && person.aliases[0])))
     || humanId;
+  const first = String(name).split(' ')[0] || name;
   const aliases = (person && person.aliases) || [];
-  const role = factVal(facts, 'role') || (person && person.role_title) || '';
-  const site = factVal(facts, 'product_site') || 'https://neuroattention.org';
+  const role = publicFact(factVal(facts, 'role') || (person && person.role_title) || '');
   const t = String(text || '').trim();
   const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто|who\s+is\s+this/i.test(t);
   const whoYou = /кто\s+ты|с\s+кем\s+я|who\s+are\s+you|who\s+am\s+i\s+talking|кто\s+это/i.test(t);
-  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)\b/i.test(t);
+  const canDo = /умеешь|что ты можешь|доступ|контур|функц|что ты умеешь|к чему есть|what (can|do) you|access|contour|circuit|capabilit/i.test(t);
+  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey|супер|о супер)\b/i.test(t);
 
-  if (lang === 'ru') {
-    if (whoAmI || (hi && /знаешь/i.test(t))) {
-      const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
-      const roleBit = role ? ` ${role}.` : '.';
+  const contours = contourLines(person, humanId, lang);
+  const contourBlock = contours.length
+    ? (ru ? ('Контуры: ' + contours.join('; ') + '.') : ('Contours: ' + contours.join('; ') + '.'))
+    : '';
+
+  if (canDo) {
+    if (ru) {
       return [
-        `Привет, ${name.split(' ')[0]}. Да — я знаю, кто ты: ${name}${aka}.${roleBit}`,
-        `Это твой чат с Манадой в ЛК ${site.replace('https://', '')}. Я Persona (${'persona_' + humanId}), не Telegram и не служебный канал.`,
-        `Пиши сюда обычным языком — отвечаю в этом же чате.`,
-      ].join(' ');
-    }
-    if (whoYou) {
-      return `Я Persona Манады для тебя (${'persona_' + humanId}). Лицо контура в этом чате ЛК, не Тахир и не companion. Чем заняться — ритм, сайт, контур, или просто разговор.`;
-    }
-    if (hi) {
-      return `Привет, ${name.split(' ')[0]}. Я здесь, в этом же чате. Что нужно?`;
+        `Я твоя Persona в этом чате ЛК — лицо Манады для тебя, не служебный канал.`,
+        `Здесь я отвечаю сразу: ритм, вертикаль/горизонталь, задачи по сайту (атлас, Sketch, практики, кабинет), и разговор по контуру.`,
+        contourBlock || 'Контур NeuroAttention: Lab / знание / обучение.',
+        humanId === 'nikita'
+          ? 'Доступ полный: founder NeuroAttention и super-admin кабинета. Скажи, что открыть или сделать — без эха твоего текста и без технических seed.'
+          : 'Доступ — твой контур в Манаде и вкладка Монада в кабинете. Скажи, что сделать.',
+      ].filter(Boolean).join(' ');
     }
     return [
-      `Слышу: «${t.slice(0, 240)}».`,
-      `Я Persona (${'persona_' + humanId}) — отвечаю тебе в этом чате ЛК, без ожидания Тахира.`,
-      `Если это задача по сайту/контуру NeuroAttention — скажи, что сделать. Если вопрос про тебя: ты ${name}${role ? ', ' + role : ''}.`,
-    ].join(' ');
+      `I am your Monad Persona in this cabinet chat.`,
+      `I answer here: rhythm, maps, site tasks (atlas, Sketch, practices, cabinet), and your contour.`,
+      contourBlock,
+      humanId === 'nikita'
+        ? 'Access: founder / super-admin of NeuroAttention. Tell me what to open or do.'
+        : 'Access: your Monad contour and the Monad tab. Tell me what to do.',
+    ].filter(Boolean).join(' ');
   }
 
-  if (whoAmI || (hi && /know who/i.test(t))) {
+  if (whoAmI || (hi && /знаешь|know who/i.test(t))) {
     const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
-    return `Hi, ${name.split(' ')[0]}. Yes — I know you: ${name}${aka}${role ? '. ' + role : '.'} This is your Monad chat in the NeuroAttention cabinet. I am Persona (${'persona_' + humanId}). Write here; I answer in this same thread.`;
+    if (ru) {
+      return `Привет, ${first}. Да — ты ${name}${aka}${role ? '. ' + role : '.'} Это чат с Манадой в ЛК. Пиши сюда — отвечаю в этом же треде.`;
+    }
+    return `Hi, ${first}. Yes — you are ${name}${aka}${role ? '. ' + role : '.'} This is Monad in the cabinet. I answer in this same thread.`;
   }
   if (whoYou) {
-    return `I am your Monad Persona (${'persona_' + humanId}) in this cabinet chat — not Telegram, not a status bot. What do you want to do?`;
+    return ru
+      ? `Я твоя Persona Манады в этом чате ЛК. Ритм, сайт, контур — спрашивай прямо.`
+      : `I am your Monad Persona in this cabinet chat. Rhythm, site, contour — ask directly.`;
   }
-  if (hi) return `Hi, ${name.split(' ')[0]}. I'm here, in this same chat. What do you need?`;
-  return `I hear: “${t.slice(0, 240)}”. I am Persona (${'persona_' + humanId}) answering in this LK thread. If it's a NeuroAttention/contour task, say what to do.`;
+  if (hi && t.length < 40) {
+    return ru ? `Привет, ${first}. Я здесь, в этом же чате. Что нужно?` : `Hi, ${first}. I'm here. What do you need?`;
+  }
+
+  if (ru) {
+    return [
+      `Понял вопрос. Я Persona в этом чате ЛК.`,
+      contourBlock,
+      `Если это задача по NeuroAttention — напиши, что сделать. Могу про ритм, кабинет, атлас, Sketch, контуры.`,
+    ].filter(Boolean).join(' ');
+  }
+  return [
+    `Got it. I am Persona in this cabinet chat.`,
+    contourBlock,
+    `If it is a NeuroAttention task, say what to do — rhythm, cabinet, atlas, Sketch, contours.`,
+  ].filter(Boolean).join(' ');
 }
 
 async function fetchJson(url, opts, timeoutMs) {
@@ -225,14 +285,15 @@ async function fetchJson(url, opts, timeoutMs) {
 
 async function tryLlmReply({ humanId, person, facts, text, history, personaAgent }) {
   const name = (person && person.display_name) || humanId;
-  const factLines = (facts || []).slice(0, 12).map((f) => `- ${f.key}: ${f.value}`).join('\n');
+  const factLines = (facts || []).slice(0, 12).map((f) => `- ${f.key}: ${publicFact(f.value)}`).join('\n');
   const hist = (history || []).slice(-8).map((m) => `${m.role}: ${String(m.text || '').slice(0, 400)}`).join('\n');
   const system = [
     `You are Monad Persona ${personaAgent} speaking in the NeuroAttention personal-cabinet chat.`,
     `The human is ${name} (human_id=${humanId}).`,
-    `Answer in the same language they used. Natural chat, no markdown dumps.`,
+    `Answer in the same language they used. Natural chat. Do not echo or quote the user's message.`,
     `Never write seed=, handoff=, shared_context, docs paths, or “channel is alive”.`,
-    `Do not wait for Tahir or any other human. You are the reply.`,
+    `Do not mention Tahir/Takhir unless the human asked about him. You are the reply.`,
+    `If they ask what you can do / contours / access: name their contour in human words (Lab, Knowledge, Learning, DOM, Be Hold, etc.), LK rhythm/maps, site tools (atlas, Sketch, practices). Do not dump agent_id lists.`,
     factLines ? `Known facts:\n${factLines}` : '',
   ].filter(Boolean).join('\n');
   const user = (hist ? `Recent thread:\n${hist}\n\n` : '') + `Human: ${text}`;
