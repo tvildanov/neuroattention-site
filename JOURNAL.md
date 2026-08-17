@@ -7,7 +7,44 @@
 
 ---
 
+## 2026-08-17 — LK same-turn Persona reply (site runtime)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-17T18:20:00Z",
+  "did": [
+    "Diagnosed silence: Pages+API routing live; companion still auto-acks; Persona has no daemon so poll imported nothing visible",
+    "Site API now generates Persona reply in the same POST /api/monad/message and post_lk_chat_message",
+    "Save human message first; health.lk_live_reply for deploy check",
+    "Posted live Persona reply into Nick's existing LK thread 68f221e7 via post_lk_chat_message"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "account.html",
+    "sw.js",
+    "docs/MONAD-LK.md",
+    "api/.env.example"
+  ],
+  "decisions": [
+    "Always-on LK face is neuroattention-api (neuro_agent contour), not waiting for platform=persona",
+    "Optional ANTHROPIC/OPENAI; without keys still answer from Monad directory/facts"
+  ],
+  "followups": [
+    "Optional: put ANTHROPIC_API_KEY on Railway for richer open-ended replies",
+    "Nick: curl /health for lk_live_reply; hard-refresh SW v70; new chat should answer immediately"
+  ],
+  "next_session": "Confirm Railway health.lk_live_reply and a new LK chat returns a Persona bubble in-request"
+}
+```
+
+---
+
 ## 2026-08-17 — LK chat: Persona routing, quiet UX, no Tahir gate
+
 
 ```json
 {

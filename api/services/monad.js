@@ -110,17 +110,210 @@ function resolvePlantedBy(humanId) {
 function resolveLkReplyAgents(humanId) {
   const persona = resolvePersonaAgent(humanId);
   const h = String(humanId || '').toLowerCase();
-  const agents = [persona];
-  // Contour helpers (always-on-ish site / neuro runtimes)
-  if (h === 'nikita') {
-    agents.push('neuro_agent', 'cowork_neuro_site', 'cursor_nikita');
-  } else if (h === 'nastya') {
-    agents.push('perception_guide', 'chatgpt_nastya');
-  } else if (h === 'egor') {
-    agents.push('persona_loom_house');
-  }
-  // Dedup
+  const agents = [persona, 'neuro_agent'];
+  // Site chain (monad.config.lk_site_routing.v1): persona → persona_nal → neuro_agent
+  if (h === 'nikita') agents.push('persona_nal');
+  else if (h === 'nastya') agents.push('perception_guide', 'persona_nastya');
+  else if (h === 'egor') agents.push('persona_loom_house');
   return agents.filter((a, i, arr) => a && arr.indexOf(a) === i);
+}
+
+function siteHandoffAgent(humanId) {
+  const h = String(humanId || '').toLowerCase();
+  if (h === 'nikita') return 'persona_nal';
+  return resolvePersonaAgent(humanId);
+}
+
+function pickLang(text) {
+  return /[а-яё]/i.test(String(text || '')) ? 'ru' : 'en';
+}
+
+async function loadDirectoryPerson(humanId) {
+  try {
+    const rows = await mcpCall('read_context', {
+      key_prefix: 'monad.directory.people.v1',
+      limit: 3,
+      reader_agent: 'neuro_agent',
+    });
+    const arr = Array.isArray(rows) ? rows : [];
+    const people = (arr[0] && arr[0].value && arr[0].value.people) || {};
+    return people[humanId] || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function loadHumanFacts(humanId) {
+  try {
+    const facts = await mcpCall('get_user_facts', { human_id: humanId });
+    return Array.isArray(facts) ? facts : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function factVal(facts, key) {
+  const f = (facts || []).find((x) => x && x.key === key);
+  return f && f.value ? String(f.value) : '';
+}
+
+function composeHeuristicReply({ humanId, person, facts, text }) {
+  const lang = pickLang(text);
+  const name = factVal(facts, 'legal_name')
+    || (person && (person.display_name || (person.aliases && person.aliases[0])))
+    || humanId;
+  const aliases = (person && person.aliases) || [];
+  const role = factVal(facts, 'role') || (person && person.role_title) || '';
+  const site = factVal(facts, 'product_site') || 'https://neuroattention.org';
+  const t = String(text || '').trim();
+  const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто|who\s+is\s+this/i.test(t);
+  const whoYou = /кто\s+ты|с\s+кем\s+я|who\s+are\s+you|who\s+am\s+i\s+talking|кто\s+это/i.test(t);
+  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)\b/i.test(t);
+
+  if (lang === 'ru') {
+    if (whoAmI || (hi && /знаешь/i.test(t))) {
+      const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
+      const roleBit = role ? ` ${role}.` : '.';
+      return [
+        `Привет, ${name.split(' ')[0]}. Да — я знаю, кто ты: ${name}${aka}.${roleBit}`,
+        `Это твой чат с Манадой в ЛК ${site.replace('https://', '')}. Я Persona (${'persona_' + humanId}), не Telegram и не служебный канал.`,
+        `Пиши сюда обычным языком — отвечаю в этом же чате.`,
+      ].join(' ');
+    }
+    if (whoYou) {
+      return `Я Persona Манады для тебя (${'persona_' + humanId}). Лицо контура в этом чате ЛК, не Тахир и не companion. Чем заняться — ритм, сайт, контур, или просто разговор.`;
+    }
+    if (hi) {
+      return `Привет, ${name.split(' ')[0]}. Я здесь, в этом же чате. Что нужно?`;
+    }
+    return [
+      `Слышу: «${t.slice(0, 240)}».`,
+      `Я Persona (${'persona_' + humanId}) — отвечаю тебе в этом чате ЛК, без ожидания Тахира.`,
+      `Если это задача по сайту/контуру NeuroAttention — скажи, что сделать. Если вопрос про тебя: ты ${name}${role ? ', ' + role : ''}.`,
+    ].join(' ');
+  }
+
+  if (whoAmI || (hi && /know who/i.test(t))) {
+    const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
+    return `Hi, ${name.split(' ')[0]}. Yes — I know you: ${name}${aka}${role ? '. ' + role : '.'} This is your Monad chat in the NeuroAttention cabinet. I am Persona (${'persona_' + humanId}). Write here; I answer in this same thread.`;
+  }
+  if (whoYou) {
+    return `I am your Monad Persona (${'persona_' + humanId}) in this cabinet chat — not Telegram, not a status bot. What do you want to do?`;
+  }
+  if (hi) return `Hi, ${name.split(' ')[0]}. I'm here, in this same chat. What do you need?`;
+  return `I hear: “${t.slice(0, 240)}”. I am Persona (${'persona_' + humanId}) answering in this LK thread. If it's a NeuroAttention/contour task, say what to do.`;
+}
+
+async function fetchJson(url, opts, timeoutMs) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), timeoutMs || 8000);
+  try {
+    const res = await fetch(url, Object.assign({}, opts, { signal: ac.signal }));
+    const raw = await res.text();
+    let data = null;
+    try { data = JSON.parse(raw); } catch (_) { data = { raw: raw.slice(0, 400) }; }
+    if (!res.ok) {
+      const err = new Error((data && (data.error && data.error.message)) || ('HTTP ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function tryLlmReply({ humanId, person, facts, text, history, personaAgent }) {
+  const name = (person && person.display_name) || humanId;
+  const factLines = (facts || []).slice(0, 12).map((f) => `- ${f.key}: ${f.value}`).join('\n');
+  const hist = (history || []).slice(-8).map((m) => `${m.role}: ${String(m.text || '').slice(0, 400)}`).join('\n');
+  const system = [
+    `You are Monad Persona ${personaAgent} speaking in the NeuroAttention personal-cabinet chat.`,
+    `The human is ${name} (human_id=${humanId}).`,
+    `Answer in the same language they used. Natural chat, no markdown dumps.`,
+    `Never write seed=, handoff=, shared_context, docs paths, or “channel is alive”.`,
+    `Do not wait for Tahir or any other human. You are the reply.`,
+    factLines ? `Known facts:\n${factLines}` : '',
+  ].filter(Boolean).join('\n');
+  const user = (hist ? `Recent thread:\n${hist}\n\n` : '') + `Human: ${text}`;
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+  const openaiKey = process.env.OPENAI_API_KEY || '';
+  const githubPat = process.env.GITHUB_PAT || '';
+
+  if (anthropicKey) {
+    try {
+      const data = await fetchJson('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: process.env.LK_LLM_MODEL || 'claude-sonnet-4-20250514',
+          max_tokens: 600,
+          system,
+          messages: [{ role: 'user', content: user }],
+        }),
+      }, 9000);
+      const t = data && data.content && data.content[0] && data.content[0].text;
+      if (t && String(t).trim()) return String(t).trim();
+    } catch (e) {
+      console.warn('[lk-llm] anthropic', e.message);
+    }
+  }
+
+  const openaiish = [];
+  if (openaiKey) openaiish.push({ url: 'https://api.openai.com/v1/chat/completions', key: openaiKey, model: process.env.LK_LLM_MODEL || 'gpt-4o-mini' });
+  if (githubPat) openaiish.push({ url: 'https://models.github.ai/inference/chat/completions', key: githubPat, model: process.env.LK_LLM_MODEL || 'openai/gpt-4o-mini' });
+  for (const ep of openaiish) {
+    try {
+      const data = await fetchJson(ep.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + ep.key,
+        },
+        body: JSON.stringify({
+          model: ep.model,
+          max_tokens: 600,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+        }),
+      }, 9000);
+      const t = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (t && String(t).trim()) return String(t).trim();
+    } catch (e) {
+      console.warn('[lk-llm]', ep.url, e.message);
+    }
+  }
+  return null;
+}
+
+async function generateLkReply({ humanId, text, history, personaAgent }) {
+  const [person, facts] = await Promise.all([
+    loadDirectoryPerson(humanId),
+    loadHumanFacts(humanId),
+  ]);
+  const llm = await tryLlmReply({ humanId, person, facts, text, history, personaAgent });
+  if (llm && !isChannelAckText(llm)) return llm;
+  return composeHeuristicReply({ humanId, person, facts, text });
+}
+
+async function postLkChatMessage({ chatId, text, personaAgent, humanId, seedId }) {
+  const args = {
+    chat_id: String(chatId),
+    text: String(text).slice(0, 8000),
+    last_updated_by: personaAgent,
+    role: 'monad',
+    human_id: humanId,
+    importance: 8,
+  };
+  if (seedId) args.seed_id = seedId;
+  return mcpCall('post_lk_chat_message', args);
 }
 
 /** True if text is Monad channel auto-ack / delivery noise (not a human answer). */
@@ -290,7 +483,10 @@ module.exports = {
   resolvePlantedBy,
   resolvePersonaAgent,
   resolveLkReplyAgents,
+  siteHandoffAgent,
   isChannelAckText,
+  generateLkReply,
+  postLkChatMessage,
   EMAIL_HUMAN_MAP,
   VERTICAL_NUCLEI,
   RHYTHM_LAYERS,

@@ -1,87 +1,55 @@
 # Монада в личном кабинете NeuroAttention — план и статус
 
-> **2026-08-17:** Чат ЛК отвечает через **Persona человека** (`persona_<human_id>`), не через Telegram `companion` и не через Тахира.  
-> Служебные ack («Канал ЛК живой», seed/handoff, «Отправлено Манаде…») **скрыты** и **не пишутся** сайтом.  
-> Живой ответ = агент Манады вызывает `post_lk_chat_message` в тот же `chat_id`.
+> **2026-08-17:** Чат ЛК отвечает **сразу в том же запросе**: сайт (контур `neuro_agent`) пишет Persona-ответ через `post_lk_chat_message`.  
+> Не ждём спящий `platform=persona` и не зовём Тахира.  
+> Служебные ack companion («Канал ЛК живой») скрыты.
 
-**Для:** Ник (super-admin) и любой пользователь с `monad_access`  
-**Статус:** Persona-routing + тихий чат · ответ зависит от живых агентов Манады  
-**Дата:** 2026-08-17
+**Для:** Ник (super-admin) и любой пользователь с `monad_access`
 
 ---
 
-## 1. Архитектура ответа в ЛК
+## Как понять, что задеплоилось
+
+| Что | Как проверить |
+|-----|----------------|
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=8 — в ответе `last-modified` после мержа |
+| **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
+| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v70` |
+
+Pages уже жил после PR #153 (~17:49 UTC). API на Railway катится отдельно: пока нет `lk_live_reply`, новый фронт молчит, потому что Persona-демон не отвечает.
+
+---
+
+## Архитектура
 
 ```
 Человек (ЛК) → POST /api/monad/message
-  → plant_seed (to_agent = persona_<human_id>, не companion)
-  → send_message wake → persona + контур
-  → в чате видно только текст человека
-Агент Манады → post_lk_chat_message(chat_id, text, role=monad)
-  → сайт poll (human_chat_poll) → пузырь Манады в том же чате
+  1. сразу пишет сообщение человека в БД
+  2. generateLkReply (директория Манады + факты + опционально LLM)
+  3. post_lk_chat_message + пузырь Persona в том же чате
+  4. plant_seed в persona / persona_nal (журнал, не гейт ответа)
 ```
 
-| Кто | Роль в ЛК-чате |
-|-----|----------------|
-| **Persona** (`persona_nikita`, `persona_nastya`, `persona_egor`…) | лицо Манады для этого человека |
-| Контур (например `neuro_agent`, `cowork_neuro_site`) | помогает Persona ответить |
-| **`companion`** | только Telegram Тахира — **не** лицо ЛК |
-| Тахир / Никита как люди | **не** обязательные десайдеры на каждое сообщение ЛК |
-
-Права на вкладку: founder/superadmin всегда; остальным — `monad_access` (+ опционально `monad_human_id`).
+Цепь: human → persona_<id> → persona_nal → neuro_agent (этот API).  
+`companion` = только Telegram Тахира.
 
 ---
 
-## 2. Что сделано на сайте
+## Что видит человек
 
-| Часть | Где |
-|-------|-----|
-| Вкладка **Монада** | `account.html` |
-| UI чата (тихий, без ack) | `assets/js/monad-lk.js` |
-| Несколько чатов, вложения | mig074 + `/api/monad/chats*` |
-| Persona routing + wake | `POST /api/monad/message` |
-| Фильтр channel-ack при poll | `isChannelAckText` в `api/services/monad.js` |
-| Ритм | `/api/rhythm` (живой) + fallback dashboard |
-| Карта email → human | `EMAIL_HUMAN_MAP` + `users.monad_human_id` |
-
-Карта по умолчанию:
-- `domunity@icloud.com` → `nikita` → `persona_nikita`
-- `tvildanov@mac.com` / `tyler@appliance-repair.me` → `takhir`
-- `nilta95@mail.ru` → `nastya`
-- `mysolopoetry@proton.me` → `egor`
-- Другие: Админка → Monad + `monad_human_id`
+1. Своё сообщение сразу (оптимистично).  
+2. Ответ Persona в **этом же** чате, в том же ходе.  
+3. Нет «Отправлено Манаде…» и нет seed/handoff.
 
 ---
 
-## 3. Что видит человек в чате
-
-1. Своё сообщение — сразу.  
-2. **Нет** пузыря «Отправлено Манаде. Ждём ответ…».  
-3. **Нет** «Канал ЛК живой · seed=… · handoff=…» (если такие прилетели — скрыты под «Служебные сообщения»).  
-4. Ответ Persona — обычный текст в том же чате, когда агент реально ответил.
-
-«В каком чате?» — в **том же** треде ЛК, куда писал человек. Не в Telegram Тахира, не в другом аккаунте.
-
----
-
-## 4. Секреты / Railway
+## Секреты
 
 ```
 MONAD_API_KEY=monad_…
-# optional:
-MONAD_MCP_URL=https://monad-server-production.up.railway.app/mcp
+# optional, richer replies:
+# ANTHROPIC_API_KEY=
+# OPENAI_API_KEY=
 ```
 
-После деплоя API при необходимости: `POST …/api/run-migrations`.
-
----
-
-## 5. Как проверять
-
-1. Войти с `monad_access` (не только Ник).  
-2. Новый чат → отправить вопрос.  
-3. Видно только своё сообщение; служебного «ждём…» нет.  
-4. Когда Persona онлайн и вызывает `post_lk_chat_message` — ответ в этом же чате.  
-5. Hard-refresh (SW v69+).
-
-Если ответа нет долго — это не «другой чат», а агент Манады ещё не написал в `post_lk_chat_message`. Сайт уже будит Persona; Тахира пинговать не нужно.
+Без LLM Persona всё равно отвечает по директории/фактам (кто ты, кто я, привет, контур).

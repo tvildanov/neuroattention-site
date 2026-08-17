@@ -317,7 +317,7 @@ app.get('/health', (req, res) => {
     const monad = require('./services/monad');
     monadConfigured = !!(monad && typeof monad.configured === 'function' && monad.configured());
   } catch (_) { monadConfigured = !!process.env.MONAD_API_KEY; }
-  res.json({ ok: true, monad_configured: monadConfigured });
+  res.json({ ok: true, monad_configured: monadConfigured, lk_live_reply: true });
 });
 
 // ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
@@ -13456,6 +13456,8 @@ app.get('/api/monad/status', requireAuth, async (req, res) => {
       monad_access: !!(caller.monad_access || ['superadmin', 'founder'].includes(caller.role)),
       email: caller.email,
       role: caller.role,
+      persona: humanId ? monadSvc.resolvePersonaAgent(humanId) : null,
+      lk_live_reply: true,
       note: monadSvc.configured()
         ? (humanId ? null : 'No Monad human linked — set users.monad_human_id or add email to EMAIL_HUMAN_MAP')
         : 'Set MONAD_API_KEY on Railway (neuroattention-api)',
@@ -13638,133 +13640,118 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     const projectSlug = (chat && chat.project_slug) || (chatId ? ('lk-chat-' + String(chatId).replace(/-/g, '').slice(0, 12)) : undefined);
     const personaAgent = monadSvc.resolvePersonaAgent(humanId);
     const replyAgents = monadSvc.resolveLkReplyAgents(humanId);
-    const descParts = [
-      text,
-      '',
-      '══ NeuroAttention LK — live chat reply ══',
-      'Answer the HUMAN now in natural language (same language they used).',
-      'Call MCP post_lk_chat_message with:',
-      `  chat_id: ${chatId || '(none)'}`,
-      `  human_id: ${humanId}`,
-      `  last_updated_by: ${personaAgent}`,
-      '  role: monad',
-      '  text: <your real answer — no seed=/handoff=/shared_context/docs>',
-      'A channel auto-ack is NOT an answer.',
-      '',
-      '— via NeuroAttention LK',
-      `site_user: ${caller.email}`,
-      `human_id: ${humanId}`,
-      `persona: ${personaAgent}`,
-    ];
-    if (chatId) descParts.push(`chat_id: ${chatId}`);
-    if (chat && chat.title) descParts.push(`chat_title: ${chat.title}`);
-    if (pinned.length) {
-      descParts.push('', 'Pinned context:');
-      pinned.forEach((p, i) => {
-        const label = (p && (p.title || p.label || p.key)) || ('item ' + (i + 1));
-        const body = (p && (p.text || p.body || p.value)) || '';
-        descParts.push(`- ${label}${body ? ': ' + String(body).slice(0, 500) : ''}`);
-      });
-    }
-    if (attachments.length) {
-      descParts.push('', 'Attachments:');
-      attachments.forEach((a) => {
-        const name = (a && (a.name || a.filename)) || 'file';
-        const url = (a && (a.url || a.href)) || '';
-        descParts.push(`- ${name}${url ? ' → ' + url : ''}`);
-      });
-    }
-    descParts.push(`at: ${new Date().toISOString()}`);
+    const targetAgent = toAgent || monadSvc.siteHandoffAgent(humanId);
 
-    const tags = ['neuroattention', 'lk', 'from_cabinet', 'needs_human_reply', 'live_chat'];
-    if (chatId) tags.push('chat:' + chatId);
-
-    // Route to the human's Persona — never Tahir's Telegram companion for LK.
-    const targetAgent = toAgent || personaAgent;
-    const args = {
-      planted_by: monadSvc.resolvePlantedBy(humanId),
-      human_id: humanId,
-      title: `[LK] ${title}`,
-      description: descParts.join('\n'),
-      domain: 'neuro',
-      priority: Math.max(priority, 7),
-      create_handoff: createHandoff,
-      to_agent: targetAgent,
-      tags,
-    };
-    if (projectSlug) args.project_id = projectSlug;
-
-    const result = await monadSvc.mcpCall('plant_seed', args);
-    let seedId = null;
-    let handoffId = null;
-    try {
-      if (result && result.seed_id) seedId = result.seed_id;
-      else if (result && result.id) seedId = result.id;
-      if (result && result.handoff_id) handoffId = result.handoff_id;
-    } catch (_) {}
-
-    // Wake Persona + contour agents (Monad infrastructure — not a human ping to Tahir).
-    const wakeBody = [
-      `Human ${humanId} wrote in NeuroAttention LK chat.`,
-      chatId ? `chat_id=${chatId}` : '',
-      seedId ? `seed_id=${seedId}` : '',
-      '',
-      'Their message:',
-      text,
-      '',
-      'Reply NOW with post_lk_chat_message({',
-      `  chat_id: "${chatId || ''}",`,
-      '  role: "monad",',
-      `  human_id: "${humanId}",`,
-      `  last_updated_by: "${personaAgent}",`,
-      '  text: "<natural-language answer>"',
-      '}). Do not post channel acks or seed/handoff strings.',
-    ].filter(Boolean).join('\n');
-
-    // from_agent = site/neuro runtime (not companion/Tahir). Wake Persona + contour.
-    const wakeFrom = 'neuro_agent';
-    const wakeResults = [];
-    for (const agentId of replyAgents.slice(0, 4)) {
-      try {
-        const wr = await monadSvc.mcpCall('send_message', {
-          from_agent: wakeFrom,
-          to_agent: agentId,
-          message_type: 'question',
-          subject: `[LK live] ${title}`.slice(0, 160),
-          body: wakeBody,
-          handoff_id: handoffId || undefined,
-          metadata: { chat_id: chatId, human_id: humanId, seed_id: seedId, channel: 'neuroattention_lk' },
-        });
-        wakeResults.push({ agent_id: agentId, ok: true, result: wr });
-      } catch (wakeErr) {
-        wakeResults.push({ agent_id: agentId, ok: false, error: wakeErr.message });
-      }
-    }
-
+    // Persist the human message FIRST so the chat never looks empty if Monad is slow.
     let savedMsg = null;
     if (chat) {
       const inserted = await sql`
         INSERT INTO monad_chat_messages (chat_id, user_id, role, text, attachments, seed_id, meta)
         VALUES (
           ${chat.id}, ${caller.id}, 'you', ${text},
-          ${JSON.stringify(attachments)}::jsonb, ${seedId},
-          ${JSON.stringify({
-            human_id: humanId,
-            planted: true,
-            persona: personaAgent,
-            to_agent: targetAgent,
-            handoff_id: handoffId,
-          })}::jsonb
+          ${JSON.stringify(attachments)}::jsonb, ${null},
+          ${JSON.stringify({ human_id: humanId, persona: personaAgent })}::jsonb
         )
         RETURNING *`;
       savedMsg = inserted[0];
       await sql`UPDATE monad_chats SET updated_at = now(),
         title = CASE WHEN title = '' OR title = 'Новый чат' OR title = 'New chat' THEN ${title.slice(0, 120)} ELSE title END
         WHERE id = ${chat.id}`;
-      // No delivery/status bubbles — only the human message until Monad answers.
     }
 
-    res.json({
+    // Same-turn Persona reply: site runtime (this API) IS the always-on contour.
+    let replyMsg = null;
+    let replyText = null;
+    try {
+      let history = [];
+      if (chat) {
+        const prev = await sql`
+          SELECT role, text FROM monad_chat_messages
+          WHERE chat_id = ${chat.id} AND role IN ('you','monad')
+          ORDER BY created_at DESC LIMIT 8`;
+        history = prev.reverse();
+      }
+      replyText = await monadSvc.generateLkReply({
+        humanId,
+        text,
+        history,
+        personaAgent,
+      });
+      if (replyText && monadSvc.isChannelAckText(replyText)) replyText = null;
+    } catch (genErr) {
+      console.error('[monad/message] generateLkReply', genErr.message);
+    }
+
+    let seedId = null;
+    let handoffId = null;
+    let result = null;
+    try {
+      const descParts = [
+        text,
+        '',
+        '══ NeuroAttention LK — live chat reply ══',
+        'Site runtime already answers in-thread via post_lk_chat_message.',
+        `persona: ${personaAgent}`,
+        `chat_id: ${chatId || '(none)'}`,
+        `human_id: ${humanId}`,
+        `site_user: ${caller.email}`,
+        `at: ${new Date().toISOString()}`,
+      ];
+      const tags = ['neuroattention', 'lk', 'from_cabinet', 'live_chat'];
+      if (chatId) tags.push('chat:' + chatId);
+      const args = {
+        planted_by: monadSvc.resolvePlantedBy(humanId),
+        human_id: humanId,
+        title: `[LK] ${title}`,
+        description: descParts.join('\n'),
+        domain: 'neuro',
+        priority: Math.max(priority, 7),
+        create_handoff: createHandoff,
+        to_agent: targetAgent,
+        tags,
+      };
+      if (projectSlug) args.project_id = projectSlug;
+      result = await monadSvc.mcpCall('plant_seed', args);
+      if (result && result.seed_id) seedId = result.seed_id;
+      else if (result && result.id) seedId = result.id;
+      if (result && result.handoff_id) handoffId = result.handoff_id;
+      if (savedMsg && seedId) {
+        await sql`UPDATE monad_chat_messages SET seed_id = ${seedId},
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ planted: true, to_agent: targetAgent, handoff_id: handoffId })}::jsonb
+          WHERE id = ${savedMsg.id}`;
+      }
+    } catch (plantErr) {
+      console.error('[monad/message] plant_seed', plantErr.message);
+    }
+
+    if (replyText && chat) {
+      try {
+        await monadSvc.postLkChatMessage({
+          chatId: chat.id,
+          text: replyText,
+          personaAgent,
+          humanId,
+          seedId,
+        });
+      } catch (postErr) {
+        console.error('[monad/message] post_lk_chat_message', postErr.message);
+      }
+      const insertedReply = await sql`
+        INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
+        VALUES (
+          ${chat.id}, ${caller.id}, 'monad', ${replyText.slice(0, 20000)}, ${seedId},
+          ${JSON.stringify({
+            human_id: humanId,
+            persona: personaAgent,
+            live_reply: true,
+            via: 'site_runtime',
+          })}::jsonb
+        )
+        RETURNING *`;
+      replyMsg = insertedReply[0];
+    }
+
+    const payload = {
       ok: true,
       human_id: humanId,
       persona: personaAgent,
@@ -13772,10 +13759,34 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
       result,
       seed_id: seedId,
       handoff_id: handoffId,
-      wake: wakeResults,
       chat_id: chat ? chat.id : null,
       message: savedMsg,
-    });
+      reply: replyMsg,
+      lk_live_reply: true,
+    };
+    res.json(payload);
+
+    // Wake contour after the human already has a reply.
+    const wakeBody = [
+      `Human ${humanId} wrote in NeuroAttention LK chat.`,
+      chatId ? `chat_id=${chatId}` : '',
+      seedId ? `seed_id=${seedId}` : '',
+      '',
+      'Their message:',
+      text,
+      replyText ? '\nSite runtime already posted a Persona reply in-thread.' : '',
+    ].filter(Boolean).join('\n');
+    Promise.allSettled(replyAgents.slice(0, 3).map((agentId) =>
+      monadSvc.mcpCall('send_message', {
+        from_agent: 'neuro_agent',
+        to_agent: agentId,
+        message_type: 'info',
+        subject: `[LK live] ${title}`.slice(0, 160),
+        body: wakeBody,
+        handoff_id: handoffId || undefined,
+        metadata: { chat_id: chatId, human_id: humanId, seed_id: seedId, channel: 'neuroattention_lk' },
+      })
+    )).catch(() => {});
   } catch (err) {
     console.error('POST /api/monad/message:', err);
     res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR', details: err.details });
