@@ -126,9 +126,10 @@
 //      /api/run-migrations to refresh migration 058 seed. Purges stale account.html.
 // v64: exercises ready-gate + Corsi cubes + EF sun horizontal timeline + NAIcons + Nastya monad map.
 // v65: HA/EF/Path chrome → NAIcons; boot seed sync for exercises+Nastya.
+// v68: Monad chat UX — hide seed/handoff tech, human delivery status
 // v67: Sketch full + Tahir handoff page
 // v66: Monad multi-chat + attachments; Sketch brief from Nick handoff.
-var CACHE_NAME = 'na-practices-v67';
+var CACHE_NAME = 'na-practices-v68';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
