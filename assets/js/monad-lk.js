@@ -17,6 +17,7 @@
     messages: [],
     pendingAttachments: [],
     pollTimer: null,
+    showTech: false,
   };
 
   function t(key, fallback) {
@@ -181,8 +182,7 @@
     if (meta.ack || meta.delivery || meta.channel_ack) return true;
     if (m.role === 'system') return true;
     var raw = String(m.text || '');
-    if (/docs\/MONAD|shared_context|Семя посажено|Канал ЛК живой/i.test(raw)) return true;
-    // mostly technical ids
+    if (/docs\/MONAD|shared_context|Семя посажено|Канал ЛК живой|Отправлено Манаде|Ждём ответ|Ждем ответ|ответ появится/i.test(raw)) return true;
     var cleaned = stripTechIds(raw);
     if (!cleaned && /seed=|handoff=/i.test(raw)) return true;
     if (/^принял\.?\s*канал/i.test(cleaned)) return true;
@@ -190,9 +190,6 @@
   }
 
   function displayText(m) {
-    if (isTechMessage(m)) {
-      return t('a.monad.delivered', 'Отправлено Манаде. Ждём ответ…');
-    }
     return stripTechIds(m.text) || String(m.text || '');
   }
 
@@ -204,8 +201,11 @@
     if (meta.handoff_id) bits.push('handoff=' + meta.handoff_id);
     if (meta.source_key) bits.push('key=' + meta.source_key);
     if (meta.via) bits.push('via=' + meta.via);
+    if (meta.to_agent) bits.push('to=' + meta.to_agent);
+    if (meta.persona) bits.push('persona=' + meta.persona);
     var raw = String(m.text || '');
-    if (raw && raw !== displayText(m)) bits.push(raw.slice(0, 280));
+    var shown = displayText(m);
+    if (raw && raw !== shown) bits.push(raw.slice(0, 280));
     return bits.join(' · ');
   }
 
@@ -220,7 +220,27 @@
       box.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.empty_thread', 'Напиши первое сообщение в эту задачу.')) + '</p>';
       return;
     }
-    box.innerHTML = STATE.messages.map(function (m, idx) {
+
+    var visible = [];
+    var hiddenTech = [];
+    STATE.messages.forEach(function (m, idx) {
+      if (isTechMessage(m)) hiddenTech.push({ m: m, idx: idx });
+      else visible.push({ m: m, idx: idx });
+    });
+
+    if (!visible.length && !STATE.showTech) {
+      box.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.waiting_quiet', 'Монада думает… Ответ появится здесь.')) + '</p>' +
+        (hiddenTech.length
+          ? '<p class="monad-muted" style="font-size:11px;"><button type="button" class="btn btn-ghost" id="monad-show-tech" style="font-size:11px;padding:0.2rem 0.5rem;">' +
+            esc(t('a.monad.show_tech', 'Служебные сообщения')) + ' (' + hiddenTech.length + ')</button></p>'
+          : '');
+      var btn0 = document.getElementById('monad-show-tech');
+      if (btn0) btn0.addEventListener('click', function () { STATE.showTech = true; renderMessages(); });
+      return;
+    }
+
+    var html = visible.map(function (row) {
+      var m = row.m;
       var atts = m.attachments || [];
       if (typeof atts === 'string') { try { atts = JSON.parse(atts); } catch (e) { atts = []; } }
       var attHtml = '';
@@ -233,19 +253,36 @@
           return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + '</a>';
         }).join(' ') + '</div>';
       }
-      var tech = isTechMessage(m);
-      var roleClass = tech ? 'system' : (m.role || 'monad');
       var details = techDetails(m);
-      var techToggle = '';
-      if (details) {
-        techToggle =
-          '<details class="monad-tech"><summary>' + esc(t('a.monad.tech_details', 'Тех. детали')) + '</summary>' +
-          '<div class="monad-msg-meta">' + esc(details) + '</div></details>';
-      }
-      return '<div class="monad-msg monad-msg-' + esc(roleClass) + (tech ? ' monad-msg-tech' : '') + '" data-msg-i="' + idx + '">' +
+      var techToggle = details
+        ? ('<details class="monad-tech"><summary>' + esc(t('a.monad.tech_details', 'Тех. детали')) + '</summary>' +
+          '<div class="monad-msg-meta">' + esc(details) + '</div></details>')
+        : '';
+      return '<div class="monad-msg monad-msg-' + esc(m.role || 'monad') + '" data-msg-i="' + row.idx + '">' +
         '<div class="monad-msg-body">' + esc(displayText(m)) + '</div>' + attHtml + techToggle +
         '</div>';
     }).join('');
+
+    if (hiddenTech.length) {
+      html += '<div class="monad-tech-bar">' +
+        '<button type="button" class="btn btn-ghost" id="monad-toggle-tech" style="font-size:11px;padding:0.2rem 0.5rem;">' +
+        (STATE.showTech
+          ? esc(t('a.monad.hide_tech', 'Скрыть служебные'))
+          : esc(t('a.monad.show_tech', 'Служебные сообщения')) + ' (' + hiddenTech.length + ')') +
+        '</button></div>';
+    }
+    if (STATE.showTech && hiddenTech.length) {
+      html += hiddenTech.map(function (row) {
+        var m = row.m;
+        return '<div class="monad-msg monad-msg-system monad-msg-tech" data-msg-i="' + row.idx + '">' +
+          '<div class="monad-msg-body">' + esc(stripTechIds(m.text) || m.text || '') + '</div>' +
+          '<div class="monad-msg-meta">' + esc(techDetails(m)) + '</div></div>';
+      }).join('');
+    }
+
+    box.innerHTML = html;
+    var btn = document.getElementById('monad-toggle-tech');
+    if (btn) btn.addEventListener('click', function () { STATE.showTech = !STATE.showTech; renderMessages(); });
     box.scrollTop = box.scrollHeight;
   }
 
