@@ -410,19 +410,16 @@
       });
       STATE.pendingAttachments = [];
       renderAttachmentsBar();
-      if (data && data.message) {
-        STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
-        // Replace optimistic you+typing with server thread if we have reply
-        var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
-        STATE.messages = thr.messages || [];
-        renderMessages();
-      } else {
-        var thr2 = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
-        STATE.messages = thr2.messages || [];
+      STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
+      if (data && data.reply && data.reply.text) {
+        STATE.messages.push(data.reply);
         renderMessages();
       }
+      var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
+      if (thr && thr.messages && thr.messages.length) STATE.messages = thr.messages;
+      renderMessages();
       await loadChats();
-      startFastPoll();
+      startPoll();
     } catch (err) {
       STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
