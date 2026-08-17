@@ -12,7 +12,7 @@
 
 | Что | Как проверить |
 |-----|----------------|
-| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=8 — в ответе `last-modified` после мержа |
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=9 — в ответе `last-modified` после мержа |
 | **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
 | **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v70` |
 

@@ -7,6 +7,37 @@
 
 ---
 
+## 2026-08-17 — LK: no duplicate bubbles; contour answer; hide per-msg tech
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-17T19:00:00Z",
+  "did": [
+    "Poll was re-importing the same Persona reply (via=human_chat_poll) → duplicate bubbles",
+    "De-dupe by text + delete later copies; store source_key on live insert",
+    "Stop showing Тех. детали on every bubble; contour/capabilities reply without echo or Tahir",
+    "Sanitize partner-of-Tahir from identity facts in LK copy"
+  ],
+  "changed": [
+    "api/server.js",
+    "api/services/monad.js",
+    "assets/js/monad-lk.js",
+    "account.html",
+    "sw.js"
+  ],
+  "decisions": [
+    "Same-text monad messages are one bubble",
+    "Tech ids only under optional Служебные, not on the Persona face"
+  ],
+  "followups": ["Hard-refresh SW v71; reopen chat so poll collapses existing dupes"],
+  "next_session": "Confirm one Persona bubble and a real contour answer"
+}
+```
+
+---
+
 ## 2026-08-17 — LK same-turn Persona reply (site runtime)
 
 ```json
