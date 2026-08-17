@@ -14,7 +14,7 @@
 |-----|----------------|
 | **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=9 — в ответе `last-modified` после мержа |
 | **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
-| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v70` |
+| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v71` |
 
 Pages уже жил после PR #153 (~17:49 UTC). API на Railway катится отдельно: пока нет `lk_live_reply`, новый фронт молчит, потому что Persona-демон не отвечает.
 
