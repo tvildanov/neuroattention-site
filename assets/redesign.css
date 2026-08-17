@@ -1098,7 +1098,17 @@ body.method-flashlight {
 .monad-msg-monad { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
 .monad-msg-err { background:rgba(255,80,120,0.12); border:1px solid rgba(255,80,120,0.3); }
 .monad-msg-body { white-space:pre-wrap; font-size:14px; line-height:1.45; }
-.monad-msg-meta { margin-top:0.35rem; font-size:11px; color:var(--text-dim,#888); }
+.monad-msg-meta { margin-top:0.35rem; font-size:11px; color:var(--text-dim,#888); word-break:break-all; }
+.monad-msg-system, .monad-msg-tech {
+  max-width: 85%; margin-left:0; margin-right:auto;
+  background:transparent; border:1px dashed rgba(255,255,255,0.12);
+  opacity:0.85; font-size:13px;
+}
+.monad-tech { margin-top:0.35rem; font-size:11px; color:var(--text-dim,#888); }
+.monad-tech summary { cursor:pointer; user-select:none; list-style:none; }
+.monad-tech summary::-webkit-details-marker { display:none; }
+.monad-tech summary::before { content:'▸ '; opacity:0.7; }
+.monad-tech[open] summary::before { content:'▾ '; }
 .monad-chat-compose { display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap; }
 .monad-chat-compose textarea {
   flex:1; min-width:220px; resize:vertical; border-radius:12px; padding:0.75rem;

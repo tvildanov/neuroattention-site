@@ -13636,7 +13636,23 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     }
 
     const projectSlug = (chat && chat.project_slug) || (chatId ? ('lk-chat-' + String(chatId).replace(/-/g, '').slice(0, 12)) : undefined);
-    const descParts = [text, '', '— via NeuroAttention LK', `site_user: ${caller.email}`, `human_id: ${humanId}`];
+    const descParts = [
+      text,
+      '',
+      '══ REPLY RULES (NeuroAttention LK) ══',
+      '1) Answer the HUMAN in natural language (same language they used).',
+      '2) Write the answer with MCP tool post_lk_chat_message:',
+      `   chat_id: ${chatId || '(none)'}`,
+      `   human_id: ${humanId}`,
+      '   role: monad',
+      '   last_updated_by: <your agent_id>',
+      '3) Do NOT put seed=, handoff=, shared_context, docs paths, or API jargon in the reply text.',
+      '4) A channel/delivery ack alone is NOT enough — they asked a real question.',
+      '',
+      '— via NeuroAttention LK',
+      `site_user: ${caller.email}`,
+      `human_id: ${humanId}`,
+    ];
     if (chatId) descParts.push(`chat_id: ${chatId}`);
     if (chat && chat.title) descParts.push(`chat_title: ${chat.title}`);
     if (pinned.length) {
@@ -13657,7 +13673,7 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     }
     descParts.push(`at: ${new Date().toISOString()}`);
 
-    const tags = ['neuroattention', 'lk', 'from_cabinet'];
+    const tags = ['neuroattention', 'lk', 'from_cabinet', 'needs_human_reply'];
     if (chatId) tags.push('chat:' + chatId);
 
     const args = {
@@ -13694,14 +13710,14 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
       await sql`UPDATE monad_chats SET updated_at = now(),
         title = CASE WHEN title = '' OR title = 'Новый чат' OR title = 'New chat' THEN ${title.slice(0, 120)} ELSE title END
         WHERE id = ${chat.id}`;
-      // Ack-style system line so the thread shows Monad accepted the seed
+      // Soft delivery status (not a fake Monad answer). Tech ids only in meta.
       await sql`
         INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
         VALUES (
-          ${chat.id}, ${caller.id}, 'monad',
-          ${'Семя посажено. Агенты Манады подхватят. Ответ появится в этом чате, когда Манада запишет его в shared_context (см. docs/MONAD-TAHIR-HANDOFF.md).'},
+          ${chat.id}, ${caller.id}, 'system',
+          ${'Отправлено Манаде. Ждём ответ…'},
           ${seedId},
-          ${JSON.stringify({ ack: true, human_id: humanId })}::jsonb
+          ${JSON.stringify({ ack: true, delivery: true, human_id: humanId, seed_id: seedId, handoff_id: (result && result.handoff_id) || null })}::jsonb
         )`;
     }
 
@@ -13852,20 +13868,25 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
 
     try {
       if (humanId) {
-        const polled = await monadSvc.mcpCall('human_chat_poll', {
+        const pollArgs = {
           human_id: humanId,
           chat_id: String(chat.id),
           limit: 100,
-          since: (req.body && req.body.since) ? String(req.body.since) : undefined,
-        });
+        };
+        if (req.body && req.body.since) pollArgs.since = String(req.body.since);
+        const polled = await monadSvc.mcpCall('human_chat_poll', pollArgs);
         const msgs = (polled && Array.isArray(polled.messages)) ? polled.messages
           : (Array.isArray(polled) ? polled : []);
         for (const m of msgs) {
+          const text = String(m.text || m.body || m.message || '');
+          const channelAck = /канал\s*лк\s*живой|семья посажено|семя посажено|shared_context|seed=|handoff=/i.test(text)
+            && !/\?|кто я|привет|знаешь|расскажи|помоги/i.test(text);
           candidates.push({
             key: m.key || m.id || '',
-            role: (m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad'),
-            text: m.text || m.body || m.message || '',
+            role: channelAck ? 'system' : ((m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad')),
+            text,
             seed_id: m.seed_id || null,
+            meta_extra: channelAck ? { channel_ack: true, ack: true } : {},
           });
         }
         via = 'human_chat_poll';
@@ -13890,14 +13911,17 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
         for (const it of items) {
           const key = it.key || it.id || '';
           const val = it.value != null ? it.value : it;
-          const text = (typeof val === 'string') ? val
-            : (val && (val.text || val.body || val.message)) || '';
+          const text = String((typeof val === 'string') ? val
+            : (val && (val.text || val.body || val.message)) || '');
           const roleRaw = (val && val.role) || 'monad';
+          const channelAck = /канал\s*лк\s*живой|семя посажено|shared_context|seed=|handoff=/i.test(text)
+            && !/\?|кто я|привет|знаешь|расскажи|помоги/i.test(text);
           candidates.push({
             key,
-            role: (roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad'),
+            role: channelAck ? 'system' : ((roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad')),
             text,
             seed_id: (val && val.seed_id) || null,
+            meta_extra: channelAck ? { channel_ack: true, ack: true } : {},
           });
         }
         via = (via && String(via).startsWith('human_chat_poll_failed')) ? (via + '+read_context') : 'read_context';
@@ -13925,11 +13949,15 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
         if (exists.length) continue;
       }
       const role = ['you', 'monad', 'system', 'err'].includes(c.role) ? c.role : 'monad';
+      const meta = Object.assign(
+        { source_key: key || null, from_poll: true, via },
+        c.meta_extra || {}
+      );
       await sql`
         INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
         VALUES (
           ${chat.id}, ${caller.id}, ${role}, ${text.slice(0, 20000)}, ${c.seed_id || null},
-          ${JSON.stringify({ source_key: key || null, from_poll: true, via })}::jsonb
+          ${JSON.stringify(meta)}::jsonb
         )`;
       imported++;
     }

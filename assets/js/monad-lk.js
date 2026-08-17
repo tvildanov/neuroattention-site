@@ -156,6 +156,59 @@
     });
   }
 
+  function parseMeta(m) {
+    var meta = m && m.meta;
+    if (!meta) return {};
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch (e) { return {}; }
+    }
+    return meta && typeof meta === 'object' ? meta : {};
+  }
+
+  function stripTechIds(text) {
+    return String(text || '')
+      .replace(/\bseed[=:][\w\-]+/gi, '')
+      .replace(/\bhandoff[=:][\w\-]+/gi, '')
+      .replace(/\bshared_context\b/gi, '')
+      .replace(/см\.\s*docs\/[^\s)]+/gi, '')
+      .replace(/\s*[·•]\s*/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  function isTechMessage(m) {
+    var meta = parseMeta(m);
+    if (meta.ack || meta.delivery || meta.channel_ack) return true;
+    if (m.role === 'system') return true;
+    var raw = String(m.text || '');
+    if (/docs\/MONAD|shared_context|Семя посажено|Канал ЛК живой/i.test(raw)) return true;
+    // mostly technical ids
+    var cleaned = stripTechIds(raw);
+    if (!cleaned && /seed=|handoff=/i.test(raw)) return true;
+    if (/^принял\.?\s*канал/i.test(cleaned)) return true;
+    return false;
+  }
+
+  function displayText(m) {
+    if (isTechMessage(m)) {
+      return t('a.monad.delivered', 'Отправлено Манаде. Ждём ответ…');
+    }
+    return stripTechIds(m.text) || String(m.text || '');
+  }
+
+  function techDetails(m) {
+    var meta = parseMeta(m);
+    var bits = [];
+    if (m.seed_id) bits.push('seed=' + m.seed_id);
+    if (meta.seed_id && meta.seed_id !== m.seed_id) bits.push('seed=' + meta.seed_id);
+    if (meta.handoff_id) bits.push('handoff=' + meta.handoff_id);
+    if (meta.source_key) bits.push('key=' + meta.source_key);
+    if (meta.via) bits.push('via=' + meta.via);
+    var raw = String(m.text || '');
+    if (raw && raw !== displayText(m)) bits.push(raw.slice(0, 280));
+    return bits.join(' · ');
+  }
+
   function renderMessages() {
     var box = document.getElementById('monad-chat-log');
     if (!box) return;
@@ -167,7 +220,7 @@
       box.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.empty_thread', 'Напиши первое сообщение в эту задачу.')) + '</p>';
       return;
     }
-    box.innerHTML = STATE.messages.map(function (m) {
+    box.innerHTML = STATE.messages.map(function (m, idx) {
       var atts = m.attachments || [];
       if (typeof atts === 'string') { try { atts = JSON.parse(atts); } catch (e) { atts = []; } }
       var attHtml = '';
@@ -180,9 +233,17 @@
           return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + '</a>';
         }).join(' ') + '</div>';
       }
-      return '<div class="monad-msg monad-msg-' + esc(m.role || 'monad') + '">' +
-        '<div class="monad-msg-body">' + esc(m.text || '') + '</div>' + attHtml +
-        (m.seed_id ? '<div class="monad-msg-meta">seed=' + esc(m.seed_id) + '</div>' : '') +
+      var tech = isTechMessage(m);
+      var roleClass = tech ? 'system' : (m.role || 'monad');
+      var details = techDetails(m);
+      var techToggle = '';
+      if (details) {
+        techToggle =
+          '<details class="monad-tech"><summary>' + esc(t('a.monad.tech_details', 'Тех. детали')) + '</summary>' +
+          '<div class="monad-msg-meta">' + esc(details) + '</div></details>';
+      }
+      return '<div class="monad-msg monad-msg-' + esc(roleClass) + (tech ? ' monad-msg-tech' : '') + '" data-msg-i="' + idx + '">' +
+        '<div class="monad-msg-body">' + esc(displayText(m)) + '</div>' + attHtml + techToggle +
         '</div>';
     }).join('');
     box.scrollTop = box.scrollHeight;
@@ -307,6 +368,8 @@
       STATE.messages = thr.messages || [];
       renderMessages();
       await loadChats();
+      // Burst-poll for a real reply (Monad auto-ack is fast; human answer may take longer)
+      startFastPoll();
       if (data && data.human_id) { /* ok */ }
     } catch (err) {
       STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
@@ -334,6 +397,21 @@
     stopPoll();
     if (!STATE.activeChatId) return;
     STATE.pollTimer = setInterval(pollReplies, 20000);
+    pollReplies();
+  }
+  function startFastPoll() {
+    stopPoll();
+    if (!STATE.activeChatId) return;
+    var n = 0;
+    STATE.pollTimer = setInterval(function () {
+      n += 1;
+      pollReplies();
+      if (n >= 24) { // ~2 min of 5s polls, then slow
+        stopPoll();
+        startPoll();
+      }
+    }, 5000);
+    pollReplies();
   }
   function stopPoll() {
     if (STATE.pollTimer) { clearInterval(STATE.pollTimer); STATE.pollTimer = null; }
