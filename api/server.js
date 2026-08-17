@@ -13725,14 +13725,16 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     }
 
     if (replyText && chat) {
+      let postedKey = null;
       try {
-        await monadSvc.postLkChatMessage({
+        const posted = await monadSvc.postLkChatMessage({
           chatId: chat.id,
           text: replyText,
           personaAgent,
           humanId,
           seedId,
         });
+        postedKey = (posted && (posted.key || (posted.message && posted.message.key))) || null;
       } catch (postErr) {
         console.error('[monad/message] post_lk_chat_message', postErr.message);
       }
@@ -13745,6 +13747,7 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
             persona: personaAgent,
             live_reply: true,
             via: 'site_runtime',
+            source_key: postedKey,
           })}::jsonb
         )
         RETURNING *`;
@@ -13997,21 +14000,20 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
       const text = String(c.text || '').trim();
       if (!text) continue;
       const key = String(c.key || '');
+      const role = ['you', 'monad', 'system', 'err'].includes(c.role) ? c.role : 'monad';
+      // Always de-dupe by identical text (site runtime already inserted the Persona reply).
+      const sameText = await sql`
+        SELECT 1 FROM monad_chat_messages
+        WHERE chat_id = ${chat.id} AND role = ${role} AND text = ${text.slice(0, 20000)}
+        LIMIT 1`;
+      if (sameText.length) continue;
       if (key) {
         const exists = await sql`
           SELECT 1 FROM monad_chat_messages
           WHERE chat_id = ${chat.id} AND meta->>'source_key' = ${key}
           LIMIT 1`;
         if (exists.length) continue;
-      } else {
-        // weak de-dupe without key
-        const exists = await sql`
-          SELECT 1 FROM monad_chat_messages
-          WHERE chat_id = ${chat.id} AND role = ${c.role} AND text = ${text.slice(0, 20000)}
-          LIMIT 1`;
-        if (exists.length) continue;
       }
-      const role = ['you', 'monad', 'system', 'err'].includes(c.role) ? c.role : 'monad';
       const meta = Object.assign(
         { source_key: key || null, from_poll: true, via },
         c.meta_extra || {}
@@ -14023,6 +14025,21 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           ${JSON.stringify(meta)}::jsonb
         )`;
       imported++;
+    }
+
+    // Collapse already-stored duplicate monad bubbles (same text, later copy).
+    try {
+      await sql`
+        DELETE FROM monad_chat_messages a
+        USING monad_chat_messages b
+        WHERE a.chat_id = ${chat.id}
+          AND b.chat_id = a.chat_id
+          AND a.role = 'monad' AND b.role = 'monad'
+          AND a.text = b.text
+          AND a.id <> b.id
+          AND a.created_at > b.created_at`;
+    } catch (dedupeErr) {
+      console.warn('[monad/poll] dedupe', dedupeErr.message);
     }
     if (imported) await sql`UPDATE monad_chats SET updated_at = now() WHERE id = ${chat.id}`;
 
