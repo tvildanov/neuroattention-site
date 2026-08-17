@@ -91,6 +91,9 @@
     bits.push(s.configured
       ? '<span class="monad-ok">● ' + esc(t('a.monad.connected', 'ключ на сервере есть')) + '</span>'
       : '<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
+    if (s.lk_live_reply) {
+      bits.push('<span class="monad-ok">● ' + esc(t('a.monad.live_reply', 'Persona отвечает в этом чате')) + '</span>');
+    }
     if (s.dashboard_url) {
       bits.push('<a href="' + esc(s.dashboard_url) + '" target="_blank" rel="noopener">' + esc(t('a.monad.dashboard', 'Dashboard Monad')) + '</a>');
     }
@@ -387,6 +390,9 @@
     input.value = '';
     var btn = document.getElementById('monad-chat-send');
     if (btn) btn.disabled = true;
+    STATE.messages.push({ role: 'you', text: text, attachments: STATE.pendingAttachments || [] });
+    STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
+    renderMessages();
     try {
       var data = await api('/api/monad/message', {
         method: 'POST',
@@ -400,15 +406,21 @@
       });
       STATE.pendingAttachments = [];
       renderAttachmentsBar();
-      // reload thread
-      var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
-      STATE.messages = thr.messages || [];
-      renderMessages();
+      if (data && data.message) {
+        STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
+        // Replace optimistic you+typing with server thread if we have reply
+        var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
+        STATE.messages = thr.messages || [];
+        renderMessages();
+      } else {
+        var thr2 = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
+        STATE.messages = thr2.messages || [];
+        renderMessages();
+      }
       await loadChats();
-      // Burst-poll for a real reply (Monad auto-ack is fast; human answer may take longer)
       startFastPoll();
-      if (data && data.human_id) { /* ok */ }
     } catch (err) {
+      STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
       renderMessages();
     } finally {
