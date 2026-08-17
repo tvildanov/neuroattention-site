@@ -1098,11 +1098,12 @@ body.method-flashlight {
 .monad-msg-monad { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
 .monad-msg-err { background:rgba(255,80,120,0.12); border:1px solid rgba(255,80,120,0.3); }
 .monad-msg-body { white-space:pre-wrap; font-size:14px; line-height:1.45; }
+.monad-tech-bar { margin:0.5rem 0; }
 .monad-msg-meta { margin-top:0.35rem; font-size:11px; color:var(--text-dim,#888); word-break:break-all; }
 .monad-msg-system, .monad-msg-tech {
   max-width: 85%; margin-left:0; margin-right:auto;
   background:transparent; border:1px dashed rgba(255,255,255,0.12);
-  opacity:0.85; font-size:13px;
+  opacity:0.75; font-size:12px;
 }
 .monad-tech { margin-top:0.35rem; font-size:11px; color:var(--text-dim,#888); }
 .monad-tech summary { cursor:pointer; user-select:none; list-style:none; }
