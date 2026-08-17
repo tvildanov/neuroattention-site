@@ -7,7 +7,33 @@
 
 ---
 
+## 2026-08-17 — LK follow-ups vanished after 1–3 turns
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-17T21:05:00Z",
+  "did": [
+    "Poll DELETE same-text later copies ate follow-up replies (identical heuristic template)",
+    "GITHUB_PAT LLM hang delayed reply insert past request timeout → typing then empty",
+    "Reply is now inserted before plant_seed; plant/post_lk in background",
+    "Each turn gets unique text; no GITHUB_PAT for chat; stop deleting later answers"
+  ],
+  "changed": ["api/server.js", "api/services/monad.js", "assets/js/monad-lk.js", "account.html", "sw.js"],
+  "decisions": [
+    "Never delete monad messages because two turns reused a template",
+    "Human always gets a DB reply in the same HTTP request"
+  ],
+  "followups": ["Hard-refresh SW v72; same chat should answer turn 2+"],
+  "next_session": "Confirm 5+ turns in one LK thread all keep answers"
+}
+```
+
+---
+
 ## 2026-08-17 — LK: no duplicate bubbles; contour answer; hide per-msg tech
+
 
 ```json
 {
