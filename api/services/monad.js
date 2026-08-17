@@ -128,8 +128,13 @@ function pickLang(text) {
   return /[а-яё]/i.test(String(text || '')) ? 'ru' : 'en';
 }
 
+const dirCache = { at: 0, people: null, facts: {} };
+
 async function loadDirectoryPerson(humanId) {
   try {
+    if (dirCache.people && (Date.now() - dirCache.at) < 5 * 60 * 1000) {
+      return dirCache.people[humanId] || null;
+    }
     const rows = await mcpCall('read_context', {
       key_prefix: 'monad.directory.people.v1',
       limit: 3,
@@ -137,18 +142,24 @@ async function loadDirectoryPerson(humanId) {
     });
     const arr = Array.isArray(rows) ? rows : [];
     const people = (arr[0] && arr[0].value && arr[0].value.people) || {};
+    dirCache.people = people;
+    dirCache.at = Date.now();
     return people[humanId] || null;
   } catch (_) {
-    return null;
+    return (dirCache.people && dirCache.people[humanId]) || null;
   }
 }
 
 async function loadHumanFacts(humanId) {
   try {
+    const hit = dirCache.facts[humanId];
+    if (hit && (Date.now() - hit.at) < 5 * 60 * 1000) return hit.facts;
     const facts = await mcpCall('get_user_facts', { human_id: humanId });
-    return Array.isArray(facts) ? facts : [];
+    const list = Array.isArray(facts) ? facts : [];
+    dirCache.facts[humanId] = { at: Date.now(), facts: list };
+    return list;
   } catch (_) {
-    return [];
+    return (dirCache.facts[humanId] && dirCache.facts[humanId].facts) || [];
   }
 }
 
@@ -205,8 +216,8 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   const t = String(text || '').trim();
   const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто|who\s+is\s+this/i.test(t);
   const whoYou = /кто\s+ты|с\s+кем\s+я|who\s+are\s+you|who\s+am\s+i\s+talking|кто\s+это/i.test(t);
-  const canDo = /умеешь|что ты можешь|доступ|контур|функц|что ты умеешь|к чему есть|what (can|do) you|access|contour|circuit|capabilit/i.test(t);
-  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey|супер|о супер)\b/i.test(t);
+  const canDo = /что ты умеешь|что ты можешь|какие у меня контур|к чему есть доступ|what can you do|what do you (do|can)/i.test(t);
+  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)\b/i.test(t) && t.length < 48;
 
   const contours = contourLines(person, humanId, lang);
   const contourBlock = contours.length
@@ -250,18 +261,11 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
     return ru ? `Привет, ${first}. Я здесь, в этом же чате. Что нужно?` : `Hi, ${first}. I'm here. What do you need?`;
   }
 
+  const snip = t.replace(/\s+/g, ' ').slice(0, 90);
   if (ru) {
-    return [
-      `Понял вопрос. Я Persona в этом чате ЛК.`,
-      contourBlock,
-      `Если это задача по NeuroAttention — напиши, что сделать. Могу про ритм, кабинет, атлас, Sketch, контуры.`,
-    ].filter(Boolean).join(' ');
+    return `По этому сообщению («${snip}${t.length > 90 ? '…' : ''}») — я здесь, в этом же чате, и отвечаю на каждый ход. Напиши, что сделать: ритм, атлас, Sketch, практики, кабинет, или уточни вопрос.`;
   }
-  return [
-    `Got it. I am Persona in this cabinet chat.`,
-    contourBlock,
-    `If it is a NeuroAttention task, say what to do — rhythm, cabinet, atlas, Sketch, contours.`,
-  ].filter(Boolean).join(' ');
+  return `On this message (“${snip}${t.length > 90 ? '…' : ''}”) — I am here in this same chat and I answer every turn. Name an action: rhythm, atlas, Sketch, practices, cabinet, or sharpen the question.`;
 }
 
 async function fetchJson(url, opts, timeoutMs) {
@@ -300,7 +304,7 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
   const openaiKey = process.env.OPENAI_API_KEY || '';
-  const githubPat = process.env.GITHUB_PAT || '';
+  // Do not use GITHUB_PAT here — that token is for Git storage, not chat models.
 
   if (anthropicKey) {
     try {
@@ -317,7 +321,7 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
           system,
           messages: [{ role: 'user', content: user }],
         }),
-      }, 9000);
+      }, 4000);
       const t = data && data.content && data.content[0] && data.content[0].text;
       if (t && String(t).trim()) return String(t).trim();
     } catch (e) {
@@ -327,7 +331,6 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
 
   const openaiish = [];
   if (openaiKey) openaiish.push({ url: 'https://api.openai.com/v1/chat/completions', key: openaiKey, model: process.env.LK_LLM_MODEL || 'gpt-4o-mini' });
-  if (githubPat) openaiish.push({ url: 'https://models.github.ai/inference/chat/completions', key: githubPat, model: process.env.LK_LLM_MODEL || 'openai/gpt-4o-mini' });
   for (const ep of openaiish) {
     try {
       const data = await fetchJson(ep.url, {
@@ -344,7 +347,7 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
             { role: 'user', content: user },
           ],
         }),
-      }, 9000);
+      }, 4000);
       const t = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
       if (t && String(t).trim()) return String(t).trim();
     } catch (e) {
@@ -359,9 +362,11 @@ async function generateLkReply({ humanId, text, history, personaAgent }) {
     loadDirectoryPerson(humanId),
     loadHumanFacts(humanId),
   ]);
+  const heuristic = composeHeuristicReply({ humanId, person, facts, text });
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) return heuristic;
   const llm = await tryLlmReply({ humanId, person, facts, text, history, personaAgent });
   if (llm && !isChannelAckText(llm)) return llm;
-  return composeHeuristicReply({ humanId, person, facts, text });
+  return heuristic;
 }
 
 async function postLkChatMessage({ chatId, text, personaAgent, humanId, seedId }) {
