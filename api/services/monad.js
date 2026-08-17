@@ -89,21 +89,52 @@ function resolveHumanId(user) {
   return null;
 }
 
-/** plant_seed.planted_by must be an existing agent_id (FK). Prefer human-named agent. */
-const PLANTED_BY_FALLBACK = {
-  nikita: 'nikita',
-  nastya: 'nastya',
-  takhir: 'companion',
-  alisa: 'companion',
-  sofia: 'companion',
-  egor: 'companion',
-  artem: 'companion',
-};
+/** plant_seed.planted_by must be an existing agent_id (FK). */
+/** LK face for a human — Persona layer (not Telegram companion). */
+function resolvePersonaAgent(humanId) {
+  const h = String(humanId || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (!h) return 'neuro_agent';
+  return 'persona_' + h;
+}
 
+/** Who plants the seed / appears as the human's Monad side. */
 function resolvePlantedBy(humanId) {
+  const h = String(humanId || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (!h) return 'neuro_agent';
+  // Prefer Persona agent (architecture: Human → Persona → Contour).
+  // companion = Tahir Telegram channel only — never the LK reply face.
+  return 'persona_' + h;
+}
+
+/** Agents that should wake to answer an LK chat message. */
+function resolveLkReplyAgents(humanId) {
+  const persona = resolvePersonaAgent(humanId);
   const h = String(humanId || '').toLowerCase();
-  if (PLANTED_BY_FALLBACK[h]) return PLANTED_BY_FALLBACK[h];
-  return h || 'companion';
+  const agents = [persona];
+  // Contour helpers (always-on-ish site / neuro runtimes)
+  if (h === 'nikita') {
+    agents.push('neuro_agent', 'cowork_neuro_site', 'cursor_nikita');
+  } else if (h === 'nastya') {
+    agents.push('perception_guide', 'chatgpt_nastya');
+  } else if (h === 'egor') {
+    agents.push('persona_loom_house');
+  }
+  // Dedup
+  return agents.filter((a, i, arr) => a && arr.indexOf(a) === i);
+}
+
+/** True if text is Monad channel auto-ack / delivery noise (not a human answer). */
+function isChannelAckText(text) {
+  const t = String(text || '');
+  if (!t.trim()) return false;
+  // Delivery / channel plumbing — never treat as a human-facing answer.
+  if (/канал\s*лк\s*живой|семя посажено|семья посажено|shared_context|docs\/MONAD/i.test(t)) return true;
+  if (/отправлено\s+манаде|ждём ответ|ждем ответ|ответ появится/i.test(t)) return true;
+  if (/seed\s*(is|=|:)|handoff\s*(is|=|:)|seed\s*==\s*seed/i.test(t)) return true;
+  if (/\bseed\s*[=:]/i.test(t) && /\bhandoff\s*[=:]/i.test(t)) return true;
+  if (/^принял\.?\s*канал/i.test(t.trim())) return true;
+  if (/^принял\.?\s*$/i.test(t.trim()) && t.length < 40) return true;
+  return false;
 }
 
 /** Vertical 7×7 nuclei (IV-layers matrix — labels for MVP viz). */
@@ -257,8 +288,10 @@ module.exports = {
   mcpCall,
   resolveHumanId,
   resolvePlantedBy,
+  resolvePersonaAgent,
+  resolveLkReplyAgents,
+  isChannelAckText,
   EMAIL_HUMAN_MAP,
-  PLANTED_BY_FALLBACK,
   VERTICAL_NUCLEI,
   RHYTHM_LAYERS,
   synthRhythm,

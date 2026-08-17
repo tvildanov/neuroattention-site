@@ -13636,22 +13636,25 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     }
 
     const projectSlug = (chat && chat.project_slug) || (chatId ? ('lk-chat-' + String(chatId).replace(/-/g, '').slice(0, 12)) : undefined);
+    const personaAgent = monadSvc.resolvePersonaAgent(humanId);
+    const replyAgents = monadSvc.resolveLkReplyAgents(humanId);
     const descParts = [
       text,
       '',
-      '══ REPLY RULES (NeuroAttention LK) ══',
-      '1) Answer the HUMAN in natural language (same language they used).',
-      '2) Write the answer with MCP tool post_lk_chat_message:',
-      `   chat_id: ${chatId || '(none)'}`,
-      `   human_id: ${humanId}`,
-      '   role: monad',
-      '   last_updated_by: <your agent_id>',
-      '3) Do NOT put seed=, handoff=, shared_context, docs paths, or API jargon in the reply text.',
-      '4) A channel/delivery ack alone is NOT enough — they asked a real question.',
+      '══ NeuroAttention LK — live chat reply ══',
+      'Answer the HUMAN now in natural language (same language they used).',
+      'Call MCP post_lk_chat_message with:',
+      `  chat_id: ${chatId || '(none)'}`,
+      `  human_id: ${humanId}`,
+      `  last_updated_by: ${personaAgent}`,
+      '  role: monad',
+      '  text: <your real answer — no seed=/handoff=/shared_context/docs>',
+      'A channel auto-ack is NOT an answer.',
       '',
       '— via NeuroAttention LK',
       `site_user: ${caller.email}`,
       `human_id: ${humanId}`,
+      `persona: ${personaAgent}`,
     ];
     if (chatId) descParts.push(`chat_id: ${chatId}`);
     if (chat && chat.title) descParts.push(`chat_title: ${chat.title}`);
@@ -13673,28 +13676,70 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     }
     descParts.push(`at: ${new Date().toISOString()}`);
 
-    const tags = ['neuroattention', 'lk', 'from_cabinet', 'needs_human_reply'];
+    const tags = ['neuroattention', 'lk', 'from_cabinet', 'needs_human_reply', 'live_chat'];
     if (chatId) tags.push('chat:' + chatId);
 
+    // Route to the human's Persona — never Tahir's Telegram companion for LK.
+    const targetAgent = toAgent || personaAgent;
     const args = {
       planted_by: monadSvc.resolvePlantedBy(humanId),
       human_id: humanId,
       title: `[LK] ${title}`,
       description: descParts.join('\n'),
       domain: 'neuro',
-      priority,
+      priority: Math.max(priority, 7),
       create_handoff: createHandoff,
+      to_agent: targetAgent,
       tags,
     };
-    if (toAgent) args.to_agent = toAgent;
     if (projectSlug) args.project_id = projectSlug;
 
     const result = await monadSvc.mcpCall('plant_seed', args);
     let seedId = null;
+    let handoffId = null;
     try {
       if (result && result.seed_id) seedId = result.seed_id;
       else if (result && result.id) seedId = result.id;
+      if (result && result.handoff_id) handoffId = result.handoff_id;
     } catch (_) {}
+
+    // Wake Persona + contour agents (Monad infrastructure — not a human ping to Tahir).
+    const wakeBody = [
+      `Human ${humanId} wrote in NeuroAttention LK chat.`,
+      chatId ? `chat_id=${chatId}` : '',
+      seedId ? `seed_id=${seedId}` : '',
+      '',
+      'Their message:',
+      text,
+      '',
+      'Reply NOW with post_lk_chat_message({',
+      `  chat_id: "${chatId || ''}",`,
+      '  role: "monad",',
+      `  human_id: "${humanId}",`,
+      `  last_updated_by: "${personaAgent}",`,
+      '  text: "<natural-language answer>"',
+      '}). Do not post channel acks or seed/handoff strings.',
+    ].filter(Boolean).join('\n');
+
+    // from_agent = site/neuro runtime (not companion/Tahir). Wake Persona + contour.
+    const wakeFrom = 'neuro_agent';
+    const wakeResults = [];
+    for (const agentId of replyAgents.slice(0, 4)) {
+      try {
+        const wr = await monadSvc.mcpCall('send_message', {
+          from_agent: wakeFrom,
+          to_agent: agentId,
+          message_type: 'question',
+          subject: `[LK live] ${title}`.slice(0, 160),
+          body: wakeBody,
+          handoff_id: handoffId || undefined,
+          metadata: { chat_id: chatId, human_id: humanId, seed_id: seedId, channel: 'neuroattention_lk' },
+        });
+        wakeResults.push({ agent_id: agentId, ok: true, result: wr });
+      } catch (wakeErr) {
+        wakeResults.push({ agent_id: agentId, ok: false, error: wakeErr.message });
+      }
+    }
 
     let savedMsg = null;
     if (chat) {
@@ -13703,25 +13748,34 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
         VALUES (
           ${chat.id}, ${caller.id}, 'you', ${text},
           ${JSON.stringify(attachments)}::jsonb, ${seedId},
-          ${JSON.stringify({ human_id: humanId, planted: true })}::jsonb
+          ${JSON.stringify({
+            human_id: humanId,
+            planted: true,
+            persona: personaAgent,
+            to_agent: targetAgent,
+            handoff_id: handoffId,
+          })}::jsonb
         )
         RETURNING *`;
       savedMsg = inserted[0];
       await sql`UPDATE monad_chats SET updated_at = now(),
         title = CASE WHEN title = '' OR title = 'Новый чат' OR title = 'New chat' THEN ${title.slice(0, 120)} ELSE title END
         WHERE id = ${chat.id}`;
-      // Soft delivery status (not a fake Monad answer). Tech ids only in meta.
-      await sql`
-        INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
-        VALUES (
-          ${chat.id}, ${caller.id}, 'system',
-          ${'Отправлено Манаде. Ждём ответ…'},
-          ${seedId},
-          ${JSON.stringify({ ack: true, delivery: true, human_id: humanId, seed_id: seedId, handoff_id: (result && result.handoff_id) || null })}::jsonb
-        )`;
+      // No delivery/status bubbles — only the human message until Monad answers.
     }
 
-    res.json({ ok: true, human_id: humanId, result, seed_id: seedId, chat_id: chat ? chat.id : null, message: savedMsg });
+    res.json({
+      ok: true,
+      human_id: humanId,
+      persona: personaAgent,
+      to_agent: targetAgent,
+      result,
+      seed_id: seedId,
+      handoff_id: handoffId,
+      wake: wakeResults,
+      chat_id: chat ? chat.id : null,
+      message: savedMsg,
+    });
   } catch (err) {
     console.error('POST /api/monad/message:', err);
     res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR', details: err.details });
@@ -13879,14 +13933,13 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           : (Array.isArray(polled) ? polled : []);
         for (const m of msgs) {
           const text = String(m.text || m.body || m.message || '');
-          const channelAck = /канал\s*лк\s*живой|семья посажено|семя посажено|shared_context|seed=|handoff=/i.test(text)
-            && !/\?|кто я|привет|знаешь|расскажи|помоги/i.test(text);
+          if (monadSvc.isChannelAckText(text)) continue; // never store channel noise
           candidates.push({
             key: m.key || m.id || '',
-            role: channelAck ? 'system' : ((m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad')),
+            role: (m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad'),
             text,
             seed_id: m.seed_id || null,
-            meta_extra: channelAck ? { channel_ack: true, ack: true } : {},
+            meta_extra: {},
           });
         }
         via = 'human_chat_poll';
@@ -13913,15 +13966,14 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           const val = it.value != null ? it.value : it;
           const text = String((typeof val === 'string') ? val
             : (val && (val.text || val.body || val.message)) || '');
+          if (monadSvc.isChannelAckText(text)) continue;
           const roleRaw = (val && val.role) || 'monad';
-          const channelAck = /канал\s*лк\s*живой|семя посажено|shared_context|seed=|handoff=/i.test(text)
-            && !/\?|кто я|привет|знаешь|расскажи|помоги/i.test(text);
           candidates.push({
             key,
-            role: channelAck ? 'system' : ((roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad')),
+            role: (roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad'),
             text,
             seed_id: (val && val.seed_id) || null,
-            meta_extra: channelAck ? { channel_ack: true, ack: true } : {},
+            meta_extra: {},
           });
         }
         via = (via && String(via).startsWith('human_chat_poll_failed')) ? (via + '+read_context') : 'read_context';

@@ -7,6 +7,46 @@
 
 ---
 
+## 2026-08-17 — LK chat: Persona routing, quiet UX, no Tahir gate
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-17T17:45:00Z",
+  "did": [
+    "Route LK plant_seed/to_agent to persona_<human_id> (not companion)",
+    "Wake Persona + contour via send_message from neuro_agent",
+    "Stop inserting «Отправлено Манаде…» system bubbles",
+    "Filter channel-ack texts on poll; hide tech under optional toggle",
+    "Plant standing policy seed+write_context neuroattention_lk_reply_policy (no Tahir)",
+    "Update docs/MONAD-LK.md for Nick: same chat, Persona answers, any monad_access account"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "docs/MONAD-LK.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Tahir/companion is not the LK reply face or required decider",
+    "Site must not fake Monad answers; live reply = post_lk_chat_message",
+    "Channel acks are noise — never show as answers"
+  ],
+  "followups": [
+    "Confirm Persona agents online and actually call post_lk_chat_message",
+    "Hard-refresh LK (SW v69) and test from Nick + another monad_access account"
+  ],
+  "next_session": "Verify live Persona reply lands in same LK thread without tech noise"
+}
+```
+
+---
+
 ## 2026-08-16 — Sketch full + Tahir handoff delivery
 
 ```json
