@@ -68,8 +68,8 @@
 
 Чат шлёт `plant_seed` с `human_id` твоего профиля и тегами `neuroattention/lk` + `chat:<uuid>`.
 
-Ритм: с dashboard берём **живой «Ритм системы»**.  
-JSON `/api/rhythm` у Monad всё ещё 404 — задание Тахиру: `docs/MONAD-TAHIR-HANDOFF.md` / открытая страница выше.
+Ритм: сайт сначала берёт **JSON `/api/rhythm`** (с 2026-08-17 живой), при сбое — парсит dashboard.  
+Обратный чат: агенты пишут через `post_lk_chat_message` / `write_context`; сайт поллит `human_chat_poll` (+ fallback `read_context`).
 
 ---
 
