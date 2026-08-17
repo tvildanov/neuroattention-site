@@ -135,11 +135,9 @@ const STATUS_LEVEL = {
 };
 
 /**
- * REAL system rhythm already computed by monad-server and shown on /dashboard
- * ("Ритм системы": harmonic|drifting|dissonant|silence + per-agent actions/min).
- * There is still NO JSON /api/rhythm — we parse the public HTML until Monad ships it.
- * This is NOT the biological equalizer (circ/breath/heart) from spec XI — that layer
- * set is still not exposed as live data (confirmed 2026-08-08).
+ * There is a JSON /api/rhythm on monad-server (auth via X-API-Key). We prefer it;
+ * dashboard HTML parse remains as fallback. Biological layers (circ/breath/heart)
+ * are returned as available:false / level:null until measured.
  */
 async function fetchSystemRhythm() {
   const headers = { Accept: 'text/html' };
@@ -211,7 +209,7 @@ async function fetchSystemRhythm() {
   };
 }
 
-/** Try JSON /api/rhythm first; fall back to dashboard HTML parse. */
+/** Prefer native JSON /api/rhythm; fall back to dashboard HTML parse. */
 async function getRhythm() {
   try {
     const headers = { Accept: 'application/json' };
@@ -222,7 +220,7 @@ async function getRhythm() {
       return {
         source: 'monad_api_rhythm',
         note: 'Native JSON /api/rhythm from monad-server',
-        updated_at: new Date().toISOString(),
+        updated_at: (data && data.updated_at) || new Date().toISOString(),
         ...data,
       };
     }

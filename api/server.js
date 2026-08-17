@@ -13836,7 +13836,8 @@ app.post('/api/monad/chats/:id/upload', requireAuth, uploadMonadChat.single('fil
   }
 });
 
-// Poll Monad shared_context for replies written back into this chat
+// Poll Monad for replies written back into this chat.
+// Prefer dedicated human_chat_poll (post_lk_chat_message path); fall back to read_context.
 app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
@@ -13844,47 +13845,99 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
     if (!chat) return res.status(404).json({ error: 'not found' });
     if (!monadSvc.configured()) return res.json({ ok: true, imported: 0, note: 'MONAD_API_KEY missing' });
 
+    const humanId = monadSvc.resolveHumanId(caller);
     let imported = 0;
+    let via = null;
+    const candidates = [];
+
     try {
-      const prefix = `neuroattention.lk.chat.${chat.id}.`;
-      const raw = await monadSvc.mcpCall('read_context', {
-        key_prefix: prefix,
-        category: 'lk_chat',
-        limit: 100,
-        min_importance: 1,
-      });
-      const items = Array.isArray(raw) ? raw
-        : (raw && Array.isArray(raw.items) ? raw.items
-          : (raw && Array.isArray(raw.entries) ? raw.entries
-            : (raw && Array.isArray(raw.context) ? raw.context : [])));
-      for (const it of items) {
-        const key = it.key || it.id || '';
-        const val = it.value != null ? it.value : it;
-        const text = (typeof val === 'string') ? val
-          : (val && (val.text || val.body || val.message)) || '';
-        if (!text) continue;
-        const role = (val && val.role === 'you') ? 'you' : 'monad';
-        // de-dupe by meta.source_key
+      if (humanId) {
+        const polled = await monadSvc.mcpCall('human_chat_poll', {
+          human_id: humanId,
+          chat_id: String(chat.id),
+          limit: 100,
+          since: (req.body && req.body.since) ? String(req.body.since) : undefined,
+        });
+        const msgs = (polled && Array.isArray(polled.messages)) ? polled.messages
+          : (Array.isArray(polled) ? polled : []);
+        for (const m of msgs) {
+          candidates.push({
+            key: m.key || m.id || '',
+            role: (m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad'),
+            text: m.text || m.body || m.message || '',
+            seed_id: m.seed_id || null,
+          });
+        }
+        via = 'human_chat_poll';
+      }
+    } catch (ePoll) {
+      via = 'human_chat_poll_failed:' + (ePoll.message || 'err');
+    }
+
+    if (!candidates.length) {
+      try {
+        const prefix = `neuroattention.lk.chat.${chat.id}.`;
+        const raw = await monadSvc.mcpCall('read_context', {
+          key_prefix: prefix,
+          category: 'lk_chat',
+          limit: 100,
+          min_importance: 1,
+        });
+        const items = Array.isArray(raw) ? raw
+          : (raw && Array.isArray(raw.items) ? raw.items
+            : (raw && Array.isArray(raw.entries) ? raw.entries
+              : (raw && Array.isArray(raw.context) ? raw.context : [])));
+        for (const it of items) {
+          const key = it.key || it.id || '';
+          const val = it.value != null ? it.value : it;
+          const text = (typeof val === 'string') ? val
+            : (val && (val.text || val.body || val.message)) || '';
+          const roleRaw = (val && val.role) || 'monad';
+          candidates.push({
+            key,
+            role: (roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad'),
+            text,
+            seed_id: (val && val.seed_id) || null,
+          });
+        }
+        via = (via && String(via).startsWith('human_chat_poll_failed')) ? (via + '+read_context') : 'read_context';
+      } catch (eRead) {
+        return res.json({ ok: true, imported: 0, note: eRead.message, via });
+      }
+    }
+
+    for (const c of candidates) {
+      const text = String(c.text || '').trim();
+      if (!text) continue;
+      const key = String(c.key || '');
+      if (key) {
         const exists = await sql`
           SELECT 1 FROM monad_chat_messages
-          WHERE chat_id = ${chat.id} AND meta->>'source_key' = ${String(key)}
+          WHERE chat_id = ${chat.id} AND meta->>'source_key' = ${key}
           LIMIT 1`;
         if (exists.length) continue;
-        await sql`
-          INSERT INTO monad_chat_messages (chat_id, user_id, role, text, meta)
-          VALUES (
-            ${chat.id}, ${caller.id}, ${role}, ${String(text).slice(0, 20000)},
-            ${JSON.stringify({ source_key: key, from_poll: true })}::jsonb
-          )`;
-        imported++;
+      } else {
+        // weak de-dupe without key
+        const exists = await sql`
+          SELECT 1 FROM monad_chat_messages
+          WHERE chat_id = ${chat.id} AND role = ${c.role} AND text = ${text.slice(0, 20000)}
+          LIMIT 1`;
+        if (exists.length) continue;
       }
-      if (imported) await sql`UPDATE monad_chats SET updated_at = now() WHERE id = ${chat.id}`;
-    } catch (e) {
-      return res.json({ ok: true, imported: 0, note: e.message });
+      const role = ['you', 'monad', 'system', 'err'].includes(c.role) ? c.role : 'monad';
+      await sql`
+        INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
+        VALUES (
+          ${chat.id}, ${caller.id}, ${role}, ${text.slice(0, 20000)}, ${c.seed_id || null},
+          ${JSON.stringify({ source_key: key || null, from_poll: true, via })}::jsonb
+        )`;
+      imported++;
     }
+    if (imported) await sql`UPDATE monad_chats SET updated_at = now() WHERE id = ${chat.id}`;
+
     const messages = await sql`
       SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at ASC LIMIT 500`;
-    res.json({ ok: true, imported, messages });
+    res.json({ ok: true, imported, via, messages });
   } catch (err) {
     console.error('POST /api/monad/chats/:id/poll:', err);
     res.status(500).json({ error: err.message || 'Internal error' });
