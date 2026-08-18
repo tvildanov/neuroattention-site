@@ -1,8 +1,6 @@
 # Монада в личном кабинете NeuroAttention — план и статус
 
-> **2026-08-17:** Чат ЛК отвечает **сразу в том же запросе**: сайт (контур `neuro_agent`) пишет Persona-ответ через `post_lk_chat_message`.  
-> Не ждём спящий `platform=persona` и не зовём Тахира.  
-> Служебные ack companion («Канал ЛК живой») скрыты.
+> **2026-08-18:** Вертикаль читает канон `monad.spec.layers_7x7` (L1 Физика … L6 Знание … L7 Сверхсистема) и живую рассадку `monad.placement`. Не выдуманные «тело/эмоции». Чат отвечает по смыслу. Sketch 3D = BodyAtlas.
 
 **Для:** Ник (super-admin) и любой пользователь с `monad_access`
 
@@ -12,9 +10,9 @@
 
 | Что | Как проверить |
 |-----|----------------|
-| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=9 — в ответе `last-modified` после мержа |
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=13 — `last-modified` после мержа |
 | **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
-| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v71` |
+| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v75` |
 
 Pages уже жил после PR #153 (~17:49 UTC). API на Railway катится отдельно: пока нет `lk_live_reply`, новый фронт молчит, потому что Persona-демон не отвечает.
 
@@ -32,6 +30,17 @@ Pages уже жил после PR #153 (~17:49 UTC). API на Railway катит
 
 Цепь: human → persona_<id> → persona_nal → neuro_agent (этот API).  
 `companion` = только Telegram Тахира.
+
+### Вертикаль / горизонталь / ритм
+
+Канон, не выдумка:
+
+- слои: `monad.spec.layers_7x7.v0_1` — 49 постов `Li×Lj` (функции). Агенты из `monad.placement`.
+- горизонталь: `monad.spec.circle12.slots.v0_1` + `monad.spec.ui.lk_monad_page.v0_2` — DOM в центре (проект), контуры ветвятся от людей, пустые часы 2/4/7/8/11 нажаты и пусты.
+- ритм: `monad.spec.rhythm.v0_3` — пульс L1–L7 (физика / жизнь / ум), не биологический EEG.
+
+**Контур** = группа агентов одного смысла (знание, контент/Loom, дизайн, маркетинг, инвестиции…).  
+**Проект** = NAL, DOM, Be Hold, Vidas Neo… Контур ≠ проект ≠ слой вертикали.
 
 ---
 

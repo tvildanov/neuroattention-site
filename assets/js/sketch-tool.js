@@ -44,6 +44,7 @@
     dirty: false,
     atlas: null,
     atlasMounting: false,
+    atlasWaiters: [],
     isSuperadmin: false
   };
 
@@ -214,7 +215,7 @@
     var st = stage();
     if (!st) return { w: 640, h: 420 };
     var w = Math.max(280, st.clientWidth || 640);
-    var h = Math.max(320, Math.min(640, Math.round(w * 0.68)));
+    var h = Math.max(520, Math.round(w * 0.62));
     return { w: w, h: h };
   }
 
@@ -291,13 +292,12 @@
     var L = state.layers.media;
     if (!wrap || !L) return;
     wrap.style.opacity = L.visible ? String(L.opacity != null ? L.opacity : 1) : '0';
-    wrap.style.display = (L.imageDataUrl || state.viewMode === '2d') ? 'block' : (state.viewMode === '3d' ? 'none' : 'block');
+    wrap.style.display = (state.viewMode === '3d') ? 'none' : ((L.imageDataUrl || state.viewMode === '2d') ? 'block' : 'none');
     if (img) {
-      if (L.imageDataUrl) {
+      if (state.viewMode === '2d' && L.imageDataUrl) {
         img.src = L.imageDataUrl;
         img.style.display = 'block';
       } else {
-        img.removeAttribute('src');
         img.style.display = 'none';
       }
       if (L.tint) {
@@ -311,7 +311,9 @@
       host3d.style.opacity = L.visible ? String(L.opacity != null ? L.opacity : 1) : '0';
       host3d.style.visibility = (state.viewMode === '3d') ? 'visible' : 'hidden';
       host3d.style.pointerEvents = (state.viewMode === '3d' && state.interaction === 'orbit') ? 'auto' : 'none';
+      host3d.style.zIndex = '2';
     }
+    wrap.style.zIndex = '3';
   }
 
   function applyLayerVisibility() {
@@ -323,13 +325,13 @@
       } else if (id === 'media') {
         var mw = document.getElementById('sketch-media-wrap');
         var h3 = document.getElementById('sketch-3d-host');
-        if (mw) mw.style.zIndex = String(z);
-        if (h3) h3.style.zIndex = String(z);
+        if (mw) mw.style.zIndex = state.viewMode === '3d' ? '1' : String(z);
+        if (h3) h3.style.zIndex = state.viewMode === '3d' ? '2' : String(z);
         var mm = mediaMask();
         if (mm) {
           mm.style.zIndex = String(z + 1);
-          mm.style.pointerEvents = (state.interaction === 'draw' && state.activeDraw === 'media') ? 'auto' : 'none';
-          mm.style.visibility = state.layers.media.visible ? 'visible' : 'hidden';
+          mm.style.pointerEvents = (state.interaction === 'draw' && state.activeDraw === 'media' && state.viewMode === '2d') ? 'auto' : 'none';
+          mm.style.visibility = (state.layers.media.visible && state.viewMode === '2d') ? 'visible' : 'hidden';
         }
       } else {
         var c = drawCanvas(id);
@@ -421,23 +423,40 @@
   function ensureAtlas() {
     if (state.viewMode !== '3d') return Promise.resolve(null);
     if (state.atlas) return Promise.resolve(state.atlas);
-    if (state.atlasMounting) return Promise.resolve(null);
+    if (state.atlasWaiters && state.atlasMounting) {
+      return new Promise(function (resolve) { state.atlasWaiters.push(resolve); });
+    }
     var host = document.getElementById('sketch-3d-host');
     if (!host || !window.BodyAtlas) {
       setStatus(t('a.sketch.no_atlas', '3D-Атлас недоступен'));
       return Promise.resolve(null);
     }
     state.atlasMounting = true;
+    state.atlasWaiters = [];
     host.innerHTML = '';
-    return window.BodyAtlas.init(host, { mode: 'sketch', preserveDrawingBuffer: true })
+    return window.BodyAtlas.init(host, { mode: 'full', preserveDrawingBuffer: true })
       .then(function (a) {
+        if (state.viewMode !== '3d') {
+          try { if (a && a.destroy) a.destroy(); } catch (e0) {}
+          state.atlasMounting = false;
+          state.atlasWaiters.forEach(function (fn) { fn(null); });
+          state.atlasWaiters = [];
+          return null;
+        }
         state.atlas = a;
         state.atlasMounting = false;
+        applyMedia();
+        applyLayerVisibility();
         resizeAll();
+        try { if (a && a._onResize) a._onResize(); } catch (e1) {}
+        state.atlasWaiters.forEach(function (fn) { fn(a); });
+        state.atlasWaiters = [];
         return a;
       })
       .catch(function (err) {
         state.atlasMounting = false;
+        state.atlasWaiters.forEach(function (fn) { fn(null); });
+        state.atlasWaiters = [];
         setStatus((err && err.message) || 'atlas error');
         return null;
       });
@@ -936,16 +955,13 @@
     payload = payload || {};
     goToSketchTool();
     var run = function () {
-      if (payload.mode === '2d' || payload.imageDataUrl) setViewMode('2d');
+      if (payload.mode === '2d') setViewMode('2d');
       else setViewMode('3d');
-      if (payload.imageDataUrl) {
+      if (payload.imageDataUrl && payload.mode === '2d') {
         state.layers.media.imageDataUrl = payload.imageDataUrl;
-        if (payload.mode === '3d') {
-          // 3D from 2D: keep atlas + image as plane overlay
-          setViewMode('3d');
-          var wrap = document.getElementById('sketch-media-wrap');
-          if (wrap) wrap.style.display = 'block';
-        }
+      } else if (payload.imageDataUrl && payload.mode !== '2d') {
+        // Opening a 3D copy: live atlas, drop the still overlay.
+        state.layers.media.imageDataUrl = null;
       }
       if (payload.title) {
         var titleEl = document.getElementById('sketch-title');
