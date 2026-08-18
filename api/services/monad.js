@@ -228,7 +228,52 @@ function membershipFromPlacements(humanId, placements, lang) {
   return { contours, projects };
 }
 
-function composeHeuristicReply({ humanId, person, facts, text, placements }) {
+const WHO_YOU_RE = /кто\s+ты|ты\s+кто|who\s+are\s+you|who\s+am\s+i\s+talking|с\s+кем\s+я/i;
+const WHO_AM_I_DIRECT_RE = /кто\s+я|who\s+am\s+i|знаешь\s+кто\s+я|ты\s+знаешь\s+кто/i;
+const WHO_AM_I_FOLLOW_RE = /^(а\s+я|ну\s+а\s+я|и\s+я|а\s+кто\s+я|and\s+me|what\s+about\s+me)\s*[?!.…]*$/i;
+
+function messageText(m) {
+  return String((m && (m.text || m.content)) || '');
+}
+function messageRole(m) {
+  return String((m && m.role) || '');
+}
+function priorHistory(history) {
+  const msgs = Array.isArray(history) ? history.slice() : [];
+  if (!msgs.length) return [];
+  const lastRole = messageRole(msgs[msgs.length - 1]);
+  if (lastRole === 'you' || lastRole === 'user' || lastRole === 'human') {
+    return msgs.slice(0, -1);
+  }
+  return msgs;
+}
+
+/** True if a recent turn already asked who the Persona is, or Persona just introduced itself. */
+function recentAskedWhoYou(history) {
+  const prior = priorHistory(history).slice(-6);
+  for (let i = prior.length - 1; i >= 0; i--) {
+    const role = messageRole(prior[i]);
+    const t = messageText(prior[i]);
+    if (role === 'you' || role === 'user' || role === 'human') {
+      if (WHO_YOU_RE.test(t)) return true;
+    }
+    if (role === 'monad' || role === 'assistant') {
+      if (/Persona/i.test(t) && /(кабинет|cabinet|Telegram)/i.test(t)) return true;
+    }
+  }
+  return false;
+}
+
+function identityIntent(text, history) {
+  const t = String(text || '').trim();
+  const whoYou = WHO_YOU_RE.test(t);
+  const whoAmIDirect = WHO_AM_I_DIRECT_RE.test(t);
+  const whoAmIBare = /^(а\s+я|а\s+кто\s+я)\s*[?!.…]*$/i.test(t);
+  const whoAmIFollow = WHO_AM_I_FOLLOW_RE.test(t) && (whoYou || recentAskedWhoYou(history));
+  return { whoYou, whoAmI: whoAmIDirect || whoAmIBare || whoAmIFollow };
+}
+
+function composeHeuristicReply({ humanId, person, facts, text, placements, history }) {
   const lang = pickLang(text);
   const ru = lang === 'ru';
   const name = publicFact(factVal(facts, 'legal_name'))
@@ -239,8 +284,7 @@ function composeHeuristicReply({ humanId, person, facts, text, placements }) {
   const role = publicFact(factVal(facts, 'role') || (person && person.role_title) || '');
   const t = String(text || '').trim();
   const low = t.toLowerCase();
-  const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто/i.test(t);
-  const whoYou = /кто\s+ты|ты\s+кто|who\s+are\s+you|who\s+am\s+i\s+talking|с\s+кем\s+я/i.test(t);
+  const ident = identityIntent(t, history);
   const canDo = /что ты умеешь|что ты можешь|какие у меня контур|к чему есть доступ|what can you do/i.test(t);
   const aboutContour = /что такое контур|what is a contour|контур —|контур -|контуры и проект/i.test(t);
   const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)[!.…\s]*$/i.test(t);
@@ -251,26 +295,28 @@ function composeHeuristicReply({ humanId, person, facts, text, placements }) {
     mem.projects.length ? (ru ? ('Проекты: ' + mem.projects.join(', ') + '.') : ('Projects: ' + mem.projects.join(', ') + '.')) : '',
   ].filter(Boolean).join(' ');
 
+  const youLine = ru
+    ? 'Я твоя Persona в этом чате ЛК NeuroAttention. Отвечаю здесь, без Telegram-моста.'
+    : 'I am your Persona in this NeuroAttention cabinet chat. I answer here, without a Telegram bridge.';
+  const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
+  const meLine = ru
+    ? `Ты ${name}${aka}${role ? '. ' + role : '.'} Super-admin этого кабинета.`
+    : `You are ${name}${aka}${role ? '. ' + role : '.'} Super-admin of this cabinet.`;
+
+  if (ident.whoYou || ident.whoAmI) {
+    if (ident.whoYou && ident.whoAmI) return `${youLine} ${meLine}`;
+    if (ident.whoYou) return youLine;
+    return meLine;
+  }
   if (hi) {
     return ru
       ? `Привет, ${first}. Я твоя Persona в этом чате ЛК — не шаблон и не служебный канал. Спрашивай прямо: кто я, атлас, Sketch, ритм, контур.`
       : `Hi, ${first}. I am your Persona in this cabinet chat. Ask directly: who I am, atlas, Sketch, rhythm, contour.`;
   }
-  if (whoYou) {
-    return ru
-      ? `Я Persona Манады для тебя в личном кабинете NeuroAttention. Отвечаю здесь, без Telegram-моста. Могу про ритм, вертикаль 7×7, горизонталь 12+1, атлас, Sketch, практики.`
-      : `I am your Monad Persona in the NeuroAttention cabinet chat. I answer here. Rhythm, 7×7, 12+1, atlas, Sketch, practices — ask.`;
-  }
   if (aboutContour || (/контур|contour/i.test(low) && /что|what|это/i.test(low))) {
     return ru
       ? `Контур — группа агентов, связанных одним смыслом (знание, контент, маркетинг, дизайн, инвестиции…). Это не слой вертикали и не проект. NAL и DOM — проекты. На горизонтали контуры ветвятся от людей.`
       : `A contour is a group of agents bound by one meaning (knowledge, content, marketing, design, investment…). Not a vertical layer and not a project. NAL and DOM are projects. On the horizontal, contours branch from people.`;
-  }
-  if (whoAmI) {
-    const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
-    return ru
-      ? `Ты ${name}${aka}${role ? '. ' + role : '.'} Super-admin этого кабинета. Это твой чат с Манадой.`
-      : `You are ${name}${aka}${role ? '. ' + role : '.'} Super-admin of this cabinet. This is your Monad chat.`;
   }
   if (canDo) {
     return ru
@@ -348,6 +394,8 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
     `Answer in the same language they used. Natural chat. Do not echo or quote the user's message.`,
     `Never write seed=, handoff=, shared_context, docs paths, or “channel is alive”.`,
     `Do not mention Tahir/Takhir unless the human asked about him. You are the reply.`,
+    `If they ask who they are / «а я?» / who am I: answer with their name and role. Never replace the name with a list of cabinet tabs.`,
+    `If they ask who you are AND who they are in one message, answer both in one reply.`,
     `If they ask what you can do / contours / access: contours are groups of agents of one meaning; NAL and DOM are projects not contours. Name their live contours and projects. LK: 7×7, 12+1, rhythm. Do not dump agent_id lists.`,
     factLines ? `Known facts:\n${factLines}` : '',
   ].filter(Boolean).join('\n');
@@ -414,7 +462,9 @@ async function generateLkReply({ humanId, text, history, personaAgent }) {
     loadHumanFacts(humanId),
     loadPlacements().catch(() => ({})),
   ]);
-  const heuristic = composeHeuristicReply({ humanId, person, facts, text, placements });
+  const heuristic = composeHeuristicReply({ humanId, person, facts, text, placements, history });
+  const ident = identityIntent(text, history);
+  if (ident.whoYou || ident.whoAmI) return heuristic;
   if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) return heuristic;
   const llm = await tryLlmReply({ humanId, person, facts, text, history, personaAgent });
   if (llm && !isChannelAckText(llm)) return llm;
@@ -885,6 +935,8 @@ module.exports = {
   siteHandoffAgent,
   isChannelAckText,
   generateLkReply,
+  identityIntent,
+  composeHeuristicReply,
   postLkChatMessage,
   EMAIL_HUMAN_MAP,
   VERTICAL_LAYERS,
