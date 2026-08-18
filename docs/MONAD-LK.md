@@ -1,6 +1,6 @@
 # Монада в личном кабинете NeuroAttention — план и статус
 
-> **2026-08-18:** Вертикаль читает канон `monad.spec.layers_7x7` (L1 Физика … L6 Знание … L7 Сверхсистема) и живую рассадку `monad.placement`. Не выдуманные «тело/эмоции». Чат отвечает по смыслу. Sketch 3D = BodyAtlas.
+> **2026-08-18:** Чат ЛК — живой собеседник Persona (модель + инструменты Манады), не FAQ. Вертикаль = канон `monad.spec.layers_7x7`. Sketch 3D = BodyAtlas.
 
 **Для:** Ник (super-admin) и любой пользователь с `monad_access`
 
@@ -10,11 +10,11 @@
 
 | Что | Как проверить |
 |-----|----------------|
-| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=13 — `last-modified` после мержа |
-| **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
-| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v75` |
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=14 — `last-modified` после мержа |
+| **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` и `"lk_llm": true` |
+| **В ЛК** | статус-бар: «живая модель» · SW `na-practices-v76` |
 
-Pages уже жил после PR #153 (~17:49 UTC). API на Railway катится отдельно: пока нет `lk_live_reply`, новый фронт молчит, потому что Persona-демон не отвечает.
+`lk_llm: false` = на Railway API нет `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY`. Без ключа Persona не может говорить как модель — только заготовки. Ключ ставится на сервис **neuroattention-api**, не в Pages.
 
 ---
 
@@ -23,13 +23,18 @@ Pages уже жил после PR #153 (~17:49 UTC). API на Railway катит
 ```
 Человек (ЛК) → POST /api/monad/message
   1. сразу пишет сообщение человека в БД
-  2. generateLkReply (директория Манады + факты + опционально LLM)
-  3. post_lk_chat_message + пузырь Persona в том же чате
-  4. plant_seed в persona / persona_nal (журнал, не гейт ответа)
+  2. generateLkReply = живая Persona:
+       system_prompt агента + get_architecture + факты
+       LLM с инструментами: get_architecture, read_context,
+       resolve_person, get_user_facts, plant_seed, handoff_task
+  3. пузырь Persona в том же чате (post_lk_chat_message)
+  4. journal plant_seed (без повторного handoff, если Persona уже посадила работу)
 ```
 
-Цепь: human → persona_<id> → persona_nal → neuro_agent (этот API).  
-`companion` = только Telegram Тахира.
+Цепь ЛК (`monad.config.lk_site_routing.v1`): human → persona_<id> → persona контура/проекта → neuro_agent.  
+`companion` = только Telegram Тахира, не этот чат.
+
+Егор в этом окне работает с контент-фабрикой: Persona `persona_egor` говорит сама и сажает задачи в `persona_loom_house`. Не из Cursor.
 
 ### Вертикаль / горизонталь / ритм
 
@@ -56,9 +61,10 @@ Pages уже жил после PR #153 (~17:49 UTC). API на Railway катит
 
 ```
 MONAD_API_KEY=monad_…
-# optional, richer replies:
-# ANTHROPIC_API_KEY=
+ANTHROPIC_API_KEY=   # обязателен для живого собеседника в ЛК
 # OPENAI_API_KEY=
+# OPENROUTER_API_KEY=
+# LK_LLM_MODEL=
 ```
 
-Без LLM Persona всё равно отвечает по директории/фактам (кто ты, кто я, привет, контур). Вопрос «ты кто и кто я» / «а я?» даёт имя человека, не меню вкладок.
+Без ключа LLM Persona не может говорить как модель. Тогда честно пишет, что модели нет, а не меню вкладок. С ключом — полноценный собеседник: читает живой канон Манады, отвечает по смыслу, сажает задачи (Егор → Loom / persona_loom_house).

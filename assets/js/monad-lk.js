@@ -100,8 +100,10 @@
     bits.push(s.configured
       ? '<span class="monad-ok">● ' + esc(t('a.monad.connected', 'ключ на сервере есть')) + '</span>'
       : '<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
-    if (s.lk_live_reply) {
-      bits.push('<span class="monad-ok">● ' + esc(t('a.monad.live_reply', 'Persona отвечает в этом чате')) + '</span>');
+    if (s.lk_llm) {
+      bits.push('<span class="monad-ok">● ' + esc(t('a.monad.live_model', 'живая модель')) + '</span>');
+    } else if (s.lk_live_reply) {
+      bits.push('<span class="monad-warn">● ' + esc(t('a.monad.no_model', 'Persona без модели — нужен ключ LLM на API')) + '</span>');
     }
     if (s.dashboard_url) {
       bits.push('<a href="' + esc(s.dashboard_url) + '" target="_blank" rel="noopener">' + esc(t('a.monad.dashboard', 'Dashboard Monad')) + '</a>');

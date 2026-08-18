@@ -313,11 +313,13 @@ const uploadMonadChat = multer({
 // Health check
 app.get('/health', (req, res) => {
   let monadConfigured = false;
+  let lkLlm = false;
   try {
     const monad = require('./services/monad');
     monadConfigured = !!(monad && typeof monad.configured === 'function' && monad.configured());
+    lkLlm = !!(monad && typeof monad.llmConfigured === 'function' && monad.llmConfigured());
   } catch (_) { monadConfigured = !!process.env.MONAD_API_KEY; }
-  res.json({ ok: true, monad_configured: monadConfigured, lk_live_reply: true });
+  res.json({ ok: true, monad_configured: monadConfigured, lk_live_reply: true, lk_llm: lkLlm });
 });
 
 // ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
@@ -13446,6 +13448,7 @@ app.get('/api/monad/status', requireAuth, async (req, res) => {
       role: caller.role,
       persona: humanId ? monadSvc.resolvePersonaAgent(humanId) : null,
       lk_live_reply: true,
+      lk_llm: monadSvc.llmConfigured(),
       note: monadSvc.configured()
         ? (humanId ? null : 'No Monad human linked — set users.monad_human_id or add email to EMAIL_HUMAN_MAP')
         : 'Set MONAD_API_KEY on Railway (neuroattention-api)',
@@ -13798,32 +13801,42 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
         WHERE id = ${chat.id}`;
     }
 
-    // Same-turn Persona reply first (never wait on plant_seed / LLM hang).
+    // Persona answers in this request: live model + Monad tools, then journal in background.
     let replyMsg = null;
     let replyText = null;
+    let replyVia = 'site_runtime';
+    let personaDidWork = false;
     try {
       let history = [];
       if (chat) {
         const prev = await sql`
           SELECT role, text FROM monad_chat_messages
           WHERE chat_id = ${chat.id} AND role IN ('you','monad')
-          ORDER BY created_at DESC LIMIT 8`;
+          ORDER BY created_at DESC LIMIT 20`;
         history = prev.reverse();
       }
-      replyText = await monadSvc.generateLkReply({
+      const gen = await monadSvc.generateLkReply({
         humanId,
         text,
         history,
         personaAgent,
+        chatId: chat ? chat.id : chatId,
       });
+      if (gen && typeof gen === 'object') {
+        replyText = gen.text || null;
+        replyVia = gen.via || 'site_runtime';
+        personaDidWork = !!gen.didWork;
+      } else {
+        replyText = gen || null;
+      }
       if (replyText && monadSvc.isChannelAckText(replyText)) replyText = null;
     } catch (genErr) {
       console.error('[monad/message] generateLkReply', genErr.message);
     }
     if (!replyText) {
       replyText = /[а-яё]/i.test(text)
-        ? 'Я Persona в этом чате. Напиши задачу: атлас, Sketch, вертикаль, горизонталь, ритм или что сделать в кабинете.'
-        : 'I am Persona in this chat. Name the task: atlas, Sketch, vertical, horizontal, rhythm, or a cabinet action.';
+        ? 'Я твоя Persona в этом чате. Сейчас не смог получить живой ответ модели — напиши ещё раз, задачу всё равно посажу в Манаду.'
+        : 'I am your Persona in this chat. I could not get a live model reply — send again; I will still plant the task in Monad.';
     }
 
     if (replyText && chat) {
@@ -13835,7 +13848,9 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
             human_id: humanId,
             persona: personaAgent,
             live_reply: true,
-            via: 'site_runtime',
+            via: replyVia,
+            llm: monadSvc.llmConfigured(),
+            did_work: personaDidWork,
             in_reply_to: savedMsg ? savedMsg.id : null,
           })}::jsonb
         )
@@ -13852,6 +13867,7 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
       message: savedMsg,
       reply: replyMsg,
       lk_live_reply: true,
+      lk_llm: monadSvc.llmConfigured(),
     };
     res.json(payload);
 
@@ -13865,8 +13881,11 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
             text,
             '',
             '══ NeuroAttention LK — live chat reply ══',
-            'Site runtime already answered in-thread.',
+            personaDidWork
+              ? 'Persona already dispatched work in-thread (handoff/seed). This plant is journal only.'
+              : 'Site runtime answered in-thread.',
             `persona: ${personaAgent}`,
+            `via: ${replyVia}`,
             `chat_id: ${chatId || '(none)'}`,
             `human_id: ${humanId}`,
             `site_user: ${caller.email}`,
@@ -13880,8 +13899,8 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
             title: `[LK] ${title}`,
             description: descParts.join('\n'),
             domain: 'neuro',
-            priority: Math.max(priority, 7),
-            create_handoff: createHandoff,
+            priority: personaDidWork ? Math.min(priority, 5) : Math.max(priority, 7),
+            create_handoff: personaDidWork ? false : createHandoff,
             to_agent: targetAgent,
             tags,
           };
