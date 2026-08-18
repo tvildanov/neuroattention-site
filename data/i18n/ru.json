@@ -1984,6 +1984,8 @@
   "a.monad.rename": "Переименовать",
   "a.monad.rename_prompt": "Новое имя чата",
   "a.monad.live_reply": "Persona отвечает в этом чате",
+  "a.monad.live_model": "живая модель",
+  "a.monad.no_model": "Persona без модели — нужен ключ LLM на API",
   "a.monad.chat_hint": "Пиши как в обычном чате. Persona отвечает здесь. Чаты можно переименовать и удалить слева.",
   "a.sketch.layers": "Слои",
   "a.sketch.layer_bg": "1 · Фон",

@@ -1956,6 +1956,8 @@
   "a.monad.rename": "Rename",
   "a.monad.rename_prompt": "New chat name",
   "a.monad.live_reply": "Persona answers in this chat",
+  "a.monad.live_model": "live model",
+  "a.monad.no_model": "Persona has no model — add an LLM key on the API",
   "a.monad.chat_hint": "Write as in a normal chat. Persona answers here. Rename or delete chats on the left.",
   "a.monad.vertical_help": "Canon 7×7. All 49 posts visible. Agents are clickable. No emotions in Monad.",
   "a.monad.vertical_pick": "Click a 7×7 cell to see the post function and live agents.",

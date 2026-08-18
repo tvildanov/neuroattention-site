@@ -1956,6 +1956,8 @@
   "a.monad.rename": "Renombrar",
   "a.monad.rename_prompt": "Nuevo nombre del chat",
   "a.monad.live_reply": "Persona responde en este chat",
+  "a.monad.live_model": "modelo vivo",
+  "a.monad.no_model": "Persona sin modelo — hace falta clave LLM en la API",
   "a.monad.chat_hint": "Escribe como en un chat normal. Persona responde aquí. Renombra o elimina chats a la izquierda.",
   "a.monad.vertical_help": "Canon 7×7. Los 49 puestos visibles. Cada agente se puede pulsar. En Mónada no hay emociones.",
   "a.monad.vertical_pick": "Pulsa una celda 7×7 para ver la función del puesto y los agentes vivos.",

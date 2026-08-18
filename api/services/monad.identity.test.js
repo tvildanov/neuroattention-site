@@ -55,4 +55,9 @@ assert.ok(youOnly.includes('Persona'), youOnly);
 assert.ok(!/Никита Иванов/.test(youOnly), youOnly);
 assert.ok(!/Могу про ритм/.test(youOnly), youOnly);
 
+const open = reply('как Егору вести фабрику контента из кабинета?');
+assert.ok(!/Не свожу это к шаблону/.test(open), open);
+assert.ok(!/атлас, Sketch, вертикаль/.test(open), open);
+assert.ok(/модель|model/i.test(open), open);
+
 console.log('ok identity cases');
