@@ -7,6 +7,49 @@
 
 ---
 
+## 2026-08-18 — LK chat is a live Monad interlocutor, not FAQ blanks
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T17:10:00Z",
+  "did": [
+    "Nick: cabinet chat must be a full Monad interlocutor and a work channel (Egor content factory through LK, not Cursor), not prewritten blanks",
+    "Persona runtime now calls LLM with live get_architecture + persona prompt and MCP tools (read_context, plant_seed, handoff_task). companion/Telegram forbidden",
+    "Stopped short-circuiting identity questions past the model; unmatched text no longer dumps the tab menu",
+    "Health/status expose lk_llm so the cabinet shows when the Railway model key is missing"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "account.html",
+    "sw.js",
+    "docs/MONAD-LK.md",
+    "api/.env.example"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "LK window is the human's direct Monad access; site runtime speaks as their Persona",
+    "Egor work in this window goes to persona_egor → persona_loom_house, not Cursor",
+    "Full conversation requires ANTHROPIC_API_KEY (or OPENAI/OPENROUTER) on Railway neuroattention-api"
+  ],
+  "followups": [
+    "Nick: set ANTHROPIC_API_KEY on Railway service neuroattention-api, wait for redeploy, hard-refresh LK until status shows «живая модель»",
+    "Without that key the chat cannot speak as a model no matter the code"
+  ],
+  "next_session": "Confirm lk_llm true on /health and a free-form LK question gets a live Monad answer"
+}
+```
+
+---
+
 ## 2026-08-18 — Persona answers who Nick is, not a tab menu
 
 ```json

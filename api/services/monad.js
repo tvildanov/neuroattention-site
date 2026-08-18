@@ -360,9 +360,9 @@ function composeHeuristicReply({ humanId, person, facts, text, placements, histo
   }
 
   if (ru) {
-    return `Не свожу это к шаблону. Скажи задачу одним предложением: атлас, Sketch, вертикаль, горизонталь, ритм, упражнения — или что сделать в кабинете.`;
+    return `Я твоя Persona в этом чате — прямой доступ к Манаде из кабинета. Сейчас на рантайме сайта нет живой модели, поэтому не разверну ответ как собеседник. Напиши задачу — посажу её агентам контура. Чтобы я говорил здесь как модель, на API нужен ключ LLM.`;
   }
-  return `I am not templating that. Name the task: atlas, Sketch, vertical, horizontal, rhythm, exercises, or a cabinet action.`;
+  return `I am your Persona in this cabinet chat — direct access to Monad. There is no live model on the site runtime yet, so I cannot answer as a full interlocutor. Send a task and I will plant it with the contour agents. A model key on the API is required for conversation here.`;
 }
 
 async function fetchJson(url, opts, timeoutMs) {
@@ -384,71 +384,324 @@ async function fetchJson(url, opts, timeoutMs) {
   }
 }
 
-async function tryLlmReply({ humanId, person, facts, text, history, personaAgent }) {
-  const name = (person && person.display_name) || humanId;
-  const factLines = (facts || []).slice(0, 12).map((f) => `- ${f.key}: ${publicFact(f.value)}`).join('\n');
-  const hist = (history || []).slice(-8).map((m) => `${m.role}: ${String(m.text || '').slice(0, 400)}`).join('\n');
-  const system = [
-    `You are Monad Persona ${personaAgent} speaking in the NeuroAttention personal-cabinet chat.`,
-    `The human is ${name} (human_id=${humanId}).`,
-    `Answer in the same language they used. Natural chat. Do not echo or quote the user's message.`,
-    `Never write seed=, handoff=, shared_context, docs paths, or “channel is alive”.`,
-    `Do not mention Tahir/Takhir unless the human asked about him. You are the reply.`,
-    `If they ask who they are / «а я?» / who am I: answer with their name and role. Never replace the name with a list of cabinet tabs.`,
-    `If they ask who you are AND who they are in one message, answer both in one reply.`,
-    `If they ask what you can do / contours / access: contours are groups of agents of one meaning; NAL and DOM are projects not contours. Name their live contours and projects. LK: 7×7, 12+1, rhythm. Do not dump agent_id lists.`,
-    factLines ? `Known facts:\n${factLines}` : '',
-  ].filter(Boolean).join('\n');
-  const user = (hist ? `Recent thread:\n${hist}\n\n` : '') + `Human: ${text}`;
+function llmConfigured() {
+  return !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY);
+}
 
+function clipJson(value, max) {
+  let s;
+  try { s = typeof value === 'string' ? value : JSON.stringify(value); } catch (_) { s = String(value); }
+  if (s.length <= max) return s;
+  return s.slice(0, max) + '…';
+}
+
+function layerBrief() {
+  return VERTICAL_LAYERS.map((L) => `L${L.layer} ${L.ru}`).join(', ');
+}
+
+const LK_MCP_TOOLS = [
+  {
+    name: 'get_architecture',
+    description: 'Live Monad architecture pack (people, R10 chains, contours/projects, site contract). Call first for Monad structure / who-is-who. Do not invent agents or layers.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'read_context',
+    description: 'Read Monad shared_context. Prefer exact key= (e.g. monad.spec.layers_7x7.v0_1, monad.spec.circle12.slots.v0_1, monad.directory.people.v1). key_prefix without key is top-by-importance, not a snapshot.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        key: { type: 'string' },
+        key_prefix: { type: 'string' },
+        limit: { type: 'integer' },
+      },
+    },
+  },
+  {
+    name: 'get_user_facts',
+    description: 'Facts about a human_id in Monad.',
+    input_schema: {
+      type: 'object',
+      properties: { human_id: { type: 'string' }, search: { type: 'string' }, limit: { type: 'integer' } },
+      required: ['human_id'],
+    },
+  },
+  {
+    name: 'resolve_person',
+    description: 'Resolve a name/nickname/email to the directory person. Never ask the human for agent_id.',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'handoff_task',
+    description: 'Give real work to another Monad agent. Egor content factory → persona_loom_house. Nick/NAL → persona_nal. Do not send to companion or Telegram.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        to_agent: { type: 'string' },
+        task_description: { type: 'string' },
+        domain: { type: 'string' },
+        priority: { type: 'integer' },
+      },
+      required: ['task_description'],
+    },
+  },
+  {
+    name: 'plant_seed',
+    description: 'Plant a task seed in Monad when the human wants work done (content, knowledge, NAL, site). from/planted_by is this Persona. Never companion.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        to_agent: { type: 'string' },
+        domain: { type: 'string' },
+        priority: { type: 'integer' },
+      },
+      required: ['title', 'description'],
+    },
+  },
+];
+
+function openaiToolsFromMcp() {
+  return LK_MCP_TOOLS.map((t) => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema,
+    },
+  }));
+}
+
+async function loadPersonaPrompt(agentId) {
+  try {
+    const raw = await mcpCall('get_agent_prompt', { agent_id: agentId });
+    if (typeof raw === 'string') return raw;
+    if (raw && typeof raw === 'object') {
+      return String(raw.system_prompt || raw.prompt || raw.text || JSON.stringify(raw));
+    }
+    return '';
+  } catch (_) {
+    return '';
+  }
+}
+
+async function runLkTool(name, input, ctx) {
+  const args = input && typeof input === 'object' ? Object.assign({}, input) : {};
+  if (name === 'get_architecture') {
+    return clipJson(await mcpCall('get_architecture', {}), 8000);
+  }
+  if (name === 'read_context') {
+    args.reader_agent = ctx.personaAgent;
+    if (args.limit == null) args.limit = 6;
+    args.limit = Math.max(1, Math.min(12, Number(args.limit) || 6));
+    return clipJson(await mcpCall('read_context', args), 8000);
+  }
+  if (name === 'get_user_facts') {
+    args.human_id = args.human_id || ctx.humanId;
+    args.include_sensitive = false;
+    if (args.limit == null) args.limit = 20;
+    args.limit = Math.max(1, Math.min(40, Number(args.limit) || 20));
+    const facts = await mcpCall('get_user_facts', args);
+    const list = Array.isArray(facts) ? facts : [];
+    return clipJson(list.map((f) => ({ key: f.key, value: publicFact(f.value), category: f.category })), 4000);
+  }
+  if (name === 'resolve_person') {
+    return clipJson(await mcpCall('resolve_person', { query: String(args.query || '') }), 3000);
+  }
+  if (name === 'handoff_task') {
+    const to = String(args.to_agent || siteHandoffAgent(ctx.humanId)).slice(0, 64);
+    if (!to || to === 'companion') {
+      throw new Error('handoff_task: companion / empty to_agent forbidden in LK');
+    }
+    ctx.didWork = true;
+    return clipJson(await mcpCall('handoff_task', {
+      from_agent: ctx.personaAgent,
+      to_agent: to,
+      task_description: String(args.task_description || '').slice(0, 8000),
+      domain: args.domain ? String(args.domain).slice(0, 64) : undefined,
+      priority: Math.min(10, Math.max(1, parseInt(args.priority, 10) || 7)),
+    }), 2500);
+  }
+  if (name === 'plant_seed') {
+    const to = String(args.to_agent || siteHandoffAgent(ctx.humanId)).slice(0, 64);
+    if (to === 'companion') throw new Error('plant_seed: companion forbidden in LK');
+    const tags = ['neuroattention', 'lk', 'from_cabinet', 'from_persona_llm'];
+    if (ctx.chatId) tags.push('chat:' + ctx.chatId);
+    ctx.didWork = true;
+    return clipJson(await mcpCall('plant_seed', {
+      planted_by: ctx.personaAgent,
+      human_id: ctx.humanId,
+      title: String(args.title || '').slice(0, 200),
+      description: String(args.description || '').slice(0, 8000),
+      to_agent: to || undefined,
+      domain: args.domain ? String(args.domain).slice(0, 64) : 'neuro',
+      priority: Math.min(10, Math.max(1, parseInt(args.priority, 10) || 7)),
+      create_handoff: true,
+      tags,
+    }), 2500);
+  }
+  throw new Error('Unknown tool ' + name);
+}
+
+function buildLkSystemPrompt({ humanId, person, facts, placements, personaAgent, personaPrompt, arch }) {
+  const name = (person && (person.display_name || (person.aliases && person.aliases[0]))) || humanId;
+  const role = publicFact(factVal(facts, 'role') || (person && person.role_title) || '');
+  const factLines = (facts || []).slice(0, 16).map((f) => `- ${f.key}: ${publicFact(f.value)}`).join('\n');
+  const mem = membershipFromPlacements(humanId, placements, 'ru');
+  const workAgent = siteHandoffAgent(humanId);
+  const archClip = arch ? clipJson(arch, 4500) : '';
+  const promptClip = String(personaPrompt || '').slice(0, 3500);
+  return [
+    `Ты живая Persona Манады в чате личного кабинета NeuroAttention (neuroattention.org).`,
+    `Говоришь как ${personaAgent} с человеком ${name} (human_id=${humanId}${role ? ', ' + role : ''}).`,
+    `Это прямой доступ человека к Манаде из кабинета — полноценный собеседник и рабочий канал задач, не FAQ и не меню вкладок.`,
+    `Отвечай на языке человека, живо, по делу. Ты и есть ответ. Не цитируй его сообщение.`,
+    ``,
+    `Канон (не выдумывай):`,
+    `- Вопрос про устройство Манады / кто есть кто / контуры / вертикаль / горизонталь → сначала get_architecture, детали через read_context с точным key= из поля keys.`,
+    `- Контур = группа агентов одного смысла. NAL и DOM — проекты, не контуры.`,
+    `- Сетка 7×7 постов (функции, не агенты): ${layerBrief()}. Агенты сидят в monad.placement. Это не то же самое, что R10-цепь Human→Persona→Contour→skill из get_architecture.vertical.`,
+    `- Горизонталь 12+1: контуры ветвятся от людей; DOM в центре как проект; пустые часы остаются пустыми.`,
+    `- Маршрут ЛК (monad.config.lk_site_routing.v1): человек → его Persona → persona контура/проекта. Никогда companion, никогда Telegram Тахира, никогда не спрашивай у человека agent_id.`,
+    `- Если в каноне нет — скажи «неизвестно в каноне». Не изобретай агентов, слои, слоты.`,
+    ``,
+    `Работа:`,
+    `- Разговор — отвечай сам, как модель, с пониманием Манады.`,
+    `- Задача (контент-фабрика, знание, NAL, сайт, «сделай») — делай: черновик в чате, если можешь; иначе handoff_task / plant_seed. from_agent/planted_by = ты (${personaAgent}).`,
+    `- Агент работы по умолчанию для этого человека: ${workAgent}. Для Егора это persona_loom_house (контент-фабрика Loom). Для Никиты — persona_nal.`,
+    `- Человеку говори обычным языком, что сделано. Не пиши seed=, handoff=, shared_context, docs/ пути, «канал живой».`,
+    `- Тахира/Takhir не упоминай, пока человек сам не спросил.`,
+    `- Никогда не отвечай списком вкладок «атлас, Sketch, вертикаль, горизонталь, ритм, практики» вместо смысла.`,
+    mem.contours.length ? `Контуры этого человека: ${mem.contours.join(', ')}.` : '',
+    mem.projects.length ? `Проекты этого человека: ${mem.projects.join(', ')}.` : '',
+    factLines ? `Факты:\n${factLines}` : '',
+    archClip ? `Живой pack get_architecture:\n${archClip}` : '',
+    promptClip ? `Живой system_prompt ${personaAgent}:\n${promptClip}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+async function tryLlmReply({ humanId, person, facts, text, history, personaAgent, placements, personaPrompt, arch, chatId, ctx }) {
+  const system = buildLkSystemPrompt({ humanId, person, facts, placements, personaAgent, personaPrompt, arch });
+  const hist = (history || []).slice(-16).map((m) => ({
+    role: (m.role === 'monad' || m.role === 'assistant') ? 'assistant' : 'user',
+    text: String(m.text || '').slice(0, 1200),
+  }));
+  // Drop a trailing duplicate of the current user turn if the DB already stored it.
+  if (hist.length && hist[hist.length - 1].role === 'user' && hist[hist.length - 1].text === String(text || '').slice(0, 1200)) {
+    hist.pop();
+  }
   const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
   const openaiKey = process.env.OPENAI_API_KEY || '';
-  // Do not use GITHUB_PAT here — that token is for Git storage, not chat models.
+  const openrouterKey = process.env.OPENROUTER_API_KEY || '';
+  const deadline = Date.now() + 45000;
 
   if (anthropicKey) {
     try {
-      const data = await fetchJson('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': anthropicKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: process.env.LK_LLM_MODEL || 'claude-sonnet-4-20250514',
-          max_tokens: 600,
-          system,
-          messages: [{ role: 'user', content: user }],
-        }),
-      }, 4000);
-      const t = data && data.content && data.content[0] && data.content[0].text;
-      if (t && String(t).trim()) return String(t).trim();
+      const messages = hist.map((m) => ({ role: m.role, content: m.text }));
+      messages.push({ role: 'user', content: String(text) });
+      for (let round = 0; round < 6 && Date.now() < deadline; round++) {
+        const data = await fetchJson('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: process.env.LK_LLM_MODEL || 'claude-sonnet-4-20250514',
+            max_tokens: 1600,
+            system,
+            tools: LK_MCP_TOOLS,
+            messages,
+          }),
+        }, Math.max(4000, Math.min(20000, deadline - Date.now())));
+        const blocks = (data && data.content) || [];
+        const toolUses = blocks.filter((b) => b && b.type === 'tool_use');
+        const texts = blocks.filter((b) => b && b.type === 'text').map((b) => String(b.text || '').trim()).filter(Boolean);
+        if (data && data.stop_reason !== 'tool_use' && texts.length) return texts.join('\n\n');
+        if (!toolUses.length) {
+          if (texts.length) return texts.join('\n\n');
+          break;
+        }
+        messages.push({ role: 'assistant', content: blocks });
+        const toolResults = [];
+        for (const tu of toolUses) {
+          let out;
+          try {
+            out = await runLkTool(tu.name, tu.input, ctx);
+          } catch (e) {
+            out = 'tool error: ' + (e && e.message ? e.message : String(e));
+          }
+          toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: String(out) });
+        }
+        messages.push({ role: 'user', content: toolResults });
+      }
     } catch (e) {
       console.warn('[lk-llm] anthropic', e.message);
     }
   }
 
   const openaiish = [];
-  if (openaiKey) openaiish.push({ url: 'https://api.openai.com/v1/chat/completions', key: openaiKey, model: process.env.LK_LLM_MODEL || 'gpt-4o-mini' });
+  if (openaiKey) {
+    openaiish.push({
+      url: 'https://api.openai.com/v1/chat/completions',
+      key: openaiKey,
+      model: process.env.LK_LLM_MODEL || 'gpt-4o',
+    });
+  }
+  if (openrouterKey) {
+    openaiish.push({
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: openrouterKey,
+      model: process.env.LK_LLM_MODEL || 'anthropic/claude-sonnet-4',
+    });
+  }
   for (const ep of openaiish) {
     try {
-      const data = await fetchJson(ep.url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + ep.key,
-        },
-        body: JSON.stringify({
-          model: ep.model,
-          max_tokens: 600,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
-          ],
-        }),
-      }, 4000);
-      const t = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      if (t && String(t).trim()) return String(t).trim();
+      const messages = [{ role: 'system', content: system }];
+      hist.forEach((m) => messages.push({ role: m.role, content: m.text }));
+      messages.push({ role: 'user', content: String(text) });
+      for (let round = 0; round < 6 && Date.now() < deadline; round++) {
+        const data = await fetchJson(ep.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + ep.key,
+          },
+          body: JSON.stringify({
+            model: ep.model,
+            max_tokens: 1600,
+            tools: openaiToolsFromMcp(),
+            messages,
+          }),
+        }, Math.max(4000, Math.min(20000, deadline - Date.now())));
+        const msg = data && data.choices && data.choices[0] && data.choices[0].message;
+        if (!msg) break;
+        const calls = msg.tool_calls || [];
+        if (!calls.length) {
+          const t = String(msg.content || '').trim();
+          if (t) return t;
+          break;
+        }
+        messages.push(msg);
+        for (const call of calls) {
+          const fn = call.function || {};
+          let parsed = {};
+          try { parsed = JSON.parse(fn.arguments || '{}'); } catch (_) { parsed = {}; }
+          let out;
+          try {
+            out = await runLkTool(fn.name, parsed, ctx);
+          } catch (e) {
+            out = 'tool error: ' + (e && e.message ? e.message : String(e));
+          }
+          messages.push({ role: 'tool', tool_call_id: call.id, content: String(out) });
+        }
+      }
     } catch (e) {
       console.warn('[lk-llm]', ep.url, e.message);
     }
@@ -456,19 +709,26 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
   return null;
 }
 
-async function generateLkReply({ humanId, text, history, personaAgent }) {
-  const [person, facts, placements] = await Promise.all([
+async function generateLkReply({ humanId, text, history, personaAgent, chatId }) {
+  const ctx = { humanId, personaAgent, chatId, didWork: false };
+  const needLlm = llmConfigured();
+  const [person, facts, placements, personaPrompt, arch] = await Promise.all([
     loadDirectoryPerson(humanId),
     loadHumanFacts(humanId),
     loadPlacements().catch(() => ({})),
+    needLlm ? loadPersonaPrompt(personaAgent).catch(() => '') : Promise.resolve(''),
+    needLlm ? mcpCall('get_architecture', {}).catch(() => null) : Promise.resolve(null),
   ]);
+  if (needLlm) {
+    const llm = await tryLlmReply({
+      humanId, person, facts, text, history, personaAgent, placements, personaPrompt, arch, chatId, ctx,
+    });
+    if (llm && !isChannelAckText(llm)) {
+      return { text: llm, didWork: !!ctx.didWork, via: 'persona_llm' };
+    }
+  }
   const heuristic = composeHeuristicReply({ humanId, person, facts, text, placements, history });
-  const ident = identityIntent(text, history);
-  if (ident.whoYou || ident.whoAmI) return heuristic;
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) return heuristic;
-  const llm = await tryLlmReply({ humanId, person, facts, text, history, personaAgent });
-  if (llm && !isChannelAckText(llm)) return llm;
-  return heuristic;
+  return { text: heuristic, didWork: false, via: needLlm ? 'heuristic_after_llm' : 'heuristic_no_llm' };
 }
 
 async function postLkChatMessage({ chatId, text, personaAgent, humanId, seedId }) {
@@ -935,6 +1195,7 @@ module.exports = {
   siteHandoffAgent,
   isChannelAckText,
   generateLkReply,
+  llmConfigured,
   identityIntent,
   composeHeuristicReply,
   postLkChatMessage,
