@@ -27,6 +27,7 @@
     current: null,
     interaction: 'draw', // draw | orbit
     viewMode: '3d', // 3d | 2d
+    shiftHeld: false,
     activeDraw: 'd0',
     layerOrder: ['bg', 'media', 'd0', 'd1', 'd2'],
     layers: {
@@ -306,43 +307,52 @@
         img.style.filter = '';
       }
     }
+    applyPointerLayers();
+  }
+
+  function cameraPassThrough() {
+    return state.viewMode === '3d' && (state.interaction === 'orbit' || state.shiftHeld);
+  }
+
+  function applyPointerLayers() {
+    var st = stage();
+    var passing = cameraPassThrough();
+    var bg = document.getElementById('sketch-bg');
+    if (bg) {
+      bg.style.zIndex = '0';
+      bg.style.pointerEvents = 'none';
+    }
     var host3d = document.getElementById('sketch-3d-host');
     if (host3d) {
-      host3d.style.opacity = L.visible ? String(L.opacity != null ? L.opacity : 1) : '0';
-      host3d.style.visibility = (state.viewMode === '3d') ? 'visible' : 'hidden';
-      host3d.style.pointerEvents = (state.viewMode === '3d' && state.interaction === 'orbit') ? 'auto' : 'none';
-      host3d.style.zIndex = '2';
+      var show3d = state.viewMode === '3d' && state.layers.media.visible;
+      host3d.style.zIndex = '1';
+      host3d.style.visibility = show3d ? 'visible' : 'hidden';
+      host3d.style.display = 'block';
+      host3d.style.opacity = show3d ? String(state.layers.media.opacity != null ? state.layers.media.opacity : 1) : '0';
+      host3d.style.pointerEvents = show3d ? 'auto' : 'none';
     }
-    wrap.style.zIndex = '3';
+    var wrap = document.getElementById('sketch-media-wrap');
+    if (wrap) wrap.style.zIndex = state.viewMode === '3d' ? '0' : '2';
+    var mm = mediaMask();
+    if (mm) {
+      mm.style.zIndex = '4';
+      mm.style.pointerEvents = (!passing && state.interaction === 'draw' && state.activeDraw === 'media' && state.viewMode === '2d') ? 'auto' : 'none';
+      mm.style.visibility = (state.layers.media.visible && state.viewMode === '2d') ? 'visible' : 'hidden';
+    }
+    ['d0', 'd1', 'd2'].forEach(function (id, idx) {
+      var c = drawCanvas(id);
+      if (!c) return;
+      c.style.zIndex = String(5 + idx);
+      c.style.visibility = state.layers[id].visible ? 'visible' : 'hidden';
+      c.style.opacity = String(state.layers[id].opacity != null ? state.layers[id].opacity : 1);
+      c.style.pointerEvents = (!passing && state.interaction === 'draw' && state.activeDraw === id) ? 'auto' : 'none';
+      c.style.cursor = passing ? 'grab' : 'crosshair';
+    });
+    if (st) st.style.cursor = passing ? 'grab' : 'crosshair';
   }
 
   function applyLayerVisibility() {
-    state.layerOrder.forEach(function (id, idx) {
-      var z = 10 + idx;
-      if (id === 'bg') {
-        var bg = document.getElementById('sketch-bg');
-        if (bg) bg.style.zIndex = String(z);
-      } else if (id === 'media') {
-        var mw = document.getElementById('sketch-media-wrap');
-        var h3 = document.getElementById('sketch-3d-host');
-        if (mw) mw.style.zIndex = state.viewMode === '3d' ? '1' : String(z);
-        if (h3) h3.style.zIndex = state.viewMode === '3d' ? '2' : String(z);
-        var mm = mediaMask();
-        if (mm) {
-          mm.style.zIndex = String(z + 1);
-          mm.style.pointerEvents = (state.interaction === 'draw' && state.activeDraw === 'media' && state.viewMode === '2d') ? 'auto' : 'none';
-          mm.style.visibility = (state.layers.media.visible && state.viewMode === '2d') ? 'visible' : 'hidden';
-        }
-      } else {
-        var c = drawCanvas(id);
-        if (c) {
-          c.style.zIndex = String(z + 2);
-          c.style.visibility = state.layers[id].visible ? 'visible' : 'hidden';
-          c.style.opacity = String(state.layers[id].opacity != null ? state.layers[id].opacity : 1);
-          c.style.pointerEvents = (state.interaction === 'draw' && state.activeDraw === id) ? 'auto' : 'none';
-        }
-      }
-    });
+    applyPointerLayers();
   }
 
   function posFromEvent(e, canvasEl) {
@@ -357,7 +367,7 @@
   }
 
   function startDraw(e) {
-    if (state.interaction !== 'draw') return;
+    if (state.interaction !== 'draw' || state.shiftHeld) return;
     var c = activeCanvas();
     if (!c) return;
     e.preventDefault();
@@ -434,7 +444,11 @@
     state.atlasMounting = true;
     state.atlasWaiters = [];
     host.innerHTML = '';
-    return window.BodyAtlas.init(host, { mode: 'full', preserveDrawingBuffer: true })
+    return window.BodyAtlas.init(host, {
+      mode: 'full',
+      preserveDrawingBuffer: true,
+      shiftDragIsPan: false
+    })
       .then(function (a) {
         if (state.viewMode !== '3d') {
           try { if (a && a.destroy) a.destroy(); } catch (e0) {}
@@ -468,8 +482,26 @@
     var b2 = document.getElementById('sketch-mode-2d');
     if (b3) b3.classList.toggle('active', state.viewMode === '3d');
     if (b2) b2.classList.toggle('active', state.viewMode === '2d');
-    if (state.viewMode === '3d') ensureAtlas();
-    else destroyAtlas();
+    var host = document.getElementById('sketch-3d-host');
+    if (state.viewMode === '3d') {
+      if (host) {
+        host.style.visibility = 'visible';
+        host.style.display = 'block';
+      }
+      ensureAtlas().then(function () {
+        resizeAll();
+        requestAnimationFrame(function () {
+          resizeAll();
+          if (state.atlas && state.atlas._onResize) {
+            try { state.atlas._onResize(); } catch (e) {}
+          }
+        });
+      });
+      setStatus(t('a.sketch.hint_3d', '3D: мышь рисует. Shift+мышь или «Вращать 3D» — крутить тело. Колесо — масштаб.'));
+    } else {
+      if (host) host.style.visibility = 'hidden';
+      setStatus(t('a.sketch.hint_2d', '2D: рисунок на картинке или пустом холсте.'));
+    }
     applyMedia();
     applyLayerVisibility();
   }
@@ -480,8 +512,12 @@
     var bo = document.getElementById('sketch-interact-orbit');
     if (bd) bd.classList.toggle('active', state.interaction === 'draw');
     if (bo) bo.classList.toggle('active', state.interaction === 'orbit');
-    applyMedia();
-    applyLayerVisibility();
+    applyPointerLayers();
+    if (state.viewMode === '3d') {
+      setStatus(state.interaction === 'orbit'
+        ? t('a.sketch.hint_orbit', 'Вращение: как в Атласе. Левая кнопка крутит, колесо — масштаб, правая — сдвиг.')
+        : t('a.sketch.hint_3d', '3D: мышь рисует. Shift+мышь или «Вращать 3D» — крутить тело. Колесо — масштаб.'));
+    }
   }
 
   function scenePayload() {
@@ -915,6 +951,34 @@
     });
   }
 
+  function wireStageCamera() {
+    var st = stage();
+    if (!st || st.dataset.camWired) return;
+    st.dataset.camWired = '1';
+    st.addEventListener('wheel', function (e) {
+      if (state.viewMode !== '3d' || !state.atlas || !state.atlas._onWheel) return;
+      state.atlas._onWheel(e);
+    }, { passive: false });
+    if (!window.__sketchShiftCam) {
+      window.__sketchShiftCam = true;
+      window.addEventListener('keydown', function (e) {
+        if (e.key !== 'Shift' || state.shiftHeld) return;
+        state.shiftHeld = true;
+        applyPointerLayers();
+      });
+      window.addEventListener('keyup', function (e) {
+        if (e.key !== 'Shift') return;
+        state.shiftHeld = false;
+        applyPointerLayers();
+      });
+      window.addEventListener('blur', function () {
+        if (!state.shiftHeld) return;
+        state.shiftHeld = false;
+        applyPointerLayers();
+      });
+    }
+  }
+
   function wireCanvases() {
     ['d0', 'd1', 'd2'].forEach(function (id) {
       var c = drawCanvas(id);
@@ -1110,6 +1174,7 @@
     if (!state.mounted) {
       wireToolbar();
       wireCanvases();
+      wireStageCamera();
       state.mounted = true;
       window.addEventListener('resize', function () {
         if (host.style.display === 'none') return;

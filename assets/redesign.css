@@ -1316,8 +1316,10 @@ button.monad-dom-center.on { box-shadow:0 0 18px rgba(0,224,255,0.45); }
 .sketch-bg, .sketch-3d-host, .sketch-media-wrap, .sketch-draw-cv {
   position:absolute; inset:0; width:100%; height:100%;
 }
-.sketch-3d-host { z-index:2; }
-.sketch-media-wrap { z-index:1; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.sketch-bg { z-index:0; pointer-events:none; }
+.sketch-3d-host { z-index:1; pointer-events:auto; }
+.sketch-3d-host canvas { display:block; width:100% !important; height:100% !important; }
+.sketch-media-wrap { z-index:2; display:flex; align-items:center; justify-content:center; pointer-events:none; }
 .sketch-media-wrap img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
 .sketch-draw-cv { z-index:5; cursor:crosshair; touch-action:none; background:transparent; }
 .sketch-side-panel {
