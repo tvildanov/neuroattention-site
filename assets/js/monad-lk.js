@@ -17,6 +17,7 @@
     messages: [],
     pendingAttachments: [],
     pollTimer: null,
+    awaitingPersonaUntil: 0,
     showTech: false,
     vertLayer: null,
     vertCell: null,
@@ -101,9 +102,9 @@
       ? '<span class="monad-ok">● ' + esc(t('a.monad.connected', 'ключ на сервере есть')) + '</span>'
       : '<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
     if (s.lk_llm) {
-      bits.push('<span class="monad-ok">● ' + esc(t('a.monad.live_model', 'живая модель')) + '</span>');
+      bits.push('<span class="monad-ok">● ' + esc(t('a.monad.live_model', 'живая Persona в Манаде')) + '</span>');
     } else if (s.lk_live_reply) {
-      bits.push('<span class="monad-warn">● ' + esc(t('a.monad.no_model', 'Persona без модели — нужен ключ LLM на API')) + '</span>');
+      bits.push('<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
     }
     if (s.dashboard_url) {
       bits.push('<a href="' + esc(s.dashboard_url) + '" target="_blank" rel="noopener">' + esc(t('a.monad.dashboard', 'Dashboard Monad')) + '</a>');
@@ -477,9 +478,16 @@
       }
       var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
       if (thr && thr.messages && thr.messages.length) STATE.messages = thr.messages;
+      if (data && data.awaiting_persona) {
+        STATE.awaitingPersonaUntil = Date.now() + 120000;
+        var last = STATE.messages[STATE.messages.length - 1];
+        if (!last || last.role !== 'monad') {
+          STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
+        }
+      }
       renderMessages();
       await loadChats();
-      startPoll();
+      startFastPoll();
     } catch (err) {
       STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
@@ -498,7 +506,14 @@
       if (data && data.messages) {
         var before = STATE.messages.length;
         STATE.messages = data.messages;
-        if (STATE.messages.length !== before || (data.imported > 0)) renderMessages();
+        var last = STATE.messages[STATE.messages.length - 1];
+        var waiting = STATE.awaitingPersonaUntil && Date.now() < STATE.awaitingPersonaUntil;
+        if (last && last.role === 'monad' && !(last.meta && last.meta.typing)) {
+          STATE.awaitingPersonaUntil = 0;
+        } else if (waiting && (!last || last.role === 'you')) {
+          STATE.messages = STATE.messages.concat([{ role: 'monad', text: '…', meta: { typing: true } }]);
+        }
+        if (STATE.messages.length !== before || (data.imported > 0) || waiting) renderMessages();
       }
     } catch (e) { /* quiet */ }
   }

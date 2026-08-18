@@ -106,21 +106,14 @@ function resolvePlantedBy(humanId) {
   return 'persona_' + h;
 }
 
-/** Agents that should wake to answer an LK chat message. */
+/** Agents that should wake to answer an LK chat message — entry Persona only. */
 function resolveLkReplyAgents(humanId) {
   const persona = resolvePersonaAgent(humanId);
-  const h = String(humanId || '').toLowerCase();
-  const agents = [persona, 'neuro_agent'];
-  // Site chain (monad.config.lk_site_routing.v1): persona → persona_nal → neuro_agent
-  if (h === 'nikita') agents.push('persona_nal');
-  else if (h === 'nastya') agents.push('perception_guide', 'persona_nastya');
-  else if (h === 'egor') agents.push('persona_loom_house');
-  return agents.filter((a, i, arr) => a && arr.indexOf(a) === i);
+  return persona ? [persona] : ['neuro_agent'];
 }
 
+/** First hop from the cabinet: the human's Persona, never a contour. */
 function siteHandoffAgent(humanId) {
-  const h = String(humanId || '').toLowerCase();
-  if (h === 'nikita') return 'persona_nal';
   return resolvePersonaAgent(humanId);
 }
 
@@ -710,6 +703,8 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
 }
 
 async function generateLkReply({ humanId, text, history, personaAgent, chatId }) {
+  // Legacy: LK used to run Anthropic on neuroattention-api.
+  // Face LLM is hosted on monad-server (persona_runtime). Keep for tests/fallback.
   const ctx = { humanId, personaAgent, chatId, didWork: false };
   const needLlm = llmConfigured();
   const [person, facts, placements, personaPrompt, arch] = await Promise.all([

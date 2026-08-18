@@ -1,6 +1,6 @@
 # Монада в личном кабинете NeuroAttention — план и статус
 
-> **2026-08-18:** Чат ЛК — живой собеседник Persona (модель + инструменты Манады), не FAQ. Вертикаль = канон `monad.spec.layers_7x7`. Sketch 3D = BodyAtlas.
+> **2026-08-18:** Чат ЛК — канал к живой Persona в Манаде. Модель на `monad-server`, не на сайте. Вертикаль = канон `monad.spec.layers_7x7`. Sketch 3D = BodyAtlas.
 
 **Для:** Ник (super-admin) и любой пользователь с `monad_access`
 
@@ -10,11 +10,12 @@
 
 | Что | Как проверить |
 |-----|----------------|
-| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=14 — `last-modified` после мержа |
-| **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` и `"lk_llm": true` |
-| **В ЛК** | статус-бар: «живая модель» · SW `na-practices-v76` |
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=15 — `last-modified` после мержа |
+| **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` и `"lk_llm": true` (ключ Манады, не OpenAI на сайте) |
+| **Monad Persona** | `GET https://monad-server-production.up.railway.app/api/persona/health` → `"hosted": true` |
+| **В ЛК** | статус-бар: «живая Persona в Манаде» · SW `na-practices-v78` |
 
-`lk_llm: false` = на Railway API нет `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY`. Без ключа Persona не может говорить как модель — только заготовки. Ключ ставится на сервис **neuroattention-api**, не в Pages.
+Отдельный OpenAI/LOD на neuroattention-api **не нужен**. LLM лица — `ANTHROPIC_API_KEY` на **monad-server**.
 
 ---
 
@@ -22,17 +23,14 @@
 
 ```
 Человек (ЛК) → POST /api/monad/message
-  1. сразу пишет сообщение человека в БД
-  2. generateLkReply = живая Persona:
-       system_prompt агента + get_architecture + факты
-       LLM с инструментами: get_architecture, read_context,
-       resolve_person, get_user_facts, plant_seed, handoff_task
-  3. пузырь Persona в том же чате (post_lk_chat_message)
-  4. journal plant_seed (без повторного handoff, если Persona уже посадила работу)
+  1. сайт пишет сообщение человека в свою БД (канал)
+  2. plant_seed → persona_<human_id> на monad-server
+  3. persona_runtime (hosted LLM) отвечает post_lk_chat_message
+  4. ЛК поллит human_chat_poll и показывает пузырь Persona
 ```
 
-Цепь ЛК (`monad.config.lk_site_routing.v1`): human → persona_<id> → persona контура/проекта → neuro_agent.  
-`companion` = только Telegram Тахира, не этот чат.
+Цепь ЛК: human → **persona_<id>** (лицо, LLM) → persona контура/проекта (`persona_nal`, …) → skill.  
+`companion` = только Telegram Тахира, не этот чат. Контур не говорит первым.
 
 Егор в этом окне работает с контент-фабрикой: Persona `persona_egor` говорит сама и сажает задачи в `persona_loom_house`. Не из Cursor.
 
