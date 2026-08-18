@@ -13536,16 +13536,10 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
     const humanName = {};
     humans.forEach((h) => { humanName[h.human_id] = h.display_name || h.human_id; });
 
-    function friendList(friends) {
-      if (!friends) return [];
-      if (Array.isArray(friends)) return friends;
-      if (typeof friends === 'object') return Object.keys(friends);
-      return [];
-    }
-
     function agentPublic(a) {
       const owner = a.owner || null;
       const p = monadSvc.placementOf(a.agent_id, placements) || {};
+      const kind = monadSvc.kindOfPlacement(p, placements);
       return {
         agent_id: a.agent_id,
         name: a.name,
@@ -13554,16 +13548,22 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
         owner_name: humanName[owner] || owner,
         platform: a.platform || null,
         domains: a.domains || [],
-        type: p.type || null,
+        type: kind.type,
         cell: p.cell || null,
         secondary_cells: p.secondary_cells || [],
         parent: p.parent || null,
         chain: p.chain || null,
-        friends: friendList(p.friends),
+        friends: monadSvc.friendList(p.friends),
+        contour: kind.contour,
+        project: kind.project,
+        human_root: p.human_root || null,
+        rhythm: p.rhythm || null,
       };
     }
 
     const publics = agents.map(agentPublic);
+    const byId = {};
+    publics.forEach((a) => { byId[a.agent_id] = a; });
     const byCell = {};
     publics.forEach((a) => {
       monadSvc.cellsOfPlacement(placements[a.agent_id]).forEach((code) => {
@@ -13598,35 +13598,66 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
     });
 
     const unplaced = publics.filter((a) => !a.cell);
+    const unplacedGroups = {};
+    unplaced.forEach((a) => {
+      const k = a.platform || 'other';
+      if (!unplacedGroups[k]) unplacedGroups[k] = [];
+      unplacedGroups[k].push(a);
+    });
 
-    // Horizontal 12+1: fixed clock seats, not equal-angle of N people.
     const liveHumans = humans.filter((h) => h.status !== 'retired');
     const used = new Set();
     const seats = [];
-    for (let hour = 1; hour <= 12; hour++) seats.push({ hour, person: null });
-    function seatAt(hour, person) {
-      const idx = hour - 1;
-      if (!seats[idx].person) {
-        seats[idx].person = person;
-        used.add(person.human_id);
-        return true;
-      }
-      return false;
+    for (let hour = 1; hour <= 12; hour++) {
+      seats.push({
+        hour,
+        inactive: monadSvc.CIRCLE_INACTIVE.indexOf(hour) >= 0,
+        person: null,
+      });
     }
     liveHumans.forEach((h) => {
       const slot = monadSvc.circleSlotFor(h);
-      if (slot) seatAt(slot, h);
+      if (!slot) return;
+      const idx = slot - 1;
+      if (seats[idx].inactive) return;
+      if (!seats[idx].person) {
+        seats[idx].person = h;
+        used.add(h.human_id);
+      }
     });
-    const leftovers = liveHumans.filter((h) => !used.has(h.human_id));
-    leftovers.forEach((h) => {
-      const empty = seats.find((s) => !s.person);
-      if (empty) seatAt(empty.hour, h);
-    });
+
+    function groupForPerson(humanId) {
+      const owned = publics.filter((a) => a.owner === humanId);
+      const persona = owned.filter((a) => a.type === 'human_persona');
+      const contourHeads = owned.filter((a) => a.type === 'contour_persona');
+      const projectHeads = owned.filter((a) => a.type === 'project_persona' && a.agent_id !== 'persona_dom');
+      const skills = owned.filter((a) => a.type === 'skill');
+      function pack(head) {
+        const kids = skills.filter((s) => s.parent === head.agent_id);
+        return {
+          id: head.contour || head.project || head.agent_id,
+          kind: head.type === 'contour_persona' ? 'contour' : 'project',
+          label: head.type === 'contour_persona'
+            ? monadSvc.labelContour(head.contour || head.agent_id, 'ru')
+            : monadSvc.labelProject(head.project || head.agent_id, 'ru'),
+          label_en: head.type === 'contour_persona'
+            ? monadSvc.labelContour(head.contour || head.agent_id, 'en')
+            : monadSvc.labelProject(head.project || head.agent_id, 'en'),
+          persona: head,
+          agents: [head].concat(kids),
+        };
+      }
+      return {
+        persona: persona[0] || null,
+        contours: contourHeads.map(pack),
+        projects: projectHeads.map(pack),
+      };
+    }
 
     function personPublic(h) {
       if (!h) return null;
       const person = (directory && directory[h.human_id]) || {};
-      const owned = agents.filter((a) => a.owner === h.human_id).map(agentPublic);
+      const grouped = groupForPerson(h.human_id);
       return {
         human_id: h.human_id,
         display_name: h.display_name,
@@ -13634,33 +13665,57 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
         status: h.status,
         is_me: h.human_id === humanId,
         circle_slot: monadSvc.circleSlotFor(h),
-        agents_count: owned.length,
-        agents: owned,
-        contour: Object.keys(person.contour_personas || {}),
+        persona: grouped.persona,
+        contours: grouped.contours,
+        projects: grouped.projects,
         aliases: person.aliases || [],
       };
     }
 
-    const unseated = liveHumans.filter((h) => !used.has(h.human_id));
+    const unseated = liveHumans.filter((h) => !used.has(h.human_id)).map((h) => ({
+      human_id: h.human_id,
+      display_name: h.display_name,
+      role: h.role,
+    }));
+    const domAgent = byId.persona_dom || null;
     const horizontal = {
-      center: { id: 'dom', label: 'DOM', note: '12+1 — collective centre. Nick at 12, Tahir at 6.' },
-      seats: seats.map((s) => ({ hour: s.hour, person: personPublic(s.person) })),
+      center: {
+        id: 'dom',
+        kind: 'project',
+        label: 'DOM',
+        note: 'Центр круга 12+1 — проект Дома, не контур. persona_dom на L4×L4.',
+        agent: domAgent,
+      },
+      seats: seats.map((s) => ({
+        hour: s.hour,
+        inactive: s.inactive,
+        person: personPublic(s.person),
+      })),
       persons: seats.filter((s) => s.person).map((s) => personPublic(s.person)),
-      extra_humans: unseated.length,
+      unseated,
+      spec: 'monad.spec.circle12.slots.v0_1',
+      principle: 'contours branch from people; DOM center; inactive seats for empty circle slots',
     };
 
     res.json({
       ok: true,
       human_id: humanId,
       legend: {
-        ru: 'Канон Манады (monad.spec.layers_7x7): L1 Физика, L2 Энергия, L3 Личность, L4 Мы/Дом, L5 Восприятие↔проявление, L6 Знание, L7 Сверхсистема. Посты слоя — клетки Li×L1…Li×L7. Агенты стоят там, куда их поставил monad.placement. Эмоций в Манаде нет. «5 из 12» = агенты с рассадкой на этом слое / занятые посты не путать: это число агентов слоя.',
-        en: 'Monad canon (monad.spec.layers_7x7): L1 Physics … L6 Knowledge … L7 Supersystem. Posts are Li×Lj cells. Agents sit in monad.placement. No emotions in Monad.',
+        ru: 'Вертикаль: 49 постов Li×Lj (канон monad.spec.layers_7x7). Клетка = функция. Агенты из monad.placement. Контур = группа агентов одного смысла, не слой и не проект. NAL и DOM — проекты. Горизонталь: контуры ветвятся от людей; пустые часы нажаты и пусты.',
+        en: 'Vertical: 49 posts Li×Lj. A cell is a function. Agents from monad.placement. A contour is a meaning-group of agents, not a layer and not a project. NAL and DOM are projects. Horizontal: contours branch from people; empty hours stay pressed empty.',
       },
-      spec: 'monad.spec.layers_7x7.v0_1',
+      spec: {
+        layers: 'monad.spec.layers_7x7.v0_1',
+        circle: 'monad.spec.circle12.slots.v0_1',
+        ui: 'monad.spec.ui.lk_monad_page.v0_2',
+        rhythm: 'monad.spec.rhythm.v0_3',
+      },
       unplaced,
+      unplaced_groups: unplacedGroups,
       vertical,
       horizontal,
       agent_total: agents.length,
+      placed_total: publics.filter((a) => a.cell).length,
       human_total: humans.length,
     });
   } catch (err) {
@@ -13680,7 +13735,8 @@ app.get('/api/monad/rhythm', requireAuth, async (req, res) => {
       // Last resort: list_agents synth (needs key)
       if (!monadSvc.configured()) throw e1;
       const agents = normalizeAgents(await monadSvc.mcpCall('list_agents', {}));
-      rhythm = monadSvc.synthRhythm(agents);
+      const placements = await monadSvc.loadPlacements().catch(() => ({}));
+      rhythm = monadSvc.synthRhythm(agents, placements);
     }
     res.json({ ok: true, human_id: monadSvc.resolveHumanId(caller), rhythm });
   } catch (err) {

@@ -21,6 +21,7 @@
     vertLayer: null,
     vertCell: null,
     horizHour: null,
+    pickedAgent: null,
     liveRhythm: false,
     rhythmTimer: null,
     rhythmRaf: null,
@@ -533,28 +534,44 @@
     var lang = locLang();
     return obj[key + '_' + lang] || obj[lang] || obj[key + '_ru'] || obj.ru || obj.en || '';
   }
-  function agentCard(a) {
+  function agentCard(a, extraClass) {
     if (!a || !a.agent_id) return '';
-    return '<button type="button" class="monad-agent-chip" data-agent="' + esc(a.agent_id) + '">' +
+    var kind = a.type || '';
+    return '<button type="button" class="monad-agent-chip kind-' + esc(kind) + (extraClass ? ' ' + extraClass : '') + '" data-agent="' + esc(a.agent_id) + '">' +
       '<span class="dot ' + esc(a.status || '') + '"></span>' +
       '<span class="bn">' + esc(a.name || a.agent_id) + '</span></button>';
   }
   function showCell(code) {
     return String(code || '').replace(/x/gi, '×');
   }
+  function typeLabel(type) {
+    var map = {
+      human_persona: t('a.monad.type_human', 'Персона человека'),
+      contour_persona: t('a.monad.type_contour', 'Персона контура'),
+      project_persona: t('a.monad.type_project', 'Персона проекта'),
+      skill: t('a.monad.type_skill', 'Skill-агент'),
+    };
+    return map[type] || type || '—';
+  }
   function agentDetail(a) {
-    if (!a) return '<p class="monad-muted">' + esc(t('a.monad.pick_agent', 'Нажми агента — ячейка, тип, владелец.')) + '</p>';
+    if (!a) return '<p class="monad-muted">' + esc(t('a.monad.pick_agent', 'Нажми агента — функция, тип, контур или проект.')) + '</p>';
     var secs = Array.isArray(a.secondary_cells) ? a.secondary_cells.map(showCell).filter(Boolean) : [];
     var friends = Array.isArray(a.friends) ? a.friends : [];
     var html = '<div class="monad-agent-detail">';
     html += '<h4>' + esc(a.name || a.agent_id) + '</h4>';
-    html += '<p class="monad-muted"><code>' + esc(a.agent_id) + '</code></p>';
+    html += '<p class="monad-muted"><code>' + esc(a.agent_id) + '</code> · ' + esc(typeLabel(a.type)) + '</p>';
     html += '<dl class="monad-dl">';
     html += '<dt>' + esc(t('a.monad.cell', 'Ячейка')) + '</dt><dd>' + esc(a.cell ? showCell(a.cell) : t('a.monad.unplaced_one', 'без рассадки')) + '</dd>';
     if (secs.length) {
       html += '<dt>' + esc(t('a.monad.secondary', 'Ещё посты')) + '</dt><dd>' + esc(secs.join(', ')) + '</dd>';
     }
-    html += '<dt>' + esc(t('a.monad.type', 'Тип')) + '</dt><dd>' + esc(a.type || '—') + '</dd>';
+    html += '<dt>' + esc(t('a.monad.type', 'Тип')) + '</dt><dd>' + esc(typeLabel(a.type)) + '</dd>';
+    if (a.contour) {
+      html += '<dt>' + esc(t('a.monad.contour', 'Контур')) + '</dt><dd>' + esc(a.contour) + '</dd>';
+    }
+    if (a.project) {
+      html += '<dt>' + esc(t('a.monad.project', 'Проект')) + '</dt><dd>' + esc(a.project) + '</dd>';
+    }
     html += '<dt>' + esc(t('a.monad.owner', 'Владелец')) + '</dt><dd>' + esc(a.owner_name || a.owner || '—') + '</dd>';
     html += '<dt>' + esc(t('a.monad.parent', 'Родитель')) + '</dt><dd>' + esc(a.parent || '—') + '</dd>';
     html += '<dt>' + esc(t('a.monad.status', 'Статус')) + '</dt><dd>' + esc(a.status || '—') + '</dd>';
@@ -569,89 +586,104 @@
     html += '</dl></div>';
     return html;
   }
-  function findAgent(id) {
+  function walkAgents(fn) {
     var arch = STATE.arch;
-    if (!arch || !id) return null;
-    var found = null;
+    if (!arch) return;
     (arch.vertical || []).forEach(function (n) {
-      (n.agents || []).forEach(function (a) { if (a.agent_id === id) found = a; });
+      (n.agents || []).forEach(fn);
+      (n.cells || []).forEach(function (c) { (c.agents || []).forEach(fn); });
     });
-    if (found) return found;
     ((arch.horizontal && arch.horizontal.persons) || []).forEach(function (p) {
-      (p.agents || []).forEach(function (a) { if (a.agent_id === id) found = a; });
+      if (p.persona) fn(p.persona);
+      (p.contours || []).forEach(function (g) { (g.agents || []).forEach(fn); });
+      (p.projects || []).forEach(function (g) { (g.agents || []).forEach(fn); });
     });
-    (arch.unplaced || []).forEach(function (a) {
-      if ((a.agent_id || a.id) === id) found = a;
-    });
+    if (arch.horizontal && arch.horizontal.center && arch.horizontal.center.agent) fn(arch.horizontal.center.agent);
+    (arch.unplaced || []).forEach(fn);
+  }
+  function findAgent(id) {
+    var found = null;
+    walkAgents(function (a) { if (a && a.agent_id === id) found = a; });
     return found;
+  }
+  function bindAgentClicks(host, detailId) {
+    host.querySelectorAll('[data-agent]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        STATE.pickedAgent = b.getAttribute('data-agent');
+        var box = document.getElementById(detailId);
+        if (box) box.innerHTML = agentDetail(findAgent(STATE.pickedAgent));
+      });
+    });
   }
 
   function renderVertical(arch) {
     var host = document.getElementById('monad-vertical');
     if (!host || !arch) return;
-    var layers = (arch.vertical || []).slice().sort(function (a, b) { return (a.layer || 0) - (b.layer || 0); });
+    var layers = (arch.vertical || []).slice().sort(function (a, b) { return (b.layer || 0) - (a.layer || 0); });
     var selected = layers.filter(function (n) { return n.id === STATE.vertLayer; })[0] || null;
     var selectedCell = null;
     if (selected && STATE.vertCell) {
       selectedCell = (selected.cells || []).filter(function (c) { return String(c.n) === String(STATE.vertCell); })[0] || null;
     }
-    var html = '<div class="monad-viz-split">';
+    var html = '<p class="monad-viz-legend">' + esc((arch.legend && (arch.legend[locLang()] || arch.legend.ru)) || t('a.monad.vertical_help', '49 постов Li×Lj. Клетка = функция. Агенты из monad.placement.')) + '</p>';
+    html += '<div class="monad-viz-split monad-viz-split-wide">';
     html += '<div class="monad-vert-col">';
-    html += '<p class="monad-viz-legend">' + esc((arch.legend && (arch.legend[locLang()] || arch.legend.ru)) || t('a.monad.vertical_help', 'Канон Манады: L1 Физика … L6 Знание … L7 Сверхсистема. Посты Li×L1…Li×L7. Агенты из monad.placement.')) + '</p>';
-    html += '<div class="monad-vert-strip" role="list">';
+    html += '<div class="monad-matrix-scroll"><div class="monad-matrix">';
+    html += '<div class="monad-matrix-corner"></div>';
+    for (var col = 1; col <= 7; col++) {
+      html += '<div class="monad-matrix-colh">L' + col + '</div>';
+    }
     layers.forEach(function (n) {
       var label = n[locLang()] || n.ru || n.id;
-      var on = n.id === STATE.vertLayer ? ' on' : '';
-      var sense = locField(n, 'sense');
-      html += '<div class="monad-vert-layer' + on + '" data-layer="' + esc(n.id) + '" role="listitem">';
-      html += '<button type="button" class="monad-vert-band" data-layer="' + esc(n.id) + '">';
-      html += '<span class="monad-vert-l">L' + esc(n.layer) + '</span>';
-      html += '<span class="monad-vert-name">' + esc(label) + (n.throughline ? ' · ' + esc(n['throughline_' + locLang()] || n.throughline_ru || n.throughline) : '') + '</span>';
-      html += '<span class="monad-vert-count" title="' + esc(t('a.monad.agents_active', 'Активные агенты / все агенты этого слоя')) + '">' +
-        (n.active || 0) + ' ' + esc(t('a.monad.of', 'из')) + ' ' + (n.total || 0) + '</span>';
-      html += '</button>';
-      html += '<div class="monad-vert-inners">';
-      (n.cells || []).slice().sort(function (a, b) { return b.n - a.n; }).forEach(function (c) {
+      html += '<div class="monad-matrix-rowh' + (n.id === STATE.vertLayer ? ' on' : '') + '" data-layer="' + esc(n.id) + '">';
+      html += '<span>L' + esc(n.layer) + '</span><b>' + esc(label) + '</b>';
+      html += '<em>' + (n.total || 0) + '</em></div>';
+      var cells = (n.cells || []).slice().sort(function (a, b) { return a.n - b.n; });
+      cells.forEach(function (c) {
         var code = c.code || ('L' + n.layer + 'xL' + c.n);
-        var shown = String(code).replace(/x/gi, '×');
+        var shown = showCell(code);
         var cellOn = (STATE.vertLayer === n.id && String(STATE.vertCell) === String(c.n)) ? ' on' : '';
+        var spine = String(c.n) === String(n.layer) ? ' spine' : '';
         var nm = c[locLang()] || c.ru || shown;
-        html += '<button type="button" class="monad-vert-cell' + (c.occupied ? ' filled' : '') + cellOn + '" data-layer="' + esc(n.id) + '" data-cell="' + c.n + '" title="' + esc(shown + ' · ' + nm) + '">';
-        html += '<span class="code">' + esc(shown) + (c.count ? ' · ' + c.count : '') + '</span><span class="nm">' + esc(nm) + '</span>';
-        html += '</button>';
+        html += '<button type="button" class="monad-matrix-cell' + (c.occupied ? ' filled' : '') + cellOn + spine + '" data-layer="' + esc(n.id) + '" data-cell="' + c.n + '">';
+        html += '<span class="code">' + esc(shown) + (c.count ? ' · ' + c.count : '') + '</span>';
+        html += '<span class="nm">' + esc(nm) + '</span>';
+        html += '<span class="chips">';
+        (c.agents || []).forEach(function (a) { html += agentCard(a, 'tiny'); });
+        html += '</span></button>';
       });
-      html += '</div>';
-      if (sense) html += '<div class="monad-vert-sense">' + esc(sense) + '</div>';
-      html += '</div>';
     });
-    html += '</div></div>';
-    html += '<aside class="monad-viz-panel">';
+    html += '</div></div></div>';
+    html += '<aside class="monad-viz-panel" id="monad-vert-side">';
     if (!selected) {
-      html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick', 'Выбери слой слева. Это не новые сущности — слои одного поля Манады.')) + '</p>';
+      html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick', 'Нажми клетку 7×7. Увидишь функцию поста и живых агентов.')) + '</p>';
+      html += '<div id="monad-vert-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
     } else {
       var agents = selectedCell ? (selectedCell.agents || []) : (selected.agents || []);
       html += '<div class="monad-viz-kicker">L' + esc(selected.layer) + ' · ' + esc(selected[locLang()] || selected.ru) +
-        (selectedCell ? (' · ' + esc(showCell(selectedCell.code || ('L' + selected.layer + 'xL' + selectedCell.n))) + ' ' + esc(selectedCell[locLang()] || selectedCell.ru)) : '') + '</div>';
-      html += '<p class="monad-muted">' + esc(locField(selected, 'sense')) + ' ' +
-        esc(t('a.monad.agents_active', 'Активные агенты / все агенты этого слоя')) + ': ' +
-        (selected.active || 0) + ' / ' + (selected.total || 0) + '.</p>';
+        (selectedCell ? (' · ' + esc(showCell(selectedCell.code || ('L' + selected.layer + 'xL' + selectedCell.n)))) : '') + '</div>';
+      html += '<h3 class="monad-viz-h">' + esc(selectedCell ? (selectedCell[locLang()] || selectedCell.ru) : (selected[locLang()] || selected.ru)) + '</h3>';
+      html += '<p class="monad-muted">' + esc(locField(selected, 'sense')) + '</p>';
+      html += '<p class="monad-muted">' + esc(t('a.monad.post_is_function', 'Пост — функция слоя, не агент.')) + ' ' +
+        agents.length + ' ' + esc(t('a.monad.agents_here', 'агентов в этой клетке')) + '.</p>';
       html += '<div class="monad-agent-list">';
       if (!agents.length) html += '<p class="monad-muted">' + esc(t('a.monad.no_agents', 'В этой ячейке пока нет агентов.')) + '</p>';
       agents.forEach(function (a) { html += agentCard(a); });
       html += '</div>';
-      html += '<div id="monad-vert-agent-detail"></div>';
+      html += '<div id="monad-vert-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
     }
     html += renderUnplaced(arch);
     html += '</aside></div>';
     host.innerHTML = html;
-    host.querySelectorAll('.monad-vert-band').forEach(function (b) {
+    host.querySelectorAll('.monad-matrix-rowh').forEach(function (b) {
       b.addEventListener('click', function () {
         STATE.vertLayer = b.getAttribute('data-layer');
         STATE.vertCell = null;
         renderVertical(STATE.arch);
       });
     });
-    host.querySelectorAll('.monad-vert-cell').forEach(function (b) {
+    host.querySelectorAll('.monad-matrix-cell').forEach(function (b) {
       b.addEventListener('click', function (e) {
         e.stopPropagation();
         STATE.vertLayer = b.getAttribute('data-layer');
@@ -659,28 +691,25 @@
         renderVertical(STATE.arch);
       });
     });
-    host.querySelectorAll('[data-agent]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var box = document.getElementById('monad-vert-agent-detail') || document.getElementById('monad-unplaced-detail');
-        if (box) box.innerHTML = agentDetail(findAgent(b.getAttribute('data-agent')));
-      });
-    });
+    bindAgentClicks(host, 'monad-vert-agent-detail');
   }
 
   function renderUnplaced(arch) {
+    var groups = (arch && arch.unplaced_groups) || {};
     var list = (arch && arch.unplaced) || [];
     if (!list.length) return '';
+    if (!Object.keys(groups).length) {
+      groups = { other: list };
+    }
     var html = '<div class="monad-unplaced" id="monad-unplaced">';
-    html += '<p class="monad-muted">' + esc(t('a.monad.unplaced', 'Без ячейки monad.placement')) + ': ' + list.length + '</p>';
-    html += '<div class="monad-agent-list">';
-    list.forEach(function (a) {
-      html += agentCard({
-        agent_id: a.agent_id || a.id,
-        name: a.name || a.agent_id || a.id,
-        status: a.status,
-      });
+    html += '<p class="monad-muted">' + esc(t('a.monad.unplaced', 'Без ячейки monad.placement')) + ': ' + list.length +
+      '. ' + esc(t('a.monad.unplaced_why', 'Каналы, системные органы и ещё не рассаженные агенты — тоже кликабельны.')) + '</p>';
+    Object.keys(groups).sort().forEach(function (k) {
+      html += '<details class="monad-unplaced-g"><summary>' + esc(k) + ' · ' + groups[k].length + '</summary><div class="monad-agent-list">';
+      groups[k].forEach(function (a) { html += agentCard(a); });
+      html += '</div></details>';
     });
-    html += '</div><div id="monad-unplaced-detail"></div></div>';
+    html += '<div id="monad-unplaced-detail"></div></div>';
     return html;
   }
 
@@ -694,14 +723,16 @@
     var h = arch.horizontal || {};
     var seats = h.seats || [];
     var selected = null;
+    var selectedDom = STATE.horizHour === 'dom';
     seats.forEach(function (s) {
       if (s.person && String(s.hour) === String(STATE.horizHour)) selected = s;
     });
-    var html = '<div class="monad-viz-split">';
+    var html = '<p class="monad-viz-legend">' + esc(t('a.monad.horiz_help', 'Круг 12+1: DOM (проект) в центре. Контуры ветвятся от людей. Пустые часы 2,4,7,8,11 нажаты и пусты.')) + '</p>';
+    html += '<div class="monad-viz-split">';
     html += '<div class="monad-horiz-col">';
-    html += '<p class="monad-viz-legend">' + esc(t('a.monad.horiz_help', 'Круг 12+1: DOM в центре. Никита на 12, Тахир напротив на 6. Наведи человека — его контур и агенты.')) + '</p>';
     html += '<div class="monad-horiz-wrap"><div class="monad-horiz-ring">';
-    html += '<div class="monad-dom-center"><div class="monad-dom-label">DOM</div><div class="monad-muted">12+1</div></div>';
+    html += '<button type="button" class="monad-dom-center' + (selectedDom ? ' on' : '') + '" data-hour="dom">';
+    html += '<div class="monad-dom-label">DOM</div><div class="monad-muted">' + esc(t('a.monad.project', 'Проект')) + '</div></button>';
     for (var hour = 1; hour <= 12; hour++) {
       var mark = hourXY(hour, 46);
       html += '<div class="monad-hour-mark" style="left:' + mark.x.toFixed(2) + '%;top:' + mark.y.toFixed(2) + '%;">' + hour + '</div>';
@@ -709,52 +740,73 @@
     seats.forEach(function (s) {
       var p = s.person;
       var pos = hourXY(s.hour, 38);
-      if (!p) {
-        html += '<div class="monad-person empty" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;">' +
-          '<div class="monad-muted">' + esc(t('a.monad.seat_empty', 'пусто')) + '</div></div>';
+      if (s.inactive || !p) {
+        html += '<div class="monad-person empty pressed" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;">' +
+          '<div class="monad-muted">' + esc(s.inactive ? t('a.monad.seat_pressed', 'нажато') : t('a.monad.seat_empty', 'пусто')) + '</div></div>';
         return;
       }
       var on = String(s.hour) === String(STATE.horizHour) ? ' on' : '';
+      var contourNames = (p.contours || []).map(function (g) { return locLang() === 'en' ? (g.label_en || g.label) : g.label; });
       html += '<button type="button" class="monad-person' + (p.is_me ? ' me' : '') + on + '" data-hour="' + s.hour + '" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;">';
       html += '<div class="monad-person-name">' + esc(p.display_name || p.human_id) + '</div>';
-      html += '<div class="monad-muted">' + esc(p.human_id) + (p.is_me ? ' · you' : '') + ' · ' + (p.agents_count || 0) + '</div>';
+      html += '<div class="monad-muted">' + esc(p.human_id) + (p.is_me ? ' · you' : '') + '</div>';
       html += '<div class="monad-person-pop">';
       html += '<strong>' + esc(p.display_name || p.human_id) + '</strong>';
-      html += '<div class="monad-muted">' + esc((p.contour && p.contour.length) ? p.contour.join(', ') : t('a.monad.no_contour', 'Контур не указан')) + '</div>';
-      html += '<div class="monad-agent-mini">';
-      (p.agents || []).slice(0, 8).forEach(function (a) {
-        html += '<span>' + esc(a.name || a.agent_id) + '</span>';
-      });
-      html += '</div></div></button>';
+      html += '<div class="monad-muted">' + esc(t('a.monad.contour', 'Контур')) + ': ' +
+        esc(contourNames.length ? contourNames.join(', ') : t('a.monad.no_contour', 'нет контура')) + '</div>';
+      html += '</div></button>';
     });
-    html += '</div></div></div>';
+    html += '</div></div>';
+    if (h.unseated && h.unseated.length) {
+      html += '<p class="monad-muted">' + esc(t('a.monad.unseated', 'В круге без часа')) + ': ' +
+        h.unseated.map(function (u) { return u.display_name || u.human_id; }).join(', ') + '</p>';
+    }
+    html += '</div>';
     html += '<aside class="monad-viz-panel">';
-    if (!selected || !selected.person) {
-      html += '<p class="monad-muted">' + esc(t('a.monad.horiz_pick', 'Нажми человека на круге. Раскроется его контур и агенты.')) + '</p>';
+    if (selectedDom && h.center) {
+      html += '<div class="monad-viz-kicker">' + esc(t('a.monad.project', 'Проект')) + ' · DOM</div>';
+      html += '<p class="monad-muted">' + esc(h.center.note || '') + '</p>';
+      html += '<div class="monad-agent-list">';
+      if (h.center.agent) html += agentCard(h.center.agent);
+      html += '</div><div id="monad-horiz-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
+    } else if (!selected || !selected.person) {
+      html += '<p class="monad-muted">' + esc(t('a.monad.horiz_pick', 'Нажми человека. Справа — его Персона, контуры (группы агентов одного смысла) и отдельно проекты.')) + '</p>';
+      html += '<div id="monad-horiz-agent-detail"></div>';
     } else {
       var p = selected.person;
       html += '<div class="monad-viz-kicker">' + esc(p.display_name || p.human_id) + ' · ' + selected.hour + ':00</div>';
       html += '<p>' + esc(p.role || '') + '</p>';
-      html += '<p class="monad-muted">' + esc(t('a.monad.contour', 'Контур')) + ': ' +
-        esc((p.contour && p.contour.length) ? p.contour.join(', ') : '—') + '</p>';
-      html += '<div class="monad-agent-list">';
-      (p.agents || []).forEach(function (a) { html += agentCard(a); });
-      html += '</div><div id="monad-horiz-agent-detail"></div>';
+      if (p.persona) {
+        html += '<h4 class="monad-viz-h">' + esc(t('a.monad.type_human', 'Персона человека')) + '</h4>';
+        html += '<div class="monad-agent-list">' + agentCard(p.persona) + '</div>';
+      }
+      html += '<h4 class="monad-viz-h">' + esc(t('a.monad.contours_from_person', 'Контуры от человека')) + '</h4>';
+      if (!(p.contours || []).length) html += '<p class="monad-muted">' + esc(t('a.monad.no_contour', 'нет контура')) + '</p>';
+      (p.contours || []).forEach(function (g) {
+        html += '<div class="monad-branch"><div class="monad-branch-name">' + esc(locLang() === 'en' ? (g.label_en || g.label) : g.label) + '</div>';
+        html += '<div class="monad-agent-list">';
+        (g.agents || []).forEach(function (a) { html += agentCard(a); });
+        html += '</div></div>';
+      });
+      html += '<h4 class="monad-viz-h">' + esc(t('a.monad.projects_of_person', 'Проекты (не контуры)')) + '</h4>';
+      if (!(p.projects || []).length) html += '<p class="monad-muted">' + esc(t('a.monad.no_projects', 'нет проекта')) + '</p>';
+      (p.projects || []).forEach(function (g) {
+        html += '<div class="monad-branch project"><div class="monad-branch-name">' + esc(locLang() === 'en' ? (g.label_en || g.label) : g.label) + '</div>';
+        html += '<div class="monad-agent-list">';
+        (g.agents || []).forEach(function (a) { html += agentCard(a); });
+        html += '</div></div>';
+      });
+      html += '<div id="monad-horiz-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
     }
     html += '</aside></div>';
     host.innerHTML = html;
-    host.querySelectorAll('.monad-person[data-hour]').forEach(function (b) {
+    host.querySelectorAll('[data-hour]').forEach(function (b) {
       b.addEventListener('click', function () {
         STATE.horizHour = b.getAttribute('data-hour');
         renderHorizontal(STATE.arch);
       });
     });
-    host.querySelectorAll('[data-agent]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var box = document.getElementById('monad-horiz-agent-detail');
-        if (box) box.innerHTML = agentDetail(findAgent(b.getAttribute('data-agent')));
-      });
-    });
+    bindAgentClicks(host, 'monad-horiz-agent-detail');
   }
 
   function rhythmLayers() {
@@ -776,7 +828,7 @@
     if (rhythm.system) {
       html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span>';
     }
-    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help', 'Снимок с живого /api/rhythm. «Живой ритм» включает онлайн-эквалайзер; выключение или уход со вкладки его гасит.')) + '</p>';
+    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help', 'Пульс семи слоёв вертикали (физика L1–L2, жизнь L3–L4, ум L5–L7). Не биологический EEG. «Живой ритм» включает онлайн; уход со вкладки гасит.')) + '</p>';
     html += '</div>';
     html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
       esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';
@@ -789,8 +841,9 @@
       var pct = Math.round(lvl * 100);
       html += '<div class="monad-eq-col' + (unavailable ? ' unavailable' : '') + '">';
       html += '<div class="monad-eq-col-bar"><i style="height:' + (unavailable ? 6 : Math.max(6, pct)) + '%"></i></div>';
-      html += '<div class="monad-eq-col-label">' + esc(label) + '</div>';
-      html += '<div class="monad-eq-col-val">' + (unavailable ? 'n/a' : (pct + '%')) + '</div>';
+      html += '<div class="monad-eq-col-label"><code>' + esc(L.id || '') + '</code> ' + esc(label) + '</div>';
+      html += '<div class="monad-eq-col-val">' + (unavailable ? 'n/a' : (pct + '%')) +
+        (L.agents_in_layer != null ? ' · ' + L.agents_in_layer : '') + '</div>';
       html += '</div>';
     });
     html += '</div>';
