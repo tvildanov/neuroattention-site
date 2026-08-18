@@ -1,0 +1,33 @@
+---
+description: LK is a Monad channel — do not put a second LLM face on the site
+alwaysApply: true
+---
+
+# Split: this repo = site. Monad = tvildanov/monad.
+
+A Monad session already hosted the **human Persona LLM** on `monad-server`
+(`persona_runtime`, same `ANTHROPIC_API_KEY` as companion). Live:
+`GET https://monad-server-production.up.railway.app/api/persona/health`
+→ `hosted: true`. Canon: Monad PR https://github.com/tvildanov/monad/pull/26
+and site commit `a694a5a` (channel-only LK).
+
+## Do
+
+- Site work: NeuroMap, Path, Sketch, atlas, LK **UI**, poll UX, i18n, SW bump.
+- LK chat: `POST /api/monad/message` saves the human line + `plant_seed` to
+  **`persona_<human_id>`** (first hop). Reply arrives via `human_chat_poll` /
+  `post_lk_chat_message`. Frontend: `startFastPoll()`.
+- Architecture/rhythm: live `/api/monad/architecture` and Monad pack. Never invent.
+
+## Do not (this would fight Monad)
+
+- Do **not** call `generateLkReply` from `/api/monad/message` again.
+- Do **not** ask Nick to put OpenAI / Anthropic / LOD on **neuroattention-api**
+  so Persona can talk. The face is already on monad-server.
+- Do **not** first-hop LK to `persona_nal` / `persona_loom_house` / `companion`.
+  Contours are next, after the person's Persona.
+- Do **not** treat same-request site LLM as the architecture. Poll is correct.
+- `lk_llm: true` on `/health` means **Monad is configured**, not “site has Anthropic”.
+
+If chat feels broken: check Monad `persona/health`, seed `to_agent=persona_<human>`,
+and poll — do not resurrect a site-side model.

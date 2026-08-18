@@ -49,20 +49,20 @@
 
 ## Что видит человек
 
-1. Своё сообщение сразу (оптимистично).  
-2. Ответ Persona в **этом же** чате, в том же ходе.  
-3. Нет «Отправлено Манаде…» и нет seed/handoff.
+1. Своё сообщение сразу.  
+2. Индикатор «…», затем ответ Persona в **этом же** чате (poll, обычно секунды).  
+3. Нет «Отправлено Манаде…» и нет seed/handoff на экране.
 
 ---
 
-## Секреты
+## Секреты на этом API
 
 ```
-MONAD_API_KEY=monad_…
-ANTHROPIC_API_KEY=   # обязателен для живого собеседника в ЛК
-# OPENAI_API_KEY=
-# OPENROUTER_API_KEY=
-# LK_LLM_MODEL=
+MONAD_API_KEY=monad_…     # единственный обязательный ключ для вкладки «Монада»
 ```
 
-Без ключа LLM Persona не может говорить как модель. Тогда честно пишет, что модели нет, а не меню вкладок. С ключом — полноценный собеседник: читает живой канон Манады, отвечает по смыслу, сажает задачи (Егор → Loom / persona_loom_house).
+Ключ модели — на **monad-server**, не здесь. Не проси OpenAI/Anthropic/LOD на neuroattention-api.
+
+Сессия сайта (NeuroMap, Sketch, вёрстка ЛК) **не спорит** с этим: строй UI поверх `plant_seed` → Persona → poll. Не возвращай `generateLkReply` в `POST /api/monad/message`.
+
+Handoff: `docs/HANDOFF-MONAD-SPLIT.md` · правило `.cursor/rules/monad-channel.mdc`.

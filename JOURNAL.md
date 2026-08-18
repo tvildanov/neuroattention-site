@@ -7,7 +7,47 @@
 
 ---
 
+## 2026-08-18 — LK is a channel; Persona LLM is hosted in Monad (supersedes 17:10)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud_monad",
+  "at": "2026-08-18T18:05:00Z",
+  "did": [
+    "Nick: do not wire a second OpenAI/LOD on the site. LLM already lives in Monad. Site session keeps building the cabinet; Monad session hosts the face.",
+    "POST /api/monad/message = plant_seed to persona_<human> only. generateLkReply is not the live path.",
+    "persona_runtime on monad-server answers via post_lk_chat_message; LK fast-polls.",
+    "Wrote .cursor/rules/monad-channel.mdc + docs/HANDOFF-MONAD-SPLIT.md so the NeuroAttention session builds on top, not against."
+  ],
+  "changed": [
+    "api/server.js",
+    "api/services/monad.js",
+    "assets/js/monad-lk.js",
+    "docs/MONAD-LK.md",
+    "docs/HANDOFF-MONAD-SPLIT.md",
+    ".cursor/rules/monad-channel.mdc",
+    ".cursor/rules/ground-truth-monad.mdc",
+    "api/.env.example",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Supersedes JOURNAL 17:10 (ANTHROPIC on neuroattention-api / site runtime as Persona).",
+    "R10: human → entry Persona (LLM) → contour (persona_nal, loom, …). Channels are hands.",
+    "Site session: UI and poll. Monad session: persona_runtime. Do not revert each other."
+  ],
+  "followups": [
+    "Site session: git pull origin main, read docs/HANDOFF-MONAD-SPLIT.md, continue NeuroMap/Sketch/LK UI.",
+    "If chat is quiet: Monad GET /api/persona/health, not a new site LLM key."
+  ],
+  "next_session": "Build site UX on channel+poll. Do not restore generateLkReply on the message route."
+}
+```
+
+---
+
 ## 2026-08-18 — LK chat is a live Monad interlocutor, not FAQ blanks
+
 
 ```json
 {

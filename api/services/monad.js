@@ -703,8 +703,8 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
 }
 
 async function generateLkReply({ humanId, text, history, personaAgent, chatId }) {
-  // Legacy: LK used to run Anthropic on neuroattention-api.
-  // Face LLM is hosted on monad-server (persona_runtime). Keep for tests/fallback.
+  // LEGACY. Do not call from POST /api/monad/message.
+  // Face LLM is hosted on monad-server (persona_runtime). See docs/HANDOFF-MONAD-SPLIT.md.
   const ctx = { humanId, personaAgent, chatId, didWork: false };
   const needLlm = llmConfigured();
   const [person, facts, placements, personaPrompt, arch] = await Promise.all([
