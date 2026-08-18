@@ -2075,7 +2075,7 @@
       // remember where the press started so _onClick can tell a deliberate tap
       // from the tail end of a rotate/pan drag (PACK 6: panel opens on click only)
       self._downX = e.clientX; self._downY = e.clientY;
-      if (e.shiftKey && self.controls && T && T.MOUSE) self.controls.mouseButtons.LEFT = T.MOUSE.PAN;
+      if (e.shiftKey && self.opts.shiftDragIsPan !== false && self.controls && T && T.MOUSE) self.controls.mouseButtons.LEFT = T.MOUSE.PAN;
     };
     this._onPointerUp = function () {
       var T = window.THREE;
