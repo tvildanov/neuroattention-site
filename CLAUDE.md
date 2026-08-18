@@ -1,5 +1,7 @@
 # NeuroAttention — engineering guide for the NeuroMap / Evolution Path system
 
+**Monad split (2026-08-18):** this repo is the **site**. Human Persona LLM is hosted on **monad-server**, not here. Read `.cursor/rules/monad-channel.mdc` and `docs/HANDOFF-MONAD-SPLIT.md` before touching `/api/monad/message` or asking for an LLM key. Continue NeuroMap / Path / Sketch / LK UI on top of `plant_seed` → poll.
+
 This file is the durable contract for the NeuroMap (Нейрокарта) graph and the
 Evolution Path (Путь). Most bugs in this codebase are regressions of the same
 handful of invariants below. Read this before touching any `nm*` code,

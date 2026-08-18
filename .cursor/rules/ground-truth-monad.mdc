@@ -13,3 +13,6 @@ If the task is about MONAD (structure, agents, vertical/horizontal, who is who):
 4. If a field is missing, say unknown in canon.
 
 R10 vertical (Human→Persona→Contour→skill) is not the same as LK 7×7 posts. Both come from Monad. Do not invent a third axis.
+
+LLM face = entry Persona on **monad-server**, not this API. See `.cursor/rules/monad-channel.mdc`.
+Do not first-hop LK to `persona_nal`. Do not add a second OpenAI/Anthropic key on the site.
