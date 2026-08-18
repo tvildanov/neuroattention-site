@@ -7,6 +7,191 @@
 
 ---
 
+## 2026-08-18 — Match LK viz to live Monad (contour ≠ project, 49 cells, pressed seats)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T14:10:00Z",
+  "did": [
+    "Read monad.spec.ui.lk_monad_page.v0_2, circle12.slots, rhythm.v0_3, ontology, live placements",
+    "Contour = group of agents of one meaning; NAL and DOM are projects, not contours",
+    "Vertical is a visible 7×7 of 49 posts with clickable live agents",
+    "Horizontal: contours branch from people; inactive hours 2/4/7/8/11 stay pressed empty; DOM center is a project",
+    "Rhythm bars are L1–L7 (physics/vital/mental), not invented circadian/EEG"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Never invent Monad architecture when specs and placements exist",
+    "Placement type+contour/project fields are source of truth, not directory.contour_personas",
+    "Do not fill leftover humans into empty circle slots"
+  ],
+  "followups": [
+    "Hard-refresh SW v75 and monad-lk.js?v=13",
+    "Railway must pick up architecture payload (contour vs project, inactive seats, L1–L7 rhythm)"
+  ],
+  "next_session": "Nick reviews 49-cell matrix and horizontal branches"
+}
+```
+
+---
+
+## 2026-08-18 — Vertical canon from Monad spec, not invented nuclei
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T13:30:00Z",
+  "did": [
+    "Read live monad.spec.layers_7x7.v0_1 and monad.placement.* instead of guessed Body/Emotion names",
+    "Vertical 7×7 now uses L1 Физика, L2 Энергия, L3 Личность, L4 Мы/Дом, L5 Восприятие↔проявление, L6 Знание, L7 Сверхсистема",
+    "Posts shown as Li×Lj; agents seated from live placements (human personas on L3×L3, knowledge on L6, probuzhdennyy on L7×L7)",
+    "Agent detail shows cell, type, parent, secondary posts; unplaced agents listed separately"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Do not invent layer names. Canon is monad.spec.layers_7x7.v0_1",
+    "Do not hash agents into cells. Seating is monad.placement only",
+    "Human personas are L3×L3, not all on L5. Contour is a grouping, not a layer",
+    "Monad has no emotion layer"
+  ],
+  "followups": [
+    "Hard-refresh SW v74 and monad-lk.js?v=12",
+    "Railway must pick up VERTICAL_LAYERS + loadPlacements for architecture payload"
+  ],
+  "next_session": "Confirm LK Vertical shows Physics…Knowledge…Supersystem and live L3×L3 personas"
+}
+```
+
+---
+
+## 2026-08-18 — LK chat + Sketch 3D + Monad viz + full width
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T06:40:00Z",
+  "did": [
+    "Heuristic Persona answers hi / who / atlas without echo template",
+    "Hard-delete + rename chats in sidebar and header",
+    "Sketch 3D keeps live BodyAtlas; hide screenshot overlay; orbit on atlas",
+    "Vertical L1–L7 strip with 7×7 inner cells and clickable agents",
+    "Horizontal 12+1 clock seats (Nick 12, Tahir 6) with hover contours",
+    "Rhythm snapshot + Live rhythm equalizer from /api/rhythm",
+    "Full-width Monad / Sketch / Exercises; muted gray NAIcons"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/js/sketch-tool.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/js/sketch-tool.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "DELETE chat is hard delete (messages + row), not archive",
+    "3D Sketch reuses BodyAtlas.init(mode:full), never a still overlay",
+    "Vertical numbers mean active/total agents in that layer",
+    "Rhythm live mode polls real /api/rhythm and stops when leaving the tab"
+  ],
+  "followups": [
+    "Hard-refresh SW v73; new chat should answer привет / ты кто / атлас",
+    "Sketch 3D: draw layers, then Orbit should rotate the same atlas model"
+  ],
+  "next_session": "Confirm Pages v=11 + Railway architecture payload + Sketch orbit"
+}
+```
+
+---
+
+## 2026-08-18 — Explore sketch 3D/2D + exercises NAIcons (no code change)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T05:55:00Z",
+  "did": [
+    "Mapped sketch 3D vs 2D: setViewMode/ensureAtlas/setInteraction/screenshot vs BodyAtlas.init",
+    "Traced 3D-flash-then-2D: mount defaults to 3d; openWithPayload treats any imageDataUrl as 2d; media wrap z-index covers atlas",
+    "Mapped NAIcons stroke coloring for Exercises tab via CAT[].col hex, not CSS variables"
+  ],
+  "changed": [],
+  "files": [
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "docs/SKETCH-BRIEF.md",
+    "account.html",
+    "assets/js/na-icons.js",
+    "assets/redesign.css",
+    "data/css/mycelium.css"
+  ],
+  "decisions": [
+    "Sketch does not reuse window._anatomyAtlas instance; it new-inits BodyAtlas in #sketch-3d-host; anatomy atlas is screenshot-only",
+    "3D-from-2D keeps image overlay on top of 3D host (z-index 3 over 2)"
+  ],
+  "followups": [
+    "If fixing flash: do not setViewMode(2d) when payload.mode==='3d'; hide media wrap in 3d unless explicitly overlaying; abort ensureAtlas.then if viewMode flipped"
+  ],
+  "next_session": "Patch openWithPayload + applyMedia stacking if product wants real 3D after copy"
+}
+```
+
+---
+
+
 ## 2026-08-17 — LK follow-ups vanished after 1–3 turns
 
 ```json

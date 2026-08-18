@@ -133,7 +133,10 @@
 // v68: Monad chat UX — hide seed/handoff tech, human delivery status
 // v67: Sketch full + Tahir handoff page
 // v66: Monad multi-chat + attachments; Sketch brief from Nick handoff.
-var CACHE_NAME = 'na-practices-v72';
+// v75: Vertical 49-cell matrix + horizontal contours-from-people; rhythm L1–L7
+// v74: Vertical 7×7 uses Monad canon (Physics…Knowledge…Supersystem), live placements
+// v73: LK chat answers + delete/rename; Sketch 3D atlas; Monad viz; full-width tools
+var CACHE_NAME = 'na-practices-v75';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
