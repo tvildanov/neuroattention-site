@@ -7,6 +7,44 @@
 
 ---
 
+## 2026-08-18 — Persona answers who Nick is, not a tab menu
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T15:20:00Z",
+  "did": [
+    "Live chat bug: «привет ты кто и кто я?» answered only Persona; «а я?» fell through to the tab-menu template",
+    "whoYou no longer short-circuits before whoAmI; one message with both questions gets both lines",
+    "«а я?» / follow-up after a who-you turn returns the human name from directory/facts, never the template",
+    "Identity intents skip LLM so a model cannot overwrite the name with a cabinet tab list"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/services/monad.identity.test.js",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/services/monad.identity.test.js",
+    "docs/MONAD-LK.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Identity questions always answer from directory/facts; do not list rhythm/7x7/12+1/atlas/Sketch/practices instead of a name",
+    "Heuristic is the live path when Railway LLM keys are off"
+  ],
+  "followups": [
+    "Merge to main so Railway picks up api/services/monad.js — Pages bump not required",
+    "Nick: hard-refresh LK and ask again who you are"
+  ],
+  "next_session": "Confirm live Persona names Nick on «ты кто и кто я» / «а я?»"
+}
+```
+
+---
+
 ## 2026-08-18 — Match LK viz to live Monad (contour ≠ project, 49 cells, pressed seats)
 
 ```json
