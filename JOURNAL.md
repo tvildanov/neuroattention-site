@@ -7,6 +7,53 @@
 
 ---
 
+## 2026-08-18 — Match LK viz to live Monad (contour ≠ project, 49 cells, pressed seats)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T14:10:00Z",
+  "did": [
+    "Read monad.spec.ui.lk_monad_page.v0_2, circle12.slots, rhythm.v0_3, ontology, live placements",
+    "Contour = group of agents of one meaning; NAL and DOM are projects, not contours",
+    "Vertical is a visible 7×7 of 49 posts with clickable live agents",
+    "Horizontal: contours branch from people; inactive hours 2/4/7/8/11 stay pressed empty; DOM center is a project",
+    "Rhythm bars are L1–L7 (physics/vital/mental), not invented circadian/EEG"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Never invent Monad architecture when specs and placements exist",
+    "Placement type+contour/project fields are source of truth, not directory.contour_personas",
+    "Do not fill leftover humans into empty circle slots"
+  ],
+  "followups": [
+    "Hard-refresh SW v75 and monad-lk.js?v=13",
+    "Railway must pick up architecture payload (contour vs project, inactive seats, L1–L7 rhythm)"
+  ],
+  "next_session": "Nick reviews 49-cell matrix and horizontal branches"
+}
+```
+
+---
+
 ## 2026-08-18 — Vertical canon from Monad spec, not invented nuclei
 
 ```json

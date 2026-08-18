@@ -10,9 +10,9 @@
 
 | Что | Как проверить |
 |-----|----------------|
-| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=12 — `last-modified` после мержа |
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=13 — `last-modified` после мержа |
 | **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
-| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v74` |
+| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v75` |
 
 Pages уже жил после PR #153 (~17:49 UTC). API на Railway катится отдельно: пока нет `lk_live_reply`, новый фронт молчит, потому что Persona-демон не отвечает.
 
@@ -31,21 +31,16 @@ Pages уже жил после PR #153 (~17:49 UTC). API на Railway катит
 Цепь: human → persona_<id> → persona_nal → neuro_agent (этот API).  
 `companion` = только Telegram Тахира.
 
-### Вертикаль (не выдумывать имена)
+### Вертикаль / горизонталь / ритм
 
-Канон: `monad.spec.layers_7x7.v0_1`. Рассадка: `monad.placement.<agent>.v1.cell`.
+Канон, не выдумка:
 
-| Слой | Имя | Посты |
-|------|-----|--------|
-| L1 | Физика | L1×L1 … L1×L7 |
-| L2 | Энергия | L2×L1 … L2×L7 |
-| L3 | Личность (человеческие Персоны на L3×L3) | L3×L1 … L3×L7 |
-| L4 | Мы / Дом | L4×L1 … L4×L7 |
-| L5 | Восприятие ↔ проявление | L5×L1 … L5×L7 |
-| L6 | Знание | L6×L1 … L6×L7 |
-| L7 | Сверхсистема | L7×L1 … L7×L7 |
+- слои: `monad.spec.layers_7x7.v0_1` — 49 постов `Li×Lj` (функции). Агенты из `monad.placement`.
+- горизонталь: `monad.spec.circle12.slots.v0_1` + `monad.spec.ui.lk_monad_page.v0_2` — DOM в центре (проект), контуры ветвятся от людей, пустые часы 2/4/7/8/11 нажаты и пусты.
+- ритм: `monad.spec.rhythm.v0_3` — пульс L1–L7 (физика / жизнь / ум), не биологический EEG.
 
-Эмоций в Манаде нет. Контур — группировка проектов у человека, не слой. Не все персоны на L5.
+**Контур** = группа агентов одного смысла (знание, контент/Loom, дизайн, маркетинг, инвестиции…).  
+**Проект** = NAL, DOM, Be Hold, Vidas Neo… Контур ≠ проект ≠ слой вертикали.
 
 ---
 

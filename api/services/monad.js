@@ -179,32 +179,56 @@ function publicFact(s) {
     .trim();
 }
 
-function contourLines(person, humanId, lang) {
-  const ru = lang === 'ru';
-  const contours = (person && person.contour_personas) || {};
-  const labels = {
-    nal: ru ? 'NeuroAttention Lab (сайт, кабинет, практики)' : 'NeuroAttention Lab (site, cabinet, practices)',
-    knowledge: ru ? 'Знание' : 'Knowledge',
-    learning: ru ? 'Обучение' : 'Learning',
-    dom: 'DOM',
-    behold: 'Be Hold',
-    loom: 'Loom House',
-    vidas_neo: 'Vidas Neo',
-    investment: ru ? 'Инвестиции' : 'Investment',
-    marketing: ru ? 'Маркетинг' : 'Marketing',
-  };
-  const lines = [];
-  Object.keys(contours).forEach((k) => {
-    lines.push(labels[k] || k);
-  });
-  if (humanId === 'nikita' && !lines.length) {
-    lines.push(ru ? 'NeuroAttention Lab — сайт и кабинет' : 'NeuroAttention Lab — site and cabinet');
-    lines.push(ru ? 'Знание, обучение, DOM' : 'Knowledge, learning, DOM');
-  }
-  return lines;
+/** Contour = group of agents of one meaning. Not a project, not a vertical layer. */
+const CONTOUR_LABELS = {
+  knowledge: { ru: 'Знание', en: 'Knowledge' },
+  loom: { ru: 'Контент (Loom)', en: 'Content (Loom)' },
+  design: { ru: 'Дизайн', en: 'Design' },
+  marketing: { ru: 'Маркетинг', en: 'Marketing' },
+  investment: { ru: 'Инвестиции', en: 'Investment' },
+  learning: { ru: 'Обучение', en: 'Learning' },
+  domtech: { ru: 'DomTech', en: 'DomTech' },
+  awareness: { ru: 'Сверхсознание', en: 'Awareness' },
+};
+const PROJECT_LABELS = {
+  neuroattention_lab: { ru: 'NeuroAttention Lab', en: 'NeuroAttention Lab' },
+  behold: { ru: 'Be Hold', en: 'Be Hold' },
+  vidas_neo: { ru: 'Vidas Neo', en: 'Vidas Neo' },
+  postcontact: { ru: 'PostContact', en: 'PostContact' },
+  dom: { ru: 'DOM', en: 'DOM' },
+};
+
+function labelContour(id, lang) {
+  const row = CONTOUR_LABELS[id];
+  if (!row) return id;
+  return lang === 'en' ? row.en : row.ru;
+}
+function labelProject(id, lang) {
+  const row = PROJECT_LABELS[id];
+  if (!row) return id;
+  return lang === 'en' ? row.en : row.ru;
 }
 
-function composeHeuristicReply({ humanId, person, facts, text }) {
+function membershipFromPlacements(humanId, placements, lang) {
+  const contours = [];
+  const projects = [];
+  const seenC = new Set();
+  const seenP = new Set();
+  Object.values(placements || {}).forEach((p) => {
+    if (!p || p.owner !== humanId) return;
+    if (p.type === 'contour_persona') {
+      const id = p.contour || p.agent_id;
+      if (id && !seenC.has(id)) { seenC.add(id); contours.push(labelContour(id, lang)); }
+    }
+    if (p.type === 'project_persona') {
+      const id = p.project || (p.agent_id === 'persona_dom' ? 'dom' : null);
+      if (id && !seenP.has(id)) { seenP.add(id); projects.push(labelProject(id, lang)); }
+    }
+  });
+  return { contours, projects };
+}
+
+function composeHeuristicReply({ humanId, person, facts, text, placements }) {
   const lang = pickLang(text);
   const ru = lang === 'ru';
   const name = publicFact(factVal(facts, 'legal_name'))
@@ -218,12 +242,14 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто/i.test(t);
   const whoYou = /кто\s+ты|ты\s+кто|who\s+are\s+you|who\s+am\s+i\s+talking|с\s+кем\s+я/i.test(t);
   const canDo = /что ты умеешь|что ты можешь|какие у меня контур|к чему есть доступ|what can you do/i.test(t);
+  const aboutContour = /что такое контур|what is a contour|контур —|контур -|контуры и проект/i.test(t);
   const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)[!.…\s]*$/i.test(t);
 
-  const contours = contourLines(person, humanId, lang);
-  const contourBlock = contours.length
-    ? (ru ? ('Контуры: ' + contours.join('; ') + '.') : ('Contours: ' + contours.join('; ') + '.'))
-    : '';
+  const mem = membershipFromPlacements(humanId, placements, ru ? 'ru' : 'en');
+  const contourBlock = [
+    mem.contours.length ? (ru ? ('Контуры: ' + mem.contours.join(', ') + '.') : ('Contours: ' + mem.contours.join(', ') + '.')) : '',
+    mem.projects.length ? (ru ? ('Проекты: ' + mem.projects.join(', ') + '.') : ('Projects: ' + mem.projects.join(', ') + '.')) : '',
+  ].filter(Boolean).join(' ');
 
   if (hi) {
     return ru
@@ -232,8 +258,13 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   }
   if (whoYou) {
     return ru
-      ? `Я Persona Манады для тебя в личном кабинете NeuroAttention. Лицо контура в этом чате: отвечаю здесь, без Telegram-моста. Могу про ритм, вертикаль/горизонталь, атлас, Sketch, практики.`
-      : `I am your Monad Persona in the NeuroAttention cabinet chat. I answer here. Rhythm, maps, atlas, Sketch, practices — ask.`;
+      ? `Я Persona Манады для тебя в личном кабинете NeuroAttention. Отвечаю здесь, без Telegram-моста. Могу про ритм, вертикаль 7×7, горизонталь 12+1, атлас, Sketch, практики.`
+      : `I am your Monad Persona in the NeuroAttention cabinet chat. I answer here. Rhythm, 7×7, 12+1, atlas, Sketch, practices — ask.`;
+  }
+  if (aboutContour || (/контур|contour/i.test(low) && /что|what|это/i.test(low))) {
+    return ru
+      ? `Контур — группа агентов, связанных одним смыслом (знание, контент, маркетинг, дизайн, инвестиции…). Это не слой вертикали и не проект. NAL и DOM — проекты. На горизонтали контуры ветвятся от людей.`
+      : `A contour is a group of agents bound by one meaning (knowledge, content, marketing, design, investment…). Not a vertical layer and not a project. NAL and DOM are projects. On the horizontal, contours branch from people.`;
   }
   if (whoAmI) {
     const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
@@ -243,8 +274,8 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   }
   if (canDo) {
     return ru
-      ? `В этом чате я отвечаю сразу. Во вкладках Манады: вертикаль (7 слоёв L1–L7), горизонталь (круг 12+1), ритм (живой эквалайзер). На сайте: Internal Field — 3D-атлас, Sketch — рисунок на том же теле, упражнения. ${contourBlock}`
-      : `I answer in this chat. Monad tabs: vertical 7×7, horizontal 12+1, live rhythm. Site: 3D atlas, Sketch on the same body, exercises. ${contourBlock}`;
+      ? `В этом чате я отвечаю сразу. Вкладки Манады: вертикаль (49 постов L1×L1…L7×L7), горизонталь (круг 12+1, контуры от людей), ритм (пульс слоёв L1–L7). ${contourBlock}`
+      : `I answer in this chat. Monad tabs: vertical 7×7 (49 posts), horizontal 12+1 (contours branch from people), rhythm (L1–L7 pulse). ${contourBlock}`;
   }
   if (/атлас|atlas|anatom|internal field|внутренн/i.test(low)) {
     return ru
@@ -268,13 +299,13 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   }
   if (/горизонтал|horizontal|12\s*\+|круг|кругл/i.test(low)) {
     return ru
-      ? `Горизонталь — круг 12+1: в центре DOM, по часам люди контура. Никита на 12, Тахир напротив на 6. Наведи человека — его персоны и агенты.`
-      : `Horizontal is the 12+1 ring: DOM in the center, people on the clock. Hover someone for their contour.`;
+      ? `Горизонталь — круг 12+1 (monad.spec.circle12): DOM в центре (проект, не контур). Люди на фиксированных часах: Никита 12, Тахир 6. Пустые слоты 2,4,7,8,11 нажаты и пусты. Контуры ветвятся от людей, не висят отдельными отделами.`
+      : `Horizontal is 12+1: DOM (a project) in the centre. People on fixed hours. Empty slots stay pressed empty. Contours branch from people.`;
   }
   if (/ритм|rhythm|equalizer|эквалайз/i.test(low)) {
     return ru
-      ? `Ритм — слои системы Monad (агенты, социальный, метаболизм…). Статика по умолчанию; кнопка «Живой ритм» включает онлайн-эквалайзер с реальных /api/rhythm, и гаснет при уходе со вкладки.`
-      : `Rhythm is Monad system layers. Default is a snapshot; “Live rhythm” turns on a real equalizer from /api/rhythm.`;
+      ? `Ритм — пульс семи слоёв вертикали (физика L1–L2, жизнь L3–L4, ум L5–L7), не биологический EEG. Живые действия агентов с дашборда Манады. Кнопка «Живой ритм» включает онлайн; уход со вкладки гасит.`
+      : `Rhythm is the pulse of the seven vertical layers (physics L1–L2, vital L3–L4, mental L5–L7), not a body EEG. Live agent actions from the Monad dashboard.`;
   }
   if (/удал|rename|переимен|чат/i.test(low) && /чат|chat/i.test(low)) {
     return ru
@@ -317,7 +348,7 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
     `Answer in the same language they used. Natural chat. Do not echo or quote the user's message.`,
     `Never write seed=, handoff=, shared_context, docs paths, or “channel is alive”.`,
     `Do not mention Tahir/Takhir unless the human asked about him. You are the reply.`,
-    `If they ask what you can do / contours / access: name their contour in human words (Lab, Knowledge, Learning, DOM, Be Hold, etc.), LK rhythm/maps, site tools (atlas, Sketch, practices). Do not dump agent_id lists.`,
+    `If they ask what you can do / contours / access: contours are groups of agents of one meaning; NAL and DOM are projects not contours. Name their live contours and projects. LK: 7×7, 12+1, rhythm. Do not dump agent_id lists.`,
     factLines ? `Known facts:\n${factLines}` : '',
   ].filter(Boolean).join('\n');
   const user = (hist ? `Recent thread:\n${hist}\n\n` : '') + `Human: ${text}`;
@@ -378,11 +409,12 @@ async function tryLlmReply({ humanId, person, facts, text, history, personaAgent
 }
 
 async function generateLkReply({ humanId, text, history, personaAgent }) {
-  const [person, facts] = await Promise.all([
+  const [person, facts, placements] = await Promise.all([
     loadDirectoryPerson(humanId),
     loadHumanFacts(humanId),
+    loadPlacements().catch(() => ({})),
   ]);
-  const heuristic = composeHeuristicReply({ humanId, person, facts, text });
+  const heuristic = composeHeuristicReply({ humanId, person, facts, text, placements });
   if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) return heuristic;
   const llm = await tryLlmReply({ humanId, person, facts, text, history, personaAgent });
   if (llm && !isChannelAckText(llm)) return llm;
@@ -611,7 +643,25 @@ function cellsOfPlacement(place) {
   return [place.cell].concat(extra).filter(Boolean);
 }
 
-/** Fixed 12+1 clock from monad.spec.circle12.slots.v0_1. Nick at 12, Tahir at 6. */
+function friendList(friends) {
+  if (!friends) return [];
+  if (Array.isArray(friends)) return friends;
+  if (typeof friends === 'object') return Object.keys(friends);
+  return [];
+}
+
+function kindOfPlacement(place, placements) {
+  if (!place) return { type: null, contour: null, project: null };
+  const parent = place.parent && placements ? placements[place.parent] : null;
+  let contour = place.contour || (parent && parent.contour) || null;
+  let project = place.project || (parent && parent.project) || null;
+  if (place.agent_id === 'persona_dom') project = project || 'dom';
+  if (place.type === 'project_persona') contour = null;
+  if (place.type === 'contour_persona') project = null;
+  return { type: place.type || null, contour, project };
+}
+
+/** Fixed 12+1 clock from monad.spec.circle12.slots.v0_1. Empty hours stay pressed. */
 const CIRCLE_SLOTS = {
   nikita: 12,
   nastya: 1,
@@ -622,14 +672,16 @@ const CIRCLE_SLOTS = {
   egor: 9,
   artem: 10,
 };
+const CIRCLE_INACTIVE = [2, 4, 7, 8, 11];
 
 function circleSlotFor(human) {
+  const id = String((human && human.human_id) || '').toLowerCase();
+  if (CIRCLE_SLOTS[id]) return CIRCLE_SLOTS[id];
   const meta = (human && human.metadata) || {};
   const raw = meta.circle_slot || meta.clock || meta.hour || meta.clock_hour;
   const n = parseInt(raw, 10);
-  if (n >= 1 && n <= 12) return n;
-  const id = String((human && human.human_id) || '').toLowerCase();
-  return CIRCLE_SLOTS[id] || null;
+  if (n >= 1 && n <= 12 && CIRCLE_INACTIVE.indexOf(n) < 0) return n;
+  return null;
 }
 
 async function loadDirectoryPeople() {
@@ -638,14 +690,19 @@ async function loadDirectoryPeople() {
 }
 
 const RHYTHM_LAYERS = [
-  { id: 'circ', ru: 'Циркадный', en: 'Circadian', es: 'Circadiano' },
-  { id: 'ultradian', ru: 'Ультрадианный', en: 'Ultradian', es: 'Ultradiano' },
-  { id: 'breath', ru: 'Дыхание', en: 'Breath', es: 'Respiración' },
-  { id: 'heart', ru: 'Сердце', en: 'Heart', es: 'Corazón' },
-  { id: 'metab', ru: 'Метаболизм', en: 'Metabolism', es: 'Metabolismo' },
-  { id: 'social', ru: 'Социальный', en: 'Social', es: 'Social' },
-  { id: 'agent', ru: 'Агенты', en: 'Agents', es: 'Agentes' },
+  { id: 'L1', layer: 1, triple: 'physics', ru: 'Физика', en: 'Physics', es: 'Física' },
+  { id: 'L2', layer: 2, triple: 'physics', ru: 'Энергия', en: 'Energy', es: 'Energía' },
+  { id: 'L3', layer: 3, triple: 'vital', ru: 'Личность', en: 'Person', es: 'Persona' },
+  { id: 'L4', layer: 4, triple: 'vital', ru: 'Мы / Дом', en: 'We / DOM', es: 'Nosotros / DOM' },
+  { id: 'L5', layer: 5, triple: 'mental', ru: 'Восприятие', en: 'Perception', es: 'Percepción' },
+  { id: 'L6', layer: 6, triple: 'mental', ru: 'Знание', en: 'Knowledge', es: 'Saber' },
+  { id: 'L7', layer: 7, triple: 'mental', ru: 'Сверхсистема', en: 'Supersystem', es: 'Supersistema' },
 ];
+const RHYTHM_TRIPLE = {
+  physics: { ru: 'Физика', en: 'Physics', layers: [1, 2] },
+  vital: { ru: 'Жизнь', en: 'Vital', layers: [3, 4] },
+  mental: { ru: 'Ум', en: 'Mental', layers: [5, 6, 7] },
+};
 
 const STATUS_LEVEL = {
   harmonic: 0.85,
@@ -654,10 +711,43 @@ const STATUS_LEVEL = {
   silence: 0.1,
 };
 
+function layerOfCell(code) {
+  const p = parseCell(code);
+  return p ? p.i : null;
+}
+
+function rhythmFromLive(system, agents, placements) {
+  const actById = {};
+  (agents || []).forEach((a) => { if (a && a.agent_id) actById[a.agent_id] = a; });
+  const byLayer = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+  Object.values(placements || {}).forEach((p) => {
+    const layer = layerOfCell(p && p.cell);
+    if (!layer) return;
+    byLayer[layer].push(p.agent_id);
+  });
+  const status = (system && system.status) || 'unknown';
+  const base = STATUS_LEVEL[status] != null ? STATUS_LEVEL[status] : 0.35;
+  const maxOcc = Math.max(1, ...RHYTHM_LAYERS.map((L) => byLayer[L.layer].length));
+  const layers = RHYTHM_LAYERS.map((L) => {
+    const ids = byLayer[L.layer];
+    const actions = ids.reduce((s, id) => s + (Number(actById[id] && actById[id].actions_per_min) || 0), 0);
+    const occ = ids.length / maxOcc;
+    const pulse = Math.min(1, actions / 4);
+    const level = Math.max(0.06, Math.min(1, 0.25 * base + 0.45 * occ + 0.3 * pulse));
+    return {
+      ...L,
+      level: +level.toFixed(3),
+      available: true,
+      agents_in_layer: ids.length,
+      actions_per_min: +actions.toFixed(3),
+    };
+  });
+  return layers;
+}
+
 /**
- * There is a JSON /api/rhythm on monad-server (auth via X-API-Key). We prefer it;
- * dashboard HTML parse remains as fallback. Biological layers (circ/breath/heart)
- * are returned as available:false / level:null until measured.
+ * Live pulse of the 7 vertical layers (monad.spec.rhythm.v0_3 triple).
+ * Dashboard agent-ops is the live signal; occupancy comes from monad.placement.
  */
 async function fetchSystemRhythm() {
   const headers = { Accept: 'text/html' };
@@ -689,34 +779,15 @@ async function fetchSystemRhythm() {
       err_rate: (m[6] || '').trim(),
     });
   }
-
-  // Map real system status → equalizer bars (honest: agent-ops rhythm, not body sensors).
-  const base = STATUS_LEVEL[status] != null ? STATUS_LEVEL[status] : 0.4;
-  const maxAct = Math.max(0.01, ...agents.map((a) => a.actions_per_min || 0));
-  const avgAct = agents.length
-    ? agents.reduce((s, a) => s + (a.actions_per_min || 0), 0) / agents.length
-    : 0;
   const collisionsM = meta.match(/коллизий[^0-9]*(\d+)/i);
   const collisions = collisionsM ? parseInt(collisionsM[1], 10) : 0;
-  const collisionPenalty = Math.min(0.4, collisions / 200);
-
-  const layers = RHYTHM_LAYERS.map((L) => {
-    let level = base;
-    if (L.id === 'agent') level = Math.min(1, avgAct / Math.max(0.5, maxAct * 0.5));
-    else if (L.id === 'social') level = Math.max(0.05, base - collisionPenalty);
-    else if (L.id === 'action' || L.id === 'ultradian') level = Math.min(1, base + (avgAct > 1 ? 0.1 : 0));
-    else if (L.id === 'metab') level = Math.max(0.1, 1 - collisionPenalty);
-    // circ/breath/heart: NOT measured by Monad yet — mark unavailable (null level)
-    else if (L.id === 'circ' || L.id === 'breath' || L.id === 'heart') {
-      return { ...L, level: null, available: false };
-    }
-    return { ...L, level: Math.max(0, Math.min(1, +level.toFixed(3))), available: true };
-  });
-
+  const placements = await loadPlacements().catch(() => ({}));
   return {
     source: 'dashboard_system_rhythm',
-    note: 'Live «Ритм системы» from Monad dashboard (agent actions/drift). Biological layers (circ/breath/heart) are not in Monad API yet — asked Monad for JSON /api/rhythm.',
+    note: 'Пульс слоёв L1–L7: рассадка monad.placement + live-действия с дашборда. Не биологический EEG. Канон: monad.spec.rhythm.v0_3 (физика / жизнь / ум).',
     updated_at: new Date().toISOString(),
+    spec: 'monad.spec.rhythm.v0_3',
+    triple: RHYTHM_TRIPLE,
     system: {
       status,
       meta,
@@ -725,46 +796,36 @@ async function fetchSystemRhythm() {
       dashboard_url: MONAD_DASHBOARD,
     },
     agents,
-    layers,
+    layers: rhythmFromLive({ status }, agents, placements),
   };
 }
 
 function normalizeRhythmPayload(data, source, note) {
   const src = data && typeof data === 'object' ? data : {};
-  let layers = Array.isArray(src.layers) ? src.layers : [];
   const agents = Array.isArray(src.agents) ? src.agents : [];
-  if (!layers.length && agents.length) {
-    const maxAct = Math.max(0.01, ...agents.map((a) => Number(a.actions_per_min) || 0));
-    const avgAct = agents.reduce((s, a) => s + (Number(a.actions_per_min) || 0), 0) / agents.length;
-    layers = RHYTHM_LAYERS.map((L) => {
-      if (L.id === 'circ' || L.id === 'breath' || L.id === 'heart') {
-        return { ...L, level: null, available: false };
-      }
-      let level = 0.4;
-      if (L.id === 'agent') level = Math.min(1, avgAct / Math.max(0.5, maxAct * 0.5));
-      else if (L.id === 'social') level = Math.min(1, agents.length / 12);
-      else if (L.id === 'ultradian') level = Math.min(1, 0.35 + avgAct / 10);
-      else if (L.id === 'metab') level = 0.55;
-      return { ...L, level: +level.toFixed(3), available: true };
-    });
+  let layers = Array.isArray(src.layers) ? src.layers : [];
+  const looksLikeCanon = layers.length && layers.every((L) => /^L[1-7]$/.test(String(L.id || '')));
+  if (!looksLikeCanon) {
+    layers = src.layers_from_live || [];
+  }
+  if (!layers.length) {
+    layers = RHYTHM_LAYERS.map((L) => ({ ...L, level: null, available: false }));
   } else {
     layers = layers.map((L) => {
-      const meta = RHYTHM_LAYERS.find((x) => x.id === L.id) || {};
-      const available = L.available !== false && L.level != null;
+      const meta = RHYTHM_LAYERS.find((x) => x.id === L.id || x.layer === L.layer) || {};
       return {
         ...meta,
         ...L,
-        available,
+        available: L.available !== false && L.level != null,
         level: L.level == null ? null : Math.max(0, Math.min(1, Number(L.level) || 0)),
       };
     });
-    if (!layers.length) {
-      layers = RHYTHM_LAYERS.map((L) => ({ ...L, level: null, available: false }));
-    }
   }
   return {
     source: source || src.source || 'unknown',
     note: note || src.note || '',
+    spec: src.spec || 'monad.spec.rhythm.v0_3',
+    triple: src.triple || RHYTHM_TRIPLE,
     updated_at: src.updated_at || new Date().toISOString(),
     system: src.system || null,
     agents,
@@ -781,10 +842,16 @@ async function getRhythm() {
     const res = await fetch(MONAD_BASE + '/api/rhythm', { headers });
     if (res.ok) {
       const data = await res.json();
+      const placements = await loadPlacements().catch(() => ({}));
+      if (!data.layers || !data.layers.some((L) => /^L[1-7]$/.test(String(L.id || '')))) {
+        data.layers = rhythmFromLive(data.system || {}, data.agents || [], placements);
+        data.triple = RHYTHM_TRIPLE;
+        data.spec = 'monad.spec.rhythm.v0_3';
+      }
       return normalizeRhythmPayload(
         data,
         'monad_api_rhythm',
-        'Native JSON /api/rhythm from monad-server'
+        data.note || 'Native JSON /api/rhythm, mapped onto L1–L7'
       );
     }
   } catch (_) { /* fall through */ }
@@ -792,27 +859,19 @@ async function getRhythm() {
   return normalizeRhythmPayload(dash, dash.source, dash.note);
 }
 
-function synthRhythm(agents) {
+function synthRhythm(agents, placements) {
   const list = Array.isArray(agents) ? agents : [];
-  const active = list.filter((a) => a.status === 'active').length;
-  const training = list.filter((a) => /train|certif/i.test(a.status || '')).length;
-  const retired = list.filter((a) => /retir|suspend/i.test(a.status || '')).length;
-  const total = Math.max(1, list.length);
+  const fakeLive = list.map((a) => ({
+    agent_id: a.agent_id,
+    actions_per_min: a.status === 'active' ? 0.4 : 0,
+  }));
   return {
     source: 'synthetic_from_agents',
-    note: 'Fallback only if dashboard parse fails.',
+    note: 'Fallback only if dashboard parse fails. Bars = occupancy of 7×7 cells.',
+    spec: 'monad.spec.rhythm.v0_3',
+    triple: RHYTHM_TRIPLE,
     updated_at: new Date().toISOString(),
-    layers: RHYTHM_LAYERS.map((L, i) => {
-      let level = 0.25;
-      if (L.id === 'agent') level = active / total;
-      else if (L.id === 'social') level = Math.min(1, (active + training) / total);
-      else if (L.id === 'circ') level = 0.55 + 0.2 * Math.sin(Date.now() / 3.6e6);
-      else if (L.id === 'ultradian') level = 0.4 + 0.25 * Math.sin(Date.now() / 5.4e5 + i);
-      else if (L.id === 'breath') level = 0.45 + 0.15 * Math.sin(Date.now() / 8000);
-      else if (L.id === 'heart') level = 0.5 + 0.1 * Math.sin(Date.now() / 1200);
-      else if (L.id === 'metab') level = Math.max(0.1, 1 - retired / total);
-      return { ...L, level: Math.max(0, Math.min(1, +level.toFixed(3))), agents_active: L.id === 'agent' ? active : undefined };
-    }),
+    layers: rhythmFromLive({ status: 'drifting' }, fakeLive, placements || {}),
   };
 }
 
@@ -831,6 +890,7 @@ module.exports = {
   VERTICAL_LAYERS,
   VERTICAL_NUCLEI: VERTICAL_LAYERS,
   CIRCLE_SLOTS,
+  CIRCLE_INACTIVE,
   publicLayer,
   publicNucleus: publicLayer,
   cellCode,
@@ -838,9 +898,16 @@ module.exports = {
   loadPlacements,
   placementOf,
   cellsOfPlacement,
+  friendList,
+  kindOfPlacement,
+  CONTOUR_LABELS,
+  PROJECT_LABELS,
+  labelContour,
+  labelProject,
   circleSlotFor,
   loadDirectoryPeople,
   RHYTHM_LAYERS,
+  RHYTHM_TRIPLE,
   synthRhythm,
   fetchSystemRhythm,
   getRhythm,

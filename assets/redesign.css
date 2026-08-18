@@ -1127,6 +1127,54 @@ body.method-flashlight {
 }
 .monad-viz-legend { color:var(--text-secondary,#c5ccd4); font-size:13px; line-height:1.5; margin:0 0 1rem; max-width:72ch; }
 .monad-viz-split { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(280px,0.9fr); gap:1.2rem; align-items:start; }
+.monad-viz-split-wide { grid-template-columns:minmax(0,1.7fr) minmax(280px,0.85fr); }
+.monad-viz-h { font-size:14px; margin:0.85rem 0 0.35rem; }
+.monad-matrix-scroll { overflow:auto; max-height:min(78vh,920px); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:0.5rem; background:rgba(0,0,0,0.2); }
+.monad-matrix {
+  display:grid; grid-template-columns:108px repeat(7,minmax(118px,1fr));
+  gap:4px; min-width:980px;
+}
+.monad-matrix-corner { }
+.monad-matrix-colh {
+  text-align:center; font-size:11px; letter-spacing:0.08em; color:var(--text-dim);
+  padding:0.35rem 0; font-family:'Unbounded',sans-serif;
+}
+.monad-matrix-rowh {
+  display:flex; flex-direction:column; justify-content:center; gap:2px;
+  padding:0.4rem 0.45rem; border-radius:8px; background:rgba(255,255,255,0.03);
+  cursor:pointer; font-size:11px;
+}
+.monad-matrix-rowh.on { background:rgba(168,247,255,0.08); }
+.monad-matrix-rowh b { font-size:11px; }
+.monad-matrix-rowh em { font-style:normal; color:var(--text-dim); font-size:10px; }
+.monad-matrix-cell {
+  display:flex; flex-direction:column; align-items:stretch; gap:3px; text-align:left;
+  border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.28); color:inherit;
+  border-radius:8px; padding:0.35rem 0.35rem 0.4rem; font:inherit; min-height:92px; cursor:pointer;
+}
+.monad-matrix-cell.filled { border-color:rgba(168,247,255,0.28); }
+.monad-matrix-cell.spine { box-shadow:inset 0 0 0 1px rgba(0,224,255,0.25); }
+.monad-matrix-cell.on { border-color:rgba(0,224,255,0.55); background:rgba(0,224,255,0.1); }
+.monad-matrix-cell .code { font-family:ui-monospace,monospace; font-size:10px; opacity:0.7; }
+.monad-matrix-cell .nm { font-size:10px; line-height:1.25; color:var(--text-secondary); }
+.monad-matrix-cell .chips { display:flex; flex-wrap:wrap; gap:3px; max-height:72px; overflow:auto; }
+.monad-agent-chip.tiny { font-size:10px; padding:0.1rem 0.35rem; border-radius:6px; }
+.monad-agent-chip.kind-human_persona { border-color:rgba(0,224,255,0.45); }
+.monad-agent-chip.kind-contour_persona { border-color:rgba(232,196,104,0.55); }
+.monad-agent-chip.kind-project_persona { border-color:rgba(255,255,255,0.35); }
+.monad-agent-chip.kind-skill { border-color:rgba(255,255,255,0.12); }
+.monad-person.empty.pressed {
+  opacity:0.55; pointer-events:none; width:64px; height:38px;
+  background:rgba(0,0,0,0.55); box-shadow:inset 0 4px 8px rgba(0,0,0,0.55);
+  border-color:rgba(255,255,255,0.06);
+}
+button.monad-dom-center { cursor:pointer; color:inherit; font:inherit; }
+button.monad-dom-center.on { box-shadow:0 0 18px rgba(0,224,255,0.45); }
+.monad-branch { margin:0.35rem 0 0.7rem; padding:0.45rem 0.55rem; border-radius:10px; border:1px solid rgba(232,196,104,0.22); }
+.monad-branch.project { border-color:rgba(255,255,255,0.14); }
+.monad-branch-name { font-size:12px; font-weight:600; margin-bottom:0.3rem; }
+.monad-unplaced-g { margin:0.35rem 0; }
+.monad-unplaced-g summary { cursor:pointer; color:var(--text-secondary); font-size:12px; }
 @media (max-width:900px){ .monad-viz-split { grid-template-columns:1fr; } }
 .monad-viz-panel {
   border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:1rem;
