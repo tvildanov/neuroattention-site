@@ -86,3 +86,18 @@ http_headers = { "X-API-Key" = "monad_IGcU7u8nFEVAMniO5l9X7ENvvxRyhOS1" }
    `[ESCALATE→FABLE]`, или скажи Никите отдать вопрос Тахиру).
 3. ФИНАЛ: запись в `JOURNAL.md` (или `write_context` если MCP подключён) —
    закон Манады, без исключений.
+
+---
+
+## Ground truth Манады (не выдумывать архитектуру)
+
+Вопросы про устройство Манады, агентов, вертикаль/горизонталь, кто есть кто:
+
+1. Сначала `get_architecture` (MCP) или `GET https://monad-server-production.up.railway.app/api/architecture`.
+2. ЛК UI: `GET /api/monad/architecture` (тот же живой pack в поле `live`).
+3. Детали — `read_context` с точным `key=` (`monad.spec.layers_7x7.v0_1`, `monad.spec.circle12.slots.v0_1`, `monad.directory.people.v1`).
+4. Нет поля = «неизвестно в каноне». Не изобретать оси UI, агентов, слоты.
+
+Вертикаль ЛК = 49 постов 7×7 (функции). Цепь R10 = Human → Persona → Contour → skill. Это два канона, не третья выдумка.
+Ритм: `GET /api/monad/rhythm` → Monad `/api/rhythm`.
+

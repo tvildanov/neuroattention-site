@@ -1,0 +1,15 @@
+---
+description: Never invent Monad architecture — live Neon only
+alwaysApply: true
+---
+
+# Ground Truth
+
+If the task is about MONAD (structure, agents, vertical/horizontal, who is who):
+
+1. Call MCP `get_architecture` or `GET https://monad-server-production.up.railway.app/api/architecture`.
+2. LK UI must use `/api/monad/architecture` (live agents + pack in `live`). Do not invent 7×7 names or circle hours.
+3. Details: `read_context` with exact `key=` from the pack. People: `resolve_person`.
+4. If a field is missing, say unknown in canon.
+
+R10 vertical (Human→Persona→Contour→skill) is not the same as LK 7×7 posts. Both come from Monad. Do not invent a third axis.
