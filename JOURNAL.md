@@ -7,6 +7,97 @@
 
 ---
 
+## 2026-08-18 — LK chat + Sketch 3D + Monad viz + full width
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T06:40:00Z",
+  "did": [
+    "Heuristic Persona answers hi / who / atlas without echo template",
+    "Hard-delete + rename chats in sidebar and header",
+    "Sketch 3D keeps live BodyAtlas; hide screenshot overlay; orbit on atlas",
+    "Vertical L1–L7 strip with 7×7 inner cells and clickable agents",
+    "Horizontal 12+1 clock seats (Nick 12, Tahir 6) with hover contours",
+    "Rhythm snapshot + Live rhythm equalizer from /api/rhythm",
+    "Full-width Monad / Sketch / Exercises; muted gray NAIcons"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/js/sketch-tool.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/js/sketch-tool.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "DELETE chat is hard delete (messages + row), not archive",
+    "3D Sketch reuses BodyAtlas.init(mode:full), never a still overlay",
+    "Vertical numbers mean active/total agents in that layer",
+    "Rhythm live mode polls real /api/rhythm and stops when leaving the tab"
+  ],
+  "followups": [
+    "Hard-refresh SW v73; new chat should answer привет / ты кто / атлас",
+    "Sketch 3D: draw layers, then Orbit should rotate the same atlas model"
+  ],
+  "next_session": "Confirm Pages v=11 + Railway architecture payload + Sketch orbit"
+}
+```
+
+---
+
+## 2026-08-18 — Explore sketch 3D/2D + exercises NAIcons (no code change)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T05:55:00Z",
+  "did": [
+    "Mapped sketch 3D vs 2D: setViewMode/ensureAtlas/setInteraction/screenshot vs BodyAtlas.init",
+    "Traced 3D-flash-then-2D: mount defaults to 3d; openWithPayload treats any imageDataUrl as 2d; media wrap z-index covers atlas",
+    "Mapped NAIcons stroke coloring for Exercises tab via CAT[].col hex, not CSS variables"
+  ],
+  "changed": [],
+  "files": [
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "docs/SKETCH-BRIEF.md",
+    "account.html",
+    "assets/js/na-icons.js",
+    "assets/redesign.css",
+    "data/css/mycelium.css"
+  ],
+  "decisions": [
+    "Sketch does not reuse window._anatomyAtlas instance; it new-inits BodyAtlas in #sketch-3d-host; anatomy atlas is screenshot-only",
+    "3D-from-2D keeps image overlay on top of 3D host (z-index 3 over 2)"
+  ],
+  "followups": [
+    "If fixing flash: do not setViewMode(2d) when payload.mode==='3d'; hide media wrap in 3d unless explicitly overlaying; abort ensureAtlas.then if viewMode flipped"
+  ],
+  "next_session": "Patch openWithPayload + applyMedia stacking if product wants real 3D after copy"
+}
+```
+
+---
+
+
 ## 2026-08-17 — LK follow-ups vanished after 1–3 turns
 
 ```json

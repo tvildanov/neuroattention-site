@@ -210,62 +210,82 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   const name = publicFact(factVal(facts, 'legal_name'))
     || (person && (person.display_name || (person.aliases && person.aliases[0])))
     || humanId;
-  const first = String(name).split(' ')[0] || name;
+  const first = String(name).split(/[\s/]+/)[0] || name;
   const aliases = (person && person.aliases) || [];
   const role = publicFact(factVal(facts, 'role') || (person && person.role_title) || '');
   const t = String(text || '').trim();
-  const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто|who\s+is\s+this/i.test(t);
-  const whoYou = /кто\s+ты|с\s+кем\s+я|who\s+are\s+you|who\s+am\s+i\s+talking|кто\s+это/i.test(t);
-  const canDo = /что ты умеешь|что ты можешь|какие у меня контур|к чему есть доступ|what can you do|what do you (do|can)/i.test(t);
-  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)\b/i.test(t) && t.length < 48;
+  const low = t.toLowerCase();
+  const whoAmI = /кто\s+я|who\s+am\s+i|знаешь\s+кто|ты\s+знаешь\s+кто/i.test(t);
+  const whoYou = /кто\s+ты|ты\s+кто|who\s+are\s+you|who\s+am\s+i\s+talking|с\s+кем\s+я/i.test(t);
+  const canDo = /что ты умеешь|что ты можешь|какие у меня контур|к чему есть доступ|what can you do/i.test(t);
+  const hi = /^(привет|хай|здравствуй|здравствуйте|hello|hi|hey)[!.…\s]*$/i.test(t);
 
   const contours = contourLines(person, humanId, lang);
   const contourBlock = contours.length
     ? (ru ? ('Контуры: ' + contours.join('; ') + '.') : ('Contours: ' + contours.join('; ') + '.'))
     : '';
 
-  if (canDo) {
-    if (ru) {
-      return [
-        `Я твоя Persona в этом чате ЛК — лицо Манады для тебя, не служебный канал.`,
-        `Здесь я отвечаю сразу: ритм, вертикаль/горизонталь, задачи по сайту (атлас, Sketch, практики, кабинет), и разговор по контуру.`,
-        contourBlock || 'Контур NeuroAttention: Lab / знание / обучение.',
-        humanId === 'nikita'
-          ? 'Доступ полный: founder NeuroAttention и super-admin кабинета. Скажи, что открыть или сделать — без эха твоего текста и без технических seed.'
-          : 'Доступ — твой контур в Манаде и вкладка Монада в кабинете. Скажи, что сделать.',
-      ].filter(Boolean).join(' ');
-    }
-    return [
-      `I am your Monad Persona in this cabinet chat.`,
-      `I answer here: rhythm, maps, site tasks (atlas, Sketch, practices, cabinet), and your contour.`,
-      contourBlock,
-      humanId === 'nikita'
-        ? 'Access: founder / super-admin of NeuroAttention. Tell me what to open or do.'
-        : 'Access: your Monad contour and the Monad tab. Tell me what to do.',
-    ].filter(Boolean).join(' ');
-  }
-
-  if (whoAmI || (hi && /знаешь|know who/i.test(t))) {
-    const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
-    if (ru) {
-      return `Привет, ${first}. Да — ты ${name}${aka}${role ? '. ' + role : '.'} Это чат с Манадой в ЛК. Пиши сюда — отвечаю в этом же треде.`;
-    }
-    return `Hi, ${first}. Yes — you are ${name}${aka}${role ? '. ' + role : '.'} This is Monad in the cabinet. I answer in this same thread.`;
+  if (hi) {
+    return ru
+      ? `Привет, ${first}. Я твоя Persona в этом чате ЛК — не шаблон и не служебный канал. Спрашивай прямо: кто я, атлас, Sketch, ритм, контур.`
+      : `Hi, ${first}. I am your Persona in this cabinet chat. Ask directly: who I am, atlas, Sketch, rhythm, contour.`;
   }
   if (whoYou) {
     return ru
-      ? `Я твоя Persona Манады в этом чате ЛК. Ритм, сайт, контур — спрашивай прямо.`
-      : `I am your Monad Persona in this cabinet chat. Rhythm, site, contour — ask directly.`;
+      ? `Я Persona Манады для тебя в личном кабинете NeuroAttention. Лицо контура в этом чате: отвечаю здесь, без Telegram-моста. Могу про ритм, вертикаль/горизонталь, атлас, Sketch, практики.`
+      : `I am your Monad Persona in the NeuroAttention cabinet chat. I answer here. Rhythm, maps, atlas, Sketch, practices — ask.`;
   }
-  if (hi && t.length < 40) {
-    return ru ? `Привет, ${first}. Я здесь, в этом же чате. Что нужно?` : `Hi, ${first}. I'm here. What do you need?`;
+  if (whoAmI) {
+    const aka = aliases.length ? ` (${aliases.slice(0, 3).join(', ')})` : '';
+    return ru
+      ? `Ты ${name}${aka}${role ? '. ' + role : '.'} Super-admin этого кабинета. Это твой чат с Манадой.`
+      : `You are ${name}${aka}${role ? '. ' + role : '.'} Super-admin of this cabinet. This is your Monad chat.`;
+  }
+  if (canDo) {
+    return ru
+      ? `В этом чате я отвечаю сразу. Во вкладках Манады: вертикаль (7 слоёв L1–L7), горизонталь (круг 12+1), ритм (живой эквалайзер). На сайте: Internal Field — 3D-атлас, Sketch — рисунок на том же теле, упражнения. ${contourBlock}`
+      : `I answer in this chat. Monad tabs: vertical 7×7, horizontal 12+1, live rhythm. Site: 3D atlas, Sketch on the same body, exercises. ${contourBlock}`;
+  }
+  if (/атлас|atlas|anatom|internal field|внутренн/i.test(low)) {
+    return ru
+      ? `Атлас — вкладка Инструменты → Internal Field. Там то же 3D-тело: вращение, слои, осмотр. Sketch должен брать эту же модель, не плоский скрин. Открой Internal Field, если нужно крутить анатомию.`
+      : `Atlas is Tools → Internal Field: the 3D body you can orbit. Sketch should use that same model, not a flat shot.`;
+  }
+  if (/sketch|скетч|рису/i.test(low)) {
+    return ru
+      ? `Sketch — рисунок на 3D-теле Атласа. Режим «3D» держит живую модель, «Вращать 3D» отдаёт орбиту, «Рисовать» — слои поверх. Если 3D вспыхивает и пропадает, это баг оверлея скриншота — его как раз чиним.`
+      : `Sketch draws on the Atlas 3D body. Mode 3D keeps the live model; Orbit rotates; Draw paints layers.`;
+  }
+  if (/упражн|тест|exercise|corsi|stroop/i.test(low)) {
+    return ru
+      ? `Упражнения и тесты — во вкладке Инструменты. Это тренажёры внимания/памяти, не диагноз. Запускаются на всю ширину кабинета.`
+      : `Exercises & Tests live under Tools. Attention/memory trainers, not a diagnosis.`;
+  }
+  if (/вертикал|vertical|7\s*[x×]\s*7|ядер/i.test(low)) {
+    return ru
+      ? `Вертикаль — 7 слоёв единого поля Манады, не «новые сущности». Снизу L1 Тело → L7 Поле. Наведи слой: внутри 7 ячеек. Нажми — агенты этого слоя, чей контур, статус.`
+      : `Vertical is 7 layers of Monad (L1 Body at the bottom → L7 Field). Hover a layer for 7 inner cells; click for agents.`;
+  }
+  if (/горизонтал|horizontal|12\s*\+|круг|кругл/i.test(low)) {
+    return ru
+      ? `Горизонталь — круг 12+1: в центре DOM, по часам люди контура. Никита на 12, Тахир напротив на 6. Наведи человека — его персоны и агенты.`
+      : `Horizontal is the 12+1 ring: DOM in the center, people on the clock. Hover someone for their contour.`;
+  }
+  if (/ритм|rhythm|equalizer|эквалайз/i.test(low)) {
+    return ru
+      ? `Ритм — слои системы Monad (агенты, социальный, метаболизм…). Статика по умолчанию; кнопка «Живой ритм» включает онлайн-эквалайзер с реальных /api/rhythm, и гаснет при уходе со вкладки.`
+      : `Rhythm is Monad system layers. Default is a snapshot; “Live rhythm” turns on a real equalizer from /api/rhythm.`;
+  }
+  if (/удал|rename|переимен|чат/i.test(low) && /чат|chat/i.test(low)) {
+    return ru
+      ? `Чаты: в списке слева карандаш — переименовать, крестик — удалить. В шапке треда тоже есть Удалить.`
+      : `Chats: pencil to rename, × to delete, in the left list.`;
   }
 
-  const snip = t.replace(/\s+/g, ' ').slice(0, 90);
   if (ru) {
-    return `По этому сообщению («${snip}${t.length > 90 ? '…' : ''}») — я здесь, в этом же чате, и отвечаю на каждый ход. Напиши, что сделать: ритм, атлас, Sketch, практики, кабинет, или уточни вопрос.`;
+    return `Не свожу это к шаблону. Скажи задачу одним предложением: атлас, Sketch, вертикаль, горизонталь, ритм, упражнения — или что сделать в кабинете.`;
   }
-  return `On this message (“${snip}${t.length > 90 ? '…' : ''}”) — I am here in this same chat and I answer every turn. Name an action: rhythm, atlas, Sketch, practices, cabinet, or sharpen the question.`;
+  return `I am not templating that. Name the task: atlas, Sketch, vertical, horizontal, rhythm, exercises, or a cabinet action.`;
 }
 
 async function fetchJson(url, opts, timeoutMs) {
@@ -396,16 +416,172 @@ function isChannelAckText(text) {
   return false;
 }
 
-/** Vertical 7×7 nuclei (IV-layers matrix — labels for MVP viz). */
+/**
+ * Vertical 7×7 — seven layers of ONE Monad field (L1 bottom → L7 top).
+ * Inner cells are functions of that layer, not new products.
+ * Clock seats for Horizontal 12+1 (Nick at 12, Tahir opposite at 6).
+ */
 const VERTICAL_NUCLEI = [
-  { id: 'body', ru: 'Тело', en: 'Body', es: 'Cuerpo' },
-  { id: 'emotion', ru: 'Эмоция', en: 'Emotion', es: 'Emoción' },
-  { id: 'attention', ru: 'Внимание', en: 'Attention', es: 'Atención' },
-  { id: 'meaning', ru: 'Смысл', en: 'Meaning', es: 'Sentido' },
-  { id: 'relation', ru: 'Связь', en: 'Relation', es: 'Relación' },
-  { id: 'action', ru: 'Действие', en: 'Action', es: 'Acción' },
-  { id: 'field', ru: 'Поле', en: 'Field', es: 'Campo' },
+  {
+    id: 'body', layer: 1, ru: 'Тело', en: 'Body', es: 'Cuerpo',
+    sense_ru: 'Сома и физиология поля.',
+    sense_en: 'Soma and physiology of the field.',
+    sense_es: 'Soma y fisiología del campo.',
+    cells: [
+      { n: 1, ru: 'Сома', en: 'Soma', es: 'Soma', kw: /soma|skin|tissue/ },
+      { n: 2, ru: 'Висцера', en: 'Viscera', es: 'Víscera', kw: /organ|viscer|gut/ },
+      { n: 3, ru: 'Дыхание', en: 'Breath', es: 'Respiración', kw: /breath|respir/ },
+      { n: 4, ru: 'Моторика', en: 'Motor', es: 'Motor', kw: /motor|sport|move|motion|physio/ },
+      { n: 5, ru: 'Интероцепция', en: 'Interoception', es: 'Interocepción', kw: /intero|sensation|pain|anatomy/ },
+      { n: 6, ru: 'Поза', en: 'Posture', es: 'Postura', kw: /posture|balance|spine/ },
+      { n: 7, ru: 'Восстановление', en: 'Recovery', es: 'Recuperación', kw: /recover|sleep|rehab|heal|health/ },
+    ],
+  },
+  {
+    id: 'emotion', layer: 2, ru: 'Эмоция', en: 'Emotion', es: 'Emoción',
+    sense_ru: 'Аффект, валентность, регуляция.',
+    sense_en: 'Affect, valence, regulation.',
+    sense_es: 'Afecto, valencia, regulación.',
+    cells: [
+      { n: 1, ru: 'Валентность', en: 'Valence', es: 'Valencia', kw: /valen/ },
+      { n: 2, ru: 'Возбуждение', en: 'Arousal', es: 'Activación', kw: /arousal|activ/ },
+      { n: 3, ru: 'Аффект', en: 'Affect', es: 'Afecto', kw: /affect|feel|emot/ },
+      { n: 4, ru: 'Эмпатия', en: 'Empathy', es: 'Empatía', kw: /empath/ },
+      { n: 5, ru: 'Настроение', en: 'Mood', es: 'Ánimo', kw: /mood/ },
+      { n: 6, ru: 'Травма', en: 'Trauma', es: 'Trauma', kw: /trauma|psych/ },
+      { n: 7, ru: 'Регуляция', en: 'Regulation', es: 'Regulación', kw: /regulat/ },
+    ],
+  },
+  {
+    id: 'attention', layer: 3, ru: 'Внимание', en: 'Attention', es: 'Atención',
+    sense_ru: 'Фокус, переключение, торможение.',
+    sense_en: 'Focus, switching, inhibition.',
+    sense_es: 'Foco, cambio, inhibición.',
+    cells: [
+      { n: 1, ru: 'Фокус', en: 'Focus', es: 'Foco', kw: /focus|neuro/ },
+      { n: 2, ru: 'Удержание', en: 'Sustain', es: 'Sostener', kw: /sustain|hold/ },
+      { n: 3, ru: 'Переключение', en: 'Switch', es: 'Cambio', kw: /switch/ },
+      { n: 4, ru: 'Торможение', en: 'Inhibit', es: 'Inhibir', kw: /inhibit/ },
+      { n: 5, ru: 'Сканирование', en: 'Scan', es: 'Barrido', kw: /scan|perception/ },
+      { n: 6, ru: 'Замечание', en: 'Notice', es: 'Notar', kw: /notice|cognit/ },
+      { n: 7, ru: 'Покой', en: 'Rest', es: 'Reposo', kw: /rest|exercis/ },
+    ],
+  },
+  {
+    id: 'meaning', layer: 4, ru: 'Смысл', en: 'Meaning', es: 'Sentido',
+    sense_ru: 'Канон, метод, знание, язык.',
+    sense_en: 'Canon, method, knowledge, language.',
+    sense_es: 'Canon, método, saber, lenguaje.',
+    cells: [
+      { n: 1, ru: 'Канон', en: 'Canon', es: 'Canon', kw: /canon/ },
+      { n: 2, ru: 'Метод', en: 'Method', es: 'Método', kw: /method|protocol/ },
+      { n: 3, ru: 'Знание', en: 'Knowledge', es: 'Saber', kw: /know|learn/ },
+      { n: 4, ru: 'Язык', en: 'Language', es: 'Lengua', kw: /lang|book|reader|content/ },
+      { n: 5, ru: 'Нарратив', en: 'Narrative', es: 'Narrativa', kw: /narr|stor/ },
+      { n: 6, ru: 'Символ', en: 'Symbol', es: 'Símbolo', kw: /symbol/ },
+      { n: 7, ru: 'Протокол', en: 'Protocol', es: 'Protocolo', kw: /course|lesson/ },
+    ],
+  },
+  {
+    id: 'relation', layer: 5, ru: 'Связь', en: 'Relation', es: 'Relación',
+    sense_ru: 'Контур, персона, команда, забота.',
+    sense_en: 'Contour, persona, team, care.',
+    sense_es: 'Contorno, persona, equipo, cuidado.',
+    cells: [
+      { n: 1, ru: 'Семья', en: 'Family', es: 'Familia', kw: /family/ },
+      { n: 2, ru: 'Команда', en: 'Team', es: 'Equipo', kw: /team/ },
+      { n: 3, ru: 'Контур', en: 'Contour', es: 'Contorno', kw: /contour|human/ },
+      { n: 4, ru: 'Персона', en: 'Persona', es: 'Persona', kw: /persona/ },
+      { n: 5, ru: 'Социум', en: 'Social', es: 'Social', kw: /social|comms|telegram/ },
+      { n: 6, ru: 'Забота', en: 'Care', es: 'Cuidado', kw: /care/ },
+      { n: 7, ru: 'Конфликт', en: 'Conflict', es: 'Conflicto', kw: /conflict/ },
+    ],
+  },
+  {
+    id: 'action', layer: 6, ru: 'Действие', en: 'Action', es: 'Acción',
+    sense_ru: 'Код, ops, сборка, исполнение.',
+    sense_en: 'Code, ops, build, execute.',
+    sense_es: 'Código, ops, construir, ejecutar.',
+    cells: [
+      { n: 1, ru: 'Код', en: 'Code', es: 'Código', kw: /code|dev/ },
+      { n: 2, ru: 'Ops', en: 'Ops', es: 'Ops', kw: /ops|devops/ },
+      { n: 3, ru: 'Финансы', en: 'Finance', es: 'Finanzas', kw: /finance/ },
+      { n: 4, ru: 'Сборка', en: 'Build', es: 'Build', kw: /build|agent/ },
+      { n: 5, ru: 'Порядок', en: 'Order', es: 'Orden', kw: /order/ },
+      { n: 6, ru: 'Ремонт', en: 'Repair', es: 'Reparar', kw: /repair/ },
+      { n: 7, ru: 'Исполнение', en: 'Execute', es: 'Ejecutar', kw: /execut|action/ },
+    ],
+  },
+  {
+    id: 'field', layer: 7, ru: 'Поле', en: 'Field', es: 'Campo',
+    sense_ru: 'Коллектив, ритм, DOM, пространство.',
+    sense_en: 'Collective, rhythm, DOM, space.',
+    sense_es: 'Colectivo, ritmo, DOM, espacio.',
+    cells: [
+      { n: 1, ru: 'Пространство', en: 'Space', es: 'Espacio', kw: /space|spatial/ },
+      { n: 2, ru: 'Коллектив', en: 'Collective', es: 'Colectivo', kw: /collect/ },
+      { n: 3, ru: 'Ритм', en: 'Rhythm', es: 'Ritmo', kw: /rhythm/ },
+      { n: 4, ru: 'DOM', en: 'DOM', es: 'DOM', kw: /\bdom\b/ },
+      { n: 5, ru: 'XR', en: 'XR', es: 'XR', kw: /\bxr\b|lab/ },
+      { n: 6, ru: 'Сайт', en: 'Site', es: 'Sitio', kw: /site|web/ },
+      { n: 7, ru: 'Поле', en: 'Field', es: 'Campo', kw: /field/ },
+    ],
+  },
 ];
+
+/** Fixed 12+1 clock. Nick at 12, Tahir opposite at 6. */
+const CIRCLE_SLOTS = {
+  nikita: 12,
+  nastya: 1,
+  alisa: 3,
+  sofia: 5,
+  takhir: 6,
+  tahir: 6,
+  egor: 9,
+  artem: 10,
+};
+
+function publicNucleus(n) {
+  return {
+    id: n.id,
+    layer: n.layer,
+    ru: n.ru,
+    en: n.en,
+    es: n.es,
+    sense_ru: n.sense_ru,
+    sense_en: n.sense_en,
+    sense_es: n.sense_es,
+    cells: (n.cells || []).map((c) => ({ n: c.n, code: n.layer + '-' + c.n, ru: c.ru, en: c.en, es: c.es })),
+  };
+}
+
+function cellForAgent(agent, nucleusId) {
+  const n = VERTICAL_NUCLEI.find((x) => x.id === nucleusId);
+  const blob = `${agent.agent_id || ''} ${(agent.domains || []).join(' ')} ${agent.name || ''}`.toLowerCase();
+  if (n && n.cells) {
+    for (const c of n.cells) {
+      if (c.kw && c.kw.test(blob)) return c.n;
+    }
+  }
+  let h = 0;
+  const s = String(agent.agent_id || agent.name || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (h % 7) + 1;
+}
+
+function circleSlotFor(human) {
+  const meta = (human && human.metadata) || {};
+  const raw = meta.circle_slot || meta.clock || meta.hour || meta.clock_hour;
+  const n = parseInt(raw, 10);
+  if (n >= 1 && n <= 12) return n;
+  const id = String((human && human.human_id) || '').toLowerCase();
+  return CIRCLE_SLOTS[id] || null;
+}
+
+async function loadDirectoryPeople() {
+  try { await loadDirectoryPerson('__all__'); } catch (_) { /* cache may still fill */ }
+  return dirCache.people || {};
+}
 
 const RHYTHM_LAYERS = [
   { id: 'circ', ru: 'Циркадный', en: 'Circadian', es: 'Circadiano' },
@@ -499,6 +675,50 @@ async function fetchSystemRhythm() {
   };
 }
 
+function normalizeRhythmPayload(data, source, note) {
+  const src = data && typeof data === 'object' ? data : {};
+  let layers = Array.isArray(src.layers) ? src.layers : [];
+  const agents = Array.isArray(src.agents) ? src.agents : [];
+  if (!layers.length && agents.length) {
+    const maxAct = Math.max(0.01, ...agents.map((a) => Number(a.actions_per_min) || 0));
+    const avgAct = agents.reduce((s, a) => s + (Number(a.actions_per_min) || 0), 0) / agents.length;
+    layers = RHYTHM_LAYERS.map((L) => {
+      if (L.id === 'circ' || L.id === 'breath' || L.id === 'heart') {
+        return { ...L, level: null, available: false };
+      }
+      let level = 0.4;
+      if (L.id === 'agent') level = Math.min(1, avgAct / Math.max(0.5, maxAct * 0.5));
+      else if (L.id === 'social') level = Math.min(1, agents.length / 12);
+      else if (L.id === 'ultradian') level = Math.min(1, 0.35 + avgAct / 10);
+      else if (L.id === 'metab') level = 0.55;
+      return { ...L, level: +level.toFixed(3), available: true };
+    });
+  } else {
+    layers = layers.map((L) => {
+      const meta = RHYTHM_LAYERS.find((x) => x.id === L.id) || {};
+      const available = L.available !== false && L.level != null;
+      return {
+        ...meta,
+        ...L,
+        available,
+        level: L.level == null ? null : Math.max(0, Math.min(1, Number(L.level) || 0)),
+      };
+    });
+    if (!layers.length) {
+      layers = RHYTHM_LAYERS.map((L) => ({ ...L, level: null, available: false }));
+    }
+  }
+  return {
+    source: source || src.source || 'unknown',
+    note: note || src.note || '',
+    updated_at: src.updated_at || new Date().toISOString(),
+    system: src.system || null,
+    agents,
+    layers,
+    live: true,
+  };
+}
+
 /** Prefer native JSON /api/rhythm; fall back to dashboard HTML parse. */
 async function getRhythm() {
   try {
@@ -507,15 +727,15 @@ async function getRhythm() {
     const res = await fetch(MONAD_BASE + '/api/rhythm', { headers });
     if (res.ok) {
       const data = await res.json();
-      return {
-        source: 'monad_api_rhythm',
-        note: 'Native JSON /api/rhythm from monad-server',
-        updated_at: (data && data.updated_at) || new Date().toISOString(),
-        ...data,
-      };
+      return normalizeRhythmPayload(
+        data,
+        'monad_api_rhythm',
+        'Native JSON /api/rhythm from monad-server'
+      );
     }
   } catch (_) { /* fall through */ }
-  return fetchSystemRhythm();
+  const dash = await fetchSystemRhythm();
+  return normalizeRhythmPayload(dash, dash.source, dash.note);
 }
 
 function synthRhythm(agents) {
@@ -555,6 +775,11 @@ module.exports = {
   postLkChatMessage,
   EMAIL_HUMAN_MAP,
   VERTICAL_NUCLEI,
+  CIRCLE_SLOTS,
+  publicNucleus,
+  cellForAgent,
+  circleSlotFor,
+  loadDirectoryPeople,
   RHYTHM_LAYERS,
   synthRhythm,
   fetchSystemRhythm,

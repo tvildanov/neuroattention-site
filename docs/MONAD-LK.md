@@ -1,8 +1,6 @@
 # Монада в личном кабинете NeuroAttention — план и статус
 
-> **2026-08-17:** Чат ЛК отвечает **сразу в том же запросе**: сайт (контур `neuro_agent`) пишет Persona-ответ через `post_lk_chat_message`.  
-> Не ждём спящий `platform=persona` и не зовём Тахира.  
-> Служебные ack companion («Канал ЛК живой») скрыты.
+> **2026-08-18:** Чат отвечает по смыслу (не шаблон «по этому сообщению»). Чаты можно переименовать и удалить. Вертикаль 7×7 / горизонталь 12+1 / живой ритм. Sketch 3D = тот же BodyAtlas. Вкладки на всю ширину.
 
 **Для:** Ник (super-admin) и любой пользователь с `monad_access`
 
@@ -12,9 +10,9 @@
 
 | Что | Как проверить |
 |-----|----------------|
-| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=9 — в ответе `last-modified` после мержа |
+| **Pages (фронт)** | https://neuroattention.org/assets/js/monad-lk.js?v=11 — `last-modified` после мержа |
 | **Railway (API)** | `curl https://neuroattention-api-production.up.railway.app/health` → `"lk_live_reply": true` |
-| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v71` |
+| **В ЛК** | статус-бар: «Persona отвечает в этом чате» · SW `na-practices-v73` |
 
 Pages уже жил после PR #153 (~17:49 UTC). API на Railway катится отдельно: пока нет `lk_live_reply`, новый фронт молчит, потому что Persona-демон не отвечает.
 

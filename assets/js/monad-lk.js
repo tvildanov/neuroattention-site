@@ -18,6 +18,13 @@
     pendingAttachments: [],
     pollTimer: null,
     showTech: false,
+    vertLayer: null,
+    vertCell: null,
+    horizHour: null,
+    liveRhythm: false,
+    rhythmTimer: null,
+    rhythmRaf: null,
+    rhythmDisplay: [],
   };
 
   function t(key, fallback) {
@@ -74,6 +81,7 @@
     });
     if (id === 'vertical' || id === 'horizontal') ensureArchitecture();
     if (id === 'rhythm') ensureRhythm();
+    else stopLiveRhythm();
     if (id === 'chat') startPoll();
     else stopPoll();
   }
@@ -112,13 +120,30 @@
     host.innerHTML = STATE.chats.map(function (c) {
       var active = c.id === STATE.activeChatId ? ' active' : '';
       var preview = (c.last_text || '').slice(0, 60);
-      return '<button type="button" class="monad-chat-item' + active + '" data-chat-id="' + esc(c.id) + '">' +
+      return '<div class="monad-chat-row' + active + '" data-chat-id="' + esc(c.id) + '">' +
+        '<button type="button" class="monad-chat-item' + active + '" data-chat-id="' + esc(c.id) + '">' +
         '<div class="monad-chat-item-title">' + esc(c.title || t('a.monad.new_chat', 'Новый чат')) + '</div>' +
         (preview ? '<div class="monad-chat-item-prev">' + esc(preview) + '</div>' : '') +
-        '</button>';
+        '</button>' +
+        '<div class="monad-chat-item-actions">' +
+        '<button type="button" class="monad-chat-ico" data-rename="' + esc(c.id) + '" title="' + esc(t('a.monad.rename', 'Переименовать')) + '">✎</button>' +
+        '<button type="button" class="monad-chat-ico danger" data-del="' + esc(c.id) + '" title="' + esc(t('a.monad.delete', 'Удалить')) + '">×</button>' +
+        '</div></div>';
     }).join('');
     host.querySelectorAll('.monad-chat-item').forEach(function (b) {
       b.addEventListener('click', function () { openChat(b.getAttribute('data-chat-id')); });
+    });
+    host.querySelectorAll('[data-rename]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        renameChat(b.getAttribute('data-rename'));
+      });
+    });
+    host.querySelectorAll('[data-del]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        deleteChat(b.getAttribute('data-del'));
+      });
     });
   }
 
@@ -315,6 +340,38 @@
     await openChat(data.chat.id);
   }
 
+  async function renameChat(id) {
+    var chat = STATE.chats.filter(function (c) { return c.id === id; })[0];
+    if (!chat) return;
+    var next = window.prompt(t('a.monad.rename_prompt', 'Новое имя чата'), chat.title || '');
+    if (next == null) return;
+    next = String(next).trim().slice(0, 120);
+    if (!next) return;
+    try {
+      var data = await api('/api/monad/chats/' + encodeURIComponent(id), {
+        method: 'PATCH', body: JSON.stringify({ title: next }),
+      });
+      STATE.chats = STATE.chats.map(function (c) { return c.id === id ? Object.assign({}, c, data.chat) : c; });
+      renderChatList();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function deleteChat(id) {
+    if (!id) return;
+    if (!window.confirm(t('a.monad.delete_q', 'Удалить этот чат безвозвратно?'))) return;
+    try {
+      await api('/api/monad/chats/' + encodeURIComponent(id), { method: 'DELETE' });
+      STATE.chats = STATE.chats.filter(function (c) { return c.id !== id; });
+      if (STATE.activeChatId === id) {
+        STATE.activeChatId = STATE.chats[0] ? STATE.chats[0].id : null;
+        STATE.messages = [];
+        if (STATE.activeChatId) await openChat(STATE.activeChatId);
+        else { renderMessages(); renderPinned(); }
+      }
+      renderChatList();
+    } catch (e) { alert(e.message); }
+  }
+
   async function openChat(id) {
     STATE.activeChatId = id;
     STATE.pendingAttachments = [];
@@ -467,80 +524,307 @@
     if (STATE.pollTimer) { clearInterval(STATE.pollTimer); STATE.pollTimer = null; }
   }
 
-  /* ── architecture / rhythm (unchanged) ─────────────────────────────── */
+  /* ── architecture / rhythm ─────────────────────────────────────────── */
+  function locLang() {
+    return (document.documentElement.lang || 'ru').slice(0, 2);
+  }
+  function locField(obj, key) {
+    if (!obj) return '';
+    var lang = locLang();
+    return obj[key + '_' + lang] || obj[lang] || obj[key + '_ru'] || obj.ru || obj.en || '';
+  }
+  function agentCard(a) {
+    if (!a || !a.agent_id) return '';
+    return '<button type="button" class="monad-agent-chip" data-agent="' + esc(a.agent_id) + '">' +
+      '<span class="dot ' + esc(a.status || '') + '"></span>' +
+      '<span class="bn">' + esc(a.name || a.agent_id) + '</span></button>';
+  }
+  function agentDetail(a) {
+    if (!a) return '<p class="monad-muted">' + esc(t('a.monad.pick_agent', 'Нажми агента — владелец, контур, статус.')) + '</p>';
+    var html = '<div class="monad-agent-detail">';
+    html += '<h4>' + esc(a.name || a.agent_id) + '</h4>';
+    html += '<p class="monad-muted"><code>' + esc(a.agent_id) + '</code></p>';
+    html += '<dl class="monad-dl">';
+    html += '<dt>' + esc(t('a.monad.owner', 'Владелец')) + '</dt><dd>' + esc(a.owner_name || a.owner || '—') + '</dd>';
+    html += '<dt>' + esc(t('a.monad.status', 'Статус')) + '</dt><dd>' + esc(a.status || '—') + '</dd>';
+    html += '<dt>' + esc(t('a.monad.platform', 'Платформа')) + '</dt><dd>' + esc(a.platform || '—') + '</dd>';
+    html += '<dt>' + esc(t('a.monad.contour', 'Контур')) + '</dt><dd>' + esc((a.contour && a.contour.length) ? a.contour.join(', ') : '—') + '</dd>';
+    html += '<dt>' + esc(t('a.monad.domains', 'Домены')) + '</dt><dd>' + esc((a.domains && a.domains.length) ? a.domains.join(', ') : '—') + '</dd>';
+    html += '</dl></div>';
+    return html;
+  }
+  function findAgent(id) {
+    var arch = STATE.arch;
+    if (!arch || !id) return null;
+    var found = null;
+    (arch.vertical || []).forEach(function (n) {
+      (n.agents || []).forEach(function (a) { if (a.agent_id === id) found = a; });
+    });
+    if (found) return found;
+    ((arch.horizontal && arch.horizontal.persons) || []).forEach(function (p) {
+      (p.agents || []).forEach(function (a) { if (a.agent_id === id) found = a; });
+    });
+    return found;
+  }
+
   function renderVertical(arch) {
     var host = document.getElementById('monad-vertical');
     if (!host || !arch) return;
-    var lang = (document.documentElement.lang || 'ru').slice(0, 2);
-    var html = '<div class="monad-vert-grid">';
-    (arch.vertical || []).forEach(function (n) {
-      var label = n[lang] || n.ru || n.id;
-      html += '<div class="monad-nucleus">';
-      html += '<div class="monad-nucleus-head"><span>' + esc(label) + '</span>';
-      html += '<span class="monad-muted">' + (n.active || 0) + '/' + (n.total || 0) + '</span></div>';
-      html += '<div class="monad-branches">';
-      (n.branches || []).forEach(function (b) {
-        var empty = !b.agent_id || b.status === 'empty';
-        html += '<div class="monad-branch' + (empty ? ' empty' : '') + '" title="' + esc(b.agent_id || '') + '">';
-        html += '<span class="dot ' + esc(b.status || 'empty') + '"></span>';
-        html += '<span class="bn">' + esc(empty ? '—' : (b.name || b.agent_id)) + '</span></div>';
+    var layers = (arch.vertical || []).slice().sort(function (a, b) { return (a.layer || 0) - (b.layer || 0); });
+    var selected = layers.filter(function (n) { return n.id === STATE.vertLayer; })[0] || null;
+    var selectedCell = null;
+    if (selected && STATE.vertCell) {
+      selectedCell = (selected.cells || []).filter(function (c) { return String(c.n) === String(STATE.vertCell); })[0] || null;
+    }
+    var html = '<div class="monad-viz-split">';
+    html += '<div class="monad-vert-col">';
+    html += '<p class="monad-viz-legend">' + esc((arch.legend && (arch.legend[locLang()] || arch.legend.ru)) || t('a.monad.vertical_help', '7 слоёв одного поля. L1 Тело внизу, L7 Поле наверху. Наведи слой — 7 внутренних ячеек. Нажми — агенты.')) + '</p>';
+    html += '<div class="monad-vert-strip" role="list">';
+    layers.forEach(function (n) {
+      var label = n[locLang()] || n.ru || n.id;
+      var on = n.id === STATE.vertLayer ? ' on' : '';
+      var sense = locField(n, 'sense');
+      html += '<div class="monad-vert-layer' + on + '" data-layer="' + esc(n.id) + '" role="listitem">';
+      html += '<button type="button" class="monad-vert-band" data-layer="' + esc(n.id) + '">';
+      html += '<span class="monad-vert-l">L' + esc(n.layer) + '</span>';
+      html += '<span class="monad-vert-name">' + esc(label) + '</span>';
+      html += '<span class="monad-vert-count" title="' + esc(t('a.monad.agents_active', 'Активные агенты / все агенты этого слоя')) + '">' +
+        (n.active || 0) + ' ' + esc(t('a.monad.of', 'из')) + ' ' + (n.total || 0) + '</span>';
+      html += '</button>';
+      html += '<div class="monad-vert-inners">';
+      (n.cells || []).slice().sort(function (a, b) { return b.n - a.n; }).forEach(function (c) {
+        var code = (n.layer || '') + '-' + c.n;
+        var cellOn = (STATE.vertLayer === n.id && String(STATE.vertCell) === String(c.n)) ? ' on' : '';
+        var nm = c[locLang()] || c.ru || code;
+        html += '<button type="button" class="monad-vert-cell' + (c.occupied ? ' filled' : '') + cellOn + '" data-layer="' + esc(n.id) + '" data-cell="' + c.n + '" title="' + esc(code + ' · ' + nm) + '">';
+        html += '<span class="code">' + esc(code) + '</span><span class="nm">' + esc(nm) + '</span>';
+        html += '</button>';
       });
-      html += '</div></div>';
+      html += '</div>';
+      if (sense) html += '<div class="monad-vert-sense">' + esc(sense) + '</div>';
+      html += '</div>';
     });
-    html += '</div><p class="monad-muted" style="margin-top:0.75rem;">' +
-      esc(t('a.monad.vertical_note', 'Вертикаль 7×7 — MVP.')) + '</p>';
+    html += '</div></div>';
+    html += '<aside class="monad-viz-panel">';
+    if (!selected) {
+      html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick', 'Выбери слой слева. Это не новые сущности — слои одного поля Манады.')) + '</p>';
+    } else {
+      var agents = selectedCell ? (selectedCell.agents || []) : (selected.agents || []);
+      html += '<div class="monad-viz-kicker">L' + esc(selected.layer) + ' · ' + esc(selected[locLang()] || selected.ru) +
+        (selectedCell ? (' · ' + (selected.layer + '-' + selectedCell.n) + ' ' + esc(selectedCell[locLang()] || selectedCell.ru)) : '') + '</div>';
+      html += '<p class="monad-muted">' + esc(locField(selected, 'sense')) + ' ' +
+        esc(t('a.monad.agents_active', 'Активные агенты / все агенты этого слоя')) + ': ' +
+        (selected.active || 0) + ' / ' + (selected.total || 0) + '.</p>';
+      html += '<div class="monad-agent-list">';
+      if (!agents.length) html += '<p class="monad-muted">' + esc(t('a.monad.no_agents', 'В этой ячейке пока нет агентов.')) + '</p>';
+      agents.forEach(function (a) { html += agentCard(a); });
+      html += '</div>';
+      html += '<div id="monad-vert-agent-detail"></div>';
+    }
+    html += '</aside></div>';
     host.innerHTML = html;
+    host.querySelectorAll('.monad-vert-band').forEach(function (b) {
+      b.addEventListener('click', function () {
+        STATE.vertLayer = b.getAttribute('data-layer');
+        STATE.vertCell = null;
+        renderVertical(STATE.arch);
+      });
+    });
+    host.querySelectorAll('.monad-vert-cell').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        STATE.vertLayer = b.getAttribute('data-layer');
+        STATE.vertCell = b.getAttribute('data-cell');
+        renderVertical(STATE.arch);
+      });
+    });
+    host.querySelectorAll('[data-agent]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var box = document.getElementById('monad-vert-agent-detail');
+        if (box) box.innerHTML = agentDetail(findAgent(b.getAttribute('data-agent')));
+      });
+    });
+  }
+
+  function hourXY(hour, radius) {
+    var angle = (hour / 12) * Math.PI * 2 - Math.PI / 2;
+    return { x: 50 + radius * Math.cos(angle), y: 50 + radius * Math.sin(angle) };
   }
   function renderHorizontal(arch) {
     var host = document.getElementById('monad-horizontal');
     if (!host || !arch) return;
     var h = arch.horizontal || {};
-    var persons = h.persons || [];
-    var html = '<div class="monad-horiz-wrap"><div class="monad-horiz-ring">';
-    html += '<div class="monad-dom-center"><div class="monad-dom-label">DOM</div><div class="monad-muted">12+1</div></div>';
-    persons.forEach(function (p, i) {
-      var angle = (360 / Math.max(persons.length, 1)) * i - 90;
-      var rad = (angle * Math.PI) / 180;
-      var x = 50 + 42 * Math.cos(rad), y = 50 + 42 * Math.sin(rad);
-      html += '<div class="monad-person' + (p.is_me ? ' me' : '') + '" style="left:' + x.toFixed(2) + '%;top:' + y.toFixed(2) + '%;" title="' + esc(p.human_id) + '">';
-      html += '<div class="monad-person-name">' + esc(p.display_name || p.human_id) + '</div>';
-      html += '<div class="monad-muted">' + esc(p.human_id) + (p.is_me ? ' · you' : '') + '</div></div>';
+    var seats = h.seats || [];
+    var selected = null;
+    seats.forEach(function (s) {
+      if (s.person && String(s.hour) === String(STATE.horizHour)) selected = s;
     });
-    html += '</div></div>';
+    var html = '<div class="monad-viz-split">';
+    html += '<div class="monad-horiz-col">';
+    html += '<p class="monad-viz-legend">' + esc(t('a.monad.horiz_help', 'Круг 12+1: DOM в центре. Никита на 12, Тахир напротив на 6. Наведи человека — его контур и агенты.')) + '</p>';
+    html += '<div class="monad-horiz-wrap"><div class="monad-horiz-ring">';
+    html += '<div class="monad-dom-center"><div class="monad-dom-label">DOM</div><div class="monad-muted">12+1</div></div>';
+    for (var hour = 1; hour <= 12; hour++) {
+      var mark = hourXY(hour, 46);
+      html += '<div class="monad-hour-mark" style="left:' + mark.x.toFixed(2) + '%;top:' + mark.y.toFixed(2) + '%;">' + hour + '</div>';
+    }
+    seats.forEach(function (s) {
+      var p = s.person;
+      var pos = hourXY(s.hour, 38);
+      if (!p) {
+        html += '<div class="monad-person empty" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;">' +
+          '<div class="monad-muted">' + esc(t('a.monad.seat_empty', 'пусто')) + '</div></div>';
+        return;
+      }
+      var on = String(s.hour) === String(STATE.horizHour) ? ' on' : '';
+      html += '<button type="button" class="monad-person' + (p.is_me ? ' me' : '') + on + '" data-hour="' + s.hour + '" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;">';
+      html += '<div class="monad-person-name">' + esc(p.display_name || p.human_id) + '</div>';
+      html += '<div class="monad-muted">' + esc(p.human_id) + (p.is_me ? ' · you' : '') + ' · ' + (p.agents_count || 0) + '</div>';
+      html += '<div class="monad-person-pop">';
+      html += '<strong>' + esc(p.display_name || p.human_id) + '</strong>';
+      html += '<div class="monad-muted">' + esc((p.contour && p.contour.length) ? p.contour.join(', ') : t('a.monad.no_contour', 'Контур не указан')) + '</div>';
+      html += '<div class="monad-agent-mini">';
+      (p.agents || []).slice(0, 8).forEach(function (a) {
+        html += '<span>' + esc(a.name || a.agent_id) + '</span>';
+      });
+      html += '</div></div></button>';
+    });
+    html += '</div></div></div>';
+    html += '<aside class="monad-viz-panel">';
+    if (!selected || !selected.person) {
+      html += '<p class="monad-muted">' + esc(t('a.monad.horiz_pick', 'Нажми человека на круге. Раскроется его контур и агенты.')) + '</p>';
+    } else {
+      var p = selected.person;
+      html += '<div class="monad-viz-kicker">' + esc(p.display_name || p.human_id) + ' · ' + selected.hour + ':00</div>';
+      html += '<p>' + esc(p.role || '') + '</p>';
+      html += '<p class="monad-muted">' + esc(t('a.monad.contour', 'Контур')) + ': ' +
+        esc((p.contour && p.contour.length) ? p.contour.join(', ') : '—') + '</p>';
+      html += '<div class="monad-agent-list">';
+      (p.agents || []).forEach(function (a) { html += agentCard(a); });
+      html += '</div><div id="monad-horiz-agent-detail"></div>';
+    }
+    html += '</aside></div>';
     host.innerHTML = html;
+    host.querySelectorAll('.monad-person[data-hour]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        STATE.horizHour = b.getAttribute('data-hour');
+        renderHorizontal(STATE.arch);
+      });
+    });
+    host.querySelectorAll('[data-agent]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var box = document.getElementById('monad-horiz-agent-detail');
+        if (box) box.innerHTML = agentDetail(findAgent(b.getAttribute('data-agent')));
+      });
+    });
+  }
+
+  function rhythmLayers() {
+    var r = STATE.rhythm && (STATE.rhythm.rhythm || STATE.rhythm);
+    return (r && r.layers) || [];
   }
   function renderRhythm(rhythm) {
     var host = document.getElementById('monad-rhythm');
-    if (!host || !rhythm) return;
-    var lang = (document.documentElement.lang || 'ru').slice(0, 2);
-    var html = '';
-    if (rhythm.system) {
-      html += '<div class="monad-sys-status"><div><strong>' + esc(t('a.monad.system_rhythm', 'Ритм системы Monad')) + '</strong> ';
-      html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span></div>';
-      if (rhythm.system.meta) html += '<div class="monad-muted">' + esc(rhythm.system.meta) + '</div></div>';
+    if (!host) return;
+    rhythm = rhythm || (STATE.rhythm && (STATE.rhythm.rhythm || STATE.rhythm));
+    if (!rhythm) return;
+    var layers = rhythm.layers || [];
+    if (!STATE.rhythmDisplay.length) {
+      STATE.rhythmDisplay = layers.map(function (L) { return L.level || 0; });
     }
-    html += '<div class="monad-eq">';
-    (rhythm.layers || []).forEach(function (L) {
-      var label = L[lang] || L.ru || L.id;
+    var html = '<div class="monad-rhythm-head">';
+    html += '<div>';
+    html += '<strong>' + esc(t('a.monad.system_rhythm', 'Ритм системы Monad')) + '</strong> ';
+    if (rhythm.system) {
+      html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span>';
+    }
+    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help', 'Снимок с живого /api/rhythm. «Живой ритм» включает онлайн-эквалайзер; выключение или уход со вкладки его гасит.')) + '</p>';
+    html += '</div>';
+    html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
+      esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';
+    html += '</div>';
+    html += '<div class="monad-eq-live" aria-hidden="false">';
+    layers.forEach(function (L, i) {
+      var label = L[locLang()] || L.ru || L.id;
       var unavailable = L.available === false || L.level == null;
-      var pct = unavailable ? 0 : Math.round((L.level || 0) * 100);
-      html += '<div class="monad-eq-row' + (unavailable ? ' unavailable' : '') + '">';
-      html += '<div class="monad-eq-label">' + esc(label) + '</div>';
-      html += '<div class="monad-eq-bar"><div class="monad-eq-fill" style="width:' + pct + '%"></div></div>';
-      html += '<div class="monad-eq-val">' + (unavailable ? 'n/a' : (pct + '%')) + '</div></div>';
+      var lvl = unavailable ? 0 : (STATE.rhythmDisplay[i] != null ? STATE.rhythmDisplay[i] : (L.level || 0));
+      var pct = Math.round(lvl * 100);
+      html += '<div class="monad-eq-col' + (unavailable ? ' unavailable' : '') + '">';
+      html += '<div class="monad-eq-col-bar"><i style="height:' + (unavailable ? 6 : Math.max(6, pct)) + '%"></i></div>';
+      html += '<div class="monad-eq-col-label">' + esc(label) + '</div>';
+      html += '<div class="monad-eq-col-val">' + (unavailable ? 'n/a' : (pct + '%')) + '</div>';
+      html += '</div>';
     });
     html += '</div>';
     if (rhythm.agents && rhythm.agents.length) {
       html += '<div class="monad-agent-rhythm" style="margin-top:1rem;"><table class="monad-mini-table"><thead><tr><th>agent</th><th>act/min</th><th>drift</th><th>seen</th></tr></thead><tbody>';
-      rhythm.agents.slice(0, 12).forEach(function (a) {
+      rhythm.agents.slice(0, 16).forEach(function (a) {
         html += '<tr><td><code>' + esc(a.agent_id) + '</code></td><td>' + esc(a.actions_per_min != null ? a.actions_per_min : '—') +
           '</td><td>' + esc(a.drift || '—') + '</td><td>' + esc(a.last_seen || '—') + '</td></tr>';
       });
       html += '</tbody></table></div>';
     }
+    if (rhythm.system && rhythm.system.meta) html += '<p class="monad-muted">' + esc(rhythm.system.meta) + '</p>';
     html += '<p class="monad-muted" style="margin-top:0.75rem;">' + esc(rhythm.note || '') +
-      (rhythm.source ? ' · source=' + rhythm.source : '') + '</p>';
+      (rhythm.source ? ' · ' + rhythm.source : '') +
+      (rhythm.updated_at ? ' · ' + rhythm.updated_at : '') + '</p>';
     host.innerHTML = html;
+    var liveBtn = document.getElementById('monad-rhythm-live');
+    if (liveBtn) {
+      liveBtn.addEventListener('click', function () {
+        if (STATE.liveRhythm) stopLiveRhythm();
+        else startLiveRhythm();
+        renderRhythm(rhythm);
+      });
+    }
+  }
+  function applyRhythmBars() {
+    var host = document.getElementById('monad-rhythm');
+    if (!host) return;
+    var cols = host.querySelectorAll('.monad-eq-col');
+    var layers = rhythmLayers();
+    cols.forEach(function (col, i) {
+      var bar = col.querySelector('i');
+      var val = col.querySelector('.monad-eq-col-val');
+      var L = layers[i];
+      if (!bar || !L) return;
+      var unavailable = L.available === false || L.level == null;
+      var lvl = STATE.rhythmDisplay[i] || 0;
+      var pct = unavailable ? 0 : Math.round(lvl * 100);
+      bar.style.height = (unavailable ? 6 : Math.max(6, pct)) + '%';
+      if (val) val.textContent = unavailable ? 'n/a' : (pct + '%');
+    });
+  }
+  function tickRhythmRaf() {
+    if (!STATE.liveRhythm) { STATE.rhythmRaf = null; return; }
+    var layers = rhythmLayers();
+    layers.forEach(function (L, i) {
+      var target = (L.available === false || L.level == null) ? 0 : (L.level || 0);
+      var cur = STATE.rhythmDisplay[i] != null ? STATE.rhythmDisplay[i] : target;
+      STATE.rhythmDisplay[i] = cur + (target - cur) * 0.18;
+    });
+    applyRhythmBars();
+    STATE.rhythmRaf = window.requestAnimationFrame(tickRhythmRaf);
+  }
+  function startLiveRhythm() {
+    STATE.liveRhythm = true;
+    if (STATE.rhythmTimer) clearInterval(STATE.rhythmTimer);
+    STATE.rhythmTimer = setInterval(function () {
+      if (STATE.sub !== 'rhythm' || !STATE.liveRhythm) { stopLiveRhythm(); return; }
+      api('/api/monad/rhythm').then(function (data) {
+        STATE.rhythm = data;
+        var layers = rhythmLayers();
+        if (STATE.rhythmDisplay.length !== layers.length) {
+          STATE.rhythmDisplay = layers.map(function (L) { return L.level || 0; });
+        }
+      }).catch(function () {});
+    }, 1200);
+    if (!STATE.rhythmRaf) STATE.rhythmRaf = window.requestAnimationFrame(tickRhythmRaf);
+  }
+  function stopLiveRhythm() {
+    STATE.liveRhythm = false;
+    if (STATE.rhythmTimer) { clearInterval(STATE.rhythmTimer); STATE.rhythmTimer = null; }
+    if (STATE.rhythmRaf) { window.cancelAnimationFrame(STATE.rhythmRaf); STATE.rhythmRaf = null; }
   }
   async function ensureArchitecture() {
     if (STATE.arch) { renderVertical(STATE.arch); renderHorizontal(STATE.arch); return; }
@@ -559,7 +843,9 @@
     var host = document.getElementById('monad-rhythm');
     try {
       STATE.rhythm = await api('/api/monad/rhythm');
-      renderRhythm(STATE.rhythm.rhythm || STATE.rhythm);
+      var rhythm = STATE.rhythm.rhythm || STATE.rhythm;
+      STATE.rhythmDisplay = (rhythm.layers || []).map(function (L) { return L.level || 0; });
+      renderRhythm(rhythm);
     } catch (err) {
       if (host) host.innerHTML = '<p class="monad-warn">' + esc((err.data && err.data.error) || err.message) + '</p>';
     }
@@ -613,6 +899,7 @@
     var refresh = document.getElementById('monad-refresh');
     if (refresh) {
       refresh.addEventListener('click', function () {
+        stopLiveRhythm();
         STATE.arch = null; STATE.rhythm = null; STATE.status = null;
         onTabOpen();
       });
@@ -621,11 +908,7 @@
     if (del) {
       del.addEventListener('click', function () {
         if (!STATE.activeChatId) return;
-        if (!window.confirm(t('a.monad.archive_q', 'Скрыть этот чат?'))) return;
-        api('/api/monad/chats/' + STATE.activeChatId, { method: 'DELETE' }).then(function () {
-          STATE.activeChatId = null; STATE.messages = [];
-          return loadChats();
-        }).catch(function (e) { alert(e.message); });
+        deleteChat(STATE.activeChatId);
       });
     }
   }
