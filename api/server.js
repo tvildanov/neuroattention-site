@@ -13425,18 +13425,6 @@ function normalizeHumans(raw) {
   return [];
 }
 
-/** Heuristic: map agent domains → vertical nucleus ids for the 7×7 MVP grid. */
-function nucleusForAgent(agent) {
-  const blob = `${agent.agent_id || ''} ${(agent.domains || []).join(' ')} ${(agent.name || '')}`.toLowerCase();
-  if (/body|anatomy|health|wear|sport|medic|rehab|physio/.test(blob)) return 'body';
-  if (/emotion|feel|empath|mood|psych|trauma/.test(blob)) return 'emotion';
-  if (/attention|neuro|focus|cognit|exercis|perception/.test(blob)) return 'attention';
-  if (/meaning|canon|know|method|learn|course|content|protocol/.test(blob)) return 'meaning';
-  if (/relation|social|family|team|human|comms|telegram/.test(blob)) return 'relation';
-  if (/action|code|devops|repair|finance|order|build|agent/.test(blob)) return 'action';
-  return 'field';
-}
-
 async function loadCallerForMonad(req, res) {
   return requireMonadAccess(req, res);
 }
@@ -13475,6 +13463,7 @@ app.get('/api/monad/agents', requireAuth, async (req, res) => {
     if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
     const raw = await monadSvc.mcpCall('list_agents', {});
     const agents = normalizeAgents(raw);
+    const placements = await monadSvc.loadPlacements().catch(() => ({}));
     const humanId = monadSvc.resolveHumanId(caller);
     const mine = humanId ? agents.filter((a) => a.owner === humanId) : [];
     res.json({
@@ -13482,15 +13471,21 @@ app.get('/api/monad/agents', requireAuth, async (req, res) => {
       human_id: humanId,
       total: agents.length,
       mine_count: mine.length,
-      agents: agents.map((a) => ({
-        agent_id: a.agent_id,
-        name: a.name,
-        platform: a.platform,
-        status: a.status,
-        owner: a.owner,
-        domains: a.domains || [],
-        nucleus: nucleusForAgent(a),
-      })),
+      agents: agents.map((a) => {
+        const p = monadSvc.placementOf(a.agent_id, placements) || {};
+        return {
+          agent_id: a.agent_id,
+          name: a.name,
+          platform: a.platform,
+          status: a.status,
+          owner: a.owner,
+          domains: a.domains || [],
+          cell: p.cell || null,
+          secondary_cells: p.secondary_cells || [],
+          type: p.type || null,
+          parent: p.parent || null,
+        };
+      }),
     });
   } catch (err) {
     console.error('GET /api/monad/agents:', err);
@@ -13528,9 +13523,10 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
     if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
-    const [agentsRaw, humansRaw] = await Promise.all([
+    const [agentsRaw, humansRaw, placements] = await Promise.all([
       monadSvc.mcpCall('list_agents', {}),
       monadSvc.mcpCall('list_humans', { limit: 100 }),
+      monadSvc.loadPlacements().catch(() => ({})),
     ]);
     const agents = normalizeAgents(agentsRaw);
     const humans = normalizeHumans(humansRaw);
@@ -13540,9 +13536,16 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
     const humanName = {};
     humans.forEach((h) => { humanName[h.human_id] = h.display_name || h.human_id; });
 
-    function agentPublic(a, nid, cell) {
+    function friendList(friends) {
+      if (!friends) return [];
+      if (Array.isArray(friends)) return friends;
+      if (typeof friends === 'object') return Object.keys(friends);
+      return [];
+    }
+
+    function agentPublic(a) {
       const owner = a.owner || null;
-      const person = (directory && owner && directory[owner]) || {};
+      const p = monadSvc.placementOf(a.agent_id, placements) || {};
       return {
         agent_id: a.agent_id,
         name: a.name,
@@ -13551,28 +13554,28 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
         owner_name: humanName[owner] || owner,
         platform: a.platform || null,
         domains: a.domains || [],
-        nucleus: nid,
-        cell,
-        contour: Object.keys(person.contour_personas || {}),
-        friends: person.linked_humans || person.friends || [],
+        type: p.type || null,
+        cell: p.cell || null,
+        secondary_cells: p.secondary_cells || [],
+        parent: p.parent || null,
+        chain: p.chain || null,
+        friends: friendList(p.friends),
       };
     }
 
-    const byNucleus = {};
-    for (const n of monadSvc.VERTICAL_NUCLEI) byNucleus[n.id] = [];
-    for (const a of agents) {
-      const nid = nucleusForAgent(a);
-      if (!byNucleus[nid]) byNucleus[nid] = [];
-      const cell = monadSvc.cellForAgent(a, nid);
-      byNucleus[nid].push(agentPublic(a, nid, cell));
-    }
+    const publics = agents.map(agentPublic);
+    const byCell = {};
+    publics.forEach((a) => {
+      monadSvc.cellsOfPlacement(placements[a.agent_id]).forEach((code) => {
+        if (!byCell[code]) byCell[code] = [];
+        if (!byCell[code].some((x) => x.agent_id === a.agent_id)) byCell[code].push(a);
+      });
+    });
 
-    const vertical = monadSvc.VERTICAL_NUCLEI.map((n) => {
-      const pub = monadSvc.publicNucleus(n);
-      const list = byNucleus[n.id] || [];
-      const active = list.filter((x) => x.status === 'active').length;
+    const vertical = monadSvc.VERTICAL_LAYERS.map((n) => {
+      const pub = monadSvc.publicLayer(n);
       const cells = pub.cells.map((c) => {
-        const cellAgents = list.filter((x) => x.cell === c.n);
+        const cellAgents = byCell[c.code] || [];
         return {
           ...c,
           occupied: cellAgents.length > 0,
@@ -13580,16 +13583,21 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
           agents: cellAgents,
         };
       });
-      const occupiedCells = cells.filter((c) => c.occupied).length;
+      const seen = new Set();
+      cells.forEach((c) => (c.agents || []).forEach((a) => seen.add(a.agent_id)));
+      const list = publics.filter((a) => seen.has(a.agent_id));
+      const active = list.filter((x) => x.status === 'active').length;
       return {
         ...pub,
         total: list.length,
         active,
-        occupied_cells: occupiedCells,
+        occupied_cells: cells.filter((c) => c.occupied).length,
         cells,
         agents: list,
       };
     });
+
+    const unplaced = publics.filter((a) => !a.cell);
 
     // Horizontal 12+1: fixed clock seats, not equal-angle of N people.
     const liveHumans = humans.filter((h) => h.status !== 'retired');
@@ -13618,10 +13626,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
     function personPublic(h) {
       if (!h) return null;
       const person = (directory && directory[h.human_id]) || {};
-      const owned = agents.filter((a) => a.owner === h.human_id).map((a) => {
-        const nid = nucleusForAgent(a);
-        return agentPublic(a, nid, monadSvc.cellForAgent(a, nid));
-      });
+      const owned = agents.filter((a) => a.owner === h.human_id).map(agentPublic);
       return {
         human_id: h.human_id,
         display_name: h.display_name,
@@ -13648,9 +13653,11 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
       ok: true,
       human_id: humanId,
       legend: {
-        ru: 'Вертикаль — 7 слоёв одного поля Манады (L1 Тело внизу → L7 Поле наверху). Число «5 из 12» — активные агенты слоя / все агенты слоя. Горизонталь — часы 12+1, DOM в центре.',
-        en: 'Vertical is 7 layers of one Monad field (L1 Body at the bottom → L7 Field). “5 of 12” means active agents / all agents in that layer. Horizontal is the 12+1 clock, DOM at the centre.',
+        ru: 'Канон Манады (monad.spec.layers_7x7): L1 Физика, L2 Энергия, L3 Личность, L4 Мы/Дом, L5 Восприятие↔проявление, L6 Знание, L7 Сверхсистема. Посты слоя — клетки Li×L1…Li×L7. Агенты стоят там, куда их поставил monad.placement. Эмоций в Манаде нет. «5 из 12» = агенты с рассадкой на этом слое / занятые посты не путать: это число агентов слоя.',
+        en: 'Monad canon (monad.spec.layers_7x7): L1 Physics … L6 Knowledge … L7 Supersystem. Posts are Li×Lj cells. Agents sit in monad.placement. No emotions in Monad.',
       },
+      spec: 'monad.spec.layers_7x7.v0_1',
+      unplaced,
       vertical,
       horizontal,
       agent_total: agents.length,
