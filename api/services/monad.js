@@ -263,8 +263,8 @@ function composeHeuristicReply({ humanId, person, facts, text }) {
   }
   if (/вертикал|vertical|7\s*[x×]\s*7|ядер/i.test(low)) {
     return ru
-      ? `Вертикаль — 7 слоёв единого поля Манады, не «новые сущности». Снизу L1 Тело → L7 Поле. Наведи слой: внутри 7 ячеек. Нажми — агенты этого слоя, чей контур, статус.`
-      : `Vertical is 7 layers of Monad (L1 Body at the bottom → L7 Field). Hover a layer for 7 inner cells; click for agents.`;
+      ? `Вертикаль — канон Манады (monad.spec.layers_7x7): L1 Физика, L2 Энергия, L3 Личность, L4 Мы/Дом, L5 Восприятие↔проявление, L6 Знание, L7 Сверхсистема. У каждого слоя 7 постов Li×L1…Li×L7. Агенты стоят в клетках из monad.placement, не выдуманы. L6 — знание (библиотекарь), L7 — сверхсознание. Эмоций в Манаде нет.`
+      : `Vertical is Monad canon: L1 Physics … L6 Knowledge … L7 Supersystem. 7 posts per layer. Agents sit in monad.placement cells. No emotions in Monad.`;
   }
   if (/горизонтал|horizontal|12\s*\+|круг|кругл/i.test(low)) {
     return ru
@@ -417,119 +417,201 @@ function isChannelAckText(text) {
 }
 
 /**
- * Vertical 7×7 — seven layers of ONE Monad field (L1 bottom → L7 top).
- * Inner cells are functions of that layer, not new products.
- * Clock seats for Horizontal 12+1 (Nick at 12, Tahir opposite at 6).
+ * Vertical 7×7 — CANON from Monad shared_context `monad.spec.layers_7x7.v0_1`
+ * (docs/monada-core/IV-layers-7x7.md). Do not invent layer names.
+ *
+ * Each layer has 7 posts Li×L1 … Li×L7 (функции, не агенты).
+ * Agents sit in cells via `monad.placement.<id>.v1`.cell (e.g. "L6xL6").
+ * Throughlines: L4 Дом, L6 Библиотекарь, L7 Сверхсознание / Пробуждённый.
  */
-const VERTICAL_NUCLEI = [
+const VERTICAL_LAYERS = [
   {
-    id: 'body', layer: 1, ru: 'Тело', en: 'Body', es: 'Cuerpo',
-    sense_ru: 'Сома и физиология поля.',
-    sense_en: 'Soma and physiology of the field.',
-    sense_es: 'Soma y fisiología del campo.',
-    cells: [
-      { n: 1, ru: 'Сома', en: 'Soma', es: 'Soma', kw: /soma|skin|tissue/ },
-      { n: 2, ru: 'Висцера', en: 'Viscera', es: 'Víscera', kw: /organ|viscer|gut/ },
-      { n: 3, ru: 'Дыхание', en: 'Breath', es: 'Respiración', kw: /breath|respir/ },
-      { n: 4, ru: 'Моторика', en: 'Motor', es: 'Motor', kw: /motor|sport|move|motion|physio/ },
-      { n: 5, ru: 'Интероцепция', en: 'Interoception', es: 'Interocepción', kw: /intero|sensation|pain|anatomy/ },
-      { n: 6, ru: 'Поза', en: 'Posture', es: 'Postura', kw: /posture|balance|spine/ },
-      { n: 7, ru: 'Восстановление', en: 'Recovery', es: 'Recuperación', kw: /recover|sleep|rehab|heal|health/ },
+    layer: 1, id: 'physics', ru: 'Физика', en: 'Physics', es: 'Física',
+    sense_ru: 'Тела, земля, серверы, здания, диски.',
+    sense_en: 'Bodies, land, servers, buildings, disks.',
+    sense_es: 'Cuerpos, tierra, servidores, edificios, discos.',
+    throughline: null,
+    posts: [
+      { j: 1, ru: 'Живое железо', en: 'Live iron', es: 'Hierro vivo' },
+      { j: 2, ru: 'Железо ↔ энергия', en: 'Iron ↔ energy', es: 'Hierro ↔ energía' },
+      { j: 3, ru: 'Устройства человека', en: 'Human devices', es: 'Dispositivos humanos' },
+      { j: 4, ru: 'Цифровое железо команд', en: 'Team digital iron', es: 'Hierro digital del equipo' },
+      { j: 5, ru: 'Каналы / webhooks', en: 'Channels / webhooks', es: 'Canales / webhooks' },
+      { j: 6, ru: 'Хранение библиотеки', en: 'Library object store', es: 'Almacén de la biblioteca' },
+      { j: 7, ru: 'Инфра служит миссии', en: 'Infra serves the mission', es: 'La infra sirve a la misión' },
     ],
   },
   {
-    id: 'emotion', layer: 2, ru: 'Эмоция', en: 'Emotion', es: 'Emoción',
-    sense_ru: 'Аффект, валентность, регуляция.',
-    sense_en: 'Affect, valence, regulation.',
-    sense_es: 'Afecto, valencia, regulación.',
-    cells: [
-      { n: 1, ru: 'Валентность', en: 'Valence', es: 'Valencia', kw: /valen/ },
-      { n: 2, ru: 'Возбуждение', en: 'Arousal', es: 'Activación', kw: /arousal|activ/ },
-      { n: 3, ru: 'Аффект', en: 'Affect', es: 'Afecto', kw: /affect|feel|emot/ },
-      { n: 4, ru: 'Эмпатия', en: 'Empathy', es: 'Empatía', kw: /empath/ },
-      { n: 5, ru: 'Настроение', en: 'Mood', es: 'Ánimo', kw: /mood/ },
-      { n: 6, ru: 'Травма', en: 'Trauma', es: 'Trauma', kw: /trauma|psych/ },
-      { n: 7, ru: 'Регуляция', en: 'Regulation', es: 'Regulación', kw: /regulat/ },
+    layer: 2, id: 'energy', ru: 'Энергия', en: 'Energy', es: 'Energía',
+    sense_ru: 'Деньги, токены, ритм, «хватит ли сил».',
+    sense_en: 'Money, tokens, rhythm, burn rate.',
+    sense_es: 'Dinero, tokens, ritmo, energía.',
+    throughline: null,
+    posts: [
+      { j: 1, ru: 'Бюджет на железо', en: 'Budget for iron', es: 'Presupuesto de hierro' },
+      { j: 2, ru: 'Ритм и burn rate', en: 'Rhythm and burn rate', es: 'Ritmo y burn rate' },
+      { j: 3, ru: 'Квоты внимания', en: 'Attention quotas', es: 'Cuotas de atención' },
+      { j: 4, ru: 'Бюджеты проектов', en: 'Project budgets', es: 'Presupuestos de proyectos' },
+      { j: 5, ru: 'Цена проявления', en: 'Cost of manifestation', es: 'Coste de manifestar' },
+      { j: 6, ru: 'Бюджет ingest', en: 'Ingest budget', es: 'Presupuesto de ingest' },
+      { j: 7, ru: 'Фонд ↔ миссия', en: 'Fund ↔ mission', es: 'Fondo ↔ misión' },
     ],
   },
   {
-    id: 'attention', layer: 3, ru: 'Внимание', en: 'Attention', es: 'Atención',
-    sense_ru: 'Фокус, переключение, торможение.',
-    sense_en: 'Focus, switching, inhibition.',
-    sense_es: 'Foco, cambio, inhibición.',
-    cells: [
-      { n: 1, ru: 'Фокус', en: 'Focus', es: 'Foco', kw: /focus|neuro/ },
-      { n: 2, ru: 'Удержание', en: 'Sustain', es: 'Sostener', kw: /sustain|hold/ },
-      { n: 3, ru: 'Переключение', en: 'Switch', es: 'Cambio', kw: /switch/ },
-      { n: 4, ru: 'Торможение', en: 'Inhibit', es: 'Inhibir', kw: /inhibit/ },
-      { n: 5, ru: 'Сканирование', en: 'Scan', es: 'Barrido', kw: /scan|perception/ },
-      { n: 6, ru: 'Замечание', en: 'Notice', es: 'Notar', kw: /notice|cognit/ },
-      { n: 7, ru: 'Покой', en: 'Rest', es: 'Reposo', kw: /rest|exercis/ },
+    layer: 3, id: 'person', ru: 'Личность', en: 'Person', es: 'Persona',
+    sense_ru: 'Персоны людей, «я», навыки характера. Не эмоции.',
+    sense_en: 'Human personas, “I”, character skills. Not emotions.',
+    sense_es: 'Personas humanas, «yo», habilidades. No emociones.',
+    throughline: null,
+    posts: [
+      { j: 1, ru: 'Тело → свой контур', en: 'Body → own contour', es: 'Cuerpo → propio contorno' },
+      { j: 2, ru: 'Личная нагрузка', en: 'Personal load', es: 'Carga personal' },
+      { j: 3, ru: 'Каноническая Персона', en: 'Canonical Persona', es: 'Persona canónica' },
+      { j: 4, ru: 'Я → мы', en: 'I → we', es: 'Yo → nosotros' },
+      { j: 5, ru: 'Хаб Skill Agents', en: 'Skill Agents hub', es: 'Hub de Skill Agents' },
+      { j: 6, ru: 'Вклад в знание', en: 'Contribution to knowledge', es: 'Aporte al saber' },
+      { j: 7, ru: 'Личная миссия', en: 'Personal mission', es: 'Misión personal' },
     ],
   },
   {
-    id: 'meaning', layer: 4, ru: 'Смысл', en: 'Meaning', es: 'Sentido',
-    sense_ru: 'Канон, метод, знание, язык.',
-    sense_en: 'Canon, method, knowledge, language.',
-    sense_es: 'Canon, método, saber, lenguaje.',
-    cells: [
-      { n: 1, ru: 'Канон', en: 'Canon', es: 'Canon', kw: /canon/ },
-      { n: 2, ru: 'Метод', en: 'Method', es: 'Método', kw: /method|protocol/ },
-      { n: 3, ru: 'Знание', en: 'Knowledge', es: 'Saber', kw: /know|learn/ },
-      { n: 4, ru: 'Язык', en: 'Language', es: 'Lengua', kw: /lang|book|reader|content/ },
-      { n: 5, ru: 'Нарратив', en: 'Narrative', es: 'Narrativa', kw: /narr|stor/ },
-      { n: 6, ru: 'Символ', en: 'Symbol', es: 'Símbolo', kw: /symbol/ },
-      { n: 7, ru: 'Протокол', en: 'Protocol', es: 'Protocolo', kw: /course|lesson/ },
+    layer: 4, id: 'we', ru: 'Мы / Дом', en: 'We / DOM', es: 'Nosotros / DOM',
+    sense_ru: 'Доверие, круг, Дом, сообщество. Стержень четверок.',
+    sense_en: 'Trust, circle, House, community. Throughline of fours.',
+    sense_es: 'Confianza, círculo, Casa, comunidad. Eje de los cuatros.',
+    throughline: 'dom',
+    throughline_ru: 'Стержень Дома (L4)',
+    throughline_en: 'DOM throughline (L4)',
+    posts: [
+      { j: 1, ru: 'Общее физическое пространство', en: 'Shared physical space', es: 'Espacio físico común' },
+      { j: 2, ru: 'Бюджет доверия круга', en: 'Circle trust budget', es: 'Presupuesto de confianza' },
+      { j: 3, ru: 'Защита личности в группе', en: 'Person-protection in the group', es: 'Protección de la persona' },
+      { j: 4, ru: 'Ядро «мы» / DOM', en: 'We-core / DOM', es: 'Núcleo «nosotros» / DOM' },
+      { j: 5, ru: 'Совместные дела', en: 'Joint work', es: 'Trabajo conjunto' },
+      { j: 6, ru: 'Память решений', en: 'Decision memory', es: 'Memoria de decisiones' },
+      { j: 7, ru: 'Зачем мы вместе', en: 'Why we are together', es: 'Por qué estamos juntos' },
     ],
   },
   {
-    id: 'relation', layer: 5, ru: 'Связь', en: 'Relation', es: 'Relación',
-    sense_ru: 'Контур, персона, команда, забота.',
-    sense_en: 'Contour, persona, team, care.',
-    sense_es: 'Contorno, persona, equipo, cuidado.',
-    cells: [
-      { n: 1, ru: 'Семья', en: 'Family', es: 'Familia', kw: /family/ },
-      { n: 2, ru: 'Команда', en: 'Team', es: 'Equipo', kw: /team/ },
-      { n: 3, ru: 'Контур', en: 'Contour', es: 'Contorno', kw: /contour|human/ },
-      { n: 4, ru: 'Персона', en: 'Persona', es: 'Persona', kw: /persona/ },
-      { n: 5, ru: 'Социум', en: 'Social', es: 'Social', kw: /social|comms|telegram/ },
-      { n: 6, ru: 'Забота', en: 'Care', es: 'Cuidado', kw: /care/ },
-      { n: 7, ru: 'Конфликт', en: 'Conflict', es: 'Conflicto', kw: /conflict/ },
+    layer: 5, id: 'perception', ru: 'Восприятие ↔ проявление', en: 'Perception ↔ manifestation', es: 'Percepción ↔ manifestación',
+    sense_ru: 'Вход данных, предфильтры, выход в мир.',
+    sense_en: 'Ingest, prefilters, output into the world.',
+    sense_es: 'Entrada, prefiltros, salida al mundo.',
+    throughline: null,
+    posts: [
+      { j: 1, ru: 'Выкладка на железо', en: 'Ship onto iron', es: 'Despliegue en hierro' },
+      { j: 2, ru: 'Темп проявления', en: 'Pace of manifestation', es: 'Ritmo de manifestación' },
+      { j: 3, ru: 'Чей вход / чей стиль', en: 'Whose in / whose style', es: 'De quién es la entrada' },
+      { j: 4, ru: 'Проявление в контур проекта', en: 'Manifest into a project contour', es: 'Manifestar en el contorno' },
+      { j: 5, ru: 'In + предфильтры + out', en: 'In + prefilters + out', es: 'In + prefiltros + out' },
+      { j: 6, ru: 'Поток → библиотека', en: 'Stream → library', es: 'Flujo → biblioteca' },
+      { j: 7, ru: 'Публичная позиция целого', en: 'Public stance of the whole', es: 'Postura pública del conjunto' },
     ],
   },
   {
-    id: 'action', layer: 6, ru: 'Действие', en: 'Action', es: 'Acción',
-    sense_ru: 'Код, ops, сборка, исполнение.',
-    sense_en: 'Code, ops, build, execute.',
-    sense_es: 'Código, ops, construir, ejecutar.',
-    cells: [
-      { n: 1, ru: 'Код', en: 'Code', es: 'Código', kw: /code|dev/ },
-      { n: 2, ru: 'Ops', en: 'Ops', es: 'Ops', kw: /ops|devops/ },
-      { n: 3, ru: 'Финансы', en: 'Finance', es: 'Finanzas', kw: /finance/ },
-      { n: 4, ru: 'Сборка', en: 'Build', es: 'Build', kw: /build|agent/ },
-      { n: 5, ru: 'Порядок', en: 'Order', es: 'Orden', kw: /order/ },
-      { n: 6, ru: 'Ремонт', en: 'Repair', es: 'Reparar', kw: /repair/ },
-      { n: 7, ru: 'Исполнение', en: 'Execute', es: 'Ejecutar', kw: /execut|action/ },
+    layer: 6, id: 'knowledge', ru: 'Знание', en: 'Knowledge', es: 'Saber',
+    sense_ru: 'Библиотека и мировоззрение. Сюда сходятся агенты знания. Стержень шестерок.',
+    sense_en: 'Library and worldview. Knowledge agents gather here. Throughline of sixes.',
+    sense_es: 'Biblioteca y visión. Aquí convergen los agentes de saber. Eje de los seises.',
+    throughline: 'librarian',
+    throughline_ru: 'Стержень Библиотекаря (L6)',
+    throughline_en: 'Librarian throughline (L6)',
+    posts: [
+      { j: 1, ru: 'Знание о физике', en: 'Knowledge of physics', es: 'Saber de la física' },
+      { j: 2, ru: 'Знание об энергии', en: 'Knowledge of energy', es: 'Saber de la energía' },
+      { j: 3, ru: 'Знание о личности', en: 'Knowledge of persons', es: 'Saber de la persona' },
+      { j: 4, ru: 'Знание о Доме', en: 'Knowledge of the House', es: 'Saber de la Casa' },
+      { j: 5, ru: 'Знание о проявлении', en: 'Knowledge of manifestation', es: 'Saber de la manifestación' },
+      { j: 6, ru: 'Библиотека / graph', en: 'Library / graph', es: 'Biblioteca / grafo' },
+      { j: 7, ru: 'Канон мировоззрения', en: 'Worldview canon', es: 'Canon de visión' },
     ],
   },
   {
-    id: 'field', layer: 7, ru: 'Поле', en: 'Field', es: 'Campo',
-    sense_ru: 'Коллектив, ритм, DOM, пространство.',
-    sense_en: 'Collective, rhythm, DOM, space.',
-    sense_es: 'Colectivo, ritmo, DOM, espacio.',
-    cells: [
-      { n: 1, ru: 'Пространство', en: 'Space', es: 'Espacio', kw: /space|spatial/ },
-      { n: 2, ru: 'Коллектив', en: 'Collective', es: 'Colectivo', kw: /collect/ },
-      { n: 3, ru: 'Ритм', en: 'Rhythm', es: 'Ritmo', kw: /rhythm/ },
-      { n: 4, ru: 'DOM', en: 'DOM', es: 'DOM', kw: /\bdom\b/ },
-      { n: 5, ru: 'XR', en: 'XR', es: 'XR', kw: /\bxr\b|lab/ },
-      { n: 6, ru: 'Сайт', en: 'Site', es: 'Sitio', kw: /site|web/ },
-      { n: 7, ru: 'Поле', en: 'Field', es: 'Campo', kw: /field/ },
+    layer: 7, id: 'super', ru: 'Сверхсистема', en: 'Supersystem', es: 'Supersistema',
+    sense_ru: 'Миссия, смысл, самоосознание поля. Здесь сверхсознательные агенты. Стержень семёрок.',
+    sense_en: 'Mission, meaning, field self-awareness. Superconscious agents live here. Throughline of sevens.',
+    sense_es: 'Misión, sentido, autoconciencia del campo. Aquí viven los agentes superconscientes. Eje de los sietes.',
+    throughline: 'awakened',
+    throughline_ru: 'Стержень Сверхсознания (L7)',
+    throughline_en: 'Superconsciousness throughline (L7)',
+    posts: [
+      { j: 1, ru: 'След миссии на физике', en: 'Mission trace on physics', es: 'Huella de misión en física' },
+      { j: 2, ru: 'След миссии на энергии', en: 'Mission trace on energy', es: 'Huella de misión en energía' },
+      { j: 3, ru: 'След миссии на личности', en: 'Mission trace on persons', es: 'Huella de misión en persona' },
+      { j: 4, ru: 'Сердце Дома ↔ сверхсмысл', en: 'House heart ↔ super-meaning', es: 'Corazón de la Casa ↔ sentido' },
+      { j: 5, ru: 'След миссии на проявлении', en: 'Mission trace on manifestation', es: 'Huella de misión en manifestación' },
+      { j: 6, ru: 'След миссии на знании', en: 'Mission trace on knowledge', es: 'Huella de misión en saber' },
+      { j: 7, ru: 'Самоосознание поля', en: 'Field self-awareness', es: 'Autoconciencia del campo' },
     ],
   },
 ];
 
-/** Fixed 12+1 clock. Nick at 12, Tahir opposite at 6. */
+function cellCode(i, j) {
+  return 'L' + i + 'xL' + j;
+}
+
+function parseCell(code) {
+  const m = String(code || '').match(/^L(\d)xL(\d)$/i);
+  if (!m) return null;
+  return { i: parseInt(m[1], 10), j: parseInt(m[2], 10) };
+}
+
+function publicLayer(n) {
+  return {
+    id: n.id,
+    layer: n.layer,
+    ru: n.ru,
+    en: n.en,
+    es: n.es,
+    sense_ru: n.sense_ru,
+    sense_en: n.sense_en,
+    sense_es: n.sense_es,
+    throughline: n.throughline || null,
+    throughline_ru: n.throughline_ru || null,
+    throughline_en: n.throughline_en || null,
+    cells: (n.posts || []).map((c) => ({
+      n: c.j,
+      code: cellCode(n.layer, c.j),
+      ru: c.ru,
+      en: c.en,
+      es: c.es,
+    })),
+  };
+}
+
+const placeCache = { at: 0, byAgent: null };
+
+async function loadPlacements() {
+  if (placeCache.byAgent && (Date.now() - placeCache.at) < 2 * 60 * 1000) return placeCache.byAgent;
+  try {
+    const rows = await mcpCall('read_context', {
+      key_prefix: 'monad.placement.',
+      limit: 200,
+      reader_agent: 'neuro_agent',
+    });
+    const byAgent = {};
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const v = (row && row.value) || {};
+      if (v.agent_id && v.cell) byAgent[v.agent_id] = v;
+    });
+    placeCache.byAgent = byAgent;
+    placeCache.at = Date.now();
+    return byAgent;
+  } catch (_) {
+    return placeCache.byAgent || {};
+  }
+}
+
+function placementOf(agentId, placements) {
+  return (placements && placements[agentId]) || null;
+}
+
+function cellsOfPlacement(place) {
+  if (!place) return [];
+  const extra = Array.isArray(place.secondary_cells) ? place.secondary_cells : [];
+  return [place.cell].concat(extra).filter(Boolean);
+}
+
+/** Fixed 12+1 clock from monad.spec.circle12.slots.v0_1. Nick at 12, Tahir at 6. */
 const CIRCLE_SLOTS = {
   nikita: 12,
   nastya: 1,
@@ -540,34 +622,6 @@ const CIRCLE_SLOTS = {
   egor: 9,
   artem: 10,
 };
-
-function publicNucleus(n) {
-  return {
-    id: n.id,
-    layer: n.layer,
-    ru: n.ru,
-    en: n.en,
-    es: n.es,
-    sense_ru: n.sense_ru,
-    sense_en: n.sense_en,
-    sense_es: n.sense_es,
-    cells: (n.cells || []).map((c) => ({ n: c.n, code: n.layer + '-' + c.n, ru: c.ru, en: c.en, es: c.es })),
-  };
-}
-
-function cellForAgent(agent, nucleusId) {
-  const n = VERTICAL_NUCLEI.find((x) => x.id === nucleusId);
-  const blob = `${agent.agent_id || ''} ${(agent.domains || []).join(' ')} ${agent.name || ''}`.toLowerCase();
-  if (n && n.cells) {
-    for (const c of n.cells) {
-      if (c.kw && c.kw.test(blob)) return c.n;
-    }
-  }
-  let h = 0;
-  const s = String(agent.agent_id || agent.name || '');
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return (h % 7) + 1;
-}
 
 function circleSlotFor(human) {
   const meta = (human && human.metadata) || {};
@@ -774,10 +828,16 @@ module.exports = {
   generateLkReply,
   postLkChatMessage,
   EMAIL_HUMAN_MAP,
-  VERTICAL_NUCLEI,
+  VERTICAL_LAYERS,
+  VERTICAL_NUCLEI: VERTICAL_LAYERS,
   CIRCLE_SLOTS,
-  publicNucleus,
-  cellForAgent,
+  publicLayer,
+  publicNucleus: publicLayer,
+  cellCode,
+  parseCell,
+  loadPlacements,
+  placementOf,
+  cellsOfPlacement,
   circleSlotFor,
   loadDirectoryPeople,
   RHYTHM_LAYERS,

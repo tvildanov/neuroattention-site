@@ -1153,7 +1153,7 @@ body.method-flashlight {
   max-height:0; opacity:0; overflow:hidden; transition:max-height .22s ease, opacity .22s ease;
 }
 .monad-vert-layer:hover .monad-vert-inners, .monad-vert-layer.on .monad-vert-inners {
-  max-height:88px; opacity:1;
+  max-height:110px; opacity:1;
 }
 .monad-vert-cell {
   border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); color:var(--text-secondary);
@@ -1176,6 +1176,7 @@ body.method-flashlight {
 .monad-agent-chip .dot.active { background:#0e9; box-shadow:0 0 6px rgba(0,238,153,0.5); }
 .monad-dl { display:grid; grid-template-columns:110px 1fr; gap:0.35rem 0.7rem; font-size:13px; }
 .monad-dl dt { color:var(--text-dim); }
+.monad-unplaced { margin-top:1.1rem; padding-top:0.9rem; border-top:1px solid rgba(255,255,255,0.08); }
 .monad-horiz-col { min-width:0; }
 .monad-horiz-wrap { display:flex; justify-content:center; }
 .monad-horiz-ring {

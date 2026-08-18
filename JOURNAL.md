@@ -7,6 +7,53 @@
 
 ---
 
+## 2026-08-18 — Vertical canon from Monad spec, not invented nuclei
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T13:30:00Z",
+  "did": [
+    "Read live monad.spec.layers_7x7.v0_1 and monad.placement.* instead of guessed Body/Emotion names",
+    "Vertical 7×7 now uses L1 Физика, L2 Энергия, L3 Личность, L4 Мы/Дом, L5 Восприятие↔проявление, L6 Знание, L7 Сверхсистема",
+    "Posts shown as Li×Lj; agents seated from live placements (human personas on L3×L3, knowledge on L6, probuzhdennyy on L7×L7)",
+    "Agent detail shows cell, type, parent, secondary posts; unplaced agents listed separately"
+  ],
+  "changed": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "docs/MONAD-LK.md"
+  ],
+  "files": [
+    "api/services/monad.js",
+    "api/server.js",
+    "assets/js/monad-lk.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Do not invent layer names. Canon is monad.spec.layers_7x7.v0_1",
+    "Do not hash agents into cells. Seating is monad.placement only",
+    "Human personas are L3×L3, not all on L5. Contour is a grouping, not a layer",
+    "Monad has no emotion layer"
+  ],
+  "followups": [
+    "Hard-refresh SW v74 and monad-lk.js?v=12",
+    "Railway must pick up VERTICAL_LAYERS + loadPlacements for architecture payload"
+  ],
+  "next_session": "Confirm LK Vertical shows Physics…Knowledge…Supersystem and live L3×L3 personas"
+}
+```
+
+---
+
 ## 2026-08-18 — LK chat + Sketch 3D + Monad viz + full width
 
 ```json
