@@ -13536,50 +13536,126 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
     const humans = normalizeHumans(humansRaw);
     const humanId = monadSvc.resolveHumanId(caller);
 
+    const directory = await monadSvc.loadDirectoryPeople().catch(() => ({}));
+    const humanName = {};
+    humans.forEach((h) => { humanName[h.human_id] = h.display_name || h.human_id; });
+
+    function agentPublic(a, nid, cell) {
+      const owner = a.owner || null;
+      const person = (directory && owner && directory[owner]) || {};
+      return {
+        agent_id: a.agent_id,
+        name: a.name,
+        status: a.status,
+        owner,
+        owner_name: humanName[owner] || owner,
+        platform: a.platform || null,
+        domains: a.domains || [],
+        nucleus: nid,
+        cell,
+        contour: Object.keys(person.contour_personas || {}),
+        friends: person.linked_humans || person.friends || [],
+      };
+    }
+
     const byNucleus = {};
     for (const n of monadSvc.VERTICAL_NUCLEI) byNucleus[n.id] = [];
     for (const a of agents) {
       const nid = nucleusForAgent(a);
       if (!byNucleus[nid]) byNucleus[nid] = [];
-      byNucleus[nid].push({
-        agent_id: a.agent_id,
-        name: a.name,
-        status: a.status,
-        owner: a.owner,
-      });
+      const cell = monadSvc.cellForAgent(a, nid);
+      byNucleus[nid].push(agentPublic(a, nid, cell));
     }
 
-    // Vertical: 7 nuclei × up to 7 "branches" (top agents per nucleus)
     const vertical = monadSvc.VERTICAL_NUCLEI.map((n) => {
+      const pub = monadSvc.publicNucleus(n);
       const list = byNucleus[n.id] || [];
       const active = list.filter((x) => x.status === 'active').length;
-      const branches = list
-        .slice()
-        .sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1))
-        .slice(0, 7)
-        .map((x, i) => ({ branch: i + 1, ...x }));
-      while (branches.length < 7) {
-        branches.push({ branch: branches.length + 1, agent_id: null, name: '—', status: 'empty', owner: null });
-      }
-      return { ...n, total: list.length, active, branches };
+      const cells = pub.cells.map((c) => {
+        const cellAgents = list.filter((x) => x.cell === c.n);
+        return {
+          ...c,
+          occupied: cellAgents.length > 0,
+          count: cellAgents.length,
+          agents: cellAgents,
+        };
+      });
+      const occupiedCells = cells.filter((c) => c.occupied).length;
+      return {
+        ...pub,
+        total: list.length,
+        active,
+        occupied_cells: occupiedCells,
+        cells,
+        agents: list,
+      };
     });
 
-    // Horizontal: humans around DOM (cap 12 for the classic 12+1 ring; rest listed)
-    const ring = humans.filter((h) => h.status !== 'retired').slice(0, 12);
-    const horizontal = {
-      center: { id: 'dom', label: 'DOM', note: '12+1 — collective centre' },
-      persons: ring.map((h) => ({
+    // Horizontal 12+1: fixed clock seats, not equal-angle of N people.
+    const liveHumans = humans.filter((h) => h.status !== 'retired');
+    const used = new Set();
+    const seats = [];
+    for (let hour = 1; hour <= 12; hour++) seats.push({ hour, person: null });
+    function seatAt(hour, person) {
+      const idx = hour - 1;
+      if (!seats[idx].person) {
+        seats[idx].person = person;
+        used.add(person.human_id);
+        return true;
+      }
+      return false;
+    }
+    liveHumans.forEach((h) => {
+      const slot = monadSvc.circleSlotFor(h);
+      if (slot) seatAt(slot, h);
+    });
+    const leftovers = liveHumans.filter((h) => !used.has(h.human_id));
+    leftovers.forEach((h) => {
+      const empty = seats.find((s) => !s.person);
+      if (empty) seatAt(empty.hour, h);
+    });
+
+    function personPublic(h) {
+      if (!h) return null;
+      const person = (directory && directory[h.human_id]) || {};
+      const owned = agents.filter((a) => a.owner === h.human_id).map((a) => {
+        const nid = nucleusForAgent(a);
+        return agentPublic(a, nid, monadSvc.cellForAgent(a, nid));
+      });
+      return {
         human_id: h.human_id,
         display_name: h.display_name,
-        role: h.role,
+        role: h.role || person.role_title || null,
         status: h.status,
         is_me: h.human_id === humanId,
-        agents: agents.filter((a) => a.owner === h.human_id).length,
-      })),
-      extra_humans: Math.max(0, humans.length - ring.length),
+        circle_slot: monadSvc.circleSlotFor(h),
+        agents_count: owned.length,
+        agents: owned,
+        contour: Object.keys(person.contour_personas || {}),
+        aliases: person.aliases || [],
+      };
+    }
+
+    const unseated = liveHumans.filter((h) => !used.has(h.human_id));
+    const horizontal = {
+      center: { id: 'dom', label: 'DOM', note: '12+1 — collective centre. Nick at 12, Tahir at 6.' },
+      seats: seats.map((s) => ({ hour: s.hour, person: personPublic(s.person) })),
+      persons: seats.filter((s) => s.person).map((s) => personPublic(s.person)),
+      extra_humans: unseated.length,
     };
 
-    res.json({ ok: true, human_id: humanId, vertical, horizontal, agent_total: agents.length, human_total: humans.length });
+    res.json({
+      ok: true,
+      human_id: humanId,
+      legend: {
+        ru: 'Вертикаль — 7 слоёв одного поля Манады (L1 Тело внизу → L7 Поле наверху). Число «5 из 12» — активные агенты слоя / все агенты слоя. Горизонталь — часы 12+1, DOM в центре.',
+        en: 'Vertical is 7 layers of one Monad field (L1 Body at the bottom → L7 Field). “5 of 12” means active agents / all agents in that layer. Horizontal is the 12+1 clock, DOM at the centre.',
+      },
+      vertical,
+      horizontal,
+      agent_total: agents.length,
+      human_total: humans.length,
+    });
   } catch (err) {
     console.error('GET /api/monad/architecture:', err);
     res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
@@ -13682,10 +13758,9 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
       console.error('[monad/message] generateLkReply', genErr.message);
     }
     if (!replyText) {
-      const snip = text.replace(/\s+/g, ' ').slice(0, 90);
       replyText = /[а-яё]/i.test(text)
-        ? `Я здесь, в этом же чате. По «${snip}» — напиши, что сделать дальше.`
-        : `I'm here in this same chat. On “${snip}” — tell me what to do next.`;
+        ? 'Я Persona в этом чате. Напиши задачу: атлас, Sketch, вертикаль, горизонталь, ритм или что сделать в кабинете.'
+        : 'I am Persona in this chat. Name the task: atlas, Sketch, vertical, horizontal, rhythm, or a cabinet action.';
     }
 
     if (replyText && chat) {
@@ -13897,8 +13972,12 @@ app.patch('/api/monad/chats/:id', requireAuth, async (req, res) => {
 app.delete('/api/monad/chats/:id', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
-    await sql`UPDATE monad_chats SET archived = true, updated_at = now() WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
-    res.json({ ok: true });
+    const chatId = req.params.id;
+    const [chat] = await sql`SELECT id FROM monad_chats WHERE id = ${chatId} AND user_id = ${caller.id}`;
+    if (!chat) return res.status(404).json({ error: 'not found' });
+    await sql`DELETE FROM monad_chat_messages WHERE chat_id = ${chat.id}`;
+    await sql`DELETE FROM monad_chats WHERE id = ${chat.id} AND user_id = ${caller.id}`;
+    res.json({ ok: true, deleted: chat.id });
   } catch (err) {
     console.error('DELETE /api/monad/chats/:id:', err);
     res.status(500).json({ error: err.message || 'Internal error' });
