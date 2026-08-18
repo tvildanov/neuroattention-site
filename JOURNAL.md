@@ -7,6 +7,44 @@
 
 ---
 
+## 2026-08-18 — Sketch 3D is the live Atlas body, not a 2D overlay trap
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-08-18T18:40:00Z",
+  "did": [
+    "Nick: Sketch 3D/2D and Rotate 3D did nothing; drawing stayed flat",
+    "Opaque sketch-bg sat above BodyAtlas (z-index 10 vs 2) so the 3D body was invisible; overlays ate orbit events",
+    "Stack is now bg → live Atlas → transparent draw layers. Orbit uses Atlas controls. Shift+drag rotates while drawing; wheel zooms"
+  ],
+  "changed": [
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "assets/redesign.css",
+    "account.html",
+    "sw.js",
+    "docs/SKETCH-BRIEF.md"
+  ],
+  "files": [
+    "assets/js/sketch-tool.js",
+    "assets/js/body-atlas.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Do not invent a new 3D camera. Same BodyAtlas orbit/zoom/pan as Internal Field",
+    "Do not destroy the Atlas when switching to 2D — hide it so 3D comes back instantly"
+  ],
+  "followups": [
+    "Nick: hard-refresh Sketch (SW v79, sketch-tool.js?v=6). 3D should show the body; Rotate 3D or Shift+drag should turn it"
+  ],
+  "next_session": "Confirm Sketch 3D orbit on prod"
+}
+```
+
+---
+
 ## 2026-08-18 — LK is a channel; Persona LLM is hosted in Monad (supersedes 17:10)
 
 ```json
