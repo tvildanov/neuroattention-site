@@ -136,8 +136,8 @@ async function loadDirectoryPerson(humanId) {
       return dirCache.people[humanId] || null;
     }
     const rows = await mcpCall('read_context', {
-      key_prefix: 'monad.directory.people.v1',
-      limit: 3,
+      key: 'monad.directory.people.v1',
+      limit: 1,
       reader_agent: 'neuro_agent',
     });
     const arr = Array.isArray(rows) ? rows : [];
@@ -717,7 +717,15 @@ async function generateLkReply({ humanId, text, history, personaAgent, chatId })
     loadHumanFacts(humanId),
     loadPlacements().catch(() => ({})),
     needLlm ? loadPersonaPrompt(personaAgent).catch(() => '') : Promise.resolve(''),
-    needLlm ? mcpCall('get_architecture', {}).catch(() => null) : Promise.resolve(null),
+    needLlm ? mcpCall('get_architecture', {}).catch(async () => {
+      try {
+        const headers = { Accept: 'application/json' };
+        if (MONAD_API_KEY) headers['X-API-Key'] = MONAD_API_KEY;
+        const res = await fetch(MONAD_BASE + '/api/architecture', { headers });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (_) { return null; }
+    }) : Promise.resolve(null),
   ]);
   if (needLlm) {
     const llm = await tryLlmReply({

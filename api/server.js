@@ -13526,10 +13526,20 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
     if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
-    const [agentsRaw, humansRaw, placements] = await Promise.all([
+    const [agentsRaw, humansRaw, placements, livePack] = await Promise.all([
       monadSvc.mcpCall('list_agents', {}),
       monadSvc.mcpCall('list_humans', { limit: 100 }),
       monadSvc.loadPlacements().catch(() => ({})),
+      monadSvc.mcpCall('get_architecture', {}).catch(async () => {
+        try {
+          const headers = { Accept: 'application/json' };
+          if (process.env.MONAD_API_KEY) headers['X-API-Key'] = process.env.MONAD_API_KEY;
+          const base = process.env.MONAD_BASE_URL || 'https://monad-server-production.up.railway.app';
+          const res = await fetch(base + '/api/architecture', { headers });
+          if (!res.ok) return null;
+          return await res.json();
+        } catch (_) { return null; }
+      }),
     ]);
     const agents = normalizeAgents(agentsRaw);
     const humans = normalizeHumans(humansRaw);
@@ -13720,6 +13730,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
       agent_total: agents.length,
       placed_total: publics.filter((a) => a.cell).length,
       human_total: humans.length,
+      live: livePack || null,
     });
   } catch (err) {
     console.error('GET /api/monad/architecture:', err);
