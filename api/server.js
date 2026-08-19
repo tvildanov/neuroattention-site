@@ -3316,6 +3316,14 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (err) {
     console.error('POST /api/auth/login:', err);
+    const msg = String(err && (err.message || err.toString()) || '');
+    // Railway/Neon can hard-fail with compute time quota exhausted.
+    // In that case the UI shouldn't show a random "Internal error".
+    if (msg.toLowerCase().includes('compute time quota') || msg.toLowerCase().includes('quota exceeded') || msg.includes('upgrade your plan')) {
+      return res.status(503).json({
+        error: 'Service is overloaded (DB compute quota exceeded). Please try again in a few minutes.'
+      });
+    }
     res.status(500).json({ error: 'Internal error' });
   }
 });
