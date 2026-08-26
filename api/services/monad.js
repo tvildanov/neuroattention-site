@@ -1208,6 +1208,85 @@ function normalizeInboxItems(raw) {
   })).filter((x) => x.item_id);
 }
 
+/** Strip LK channel plumbing — keep real human/agent requests to this Persona. */
+function isInboxChannelNoise(item) {
+  if (!item) return true;
+  const title = String(item.title || '');
+  const body = String(item.body || '');
+  const meta = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
+  const from = String(item.from_agent || item.agent_id || '');
+  const msgType = String(item.message_type || '');
+
+  if (/^\[LK[\s_-]*(live|policy|channel|sync)/i.test(title)) {
+    if (/Their message:\s*\n?(\S)/i.test(body)) return false;
+    return true;
+  }
+  if (/^LK[\s_-]*(live|policy)$/i.test(title.trim())) return !/Their message:/i.test(body);
+  if (/post_lk_chat_message|Reply NOW with|roll_manat|human_id.*nick/i.test(body)) {
+    return !/Their message:\s*\n?(\S)/i.test(body);
+  }
+  if (meta.channel === 'neuroattention_lk' && /канал лк|channel ack|seed planted|plant_seed/i.test(body)) return true;
+  if (/^persona_/i.test(from) && /^(канал|channel|handoff|seed)/i.test(body.trim())) return true;
+  if (msgType === 'lk_channel' || msgType === 'channel_ack') return true;
+  return false;
+}
+
+function humanizeInboxFrom(item) {
+  const from = String(item.from_agent || item.agent_id || '').trim();
+  if (!from) return 'Monad';
+  if (/^persona_/i.test(from)) {
+    const hid = from.replace(/^persona_/, '');
+    return hid.charAt(0).toUpperCase() + hid.slice(1);
+  }
+  return from.replace(/_/g, ' ');
+}
+
+function humanizeInboxBody(item) {
+  const body = String(item.body || '').trim();
+  const title = String(item.title || '');
+  let m = body.match(/Their message:\s*\n?([\s\S]+?)(?:\nReply NOW|\npost_lk|$)/i);
+  if (m && m[1]) return m[1].trim();
+  m = body.match(/Сообщение(?:\s+человека)?:\s*\n?([\s\S]+?)(?:\nОтвет|\nReply|$)/i);
+  if (m && m[1]) return m[1].trim();
+  if (/post_lk_chat_message|Reply NOW with|roll_manat/i.test(body)) {
+    return body
+      .replace(/Reply NOW with[\s\S]*/i, '')
+      .replace(/post_lk_chat_message[\s\S]*/i, '')
+      .replace(/\{\{[^}]+\}\}/g, '')
+      .trim();
+  }
+  if (/^\[LK/i.test(title) && body.length > 400) return body.slice(0, 400) + '…';
+  return body;
+}
+
+function humanizeInboxTitle(item) {
+  const title = String(item.title || '').trim();
+  const body = humanizeInboxBody(item);
+  const from = humanizeInboxFrom(item);
+  if (/^\[LK/i.test(title) || /^LK[\s_-]*(live|policy)/i.test(title)) {
+    const preview = body.split('\n')[0].slice(0, 72);
+    return preview ? ('Запрос: ' + preview) : ('Сообщение от ' + from);
+  }
+  if (/^Новый чат$/i.test(title) && body) return body.split('\n')[0].slice(0, 80);
+  if (title && !/^message$/i.test(title)) return title;
+  if (body) return body.split('\n')[0].slice(0, 80);
+  return 'Сообщение от ' + from;
+}
+
+function enrichInboxItem(item) {
+  const base = { ...item };
+  base.display_title = humanizeInboxTitle(base);
+  base.display_body = humanizeInboxBody(base);
+  base.display_from = humanizeInboxFrom(base);
+  return base;
+}
+
+function filterInboxForPersona(items) {
+  return (items || [])
+    .filter((item) => !isInboxChannelNoise(item))
+    .map(enrichInboxItem);
+}
+
 /** Live Persona inbox — HTTP /api/human/:id/inbox when shipped, else MCP get_inbox. */
 async function fetchHumanInbox(humanId, limit = 50) {
   const hid = String(humanId || '').replace(/^persona_/, '');
@@ -1269,6 +1348,12 @@ module.exports = {
   getRhythm,
   fetchHumanInbox,
   normalizeInboxItems,
+  isInboxChannelNoise,
+  humanizeInboxTitle,
+  humanizeInboxBody,
+  humanizeInboxFrom,
+  enrichInboxItem,
+  filterInboxForPersona,
   MONAD_DASHBOARD,
   MONAD_MCP_URL,
   MONAD_BASE,

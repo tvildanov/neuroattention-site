@@ -13502,15 +13502,24 @@ app.get('/api/monad/persona/health', requireAuth, async (req, res) => {
         anthropic: { hosted: !!health.llm, note: health.note || null },
       };
     }
+    let note = health.note || null;
+    const myPersona = humanId ? monadSvc.resolvePersonaAgent(humanId) : null;
+    if (note && myPersona) {
+      const noteLow = String(note).toLowerCase();
+      const personaLow = String(myPersona).toLowerCase();
+      const humanLow = String(humanId || '').toLowerCase();
+      const aboutMe = noteLow.includes(personaLow) || noteLow.includes(humanLow);
+      if (!aboutMe) note = null;
+    }
     res.json({
       ok: health.ok !== false,
       human_id: humanId,
-      persona: humanId ? monadSvc.resolvePersonaAgent(humanId) : null,
+      persona: myPersona,
       hosted: !!health.hosted,
       enabled: !!health.enabled,
       llm: !!health.llm,
       last_tick: health.last_tick || null,
-      note: health.note || null,
+      note,
       providers,
       source: health.providers ? 'monad-server' : 'site-proxy',
     });
@@ -13736,7 +13745,18 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
       const projectHeads = owned.filter((a) => a.type === 'project_persona' && a.agent_id !== 'persona_dom');
       const skills = owned.filter((a) => a.type === 'skill');
       function pack(head) {
-        const kids = skills.filter((s) => s.parent === head.agent_id);
+        const kids = skills.filter((s) => {
+          if (s.agent_id === head.agent_id) return false;
+          if (s.parent === head.agent_id) return true;
+          if (head.type === 'contour_persona' && head.contour && s.contour === head.contour) return true;
+          if (head.type === 'project_persona' && head.project && s.project === head.project) return true;
+          return false;
+        });
+        const seen = new Set([head.agent_id]);
+        const agents = [head];
+        kids.forEach((k) => {
+          if (!seen.has(k.agent_id)) { seen.add(k.agent_id); agents.push(k); }
+        });
         return {
           id: head.contour || head.project || head.agent_id,
           kind: head.type === 'contour_persona' ? 'contour' : 'project',
@@ -13747,7 +13767,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
             ? monadSvc.labelContour(head.contour || head.agent_id, 'en')
             : monadSvc.labelProject(head.project || head.agent_id, 'en'),
           persona: head,
-          agents: [head].concat(kids),
+          agents,
         };
       }
       return {
@@ -14236,7 +14256,8 @@ app.get('/api/monad/inbox', requireAuth, async (req, res) => {
       WHERE user_id = ${caller.id}
       ORDER BY monad_created_at DESC NULLS LAST, synced_at DESC
       LIMIT 100`;
-    res.json({ ok: true, threads: rows, human_id: monadSvc.resolveHumanId(caller) });
+    const filtered = monadSvc.filterInboxForPersona(rows);
+    res.json({ ok: true, threads: filtered, human_id: monadSvc.resolveHumanId(caller) });
   } catch (err) {
     console.error('GET /api/monad/inbox:', err);
     res.status(500).json({ error: err.message || 'Internal error' });
@@ -14257,7 +14278,7 @@ app.post('/api/monad/inbox/sync', requireAuth, async (req, res) => {
     }
     const limit = Math.min(100, Math.max(1, parseInt((req.body && req.body.limit) || 50, 10) || 50));
     const live = await monadSvc.fetchHumanInbox(humanId, limit);
-    const items = live.items || [];
+    const items = monadSvc.filterInboxForPersona(live.items || []);
     let upserted = 0;
     for (const item of items) {
       await sql`
@@ -14292,13 +14313,14 @@ app.post('/api/monad/inbox/sync', requireAuth, async (req, res) => {
       WHERE user_id = ${caller.id}
       ORDER BY monad_created_at DESC NULLS LAST, synced_at DESC
       LIMIT 100`;
+    const threads = monadSvc.filterInboxForPersona(rows);
     res.json({
       ok: true,
       source: live.source || 'mcp',
       synced: upserted,
       human_id: humanId,
       persona: monadSvc.resolvePersonaAgent(humanId),
-      threads: rows,
+      threads,
     });
   } catch (err) {
     console.error('POST /api/monad/inbox/sync:', err);

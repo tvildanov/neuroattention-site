@@ -314,6 +314,16 @@
     return state.viewMode === '3d' && (state.interaction === 'orbit' || state.shiftHeld);
   }
 
+  function syncAtlasInteraction() {
+    if (!state.atlas) return;
+    var orbit = state.viewMode === '3d' && cameraPassThrough();
+    try {
+      if (state.atlas.controls) state.atlas.controls.enabled = !!orbit;
+    } catch (e0) {}
+    var el = state.atlas.renderer && state.atlas.renderer.domElement;
+    if (el) el.style.pointerEvents = orbit ? 'auto' : 'none';
+  }
+
   function applyPointerLayers() {
     var st = stage();
     var passing = cameraPassThrough();
@@ -329,14 +339,18 @@
       host3d.style.visibility = show3d ? 'visible' : 'hidden';
       host3d.style.display = 'block';
       host3d.style.opacity = show3d ? String(state.layers.media.opacity != null ? state.layers.media.opacity : 1) : '0';
-      host3d.style.pointerEvents = show3d ? 'auto' : 'none';
+      host3d.classList.toggle('sketch-orbit-active', show3d && passing);
+      host3d.style.pointerEvents = (show3d && passing) ? 'auto' : 'none';
     }
+    syncAtlasInteraction();
     var wrap = document.getElementById('sketch-media-wrap');
     if (wrap) wrap.style.zIndex = state.viewMode === '3d' ? '0' : '2';
     var mm = mediaMask();
     if (mm) {
       mm.style.zIndex = '4';
-      mm.style.pointerEvents = (!passing && state.interaction === 'draw' && state.activeDraw === 'media' && state.viewMode === '2d') ? 'auto' : 'none';
+      var mmActive = !passing && state.interaction === 'draw' && state.activeDraw === 'media' && state.viewMode === '2d';
+      mm.classList.toggle('sketch-draw-active', mmActive);
+      mm.style.pointerEvents = mmActive ? 'auto' : 'none';
       mm.style.visibility = (state.layers.media.visible && state.viewMode === '2d') ? 'visible' : 'hidden';
     }
     ['d0', 'd1', 'd2'].forEach(function (id, idx) {
@@ -345,10 +359,16 @@
       c.style.zIndex = String(5 + idx);
       c.style.visibility = state.layers[id].visible ? 'visible' : 'hidden';
       c.style.opacity = String(state.layers[id].opacity != null ? state.layers[id].opacity : 1);
-      c.style.pointerEvents = (!passing && state.interaction === 'draw' && state.activeDraw === id) ? 'auto' : 'none';
+      var drawActive = !passing && state.interaction === 'draw' && state.activeDraw === id;
+      c.classList.toggle('sketch-draw-active', drawActive);
+      c.style.pointerEvents = drawActive ? 'auto' : 'none';
       c.style.cursor = passing ? 'grab' : 'crosshair';
     });
-    if (st) st.style.cursor = passing ? 'grab' : 'crosshair';
+    if (st) {
+      st.style.cursor = passing ? 'grab' : 'crosshair';
+      st.classList.toggle('sketch-orbit-mode', passing);
+      st.classList.toggle('sketch-draw-mode', state.viewMode === '3d' && state.interaction === 'draw' && !passing);
+    }
   }
 
   function applyLayerVisibility() {
@@ -461,6 +481,7 @@
         state.atlasMounting = false;
         applyMedia();
         applyLayerVisibility();
+        syncAtlasInteraction();
         resizeAll();
         try { if (a && a._onResize) a._onResize(); } catch (e1) {}
         state.atlasWaiters.forEach(function (fn) { fn(a); });
@@ -979,6 +1000,23 @@
     }
   }
 
+  function wireStageDraw() {
+    var st = stage();
+    if (!st || st.dataset.drawWired) return;
+    st.dataset.drawWired = '1';
+    st.addEventListener('mousedown', function (e) {
+      if (state.viewMode !== '3d' || state.interaction !== 'draw' || state.shiftHeld) return;
+      if (e.target && e.target.classList && e.target.classList.contains('sketch-draw-cv')) return;
+      var c = activeCanvas();
+      if (!c) return;
+      startDraw(e);
+    });
+    st.addEventListener('mousemove', function (e) {
+      if (!state.drawing || state.viewMode !== '3d') return;
+      moveDraw(e);
+    });
+  }
+
   function wireCanvases() {
     ['d0', 'd1', 'd2'].forEach(function (id) {
       var c = drawCanvas(id);
@@ -1174,6 +1212,7 @@
     if (!state.mounted) {
       wireToolbar();
       wireCanvases();
+      wireStageDraw();
       wireStageCamera();
       state.mounted = true;
       window.addEventListener('resize', function () {

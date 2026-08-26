@@ -36,13 +36,18 @@
     return axis['name_' + lang] || axis.name_ru || axis.name_en || axis.id || '';
   }
 
-  function CrossScene(container, arch) {
+  function CrossScene(container, arch, opts) {
     this.container = container;
     this.arch = arch || {};
+    this.opts = opts || {};
     this.axes = (arch && arch.three_axes) || (arch && arch.live && arch.live.three_axes) || {};
     this.depth = (arch && arch.depth) || (arch && arch.live && arch.live.depth) || {};
     this._raf = null;
     this._resizeObs = null;
+    this._pickables = [];
+    this._raycaster = null;
+    this._mouse = null;
+    this._onClickBound = null;
   }
 
   CrossScene.prototype.mount = function () {
@@ -90,6 +95,7 @@
     this._addHorizontalRing();
     this._addDepthChain();
     this._addLegend();
+    this._bindPick();
 
     var self = this;
     if (window.ResizeObserver) {
@@ -140,6 +146,33 @@
     this.scene.add(spr);
   };
 
+  CrossScene.prototype._tag = function (mesh, nav) {
+    mesh.userData = mesh.userData || {};
+    mesh.userData.monadNav = nav;
+    this._pickables.push(mesh);
+  };
+
+  CrossScene.prototype._bindPick = function () {
+    var self = this;
+    var T = window.THREE;
+    if (!T || !this.renderer) return;
+    this._raycaster = new T.Raycaster();
+    this._mouse = new T.Vector2();
+    this._onClickBound = function (e) {
+      if (!self._pickables.length || !self.opts.onNavigate) return;
+      var rect = self.renderer.domElement.getBoundingClientRect();
+      self._mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      self._mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      self._raycaster.setFromCamera(self._mouse, self.camera);
+      var hits = self._raycaster.intersectObjects(self._pickables, false);
+      if (!hits.length) return;
+      var nav = hits[0].object && hits[0].object.userData && hits[0].object.userData.monadNav;
+      if (nav) self.opts.onNavigate(nav);
+    };
+    this.renderer.domElement.addEventListener('click', this._onClickBound);
+    this.renderer.domElement.style.cursor = 'pointer';
+  };
+
   CrossScene.prototype._addAxes = function () {
     var lang = locLang();
     var xCol = 0x00e0ff;
@@ -148,6 +181,20 @@
     this._line([0, 0, 0], [0, 7.2, 0], xCol);
     this._line([0, 2.2, 0], [4.8, 2.2, 0], yCol);
     this._line([0, 2.2, 0], [0, 2.2, -4.8], zCol);
+    var xHit = new window.THREE.Mesh(
+      new window.THREE.BoxGeometry(0.9, 7.4, 0.9),
+      new window.THREE.MeshBasicMaterial({ visible: false })
+    );
+    xHit.position.set(0, 3.6, 0);
+    this.scene.add(xHit);
+    this._tag(xHit, { target: 'vertical' });
+    var yHit = new window.THREE.Mesh(
+      new window.THREE.BoxGeometry(5.2, 0.9, 0.9),
+      new window.THREE.MeshBasicMaterial({ visible: false })
+    );
+    yHit.position.set(2.4, 2.2, 0);
+    this.scene.add(yHit);
+    this._tag(yHit, { target: 'horizontal' });
     this._label('X · ' + axisLabel(this.axes.x_height, lang), 0, 7.6, 0, '#00e0ff');
     this._label('Y · ' + axisLabel(this.axes.y_width, lang), 5.2, 2.2, 0, '#e8c468');
     this._label('Z · ' + axisLabel(this.axes.z_depth, lang), 0, 2.2, -5.2, '#8dffc8');
@@ -165,6 +212,7 @@
       var mesh = new T.Mesh(geo, mat);
       mesh.position.set(0, y, 0);
       this.scene.add(mesh);
+      this._tag(mesh, { target: 'vertical', layerId: L.id || ('L' + (L.layer || (i + 1))), cell: L.layer || (i + 1) });
       var spine = new T.Mesh(new T.BoxGeometry(0.22, 0.48, 0.22), spineMat);
       spine.position.set(0, y, 0);
       this.scene.add(spine);
@@ -194,10 +242,12 @@
       var dot = new T.Mesh(new T.SphereGeometry(s.person ? 0.14 : 0.08, 10, 10), this._mat(s.person ? 0x00e0ff : 0x444444, s.person ? 1 : 0.45));
       dot.position.set(x, 2.2, z);
       this.scene.add(dot);
+      if (s.person) this._tag(dot, { target: 'horizontal', hour: hour });
     }, this);
     var dom = new T.Mesh(new T.SphereGeometry(0.22, 16, 16), this._mat(0xffffff, 0.9));
     dom.position.set(0, 2.2, 0);
     this.scene.add(dom);
+    this._tag(dom, { target: 'horizontal', hour: 'dom' });
   };
 
   CrossScene.prototype._addDepthChain = function () {
@@ -235,12 +285,9 @@
     if (z && z.meaning) bits.push('Z: ' + z.meaning.slice(0, 120));
     var host = document.createElement('div');
     host.className = 'monad-cross-legend';
-    host.innerHTML = '<p class="monad-muted">' + bits.map(function (b) {
-      return String(b).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    }).join(' · ') + '</p>' +
-      '<p class="monad-muted">' + (lang === 'en'
-        ? 'Drag to orbit · wheel zoom · Shift+drag also works'
-        : 'Крути мышью · колесо — масштаб · Shift+drag — орбита') + '</p>';
+    host.innerHTML = '<p class="monad-muted">' + (lang === 'en'
+        ? 'Click axis, layer block, person dot or DOM · drag to orbit · wheel zoom'
+        : 'Клик по оси, слою, человеку или DOM · крути · колесо — масштаб') + '</p>';
     this.container.appendChild(host);
   };
 
@@ -267,6 +314,9 @@
     if (this._raf) window.cancelAnimationFrame(this._raf);
     if (this._resizeObs) this._resizeObs.disconnect();
     if (this._onResizeBound) window.removeEventListener('resize', this._onResizeBound);
+    if (this.renderer && this._onClickBound) {
+      this.renderer.domElement.removeEventListener('click', this._onClickBound);
+    }
     if (this.controls) this.controls.dispose();
     if (this.renderer) {
       this.renderer.dispose();
@@ -278,10 +328,10 @@
   };
 
   window.MonadCross = {
-    mount: function (container, arch) {
+    mount: function (container, arch, opts) {
       if (active) { active.destroy(); active = null; }
       if (!container) return Promise.resolve();
-      var scene = new CrossScene(container, arch);
+      var scene = new CrossScene(container, arch, opts);
       active = scene;
       return scene.mount().catch(function (err) {
         container.innerHTML = '<p class="monad-warn">' + String(err && err.message || err) + '</p>';
