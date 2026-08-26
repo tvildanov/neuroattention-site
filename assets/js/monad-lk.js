@@ -12,7 +12,7 @@
     arch: null,
     rhythm: null,
     sub: 'chat',
-    archSub: 'vertical',
+    archSub: 'cross',
     chats: [],
     activeChatId: null,
     messages: [],
@@ -30,7 +30,7 @@
     rhythmDisplay: [],
     inbox: [],
     inboxSyncing: false,
-    inboxExpanded: null,
+    inboxViewId: null,
     personaHealth: null,
   };
 
@@ -80,7 +80,7 @@
   }
 
   function setArchSub(id) {
-    STATE.archSub = id || 'vertical';
+    STATE.archSub = id || 'cross';
     document.querySelectorAll('.monad-arch-subtab').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-monad-arch') === STATE.archSub);
     });
@@ -90,7 +90,23 @@
     if (STATE.archSub === 'cross') {
       if (window.MonadCross && STATE.arch) {
         var host = document.getElementById('monad-cross-host');
-        if (host) window.MonadCross.mount(host, STATE.arch);
+        if (host) {
+          window.MonadCross.mount(host, STATE.arch, {
+            onNavigate: function (nav) {
+              if (!nav || !nav.target) return;
+              setArchSub(nav.target);
+              if (nav.target === 'vertical' && nav.layerId) {
+                STATE.vertLayer = nav.layerId;
+                STATE.vertCell = nav.cell != null ? String(nav.cell) : null;
+                renderVertical(STATE.arch);
+              }
+              if (nav.target === 'horizontal' && nav.hour != null) {
+                STATE.horizHour = String(nav.hour);
+                renderHorizontal(STATE.arch);
+              }
+            },
+          });
+        }
       }
     } else if (window.MonadCross) {
       window.MonadCross.destroy();
@@ -137,7 +153,12 @@
       bits.push('<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
     }
     if (STATE.personaHealth && STATE.personaHealth.note) {
-      bits.push('<span class="monad-muted">' + esc(STATE.personaHealth.note) + '</span>');
+      var myH = (STATE.status && STATE.status.human_id) || '';
+      var myP = (STATE.status && STATE.status.persona) || (STATE.personaHealth.persona || '');
+      var noteLow = String(STATE.personaHealth.note).toLowerCase();
+      var showNote = !myP || noteLow.indexOf(String(myP).toLowerCase()) >= 0
+        || (myH && noteLow.indexOf(String(myH).toLowerCase()) >= 0);
+      if (showNote) bits.push('<span class="monad-muted">' + esc(STATE.personaHealth.note) + '</span>');
     }
     if (s.dashboard_url) {
       bits.push('<a href="' + esc(s.dashboard_url) + '" target="_blank" rel="noopener">' + esc(t('a.monad.dashboard', 'Dashboard Monad')) + '</a>');
@@ -165,6 +186,89 @@
     return body.slice(0, 140);
   }
 
+  function inboxDisplayTitle(item) {
+    return item.display_title || item.title || t('a.monad.inbox_item', 'Сообщение');
+  }
+  function inboxDisplayBody(item) {
+    return item.display_body || inboxPreview(item) || String(item.body || '');
+  }
+  function inboxDisplayFrom(item) {
+    return item.display_from || item.from_agent || item.agent_id || t('a.monad.monad', 'Monad');
+  }
+  function inboxWhen(item) {
+    if (!item.monad_created_at) return '';
+    return String(item.monad_created_at).slice(0, 16).replace('T', ' ');
+  }
+
+  function findInboxItem(id) {
+    return STATE.inbox.filter(function (x) { return x.item_id === id; })[0] || null;
+  }
+
+  function renderInboxDetail() {
+    var view = document.getElementById('monad-inbox-view');
+    var log = document.getElementById('monad-chat-log');
+    var compose = document.querySelector('.monad-chat-compose');
+    var toolbar = document.querySelector('.monad-chat-toolbar');
+    var hint = document.querySelector('.monad-panel-chat .monad-muted');
+    if (!view) return;
+    var item = STATE.inboxViewId ? findInboxItem(STATE.inboxViewId) : null;
+    if (!item) {
+      view.style.display = 'none';
+      if (log) log.style.display = '';
+      if (compose) compose.style.display = '';
+      if (toolbar) toolbar.style.display = '';
+      if (hint) hint.style.display = '';
+      return;
+    }
+    view.style.display = 'block';
+    if (log) log.style.display = 'none';
+    if (compose) compose.style.display = 'none';
+    if (toolbar) toolbar.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+    var meta = parseMetaField(item.metadata);
+    var chatId = meta.chat_id;
+    view.innerHTML =
+      '<div class="monad-inbox-detail">' +
+      '<button type="button" class="btn btn-ghost monad-inbox-back" id="monad-inbox-back" style="font-size:12px;margin-bottom:0.65rem;">← ' +
+      esc(t('a.monad.inbox_back', 'К списку')) + '</button>' +
+      '<div class="monad-inbox-detail-head">' +
+      '<h3 class="monad-inbox-detail-title">' + esc(inboxDisplayTitle(item)) + '</h3>' +
+      '<p class="monad-muted monad-inbox-detail-meta">' +
+      esc(t('a.monad.inbox_from', 'От')) + ': <strong>' + esc(inboxDisplayFrom(item)) + '</strong>' +
+      (inboxWhen(item) ? ' · ' + esc(inboxWhen(item)) : '') +
+      '</p></div>' +
+      '<div class="monad-inbox-detail-body">' + esc(inboxDisplayBody(item)) + '</div>' +
+      (chatId
+        ? ('<p style="margin-top:1rem;"><button type="button" class="btn btn-primary" id="monad-inbox-open-chat" style="font-size:12px;">' +
+          esc(t('a.monad.inbox_open_chat', 'Открыть связанный чат')) + '</button></p>')
+        : '') +
+      '</div>';
+    var back = document.getElementById('monad-inbox-back');
+    if (back) back.addEventListener('click', function () {
+      STATE.inboxViewId = null;
+      renderInbox();
+      renderInboxDetail();
+    });
+    var openChatBtn = document.getElementById('monad-inbox-open-chat');
+    if (openChatBtn && chatId) {
+      openChatBtn.addEventListener('click', function () {
+        STATE.inboxViewId = null;
+        renderInboxDetail();
+        openChat(chatId).catch(function () {});
+      });
+    }
+  }
+
+  function openInboxItem(id) {
+    STATE.inboxViewId = id;
+    api('/api/monad/inbox/' + encodeURIComponent(id) + '/read', { method: 'PATCH' }).catch(function () {});
+    STATE.inbox = STATE.inbox.map(function (x) {
+      return x.item_id === id ? Object.assign({}, x, { read_at: new Date().toISOString() }) : x;
+    });
+    renderInbox();
+    renderInboxDetail();
+  }
+
   function renderInbox() {
     var host = document.getElementById('monad-inbox-list');
     if (!host) return;
@@ -179,30 +283,19 @@
     }
     host.innerHTML = STATE.inbox.map(function (item) {
       var unread = !item.read_at;
-      var open = STATE.inboxExpanded === item.item_id;
+      var open = STATE.inboxViewId === item.item_id;
       var prev = inboxPreview(item);
-      var meta = parseMetaField(item.metadata);
-      var chatId = meta.chat_id;
       return '<div class="monad-inbox-row' + (unread ? ' unread' : '') + (open ? ' open' : '') + '" data-inbox-id="' + esc(item.item_id) + '">' +
-        '<button type="button" class="monad-inbox-item" data-inbox-id="' + esc(item.item_id) + '"' +
-        (chatId ? ' data-chat-id="' + esc(chatId) + '"' : '') + '>' +
-        '<div class="monad-inbox-title">' + esc(item.title || t('a.monad.inbox_item', 'Сообщение')) + '</div>' +
+        '<button type="button" class="monad-inbox-item" data-inbox-id="' + esc(item.item_id) + '">' +
+        '<div class="monad-inbox-title">' + esc(inboxDisplayTitle(item)) + '</div>' +
         (prev ? '<div class="monad-inbox-prev">' + esc(prev) + '</div>' : '') +
-        '<div class="monad-inbox-meta">' + esc(item.from_agent || item.message_type || '') +
-        (item.monad_created_at ? ' · ' + esc(String(item.monad_created_at).slice(0, 16).replace('T', ' ')) : '') +
+        '<div class="monad-inbox-meta">' + esc(inboxDisplayFrom(item)) +
+        (item.monad_created_at ? ' · ' + esc(inboxWhen(item)) : '') +
         '</div></button></div>';
     }).join('');
     host.querySelectorAll('.monad-inbox-item').forEach(function (b) {
       b.addEventListener('click', function () {
-        var id = b.getAttribute('data-inbox-id');
-        STATE.inboxExpanded = STATE.inboxExpanded === id ? null : id;
-        var chatId = b.getAttribute('data-chat-id');
-        if (chatId) openChat(chatId).catch(function () {});
-        api('/api/monad/inbox/' + encodeURIComponent(id) + '/read', { method: 'PATCH' }).catch(function () {});
-        STATE.inbox = STATE.inbox.map(function (x) {
-          return x.item_id === id ? Object.assign({}, x, { read_at: new Date().toISOString() }) : x;
-        });
-        renderInbox();
+        openInboxItem(b.getAttribute('data-inbox-id'));
       });
     });
   }
@@ -763,62 +856,63 @@
     if (selected && STATE.vertCell) {
       selectedCell = (selected.cells || []).filter(function (c) { return String(c.n) === String(STATE.vertCell); })[0] || null;
     }
-    var html = '<p class="monad-viz-legend">' + esc((arch.legend && (arch.legend[locLang()] || arch.legend.ru)) || t('a.monad.vertical_help', '49 постов Li×Lj. Клетка = функция. Агенты из monad.placement.')) + '</p>';
+    var html = '<p class="monad-viz-legend">' + esc(t('a.monad.vertical_help_short', 'Семь слоёв L1–L7. Нажми слой слева — справа откроются ветки L×L1…L×L7 с агентами.')) + '</p>';
     html += '<div class="monad-viz-split monad-viz-split-wide monad-vert-layout">';
     html += '<aside class="monad-spine-col" aria-label="vertical spine">';
-    html += '<div class="monad-spine-title">' + esc(t('a.monad.spine', 'Позвоночник L×L')) + '</div>';
+    html += '<div class="monad-spine-title">' + esc(t('a.monad.spine', 'Вертикаль L1–L7')) + '</div>';
     layers.slice().reverse().forEach(function (n) {
-      var cell = (n.cells || []).filter(function (c) { return String(c.n) === String(n.layer); })[0];
-      var code = cell ? showCell(cell.code || ('L' + n.layer + '×L' + n.layer)) : ('L' + n.layer + '×L' + n.layer);
-      var nm = cell ? (cell[locLang()] || cell.ru || code) : (n[locLang()] || n.ru || code);
-      var on = (STATE.vertLayer === n.id && String(STATE.vertCell) === String(n.layer)) ? ' on' : '';
-      html += '<button type="button" class="monad-spine-node' + on + '" data-layer="' + esc(n.id) + '" data-cell="' + n.layer + '">';
+      var label = n[locLang()] || n.ru || ('L' + n.layer);
+      var on = (STATE.vertLayer === n.id) ? ' on' : '';
+      var total = n.total || 0;
+      html += '<button type="button" class="monad-spine-node' + on + '" data-layer="' + esc(n.id) + '" data-cell="">';
       html += '<span class="monad-spine-l">L' + esc(n.layer) + '</span>';
-      html += '<span class="monad-spine-code">' + esc(code) + '</span>';
-      html += '<span class="monad-spine-nm">' + esc(nm) + '</span></button>';
+      html += '<span class="monad-spine-nm">' + esc(label) + '</span>';
+      html += '<span class="monad-spine-code">' + total + ' ' + esc(t('a.monad.agents_short', 'аг.')) + '</span></button>';
     });
     html += '</aside>';
     html += '<div class="monad-vert-col">';
-    html += '<div class="monad-matrix-scroll"><div class="monad-matrix">';
-    html += '<div class="monad-matrix-corner"></div>';
-    for (var col = 1; col <= 7; col++) {
-      html += '<div class="monad-matrix-colh">L' + col + '</div>';
-    }
-    layers.forEach(function (n) {
-      var label = n[locLang()] || n.ru || n.id;
-      html += '<div class="monad-matrix-rowh' + (n.id === STATE.vertLayer ? ' on' : '') + '" data-layer="' + esc(n.id) + '">';
-      html += '<span>L' + esc(n.layer) + '</span><b>' + esc(label) + '</b>';
-      html += '<em>' + (n.total || 0) + '</em></div>';
-      var cells = (n.cells || []).slice().sort(function (a, b) { return a.n - b.n; });
+    if (!selected) {
+      html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick_layer', 'Выбери слой слева — увидишь ветки и агентов на этом уровне.')) + '</p>';
+    } else {
+      var cells = (selected.cells || []).slice().sort(function (a, b) { return a.n - b.n; });
+      html += '<div class="monad-vert-branches">';
       cells.forEach(function (c) {
-        var code = c.code || ('L' + n.layer + 'xL' + c.n);
+        var code = c.code || ('L' + selected.layer + 'xL' + c.n);
         var shown = showCell(code);
-        var cellOn = (STATE.vertLayer === n.id && String(STATE.vertCell) === String(c.n)) ? ' on' : '';
-        var spine = String(c.n) === String(n.layer) ? ' spine' : '';
         var nm = c[locLang()] || c.ru || shown;
-        html += '<button type="button" class="monad-matrix-cell' + (c.occupied ? ' filled' : '') + cellOn + spine + '" data-layer="' + esc(n.id) + '" data-cell="' + c.n + '">';
-        html += '<span class="code">' + esc(shown) + (c.count ? ' · ' + c.count : '') + '</span>';
-        html += '<span class="nm">' + esc(nm) + '</span>';
-        html += '<span class="chips">';
-        (c.agents || []).forEach(function (a) { html += agentCard(a, 'tiny'); });
-        html += '</span></button>';
+        var branchOn = (String(STATE.vertCell) === String(c.n)) ? ' on' : '';
+        html += '<button type="button" class="monad-vert-branch' + branchOn + (c.occupied ? ' filled' : '') + '" data-layer="' + esc(selected.id) + '" data-cell="' + c.n + '">';
+        html += '<span class="monad-vert-branch-code">' + esc(shown) + '</span>';
+        html += '<span class="monad-vert-branch-nm">' + esc(nm) + '</span>';
+        html += '<span class="monad-vert-branch-count">' + (c.count || 0) + ' ' + esc(t('a.monad.agents_short', 'аг.')) + '</span>';
+        if ((c.agents || []).length) {
+          html += '<span class="monad-vert-branch-chips">';
+          (c.agents || []).slice(0, 4).forEach(function (a) { html += agentCard(a, 'tiny'); });
+          html += '</span>';
+        }
+        html += '</button>';
       });
-    });
-    html += '</div></div></div>';
+      html += '</div>';
+    }
+    html += '</div>';
     html += '<aside class="monad-viz-panel" id="monad-vert-side">';
     if (!selected) {
-      html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick', 'Нажми клетку 7×7. Увидишь функцию поста и живых агентов.')) + '</p>';
+      html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick', 'Нажми ветку — функция поста и агенты.')) + '</p>';
+      html += '<div id="monad-vert-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
+    } else if (!selectedCell) {
+      html += '<div class="monad-viz-kicker">L' + esc(selected.layer) + ' · ' + esc(selected[locLang()] || selected.ru) + '</div>';
+      html += '<p class="monad-muted">' + esc(locField(selected, 'sense')) + '</p>';
+      html += '<p class="monad-muted">' + esc(t('a.monad.layer_all_branches', 'Весь слой — выбери ветку L×Lj, чтобы увидеть агентов.')) + '</p>';
       html += '<div id="monad-vert-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
     } else {
-      var agents = selectedCell ? (selectedCell.agents || []) : (selected.agents || []);
+      var agents = selectedCell.agents || [];
       html += '<div class="monad-viz-kicker">L' + esc(selected.layer) + ' · ' + esc(selected[locLang()] || selected.ru) +
-        (selectedCell ? (' · ' + esc(showCell(selectedCell.code || ('L' + selected.layer + 'xL' + selectedCell.n)))) : '') + '</div>';
-      html += '<h3 class="monad-viz-h">' + esc(selectedCell ? (selectedCell[locLang()] || selectedCell.ru) : (selected[locLang()] || selected.ru)) + '</h3>';
+        ' · ' + esc(showCell(selectedCell.code || ('L' + selected.layer + 'xL' + selectedCell.n))) + '</div>';
+      html += '<h3 class="monad-viz-h">' + esc(selectedCell[locLang()] || selectedCell.ru) + '</h3>';
       html += '<p class="monad-muted">' + esc(locField(selected, 'sense')) + '</p>';
-      html += '<p class="monad-muted">' + esc(t('a.monad.post_is_function', 'Пост — функция слоя, не агент.')) + ' ' +
-        agents.length + ' ' + esc(t('a.monad.agents_here', 'агентов в этой клетке')) + '.</p>';
+      html += '<p class="monad-muted">' + agents.length + ' ' + esc(t('a.monad.agents_here', 'агентов в этой ветке')) + '.</p>';
       html += '<div class="monad-agent-list">';
-      if (!agents.length) html += '<p class="monad-muted">' + esc(t('a.monad.no_agents', 'В этой ячейке пока нет агентов.')) + '</p>';
+      if (!agents.length) html += '<p class="monad-muted">' + esc(t('a.monad.no_agents', 'В этой ветке пока нет агентов.')) + '</p>';
       agents.forEach(function (a) { html += agentCard(a); });
       html += '</div>';
       html += '<div id="monad-vert-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
@@ -829,18 +923,11 @@
     host.querySelectorAll('.monad-spine-node').forEach(function (b) {
       b.addEventListener('click', function () {
         STATE.vertLayer = b.getAttribute('data-layer');
-        STATE.vertCell = b.getAttribute('data-cell');
-        renderVertical(STATE.arch);
-      });
-    });
-    host.querySelectorAll('.monad-matrix-rowh').forEach(function (b) {
-      b.addEventListener('click', function () {
-        STATE.vertLayer = b.getAttribute('data-layer');
         STATE.vertCell = null;
         renderVertical(STATE.arch);
       });
     });
-    host.querySelectorAll('.monad-matrix-cell').forEach(function (b) {
+    host.querySelectorAll('.monad-vert-branch').forEach(function (b) {
       b.addEventListener('click', function (e) {
         e.stopPropagation();
         STATE.vertLayer = b.getAttribute('data-layer');
@@ -884,7 +971,7 @@
     seats.forEach(function (s) {
       if (s.person && String(s.hour) === String(STATE.horizHour)) selected = s;
     });
-    var html = '<p class="monad-viz-legend">' + esc(t('a.monad.horiz_help', 'Круг 12+1: DOM (проект) в центре. Контуры ветвятся от людей. Пустые часы 2,4,7,8,11 нажаты и пусты.')) + '</p>';
+    var html = '<p class="monad-viz-legend">' + esc(t('a.monad.horiz_help_short', 'Круг 12+1: люди на часах, DOM в центре. Нажми человека — справа контуры и агенты.')) + '</p>';
     html += '<div class="monad-viz-split">';
     html += '<div class="monad-horiz-col">';
     html += '<div class="monad-horiz-wrap"><div class="monad-horiz-ring">';
@@ -898,8 +985,8 @@
       var p = s.person;
       var pos = hourXY(s.hour, 38);
       if (s.inactive || !p) {
-        html += '<div class="monad-person empty pressed" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;">' +
-          '<div class="monad-muted">' + esc(s.inactive ? t('a.monad.seat_pressed', 'нажато') : t('a.monad.seat_empty', 'пусто')) + '</div></div>';
+        html += '<div class="monad-person empty" style="left:' + pos.x.toFixed(2) + '%;top:' + pos.y.toFixed(2) + '%;" title="' + esc(t('a.monad.seat_reserved', 'Слот зарезервирован')) + '">' +
+          '<div class="monad-muted">' + esc(t('a.monad.seat_empty', 'свободно')) + '</div></div>';
         return;
       }
       var on = String(s.hour) === String(STATE.horizHour) ? ' on' : '';
@@ -985,7 +1072,7 @@
     if (rhythm.system) {
       html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span>';
     }
-    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help', 'Пульс семи слоёв вертикали (физика L1–L2, жизнь L3–L4, ум L5–L7). Не биологический EEG. «Живой ритм» включает онлайн; уход со вкладки гасит.')) + '</p>';
+    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help_short', 'Активность слоёв L1–L7 и агентов. «Живой ритм» обновляет данные каждые ~1.2 с.')) + '</p>';
     html += '</div>';
     html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
       esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';
@@ -1005,17 +1092,20 @@
     });
     html += '</div>';
     if (rhythm.agents && rhythm.agents.length) {
-      html += '<div class="monad-agent-rhythm" style="margin-top:1rem;"><table class="monad-mini-table"><thead><tr><th>agent</th><th>act/min</th><th>drift</th><th>seen</th></tr></thead><tbody>';
-      rhythm.agents.slice(0, 16).forEach(function (a) {
+      html += '<div class="monad-agent-rhythm" style="margin-top:1rem;"><table class="monad-mini-table"><thead><tr><th>' +
+        esc(t('a.monad.agent', 'Агент')) + '</th><th>' + esc(t('a.monad.act_min', 'акт/мин')) + '</th><th>' +
+        esc(t('a.monad.last_seen', 'был')) + '</th></tr></thead><tbody>';
+      rhythm.agents.slice(0, 24).forEach(function (a) {
         html += '<tr><td><code>' + esc(a.agent_id) + '</code></td><td>' + esc(a.actions_per_min != null ? a.actions_per_min : '—') +
-          '</td><td>' + esc(a.drift || '—') + '</td><td>' + esc(a.last_seen || '—') + '</td></tr>';
+          '</td><td>' + esc(a.last_seen || '—') + '</td></tr>';
       });
       html += '</tbody></table></div>';
     }
-    if (rhythm.system && rhythm.system.meta) html += '<p class="monad-muted">' + esc(rhythm.system.meta) + '</p>';
-    html += '<p class="monad-muted" style="margin-top:0.75rem;">' + esc(rhythm.note || '') +
-      (rhythm.source ? ' · ' + rhythm.source : '') +
-      (rhythm.updated_at ? ' · ' + rhythm.updated_at : '') + '</p>';
+    if (rhythm.updated_at) {
+      html += '<p class="monad-muted" style="margin-top:0.75rem;font-size:11px;">' +
+        esc(t('a.monad.updated', 'Обновлено')) + ': ' + esc(String(rhythm.updated_at).slice(0, 19).replace('T', ' ')) +
+        (rhythm.source ? ' · ' + esc(rhythm.source) : '') + '</p>';
+    }
     host.innerHTML = html;
     var liveBtn = document.getElementById('monad-rhythm-live');
     if (liveBtn) {
@@ -1080,7 +1170,23 @@
       else if (STATE.archSub === 'horizontal') renderHorizontal(STATE.arch);
       else if (STATE.archSub === 'cross' && window.MonadCross) {
         var host = document.getElementById('monad-cross-host');
-        if (host) window.MonadCross.mount(host, STATE.arch);
+        if (host) {
+          window.MonadCross.mount(host, STATE.arch, {
+            onNavigate: function (nav) {
+              if (!nav || !nav.target) return;
+              setArchSub(nav.target);
+              if (nav.target === 'vertical' && nav.layerId) {
+                STATE.vertLayer = nav.layerId;
+                STATE.vertCell = nav.cell != null ? String(nav.cell) : null;
+                renderVertical(STATE.arch);
+              }
+              if (nav.target === 'horizontal' && nav.hour != null) {
+                STATE.horizHour = String(nav.hour);
+                renderHorizontal(STATE.arch);
+              }
+            },
+          });
+        }
       }
       return;
     }

@@ -136,9 +136,10 @@
 // v75: Vertical 49-cell matrix + horizontal contours-from-people; rhythm L1–L7
 // v74: Vertical 7×7 uses Monad canon (Physics…Knowledge…Supersystem), live placements
 // v73: LK chat answers + delete/rename; Sketch 3D atlas; Monad viz; full-width tools
+// v84: Monad inbox detail + cross clicks; Sketch 3D draw fix; DOMunity badge
 // v83: Monad persona health proxy + inbox metadata fix
 // v82: Monad LK inbox (Входящие) sync from get_inbox / human inbox HTTP
-var CACHE_NAME = 'na-practices-v83';
+var CACHE_NAME = 'na-practices-v84';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
