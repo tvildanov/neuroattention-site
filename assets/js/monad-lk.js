@@ -51,8 +51,9 @@
   function isMonadRole(user) {
     if (!user) return false;
     if (user.monad_tab === true || user.monad_access === true) return true;
-    var r = user.serverRole || user.role;
-    return r === 'superadmin' || r === 'founder';
+    var sr = String(user.serverRole || '').toLowerCase();
+    var dr = String(user.role || '').toLowerCase();
+    return sr === 'superadmin' || sr === 'founder' || dr === 'founder';
   }
   function showTabButton(user) {
     var btn = document.getElementById('tab-btn-monad');
