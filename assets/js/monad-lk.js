@@ -31,6 +31,7 @@
     inbox: [],
     inboxSyncing: false,
     inboxExpanded: null,
+    personaHealth: null,
   };
 
   function t(key, fallback) {
@@ -135,6 +136,9 @@
     } else if (s.lk_live_reply) {
       bits.push('<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
     }
+    if (STATE.personaHealth && STATE.personaHealth.note) {
+      bits.push('<span class="monad-muted">' + esc(STATE.personaHealth.note) + '</span>');
+    }
     if (s.dashboard_url) {
       bits.push('<a href="' + esc(s.dashboard_url) + '" target="_blank" rel="noopener">' + esc(t('a.monad.dashboard', 'Dashboard Monad')) + '</a>');
     }
@@ -142,9 +146,18 @@
     el.innerHTML = bits.join(' · ');
   }
 
+  function parseMetaField(m) {
+    if (!m) return {};
+    if (typeof m === 'string') {
+      try { return JSON.parse(m); } catch (e) { return {}; }
+    }
+    return typeof m === 'object' ? m : {};
+  }
+
   function inboxPreview(item) {
+    var meta = parseMetaField(item.metadata);
     var body = String(item.body || '').replace(/\s+/g, ' ').trim();
-    if (/^\[LK live\]|post_lk_chat_message/i.test(item.title || '') || (item.metadata && item.metadata.channel === 'neuroattention_lk')) {
+    if (/^\[LK live\]|post_lk_chat_message/i.test(item.title || '') || meta.channel === 'neuroattention_lk') {
       var m = body.match(/Their message:\s*\n?(.+?)(?:\nReply NOW|$)/i);
       if (m && m[1]) body = m[1].trim();
       else if (body.length > 160) body = body.slice(0, 160) + '…';
@@ -168,7 +181,8 @@
       var unread = !item.read_at;
       var open = STATE.inboxExpanded === item.item_id;
       var prev = inboxPreview(item);
-      var chatId = item.metadata && item.metadata.chat_id;
+      var meta = parseMetaField(item.metadata);
+      var chatId = meta.chat_id;
       return '<div class="monad-inbox-row' + (unread ? ' unread' : '') + (open ? ' open' : '') + '" data-inbox-id="' + esc(item.item_id) + '">' +
         '<button type="button" class="monad-inbox-item" data-inbox-id="' + esc(item.item_id) + '"' +
         (chatId ? ' data-chat-id="' + esc(chatId) + '"' : '') + '>' +
@@ -1100,6 +1114,8 @@
     if (!isMonadRole(window.currentUser)) return;
     try { STATE.status = await api('/api/monad/status'); }
     catch (err) { STATE.status = { configured: false, note: (err.data && err.data.error) || err.message }; }
+    try { STATE.personaHealth = await api('/api/monad/persona/health'); }
+    catch (e) { STATE.personaHealth = null; }
     renderStatusBar();
     try { await loadChats(); }
     catch (e) {

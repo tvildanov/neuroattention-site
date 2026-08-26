@@ -13482,6 +13482,44 @@ async function loadCallerForMonad(req, res) {
   return requireMonadAccess(req, res);
 }
 
+// GET /api/monad/persona/health — live Persona on monad-server (+ providers when PR #29 ships)
+app.get('/api/monad/persona/health', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const humanId = monadSvc.resolveHumanId(caller);
+    const headers = { Accept: 'application/json' };
+    if (process.env.MONAD_API_KEY) headers['X-API-Key'] = process.env.MONAD_API_KEY;
+    let health = {};
+    try {
+      const r = await fetch(`${monadSvc.MONAD_BASE}/api/persona/health`, { headers });
+      if (r.ok) health = await r.json();
+    } catch (_) { /* keep empty */ }
+    let providers = health.providers;
+    if (!providers || typeof providers !== 'object') {
+      providers = {
+        persona_runtime: { enabled: !!health.enabled, hosted: !!health.hosted, llm: !!health.llm },
+        anthropic: { hosted: !!health.llm, note: health.note || null },
+      };
+    }
+    res.json({
+      ok: health.ok !== false,
+      human_id: humanId,
+      persona: humanId ? monadSvc.resolvePersonaAgent(humanId) : null,
+      hosted: !!health.hosted,
+      enabled: !!health.enabled,
+      llm: !!health.llm,
+      last_tick: health.last_tick || null,
+      note: health.note || null,
+      providers,
+      source: health.providers ? 'monad-server' : 'site-proxy',
+    });
+  } catch (err) {
+    console.error('GET /api/monad/persona/health:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 // GET /api/monad/status — configured? which human am I?
 app.get('/api/monad/status', requireAuth, async (req, res) => {
   try {
