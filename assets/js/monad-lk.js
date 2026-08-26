@@ -28,6 +28,9 @@
     rhythmTimer: null,
     rhythmRaf: null,
     rhythmDisplay: [],
+    inbox: [],
+    inboxSyncing: false,
+    inboxExpanded: null,
   };
 
   function t(key, fallback) {
@@ -106,7 +109,10 @@
     if (id === 'architecture') ensureArchitecture();
     if (id === 'rhythm') ensureRhythm();
     else stopLiveRhythm();
-    if (id === 'chat') startPoll();
+    if (id === 'chat') {
+      startPoll();
+      loadInbox().then(function () { return syncInbox(); }).catch(function () {});
+    }
     else stopPoll();
     if (id !== 'architecture' && window.MonadCross) window.MonadCross.destroy();
   }
@@ -134,6 +140,83 @@
     }
     if (s.note) bits.push('<span class="monad-muted">' + esc(s.note) + '</span>');
     el.innerHTML = bits.join(' · ');
+  }
+
+  function inboxPreview(item) {
+    var body = String(item.body || '').replace(/\s+/g, ' ').trim();
+    if (/^\[LK live\]|post_lk_chat_message/i.test(item.title || '') || (item.metadata && item.metadata.channel === 'neuroattention_lk')) {
+      var m = body.match(/Their message:\s*\n?(.+?)(?:\nReply NOW|$)/i);
+      if (m && m[1]) body = m[1].trim();
+      else if (body.length > 160) body = body.slice(0, 160) + '…';
+    }
+    return body.slice(0, 140);
+  }
+
+  function renderInbox() {
+    var host = document.getElementById('monad-inbox-list');
+    if (!host) return;
+    if (STATE.inboxSyncing) {
+      host.innerHTML = '<p class="monad-muted" style="padding:0.35rem;">' + esc(t('a.monad.inbox_syncing', 'Синхронизация…')) + '</p>';
+      return;
+    }
+    if (!STATE.inbox.length) {
+      host.innerHTML = '<p class="monad-muted" style="padding:0.35rem;">' +
+        esc(t('a.monad.inbox_empty', 'Нажми Sync — подтянем inbox Persona из Манады.')) + '</p>';
+      return;
+    }
+    host.innerHTML = STATE.inbox.map(function (item) {
+      var unread = !item.read_at;
+      var open = STATE.inboxExpanded === item.item_id;
+      var prev = inboxPreview(item);
+      var chatId = item.metadata && item.metadata.chat_id;
+      return '<div class="monad-inbox-row' + (unread ? ' unread' : '') + (open ? ' open' : '') + '" data-inbox-id="' + esc(item.item_id) + '">' +
+        '<button type="button" class="monad-inbox-item" data-inbox-id="' + esc(item.item_id) + '"' +
+        (chatId ? ' data-chat-id="' + esc(chatId) + '"' : '') + '>' +
+        '<div class="monad-inbox-title">' + esc(item.title || t('a.monad.inbox_item', 'Сообщение')) + '</div>' +
+        (prev ? '<div class="monad-inbox-prev">' + esc(prev) + '</div>' : '') +
+        '<div class="monad-inbox-meta">' + esc(item.from_agent || item.message_type || '') +
+        (item.monad_created_at ? ' · ' + esc(String(item.monad_created_at).slice(0, 16).replace('T', ' ')) : '') +
+        '</div></button></div>';
+    }).join('');
+    host.querySelectorAll('.monad-inbox-item').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-inbox-id');
+        STATE.inboxExpanded = STATE.inboxExpanded === id ? null : id;
+        var chatId = b.getAttribute('data-chat-id');
+        if (chatId) openChat(chatId).catch(function () {});
+        api('/api/monad/inbox/' + encodeURIComponent(id) + '/read', { method: 'PATCH' }).catch(function () {});
+        STATE.inbox = STATE.inbox.map(function (x) {
+          return x.item_id === id ? Object.assign({}, x, { read_at: new Date().toISOString() }) : x;
+        });
+        renderInbox();
+      });
+    });
+  }
+
+  async function loadInbox() {
+    try {
+      var data = await api('/api/monad/inbox');
+      STATE.inbox = data.threads || [];
+      renderInbox();
+    } catch (e) {
+      var host = document.getElementById('monad-inbox-list');
+      if (host) host.innerHTML = '<p class="monad-warn">' + esc(e.message) + '</p>';
+    }
+  }
+
+  async function syncInbox() {
+    if (STATE.inboxSyncing) return;
+    STATE.inboxSyncing = true;
+    renderInbox();
+    try {
+      var data = await api('/api/monad/inbox/sync', { method: 'POST', body: JSON.stringify({ limit: 50 }) });
+      STATE.inbox = data.threads || [];
+    } catch (e) {
+      alert(e.message || String(e));
+    } finally {
+      STATE.inboxSyncing = false;
+      renderInbox();
+    }
   }
 
   function renderChatList() {
@@ -1023,6 +1106,9 @@
       var box = document.getElementById('monad-chat-log');
       if (box) box.innerHTML = '<p class="monad-warn">' + esc(e.message) + '</p>';
     }
+    if (STATE.sub === 'chat') {
+      try { await loadInbox(); await syncInbox(); } catch (e) { /* inbox optional */ }
+    }
     STATE.loaded = true;
   }
 
@@ -1071,10 +1157,12 @@
       refresh.addEventListener('click', function () {
         stopLiveRhythm();
         if (window.MonadCross) window.MonadCross.destroy();
-        STATE.arch = null; STATE.rhythm = null; STATE.status = null;
+        STATE.arch = null; STATE.rhythm = null; STATE.status = null; STATE.inbox = [];
         onTabOpen();
       });
     }
+    var inboxSync = document.getElementById('monad-inbox-sync');
+    if (inboxSync) inboxSync.addEventListener('click', function () { syncInbox().catch(function (e) { alert(e.message); }); });
     var del = document.getElementById('monad-chat-archive');
     if (del) {
       del.addEventListener('click', function () {
