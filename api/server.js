@@ -3297,7 +3297,8 @@ app.post('/api/auth/login', async (req, res) => {
 
     email = email.toLowerCase().trim();
     const rows = await sql`
-      SELECT id, email, password_hash, display_name, phone, role, avatar_url
+      SELECT id, email, password_hash, display_name, phone, role, avatar_url,
+             monad_human_id, monad_access
       FROM users WHERE LOWER(email) = ${email}
     `;
     if (!rows.length) return res.status(401).json({ error: 'Invalid email or password' });
@@ -3310,9 +3311,16 @@ app.post('/api/auth/login', async (req, res) => {
     await sql`UPDATE users SET last_login_at = now() WHERE id = ${user.id}`;
 
     const token = signToken(user);
+    const monadTab = ['superadmin', 'founder'].includes(user.role) || !!user.monad_access;
     res.json({
       token,
-      user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: user.avatar_url || null }
+      user: {
+        id: user.id, email: user.email, display_name: user.display_name, phone: user.phone,
+        role: user.role, avatar_url: user.avatar_url || null,
+        monad_human_id: user.monad_human_id || null,
+        monad_access: !!user.monad_access,
+        monad_tab: monadTab,
+      }
     });
   } catch (err) {
     console.error('POST /api/auth/login:', err);
@@ -11210,14 +11218,23 @@ app.patch('/api/admin/users/:id/role', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Cannot change your own role' });
     }
 
-    const [target] = await sql`SELECT id, role FROM users WHERE id = ${targetId}`;
+    const [target] = await sql`SELECT id, email, role, monad_access, monad_human_id FROM users WHERE id = ${targetId}`;
     if (!target) return res.status(404).json({ error: 'User not found' });
 
     const oldRole = target.role;
     await sql`UPDATE users SET role = ${role} WHERE id = ${targetId}`;
 
+    // Known Monad humans + admin roles: keep monad_access / human_id in sync
+    const emailKey = String(target.email || '').toLowerCase();
+    const mappedHuman = (monadSvc.EMAIL_HUMAN_MAP || {})[emailKey];
+    if (mappedHuman && ['admin', 'founder', 'specialist', 'superadmin'].includes(role)) {
+      await sql`
+        UPDATE users SET monad_human_id = ${mappedHuman}, monad_access = TRUE
+        WHERE id = ${targetId}`;
+    }
+
     console.log(`[ROLE CHANGE] ${req.user.id} changed ${targetId} from ${oldRole} to ${role}`);
-    res.json({ ok: true, old_role: oldRole, new_role: role });
+    res.json({ ok: true, old_role: oldRole, new_role: role, hint: 'User must refresh the cabinet to see the new role' });
   } catch (err) {
     console.error('PATCH /api/admin/users/:id/role:', err);
     res.status(500).json({ error: err.message });
@@ -14280,6 +14297,21 @@ app.listen(PORT, () => {
           UPDATE users
           SET monad_human_id = 'egor', monad_access = TRUE
           WHERE lower(email) = 'mysolopoetry@proton.me'`;
+        // Heal superadmin emails (Nick etc.) — role + monad must never drift
+        for (const email of SUPERADMIN_EMAILS) {
+          if (!email) continue;
+          const mapped = (monadSvc.EMAIL_HUMAN_MAP || {})[email];
+          if (mapped) {
+            await sql`
+              UPDATE users
+              SET role = 'superadmin', monad_human_id = ${mapped}, monad_access = TRUE
+              WHERE lower(email) = ${email} AND role <> 'superadmin'`;
+          } else {
+            await sql`
+              UPDATE users SET role = 'superadmin'
+              WHERE lower(email) = ${email} AND role <> 'superadmin'`;
+          }
+        }
         try {
           await sql`
             CREATE TABLE IF NOT EXISTS monad_chats (

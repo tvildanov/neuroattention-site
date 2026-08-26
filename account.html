@@ -3284,13 +3284,17 @@ window.courseTitle = function(course, uiLang){
       || course.title || course.slug || '(без названия)';
 };
 
-// Shared admin-role check (used by Evolution Path demo seed, etc.)
-window.naIsAdmin = function(u){
+// Privileged cabinet roles (server + dashboard mapping)
+function naHasAdminAccess(u){
   u = u || (typeof currentUser !== 'undefined' ? currentUser : null);
   if (!u) return false;
-  return u.role === 'founder' || u.role === 'specialist' || u.role === 'admin_basic'
-      || u.serverRole === 'superadmin';
-};
+  var sr = String(u.serverRole || '').toLowerCase();
+  var dr = String(u.role || '').toLowerCase();
+  if (['superadmin','founder','admin','specialist'].indexOf(sr) >= 0) return true;
+  if (['founder','specialist','admin_basic'].indexOf(dr) >= 0) return true;
+  return false;
+}
+window.naIsAdmin = naHasAdminAccess;
 
 // ══════════════════════════════════════════
 // AUTH SYSTEM (JWT + API)
@@ -3320,7 +3324,7 @@ var PROG_LABELS = {self:'Self-Guided',guided:'Guided Program',group:'Group Progr
       .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
       .then(function(data){
         localStorage.setItem('na_token', magic);
-        localStorage.setItem('na_user', JSON.stringify(data));
+        localStorage.setItem('na_user', JSON.stringify(data.user || data));
         // Remove magic param from URL
         window.history.replaceState({}, '', window.location.pathname);
         window.location.reload();
@@ -3349,21 +3353,31 @@ function naAuthHeaders(){
 }
 // Adapt API user → internal user object (for admin/client dashboard compat)
 function naAdaptUser(apiUser){
+  if (!apiUser) return null;
+  // Guard corrupt cache (e.g. whole /api/auth/me response stored by mistake)
+  if (apiUser.user && apiUser.user.id) apiUser = apiUser.user;
   var serverRole = apiUser.role || 'user';
-  // Map server roles to dashboard roles
-  var dashRole = serverRole === 'superadmin' ? 'founder' : serverRole === 'specialist' ? 'specialist' : 'client';
+  // Map server roles → dashboard roles (admin in DB = admin_basic in UI)
+  var dashRole = 'client';
+  if (serverRole === 'superadmin' || serverRole === 'founder') dashRole = 'founder';
+  else if (serverRole === 'specialist') dashRole = 'specialist';
+  else if (serverRole === 'admin') dashRole = 'admin_basic';
+  var monadAccess = !!apiUser.monad_access;
+  var monadTab = !!apiUser.monad_tab
+    || ['superadmin', 'founder'].indexOf(serverRole) >= 0
+    || monadAccess;
   return {
     id: apiUser.id,
-    name: apiUser.display_name || apiUser.email.split('@')[0],
+    name: apiUser.display_name || (apiUser.email ? apiUser.email.split('@')[0] : 'User'),
     email: apiUser.email,
     phone: apiUser.phone || '',
     role: dashRole,
     serverRole: serverRole,
     avatar_url: apiUser.avatar_url || null,
-    monad_access: !!apiUser.monad_access,
-    monad_tab: !!apiUser.monad_tab || ['superadmin', 'founder'].includes(serverRole) || !!apiUser.monad_access,
+    monad_access: monadAccess,
+    monad_tab: monadTab,
     monad_human_id: apiUser.monad_human_id || null,
-    program: null,        // will come from subscription system later
+    program: null,
     specialistId: null,
     allowSpecialist: false,
     week: 0,
@@ -3415,7 +3429,7 @@ function onLogin(user){
     var greetText = t('a.dashboard.greeting')+', '+user.name;
     document.getElementById('client-greeting').textContent = greetText;
     var roleEl = document.querySelector('#client-dashboard .dash-role');
-    var ROLE_DISPLAY = {superadmin:'Superadmin',founder:t('a.dashboard.role_founder'),specialist:t('a.dashboard.role_specialist'),admin_basic:'Админ',client:t('a.dashboard.role_client')};
+    var ROLE_DISPLAY = {superadmin:'Superadmin',founder:t('a.dashboard.role_founder'),specialist:t('a.dashboard.role_specialist'),admin:'Админ',admin_basic:'Админ',client:t('a.dashboard.role_client'),user:t('a.dashboard.role_user','User')};
     var roleLabel = ROLE_DISPLAY[user.serverRole] || ROLE_DISPLAY[user.role] || t('a.dashboard.role_client');
     if(roleEl){
       roleEl.innerHTML = '<span class="pulse"></span>'+roleLabel;
@@ -3428,7 +3442,7 @@ function onLogin(user){
 
   // Show "Администрирование" tab for admin roles
   try {
-    var isAdminRole = (user.role==='founder'||user.role==='specialist'||user.role==='admin_basic'||user.serverRole==='superadmin');
+    var isAdminRole = naHasAdminAccess(user);
     var adminTabBtn = document.getElementById('tab-btn-admin');
     if(adminTabBtn) adminTabBtn.style.display = isAdminRole ? '' : 'none';
     // Pre-load admin dashboard data for admin roles (won't show until tab clicked)
@@ -4087,7 +4101,7 @@ function rpgRenderStats(stats, wmc){
       html += '</div></div></div>';
     });
     // "Расширить понимание" button for each layer
-    var isAdminRole = currentUser && (currentUser.role==='founder'||currentUser.role==='specialist'||currentUser.role==='admin_basic'||currentUser.serverRole==='superadmin');
+    var isAdminRole = currentUser && naHasAdminAccess(currentUser);
     if(isAdminRole){
       html += '<button class="rpg-layer-insight-btn" onclick="rpgShowLayerInsight(\''+layer.name+'\')" style="margin-top:0.6rem;padding:0.4rem 0.9rem;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.25)\';this.style.color=\'var(--text-primary)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.color=\'var(--text-muted)\'">';
       html += '<svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>';
@@ -4181,7 +4195,7 @@ function rpgShowWmcLevel(level){
 // Client feature access
 function updateClientAccess(user){
   var hasProg = !!user.program;
-  var isAdmin = (user.role==='founder'||user.role==='specialist'||user.role==='admin_basic'||user.serverRole==='superadmin');
+  var isAdmin = naHasAdminAccess(user);
   // Admin roles get full access regardless of program
   if(isAdmin) hasProg = true;
   // Tabs that require program
@@ -5405,10 +5419,8 @@ document.getElementById('reset-form').addEventListener('submit',async function(e
     }
     var data=await resp.json();
     naSetAuth(token, data.user); // refresh cached user
-    // Re-render if user data changed
-    if(!cachedStr || JSON.stringify(data.user) !== cachedStr){
-      onLogin(naAdaptUser(data.user));
-    }
+    // Always re-apply authoritative profile (role/monad may have changed in admin)
+    onLogin(naAdaptUser(data.user));
   } catch(err){
     console.warn('Auto-login network error:',err);
     // If we had cached user, keep showing dashboard (offline-friendly)
@@ -18503,7 +18515,7 @@ window.pbMove = pbMove;
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=41"></script>
 <script src="assets/js/monad-cross.js?v=1"></script>
-<script src="assets/js/monad-lk.js?v=16"></script>
+<script src="assets/js/monad-lk.js?v=17"></script>
 <script src="assets/js/sketch-tool.js?v=6"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>
