@@ -27,7 +27,7 @@ Older JOURNAL (17:10 UTC) and PR #159 said the opposite (“put ANTHROPIC on the
 
 ## Safe for the site session
 
-Layout, Sketch 3D, 7×7/circle/**Крест 3D** rendering, chat chrome, fast poll, attachments, i18n, SW `CACHE_NAME`, identity heuristics as tests — all fine.
+Layout, Sketch 3D, 7×7/circle/**Крест 3D**, **Входящие** (inbox sync), chat chrome, fast poll, attachments, i18n, SW `CACHE_NAME`, identity heuristics as tests — all fine.
 
 ## Unsafe (fights Monad)
 

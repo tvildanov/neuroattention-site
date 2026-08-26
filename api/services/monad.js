@@ -1189,6 +1189,45 @@ function synthRhythm(agents, placements) {
   };
 }
 
+function normalizeInboxItems(raw) {
+  let list = raw;
+  if (raw && Array.isArray(raw.items)) list = raw.items;
+  else if (raw && Array.isArray(raw.inbox)) list = raw.inbox;
+  else if (raw && Array.isArray(raw.threads)) list = raw.threads;
+  else if (!Array.isArray(raw)) list = [];
+  return (list || []).map((item) => ({
+    item_id: String(item.item_id || item.id || ''),
+    kind: item.kind || 'message',
+    agent_id: item.agent_id || null,
+    from_agent: item.from_agent || null,
+    title: String(item.title || '').slice(0, 500),
+    body: String(item.body || item.text || '').slice(0, 8000),
+    message_type: item.message_type || null,
+    monad_created_at: item.created_at || item.monad_created_at || null,
+    metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : {},
+  })).filter((x) => x.item_id);
+}
+
+/** Live Persona inbox — HTTP /api/human/:id/inbox when shipped, else MCP get_inbox. */
+async function fetchHumanInbox(humanId, limit = 50) {
+  const hid = String(humanId || '').replace(/^persona_/, '');
+  const agentId = `persona_${hid}`;
+  const lim = Math.max(1, Math.min(100, Number(limit) || 50));
+  const headers = { Accept: 'application/json' };
+  if (MONAD_API_KEY) headers['X-API-Key'] = MONAD_API_KEY;
+  try {
+    const res = await fetch(`${MONAD_BASE}/api/human/${encodeURIComponent(hid)}/inbox?limit=${lim}`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      const items = normalizeInboxItems(data);
+      if (items.length || data.ok) return { source: 'http', items, ok: true };
+    }
+  } catch (_) { /* fall through to MCP */ }
+  const raw = await mcpCall('get_inbox', { agent_id: agentId, limit: lim });
+  const items = normalizeInboxItems(raw);
+  return { source: 'mcp', items, ok: true };
+}
+
 module.exports = {
   configured,
   mcpCall,
@@ -1228,6 +1267,8 @@ module.exports = {
   synthRhythm,
   fetchSystemRhythm,
   getRhythm,
+  fetchHumanInbox,
+  normalizeInboxItems,
   MONAD_DASHBOARD,
   MONAD_MCP_URL,
   MONAD_BASE,

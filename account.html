@@ -2505,6 +2505,13 @@ a.dash-tab:hover { text-decoration:none; }
       <div class="monad-panel active" id="monad-panel-chat">
         <div class="monad-chat-layout">
           <aside class="monad-chat-sidebar">
+            <div class="monad-inbox-block">
+              <div class="monad-inbox-head">
+                <span data-i18n="a.monad.inbox">Входящие</span>
+                <button type="button" id="monad-inbox-sync" class="btn btn-ghost" style="font-size:11px;padding:0.2rem 0.5rem;" data-i18n="a.monad.inbox_sync">↻ Sync</button>
+              </div>
+              <div id="monad-inbox-list" class="monad-inbox-list"></div>
+            </div>
             <div class="monad-chat-side-actions">
               <button type="button" id="monad-chat-new" class="btn btn-primary" style="width:100%;font-size:12px;" data-i18n="a.monad.new_chat">+ Новый чат</button>
             </div>
@@ -18515,7 +18522,7 @@ window.pbMove = pbMove;
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=41"></script>
 <script src="assets/js/monad-cross.js?v=1"></script>
-<script src="assets/js/monad-lk.js?v=17"></script>
+<script src="assets/js/monad-lk.js?v=18"></script>
 <script src="assets/js/sketch-tool.js?v=6"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>

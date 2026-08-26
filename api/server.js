@@ -3173,7 +3173,32 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 076 (egor monad link): ok');
     } catch (e) { mig076.error = e.message; console.error('migration 076 (egor monad link):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-076 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075, mig076 });
+    // ── migration 077: Monad LK inbox threads (Persona get_inbox cache) ─────
+    const mig077 = { id: '077_monad_inbox_threads', ok: false };
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS monad_inbox_threads (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          item_id TEXT NOT NULL,
+          kind TEXT NOT NULL DEFAULT 'message',
+          agent_id TEXT,
+          from_agent TEXT,
+          title TEXT NOT NULL DEFAULT '',
+          body TEXT NOT NULL DEFAULT '',
+          message_type TEXT,
+          metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+          monad_created_at TIMESTAMPTZ,
+          read_at TIMESTAMPTZ,
+          synced_at TIMESTAMPTZ DEFAULT now(),
+          UNIQUE (user_id, item_id)
+        )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_monad_inbox_user ON monad_inbox_threads(user_id, monad_created_at DESC NULLS LAST, synced_at DESC)`;
+      mig077.ok = true;
+      console.log('migration 077 (monad_inbox_threads): ok');
+    } catch (e) { mig077.error = e.message; console.error('migration 077 (monad_inbox_threads):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-077 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075, mig076, mig077 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -14162,6 +14187,104 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/monad/inbox — cached Persona inbox threads for this user
+app.get('/api/monad/inbox', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const rows = await sql`
+      SELECT id, item_id, kind, agent_id, from_agent, title, body, message_type,
+             metadata, monad_created_at, read_at, synced_at
+      FROM monad_inbox_threads
+      WHERE user_id = ${caller.id}
+      ORDER BY monad_created_at DESC NULLS LAST, synced_at DESC
+      LIMIT 100`;
+    res.json({ ok: true, threads: rows, human_id: monadSvc.resolveHumanId(caller) });
+  } catch (err) {
+    console.error('GET /api/monad/inbox:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+// POST /api/monad/inbox/sync — pull live inbox from monad-server (HTTP or MCP get_inbox)
+app.post('/api/monad/inbox/sync', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const humanId = monadSvc.resolveHumanId(caller);
+    if (!humanId) {
+      return res.status(400).json({
+        error: 'No Monad human linked to this profile',
+        code: 'NO_HUMAN_LINK',
+      });
+    }
+    const limit = Math.min(100, Math.max(1, parseInt((req.body && req.body.limit) || 50, 10) || 50));
+    const live = await monadSvc.fetchHumanInbox(humanId, limit);
+    const items = live.items || [];
+    let upserted = 0;
+    for (const item of items) {
+      await sql`
+        INSERT INTO monad_inbox_threads (
+          user_id, item_id, kind, agent_id, from_agent, title, body,
+          message_type, metadata, monad_created_at, synced_at
+        ) VALUES (
+          ${caller.id}, ${item.item_id}, ${item.kind || 'message'},
+          ${item.agent_id || null}, ${item.from_agent || null},
+          ${item.title || ''}, ${item.body || ''},
+          ${item.message_type || null},
+          ${JSON.stringify(item.metadata || {})}::jsonb,
+          ${item.monad_created_at ? new Date(item.monad_created_at) : null},
+          now()
+        )
+        ON CONFLICT (user_id, item_id) DO UPDATE SET
+          kind = EXCLUDED.kind,
+          agent_id = EXCLUDED.agent_id,
+          from_agent = EXCLUDED.from_agent,
+          title = EXCLUDED.title,
+          body = EXCLUDED.body,
+          message_type = EXCLUDED.message_type,
+          metadata = EXCLUDED.metadata,
+          monad_created_at = COALESCE(EXCLUDED.monad_created_at, monad_inbox_threads.monad_created_at),
+          synced_at = now()`;
+      upserted += 1;
+    }
+    const rows = await sql`
+      SELECT id, item_id, kind, agent_id, from_agent, title, body, message_type,
+             metadata, monad_created_at, read_at, synced_at
+      FROM monad_inbox_threads
+      WHERE user_id = ${caller.id}
+      ORDER BY monad_created_at DESC NULLS LAST, synced_at DESC
+      LIMIT 100`;
+    res.json({
+      ok: true,
+      source: live.source || 'mcp',
+      synced: upserted,
+      human_id: humanId,
+      persona: monadSvc.resolvePersonaAgent(humanId),
+      threads: rows,
+    });
+  } catch (err) {
+    console.error('POST /api/monad/inbox/sync:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// PATCH /api/monad/inbox/:item_id/read — mark inbox thread read
+app.patch('/api/monad/inbox/:itemId/read', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    const itemId = String(req.params.itemId || '').slice(0, 128);
+    const [row] = await sql`
+      UPDATE monad_inbox_threads SET read_at = now()
+      WHERE user_id = ${caller.id} AND item_id = ${itemId}
+      RETURNING *`;
+    if (!row) return res.status(404).json({ error: 'inbox item not found' });
+    res.json({ ok: true, thread: row });
+  } catch (err) {
+    console.error('PATCH /api/monad/inbox/:itemId/read:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 // PATCH /api/monad/link — set own monad_human_id (or another user if superadmin)
 // body: { human_id, user_id? }
 app.patch('/api/monad/link', requireAuth, async (req, res) => {
@@ -14305,11 +14428,11 @@ app.listen(PORT, () => {
             await sql`
               UPDATE users
               SET role = 'superadmin', monad_human_id = ${mapped}, monad_access = TRUE
-              WHERE lower(email) = ${email} AND role <> 'superadmin'`;
+              WHERE lower(email) = ${email}`;
           } else {
             await sql`
-              UPDATE users SET role = 'superadmin'
-              WHERE lower(email) = ${email} AND role <> 'superadmin'`;
+              UPDATE users SET role = 'superadmin', monad_access = TRUE
+              WHERE lower(email) = ${email}`;
           }
         }
         try {
@@ -14340,6 +14463,28 @@ app.listen(PORT, () => {
           await sql`CREATE INDEX IF NOT EXISTS idx_monad_chat_messages_chat ON monad_chat_messages(chat_id, created_at ASC)`;
         } catch (chatErr) {
           console.warn('[boot] monad_chats ensure skipped:', chatErr.message);
+        }
+        try {
+          await sql`
+            CREATE TABLE IF NOT EXISTS monad_inbox_threads (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              item_id TEXT NOT NULL,
+              kind TEXT NOT NULL DEFAULT 'message',
+              agent_id TEXT,
+              from_agent TEXT,
+              title TEXT NOT NULL DEFAULT '',
+              body TEXT NOT NULL DEFAULT '',
+              message_type TEXT,
+              metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+              monad_created_at TIMESTAMPTZ,
+              read_at TIMESTAMPTZ,
+              synced_at TIMESTAMPTZ DEFAULT now(),
+              UNIQUE (user_id, item_id)
+            )`;
+          await sql`CREATE INDEX IF NOT EXISTS idx_monad_inbox_user ON monad_inbox_threads(user_id, monad_created_at DESC NULLS LAST, synced_at DESC)`;
+        } catch (inboxErr) {
+          console.warn('[boot] monad_inbox_threads ensure skipped:', inboxErr.message);
         }
         try {
           await sql`ALTER TABLE user_sketches ADD COLUMN IF NOT EXISTS scene JSONB NOT NULL DEFAULT '{}'::jsonb`;
