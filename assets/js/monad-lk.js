@@ -12,6 +12,7 @@
     arch: null,
     rhythm: null,
     sub: 'chat',
+    archSub: 'vertical',
     chats: [],
     activeChatId: null,
     messages: [],
@@ -73,6 +74,26 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function setArchSub(id) {
+    STATE.archSub = id || 'vertical';
+    document.querySelectorAll('.monad-arch-subtab').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-monad-arch') === STATE.archSub);
+    });
+    document.querySelectorAll('.monad-arch-view').forEach(function (p) {
+      p.classList.toggle('active', p.id === 'monad-arch-' + STATE.archSub);
+    });
+    if (STATE.archSub === 'cross') {
+      if (window.MonadCross && STATE.arch) {
+        var host = document.getElementById('monad-cross-host');
+        if (host) window.MonadCross.mount(host, STATE.arch);
+      }
+    } else if (window.MonadCross) {
+      window.MonadCross.destroy();
+    }
+    if (STATE.archSub === 'vertical') renderVertical(STATE.arch);
+    if (STATE.archSub === 'horizontal') renderHorizontal(STATE.arch);
+  }
+
   function setSub(id) {
     STATE.sub = id;
     document.querySelectorAll('.monad-subtab').forEach(function (b) {
@@ -81,11 +102,12 @@
     document.querySelectorAll('.monad-panel').forEach(function (p) {
       p.classList.toggle('active', p.id === 'monad-panel-' + id);
     });
-    if (id === 'vertical' || id === 'horizontal') ensureArchitecture();
+    if (id === 'architecture') ensureArchitecture();
     if (id === 'rhythm') ensureRhythm();
     else stopLiveRhythm();
     if (id === 'chat') startPoll();
     else stopPoll();
+    if (id !== 'architecture' && window.MonadCross) window.MonadCross.destroy();
   }
 
   function renderStatusBar() {
@@ -644,7 +666,20 @@
       selectedCell = (selected.cells || []).filter(function (c) { return String(c.n) === String(STATE.vertCell); })[0] || null;
     }
     var html = '<p class="monad-viz-legend">' + esc((arch.legend && (arch.legend[locLang()] || arch.legend.ru)) || t('a.monad.vertical_help', '49 постов Li×Lj. Клетка = функция. Агенты из monad.placement.')) + '</p>';
-    html += '<div class="monad-viz-split monad-viz-split-wide">';
+    html += '<div class="monad-viz-split monad-viz-split-wide monad-vert-layout">';
+    html += '<aside class="monad-spine-col" aria-label="vertical spine">';
+    html += '<div class="monad-spine-title">' + esc(t('a.monad.spine', 'Позвоночник L×L')) + '</div>';
+    layers.slice().reverse().forEach(function (n) {
+      var cell = (n.cells || []).filter(function (c) { return String(c.n) === String(n.layer); })[0];
+      var code = cell ? showCell(cell.code || ('L' + n.layer + '×L' + n.layer)) : ('L' + n.layer + '×L' + n.layer);
+      var nm = cell ? (cell[locLang()] || cell.ru || code) : (n[locLang()] || n.ru || code);
+      var on = (STATE.vertLayer === n.id && String(STATE.vertCell) === String(n.layer)) ? ' on' : '';
+      html += '<button type="button" class="monad-spine-node' + on + '" data-layer="' + esc(n.id) + '" data-cell="' + n.layer + '">';
+      html += '<span class="monad-spine-l">L' + esc(n.layer) + '</span>';
+      html += '<span class="monad-spine-code">' + esc(code) + '</span>';
+      html += '<span class="monad-spine-nm">' + esc(nm) + '</span></button>';
+    });
+    html += '</aside>';
     html += '<div class="monad-vert-col">';
     html += '<div class="monad-matrix-scroll"><div class="monad-matrix">';
     html += '<div class="monad-matrix-corner"></div>';
@@ -693,6 +728,13 @@
     html += renderUnplaced(arch);
     html += '</aside></div>';
     host.innerHTML = html;
+    host.querySelectorAll('.monad-spine-node').forEach(function (b) {
+      b.addEventListener('click', function () {
+        STATE.vertLayer = b.getAttribute('data-layer');
+        STATE.vertCell = b.getAttribute('data-cell');
+        renderVertical(STATE.arch);
+      });
+    });
     host.querySelectorAll('.monad-matrix-rowh').forEach(function (b) {
       b.addEventListener('click', function () {
         STATE.vertLayer = b.getAttribute('data-layer');
@@ -935,16 +977,26 @@
     if (STATE.rhythmRaf) { window.cancelAnimationFrame(STATE.rhythmRaf); STATE.rhythmRaf = null; }
   }
   async function ensureArchitecture() {
-    if (STATE.arch) { renderVertical(STATE.arch); renderHorizontal(STATE.arch); return; }
+    if (STATE.arch) {
+      if (STATE.archSub === 'vertical') renderVertical(STATE.arch);
+      else if (STATE.archSub === 'horizontal') renderHorizontal(STATE.arch);
+      else if (STATE.archSub === 'cross' && window.MonadCross) {
+        var host = document.getElementById('monad-cross-host');
+        if (host) window.MonadCross.mount(host, STATE.arch);
+      }
+      return;
+    }
     try {
       STATE.arch = await api('/api/monad/architecture');
-      renderVertical(STATE.arch); renderHorizontal(STATE.arch);
+      setArchSub(STATE.archSub);
     } catch (err) {
       var msg = (err.data && err.data.error) || err.message;
       var v = document.getElementById('monad-vertical');
       var h = document.getElementById('monad-horizontal');
+      var c = document.getElementById('monad-cross-host');
       if (v) v.innerHTML = '<p class="monad-warn">' + esc(msg) + '</p>';
       if (h) h.innerHTML = '<p class="monad-warn">' + esc(msg) + '</p>';
+      if (c) c.innerHTML = '<p class="monad-warn">' + esc(msg) + '</p>';
     }
   }
   async function ensureRhythm() {
@@ -975,7 +1027,7 @@
 
   function onTabOpen() {
     mount().then(function () {
-      if (STATE.sub === 'vertical' || STATE.sub === 'horizontal') ensureArchitecture();
+      if (STATE.sub === 'architecture') ensureArchitecture();
       if (STATE.sub === 'rhythm') ensureRhythm();
     });
   }
@@ -983,6 +1035,15 @@
   function wire() {
     document.querySelectorAll('.monad-subtab').forEach(function (b) {
       b.addEventListener('click', function () { setSub(b.getAttribute('data-monad-sub')); });
+    });
+    document.querySelectorAll('.monad-arch-subtab').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!STATE.arch && STATE.sub === 'architecture') {
+          ensureArchitecture().then(function () { setArchSub(b.getAttribute('data-monad-arch')); });
+        } else {
+          setArchSub(b.getAttribute('data-monad-arch'));
+        }
+      });
     });
     var send = document.getElementById('monad-chat-send');
     var input = document.getElementById('monad-chat-input');
@@ -1008,6 +1069,7 @@
     if (refresh) {
       refresh.addEventListener('click', function () {
         stopLiveRhythm();
+        if (window.MonadCross) window.MonadCross.destroy();
         STATE.arch = null; STATE.rhythm = null; STATE.status = null;
         onTabOpen();
       });

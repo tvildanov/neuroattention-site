@@ -12,7 +12,7 @@ Site channel commit: `a694a5a` on `tvildanov/neuroattention-site` `main`.
 |---|---|
 | NeuroMap, Path, Sketch, atlas, cabinet UI | Agents, Neon, MCP, Persona LLM |
 | LK **channel**: save message, plant_seed, poll | **Face**: `persona_<human>` talks with hosted LLM |
-| Draw 7×7 / 12+1 from live `/api/monad/architecture` | `get_architecture` / `persona_runtime` |
+| Draw 7×7 / 12+1 / **three_axes** from live `/api/monad/architecture` | `get_architecture` / `persona_runtime` |
 
 Nick’s split: site work in the site session, Monad work in the Monad session. Both stacks are live; the site session builds **on top**, not a second brain.
 
@@ -27,7 +27,7 @@ Older JOURNAL (17:10 UTC) and PR #159 said the opposite (“put ANTHROPIC on the
 
 ## Safe for the site session
 
-Layout, Sketch 3D, 7×7/circle rendering, chat chrome, fast poll, attachments, i18n, SW `CACHE_NAME`, identity heuristics as tests — all fine.
+Layout, Sketch 3D, 7×7/circle/**Крест 3D** rendering, chat chrome, fast poll, attachments, i18n, SW `CACHE_NAME`, identity heuristics as tests — all fine.
 
 ## Unsafe (fights Monad)
 

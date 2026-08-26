@@ -1059,6 +1059,45 @@ body.method-flashlight {
 .monad-muted { color:var(--text-dim,#888); font-size:12px; }
 .monad-panel { display:none; }
 .monad-panel.active { display:block; }
+.monad-arch-view { display:none; }
+.monad-arch-view.active { display:block; }
+.monad-arch-subtabs { margin-top:-0.25rem; }
+.monad-vert-layout { grid-template-columns:minmax(140px,0.45fr) minmax(0,1.55fr) minmax(280px,0.85fr) !important; }
+.monad-spine-col {
+  display:flex; flex-direction:column; gap:5px; padding:0.55rem;
+  border:1px solid rgba(0,224,255,0.18); border-radius:14px;
+  background:linear-gradient(180deg,rgba(0,224,255,0.05),rgba(0,0,0,0.25));
+  max-height:min(78vh,920px); overflow:auto;
+}
+.monad-spine-title {
+  font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--accent-cyan,#0ef); margin-bottom:0.25rem;
+}
+.monad-spine-node {
+  display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+  text-align:left; border:1px solid rgba(255,255,255,0.08);
+  background:rgba(0,0,0,0.28); color:inherit; border-radius:8px;
+  padding:0.4rem 0.45rem; font:inherit; cursor:pointer; width:100%;
+}
+.monad-spine-node.on, .monad-spine-node:hover {
+  border-color:rgba(0,224,255,0.45); background:rgba(0,224,255,0.08);
+}
+.monad-spine-l { font-family:'Unbounded',sans-serif; font-size:11px; color:var(--accent-cyan,#A8F7FF); }
+.monad-spine-code { font-family:ui-monospace,monospace; font-size:10px; opacity:0.75; }
+.monad-spine-nm { font-size:10px; color:var(--text-secondary); line-height:1.25; }
+.monad-cross-host {
+  position:relative; min-height:min(72vh,640px); border-radius:14px;
+  border:1px solid rgba(255,255,255,0.08); overflow:hidden;
+  background:radial-gradient(circle at 50% 35%, rgba(0,224,255,0.06), rgba(0,0,0,0.55));
+}
+.monad-cross-host canvas { display:block; width:100% !important; height:100% !important; }
+.monad-cross-legend {
+  position:absolute; left:0; right:0; bottom:0; padding:0.65rem 0.85rem;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,0.82));
+  pointer-events:none;
+}
+.monad-cross-legend p { margin:0.15rem 0; font-size:11px; line-height:1.4; }
+@media (max-width:1100px){ .monad-vert-layout { grid-template-columns:1fr !important; } .monad-spine-col { max-height:none; flex-direction:row; flex-wrap:wrap; } .monad-spine-node { width:auto; min-width:120px; } }
 .monad-chat-log {
   min-height: 42vh; max-height: calc(100vh - 280px); overflow:auto;
   padding:1rem; border-radius:14px; border:1px solid rgba(255,255,255,0.08);

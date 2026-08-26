@@ -45,7 +45,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
-<link rel="stylesheet" href="assets/redesign.css?v=9" />
+<link rel="stylesheet" href="assets/redesign.css?v=10" />
 <link rel="stylesheet" href="data/css/mycelium.css?v=19" />
 <style>
 /* ── Auth ── */
@@ -2498,8 +2498,7 @@ a.dash-tab:hover { text-decoration:none; }
       </div>
       <div class="dash-tabs monad-subtabs" style="margin-bottom:1rem;">
         <button type="button" class="dash-tab monad-subtab active" data-monad-sub="chat" data-i18n="a.monad.sub.chat">Чат</button>
-        <button type="button" class="dash-tab monad-subtab" data-monad-sub="vertical" data-i18n="a.monad.sub.vertical">Вертикаль</button>
-        <button type="button" class="dash-tab monad-subtab" data-monad-sub="horizontal" data-i18n="a.monad.sub.horizontal">Горизонталь</button>
+        <button type="button" class="dash-tab monad-subtab" data-monad-sub="architecture" data-i18n="a.monad.sub.architecture">Архитектура</button>
         <button type="button" class="dash-tab monad-subtab" data-monad-sub="rhythm" data-i18n="a.monad.sub.rhythm">Ритм</button>
       </div>
 
@@ -2532,11 +2531,21 @@ a.dash-tab:hover { text-decoration:none; }
         </div>
       </div>
 
-      <div class="monad-panel" id="monad-panel-vertical">
-        <div id="monad-vertical"></div>
-      </div>
-      <div class="monad-panel" id="monad-panel-horizontal">
-        <div id="monad-horizontal"></div>
+      <div class="monad-panel" id="monad-panel-architecture">
+        <div class="dash-tabs monad-arch-subtabs" style="margin-bottom:0.85rem;">
+          <button type="button" class="dash-tab monad-arch-subtab active" data-monad-arch="vertical" data-i18n="a.monad.arch.vertical">Вертикаль</button>
+          <button type="button" class="dash-tab monad-arch-subtab" data-monad-arch="horizontal" data-i18n="a.monad.arch.horizontal">Горизонталь</button>
+          <button type="button" class="dash-tab monad-arch-subtab" data-monad-arch="cross" data-i18n="a.monad.arch.cross3d">Крест 3D</button>
+        </div>
+        <div class="monad-arch-view active" id="monad-arch-vertical">
+          <div id="monad-vertical"></div>
+        </div>
+        <div class="monad-arch-view" id="monad-arch-horizontal">
+          <div id="monad-horizontal"></div>
+        </div>
+        <div class="monad-arch-view" id="monad-arch-cross">
+          <div id="monad-cross-host" class="monad-cross-host"></div>
+        </div>
       </div>
       <div class="monad-panel" id="monad-panel-rhythm">
         <div id="monad-rhythm"></div>
@@ -18493,7 +18502,8 @@ window.pbMove = pbMove;
 
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=41"></script>
-<script src="assets/js/monad-lk.js?v=15"></script>
+<script src="assets/js/monad-cross.js?v=1"></script>
+<script src="assets/js/monad-lk.js?v=16"></script>
 <script src="assets/js/sketch-tool.js?v=6"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>
