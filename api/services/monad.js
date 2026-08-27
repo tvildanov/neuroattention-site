@@ -972,6 +972,8 @@ function buildOfficeLayout(agents, placements, rhythmAgents) {
         project: item.agent.project || (item.place && item.place.project),
         type: item.agent.type || (item.place && item.place.type),
         platform: item.agent.platform,
+        function: item.agent.function || describeAgentFunction(item.agent, item.place, 'ru'),
+        search_blob: item.agent.search_blob || '',
       });
     });
   });
@@ -986,14 +988,19 @@ function buildOfficeLayout(agents, placements, rhythmAgents) {
 }
 
 async function fetchLivePack() {
-  const [agentsRaw, placements, rhythm] = await Promise.all([
+  const [agentsRaw, placementsRaw, rhythm] = await Promise.all([
     mcpCall('list_agents', {}).catch(() => []),
     loadPlacements().catch(() => ({})),
-    getRhythm().catch(() => synthRhythm([], placements || {})),
+    getRhythm().catch(() => null),
   ]);
   const agents = Array.isArray(agentsRaw) ? agentsRaw
     : (agentsRaw && agentsRaw.agents) ? agentsRaw.agents : [];
-  const rhythmAgents = (rhythm && rhythm.agents) || [];
+  const placements = applyCanonThroughlines(placementsRaw || {}, agents);
+  let rhythmFinal = rhythm;
+  if (!rhythmFinal) {
+    try { rhythmFinal = synthRhythm(agents, placements); } catch (_) { rhythmFinal = { layers: [], agents: [] }; }
+  }
+  const rhythmAgents = (rhythmFinal && rhythmFinal.agents) || [];
   const humanName = {};
   try {
     const humansRaw = await mcpCall('list_humans', { limit: 100 });
@@ -1004,7 +1011,8 @@ async function fetchLivePack() {
     const p = placementOf(a.agent_id, placements) || {};
     const kind = kindOfPlacement(p, placements);
     const rhythmRow = rhythmAgents.find((r) => r.agent_id === a.agent_id) || null;
-    return {
+    const cell = p.cell || a.cell || null;
+    const row = {
       agent_id: a.agent_id,
       name: a.name,
       status: a.status,
@@ -1012,7 +1020,7 @@ async function fetchLivePack() {
       owner_name: humanName[a.owner] || a.owner,
       platform: a.platform,
       domains: a.domains || [],
-      cell: p.cell || a.cell || null,
+      cell,
       secondary_cells: p.secondary_cells || [],
       type: kind.type,
       contour: kind.contour,
@@ -1023,11 +1031,16 @@ async function fetchLivePack() {
       drift: rhythmRow ? rhythmRow.drift : null,
       live: agentIsLive(a, rhythmRow),
     };
+    row.function = describeAgentFunction(row, p, 'ru');
+    row.function_en = describeAgentFunction(row, p, 'en');
+    row.cell_sense = cellPostSense(cell, 'ru');
+    row.search_blob = agentSearchHaystack(row, p, 'ru');
+    return row;
   });
   const office = buildOfficeLayout(enriched, placements, rhythmAgents);
   return {
     ok: true,
-    rhythm,
+    rhythm: rhythmFinal,
     office,
     agents: enriched,
     placement_count: Object.keys(placements || {}).length,
@@ -1092,7 +1105,13 @@ async function loadPlacements() {
   } catch (_) { /* optional enrich */ }
   placeCache.byAgent = byAgent;
   placeCache.at = Date.now();
-  return byAgent;
+  return placeCache.byAgent;
+}
+
+/** Apply throughlines using current agent directory (call after list_agents). */
+async function loadPlacementsForAgents(agents) {
+  const base = await loadPlacements();
+  return applyCanonThroughlines(base, agents || []);
 }
 
 function placementOf(agentId, placements) {
@@ -1102,7 +1121,190 @@ function placementOf(agentId, placements) {
 function cellsOfPlacement(place) {
   if (!place) return [];
   const extra = Array.isArray(place.secondary_cells) ? place.secondary_cells : [];
-  return [place.cell].concat(extra).filter(Boolean);
+  const all = [place.cell].concat(extra).filter(Boolean);
+  return Array.from(new Set(all));
+}
+
+/**
+ * Canon throughlines (стержни) — column of the 7×7 grid.
+ * Awakened = all Li×L7; DOM = all Li×L4. Merge into placements if missing.
+ */
+const CANON_THROUGHLINES = [
+  {
+    match: /awakened|пробужд|superconscious|сверхсозна/i,
+    agent_ids: ['persona_awakened', 'awakened', 'agent_awakened'],
+    primary: 'L7xL7',
+    cells: [1, 2, 3, 4, 5, 6, 7].map((i) => 'L' + i + 'xL7'),
+  },
+  {
+    match: /^persona_dom$|^dom$/i,
+    agent_ids: ['persona_dom'],
+    primary: 'L4xL4',
+    cells: [1, 2, 3, 4, 5, 6, 7].map((i) => 'L' + i + 'xL4'),
+  },
+  {
+    match: /librarian|библиотекар|knowledge_persona|persona_knowledge/i,
+    agent_ids: ['persona_knowledge', 'librarian', 'agent_librarian'],
+    primary: 'L6xL6',
+    cells: [1, 2, 3, 4, 5, 6, 7].map((i) => 'L' + i + 'xL6'),
+  },
+];
+
+function applyCanonThroughlines(placements, agents) {
+  const out = { ...(placements || {}) };
+  const agentList = agents || [];
+  CANON_THROUGHLINES.forEach((rule) => {
+    const ids = new Set(rule.agent_ids);
+    agentList.forEach((a) => {
+      if (!a || !a.agent_id) return;
+      if (rule.match.test(a.agent_id) || rule.match.test(String(a.name || ''))) ids.add(a.agent_id);
+    });
+    Object.keys(out).forEach((k) => {
+      if (rule.match.test(k) || rule.match.test(String((out[k] && out[k].name) || ''))) ids.add(k);
+    });
+    ids.forEach((id) => {
+      // only stamp if agent exists in directory or already has a placement
+      const known = agentList.some((a) => a.agent_id === id) || out[id];
+      if (!known) return;
+      const cur = Object.assign({ agent_id: id }, out[id] || {});
+      const have = new Set(cellsOfPlacement(cur));
+      rule.cells.forEach((c) => have.add(c));
+      const primary = cur.cell || rule.primary;
+      cur.cell = primary;
+      cur.secondary_cells = Array.from(have).filter((c) => c !== primary);
+      out[id] = cur;
+    });
+  });
+  return out;
+}
+
+function cellPostSense(code, lang) {
+  const p = parseCell(code);
+  if (!p) return '';
+  const layer = VERTICAL_LAYERS.find((L) => L.layer === p.i);
+  if (!layer) return '';
+  const post = (layer.posts || []).find((x) => x.j === p.j);
+  if (!post) return '';
+  const key = lang === 'en' ? 'en' : lang === 'es' ? 'es' : 'ru';
+  return post[key] || post.ru || '';
+}
+
+function layerSense(layerNum, lang) {
+  const layer = VERTICAL_LAYERS.find((L) => L.layer === layerNum);
+  if (!layer) return '';
+  const key = 'sense_' + (lang === 'en' ? 'en' : lang === 'es' ? 'es' : 'ru');
+  return layer[key] || layer.sense_ru || '';
+}
+
+/** Human-language role text for an agent (not IT jargon). */
+function describeAgentFunction(agent, place, lang) {
+  lang = lang || 'ru';
+  const ru = lang !== 'en' && lang !== 'es';
+  const id = String((agent && agent.agent_id) || (place && place.agent_id) || '');
+  const name = (agent && agent.name) || id;
+  const type = (place && place.type) || (agent && agent.type) || '';
+  const contour = (place && place.contour) || (agent && agent.contour) || '';
+  const project = (place && place.project) || (agent && agent.project) || '';
+  const cell = (place && place.cell) || (agent && agent.cell) || '';
+  const fromPlace = (place && (place.function_ru || place.function || place.role_ru || place.role || place.description_ru || place.description))
+    || (agent && (agent.function_ru || agent.function || agent.description_ru || agent.description));
+  if (fromPlace && String(fromPlace).trim().length > 12) return String(fromPlace).trim();
+
+  const cellSense = cellPostSense(cell, lang);
+  const contourLabel = contour ? labelContour(contour, lang) : '';
+  const projectLabel = project ? labelProject(project, lang) : '';
+
+  if (ru) {
+    if (/awakened|пробужд/i.test(id + name)) {
+      return 'Пробуждённый — сверхсознательный стержень дома. Он проходит через все уровни столба L×L7: держит смысл миссии, напоминает «зачем мы это делаем» и связывает повседневную работу с общим направлением поля.';
+    }
+    if (id === 'persona_dom' || /^dom$/i.test(name)) {
+      return 'Персона Дома — сердце общего пространства. Стоит на стержне четвёрок (столб L×L4): собирает людей, поддерживает доверие круга и следит, чтобы проекты и контуры не расходились с жизнью Дома.';
+    }
+    if (type === 'human_persona') {
+      return 'Это лицо человека в Манаде — «я» в цифровом поле. Через него человек получает запросы, отвечает и запускает работу своих контуров и проектов.';
+    }
+    if (type === 'contour_persona') {
+      return 'Персона контура «' + (contourLabel || contour || '—') + '». Собирает агентов одного смысла в одну команду: принимает задачи, распределяет их и следит, чтобы работа контура шла согласованно.';
+    }
+    if (type === 'project_persona') {
+      return 'Персона проекта «' + (projectLabel || project || '—') + '». Ведёт конкретный проект: цели, сроки, связку людей и агентов вокруг результата.';
+    }
+    if (type === 'skill') {
+      const bits = [];
+      bits.push('Skill-агент «' + name + '».');
+      if (contourLabel) bits.push('Работает в контуре «' + contourLabel + '».');
+      if (projectLabel) bits.push('Участвует в проекте «' + projectLabel + '».');
+      if (cellSense) bits.push('Его пост на карте: ' + cellSense + '.');
+      bits.push('Его задача — выполнять узкую практическую работу и обучаться в своём направлении, помогая персоне и человеку.');
+      return bits.join(' ');
+    }
+    if (cellSense) {
+      return 'Агент «' + name + '». На карте Манады стоит на посту «' + cellSense + '». Отсюда понятна его роль: поддерживать эту функцию слоя и помогать связанным людям и контурам.';
+    }
+    return 'Агент «' + name + '» в живой системе Манады. Помогает в своей зоне ответственности: принимает задачи, выполняет работу и передаёт результат дальше по цепочке.';
+  }
+  // EN fallback short
+  return (name || id) + ' — Monad agent' + (cellSense ? (': ' + cellSense) : '') + '.';
+}
+
+const SEARCH_SYNONYMS = {
+  знание: ['knowledge', 'librarian', 'library', 'know', 'graph', 'библиоте', 'ученый', 'учен'],
+  библиотекарь: ['librarian', 'library', 'knowledge', 'bibliotec'],
+  контент: ['content', 'loom', 'writer', 'editor', 'copy', 'текст', 'статья', 'пост'],
+  монтаж: ['edit', 'montage', 'video', 'cut', 'монтаж', 'ролик'],
+  дизайн: ['design', 'visual', 'ui', 'figma', 'layout'],
+  маркетинг: ['marketing', 'ads', 'campaign', 'smm'],
+  дом: ['dom', 'house', 'home', 'circle', 'community'],
+  пробужд: ['awakened', 'super', 'mission', 'сверх'],
+  awakened: ['пробужд', 'сверхсозна', 'миссия'],
+  строитель: ['builder', 'build', 'construct'],
+  builder: ['строител', 'сборк'],
+  обучение: ['learn', 'training', 'course', 'teach', 'обучен', 'курс'],
+  деньги: ['money', 'invest', 'finance', 'token', 'burn', 'инвест'],
+  здоровье: ['health', 'body', 'soma', 'medical'],
+  nal: ['нейро', 'neuro', 'attention', 'nal'],
+};
+
+function expandSearchTokens(q) {
+  const raw = String(q || '').trim().toLowerCase();
+  if (!raw) return [];
+  const tokens = new Set([raw]);
+  raw.split(/[\s,;]+/).filter(Boolean).forEach((t) => tokens.add(t));
+  Object.keys(SEARCH_SYNONYMS).forEach((k) => {
+    if (raw.indexOf(k) >= 0 || tokens.has(k)) {
+      tokens.add(k);
+      SEARCH_SYNONYMS[k].forEach((s) => tokens.add(s.toLowerCase()));
+    }
+  });
+  // reverse: if query matches a synonym value, add the key
+  Object.keys(SEARCH_SYNONYMS).forEach((k) => {
+    SEARCH_SYNONYMS[k].forEach((s) => {
+      if (raw.indexOf(String(s).toLowerCase()) >= 0) {
+        tokens.add(k);
+        SEARCH_SYNONYMS[k].forEach((x) => tokens.add(x.toLowerCase()));
+      }
+    });
+  });
+  return Array.from(tokens);
+}
+
+function agentSearchHaystack(a, place, lang) {
+  const fn = describeAgentFunction(a, place || a, lang || 'ru');
+  const cellSense = cellPostSense(a.cell || (place && place.cell), lang || 'ru');
+  return [
+    a.agent_id, a.name, a.contour, a.project, a.owner, a.owner_name, a.cell,
+    a.type, (a.domains || []).join(' '), fn, cellSense,
+    labelContour(a.contour, 'ru'), labelContour(a.contour, 'en'),
+    labelProject(a.project, 'ru'), labelProject(a.project, 'en'),
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function matchAgentSearch(agent, place, q) {
+  const tokens = expandSearchTokens(q);
+  if (!tokens.length) return true;
+  const hay = agentSearchHaystack(agent, place, 'ru');
+  return tokens.some((t) => t.length >= 2 && hay.indexOf(t) >= 0);
 }
 
 function friendList(friends) {
@@ -1371,17 +1573,16 @@ function isInboxChannelNoise(item) {
   const from = String(item.from_agent || item.agent_id || '');
   const msgType = String(item.message_type || '');
 
-  if (/^\[LK[\s_-]*(live|policy|channel|sync)/i.test(title)) {
-    if (/Their message:\s*\n?(\S)/i.test(body)) return false;
-    return true;
-  }
-  if (/^LK[\s_-]*(live|policy)$/i.test(title.trim())) return !/Their message:/i.test(body);
-  if (/post_lk_chat_message|Reply NOW with|roll_manat|human_id.*nick/i.test(body)) {
-    return !/Their message:\s*\n?(\S)/i.test(body);
-  }
-  if (meta.channel === 'neuroattention_lk' && /канал лк|channel ack|seed planted|plant_seed/i.test(body)) return true;
+  // Own LK chat seeds / echoes must never show as "incoming"
+  if (meta.channel === 'neuroattention_lk' || meta.lk_chat || meta.chat_id) return true;
+  if (/Their message:/i.test(body)) return true;
+  if (/neuroattention\.lk\.chat|from_cabinet|plant_seed/i.test(body)) return true;
+  if (/^\[LK[\s_-]*(live|policy|channel|sync)/i.test(title)) return true;
+  if (/^LK[\s_-]*(live|policy)$/i.test(title.trim())) return true;
+  if (/^Запрос:\s*/i.test(title) && /Reply NOW|post_lk_chat/i.test(body)) return true;
+  if (/post_lk_chat_message|Reply NOW with|roll_manat|human_id.*nick/i.test(body)) return true;
   if (/^persona_/i.test(from) && /^(канал|channel|handoff|seed)/i.test(body.trim())) return true;
-  if (msgType === 'lk_channel' || msgType === 'channel_ack') return true;
+  if (msgType === 'lk_channel' || msgType === 'channel_ack' || msgType === 'lk_seed') return true;
   return false;
 }
 
@@ -1512,6 +1713,15 @@ module.exports = {
   agentIsLive,
   buildOfficeLayout,
   fetchLivePack,
+  describeAgentFunction,
+  cellPostSense,
+  layerSense,
+  applyCanonThroughlines,
+  loadPlacementsForAgents,
+  expandSearchTokens,
+  matchAgentSearch,
+  agentSearchHaystack,
+  CANON_THROUGHLINES,
   MONAD_DASHBOARD,
   MONAD_MCP_URL,
   MONAD_BASE,

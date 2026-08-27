@@ -13625,7 +13625,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
     if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
-    const [agentsRaw, humansRaw, placements, livePack] = await Promise.all([
+    const [agentsRaw, humansRaw, placementsRaw, livePack] = await Promise.all([
       monadSvc.mcpCall('list_agents', {}),
       monadSvc.mcpCall('list_humans', { limit: 100 }),
       monadSvc.loadPlacements().catch(() => ({})),
@@ -13642,6 +13642,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
     ]);
     const agents = normalizeAgents(agentsRaw);
     const humans = normalizeHumans(humansRaw);
+    const placements = monadSvc.applyCanonThroughlines(placementsRaw || {}, agents);
     const humanId = monadSvc.resolveHumanId(caller);
 
     const directory = await monadSvc.loadDirectoryPeople().catch(() => ({}));
@@ -13663,7 +13664,10 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
         domains: a.domains || [],
         type: kind.type,
         cell,
-        secondary_cells: p.secondary_cells || [],
+        secondary_cells: (() => {
+          const all = monadSvc.cellsOfPlacement(Object.assign({}, p, { cell }));
+          return all.filter((c) => c !== cell);
+        })(),
         parent: p.parent || null,
         chain: p.chain || null,
         friends: monadSvc.friendList(p.friends),
@@ -13671,6 +13675,10 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
         project: kind.project,
         human_root: p.human_root || null,
         rhythm: p.rhythm || null,
+        function: monadSvc.describeAgentFunction({ agent_id: a.agent_id, name: a.name, type: kind.type, contour: kind.contour, project: kind.project, cell }, p, 'ru'),
+        function_en: monadSvc.describeAgentFunction({ agent_id: a.agent_id, name: a.name, type: kind.type, contour: kind.contour, project: kind.project, cell }, p, 'en'),
+        cell_sense: monadSvc.cellPostSense(cell, 'ru'),
+        cell_sense_en: monadSvc.cellPostSense(cell, 'en'),
       };
     }
 
@@ -13694,6 +13702,10 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
           occupied: cellAgents.length > 0,
           count: cellAgents.length,
           agents: cellAgents,
+          sense_ru: c.ru,
+          sense_en: c.en,
+          sense_es: c.es,
+          post_function: c.ru,
         };
       });
       const seen = new Set();
@@ -13895,16 +13907,13 @@ app.get('/api/monad/agents/search', requireAuth, async (req, res) => {
     const pack = await monadSvc.fetchLivePack();
     let agents = pack.agents || [];
     if (q) {
-      agents = agents.filter((a) => {
-        const hay = [a.agent_id, a.name, a.contour, a.project, a.owner, a.owner_name, a.cell, (a.domains || []).join(' ')]
-          .filter(Boolean).join(' ').toLowerCase();
-        return hay.indexOf(q) >= 0;
-      });
+      agents = agents.filter((a) => monadSvc.matchAgentSearch(a, a, q));
     }
     res.json({
       ok: true,
       human_id: monadSvc.resolveHumanId(caller),
       q: q || null,
+      tokens: q ? monadSvc.expandSearchTokens(q) : [],
       count: agents.length,
       agents: agents.slice(0, 80),
     });

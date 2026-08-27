@@ -335,7 +335,8 @@
     var host3d = document.getElementById('sketch-3d-host');
     if (host3d) {
       var show3d = state.viewMode === '3d' && state.layers.media.visible;
-      host3d.style.zIndex = '1';
+      // When orbiting, 3D host MUST sit above draw canvases so OrbitControls get events
+      host3d.style.zIndex = (show3d && passing) ? '20' : '1';
       host3d.style.visibility = show3d ? 'visible' : 'hidden';
       host3d.style.display = 'block';
       host3d.style.opacity = show3d ? String(state.layers.media.opacity != null ? state.layers.media.opacity : 1) : '0';
@@ -356,7 +357,8 @@
     ['d0', 'd1', 'd2'].forEach(function (id, idx) {
       var c = drawCanvas(id);
       if (!c) return;
-      c.style.zIndex = String(5 + idx);
+      // Draw canvases below host while orbiting
+      c.style.zIndex = passing ? String(2 + idx) : String(5 + idx);
       c.style.visibility = state.layers[id].visible ? 'visible' : 'hidden';
       c.style.opacity = String(state.layers[id].opacity != null ? state.layers[id].opacity : 1);
       var drawActive = !passing && state.interaction === 'draw' && state.activeDraw === id;
