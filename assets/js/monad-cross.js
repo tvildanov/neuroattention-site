@@ -45,9 +45,13 @@
     this._raf = null;
     this._resizeObs = null;
     this._pickables = [];
+    this._groups = { vertical: [], horizontal: [], depth: [], axes: [] };
+    this._focus = { mode: 'full' };
     this._raycaster = null;
     this._mouse = null;
     this._onClickBound = null;
+    this._detailEl = null;
+    this._expandGroup = null;
   }
 
   CrossScene.prototype.mount = function () {
@@ -146,10 +150,165 @@
     this.scene.add(spr);
   };
 
-  CrossScene.prototype._tag = function (mesh, nav) {
+  CrossScene.prototype._tag = function (mesh, nav, group) {
     mesh.userData = mesh.userData || {};
     mesh.userData.monadNav = nav;
+    mesh.userData.monadGroup = group || (nav && nav.target) || 'axes';
     this._pickables.push(mesh);
+    var g = mesh.userData.monadGroup;
+    if (!this._groups[g]) this._groups[g] = [];
+    this._groups[g].push(mesh);
+  };
+
+  CrossScene.prototype._setOpacity = function (mesh, opacity) {
+    if (!mesh || !mesh.material) return;
+    var mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    mats.forEach(function (m) {
+      m.transparent = true;
+      m.opacity = opacity;
+      if (m.emissiveIntensity != null) m.emissiveIntensity = opacity > 0.5 ? 0.12 : 0.02;
+      m.needsUpdate = true;
+    });
+  };
+
+  CrossScene.prototype._applyFocus = function () {
+    var mode = (this._focus && this._focus.mode) || 'full';
+    var keep = mode === 'full' ? null : mode;
+    var self = this;
+    Object.keys(this._groups).forEach(function (g) {
+      var hi = !keep || g === keep || (keep === 'vertical' && g === 'vertCells');
+      (self._groups[g] || []).forEach(function (mesh) {
+        self._setOpacity(mesh, hi ? 1 : 0.12);
+      });
+    });
+    if (this._expandGroup) {
+      this.scene.remove(this._expandGroup);
+      this._expandGroup = null;
+    }
+    if (mode === 'vertical') this._expandVerticalDetail();
+    else if (mode === 'horizontal') this._expandHorizontalDetail();
+    this._renderDetailPanel();
+  };
+
+  CrossScene.prototype._expandVerticalDetail = function () {
+    var T = window.THREE;
+    var g = new T.Group();
+    this._expandGroup = g;
+    this.scene.add(g);
+    if (!this._groups.vertCells) this._groups.vertCells = [];
+    var layers = (this.arch.vertical || []).slice().sort(function (a, b) { return (a.layer || 0) - (b.layer || 0); });
+    layers.forEach(function (L, li) {
+      var y = 0.55 + li * 0.95;
+      for (var j = 1; j <= 7; j++) {
+        var cell = ((L.cells || []).filter(function (c) { return c.n === j; })[0]) || {};
+        var x = (j - 4) * 0.42;
+        var mesh = new T.Mesh(
+          new T.BoxGeometry(0.32, 0.28, 0.32),
+          this._mat(cell.occupied ? 0x00e0ff : 0x335566, cell.occupied ? 0.95 : 0.45)
+        );
+        mesh.position.set(x, y, 0.55);
+        g.add(mesh);
+        this._tag(mesh, {
+          target: 'vertical',
+          layerId: L.id,
+          cell: j,
+          focus: 'cell',
+          code: cell.code || ('L' + L.layer + 'xL' + j),
+          agents: cell.agents || [],
+          label: cell.ru || cell.en || '',
+        }, 'vertCells');
+      }
+    }, this);
+  };
+
+  CrossScene.prototype._expandHorizontalDetail = function () {
+    // camera nudge toward top view
+    if (this.camera) {
+      this.camera.position.set(0.2, 9.5, 0.2);
+      if (this.controls) {
+        this.controls.target.set(0, 2.2, 0);
+        this.controls.update();
+      }
+    }
+  };
+
+  CrossScene.prototype._resetCamera = function () {
+    if (!this.camera) return;
+    this.camera.position.set(6.5, 5.5, 8.5);
+    if (this.controls) {
+      this.controls.target.set(0, 2.2, 0);
+      this.controls.update();
+    }
+  };
+
+  CrossScene.prototype._renderDetailPanel = function () {
+    if (!this._detailEl) {
+      this._detailEl = document.createElement('div');
+      this._detailEl.className = 'monad-cross-detail';
+      this.container.appendChild(this._detailEl);
+    }
+    var f = this._focus || { mode: 'full' };
+    var lang = locLang();
+    var html = '';
+    if (f.mode === 'full') {
+      html = '<p class="monad-muted">' + (lang === 'en'
+        ? 'Click an axis or block to zoom in. Empty space resets. Drag to orbit.'
+        : 'Кликни ось или блок — приблизим на месте. Пустое место — назад. Мышью крути.') + '</p>';
+    } else {
+      html = '<button type="button" class="btn btn-ghost" id="monad-cross-back" style="font-size:12px;margin-bottom:0.4rem;">← ' +
+        (lang === 'en' ? 'Full cross' : 'Весь крест') + '</button>';
+      if (f.mode === 'vertical') {
+        html += '<strong>' + (lang === 'en' ? 'Vertical L1–L7' : 'Вертикаль L1–L7') + '</strong>';
+        html += '<p class="monad-muted">' + (lang === 'en'
+          ? '49 posts shown as a grid. Click a cube for agents.'
+          : '49 постов сеткой. Кликни кубик — агенты справа.') + '</p>';
+      } else if (f.mode === 'horizontal') {
+        html += '<strong>' + (lang === 'en' ? 'Horizontal 12+1' : 'Горизонталь 12+1') + '</strong>';
+        html += '<p class="monad-muted">' + (lang === 'en'
+          ? 'Top view of the circle. Click a person.'
+          : 'Вид сверху на круг. Кликни человека.') + '</p>';
+      } else if (f.mode === 'cell') {
+        html += '<strong>' + String(f.code || '').replace(/x/gi, '×') + '</strong>';
+        if (f.label) html += '<p>' + f.label + '</p>';
+        var agents = f.agents || [];
+        if (!agents.length) html += '<p class="monad-muted">' + (lang === 'en' ? 'No agents here' : 'В этой клетке нет агентов') + '</p>';
+        else {
+          html += '<ul class="monad-cross-agent-list">';
+          agents.forEach(function (a) {
+            html += '<li><button type="button" class="monad-cross-agent" data-agent="' + a.agent_id + '">' +
+              (a.name || a.agent_id) + '</button></li>';
+          });
+          html += '</ul>';
+        }
+      } else if (f.mode === 'person') {
+        html += '<strong>' + (f.name || f.hour) + '</strong>';
+        html += '<p class="monad-muted">' + (lang === 'en' ? 'Open Horizontal tab for full tree' : 'Полное дерево — во вкладке Горизонталь') + '</p>';
+        html += '<button type="button" class="btn btn-primary" id="monad-cross-open-tab" style="font-size:12px;margin-top:0.4rem;" data-tab="horizontal" data-hour="' +
+          (f.hour || '') + '">' + (lang === 'en' ? 'Open Horizontal' : 'Открыть Горизонталь') + '</button>';
+      }
+    }
+    this._detailEl.innerHTML = html;
+    var self = this;
+    var back = document.getElementById('monad-cross-back');
+    if (back) back.addEventListener('click', function () {
+      self._focus = { mode: 'full' };
+      self._resetCamera();
+      self._applyFocus();
+    });
+    var openTab = document.getElementById('monad-cross-open-tab');
+    if (openTab && this.opts.onNavigate) {
+      openTab.addEventListener('click', function () {
+        self.opts.onNavigate({
+          target: openTab.getAttribute('data-tab'),
+          hour: openTab.getAttribute('data-hour'),
+        });
+      });
+    }
+    this._detailEl.querySelectorAll('[data-agent]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (self.opts.onAgent) self.opts.onAgent(b.getAttribute('data-agent'));
+      });
+    });
   };
 
   CrossScene.prototype._bindPick = function () {
@@ -159,18 +318,68 @@
     this._raycaster = new T.Raycaster();
     this._mouse = new T.Vector2();
     this._onClickBound = function (e) {
-      if (!self._pickables.length || !self.opts.onNavigate) return;
+      if (!self._pickables.length) return;
       var rect = self.renderer.domElement.getBoundingClientRect();
       self._mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       self._mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       self._raycaster.setFromCamera(self._mouse, self.camera);
-      var hits = self._raycaster.intersectObjects(self._pickables, false);
-      if (!hits.length) return;
+      var hits = self._raycaster.intersectObjects(self._pickables, true);
+      if (!hits.length) {
+        // empty space → reset
+        if (self._focus.mode !== 'full') {
+          self._focus = { mode: 'full' };
+          self._resetCamera();
+          self._applyFocus();
+        }
+        return;
+      }
       var nav = hits[0].object && hits[0].object.userData && hits[0].object.userData.monadNav;
-      if (nav) self.opts.onNavigate(nav);
+      if (!nav) return;
+      if (nav.focus === 'cell') {
+        self._focus = {
+          mode: 'cell',
+          code: nav.code,
+          label: nav.label,
+          agents: nav.agents || [],
+          layerId: nav.layerId,
+          cell: nav.cell,
+        };
+        self._applyFocus();
+        return;
+      }
+      if (nav.target === 'vertical') {
+        self._focus = { mode: 'vertical', layerId: nav.layerId };
+        self._applyFocus();
+        return;
+      }
+      if (nav.target === 'horizontal') {
+        if (nav.hour != null && nav.hour !== 'dom') {
+          var seat = (((self.arch.horizontal || {}).seats) || []).filter(function (s) {
+            return String(s.hour) === String(nav.hour);
+          })[0];
+          self._focus = {
+            mode: 'person',
+            hour: nav.hour,
+            name: seat && seat.person ? (seat.person.display_name || seat.person.human_id) : String(nav.hour),
+          };
+        } else {
+          self._focus = { mode: 'horizontal' };
+        }
+        self._applyFocus();
+        return;
+      }
+      // Z / online — optional soft hint, no hard jump
+      if (nav.target === 'online' && self.opts.onNavigate) {
+        self._detailEl && (self._detailEl.innerHTML =
+          '<button type="button" class="btn btn-primary" id="monad-cross-open-online" style="font-size:12px;">' +
+          (locLang() === 'en' ? 'Open Online tab' : 'Открыть вкладку Онлайн') + '</button>');
+        var btn = document.getElementById('monad-cross-open-online');
+        if (btn) btn.addEventListener('click', function () { self.opts.onNavigate({ target: 'online' }); });
+      }
     };
     this.renderer.domElement.addEventListener('click', this._onClickBound);
     this.renderer.domElement.style.cursor = 'pointer';
+    this._renderDetailPanel();
   };
 
   CrossScene.prototype._addAxes = function () {
@@ -187,21 +396,21 @@
     );
     xHit.position.set(0, 3.6, 0);
     this.scene.add(xHit);
-    this._tag(xHit, { target: 'vertical' });
+    this._tag(xHit, { target: 'vertical' }, 'vertical');
     var yHit = new window.THREE.Mesh(
       new window.THREE.BoxGeometry(5.2, 0.9, 0.9),
       new window.THREE.MeshBasicMaterial({ visible: false })
     );
     yHit.position.set(2.4, 2.2, 0);
     this.scene.add(yHit);
-    this._tag(yHit, { target: 'horizontal' });
+    this._tag(yHit, { target: 'horizontal' }, 'horizontal');
     var zHit = new window.THREE.Mesh(
       new window.THREE.BoxGeometry(0.9, 0.9, 5.2),
       new window.THREE.MeshBasicMaterial({ visible: false })
     );
     zHit.position.set(0, 2.2, -2.4);
     this.scene.add(zHit);
-    this._tag(zHit, { target: 'online' });
+    this._tag(zHit, { target: 'online' }, 'depth');
     this._label('X · ' + axisLabel(this.axes.x_height, lang), 0, 7.6, 0, '#00e0ff');
     this._label('Y · ' + axisLabel(this.axes.y_width, lang), 5.2, 2.2, 0, '#e8c468');
     this._label('Z · ' + axisLabel(this.axes.z_depth, lang), 0, 2.2, -5.2, '#8dffc8');
@@ -219,10 +428,11 @@
       var mesh = new T.Mesh(geo, mat);
       mesh.position.set(0, y, 0);
       this.scene.add(mesh);
-      this._tag(mesh, { target: 'vertical', layerId: L.id || ('L' + (L.layer || (i + 1))), cell: L.layer || (i + 1) });
+      this._tag(mesh, { target: 'vertical', layerId: L.id || ('L' + (L.layer || (i + 1))), cell: L.layer || (i + 1) }, 'vertical');
       var spine = new T.Mesh(new T.BoxGeometry(0.22, 0.48, 0.22), spineMat);
       spine.position.set(0, y, 0);
       this.scene.add(spine);
+      this._tag(spine, { target: 'vertical', layerId: L.id || ('L' + (L.layer || (i + 1))) }, 'vertical');
       var name = (L && (L[locLang()] || L.ru)) || ('L' + (L.layer || (i + 1)));
       this._label(String(L.layer || (i + 1)), -0.95, y, 0, '#A8F7FF');
       if (i === 0 || i === layers.length - 1) this._label(name.slice(0, 18), 0.95, y, 0, '#c5ccd4');
@@ -249,12 +459,13 @@
       var dot = new T.Mesh(new T.SphereGeometry(s.person ? 0.14 : 0.08, 10, 10), this._mat(s.person ? 0x00e0ff : 0x444444, s.person ? 1 : 0.45));
       dot.position.set(x, 2.2, z);
       this.scene.add(dot);
-      if (s.person) this._tag(dot, { target: 'horizontal', hour: hour });
+      if (s.person) this._tag(dot, { target: 'horizontal', hour: hour }, 'horizontal');
     }, this);
     var dom = new T.Mesh(new T.SphereGeometry(0.22, 16, 16), this._mat(0xffffff, 0.9));
     dom.position.set(0, 2.2, 0);
     this.scene.add(dom);
-    this._tag(dom, { target: 'horizontal', hour: 'dom' });
+    this._tag(dom, { target: 'horizontal', hour: 'dom' }, 'horizontal');
+    this._tag(ring, { target: 'horizontal' }, 'horizontal');
   };
 
   CrossScene.prototype._addDepthChain = function () {
@@ -292,9 +503,8 @@
     if (z && z.meaning) bits.push('Z: ' + z.meaning.slice(0, 120));
     var host = document.createElement('div');
     host.className = 'monad-cross-legend';
-    host.innerHTML = '<p class="monad-muted">' + (lang === 'en'
-        ? 'Click axis, layer block, person dot or DOM · drag to orbit · wheel zoom'
-        : 'Клик по оси, слою, человеку или DOM · крути · колесо — масштаб') + '</p>';
+    host.innerHTML = '';
+    // legend text now in detail panel
     this.container.appendChild(host);
   };
 
