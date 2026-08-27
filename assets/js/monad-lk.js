@@ -18,7 +18,7 @@
     messages: [],
     pendingAttachments: [],
     pollTimer: null,
-    awaitingPersonaUntil: 0,
+    awaitingPersona: false,
     showTech: false,
     vertLayer: null,
     vertCell: null,
@@ -622,6 +622,17 @@
     STATE.chats = STATE.chats.map(function (c) { return c.id === id ? Object.assign({}, c, data.chat) : c; });
     if (!STATE.chats.filter(function (c) { return c.id === id; }).length && data.chat) STATE.chats.unshift(data.chat);
     STATE.messages = data.messages || [];
+    var last = STATE.messages[STATE.messages.length - 1];
+    // Last bubble is from the human — Persona reply may still be in flight.
+    if (last && last.role === 'you') {
+      STATE.awaitingPersona = true;
+      STATE.messages = STATE.messages.concat([{ role: 'monad', text: '…', meta: { typing: true } }]);
+      renderMessages();
+      renderPinned();
+      startFastPoll();
+      return;
+    }
+    STATE.awaitingPersona = false;
     renderMessages();
     renderPinned();
     startPoll();
@@ -710,21 +721,29 @@
       STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       if (data && data.reply && data.reply.text) {
         STATE.messages.push(data.reply);
-        renderMessages();
       }
       var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
       if (thr && thr.messages && thr.messages.length) STATE.messages = thr.messages;
-      if (data && data.awaiting_persona) {
-        STATE.awaitingPersonaUntil = Date.now() + 120000;
-        var last = STATE.messages[STATE.messages.length - 1];
+      var last = STATE.messages[STATE.messages.length - 1];
+      var personaAlreadyHere = last && last.role === 'monad' && !(last.meta && last.meta.typing);
+      if (data && data.awaiting_persona && !personaAlreadyHere) {
+        STATE.awaitingPersona = true;
+        STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
+        last = STATE.messages[STATE.messages.length - 1];
         if (!last || last.role !== 'monad') {
           STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
         }
+        renderMessages();
+        await loadChats();
+        startFastPoll();
+      } else {
+        STATE.awaitingPersona = false;
+        renderMessages();
+        await loadChats();
+        startPoll();
       }
-      renderMessages();
-      await loadChats();
-      startFastPoll();
     } catch (err) {
+      STATE.awaitingPersona = false;
       STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
       renderMessages();
@@ -741,15 +760,24 @@
       });
       if (data && data.messages) {
         var before = STATE.messages.length;
+        var hadTyping = STATE.messages.some(function (m) { return m.meta && m.meta.typing; });
         STATE.messages = data.messages;
         var last = STATE.messages[STATE.messages.length - 1];
-        var waiting = STATE.awaitingPersonaUntil && Date.now() < STATE.awaitingPersonaUntil;
+        // Real Persona text arrived — stop waiting, drop «…».
         if (last && last.role === 'monad' && !(last.meta && last.meta.typing)) {
-          STATE.awaitingPersonaUntil = 0;
-        } else if (waiting && (!last || last.role === 'you')) {
+          STATE.awaitingPersona = false;
+        } else if (STATE.awaitingPersona && (!last || last.role === 'you')) {
+          // Keep typing indicator while Persona is still working — no resend timeout.
           STATE.messages = STATE.messages.concat([{ role: 'monad', text: '…', meta: { typing: true } }]);
         }
-        if (STATE.messages.length !== before || (data.imported > 0) || waiting) renderMessages();
+        if (
+          STATE.messages.length !== before ||
+          (data.imported > 0) ||
+          STATE.awaitingPersona ||
+          hadTyping
+        ) {
+          renderMessages();
+        }
       }
     } catch (e) { /* quiet */ }
   }
@@ -760,18 +788,34 @@
     STATE.pollTimer = setInterval(pollReplies, 20000);
     pollReplies();
   }
+
+  /**
+   * Fast poll while waiting for Persona:
+   *   ~5 min every 5s, then every 8s for as long as awaitingPersona.
+   * When the reply arrives, fall back to the normal 20s poll.
+   * Never show «Ответ не пришёл / напиши ещё раз» and never clear wait by timer.
+   */
   function startFastPoll() {
     stopPoll();
     if (!STATE.activeChatId) return;
-    var n = 0;
-    STATE.pollTimer = setInterval(function () {
-      n += 1;
-      pollReplies();
-      if (n >= 24) { // ~2 min of 5s polls, then slow
-        stopPoll();
-        startPoll();
-      }
-    }, 5000);
+    var startedAt = Date.now();
+    var phaseMs = 5000;
+    function arm(ms) {
+      stopPoll();
+      phaseMs = ms;
+      STATE.pollTimer = setInterval(function () {
+        pollReplies().then(function () {
+          if (!STATE.awaitingPersona) {
+            stopPoll();
+            startPoll();
+            return;
+          }
+          var nextMs = (Date.now() - startedAt) < (5 * 60 * 1000) ? 5000 : 8000;
+          if (nextMs !== phaseMs) arm(nextMs);
+        });
+      }, ms);
+    }
+    arm(5000);
     pollReplies();
   }
   function stopPoll() {
