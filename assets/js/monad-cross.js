@@ -195,6 +195,13 @@
     yHit.position.set(2.4, 2.2, 0);
     this.scene.add(yHit);
     this._tag(yHit, { target: 'horizontal' });
+    var zHit = new window.THREE.Mesh(
+      new window.THREE.BoxGeometry(0.9, 0.9, 5.2),
+      new window.THREE.MeshBasicMaterial({ visible: false })
+    );
+    zHit.position.set(0, 2.2, -2.4);
+    this.scene.add(zHit);
+    this._tag(zHit, { target: 'online' });
     this._label('X · ' + axisLabel(this.axes.x_height, lang), 0, 7.6, 0, '#00e0ff');
     this._label('Y · ' + axisLabel(this.axes.y_width, lang), 5.2, 2.2, 0, '#e8c468');
     this._label('Z · ' + axisLabel(this.axes.z_depth, lang), 0, 2.2, -5.2, '#8dffc8');

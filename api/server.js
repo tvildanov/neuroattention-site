@@ -13652,6 +13652,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
       const owner = a.owner || null;
       const p = monadSvc.placementOf(a.agent_id, placements) || {};
       const kind = monadSvc.kindOfPlacement(p, placements);
+      const cell = p.cell || a.cell || a.primary_cell || null;
       return {
         agent_id: a.agent_id,
         name: a.name,
@@ -13661,7 +13662,7 @@ app.get('/api/monad/architecture', requireAuth, async (req, res) => {
         platform: a.platform || null,
         domains: a.domains || [],
         type: kind.type,
-        cell: p.cell || null,
+        cell,
         secondary_cells: p.secondary_cells || [],
         parent: p.parent || null,
         chain: p.chain || null,
@@ -13868,6 +13869,47 @@ app.get('/api/monad/rhythm', requireAuth, async (req, res) => {
     res.json({ ok: true, human_id: monadSvc.resolveHumanId(caller), rhythm });
   } catch (err) {
     console.error('GET /api/monad/rhythm:', err);
+    res.status(502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// GET /api/monad/live — rhythm + office layout + enriched agents (online tab)
+app.get('/api/monad/live', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const pack = await monadSvc.fetchLivePack();
+    res.json(Object.assign({ ok: true, human_id: monadSvc.resolveHumanId(caller) }, pack));
+  } catch (err) {
+    console.error('GET /api/monad/live:', err);
+    res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
+  }
+});
+
+// GET /api/monad/agents/search?q= — filter agents by id/name/contour
+app.get('/api/monad/agents/search', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const q = String(req.query.q || '').trim().toLowerCase();
+    const pack = await monadSvc.fetchLivePack();
+    let agents = pack.agents || [];
+    if (q) {
+      agents = agents.filter((a) => {
+        const hay = [a.agent_id, a.name, a.contour, a.project, a.owner, a.owner_name, a.cell, (a.domains || []).join(' ')]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+      });
+    }
+    res.json({
+      ok: true,
+      human_id: monadSvc.resolveHumanId(caller),
+      q: q || null,
+      count: agents.length,
+      agents: agents.slice(0, 80),
+    });
+  } catch (err) {
+    console.error('GET /api/monad/agents/search:', err);
     res.status(502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
   }
 });

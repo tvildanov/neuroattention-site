@@ -32,6 +32,9 @@
     inboxSyncing: false,
     inboxViewId: null,
     personaHealth: null,
+    live: null,
+    livePollTimer: null,
+    agentSearch: '',
   };
 
   function t(key, fallback) {
@@ -104,6 +107,7 @@
                 STATE.horizHour = String(nav.hour);
                 renderHorizontal(STATE.arch);
               }
+              if (nav.target === 'online') startLiveRhythm();
             },
           });
         }
@@ -113,9 +117,29 @@
     }
     if (STATE.archSub === 'vertical') renderVertical(STATE.arch);
     if (STATE.archSub === 'horizontal') renderHorizontal(STATE.arch);
+    if (STATE.archSub === 'online') {
+      ensureOnline();
+      startLiveRhythm();
+    } else if (STATE.sub === 'architecture') {
+      stopLiveRhythm();
+    }
   }
 
   function setSub(id) {
+    if (id === 'rhythm') {
+      id = 'architecture';
+      STATE.sub = id;
+      document.querySelectorAll('.monad-subtab').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-monad-sub') === id || b.getAttribute('data-monad-sub') === 'rhythm');
+      });
+      document.querySelectorAll('.monad-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'monad-panel-' + id);
+      });
+      ensureArchitecture().then(function () { setArchSub('online'); startLiveRhythm(); });
+      stopPoll();
+      if (window.MonadCross) window.MonadCross.destroy();
+      return;
+    }
     STATE.sub = id;
     document.querySelectorAll('.monad-subtab').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-monad-sub') === id);
@@ -124,7 +148,6 @@
       p.classList.toggle('active', p.id === 'monad-panel-' + id);
     });
     if (id === 'architecture') ensureArchitecture();
-    if (id === 'rhythm') ensureRhythm();
     else stopLiveRhythm();
     if (id === 'chat') {
       startPoll();
@@ -812,7 +835,16 @@
     if (friends.length) {
       html += '<dt>' + esc(t('a.monad.friends', 'Связи')) + '</dt><dd>' + esc(friends.join(', ')) + '</dd>';
     }
-    html += '<dt>' + esc(t('a.monad.domains', 'Домены')) + '</dt><dd>' + esc((a.domains && a.domains.length) ? a.domains.join(', ') : '—') + '</dd>';
+    if (a.domains) {
+      html += '<dt>' + esc(t('a.monad.domains', 'Домены')) + '</dt><dd>' + esc((a.domains && a.domains.length) ? a.domains.join(', ') : '—') + '</dd>';
+    }
+    if (a.actions_per_min != null || a.last_seen) {
+      html += '<dt>' + esc(t('a.monad.live_activity', 'Онлайн')) + '</dt><dd>';
+      if (a.actions_per_min != null) html += esc(String(a.actions_per_min)) + ' ' + esc(t('a.monad.act_min', 'акт/мин'));
+      if (a.last_seen) html += (a.actions_per_min != null ? ' · ' : '') + esc(t('a.monad.last_seen', 'был')) + ' ' + esc(a.last_seen);
+      if (a.live) html += ' · <span class="monad-ok">live</span>';
+      html += '</dd>';
+    }
     html += '</dl></div>';
     return html;
   }
@@ -834,6 +866,9 @@
   function findAgent(id) {
     var found = null;
     walkAgents(function (a) { if (a && a.agent_id === id) found = a; });
+    if (!found && STATE.live && STATE.live.agents) {
+      found = STATE.live.agents.filter(function (a) { return a.agent_id === id; })[0] || null;
+    }
     return found;
   }
   function bindAgentClicks(host, detailId) {
@@ -875,6 +910,15 @@
       html += '<p class="monad-muted">' + esc(t('a.monad.vertical_pick_layer', 'Выбери слой слева — увидишь ветки и агентов на этом уровне.')) + '</p>';
     } else {
       var cells = (selected.cells || []).slice().sort(function (a, b) { return a.n - b.n; });
+      html += '<div class="monad-vert-viz">';
+      html += '<svg class="monad-branch-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">';
+      cells.forEach(function (c, i) {
+        var y = 8 + i * (84 / Math.max(1, cells.length - 1));
+        if (cells.length === 1) y = 50;
+        var on = String(STATE.vertCell) === String(c.n);
+        html += '<path class="monad-branch-path' + (on ? ' on' : '') + '" d="M 14 ' + y.toFixed(1) + ' C 28 ' + y.toFixed(1) + ', 32 ' + y.toFixed(1) + ', 42 ' + y.toFixed(1) + '"/>';
+      });
+      html += '</svg>';
       html += '<div class="monad-vert-branches">';
       cells.forEach(function (c) {
         var code = c.code || ('L' + selected.layer + 'xL' + c.n);
@@ -892,7 +936,7 @@
         }
         html += '</button>';
       });
-      html += '</div>';
+      html += '</div></div>';
     }
     html += '</div>';
     html += '<aside class="monad-viz-panel" id="monad-vert-side">';
@@ -972,7 +1016,7 @@
       if (s.person && String(s.hour) === String(STATE.horizHour)) selected = s;
     });
     var html = '<p class="monad-viz-legend">' + esc(t('a.monad.horiz_help_short', 'Круг 12+1: люди на часах, DOM в центре. Нажми человека — справа контуры и агенты.')) + '</p>';
-    html += '<div class="monad-viz-split">';
+    html += '<div class="monad-viz-split monad-horiz-split">';
     html += '<div class="monad-horiz-col">';
     html += '<div class="monad-horiz-wrap"><div class="monad-horiz-ring">';
     html += '<button type="button" class="monad-dom-center' + (selectedDom ? ' on' : '') + '" data-hour="dom">';
@@ -1001,12 +1045,24 @@
       html += '</div></button>';
     });
     html += '</div></div>';
+    if (selected && selected.person) {
+      var selPos = hourXY(selected.hour, 38);
+      var branchCount = (selected.person.contours || []).length + (selected.person.projects || []).length + (selected.person.persona ? 1 : 0);
+      html += '<svg class="monad-horiz-branch-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">';
+      for (var bi = 0; bi < Math.max(branchCount, 1); bi++) {
+        var by = 18 + bi * (64 / Math.max(1, branchCount - 1));
+        if (branchCount === 1) by = 50;
+        html += '<path class="monad-branch-path on" d="M ' + selPos.x.toFixed(1) + ' ' + selPos.y.toFixed(1) +
+          ' C ' + (selPos.x + 18).toFixed(1) + ' ' + selPos.y.toFixed(1) + ', 55 ' + by.toFixed(1) + ', 72 ' + by.toFixed(1) + '"/>';
+      }
+      html += '</svg>';
+    }
     if (h.unseated && h.unseated.length) {
       html += '<p class="monad-muted">' + esc(t('a.monad.unseated', 'В круге без часа')) + ': ' +
         h.unseated.map(function (u) { return u.display_name || u.human_id; }).join(', ') + '</p>';
     }
     html += '</div>';
-    html += '<aside class="monad-viz-panel">';
+    html += '<aside class="monad-viz-panel monad-horiz-panel">';
     if (selectedDom && h.center) {
       html += '<div class="monad-viz-kicker">' + esc(t('a.monad.project', 'Проект')) + ' · DOM</div>';
       html += '<p class="monad-muted">' + esc(h.center.note || '') + '</p>';
@@ -1018,6 +1074,7 @@
       html += '<div id="monad-horiz-agent-detail"></div>';
     } else {
       var p = selected.person;
+      html += '<div class="monad-horiz-branches-viz">';
       html += '<div class="monad-viz-kicker">' + esc(p.display_name || p.human_id) + ' · ' + selected.hour + ':00</div>';
       html += '<p>' + esc(p.role || '') + '</p>';
       if (p.persona) {
@@ -1026,21 +1083,22 @@
       }
       html += '<h4 class="monad-viz-h">' + esc(t('a.monad.contours_from_person', 'Контуры от человека')) + '</h4>';
       if (!(p.contours || []).length) html += '<p class="monad-muted">' + esc(t('a.monad.no_contour', 'нет контура')) + '</p>';
-      (p.contours || []).forEach(function (g) {
-        html += '<div class="monad-branch"><div class="monad-branch-name">' + esc(locLang() === 'en' ? (g.label_en || g.label) : g.label) + '</div>';
+      (p.contours || []).forEach(function (g, gi) {
+        html += '<div class="monad-branch monad-branch-anim" style="--branch-i:' + gi + '"><div class="monad-branch-name">' + esc(locLang() === 'en' ? (g.label_en || g.label) : g.label) + '</div>';
         html += '<div class="monad-agent-list">';
         (g.agents || []).forEach(function (a) { html += agentCard(a); });
         html += '</div></div>';
       });
       html += '<h4 class="monad-viz-h">' + esc(t('a.monad.projects_of_person', 'Проекты (не контуры)')) + '</h4>';
       if (!(p.projects || []).length) html += '<p class="monad-muted">' + esc(t('a.monad.no_projects', 'нет проекта')) + '</p>';
-      (p.projects || []).forEach(function (g) {
-        html += '<div class="monad-branch project"><div class="monad-branch-name">' + esc(locLang() === 'en' ? (g.label_en || g.label) : g.label) + '</div>';
+      (p.projects || []).forEach(function (g, gi) {
+        html += '<div class="monad-branch project monad-branch-anim" style="--branch-i:' + (gi + (p.contours || []).length) + '"><div class="monad-branch-name">' + esc(locLang() === 'en' ? (g.label_en || g.label) : g.label) + '</div>';
         html += '<div class="monad-agent-list">';
         (g.agents || []).forEach(function (a) { html += agentCard(a); });
         html += '</div></div>';
       });
       html += '<div id="monad-horiz-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
+      html += '</div>';
     }
     html += '</aside></div>';
     host.innerHTML = html;
@@ -1057,27 +1115,30 @@
     var r = STATE.rhythm && (STATE.rhythm.rhythm || STATE.rhythm);
     return (r && r.layers) || [];
   }
-  function renderRhythm(rhythm) {
-    var host = document.getElementById('monad-rhythm');
+
+  function renderRhythmBlock(hostId, rhythm, showLiveBtn) {
+    var host = document.getElementById(hostId);
     if (!host) return;
     rhythm = rhythm || (STATE.rhythm && (STATE.rhythm.rhythm || STATE.rhythm));
-    if (!rhythm) return;
+    if (!rhythm) {
+      host.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.loading', 'Загрузка…')) + '</p>';
+      return;
+    }
     var layers = rhythm.layers || [];
     if (!STATE.rhythmDisplay.length) {
       STATE.rhythmDisplay = layers.map(function (L) { return L.level || 0; });
     }
     var html = '<div class="monad-rhythm-head">';
-    html += '<div>';
-    html += '<strong>' + esc(t('a.monad.system_rhythm', 'Ритм системы Monad')) + '</strong> ';
+    html += '<div><strong>' + esc(t('a.monad.system_rhythm', 'Ритм системы Monad')) + '</strong> ';
     if (rhythm.system) {
       html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span>';
     }
-    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help_short', 'Активность слоёв L1–L7 и агентов. «Живой ритм» обновляет данные каждые ~1.2 с.')) + '</p>';
-    html += '</div>';
-    html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
-      esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';
-    html += '</div>';
-    html += '<div class="monad-eq-live" aria-hidden="false">';
+    html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help_short', 'Активность слоёв L1–L7 и агентов. «Живой ритм» обновляет данные каждые ~1.2 с.')) + '</p></div>';
+    if (showLiveBtn !== false) {
+      html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
+        esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';
+    }
+    html += '</div><div class="monad-eq-live">';
     layers.forEach(function (L, i) {
       var label = L[locLang()] || L.ru || L.id;
       var unavailable = L.available === false || L.level == null;
@@ -1087,22 +1148,11 @@
       html += '<div class="monad-eq-col-bar"><i style="height:' + (unavailable ? 6 : Math.max(6, pct)) + '%"></i></div>';
       html += '<div class="monad-eq-col-label"><code>' + esc(L.id || '') + '</code> ' + esc(label) + '</div>';
       html += '<div class="monad-eq-col-val">' + (unavailable ? 'n/a' : (pct + '%')) +
-        (L.agents_in_layer != null ? ' · ' + L.agents_in_layer : '') + '</div>';
-      html += '</div>';
+        (L.agents_in_layer != null ? ' · ' + L.agents_in_layer : '') + '</div></div>';
     });
     html += '</div>';
-    if (rhythm.agents && rhythm.agents.length) {
-      html += '<div class="monad-agent-rhythm" style="margin-top:1rem;"><table class="monad-mini-table"><thead><tr><th>' +
-        esc(t('a.monad.agent', 'Агент')) + '</th><th>' + esc(t('a.monad.act_min', 'акт/мин')) + '</th><th>' +
-        esc(t('a.monad.last_seen', 'был')) + '</th></tr></thead><tbody>';
-      rhythm.agents.slice(0, 24).forEach(function (a) {
-        html += '<tr><td><code>' + esc(a.agent_id) + '</code></td><td>' + esc(a.actions_per_min != null ? a.actions_per_min : '—') +
-          '</td><td>' + esc(a.last_seen || '—') + '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-    }
     if (rhythm.updated_at) {
-      html += '<p class="monad-muted" style="margin-top:0.75rem;font-size:11px;">' +
+      html += '<p class="monad-muted" style="margin-top:0.5rem;font-size:11px;">' +
         esc(t('a.monad.updated', 'Обновлено')) + ': ' + esc(String(rhythm.updated_at).slice(0, 19).replace('T', ' ')) +
         (rhythm.source ? ' · ' + esc(rhythm.source) : '') + '</p>';
     }
@@ -1112,25 +1162,109 @@
       liveBtn.addEventListener('click', function () {
         if (STATE.liveRhythm) stopLiveRhythm();
         else startLiveRhythm();
-        renderRhythm(rhythm);
+        renderOnline();
       });
     }
   }
-  function applyRhythmBars() {
-    var host = document.getElementById('monad-rhythm');
+
+  function renderOnlineAgentDetail(agentId) {
+    var box = document.getElementById('monad-online-agent-detail');
+    if (!box) return;
+    if (!agentId) { box.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.pick_agent', 'Нажми агента — детали.')) + '</p>'; return; }
+    box.innerHTML = agentDetail(findAgent(agentId));
+    bindAgentClicks(box, 'monad-online-agent-detail');
+  }
+
+  function renderOnline() {
+    var host = document.getElementById('monad-online');
     if (!host) return;
-    var cols = host.querySelectorAll('.monad-eq-col');
-    var layers = rhythmLayers();
-    cols.forEach(function (col, i) {
-      var bar = col.querySelector('i');
-      var val = col.querySelector('.monad-eq-col-val');
-      var L = layers[i];
-      if (!bar || !L) return;
-      var unavailable = L.available === false || L.level == null;
-      var lvl = STATE.rhythmDisplay[i] || 0;
-      var pct = unavailable ? 0 : Math.round(lvl * 100);
-      bar.style.height = (unavailable ? 6 : Math.max(6, pct)) + '%';
-      if (val) val.textContent = unavailable ? 'n/a' : (pct + '%');
+    var live = STATE.live || {};
+    var rhythm = (live.rhythm) || (STATE.rhythm && (STATE.rhythm.rhythm || STATE.rhythm));
+    if (live.rhythm) STATE.rhythm = { rhythm: live.rhythm };
+
+    var html = '<p class="monad-viz-legend">' + esc(t('a.monad.online_help', 'Онлайн Монада: ритм слоёв, карта агентов как в офисе, поиск и детали.')) + '</p>';
+    html += '<div class="monad-online-search-row">';
+    html += '<input type="search" id="monad-agent-search" class="monad-agent-search" placeholder="' + esc(t('a.monad.search_agent', 'Поиск агента, контура, ячейки…')) + '" value="' + esc(STATE.agentSearch || '') + '">';
+    html += '<button type="button" id="monad-agent-search-btn" class="btn btn-ghost" style="font-size:12px;">' + esc(t('a.monad.search', 'Найти')) + '</button>';
+    html += '</div>';
+    html += '<div class="monad-online-grid">';
+    html += '<section class="monad-online-rhythm-wrap"><div id="monad-online-rhythm"></div></section>';
+    html += '<section class="monad-online-office-wrap"><div id="monad-office-host"></div></section>';
+    html += '<aside class="monad-online-side"><div id="monad-online-agent-detail"><p class="monad-muted">' +
+      esc(t('a.monad.pick_agent', 'Нажми агента на карте офиса.')) + '</p></div></aside>';
+    html += '</div>';
+    host.innerHTML = html;
+
+    renderRhythmBlock('monad-online-rhythm', rhythm, true);
+
+    if (window.MonadOffice) {
+      var officeHost = document.getElementById('monad-office-host');
+      window.MonadOffice.mount(officeHost, {
+        onPick: function (id) {
+          STATE.pickedAgent = id;
+          renderOnlineAgentDetail(id);
+        },
+      });
+      window.MonadOffice.render(live);
+      if (STATE.agentSearch) window.MonadOffice.setFilter(STATE.agentSearch);
+    }
+
+    var searchInp = document.getElementById('monad-agent-search');
+    var searchBtn = document.getElementById('monad-agent-search-btn');
+    function runSearch() {
+      STATE.agentSearch = searchInp ? String(searchInp.value || '').trim() : '';
+      if (window.MonadOffice) window.MonadOffice.setFilter(STATE.agentSearch);
+      if (STATE.agentSearch.length >= 2) {
+        api('/api/monad/agents/search?q=' + encodeURIComponent(STATE.agentSearch)).then(function (data) {
+          if (data.agents && data.agents.length === 1) {
+            STATE.pickedAgent = data.agents[0].agent_id;
+            renderOnlineAgentDetail(STATE.pickedAgent);
+          }
+        }).catch(function () {});
+      }
+    }
+    if (searchBtn) searchBtn.addEventListener('click', runSearch);
+    if (searchInp) {
+      searchInp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); runSearch(); }
+      });
+    }
+    if (STATE.pickedAgent) renderOnlineAgentDetail(STATE.pickedAgent);
+  }
+
+  async function ensureOnline() {
+    var host = document.getElementById('monad-online');
+    if (!host) return;
+    if (!STATE.live) host.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.loading', 'Загрузка…')) + '</p>';
+    try {
+      STATE.live = await api('/api/monad/live');
+      if (STATE.live && STATE.live.rhythm) STATE.rhythm = { rhythm: STATE.live.rhythm };
+      renderOnline();
+    } catch (err) {
+      host.innerHTML = '<p class="monad-warn">' + esc((err.data && err.data.error) || err.message) + '</p>';
+    }
+  }
+
+  function renderRhythm(rhythm) {
+    renderRhythmBlock('monad-rhythm', rhythm, true);
+  }
+  function applyRhythmBars() {
+    ['monad-rhythm', 'monad-online-rhythm'].forEach(function (hostId) {
+      var host = document.getElementById(hostId);
+      if (!host) return;
+      var cols = host.querySelectorAll('.monad-eq-col');
+      var layers = rhythmLayers();
+      cols.forEach(function (col, i) {
+        var bar = col.querySelector('i');
+        var val = col.querySelector('.monad-eq-col-val');
+        var L = layers[i];
+        if (!bar || !L) return;
+        var unavailable = L.available === false || L.level == null;
+        var lvl = STATE.rhythmDisplay[i] || 0;
+        var pct = unavailable ? 0 : Math.round(lvl * 100);
+        bar.style.height = (unavailable ? 6 : Math.max(6, pct)) + '%';
+        if (val) val.textContent = unavailable ? 'n/a' : (pct + '%');
+      });
     });
   }
   function tickRhythmRaf() {
@@ -1148,15 +1282,19 @@
     STATE.liveRhythm = true;
     if (STATE.rhythmTimer) clearInterval(STATE.rhythmTimer);
     STATE.rhythmTimer = setInterval(function () {
-      if (STATE.sub !== 'rhythm' || !STATE.liveRhythm) { stopLiveRhythm(); return; }
-      api('/api/monad/rhythm').then(function (data) {
-        STATE.rhythm = data;
+      var onOnline = STATE.sub === 'architecture' && STATE.archSub === 'online';
+      if (!STATE.liveRhythm || !onOnline) { stopLiveRhythm(); return; }
+      api('/api/monad/live').then(function (data) {
+        STATE.live = data;
+        if (data && data.rhythm) STATE.rhythm = { rhythm: data.rhythm };
         var layers = rhythmLayers();
         if (STATE.rhythmDisplay.length !== layers.length) {
           STATE.rhythmDisplay = layers.map(function (L) { return L.level || 0; });
         }
+        renderRhythmBlock('monad-online-rhythm', data.rhythm, false);
+        if (window.MonadOffice) window.MonadOffice.render(data);
       }).catch(function () {});
-    }, 1200);
+    }, 1500);
     if (!STATE.rhythmRaf) STATE.rhythmRaf = window.requestAnimationFrame(tickRhythmRaf);
   }
   function stopLiveRhythm() {
@@ -1168,6 +1306,7 @@
     if (STATE.arch) {
       if (STATE.archSub === 'vertical') renderVertical(STATE.arch);
       else if (STATE.archSub === 'horizontal') renderHorizontal(STATE.arch);
+      else if (STATE.archSub === 'online') ensureOnline();
       else if (STATE.archSub === 'cross' && window.MonadCross) {
         var host = document.getElementById('monad-cross-host');
         if (host) {
@@ -1184,6 +1323,7 @@
                 STATE.horizHour = String(nav.hour);
                 renderHorizontal(STATE.arch);
               }
+              if (nav.target === 'online') startLiveRhythm();
             },
           });
         }
@@ -1279,7 +1419,7 @@
       refresh.addEventListener('click', function () {
         stopLiveRhythm();
         if (window.MonadCross) window.MonadCross.destroy();
-        STATE.arch = null; STATE.rhythm = null; STATE.status = null; STATE.inbox = [];
+        STATE.arch = null; STATE.rhythm = null; STATE.status = null; STATE.inbox = []; STATE.live = null;
         onTabOpen();
       });
     }
