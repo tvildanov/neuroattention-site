@@ -901,6 +901,140 @@ function parseCell(code) {
   return { i: parseInt(m[1], 10), j: parseInt(m[2], 10) };
 }
 
+function parseLastSeenSec(lastSeen) {
+  const s = String(lastSeen || '').trim().toLowerCase();
+  if (!s || s === '—' || s === '-') return null;
+  const m = s.match(/^(\d+(?:[.,]\d+)?)\s*(s|sec|с|m|min|мин|h|ч)/);
+  if (!m) return s === 'now' || s === 'сейчас' ? 0 : null;
+  const n = parseFloat(m[1].replace(',', '.'));
+  const u = m[2];
+  if (/^s|sec|с/.test(u)) return n;
+  if (/^m|min|мин/.test(u)) return n * 60;
+  if (/^h|ч/.test(u)) return n * 3600;
+  return null;
+}
+
+function agentIsLive(agent, rhythmRow) {
+  const act = rhythmRow && rhythmRow.actions_per_min != null ? Number(rhythmRow.actions_per_min) : 0;
+  if (act > 0.02) return true;
+  const sec = parseLastSeenSec(rhythmRow && rhythmRow.last_seen);
+  if (sec != null && sec <= 120) return true;
+  return agent && agent.status === 'active';
+}
+
+/** Office floor layout — agents grouped by vertical layer L1–L7 + unplaced row. */
+function buildOfficeLayout(agents, placements, rhythmAgents) {
+  const actById = {};
+  (rhythmAgents || []).forEach((a) => { if (a && a.agent_id) actById[a.agent_id] = a; });
+  const byLayer = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 0: [] };
+  (agents || []).forEach((agent) => {
+    if (!agent || !agent.agent_id) return;
+    const place = (placements && placements[agent.agent_id]) || {};
+    const cell = place.cell || agent.cell || agent.primary_cell || null;
+    const layer = cell ? layerOfCell(cell) : null;
+    const key = layer && layer >= 1 && layer <= 7 ? layer : 0;
+    const rhythm = actById[agent.agent_id] || null;
+    byLayer[key].push({ agent, place, cell, rhythm, live: agentIsLive(agent, rhythm) });
+  });
+  const zones = RHYTHM_LAYERS.map((L) => ({
+    id: L.id,
+    layer: L.layer,
+    ru: L.ru,
+    en: L.en,
+  }));
+  zones.push({ id: 'unplaced', layer: 0, ru: 'Без ячейки', en: 'Unplaced' });
+  const desks = [];
+  zones.forEach((zone, zi) => {
+    const list = byLayer[zone.layer] || [];
+    const cols = Math.max(1, Math.ceil(Math.sqrt(list.length)));
+    list.forEach((item, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const act = item.rhythm || {};
+      desks.push({
+        agent_id: item.agent.agent_id,
+        name: item.agent.name || item.agent.agent_id,
+        cell: item.cell,
+        layer: zone.layer || null,
+        zone: zone.id,
+        zone_label: zone.ru,
+        x_pct: 4 + col * (92 / cols),
+        y_pct: 4 + row * 11,
+        row: zi,
+        actions_per_min: act.actions_per_min != null ? act.actions_per_min : null,
+        last_seen: act.last_seen || null,
+        drift: act.drift || null,
+        live: item.live,
+        status: item.agent.status,
+        owner: item.agent.owner,
+        owner_name: item.agent.owner_name,
+        contour: item.agent.contour || (item.place && item.place.contour),
+        project: item.agent.project || (item.place && item.place.project),
+        type: item.agent.type || (item.place && item.place.type),
+        platform: item.agent.platform,
+      });
+    });
+  });
+  const liveCount = desks.filter((d) => d.live).length;
+  return {
+    zones,
+    desks,
+    live_count: liveCount,
+    agent_total: desks.length,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function fetchLivePack() {
+  const [agentsRaw, placements, rhythm] = await Promise.all([
+    mcpCall('list_agents', {}).catch(() => []),
+    loadPlacements().catch(() => ({})),
+    getRhythm().catch(() => synthRhythm([], placements || {})),
+  ]);
+  const agents = Array.isArray(agentsRaw) ? agentsRaw
+    : (agentsRaw && agentsRaw.agents) ? agentsRaw.agents : [];
+  const rhythmAgents = (rhythm && rhythm.agents) || [];
+  const humanName = {};
+  try {
+    const humansRaw = await mcpCall('list_humans', { limit: 100 });
+    const humans = Array.isArray(humansRaw) ? humansRaw : (humansRaw && humansRaw.humans) || [];
+    humans.forEach((h) => { humanName[h.human_id] = h.display_name || h.human_id; });
+  } catch (_) { /* optional */ }
+  const enriched = agents.map((a) => {
+    const p = placementOf(a.agent_id, placements) || {};
+    const kind = kindOfPlacement(p, placements);
+    const rhythmRow = rhythmAgents.find((r) => r.agent_id === a.agent_id) || null;
+    return {
+      agent_id: a.agent_id,
+      name: a.name,
+      status: a.status,
+      owner: a.owner,
+      owner_name: humanName[a.owner] || a.owner,
+      platform: a.platform,
+      domains: a.domains || [],
+      cell: p.cell || a.cell || null,
+      secondary_cells: p.secondary_cells || [],
+      type: kind.type,
+      contour: kind.contour,
+      project: kind.project,
+      parent: p.parent || null,
+      actions_per_min: rhythmRow ? rhythmRow.actions_per_min : null,
+      last_seen: rhythmRow ? rhythmRow.last_seen : null,
+      drift: rhythmRow ? rhythmRow.drift : null,
+      live: agentIsLive(a, rhythmRow),
+    };
+  });
+  const office = buildOfficeLayout(enriched, placements, rhythmAgents);
+  return {
+    ok: true,
+    rhythm,
+    office,
+    agents: enriched,
+    placement_count: Object.keys(placements || {}).length,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 function publicLayer(n) {
   return {
     id: n.id,
@@ -928,23 +1062,37 @@ const placeCache = { at: 0, byAgent: null };
 
 async function loadPlacements() {
   if (placeCache.byAgent && (Date.now() - placeCache.at) < 2 * 60 * 1000) return placeCache.byAgent;
+  const byAgent = {};
+  const ingest = (rows) => {
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const v = (row && row.value) || row || {};
+      const id = v.agent_id || (row && row.key && String(row.key).replace(/^monad\.placement\./, ''));
+      if (id && v.cell) byAgent[id] = v;
+      else if (id && (v.type || v.parent)) byAgent[id] = Object.assign({ agent_id: id }, v);
+    });
+  };
   try {
     const rows = await mcpCall('read_context', {
       key_prefix: 'monad.placement.',
-      limit: 200,
+      limit: 500,
       reader_agent: 'neuro_agent',
     });
-    const byAgent = {};
-    (Array.isArray(rows) ? rows : []).forEach((row) => {
-      const v = (row && row.value) || {};
-      if (v.agent_id && v.cell) byAgent[v.agent_id] = v;
-    });
-    placeCache.byAgent = byAgent;
-    placeCache.at = Date.now();
-    return byAgent;
-  } catch (_) {
-    return placeCache.byAgent || {};
-  }
+    ingest(rows);
+  } catch (_) { /* keep partial */ }
+  try {
+    const arch = await mcpCall('get_architecture', {});
+    const pack = arch && (arch.placements || (arch.live && arch.live.placements));
+    if (pack && typeof pack === 'object') {
+      if (Array.isArray(pack)) ingest(pack);
+      else Object.keys(pack).forEach((id) => {
+        const v = pack[id];
+        if (v && (v.cell || v.type)) byAgent[id] = Object.assign({ agent_id: id }, v);
+      });
+    }
+  } catch (_) { /* optional enrich */ }
+  placeCache.byAgent = byAgent;
+  placeCache.at = Date.now();
+  return byAgent;
 }
 
 function placementOf(agentId, placements) {
@@ -1150,11 +1298,17 @@ function normalizeRhythmPayload(data, source, note) {
 
 /** Prefer native JSON /api/rhythm; fall back to dashboard HTML parse. */
 async function getRhythm() {
-  try {
-    const headers = { Accept: 'application/json' };
-    if (MONAD_API_KEY) headers['X-API-Key'] = MONAD_API_KEY;
-    const res = await fetch(MONAD_BASE + '/api/rhythm', { headers });
-    if (res.ok) {
+  const headers = { Accept: 'application/json' };
+  if (MONAD_API_KEY) headers['X-API-Key'] = MONAD_API_KEY;
+  const urls = [
+    MONAD_BASE + '/api/rhythm',
+    MONAD_BASE + '/api/rhythm/live',
+    MONAD_BASE + '/api/system/rhythm',
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { headers });
+      if (!res.ok) continue;
       const data = await res.json();
       const placements = await loadPlacements().catch(() => ({}));
       if (!data.layers || !data.layers.some((L) => /^L[1-7]$/.test(String(L.id || '')))) {
@@ -1165,10 +1319,10 @@ async function getRhythm() {
       return normalizeRhythmPayload(
         data,
         'monad_api_rhythm',
-        data.note || 'Native JSON /api/rhythm, mapped onto L1–L7'
+        data.note || ('Native JSON ' + url.replace(MONAD_BASE, ''))
       );
-    }
-  } catch (_) { /* fall through */ }
+    } catch (_) { /* try next */ }
+  }
   const dash = await fetchSystemRhythm();
   return normalizeRhythmPayload(dash, dash.source, dash.note);
 }
@@ -1354,6 +1508,10 @@ module.exports = {
   humanizeInboxFrom,
   enrichInboxItem,
   filterInboxForPersona,
+  parseLastSeenSec,
+  agentIsLive,
+  buildOfficeLayout,
+  fetchLivePack,
   MONAD_DASHBOARD,
   MONAD_MCP_URL,
   MONAD_BASE,
