@@ -45,7 +45,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
-<link rel="stylesheet" href="assets/redesign.css?v=11" />
+<link rel="stylesheet" href="assets/redesign.css?v=12" />
 <link rel="stylesheet" href="data/css/mycelium.css?v=19" />
 <style>
 /* ── Auth ── */
@@ -2527,14 +2527,18 @@ a.dash-tab:hover { text-decoration:none; }
             </div>
             <div id="monad-inbox-view" class="monad-inbox-view" style="display:none;"></div>
             <div id="monad-chat-log" class="monad-chat-log" aria-live="polite"></div>
+            <div id="monad-loom-bar" class="monad-loom-bar"></div>
             <div id="monad-attach-bar" class="monad-attach-bar"></div>
             <div class="monad-chat-compose">
               <input type="file" id="monad-chat-file" accept="image/*,.pdf,.txt,.md,.csv,.json" multiple hidden>
               <button type="button" id="monad-chat-attach" class="btn btn-ghost" style="font-size:12px;" data-i18n="a.monad.attach">Файл</button>
+              <input type="file" id="monad-loom-file" accept="video/*,audio/*,image/*,.mp4,.mov,.m4v,.mkv,.webm,.wav,.m4a,.mp3,.heic,.srt" multiple hidden>
+              <button type="button" id="monad-loom-upload" class="btn btn-ghost" style="font-size:12px;" data-i18n="a.monad.loom_upload" data-i18n-title="a.monad.loom_upload_title" title="Видео/аудио любого размера — напрямую в хранилище Loom, минуя Drive и iCloud">В Loom</button>
               <textarea id="monad-chat-input" rows="3" data-i18n-placeholder="a.monad.placeholder" placeholder="Напиши Манаде…"></textarea>
               <button type="button" id="monad-chat-send" class="btn btn-primary" data-i18n="a.monad.send">Отправить</button>
             </div>
             <p class="monad-muted" style="margin:0.4rem 0 0;font-size:11px;" data-i18n="a.monad.chat_hint">Пиши как в обычном чате. Persona отвечает здесь. Чаты можно переименовать и удалить слева.</p>
+            <p class="monad-muted" style="margin:0.2rem 0 0;font-size:11px;" data-i18n="a.monad.loom_hint">«В Loom» или перетащи видео в чат — файл уходит напрямую в хранилище Loom House частями (любой размер, без Drive и iCloud), Persona сразу его видит.</p>
           </div>
         </div>
       </div>
@@ -18549,7 +18553,7 @@ window.pbMove = pbMove;
 <script src="assets/js/body-atlas.js?v=41"></script>
 <script src="assets/js/monad-cross.js?v=4"></script>
 <script src="assets/js/monad-office.js?v=2"></script>
-<script src="assets/js/monad-lk.js?v=23"></script>
+<script src="assets/js/monad-lk.js?v=24"></script>
 <script src="assets/js/sketch-tool.js?v=7"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>

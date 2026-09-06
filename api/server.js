@@ -14178,6 +14178,93 @@ app.post('/api/monad/chats/:id/upload', requireAuth, uploadMonadChat.single('fil
   }
 });
 
+// ---- Loom direct upload: browser → Monad media bucket (presigned URLs) ----
+// Bytes never pass through this API. We only proxy init/complete/abort to monad-server
+// with the server-side MONAD_API_KEY and pin human_id to the logged-in user.
+// Contract: tvildanov/monad handoff/LOOM-DIRECT-UPLOAD.md
+async function monadLoomProxy(req, res, route, body) {
+  const caller = await loadCallerForMonad(req, res); if (!caller) return null;
+  if (!monadSvc.configured()) { res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' }); return null; }
+  const humanId = monadSvc.resolveHumanId(caller);
+  if (!humanId) { res.status(409).json({ error: 'Аккаунт не привязан к human_id Манады', code: 'NO_HUMAN_ID' }); return null; }
+  const r = await fetch(`${monadSvc.MONAD_BASE}${route}`, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'X-API-Key': process.env.MONAD_API_KEY, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify({ ...body, human_id: humanId }) : undefined,
+    signal: AbortSignal.timeout(60_000),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) {
+    res.status(r.status === 401 ? 502 : r.status || 502).json({ error: data.error || `monad-server ${r.status}` });
+    return null;
+  }
+  return { data, humanId, caller };
+}
+
+app.post('/api/monad/loom/upload/init', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const out = await monadLoomProxy(req, res, '/api/loom/upload/init', {
+      filename: String(b.filename || ''), size: Number(b.size), content_type: b.content_type ? String(b.content_type) : undefined,
+      note: b.note ? String(b.note).slice(0, 500) : undefined,
+    });
+    if (!out) return;
+    res.json({ ...out.data, human_id: out.humanId });
+  } catch (err) {
+    console.error('POST /api/monad/loom/upload/init:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.post('/api/monad/loom/upload/complete', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const out = await monadLoomProxy(req, res, '/api/loom/upload/complete', {
+      key: String(b.key || ''), filename: b.filename ? String(b.filename) : undefined,
+      upload_id: b.upload_id ? String(b.upload_id) : undefined,
+      parts: Array.isArray(b.parts) ? b.parts.map((p) => ({ part_number: Number(p.part_number), etag: String(p.etag || '') })) : undefined,
+      content_type: b.content_type ? String(b.content_type) : undefined,
+      note: b.note ? String(b.note).slice(0, 500) : undefined,
+      source: 'neuroattention_lk',
+    });
+    if (!out) return;
+    res.json(out.data);
+  } catch (err) {
+    console.error('POST /api/monad/loom/upload/complete:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.post('/api/monad/loom/upload/abort', requireAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const out = await monadLoomProxy(req, res, '/api/loom/upload/abort', { key: String(b.key || ''), upload_id: String(b.upload_id || '') });
+    if (!out) return;
+    res.json(out.data);
+  } catch (err) {
+    console.error('POST /api/monad/loom/upload/abort:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
+app.get('/api/monad/loom/assets', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'MONAD_API_KEY not configured', code: 'MONAD_NOT_CONFIGURED' });
+    const humanId = monadSvc.resolveHumanId(caller);
+    if (!humanId) return res.json({ ok: true, human_id: null, assets: [] });
+    const r = await fetch(`${monadSvc.MONAD_BASE}/api/loom/upload/list?human_id=${encodeURIComponent(humanId)}`, {
+      headers: { 'X-API-Key': process.env.MONAD_API_KEY }, signal: AbortSignal.timeout(20_000),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return res.status(502).json({ error: data.error || `monad-server ${r.status}` });
+    res.json({ ok: true, human_id: humanId, count: data.count || 0, assets: data.assets || [] });
+  } catch (err) {
+    console.error('GET /api/monad/loom/assets:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 // Poll Monad for replies written back into this chat.
 // Prefer dedicated human_chat_poll (post_lk_chat_message path); fall back to read_context.
 app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {

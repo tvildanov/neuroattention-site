@@ -1180,6 +1180,28 @@ body.method-flashlight {
   border:none; background:transparent; color:var(--text-dim); cursor:pointer; font-size:12px; line-height:1;
 }
 .monad-attach-bar { display:flex; flex-wrap:wrap; gap:0.35rem; margin:0 0 0.45rem; }
+.monad-loom-bar { display:flex; flex-direction:column; gap:0.3rem; margin:0 0 0.45rem; }
+.monad-loom-bar:empty { display:none; }
+.monad-loom-item {
+  font-size:11.5px; padding:0.35rem 0.6rem; border-radius:10px;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);
+}
+.monad-loom-row { display:flex; align-items:center; gap:0.5rem; }
+.monad-loom-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.monad-loom-size, .monad-loom-state { color:var(--text-dim,#888); white-space:nowrap; }
+.monad-loom-done { border-color:rgba(112,202,132,0.45); }
+.monad-loom-done .monad-loom-state { color:rgb(112,202,132); }
+.monad-loom-failed { border-color:rgba(255,80,120,0.45); }
+.monad-loom-failed .monad-loom-state { color:rgb(255,110,140); max-width:50%; overflow:hidden; text-overflow:ellipsis; }
+.monad-loom-row button { border:none; background:transparent; color:var(--text-dim); cursor:pointer; font-size:13px; line-height:1; }
+.monad-loom-track { height:3px; margin-top:0.35rem; border-radius:2px; background:rgba(255,255,255,0.08); overflow:hidden; }
+.monad-loom-fill { height:100%; background:linear-gradient(90deg, rgba(0,224,255,0.9), rgba(112,202,132,0.9)); transition:width 0.25s; }
+.monad-chat-main { position:relative; }
+.monad-chat-main.monad-loom-dragover::after {
+  content:'↓ В Loom'; position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center;
+  font-size:18px; letter-spacing:0.04em; color:rgba(0,224,255,0.95);
+  background:rgba(0,224,255,0.08); border:2px dashed rgba(0,224,255,0.55); border-radius:14px; pointer-events:none;
+}
 .monad-msg-atts { margin-top:0.4rem; display:flex; flex-wrap:wrap; gap:0.4rem; }
 .monad-msg-img { max-width:180px; max-height:120px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); }
 .monad-msg { margin-bottom:0.75rem; padding:0.65rem 0.85rem; border-radius:12px; max-width:92%; }

@@ -55,6 +55,26 @@
 
 ---
 
+## Loom: «В Loom» / drag-and-drop видео в чат
+
+Медиа для контент-завода (Loom House) **не идёт через этот API и не идёт через Google Drive / iCloud**.
+Байты уходят из браузера напрямую в хранилище Монады (S3-бакет Railway Bucket/Tigris — в каноне
+зовётся «R2») по подписанным ссылкам, частями по 64 МБ через `File.slice()` — файл любого размера
+(до 5 ТБ), в памяти не держится, 3 части параллельно, ретраи.
+
+```
+браузер → POST /api/monad/loom/upload/init      (наш API: ключ Монады + human_id из аккаунта)
+браузер → PUT  <part_urls[i]>                     (прямо в бакет, ETag в ответ)
+браузер → POST /api/monad/loom/upload/complete  → monad-server пишет loom.media.catalog.v1 + handoff
+браузер → обычное сообщение Persona «Загрузил в Loom …» → цепь Loom House стартует
+```
+
+Прокси-маршруты: `/api/monad/loom/upload/{init,complete,abort}`, `GET /api/monad/loom/assets`.
+Контракт на стороне Монады: `tvildanov/monad` → `handoff/LOOM-DIRECT-UPLOAD.md`. Аккаунт должен
+быть привязан к `human_id` (`monad_human_id` / e-mail map), иначе 409 `NO_HUMAN_ID`.
+
+---
+
 ## Секреты на этом API
 
 ```
