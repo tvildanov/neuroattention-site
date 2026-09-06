@@ -7,6 +7,35 @@
 
 ---
 
+## 2026-09-06 — Loom: direct browser → bucket upload from the Persona chat
+
+```json
+{
+  "project": "neuro",
+  "agent": "claude_cowork",
+  "at": "2026-09-06T16:20:00Z",
+  "did": [
+    "Takhir: media for Loom House kept dying on the iCloud → Mac → Drive → server hop chain (no disk space, Drive quota, server stream bug)",
+    "monad-server now issues presigned multipart URLs (tvildanov/monad PR #44). LK gets a 'В Loom' button + drag-and-drop onto the chat",
+    "File.slice() parts of 64 MB PUT straight into the bucket, 3 in parallel, retries, abort on failure; progress bar per file",
+    "After upload the chat auto-sends 'Загрузил в Loom …' to Persona so producer/media_librarian wake up through the normal plant_seed path",
+    "API only proxies init/complete/abort with MONAD_API_KEY and pins human_id to the account — bytes never touch neuroattention-api"
+  ],
+  "changed": ["assets/js/monad-lk.js", "account.html", "assets/redesign.css", "api/server.js", "data/i18n/{ru,en,es}.json", "sw.js", "docs/MONAD-LK.md"],
+  "decisions": [
+    "Bucket CORS (set on the Monad side) allows https://neuroattention.org, www, localhost:3000; ETag exposed",
+    "Small chat attachments (image/pdf) keep the old /chats/:id/upload path; Loom button is for video/audio/photo footage"
+  ],
+  "followups": [
+    "Optional: list of the human's Loom assets (GET /api/monad/loom/assets) as a panel in the chat",
+    "Optional: resume interrupted multipart uploads (needs upload_id persistence in localStorage)"
+  ],
+  "next_session": "Verify on prod with a real 5+ GB take from Egor's account; watch Persona reply and producer questions"
+}
+```
+
+---
+
 ## 2026-08-18 — Sketch 3D is the live Atlas body, not a 2D overlay trap
 
 ```json

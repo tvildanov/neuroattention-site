@@ -689,6 +689,168 @@
     }
   }
 
+  // ---- Loom direct upload: browser → Monad media bucket, bytes bypass our API ----
+  // Contract: tvildanov/monad handoff/LOOM-DIRECT-UPLOAD.md. File.slice() streams from
+  // disk per part, so a 20 GB take never sits in memory.
+  var LOOM_MEDIA_RE = /\.(mp4|mov|m4v|mkv|webm|avi|jpe?g|png|heic|gif|webp|wav|m4a|mp3|aac|flac|srt)$/i;
+  var LOOM_PART_CONCURRENCY = 3;
+  var LOOM = { queue: [], active: false, items: [] };
+
+  function fmtGb(bytes) {
+    if (!bytes) return '0 МБ';
+    return bytes >= 1e9 ? (bytes / 1e9).toFixed(2) + ' ГБ' : Math.round(bytes / 1e6) + ' МБ';
+  }
+
+  function renderLoomBar() {
+    var host = document.getElementById('monad-loom-bar');
+    if (!host) return;
+    if (!LOOM.items.length) { host.innerHTML = ''; return; }
+    host.innerHTML = LOOM.items.map(function (it) {
+      var cls = 'monad-loom-item monad-loom-' + it.state;
+      var label = it.state === 'queued' ? t('a.monad.loom_queued', 'в очереди')
+        : it.state === 'uploading' ? it.pct + '%'
+        : it.state === 'done' ? t('a.monad.loom_done', 'в Loom')
+        : (it.error || t('a.monad.loom_failed', 'ошибка'));
+      return '<div class="' + cls + '" title="' + esc(it.name) + '">' +
+        '<div class="monad-loom-row"><span class="monad-loom-name">' + esc(it.name) + '</span>' +
+        '<span class="monad-loom-size">' + fmtGb(it.size) + '</span>' +
+        '<span class="monad-loom-state">' + esc(label) + '</span>' +
+        (it.state === 'done' || it.state === 'failed' ? '<button type="button" data-loom-x="' + esc(it.id) + '" aria-label="close">×</button>' : '') +
+        '</div>' +
+        (it.state === 'uploading' ? '<div class="monad-loom-track"><div class="monad-loom-fill" style="width:' + it.pct + '%"></div></div>' : '') +
+        '</div>';
+    }).join('');
+    host.querySelectorAll('[data-loom-x]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-loom-x');
+        LOOM.items = LOOM.items.filter(function (x) { return x.id !== id; });
+        renderLoomBar();
+      });
+    });
+  }
+
+  async function loomPutPart(url, blob, tries) {
+    tries = tries || 4;
+    for (var attempt = 1; ; attempt++) {
+      try {
+        var r = await fetch(url, { method: 'PUT', body: blob });
+        if (!r.ok) throw new Error('PUT ' + r.status);
+        var etag = r.headers.get('ETag') || r.headers.get('etag');
+        if (!etag) throw new Error('no ETag (CORS ExposeHeaders?)');
+        return etag.replace(/"/g, '');
+      } catch (e) {
+        if (attempt >= tries) throw e;
+        await new Promise(function (res) { setTimeout(res, 1500 * Math.pow(2, attempt - 1)); });
+      }
+    }
+  }
+
+  async function loomUploadOne(item) {
+    var file = item.file;
+    item.state = 'uploading'; item.pct = 0; renderLoomBar();
+    var mime = file.type || (/\.(mp4|m4v)$/i.test(file.name) ? 'video/mp4' : /\.mov$/i.test(file.name) ? 'video/quicktime' : 'application/octet-stream');
+    var init = await api('/api/monad/loom/upload/init', {
+      method: 'POST',
+      body: JSON.stringify({ filename: file.name, size: file.size, content_type: mime }),
+    });
+    var completeBody = { key: init.key, filename: file.name, content_type: mime };
+    if (init.mode === 'single') {
+      await loomPutPart(init.put_url, file);
+      item.pct = 100; renderLoomBar();
+    } else {
+      var parts = new Array(init.part_count);
+      var next = 0, done = 0;
+      var worker = async function () {
+        while (next < init.part_count) {
+          var i = next++;
+          var start = i * init.part_size;
+          var end = Math.min(file.size, start + init.part_size);
+          parts[i] = { part_number: i + 1, etag: await loomPutPart(init.part_urls[i], file.slice(start, end)) };
+          done++;
+          item.pct = Math.round((done / init.part_count) * 100);
+          renderLoomBar();
+        }
+      };
+      try {
+        var n = Math.min(LOOM_PART_CONCURRENCY, init.part_count);
+        var workers = []; for (var w = 0; w < n; w++) workers.push(worker());
+        await Promise.all(workers);
+      } catch (e) {
+        api('/api/monad/loom/upload/abort', { method: 'POST', body: JSON.stringify({ key: init.key, upload_id: init.upload_id }) }).catch(function () {});
+        throw e;
+      }
+      completeBody.upload_id = init.upload_id;
+      completeBody.parts = parts;
+    }
+    var fin = await api('/api/monad/loom/upload/complete', { method: 'POST', body: JSON.stringify(completeBody) });
+    item.state = 'done'; item.asset = fin.asset; renderLoomBar();
+    return fin.asset;
+  }
+
+  async function loomDrain() {
+    if (LOOM.active) return;
+    LOOM.active = true;
+    var uploaded = [];
+    try {
+      while (LOOM.queue.length) {
+        var item = LOOM.queue.shift();
+        try {
+          var asset = await loomUploadOne(item);
+          uploaded.push({ name: item.name, size: item.size, asset_id: asset && asset.asset_id });
+        } catch (e) {
+          item.state = 'failed'; item.error = (e && e.message) || 'upload error'; renderLoomBar();
+        }
+      }
+    } finally {
+      LOOM.active = false;
+    }
+    if (uploaded.length) await loomAnnounce(uploaded);
+  }
+
+  // Tell Persona in this chat what just landed so the Loom chain starts (producer asks
+  // about the project). Goes through the normal message route → plant_seed.
+  async function loomAnnounce(uploaded) {
+    var input = document.getElementById('monad-chat-input');
+    var lines = uploaded.map(function (u) { return '• ' + u.name + ' (' + fmtGb(u.size) + ')'; });
+    var text = t('a.monad.loom_announce', 'Загрузил в Loom напрямую в хранилище') + ' (' + uploaded.length + '):\n' + lines.join('\n') +
+      '\n' + t('a.monad.loom_announce_tail', 'Файлы уже в каталоге loom.media.catalog.v1. Передай в Loom House — продюсер может задавать вопросы по проекту.');
+    var prev = input ? input.value : '';
+    if (input) input.value = text;
+    try { await sendMessage(); } finally { if (input) input.value = prev; }
+  }
+
+  function loomEnqueue(fileList) {
+    if (!fileList || !fileList.length) return;
+    var added = 0;
+    for (var i = 0; i < fileList.length; i++) {
+      var f = fileList[i];
+      if (!LOOM_MEDIA_RE.test(f.name) && !/^(video|audio|image)\//.test(f.type || '')) continue;
+      var item = { id: 'l' + Date.now() + '_' + i, file: f, name: f.name, size: f.size, state: 'queued', pct: 0 };
+      LOOM.items.push(item); LOOM.queue.push(item); added++;
+    }
+    if (!added) { alert(t('a.monad.loom_not_media', 'Это не медиафайл. В Loom идут видео, аудио и фото.')); return; }
+    renderLoomBar();
+    if (!STATE.activeChatId) { createChat().then(loomDrain); } else { loomDrain(); }
+  }
+
+  function bindLoomDrop() {
+    var zone = document.querySelector('.monad-chat-main');
+    if (!zone || zone.__loomBound) return;
+    zone.__loomBound = true;
+    var over = 0;
+    zone.addEventListener('dragenter', function (e) { if (e.dataTransfer && e.dataTransfer.types && Array.prototype.indexOf.call(e.dataTransfer.types, 'Files') >= 0) { e.preventDefault(); over++; zone.classList.add('monad-loom-dragover'); } });
+    zone.addEventListener('dragover', function (e) { if (zone.classList.contains('monad-loom-dragover')) e.preventDefault(); });
+    zone.addEventListener('dragleave', function () { over = Math.max(0, over - 1); if (!over) zone.classList.remove('monad-loom-dragover'); });
+    zone.addEventListener('drop', function (e) {
+      if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+      e.preventDefault(); over = 0; zone.classList.remove('monad-loom-dragover');
+      loomEnqueue(e.dataTransfer.files);
+    });
+    window.addEventListener('beforeunload', function (e) {
+      if (LOOM.active) { e.preventDefault(); e.returnValue = ''; }
+    });
+  }
+
   async function sendMessage() {
     var input = document.getElementById('monad-chat-input');
     if (!input) return;
@@ -1448,6 +1610,15 @@
     if (neu) neu.addEventListener('click', function () { createChat().catch(function (e) { alert(e.message); }); });
     var pinBtn = document.getElementById('monad-pin-add');
     if (pinBtn) pinBtn.addEventListener('click', function () { addPinFromPrompt().catch(function (e) { alert(e.message); }); });
+    var loomFile = document.getElementById('monad-loom-file');
+    var loomBtn = document.getElementById('monad-loom-upload');
+    if (loomBtn && loomFile) {
+      loomBtn.addEventListener('click', function () { loomFile.click(); });
+      loomFile.addEventListener('change', function () {
+        loomEnqueue(loomFile.files); loomFile.value = '';
+      });
+    }
+    bindLoomDrop();
     var file = document.getElementById('monad-chat-file');
     var attach = document.getElementById('monad-chat-attach');
     if (attach && file) {
