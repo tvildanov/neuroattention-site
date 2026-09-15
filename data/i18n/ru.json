@@ -1896,6 +1896,7 @@
   "a.monad.you": "Ты в Monad",
   "a.monad.connected": "ключ на сервере есть",
   "a.monad.need_key": "нужен MONAD_API_KEY на Railway",
+  "a.monad.auth_again": "Сессия истекла — войди снова. Чат сохранён, ничего не потерялось.",
   "a.monad.dashboard": "Dashboard Monad",
   "a.monad.welcome": "Привет. Пиши Манаде от своего human-профиля. Сообщение станет семенем (plant_seed) в Monad.",
   "a.monad.sent_ok": "Семя посажено в Monad. Агенты подхватят.",

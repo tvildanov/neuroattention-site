@@ -446,10 +446,14 @@
   }
 
   function isTechMessage(m) {
+    // A human's own message is NEVER tech/service noise, whatever the text says
+    // (bug 2026-09-15: «мы ждем ответ?» matched the channel-ack regex and hid).
+    if (m.role === 'you') return false;
     var meta = parseMeta(m);
     if (meta.ack || meta.delivery || meta.channel_ack) return true;
     if (m.role === 'system') return true;
     var raw = String(m.text || '');
+    // Text heuristics apply only to monad/system roles (guaranteed by the guard above).
     if (/docs\/MONAD|shared_context|Семя посажено|Канал ЛК живой|Отправлено Манаде|Ждём ответ|Ждем ответ|ответ появится/i.test(raw)) return true;
     var cleaned = stripTechIds(raw);
     if (!cleaned && /seed=|handoff=/i.test(raw)) return true;
@@ -779,7 +783,17 @@
           renderMessages();
         }
       }
-    } catch (e) { /* quiet */ }
+    } catch (e) {
+      try { console.warn('[monad-lk] poll failed', e && e.status, (e && e.message) || e); } catch (_) {}
+      if (e && e.status === 401 && !STATE.pollAuthNotice) {
+        // Session expired: keep the chat on screen, tell the user to re-login.
+        STATE.pollAuthNotice = true;
+        stopPoll();
+        STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
+        STATE.messages.push({ role: 'err', text: t('a.monad.auth_again', 'Сессия истекла — войди снова. Чат сохранён, ничего не потерялось.') });
+        renderMessages();
+      }
+    }
   }
 
   function startPoll() {

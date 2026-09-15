@@ -1907,6 +1907,7 @@
   "a.monad.you": "You in Monad",
   "a.monad.connected": "server key configured",
   "a.monad.need_key": "need MONAD_API_KEY on Railway",
+  "a.monad.auth_again": "Session expired — sign in again. Your chat is saved, nothing was lost.",
   "a.monad.dashboard": "Monad Dashboard",
   "a.monad.welcome": "Hello. Message Monad as your linked human. It becomes a plant_seed in Monad.",
   "a.monad.sent_ok": "Seed planted in Monad. Agents will pick it up.",

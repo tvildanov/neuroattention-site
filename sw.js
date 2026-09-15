@@ -138,7 +138,8 @@
 // v73: LK chat answers + delete/rename; Sketch 3D atlas; Monad viz; full-width tools
 // v86: Monad focus cross, human fn, semantic search, office scroll, sketch orbit
 // v85: Monad online office + live API + SVG branches
-var CACHE_NAME = 'na-practices-v87';
+// v88: LK chat — human messages never hidden as tech; 401 poll notice
+var CACHE_NAME = 'na-practices-v88';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

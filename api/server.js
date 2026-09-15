@@ -3198,7 +3198,15 @@ app.post('/api/run-migrations', async (req, res) => {
       console.log('migration 077 (monad_inbox_threads): ok');
     } catch (e) { mig077.error = e.message; console.error('migration 077 (monad_inbox_threads):', e.message); }
 
-    res.json({ ok: true, message: 'Migrations 003-077 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075, mig076, mig077 });
+    // ── migration 078: incremental LK chat poll (since = last_monad_at) ─────
+    const mig078 = { id: '078_monad_chats_last_monad_at', ok: false };
+    try {
+      await sql`ALTER TABLE monad_chats ADD COLUMN IF NOT EXISTS last_monad_at TIMESTAMPTZ`;
+      mig078.ok = true;
+      console.log('migration 078 (monad_chats.last_monad_at): ok');
+    } catch (e) { mig078.error = e.message; console.error('migration 078 (monad_chats.last_monad_at):', e.message); }
+
+    res.json({ ok: true, message: 'Migrations 003-078 applied successfully', mig039, mig040, mig041, mig042, mig043, mig044, mig045, mig046, mig047, mig048, mig049, mig051, mig052, mig053, mig054, mig055, mig056, mig057, mig058, mig059, mig060, mig061, mig062, mig063, mig065, mig066, mig067, mig068, mig069, mig070, mig071, mig072, mig073, mig074, mig075, mig076, mig077, mig078 });
   } catch (err) {
     console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
@@ -14191,6 +14199,14 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
     let imported = 0;
     let via = null;
     const candidates = [];
+    // Incremental poll: max `at` seen in this response, persisted in
+    // monad_chats.last_monad_at so the next poll doesn't re-pull 100 messages.
+    let maxAtMs = 0;
+    const trackAt = (m) => {
+      const at = m && (m.at || m.created_at || m.updated_at || m.ts);
+      const ms = at ? Date.parse(at) : NaN;
+      if (Number.isFinite(ms) && ms > maxAtMs) maxAtMs = ms;
+    };
 
     try {
       if (humanId) {
@@ -14199,16 +14215,23 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           chat_id: String(chat.id),
           limit: 100,
         };
-        if (req.body && req.body.since) pollArgs.since = String(req.body.since);
+        const since = (req.body && req.body.since)
+          ? String(req.body.since)
+          : (chat.last_monad_at ? new Date(chat.last_monad_at).toISOString() : null);
+        if (since) pollArgs.since = since;
         const polled = await monadSvc.mcpCall('human_chat_poll', pollArgs);
         const msgs = (polled && Array.isArray(polled.messages)) ? polled.messages
           : (Array.isArray(polled) ? polled : []);
         for (const m of msgs) {
           const text = String(m.text || m.body || m.message || '');
-          if (monadSvc.isChannelAckText(text)) continue; // never store channel noise
+          trackAt(m);
+          // A human's message is never channel noise — voice messages (role=human,
+          // origin=voice) like «ждём ответ?» must import even if they match ack regexes.
+          const isHuman = (m.role === 'you' || m.role === 'human');
+          if (!isHuman && monadSvc.isChannelAckText(text)) continue; // never store channel noise
           candidates.push({
             key: m.key || m.id || '',
-            role: (m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad'),
+            role: isHuman ? 'you' : (m.role === 'system' ? 'system' : 'monad'),
             text,
             seed_id: m.seed_id || null,
             meta_extra: {},
@@ -14238,11 +14261,13 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           const val = it.value != null ? it.value : it;
           const text = String((typeof val === 'string') ? val
             : (val && (val.text || val.body || val.message)) || '');
-          if (monadSvc.isChannelAckText(text)) continue;
+          trackAt((val && typeof val === 'object') ? val : it);
           const roleRaw = (val && val.role) || 'monad';
+          const isHuman = (roleRaw === 'you' || roleRaw === 'human');
+          if (!isHuman && monadSvc.isChannelAckText(text)) continue;
           candidates.push({
             key,
-            role: (roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad'),
+            role: isHuman ? 'you' : (roleRaw === 'system' ? 'system' : 'monad'),
             text,
             seed_id: (val && val.seed_id) || null,
             meta_extra: {},
@@ -14286,6 +14311,15 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
       imported++;
     }
     if (imported) await sql`UPDATE monad_chats SET updated_at = now() WHERE id = ${chat.id}`;
+    if (maxAtMs) {
+      // Column added by migration 078; try/catch so a pre-migration deploy never breaks poll.
+      try {
+        const maxAtIso = new Date(maxAtMs).toISOString();
+        await sql`
+          UPDATE monad_chats SET last_monad_at = ${maxAtIso}
+          WHERE id = ${chat.id} AND (last_monad_at IS NULL OR last_monad_at < ${maxAtIso})`;
+      } catch (eLast) { console.warn('poll last_monad_at skipped:', eLast.message); }
+    }
 
     const messages = await sql`
       SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at ASC LIMIT 500`;
@@ -14572,6 +14606,7 @@ app.listen(PORT, () => {
               created_at TIMESTAMPTZ DEFAULT now()
             )`;
           await sql`CREATE INDEX IF NOT EXISTS idx_monad_chat_messages_chat ON monad_chat_messages(chat_id, created_at ASC)`;
+          await sql`ALTER TABLE monad_chats ADD COLUMN IF NOT EXISTS last_monad_at TIMESTAMPTZ`;
         } catch (chatErr) {
           console.warn('[boot] monad_chats ensure skipped:', chatErr.message);
         }

@@ -1907,6 +1907,7 @@
   "a.monad.you": "Tú en Monad",
   "a.monad.connected": "clave en servidor",
   "a.monad.need_key": "falta MONAD_API_KEY en Railway",
+  "a.monad.auth_again": "La sesión expiró — inicia sesión de nuevo. Tu chat está guardado, no se perdió nada.",
   "a.monad.dashboard": "Panel Monad",
   "a.monad.welcome": "Hola. Escribe a Mónada como tu humano vinculado. Se convierte en plant_seed.",
   "a.monad.sent_ok": "Semilla plantada en Monad. Los agentes la tomarán.",
