@@ -14225,6 +14225,9 @@ app.post('/api/monad/loom/upload/complete', requireAuth, async (req, res) => {
       parts: Array.isArray(b.parts) ? b.parts.map((p) => ({ part_number: Number(p.part_number), etag: String(p.etag || '') })) : undefined,
       content_type: b.content_type ? String(b.content_type) : undefined,
       note: b.note ? String(b.note).slice(0, 500) : undefined,
+      // 'reference' = chat attachment (example for Persona): cataloged, playable, cuttable by asset_id,
+      // but does not start the Loom pipeline. Anything else = raw footage → pipeline.
+      purpose: b.purpose === 'reference' ? 'reference' : undefined,
       source: 'neuroattention_lk',
     });
     if (!out) return;

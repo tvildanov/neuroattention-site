@@ -521,7 +521,13 @@
           var url = a.url || a.href || '';
           var name = a.name || a.filename || 'file';
           var isImg = /^image\//.test(a.mime || '') || /\.(png|jpe?g|gif|webp)$/i.test(name);
+          var isVideo = /^video\//.test(a.mime || '') || /\.(mp4|mov|m4v|webm|mkv)$/i.test(name);
+          var isAudio = /^audio\//.test(a.mime || '') || /\.(mp3|m4a|wav|aac|flac)$/i.test(name);
           if (isImg && url) return '<a href="' + esc(url) + '" target="_blank" rel="noopener"><img class="monad-msg-img" src="' + esc(url) + '" alt="' + esc(name) + '"/></a>';
+          if (isVideo && url) return '<div class="monad-msg-media"><video class="monad-msg-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>' +
+            '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + '</a></div>';
+          if (isAudio && url) return '<div class="monad-msg-media"><audio class="monad-msg-audio" controls preload="metadata" src="' + esc(url) + '"></audio>' +
+            '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + '</a></div>';
           return '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(name) + '</a>';
         }).join(' ') + '</div>';
       }
@@ -666,27 +672,58 @@
     renderPinned();
   }
 
+  // Our API takes small files (multer, 12 MB). Video/audio and anything bigger go browser → Monad
+  // bucket directly (same uploader as «В Loom») and come back as a permanent link the chat can play.
+  var ATTACH_DIRECT_BYTES = 10 * 1024 * 1024;
+  function isDirectAttach(f) {
+    return /^(video|audio)\//.test(f.type || '') || /\.(mp4|mov|m4v|mkv|webm|avi|wav|m4a|mp3|aac|flac)$/i.test(f.name || '') || f.size > ATTACH_DIRECT_BYTES;
+  }
+
   async function uploadFiles(fileList) {
-    if (!STATE.activeChatId || !fileList || !fileList.length) return;
+    if (!fileList || !fileList.length) return;
+    if (!STATE.activeChatId) await createChat();
     var btn = document.getElementById('monad-chat-attach');
     if (btn) btn.disabled = true;
     try {
       for (var i = 0; i < fileList.length; i++) {
+        var f = fileList[i];
+        if (isDirectAttach(f)) {
+          var item = { id: 'a' + Date.now() + '_' + i, file: f, name: f.name, size: f.size, state: 'queued', pct: 0 };
+          LOOM.items.push(item);
+          try {
+            var fin = await loomUploadOne(item, { purpose: 'reference', note: 'вложение из ЛК-чата ' + STATE.activeChatId });
+            LOOM.items = LOOM.items.filter(function (x) { return x !== item; }); renderLoomBar();
+            STATE.pendingAttachments.push({
+              name: f.name, url: fin.link || (fin.asset && fin.asset.r2_url) || '', mime: f.type || guessMime(f.name), size: f.size,
+              asset_id: fin.asset && fin.asset.asset_id, kind: 'loom_asset',
+            });
+          } catch (e) {
+            item.state = 'failed'; item.error = (e && e.message) || t('a.monad.attach_failed', 'не загрузилось'); renderLoomBar();
+          }
+          renderAttachmentsBar();
+          continue;
+        }
         var fd = new FormData();
-        fd.append('file', fileList[i]);
+        fd.append('file', f);
         var res = await fetch(apiBase() + '/api/monad/chats/' + encodeURIComponent(STATE.activeChatId) + '/upload', {
           method: 'POST', headers: authHeaders(false), body: fd,
         });
         var data = await res.json();
         if (!res.ok) throw new Error((data && data.error) || 'upload failed');
         STATE.pendingAttachments.push(data.attachment);
+        renderAttachmentsBar();
       }
-      renderAttachmentsBar();
     } catch (err) {
       alert((err && err.message) || 'Upload error');
     } finally {
       if (btn) btn.disabled = false;
     }
+  }
+
+  function guessMime(name) {
+    return /\.(mp4|m4v)$/i.test(name) ? 'video/mp4' : /\.mov$/i.test(name) ? 'video/quicktime' : /\.webm$/i.test(name) ? 'video/webm'
+      : /\.mkv$/i.test(name) ? 'video/x-matroska' : /\.(m4a|aac)$/i.test(name) ? 'audio/mp4' : /\.mp3$/i.test(name) ? 'audio/mpeg'
+      : /\.wav$/i.test(name) ? 'audio/wav' : 'application/octet-stream';
   }
 
   // ---- Loom direct upload: browser → Monad media bucket, bytes bypass our API ----
@@ -745,15 +782,16 @@
     }
   }
 
-  async function loomUploadOne(item) {
+  async function loomUploadOne(item, opts) {
+    opts = opts || {};
     var file = item.file;
     item.state = 'uploading'; item.pct = 0; renderLoomBar();
-    var mime = file.type || (/\.(mp4|m4v)$/i.test(file.name) ? 'video/mp4' : /\.mov$/i.test(file.name) ? 'video/quicktime' : 'application/octet-stream');
+    var mime = file.type || guessMime(file.name);
     var init = await api('/api/monad/loom/upload/init', {
       method: 'POST',
-      body: JSON.stringify({ filename: file.name, size: file.size, content_type: mime }),
+      body: JSON.stringify({ filename: file.name, size: file.size, content_type: mime, note: opts.note }),
     });
-    var completeBody = { key: init.key, filename: file.name, content_type: mime };
+    var completeBody = { key: init.key, filename: file.name, content_type: mime, purpose: opts.purpose, note: opts.note };
     if (init.mode === 'single') {
       await loomPutPart(init.put_url, file);
       item.pct = 100; renderLoomBar();
@@ -783,8 +821,8 @@
       completeBody.parts = parts;
     }
     var fin = await api('/api/monad/loom/upload/complete', { method: 'POST', body: JSON.stringify(completeBody) });
-    item.state = 'done'; item.asset = fin.asset; renderLoomBar();
-    return fin.asset;
+    item.state = 'done'; item.asset = fin.asset; item.link = fin.link; renderLoomBar();
+    return fin;
   }
 
   async function loomDrain() {
@@ -795,8 +833,8 @@
       while (LOOM.queue.length) {
         var item = LOOM.queue.shift();
         try {
-          var asset = await loomUploadOne(item);
-          uploaded.push({ name: item.name, size: item.size, asset_id: asset && asset.asset_id });
+          var fin = await loomUploadOne(item);
+          uploaded.push({ name: item.name, size: item.size, asset_id: fin.asset && fin.asset.asset_id });
         } catch (e) {
           item.state = 'failed'; item.error = (e && e.message) || 'upload error'; renderLoomBar();
         }
@@ -844,10 +882,10 @@
     zone.addEventListener('drop', function (e) {
       if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
       e.preventDefault(); over = 0; zone.classList.remove('monad-loom-dragover');
-      loomEnqueue(e.dataTransfer.files);
+      uploadFiles(e.dataTransfer.files);
     });
     window.addEventListener('beforeunload', function (e) {
-      if (LOOM.active) { e.preventDefault(); e.returnValue = ''; }
+      if (LOOM.active || LOOM.items.some(function (x) { return x.state === 'uploading'; })) { e.preventDefault(); e.returnValue = ''; }
     });
   }
 
@@ -855,7 +893,17 @@
     var input = document.getElementById('monad-chat-input');
     if (!input) return;
     var text = String(input.value || '').trim();
-    if (!text) return;
+    var loomAtts = (STATE.pendingAttachments || []).filter(function (a) { return a && a.kind === 'loom_asset' && a.asset_id; });
+    if (!text && !(STATE.pendingAttachments || []).length) return;
+    if (loomAtts.length) {
+      // Persona and the clipper address files by asset_id; the link is for humans.
+      text = (text ? text + '\n' : '') + loomAtts.map(function (a) {
+        return '📎 ' + (/^audio\//.test(a.mime || '') ? t('a.monad.attach_audio', 'аудио') : t('a.monad.attach_video', 'видео')) + ' ' + a.name +
+          ' (' + fmtGb(a.size) + ') → asset ' + a.asset_id + ' (reference)';
+      }).join('\n');
+    }
+    // /api/monad/message rejects empty text; an attachment-only send gets a caption.
+    if (!text) text = '📎 ' + (STATE.pendingAttachments || []).map(function (a) { return a.name || 'file'; }).join(', ');
     if (!STATE.activeChatId) {
       await createChat();
     }

@@ -1180,6 +1180,10 @@ body.method-flashlight {
   border:none; background:transparent; color:var(--text-dim); cursor:pointer; font-size:12px; line-height:1;
 }
 .monad-attach-bar { display:flex; flex-wrap:wrap; gap:0.35rem; margin:0 0 0.45rem; }
+.monad-msg-media { display:flex; flex-direction:column; gap:0.2rem; max-width:420px; }
+.monad-msg-video { width:100%; max-height:60vh; border-radius:10px; background:#000; }
+.monad-msg-audio { width:100%; }
+.monad-msg-media a { font-size:11px; opacity:0.8; word-break:break-all; }
 .monad-loom-bar { display:flex; flex-direction:column; gap:0.3rem; margin:0 0 0.45rem; }
 .monad-loom-bar:empty { display:none; }
 .monad-loom-item {
