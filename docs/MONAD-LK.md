@@ -70,6 +70,13 @@
 ```
 
 Прокси-маршруты: `/api/monad/loom/upload/{init,complete,abort}`, `GET /api/monad/loom/assets`.
+
+**Вложения в чат (кнопка «Файл», drag-and-drop).** Видео/аудио и всё больше 10 МБ идут тем же
+прямым путём, но `complete` уходит с `purpose:"reference"`: файл в каталоге, играет в чате
+(`<video controls>`), режется клиппером по явному `asset_id`, но **не** запускает производство.
+Во вложении лежит постоянная ссылка `link` (`/api/loom/asset/<id>/preview?s=…`, не протухает),
+а в текст сообщения добавляется `📎 видео NAME (SIZE) → asset r2_… (reference)` — так Persona знает,
+о каком файле речь. «В Loom» — по-прежнему сырой материал в pipeline (`purpose` не передаётся).
 Контракт на стороне Монады: `tvildanov/monad` → `handoff/LOOM-DIRECT-UPLOAD.md`. Аккаунт должен
 быть привязан к `human_id` (`monad_human_id` / e-mail map), иначе 409 `NO_HUMAN_ID`.
 

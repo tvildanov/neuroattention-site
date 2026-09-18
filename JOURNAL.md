@@ -7,6 +7,32 @@
 
 ---
 
+## 2026-09-18 — LK chat: video/audio attachments of any size (Egor)
+
+```json
+{
+  "project": "neuro",
+  "agent": "claude_cowork",
+  "at": "2026-09-18T14:30:00Z",
+  "did": [
+    "Egor: the «Файл» button only took photos — he needs to attach a video as a montage example, later raw footage for the clipper",
+    "«Файл» accept now includes video/*, audio/*; video/audio or >10 MB go browser → Monad bucket via the Loom direct uploader (parts, progress, retries) — bytes never touch neuroattention-api (multer 12 MB)",
+    "complete is sent with purpose:'reference' → cataloged, playable, cuttable by asset_id, but does NOT start the Loom pipeline; the permanent `link` from monad-server becomes the attachment url",
+    "Messages render <video controls>/<audio controls>; the text sent to Persona gets «📎 видео NAME (SIZE) → asset r2_… (reference)» so Persona/clipper can address the file",
+    "Drag-and-drop onto the chat now attaches (reference); «В Loom» stays the raw-footage → production entry"
+  ],
+  "changed": ["assets/js/monad-lk.js", "account.html", "assets/redesign.css", "api/server.js", "data/i18n/{ru,en,es}.json", "sw.js", "docs/MONAD-LK.md"],
+  "decisions": [
+    "Small files (image/pdf/text ≤10 MB) keep /chats/:id/upload — no change for existing flows",
+    "Attachment-only send gets a «📎 name» caption because /api/monad/message requires text"
+  ],
+  "followups": ["Server contract: tvildanov/monad PR #60 (purpose=reference, link in upload/complete, /api/loom/asset/:id/preview)"],
+  "next_session": "Egor attaches a .mp4 in LK → player in chat → Persona answers about the montage example"
+}
+```
+
+---
+
 ## 2026-09-06 — Loom: direct browser → bucket upload from the Persona chat
 
 ```json
