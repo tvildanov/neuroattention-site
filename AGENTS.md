@@ -69,14 +69,14 @@ authoritative sources» на физический мир; канон: `~/.claude
 **Codex (OpenAI):** зарегистрирован в MONAD как агент `codex`
 (домены: code, neuro_site; платформа codex_cli).
 
-- API-ключ MONAD: `monad_IGcU7u8nFEVAMniO5l9X7ENvvxRyhOS1`
+- API-ключ MONAD: хранить только в защищённых локальных настройках; не добавлять ключи в репозиторий.
 - MCP-хаб: `https://monad-server-production.up.railway.app/mcp` (header `X-API-Key`)
 - Подключение в Codex CLI (`~/.codex/config.toml`):
 
 ```toml
 [mcp_servers.monad]
 url = "https://monad-server-production.up.railway.app/mcp"
-http_headers = { "X-API-Key" = "monad_IGcU7u8nFEVAMniO5l9X7ENvvxRyhOS1" }
+# Configure X-API-Key securely in local settings. Never commit credentials.
 ```
 
 **Правила для Codex-сессий:**
