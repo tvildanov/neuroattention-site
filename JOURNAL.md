@@ -7,6 +7,39 @@
 
 ---
 
+## 2026-10-11 — Font matrix: hung file and a valid woff2 (issue #163)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-10-11T21:50:00Z",
+  "did": [
+    "Added the two missing font checks only. account.html was not changed",
+    "fonts.googleapis.com returns real @font-face CSS and fonts.gstatic.com stays open: Chromium and WebKit keep the form text visible on the fallback and send one synthetic login",
+    "A valid latin woff2 (DejaVu Sans subset) loads, the heading still draws, and login still sends one request on both engines",
+    "No defect in the agreed scenario. Draft PR 164 is ready for final review"
+  ],
+  "changed": [
+    "scripts/pr163-entry-reliability.mjs",
+    "scripts/fixtures/na-entry-latin.woff2"
+  ],
+  "files": [
+    "scripts/pr163-entry-reliability.mjs",
+    "scripts/fixtures/na-entry-latin.woff2",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Do not treat document.fonts.check() as proof a file is unfinished. WebKit can report true while the face status is still not loaded",
+    "No merge and no deploy"
+  ],
+  "followups": [
+    "Owner review of draft PR 164. Customer-specific root cause is still unconfirmed"
+  ],
+  "next_session": "Do not add features on this branch. Wait for the owner's review before merge"
+}
+```
+
 ## 2026-10-11 — Stalled Google Fonts no longer blank the login form (issue #163)
 
 ```json
