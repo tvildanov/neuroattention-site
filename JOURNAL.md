@@ -7,6 +7,41 @@
 
 ---
 
+## 2026-10-11 — Stalled Google Fonts no longer blank the login form (issue #163)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-10-11T21:40:00Z",
+  "did": [
+    "On 27600f2, hanging fonts.googleapis.com left Chromium and WebKit at readyState=loading with the title set and #auth-form absent",
+    "account.html now loads that stylesheet as media=print until onload sets media=all, so the parser reaches the form and styles.css system stacks are the fallback",
+    "After the change, the same hang still shows the form and sends one synthetic login on Chromium and WebKit; a completed stylesheet still applies, including a fonts.gstatic.com file request"
+  ],
+  "changed": [
+    "Google Fonts stylesheet is no longer parser-blocking",
+    "Service worker cache na-practices-v89"
+  ],
+  "files": [
+    "account.html",
+    "sw.js",
+    "scripts/pr163-entry-reliability.mjs",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "This is the same optional-external-resource rule as the viz CDNs, not a new feature",
+    "Customer-specific root cause stays unconfirmed. The blank screen here is a reproduced lab mechanism",
+    "No merge and no deploy"
+  ],
+  "followups": [
+    "Draft PR 164 only",
+    "Other pages still use a blocking Google Fonts link; this change is the account sign-in page"
+  ],
+  "next_session": "Do not merge until the owner agrees. Visitor device is still unconfirmed"
+}
+```
+
 ## 2026-10-11 — Account entry under slow CDN and API (issue #163)
 
 ```json

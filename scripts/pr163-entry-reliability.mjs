@@ -700,7 +700,11 @@ async function run() {
       assert(s.state.loginHits === before + 1, 'login count ' + s.state.loginHits);
       assert(s.state.fonts.some((u) => u.includes('fonts.googleapis.com')), 'googleapis was not left pending');
       assert(s.state.fonts.every((u) => /fonts\.googleapis\.com|fonts\.gstatic\.com/.test(u)), s.state.fonts.join(' '));
-      await s.page.screenshot({ path: path.join(outDir, 'login-' + label + '-fonts-stalled.png') });
+      // WebKit's screenshot waits on document.fonts.ready. That promise stays
+      // pending on purpose here; the form and the single login already settled.
+      await s.page.screenshot({ path: path.join(outDir, 'login-' + label + '-fonts-stalled.png'), timeout: 3000 }).catch((err) => {
+        if (!/fonts to load|Timeout/i.test(String(err))) throw err;
+      });
     } finally { await s.browser.close(); }
   }
 
