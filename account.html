@@ -5416,14 +5416,23 @@ document.getElementById('auth-form').addEventListener('submit',async function(e)
   }, AUTH_LOGIN_TIMEOUT_MS);
   try {
     var resp=await fetch(AUTH_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass}),signal:ctl.signal});
-    if(!take()) return;
+    // Headers are not the deadline. Keep the timer and the abort signal armed
+    // until the body has been read; take() is what clears them.
+    if(settled || seq!==authLoginSeq) return;
     var raw='';
     try { raw=await resp.text(); }
     catch(readErr){
-      errEl.textContent=naAuthText('a.auth.err_bad_response','Сервер прислал непонятный ответ. Повторите попытку.');
+      if(settled || seq!==authLoginSeq) return;
+      if(!take()) return;
+      if(readErr && readErr.name==='AbortError'){
+        errEl.textContent=naAuthText('a.auth.err_timeout','Сервер не ответил вовремя. Проверьте соединение и повторите попытку.');
+      } else {
+        errEl.textContent=naAuthText('a.auth.err_network','Нет соединения с сервером. Проверьте сеть и повторите попытку.');
+        console.error('Login error:', readErr && readErr.name ? readErr.name : 'body');
+      }
       return;
     }
-    if(seq!==authLoginSeq) return;
+    if(!take()) return;
     var data=null;
     if(raw){
       try { data=JSON.parse(raw); }
@@ -5531,6 +5540,9 @@ document.getElementById('register-form').addEventListener('submit',async functio
 
 document.querySelectorAll('[data-logout]').forEach(function(b){
   b.addEventListener('click',function(){
+    authLoginSeq++;
+    if(authLoginCtl){ try{ authLoginCtl.abort(); }catch(e){} }
+    naAuthLoginIdle();
     naClearAuth();
     currentUser=null;viewAsUser=null;
     document.getElementById('auth-form').reset();
