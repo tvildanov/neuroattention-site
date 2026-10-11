@@ -74,7 +74,11 @@ async function boot(browserType, viewport, extra) {
     localStorage.setItem('na_lang', 'en');
     localStorage.setItem('na_lang_explicit', 'en');
   });
-  const state = { loginHits: 0, loginBodies: 0, held: [], mode: 'success', cdn: [], cdnMode: extra.cdn || 'block', allowPrefixes: extra.allowPrefixes || [] };
+  const state = {
+    loginHits: 0, loginBodies: 0, held: [], mode: 'success', cdn: [],
+    cdnMode: extra.cdn || 'block', fontMode: extra.font || 'abort', fonts: [],
+    allowPrefixes: extra.allowPrefixes || []
+  };
   await page.route('**/*', async (route) => {
     const url = route.request().url();
     if (url.startsWith(extra.origin)) return route.continue();
@@ -99,9 +103,31 @@ async function boot(browserType, viewport, extra) {
       }
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     }
+    if (/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url)) {
+      state.fonts.push(url);
+      if (state.fontMode === 'stall') return; // hang; do not abort (abort does not blank the page)
+      if (state.fontMode === 'apply') return fulfillFonts(route, url);
+      return route.abort('failed');
+    }
     return route.abort('failed');
   });
   return { browser, context, page, pageErrors, consoleText, state };
+}
+
+function fulfillFonts(route, url) {
+  if (/fonts\.gstatic\.com/.test(url)) {
+    return route.fulfill({ status: 200, contentType: 'font/woff2', body: '' });
+  }
+  const css = [
+    "@font-face{font-family:'DM Sans';font-style:normal;font-weight:400;font-display:swap;",
+    "src:url(https://fonts.gstatic.com/s/na-probe.woff2) format('woff2');}",
+    ':root{--na-fonts-applied:1;}'
+  ].join('');
+  return route.fulfill({
+    status: 200,
+    contentType: 'text/css; charset=utf-8',
+    body: css
+  });
 }
 
 function fulfillViz(route, url, state) {
@@ -647,6 +673,67 @@ async function run() {
       const token = await s.page.evaluate(() => localStorage.getItem('na_token'));
       assert(!token, 'stale token was kept');
     } finally { await s.browser.close(); }
+  });
+
+  async function stalledFontsLogin(browserType, label) {
+    const s = await boot(browserType, { width: 1280, height: 800 }, { origin, cdn: 'block', font: 'stall' });
+    try {
+      await s.page.goto(origin + '/account.html', { waitUntil: 'commit', timeout: 10000 });
+      const appeared = await s.page.waitForSelector('#auth-form', { state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
+      const snap = await s.page.evaluate(() => ({
+        ready: document.readyState,
+        hasForm: !!document.getElementById('auth-form'),
+        title: document.title,
+        opacity: document.body ? getComputedStyle(document.body).opacity : ''
+      }));
+      assert(appeared && snap.hasForm && snap.ready !== 'loading', 'blank while fonts stall: ' + JSON.stringify(snap));
+      await s.page.waitForFunction(() => {
+        const el = document.querySelector('#auth-submit [data-i18n="a.auth.btn_login"]');
+        return el && el.textContent.indexOf('Sign In') !== -1;
+      }, null, { timeout: 8000 });
+      const family = await s.page.evaluate(() => getComputedStyle(document.body).fontFamily);
+      assert(/sans-serif|apple-system|Segoe UI|Roboto/i.test(family), 'no system fallback: ' + family);
+      await fillLogin(s.page);
+      const before = s.state.loginHits;
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await s.page.waitForSelector('#client-dashboard', { state: 'visible', timeout: 10000 });
+      assert(s.state.loginHits === before + 1, 'login count ' + s.state.loginHits);
+      assert(s.state.fonts.some((u) => u.includes('fonts.googleapis.com')), 'googleapis was not left pending');
+      assert(s.state.fonts.every((u) => /fonts\.googleapis\.com|fonts\.gstatic\.com/.test(u)), s.state.fonts.join(' '));
+      await s.page.screenshot({ path: path.join(outDir, 'login-' + label + '-fonts-stalled.png') });
+    } finally { await s.browser.close(); }
+  }
+
+  await check('stalled fonts.googleapis.com/fonts.gstatic.com still shows login (chromium)', async () => {
+    await stalledFontsLogin(chromium, 'chromium');
+  });
+
+  await check('stalled fonts.googleapis.com/fonts.gstatic.com still shows login (webkit)', async () => {
+    await stalledFontsLogin(webkit, 'webkit');
+  });
+
+  async function fontsApply(browserType) {
+    const s = await boot(browserType, { width: 1280, height: 800 }, { origin, cdn: 'block', font: 'apply' });
+    try {
+      await openAccount(s.page, origin);
+      await s.page.waitForFunction(() => {
+        const link = document.getElementById('na-fonts');
+        const probe = getComputedStyle(document.documentElement).getPropertyValue('--na-fonts-applied').trim();
+        return link && link.media === 'all' && probe === '1';
+      }, null, { timeout: 8000 });
+      assert(s.state.fonts.some((u) => u.includes('fonts.googleapis.com')), 'stylesheet was not requested');
+      assert(s.state.fonts.some((u) => u.includes('fonts.gstatic.com')), 'font file host was not requested');
+      const family = await s.page.evaluate(() => getComputedStyle(document.querySelector('.auth-wrap h1')).fontFamily);
+      assert(/Unbounded|sans-serif/i.test(family), family);
+    } finally { await s.browser.close(); }
+  }
+
+  await check('loaded Google Fonts stylesheet still applies (chromium)', async () => {
+    await fontsApply(chromium);
+  });
+
+  await check('loaded Google Fonts stylesheet still applies (webkit)', async () => {
+    await fontsApply(webkit);
   });
 
   let webkitStatus = 'not-run';
