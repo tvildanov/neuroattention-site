@@ -790,16 +790,24 @@ async function run() {
       c.font = "500 32px 'Unbounded', sans-serif";
       const measured = c.measureText('Personal Dashboard');
       const ink = (measured.actualBoundingBoxLeft || 0) + (measured.actualBoundingBoxRight || 0);
+      const faces = [];
+      document.fonts.forEach(function (face) {
+        const family = String(face.family || '').replace(/['"]/g, '');
+        if (family === 'Unbounded' || family === 'DM Sans') {
+          faces.push({ family: family, weight: String(face.weight), status: face.status });
+        }
+      });
       return {
-        text: h1 ? h1.textContent.trim() : '',
-        btn: btn ? btn.textContent.trim() : '',
+        text: h1 ? h1.textContent.replace(/\u00a0/g, ' ').trim() : '',
+        btn: btn ? btn.textContent.replace(/\s+/g, ' ').trim() : '',
         opacity: cs.opacity || '',
         color: cs.color || '',
         width: hs.width,
         height: hs.height,
         advance: measured.width,
         ink,
-        unboundedLoaded: document.fonts.check("500 26px 'Unbounded'")
+        faces,
+        unboundedLoaded: faces.some(function (face) { return face.family === 'Unbounded' && face.status === 'loaded'; })
       };
     });
   }
@@ -816,6 +824,7 @@ async function run() {
       assert(paint.btn.indexOf('Sign In') !== -1, JSON.stringify(paint));
       assert(paint.height > 12 && paint.width > 80, 'form text not visible: ' + JSON.stringify(paint));
       assert(Number(paint.opacity) > 0.9, 'text hidden: ' + paint.opacity);
+      assert(paint.faces.some((face) => face.family === 'Unbounded'), 'no Unbounded face: ' + JSON.stringify(paint));
       assert(paint.unboundedLoaded === false, 'webfont finished while gstatic was held: ' + JSON.stringify(paint));
       const before = s.state.loginHits;
       await fillLogin(s.page);
@@ -840,7 +849,13 @@ async function run() {
     const s = await boot(browserType, { width: 1280, height: 800 }, { origin, cdn: 'block', font: 'valid-file' });
     try {
       await openAccount(s.page, origin);
-      await s.page.waitForFunction(() => document.fonts.check("500 26px 'Unbounded'"), null, { timeout: 8000 });
+      await s.page.waitForFunction(() => {
+        let loaded = false;
+        document.fonts.forEach((face) => {
+          if (String(face.family).replace(/['"]/g, '') === 'Unbounded' && face.status === 'loaded') loaded = true;
+        });
+        return loaded;
+      }, null, { timeout: 8000 });
       const paint = await formPaint(s.page);
       assert(s.state.fonts.some((u) => u.includes('fonts.gstatic.com')), 'font file was not requested');
       assert(paint.text === 'Personal Dashboard', JSON.stringify(paint));
