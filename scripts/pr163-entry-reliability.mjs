@@ -74,10 +74,11 @@ async function boot(browserType, viewport, extra) {
     localStorage.setItem('na_lang', 'en');
     localStorage.setItem('na_lang_explicit', 'en');
   });
-  const state = { loginHits: 0, loginBodies: 0, held: [], mode: 'success', cdn: [], cdnMode: extra.cdn || 'block' };
+  const state = { loginHits: 0, loginBodies: 0, held: [], mode: 'success', cdn: [], cdnMode: extra.cdn || 'block', allowPrefixes: extra.allowPrefixes || [] };
   await page.route('**/*', async (route) => {
     const url = route.request().url();
     if (url.startsWith(extra.origin)) return route.continue();
+    if (state.allowPrefixes.some((p) => url.startsWith(p))) return route.continue();
     if (/unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com/.test(url)) {
       state.cdn.push(url);
       if (state.cdnMode === 'stall') return; // never respond
@@ -124,6 +125,56 @@ function fulfillViz(route, url, state) {
     body = 'window.d3=window.d3||{};window.d3.forceSimulation=function(){};';
   }
   return route.fulfill({ status: 200, contentType: 'application/javascript', body });
+}
+
+// Real socket: response headers are flushed immediately and the body is held
+// until release(). Playwright's route.fulfill() cannot split those two moments.
+function startHeldBodyServer() {
+  const pending = [];
+  const server = http.createServer((req, res) => {
+    const cors = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    };
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      if (!String(req.url).includes('/api/auth/login')) {
+        res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
+        res.end('{}');
+        return;
+      }
+      const mode = server.mode || 'hold';
+      if (mode === 'fast') {
+        res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
+        res.end(successBody());
+        return;
+      }
+      if (mode === 'malformed') {
+        res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
+        res.flushHeaders();
+        setTimeout(() => { try { res.end('not-json{'); } catch (e) {} }, 40);
+        return;
+      }
+      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, cors));
+      res.flushHeaders();
+      const slot = { res, closed: false };
+      pending.push(slot);
+      res.on('close', () => { slot.closed = true; });
+    });
+  });
+  server.mode = 'hold';
+  return {
+    server,
+    pending,
+    release(payload) {
+      const slot = pending.shift();
+      if (!slot || slot.closed) return false;
+      try { slot.res.end(payload); return true; } catch (e) { return false; }
+    }
+  };
 }
 
 async function handleLogin(route, state) {
@@ -183,6 +234,10 @@ async function run() {
   fs.mkdirSync(outDir, { recursive: true });
 
   async function check(name, fn) {
+    if (process.env.ONLY && process.env.ONLY.split('|').every((part) => name.indexOf(part) === -1)) {
+      console.log('SKIP', name);
+      return;
+    }
     const t0 = Date.now();
     try {
       await fn();
@@ -345,6 +400,116 @@ async function run() {
       await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
       await s.page.waitForSelector('#client-dashboard', { state: 'visible' });
     } finally { await s.browser.close(); }
+  });
+
+  await check('headers flush immediately and a late body must not authenticate', async () => {
+    const held = startHeldBodyServer();
+    await new Promise((r) => held.server.listen(0, '127.0.0.1', r));
+    const apiOrigin = 'http://127.0.0.1:' + held.server.address().port;
+    const s = await boot(chromium, { width: 1280, height: 800 }, { origin, cdn: 'block', allowPrefixes: [apiOrigin] });
+    try {
+      await openAccount(s.page, origin);
+      await fillLogin(s.page);
+      await s.page.evaluate((base) => { AUTH_API = base; }, apiOrigin);
+      const t0 = Date.now();
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      const headersAt = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('response headers were not flushed')), 5000);
+        const poll = () => {
+          if (held.pending.length) { clearTimeout(timer); resolve(Date.now() - t0); return; }
+          setTimeout(poll, 20);
+        };
+        poll();
+      });
+      assert(headersAt < 2000, 'headers took ' + headersAt + 'ms');
+      const busy = await s.page.locator('#auth-submit').isDisabled();
+      assert(busy, 'button was not busy after headers');
+      await s.page.waitForFunction(() => /too long to respond/i.test(document.getElementById('auth-error').textContent), null, { timeout: 20000 });
+      const dt = Date.now() - t0;
+      assert(dt >= 14000 && dt <= 18000, 'body-hold timeout was ' + dt + 'ms');
+      assert(await s.page.locator('#auth-submit').isEnabled(), 'button stayed disabled after the body deadline');
+      assert(!(await s.page.evaluate(() => localStorage.getItem('na_token'))), 'token stored before the body arrived');
+      held.release(successBody());
+      await s.page.waitForTimeout(800);
+      const token = await s.page.evaluate(() => localStorage.getItem('na_token'));
+      assert(!token, 'late body after the deadline stored a token');
+      assert(!(await s.page.locator('#client-dashboard').isVisible()), 'late body opened the cabinet');
+      held.server.mode = 'fast';
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await s.page.waitForSelector('#client-dashboard', { state: 'visible', timeout: 10000 });
+    } finally {
+      await s.browser.close();
+      held.server.close();
+    }
+  });
+
+  await check('malformed body after headers is not a network error', async () => {
+    const held = startHeldBodyServer();
+    held.server.mode = 'malformed';
+    await new Promise((r) => held.server.listen(0, '127.0.0.1', r));
+    const apiOrigin = 'http://127.0.0.1:' + held.server.address().port;
+    const s = await boot(chromium, { width: 1280, height: 800 }, { origin, cdn: 'block', allowPrefixes: [apiOrigin] });
+    try {
+      await openAccount(s.page, origin);
+      await fillLogin(s.page);
+      await s.page.evaluate((base) => { AUTH_API = base; }, apiOrigin);
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await s.page.waitForFunction(() => /unexpected response/i.test(document.getElementById('auth-error').textContent), null, { timeout: 10000 });
+      const text = await s.page.locator('#auth-error').innerText();
+      assert(!/reach the server|too long|Incorrect email|compute quota/i.test(text), text);
+      assert(!(await s.page.evaluate(() => localStorage.getItem('na_token'))), 'malformed body stored a token');
+      assert(await s.page.locator('#auth-submit').isEnabled(), 'button stayed disabled after a malformed body');
+    } finally {
+      await s.browser.close();
+      held.server.close();
+    }
+  });
+
+  await check('navigation and logout ignore a body that arrives later', async () => {
+    const held = startHeldBodyServer();
+    await new Promise((r) => held.server.listen(0, '127.0.0.1', r));
+    const apiOrigin = 'http://127.0.0.1:' + held.server.address().port;
+    const s = await boot(chromium, { width: 1280, height: 800 }, { origin, cdn: 'block', allowPrefixes: [apiOrigin] });
+    try {
+      await openAccount(s.page, origin);
+      await fillLogin(s.page);
+      await s.page.evaluate((base) => { AUTH_API = base; }, apiOrigin);
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('headers not flushed before navigation')), 5000);
+        const poll = () => {
+          if (held.pending.length) { clearTimeout(timer); resolve(); return; }
+          setTimeout(poll, 20);
+        };
+        poll();
+      });
+      await s.page.evaluate(() => { window.dispatchEvent(new Event('pagehide')); });
+      held.release(JSON.stringify({ token: 'nav-late-token', user: SYNTH_USER }));
+      await s.page.waitForTimeout(600);
+      let token = await s.page.evaluate(() => localStorage.getItem('na_token'));
+      assert(token !== 'nav-late-token' && !token, 'navigation late body stored ' + token);
+
+      held.server.mode = 'hold';
+      await fillLogin(s.page);
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('headers not flushed before logout')), 5000);
+        const poll = () => {
+          if (held.pending.length) { clearTimeout(timer); resolve(); return; }
+          setTimeout(poll, 20);
+        };
+        poll();
+      });
+      await s.page.evaluate(() => document.querySelector('[data-logout]').click());
+      held.release(JSON.stringify({ token: 'logout-late-token', user: SYNTH_USER }));
+      await s.page.waitForTimeout(600);
+      token = await s.page.evaluate(() => localStorage.getItem('na_token'));
+      assert(token !== 'logout-late-token' && !token, 'logout late body stored ' + token);
+      assert(!(await s.page.locator('#client-dashboard').isVisible()), 'late body restored the cabinet after logout');
+    } finally {
+      await s.browser.close();
+      held.server.close();
+    }
   });
 
   await check('pagehide suppresses a late success', async () => {

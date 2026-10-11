@@ -19,7 +19,8 @@
     "Stopped account.html from parser-blocking on unpkg 3d-force-graph and jsDelivr d3; those load on demand in dependency order via naEnsureViz",
     "Sign-in now shows localized progress, aborts at 15s, ignores a duplicate submit, and drops a late response after timeout or pagehide",
     "401, 503 quota text, offline, and malformed JSON stay distinct; PR161 server quota handling was not changed",
-    "Null-guarded missing #year on index.html, custom.html, and xr.html"
+    "Null-guarded missing #year on index.html, custom.html, and xr.html",
+    "Follow-up on 241162e: the 15s timer was cleared when login headers arrived, before the body was read. A held body left the button disabled, and a body delivered after logout still stored a token. The timer now stays armed until the body is read and validated; logout aborts the in-flight attempt"
   ],
   "changed": [
     "Login no longer waits on optional visualization CDNs",
