@@ -7,6 +7,49 @@
 
 ---
 
+## 2026-10-11 — Account entry under slow CDN and API (issue #163)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-10-11T21:20:00Z",
+  "did": [
+    "Confirmed origin/main is d767e04d782c2007f7e4201b8ce6c03fe7ce7099 on tvildanov/neuroattention-site",
+    "Stopped account.html from parser-blocking on unpkg 3d-force-graph and jsDelivr d3; those load on demand in dependency order via naEnsureViz",
+    "Sign-in now shows localized progress, aborts at 15s, ignores a duplicate submit, and drops a late response after timeout or pagehide",
+    "401, 503 quota text, offline, and malformed JSON stay distinct; PR161 server quota handling was not changed",
+    "Null-guarded missing #year on index.html, custom.html, and xr.html"
+  ],
+  "changed": [
+    "Login no longer waits on optional visualization CDNs",
+    "Service worker cache na-practices-v88"
+  ],
+  "files": [
+    "account.html",
+    "assets/js/evolution-path.js",
+    "sw.js",
+    "index.html",
+    "custom.html",
+    "xr.html",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "scripts/pr163-entry-reliability.mjs"
+  ],
+  "decisions": [
+    "defer alone is not the fix: viz scripts are injected only when requested, and the next script is added only after the previous global exists",
+    "3d-force-graph still settles before the d3 chain so window.d3 is extended in the previous document order",
+    "A 503 keeps the server error string, including the database compute-quota message"
+  ],
+  "followups": [
+    "Draft PR only. Do not merge or deploy from this session",
+    "The original visitor failure is still unconfirmed on their devices"
+  ],
+  "next_session": "After review, ship v88 and confirm a fresh account.html load shows Sign In while unpkg is blocked"
+}
+```
+
 ## 2026-08-18 — Sketch 3D is the live Atlas body, not a 2D overlay trap
 
 ```json

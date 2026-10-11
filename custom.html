@@ -714,7 +714,7 @@
 <script src="assets/scripts.js"></script>
 <script src="assets/redesign.js"></script>
 <script>
-document.getElementById('year').textContent = new Date().getFullYear();
+var yearEl=document.getElementById('year');if(yearEl)yearEl.textContent=new Date().getFullYear();
 
 function openModal(type) {
   if (type === 'detail') document.getElementById('modalDetail').classList.add('active');
