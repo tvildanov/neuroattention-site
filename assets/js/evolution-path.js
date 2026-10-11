@@ -2270,6 +2270,16 @@
   function mountEvolutionPath(container, opts) {
     if (!container) return;
     opts = opts || {};
+    // d3-shape is optional and loaded on demand. Draw immediately (quadratic
+    // fallback) and redraw once the ordered loader publishes curveCatmullRom.
+    if (window.naEnsureViz && !(window.d3 && window.d3.line && window.d3.curveCatmullRom) && !container.__naD3Asked) {
+      container.__naD3Asked = true;
+      window.naEnsureViz('d3').then(function () {
+        if (!(window.d3 && window.d3.line && window.d3.curveCatmullRom)) return;
+        if (!container.isConnected) return;
+        mountEvolutionPath(container, opts);
+      }).catch(function () {});
+    }
     var lang = opts.lang || (typeof window.getLang === 'function' ? window.getLang() : 'ru');
     var apiBase = opts.apiBase || window.AUTH_API || '';
     var token = opts.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('na_token') : '');
