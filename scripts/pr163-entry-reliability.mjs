@@ -107,11 +107,44 @@ async function boot(browserType, viewport, extra) {
       state.fonts.push(url);
       if (state.fontMode === 'stall') return; // hang; do not abort (abort does not blank the page)
       if (state.fontMode === 'apply') return fulfillFonts(route, url);
+      if (state.fontMode === 'css-stall-file' || state.fontMode === 'valid-file') {
+        if (/fonts\.gstatic\.com/.test(url)) {
+          if (state.fontMode === 'css-stall-file') return; // CSS arrived; the file stays open
+          return fulfillValidFont(route);
+        }
+        return fulfillRealCss(route);
+      }
       return route.abort('failed');
     }
     return route.abort('failed');
   });
   return { browser, context, page, pageErrors, consoleText, state };
+}
+
+// Latin subset of DejaVu Sans (Bitstream Vera). A real woff2, not an empty body.
+const VALID_WOFF2 = fs.readFileSync(path.join(ROOT, 'scripts/fixtures/na-entry-latin.woff2'));
+// Same shape as a fonts.googleapis.com CSS2 reply: @font-face, font-display:swap, gstatic src.
+const REAL_FONT_CSS = [
+  "/* latin */",
+  "@font-face{font-family:'Unbounded';font-style:normal;font-weight:500;font-display:swap;",
+  "src:url(https://fonts.gstatic.com/s/unbounded/v11/na-entry-latin.woff2) format('woff2');",
+  "unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}",
+  "@font-face{font-family:'DM Sans';font-style:normal;font-weight:400;font-display:swap;",
+  "src:url(https://fonts.gstatic.com/s/dmsans/v15/na-entry-latin.woff2) format('woff2');",
+  "unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}"
+].join('');
+
+function fulfillRealCss(route) {
+  return route.fulfill({ status: 200, contentType: 'text/css; charset=utf-8', body: REAL_FONT_CSS });
+}
+
+function fulfillValidFont(route) {
+  return route.fulfill({
+    status: 200,
+    contentType: 'font/woff2',
+    headers: { 'access-control-allow-origin': '*' },
+    body: VALID_WOFF2
+  });
 }
 
 function fulfillFonts(route, url) {
@@ -738,6 +771,99 @@ async function run() {
 
   await check('loaded Google Fonts stylesheet still applies (webkit)', async () => {
     await fontsApply(webkit);
+  });
+
+  async function waitForHost(state, host) {
+    const t0 = Date.now();
+    while (!state.fonts.some((u) => u.includes(host)) && Date.now() - t0 < 8000) {
+      await new Promise((r) => setTimeout(r, 40));
+    }
+  }
+
+  async function formPaint(page) {
+    return page.evaluate(() => {
+      const h1 = document.querySelector('.auth-wrap h1');
+      const btn = document.querySelector('#auth-submit');
+      const hs = h1 ? h1.getBoundingClientRect() : { width: 0, height: 0 };
+      const cs = h1 ? getComputedStyle(h1) : {};
+      const c = document.createElement('canvas').getContext('2d');
+      c.font = "500 32px 'Unbounded', sans-serif";
+      const measured = c.measureText('Personal Dashboard');
+      const ink = (measured.actualBoundingBoxLeft || 0) + (measured.actualBoundingBoxRight || 0);
+      return {
+        text: h1 ? h1.textContent.trim() : '',
+        btn: btn ? btn.textContent.trim() : '',
+        opacity: cs.opacity || '',
+        color: cs.color || '',
+        width: hs.width,
+        height: hs.height,
+        advance: measured.width,
+        ink,
+        unboundedLoaded: document.fonts.check("500 26px 'Unbounded'")
+      };
+    });
+  }
+
+  async function cssThenStalledFile(browserType, label) {
+    const s = await boot(browserType, { width: 1280, height: 800 }, { origin, cdn: 'block', font: 'css-stall-file' });
+    try {
+      await openAccount(s.page, origin);
+      await waitForHost(s.state, 'fonts.gstatic.com');
+      assert(s.state.fonts.some((u) => u.includes('fonts.googleapis.com')), 'stylesheet was not served');
+      assert(s.state.fonts.some((u) => u.includes('fonts.gstatic.com')), 'gstatic was never requested');
+      const paint = await formPaint(s.page);
+      assert(paint.text === 'Personal Dashboard', JSON.stringify(paint));
+      assert(paint.btn.indexOf('Sign In') !== -1, JSON.stringify(paint));
+      assert(paint.height > 12 && paint.width > 80, 'form text not visible: ' + JSON.stringify(paint));
+      assert(Number(paint.opacity) > 0.9, 'text hidden: ' + paint.opacity);
+      assert(paint.unboundedLoaded === false, 'webfont finished while gstatic was held: ' + JSON.stringify(paint));
+      const before = s.state.loginHits;
+      await fillLogin(s.page);
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await s.page.waitForSelector('#client-dashboard', { state: 'visible', timeout: 10000 });
+      assert(s.state.loginHits === before + 1, 'login count ' + s.state.loginHits);
+      await s.page.screenshot({ path: path.join(outDir, 'login-' + label + '-gstatic-stalled.png'), timeout: 3000 }).catch((err) => {
+        if (!/fonts to load|Timeout/i.test(String(err))) throw err;
+      });
+    } finally { await s.browser.close(); }
+  }
+
+  await check('real CSS then stalled fonts.gstatic.com keeps fallback login (chromium)', async () => {
+    await cssThenStalledFile(chromium, 'chromium');
+  });
+
+  await check('real CSS then stalled fonts.gstatic.com keeps fallback login (webkit)', async () => {
+    await cssThenStalledFile(webkit, 'webkit');
+  });
+
+  async function validFontSmoke(browserType, label) {
+    const s = await boot(browserType, { width: 1280, height: 800 }, { origin, cdn: 'block', font: 'valid-file' });
+    try {
+      await openAccount(s.page, origin);
+      await s.page.waitForFunction(() => document.fonts.check("500 26px 'Unbounded'"), null, { timeout: 8000 });
+      const paint = await formPaint(s.page);
+      assert(s.state.fonts.some((u) => u.includes('fonts.gstatic.com')), 'font file was not requested');
+      assert(paint.text === 'Personal Dashboard', JSON.stringify(paint));
+      assert(paint.btn.indexOf('Sign In') !== -1, JSON.stringify(paint));
+      assert(paint.unboundedLoaded === true, JSON.stringify(paint));
+      assert(paint.height > 12 && paint.width > 120 && paint.width < 700, 'heading not drawn: ' + JSON.stringify(paint));
+      assert(paint.advance > 80 && paint.ink > 40, 'loaded face has no ink: ' + JSON.stringify(paint));
+      assert(Number(paint.opacity) > 0.9, paint.opacity);
+      const before = s.state.loginHits;
+      await fillLogin(s.page);
+      await s.page.locator('#auth-form').evaluate((form) => form.requestSubmit());
+      await s.page.waitForSelector('#client-dashboard', { state: 'visible', timeout: 10000 });
+      assert(s.state.loginHits === before + 1, 'login count ' + s.state.loginHits);
+      await s.page.screenshot({ path: path.join(outDir, 'login-' + label + '-valid-font.png') });
+    } finally { await s.browser.close(); }
+  }
+
+  await check('valid font file still draws the form and logs in (chromium)', async () => {
+    await validFontSmoke(chromium, 'chromium');
+  });
+
+  await check('valid font file still draws the form and logs in (webkit)', async () => {
+    await validFontSmoke(webkit, 'webkit');
   });
 
   let webkitStatus = 'not-run';
