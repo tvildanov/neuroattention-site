@@ -24,13 +24,63 @@
 
   var SELECTOR = '.heading-space, .hero-sub, .hero-desc, .sub-muted, p[data-i18n], h1, h2, h3, h4';
 
+  // Cap an unbreakable run. Gluing every short word AND the final pair turned
+  // "for human attention" / "para la atención humana" / "человеческого внимания"
+  // into one min-content string, which stretched grid tracks past the container.
+  // Short-word and orphan glue still apply when the whole run stays within the cap.
+  var MAX_RUN = 12;
+
+  function isBreakSpace(ch) {
+    return ch === ' ' || ch === '\n' || ch === '\t' || ch === '\r';
+  }
+
+  function lastWord(token) {
+    var bits = String(token || '').split(NBSP);
+    return bits[bits.length - 1] || '';
+  }
+
   // Replace the space following any short word with NBSP, within a single string.
   function glueShort(text) {
-    // \b(word)\s+  → word + NBSP. Unicode-aware-ish (handles cyrillic via the set).
-    return text.replace(/(\S+)(\s+)/g, function (m, w, sp) {
-      // only collapse a SINGLE inter-word space (leave intentional gaps/newlines)
-      if (sp.length !== 1 || sp === '\n') return m;
-      return SHORT_SET[w.toLowerCase()] ? (w + NBSP) : m;
+    var parts = String(text).split(/([ \n\t\r]+)/);
+    var out = '';
+    var run = 0;
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (!p) continue;
+      if (/^[ \n\t\r]+$/.test(p)) {
+        var next = '';
+        for (var k = i + 1; k < parts.length; k++) {
+          if (parts[k] && !/^[ \n\t\r]+$/.test(parts[k])) { next = parts[k]; break; }
+        }
+        var prev = '';
+        for (var j = i - 1; j >= 0; j--) {
+          if (parts[j] && !/^[ \n\t\r]+$/.test(parts[j])) { prev = parts[j]; break; }
+        }
+        var prevWord = lastWord(prev).toLowerCase();
+        if (p === ' ' && SHORT_SET[prevWord] && next && (run + next.length) <= MAX_RUN) {
+          out += NBSP;
+        } else {
+          out += p;
+          run = 0;
+        }
+      } else {
+        if (!out || out.charAt(out.length - 1) !== NBSP) run = 0;
+        out += p;
+        run += p.length;
+      }
+    }
+    return out;
+  }
+
+  // Orphan control, refused when it would extend an existing NBSP chain past MAX_RUN.
+  function glueOrphan(text) {
+    return String(text).replace(/(\S+)([ \t]+)(\S+\s*)$/, function (m, a, sp, b, offset, str) {
+      if (sp !== ' ') return m;
+      var i = offset;
+      while (i > 0 && !isBreakSpace(str.charAt(i - 1))) i--;
+      var run = str.slice(i, offset) + a + NBSP + b.trim();
+      if (run.length > MAX_RUN) return m;
+      return a + NBSP + b;
     });
   }
 
@@ -49,11 +99,9 @@
       var v = glueShort(tn.nodeValue);
       if (v !== tn.nodeValue) tn.nodeValue = v;
     });
-    // 2) orphan control: glue the last two words of the element together
+    // 2) orphan control: glue the last two words when the run still fits the cap
     var last = nodes[nodes.length - 1];
-    last.nodeValue = last.nodeValue.replace(/(\S+)\s+(\S+\s*)$/, function (m, a, b) {
-      return a + NBSP + b;
-    });
+    last.nodeValue = glueOrphan(last.nodeValue);
   }
 
   function run() {
