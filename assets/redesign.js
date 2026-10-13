@@ -168,6 +168,29 @@
     });
   });
 
+  // CloudFront marketing photos 403. Keep the real URL so a later ACL fix
+  // shows the photograph; until then mark the reserved frame unavailable.
+  // A placeholder is not the original portrait.
+  document.querySelectorAll('[data-photo-frame]').forEach(function (frame) {
+    var img = frame.querySelector('img');
+    if (!img) return;
+    var fail = function () {
+      frame.classList.add('is-unavailable');
+      img.setAttribute('aria-hidden', 'true');
+    };
+    var ok = function () {
+      if (img.naturalWidth > 0) {
+        frame.classList.remove('is-unavailable');
+        img.removeAttribute('aria-hidden');
+      } else {
+        fail();
+      }
+    };
+    img.addEventListener('error', fail);
+    img.addEventListener('load', ok);
+    if (img.complete) ok();
+  });
+
   // ───────────────────────────────────────
   // 8) Haptic vibration (Android Chrome)
   //    - micropulse on page load

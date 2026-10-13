@@ -136,6 +136,7 @@
 // v75: Vertical 49-cell matrix + horizontal contours-from-people; rhythm L1–L7
 // v74: Vertical 7×7 uses Monad canon (Physics…Knowledge…Supersystem), live placements
 // v73: LK chat answers + delete/rename; Sketch 3D atlas; Monad viz; full-width tools
+// v90: marketing photo frames + mobile split layout. Cache name bump only.
 // v89: Google Fonts stylesheet stays media=print until it loads, so a stalled
 //      fonts.googleapis.com request cannot leave the login form unparsed.
 //      System font stacks are the fallback. v88 sign-in deadline unchanged.
@@ -143,7 +144,7 @@
 //      shows immediate progress, times out at 15s, and ignores a duplicate submit.
 // v86: Monad focus cross, human fn, semantic search, office scroll, sketch orbit
 // v85: Monad online office + live API + SVG branches
-var CACHE_NAME = 'na-practices-v89';
+var CACHE_NAME = 'na-practices-v90';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
