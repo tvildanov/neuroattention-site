@@ -640,11 +640,11 @@ section {
 }
 
 .grid-2 {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .grid-3 {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .grid-4 {
@@ -659,10 +659,10 @@ section {
 
 @media (min-width: 640px) {
   .grid-3 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .grid-4 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .grid-5 {
     grid-template-columns: repeat(3, 1fr);
@@ -680,13 +680,13 @@ section {
     gap: 2rem;
   }
   .grid-2 {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .grid-3 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .grid-4 {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -768,6 +768,15 @@ section {
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
+  min-width: 0;
+}
+.card-row > * {
+  min-width: 0;
+}
+.card-row .heading-space,
+.heading-space,
+h1, h2, h3 {
+  overflow-wrap: break-word;
 }
 
 .icon-box {
@@ -1075,6 +1084,21 @@ section {
 .fade-scale.visible {
   opacity: 1;
   transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up,
+  .fade-left,
+  .fade-right,
+  .fade-scale,
+  .lab-card,
+  .slide-ready .fact-slide-left,
+  .slide-ready .fact-slide-right {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 .delay-1 {

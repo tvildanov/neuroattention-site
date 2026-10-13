@@ -540,7 +540,42 @@ section:first-of-type > .container > .fade-up > p[style*="1.0625rem"],
   }
 }
 
-/* Responsive fallback for inline grids on narrow screens */
+/* Named two-column media rows. Do NOT put grid-template-columns in the style
+   attribute: the mobile attribute rule below turns that into a centered column
+   flex, and an absolutely positioned .img-stack then measures 0×0. */
+.split-media {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 400px);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  width: 100%;
+}
+.split-media--media-first {
+  grid-template-columns: minmax(220px, 380px) minmax(0, 1fr);
+}
+.split-media > * {
+  min-width: 0;
+  max-width: 100%;
+}
+/* Stop a long unbreakable heading from stretching the track past the container. */
+.grid.grid-2 > *,
+.grid.grid-3 > * {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 860px) {
+  .split-media,
+  .split-media--media-first {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .split-media > * {
+    width: 100%;
+  }
+}
+
+/* Account and other inline grids still stack on phones. Marketing split rows
+   use .split-media instead of this attribute selector. */
 @media (max-width: 768px) {
   [style*="grid-template-columns"] {
     display: flex !important;
@@ -599,8 +634,156 @@ section:first-of-type > .container > .fade-up > p[style*="1.0625rem"],
 .img-stack:hover .stack-layer:nth-child(1) { transform: rotate(-10deg) translate(-40px, 10px); z-index: 3; }
 .img-stack:hover .stack-layer:nth-child(2) { transform: rotate(0deg) translate(0, -14px) scale(1.03); z-index: 4; }
 .img-stack:hover .stack-layer:nth-child(3) { transform: rotate(10deg) translate(40px, 10px); z-index: 3; }
-/* click-to-front: .front class brings layer to top */
+/* click-to-front: .front class brings layer to top (desktop fan only) */
 .img-stack .stack-layer.front { z-index: 10 !important; transform: rotate(0deg) translate(0, 0) scale(1.02) !important; box-shadow: 0 12px 50px rgba(0,0,0,0.6); }
+
+/* Narrow screens cannot show the fan: the three layers share one frame.
+   A tablist under the frame selects which photograph is visible. The tabs
+   sit outside .img-stack so overflow:hidden cannot clip them. */
+.img-stack-set { width: 100%; min-width: 0; }
+.img-stack-tabs { display: none; }
+.img-stack-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+  flex: 1 1 0;
+}
+.img-stack-tab[aria-selected="true"] {
+  color: var(--text-primary);
+  border-color: rgba(78, 205, 196, 0.75);
+  background: rgba(78, 205, 196, 0.14);
+}
+/* "Устройство" is the longest of the three labels. At 320px the three tabs
+   share one row, so the label has to fit the button's padding box. */
+@media (max-width: 400px) {
+  .img-stack-tab {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+}
+.img-stack-tab:focus-visible {
+  outline: 2px solid rgba(78, 205, 196, 0.95);
+  outline-offset: 2px;
+}
+
+@media (max-width: 860px) {
+  .img-stack { overflow: hidden; cursor: default; }
+  .img-stack .stack-layer,
+  .img-stack .stack-layer.front,
+  .img-stack:hover .stack-layer,
+  .img-stack:hover .stack-layer.front {
+    transform: none !important;
+    box-shadow: none;
+  }
+  .img-stack .stack-layer {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0 !important;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+  }
+  .img-stack .stack-layer.is-selected {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 2 !important;
+  }
+  .img-stack-tabs {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img-stack .stack-layer,
+  .img-stack .stack-layer.front,
+  .img-stack:hover .stack-layer {
+    transition: none !important;
+  }
+}
+
+/* Reserved photo frame. The CloudFront originals 403; this keeps the slot's
+   ratio and shows an honest unavailable state. It is not a replacement photo. */
+.photo-slot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--photo-ratio, 4 / 3);
+  overflow: hidden;
+}
+.photo-slot > img,
+.stack-layer > img,
+.team-photo > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-fallback {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.85rem;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 28%, rgba(78, 205, 196, 0.16), transparent 58%),
+    linear-gradient(165deg, #151c27 0%, #0a0e14 100%);
+  color: var(--text-muted);
+}
+.photo-fallback-label {
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+.photo-fallback-note {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.35;
+}
+.is-unavailable > .photo-fallback {
+  display: flex;
+}
+.is-unavailable > img {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  opacity: 0;
+}
+.team-photo[data-photo-frame] { position: relative; }
+.team-photo .photo-fallback-label {
+  font-size: 0.78rem;
+}
+.team-photo .photo-fallback-note {
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+}
 
 /* ══════════════════════════════════════════
    CTA — video background with glass overlay
@@ -794,8 +977,13 @@ body.method-flashlight {
   /* ─── Grids → single column ─── */
   .grid.grid-2,
   .grid.grid-3 {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 1rem !important;
+  }
+  .grid.grid-2 > *,
+  .grid.grid-3 > * {
+    min-width: 0;
+    max-width: 100%;
   }
 
   /* ─── Cards ─── */
@@ -922,6 +1110,32 @@ body.method-flashlight {
     min-width: 0;
     flex-shrink: 1;
     overflow: hidden;
+  }
+  /* At ~320px the single-line wordmark was clipped to "Neuro Attent".
+     Stack the two halves so the full name stays readable next to the
+     language switch and menu button. Scoped to the bar, not the footer. */
+  @media (max-width: 360px) {
+    .navbar .navbar-inner {
+      height: auto;
+      min-height: 4.25rem;
+    }
+    .navbar .nav-logo {
+      overflow: visible;
+      white-space: normal;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      line-height: 1.05;
+      font-size: 0.92rem !important;
+      gap: 0;
+      flex-shrink: 0;
+    }
+    .navbar .nav-logo-icon {
+      display: none;
+    }
+    .navbar .nav-logo .text-gradient-cyan {
+      display: block;
+    }
   }
   /* drop the decorative "Lab" suffix on mobile so it never clips/overlaps the
      language switcher — "NeuroAttention" alone reads cleanly */

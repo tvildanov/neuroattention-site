@@ -34,7 +34,11 @@
 <meta name="twitter:description" content="A science-based method of nervous-system regulation and attention development." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- Optional. media=print until onload so a stalled fonts.googleapis.com
+     stylesheet cannot block first paint. System stacks in styles.css
+     are the fallback until this sheet applies. -->
+<link id="na-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" /></noscript>
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
 <!-- ═══ Icons / PWA / Social (injected) ═══ -->
@@ -402,10 +406,14 @@
 <section class="section">
   <div class="section-divider"></div>
   <div class="container">
-    <div style="display:grid;grid-template-columns:380px 1fr;align-items:center;gap:4rem;">
+    <div class="split-media split-media--media-first">
       <div class="fade-left">
-        <div class="glass-image-frame" style="opacity:0.85;">
-          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/xr-hands_a4c93a9e.png" alt="XR NeuroAttention Platform" style="width:100%;filter:brightness(0.85);" />
+        <div class="glass-image-frame photo-slot" data-photo-frame style="--photo-ratio:4/3;">
+          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/xr-hands_a4c93a9e.png" alt="XR NeuroAttention Platform" width="1200" height="900" style="filter:brightness(0.85);" />
+          <span class="photo-fallback">
+            <span class="photo-fallback-label">XR NeuroAttention Platform</span>
+            <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+          </span>
         </div>
       </div>
       <div class="fade-right">
@@ -437,7 +445,7 @@
 <section class="section">
   <div class="section-divider"></div>
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 400px;align-items:center;gap:4rem;">
+    <div class="split-media">
       <div class="fade-left">
         <p class="eyebrow" data-i18n="lab.eyebrow">Лаборатория</p>
         <h2 class="heading-space h2-block" data-i18n="lab.title">NeuroAttention Lab</h2>
@@ -452,15 +460,40 @@
         </a>
       </div>
       <div class="fade-right">
-        <div class="img-stack">
-          <div class="stack-layer">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab — Research Center" />
+        <div class="img-stack-set">
+          <div class="img-stack" id="home-lab-photos">
+            <div class="stack-layer is-selected" id="home-lab-photo-1" role="tabpanel" aria-labelledby="home-lab-tab-1" data-photo-frame>
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab — Research Center" width="800" height="600" />
+              <span class="photo-fallback">
+                <span class="photo-fallback-label">NeuroAttention Lab — Research Center</span>
+                <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+              </span>
+            </div>
+            <div class="stack-layer" id="home-lab-photo-2" role="tabpanel" aria-labelledby="home-lab-tab-2" aria-hidden="true" data-photo-frame>
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/lab-people_16bf681d.png" alt="NeuroAttention Lab — Team" width="800" height="600" />
+              <span class="photo-fallback">
+                <span class="photo-fallback-label">NeuroAttention Lab — Team</span>
+                <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+              </span>
+            </div>
+            <div class="stack-layer" id="home-lab-photo-3" role="tabpanel" aria-labelledby="home-lab-tab-3" aria-hidden="true" data-photo-frame>
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/9FLlIapWX4OsEeRQFNPo4_bec1ef8e.png" alt="NeuroAttention Headband Device" width="800" height="600" />
+              <span class="photo-fallback">
+                <span class="photo-fallback-label">NeuroAttention Headband Device</span>
+                <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+              </span>
+            </div>
           </div>
-          <div class="stack-layer">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/lab-people_16bf681d.png" alt="NeuroAttention Lab — Team" />
-          </div>
-          <div class="stack-layer">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/9FLlIapWX4OsEeRQFNPo4_bec1ef8e.png" alt="NeuroAttention Headband Device" />
+          <div class="img-stack-tabs" role="tablist" aria-label="Фотографии лаборатории" data-i18n-aria-label="media.stack_label">
+            <button type="button" class="img-stack-tab" role="tab" id="home-lab-tab-1" aria-controls="home-lab-photo-1" aria-selected="true" data-i18n-aria-label="media.stack_research_label" aria-label="Фотография исследовательского центра">
+              <span data-i18n="media.stack_research">Центр</span>
+            </button>
+            <button type="button" class="img-stack-tab" role="tab" id="home-lab-tab-2" aria-controls="home-lab-photo-2" aria-selected="false" tabindex="-1" data-i18n-aria-label="media.stack_team_label" aria-label="Фотография команды лаборатории">
+              <span data-i18n="media.stack_team">Команда</span>
+            </button>
+            <button type="button" class="img-stack-tab" role="tab" id="home-lab-tab-3" aria-controls="home-lab-photo-3" aria-selected="false" tabindex="-1" data-i18n-aria-label="media.stack_device_label" aria-label="Фотография устройства">
+              <span data-i18n="media.stack_device">Устройство</span>
+            </button>
           </div>
         </div>
       </div>
@@ -510,8 +543,12 @@
     <div class="max-w-5xl">
       <div class="grid grid-2 mb-14" style="align-items:center;gap:3.5rem;">
         <div class="fade-left">
-          <div class="glass-image-frame">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/M_DTf7X8DKDIl-UQ20mDL_36123af8.png" alt="Nick Ivanov — Founder" style="width:100%;max-width:22rem;" />
+          <div class="glass-image-frame photo-slot" data-photo-frame style="--photo-ratio:3/4;max-width:22rem;">
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/M_DTf7X8DKDIl-UQ20mDL_36123af8.png" alt="Nick Ivanov — Founder" width="600" height="800" />
+            <span class="photo-fallback">
+              <span class="photo-fallback-label">Nick Ivanov — Founder</span>
+              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+            </span>
           </div>
         </div>
         <div class="fade-right">
@@ -538,24 +575,36 @@
 
       <div class="grid grid-3 fade-up">
         <div class="glass-card-elevated card-base card-hover text-center">
-          <div class="team-photo">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/takhir_5840163f.png" alt="Takhir Kennedy" />
+          <div class="team-photo" data-photo-frame>
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/takhir_5840163f.png" alt="Takhir Kennedy" width="400" height="400" />
+            <span class="photo-fallback">
+              <span class="photo-fallback-label">Takhir Kennedy</span>
+              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+            </span>
           </div>
           <h4 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.25rem 0;">Takhir Kennedy</h4>
           <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 0.5rem 0;" data-i18n="team.takhir_role">Co-founder &amp; CTO</p>
           <p style="font-size:12px;line-height:1.55;color:var(--text-muted);margin:0;" data-i18n="team.takhir_desc">Leads XR platform architecture, technology development and training systems.</p>
         </div>
         <div class="glass-card-elevated card-base card-hover text-center">
-          <div class="team-photo">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/siya_573676f8.png" alt="Sia Ivanova" />
+          <div class="team-photo" data-photo-frame>
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/siya_573676f8.png" alt="Sia Ivanova" width="400" height="400" />
+            <span class="photo-fallback">
+              <span class="photo-fallback-label">Sia Ivanova</span>
+              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+            </span>
           </div>
           <h4 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.25rem 0;">Sia Ivanova</h4>
           <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 0.5rem 0;" data-i18n="team.sia_role">Creative Director</p>
           <p style="font-size:12px;line-height:1.55;color:var(--text-muted);margin:0;" data-i18n="team.sia_desc">Designs NeuroAttention environments integrating aesthetics, perception &amp; therapeutic impact.</p>
         </div>
         <div class="glass-card-elevated card-base card-hover text-center">
-          <div class="team-photo">
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/egor_c0f29eba.png" alt="Yegor Kondratev" />
+          <div class="team-photo" data-photo-frame>
+            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/egor_c0f29eba.png" alt="Yegor Kondratev" width="400" height="400" />
+            <span class="photo-fallback">
+              <span class="photo-fallback-label">Yegor Kondratev</span>
+              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+            </span>
           </div>
           <h4 class="heading-space" style="font-size:1.0625rem;color:var(--text-primary);margin:0 0 0.25rem 0;">Yegor Kondratev</h4>
           <p class="mono" style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin:0 0 0.5rem 0;" data-i18n="team.yegor_role">Media Director</p>
