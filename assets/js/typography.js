@@ -10,7 +10,7 @@
 
    Re-runs on `langchange` (fired by i18n.js) so it works in RU/EN/ES.
    ============================================================================ */
-(function () {
+(function (exp) {
   'use strict';
 
   var NBSP = ' ';
@@ -27,7 +27,11 @@
   // Cap an unbreakable run. Gluing every short word AND the final pair turned
   // "for human attention" / "para la atención humana" / "человеческого внимания"
   // into one min-content string, which stretched grid tracks past the container.
-  // Short-word and orphan glue still apply when the whole run stays within the cap.
+  // An unbreakable run is a maximal span with no regular break space. Its length
+  // INCLUDES every NBSP already emitted and the NBSP about to be inserted.
+  // "for the human" may become "for\u00a0the human" (run of 7). It must not become
+  // "for\u00a0the\u00a0human" (13). Replay is stable because the second pass sees
+  // the same NBSP-inclusive length.
   var MAX_RUN = 12;
 
   function isBreakSpace(ch) {
@@ -57,8 +61,11 @@
           if (parts[j] && !/^[ \n\t\r]+$/.test(parts[j])) { prev = parts[j]; break; }
         }
         var prevWord = lastWord(prev).toLowerCase();
-        if (p === ' ' && SHORT_SET[prevWord] && next && (run + next.length) <= MAX_RUN) {
+        // +1 is the NBSP this branch would insert. next.length already includes
+        // any NBSP inside the following token (replay / langchange).
+        if (p === ' ' && SHORT_SET[prevWord] && next && (run + 1 + next.length) <= MAX_RUN) {
           out += NBSP;
+          run += 1;
         } else {
           out += p;
           run = 0;
@@ -83,6 +90,11 @@
       return a + NBSP + b;
     });
   }
+
+  if (exp) {
+    exp.exports = { glueShort: glueShort, glueOrphan: glueOrphan, MAX_RUN: MAX_RUN, NBSP: NBSP };
+  }
+  if (typeof document === 'undefined') return;
 
   function processEl(el) {
     if (el.dataset && el.dataset.naNoTypo === '1') return;
@@ -117,4 +129,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule);
   else schedule();
   document.addEventListener('langchange', schedule);
-})();
+})(typeof module !== 'undefined' && module.exports ? module : null);
