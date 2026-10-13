@@ -10,12 +10,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const chromePath = process.env.CHROME_PATH || '/usr/bin/google-chrome';
+const shotDir = '/opt/cursor/artifacts/issue-165';
+// The face that wins each stack in redesign.css (--body-font / --hero-font /
+// --mono-font) plus Space Grotesk where a control sets it directly.
+// DM Sans is only the fallback behind Inter, so Chrome does not download it.
+const INTENDED_FACES = [
+  { selector: 'body', family: 'Inter', weight: '400' },
+  { selector: '.heading-space, h1, h2', family: 'Unbounded', weight: '500' },
+  { selector: '.eyebrow', family: 'JetBrains Mono', weight: '600' },
+  { selector: '.img-stack-tab, .photo-fallback-label', family: 'Space Grotesk', weight: '600' },
+];
 const WIDTHS = [320, 375, 390, 430, 768, 1180, 1440];
 const LANGS = ['ru', 'en', 'es'];
 const ROUTES = [
@@ -114,22 +125,57 @@ async function measure(page) {
   return page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
     const bad = [];
-    const sel = 'h1, h2, h3, .glass-card, .img-stack, .split-media, .grid.grid-2, .card-row > *, .img-stack-tabs';
-    document.querySelectorAll(sel).forEach((el) => {
+    function boxFor(el) {
+      const container = el.closest('.container');
+      if (!container) return vw;
+      const pcs = getComputedStyle(container);
+      return container.clientWidth - parseFloat(pcs.paddingLeft) - parseFloat(pcs.paddingRight);
+    }
+    function labelOf(el) {
+      return ((el.className && String(el.className)) || el.tagName).toString().slice(0, 80);
+    }
+    const boxes = 'h1, h2, h3, .glass-card, .glass-card-elevated, .glass-card-bright, .fact-card, .stat-box, .pillar, .img-stack, .split-media, .grid.grid-2, .card-row, .img-stack-tabs';
+    document.querySelectorAll(boxes).forEach((el) => {
       const cs = getComputedStyle(el);
       if (cs.display === 'none' || cs.visibility === 'hidden') return;
       if (el.offsetWidth < 1 || el.offsetHeight < 1) return;
-      const container = el.closest('.container');
-      let box = vw;
-      if (container) {
-        const pcs = getComputedStyle(container);
-        box = container.clientWidth - parseFloat(pcs.paddingLeft) - parseFloat(pcs.paddingRight);
-      }
-      const label = (el.className && String(el.className).slice(0, 60)) || el.tagName;
-      // offsetWidth ignores the scroll-fade translate, so a pre-reveal slide
-      // is not reported as overflow. A card wider than the content box is.
+      const box = boxFor(el);
       if (el.offsetWidth > box + 1.5) {
-        bad.push({ kind: 'wider', label, w: el.offsetWidth, box: Math.round(box * 10) / 10 });
+        bad.push({ kind: 'wider', label: labelOf(el), w: el.offsetWidth, box: Math.round(box * 10) / 10 });
+      }
+    });
+    // Rendered line boxes, not just the element's border box. A heading or
+    // card line that paints past its own padding is a clip even when the
+    // card's offsetWidth still matches the column.
+    const textHosts = 'h1, h2, h3, .card-row .heading-space, .list-bullet li, .glass-card p, .glass-card-elevated p, .fact-card p, .stat-box, .img-stack-tab';
+    document.querySelectorAll(textHosts).forEach((el) => {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return;
+      if (el.clientWidth < 1 || el.clientHeight < 1) return;
+      const text = (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+      if (!text) return;
+      if (el.scrollWidth > el.clientWidth + 2) {
+        bad.push({ kind: 'text-clipped', label: labelOf(el), text, scroll: el.scrollWidth, client: el.clientWidth });
+      }
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const host = el.getBoundingClientRect();
+      const padL = parseFloat(cs.paddingLeft) || 0;
+      const padR = parseFloat(cs.paddingRight) || 0;
+      for (const r of range.getClientRects()) {
+        if (r.width < 1 || r.height < 1) continue;
+        if (r.left < host.left + padL - 1.5 || r.right > host.right - padR + 1.5) {
+          bad.push({
+            kind: 'text-outside',
+            label: labelOf(el),
+            text,
+            left: Math.round(r.left),
+            right: Math.round(r.right),
+            hostL: Math.round(host.left + padL),
+            hostR: Math.round(host.right - padR),
+          });
+          break;
+        }
       }
     });
     const stacks = [...document.querySelectorAll('.img-stack')].map((el) => {
@@ -159,6 +205,55 @@ async function measure(page) {
     });
     return { bad, stacks, logoInfo, nbspTooLong, scroll: document.documentElement.scrollWidth, client: vw };
   });
+}
+
+async function intendedFontReport(page) {
+  return page.evaluate(async (specs) => {
+    const link = document.getElementById('na-fonts');
+    const deadline = Date.now() + 15000;
+    while (link && link.media !== 'all' && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    if (document.fonts && document.fonts.ready) {
+      await Promise.race([
+        document.fonts.ready,
+        new Promise((r) => setTimeout(r, 15000)),
+      ]);
+    }
+    const faces = [];
+    document.fonts.forEach((face) => {
+      faces.push({
+        family: String(face.family).replace(/^['"]|['"]$/g, ''),
+        weight: String(face.weight),
+        status: face.status,
+      });
+    });
+    const missing = [];
+    if (!link || link.media !== 'all') missing.push('stylesheet media=' + (link && link.media));
+    specs.forEach((spec) => {
+      const el = document.querySelector(spec.selector);
+      if (!el) return;
+      const specified = getComputedStyle(el).fontFamily || '';
+      const first = specified.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+      const weights = spec.weight === '400' ? ['400', 'normal'] : [spec.weight];
+      const loaded = faces.some((f) => f.family === spec.family && weights.includes(f.weight) && f.status === 'loaded');
+      const check = document.fonts.check(spec.weight + ' 16px "' + spec.family + '"');
+      if (first !== spec.family || !loaded || !check) {
+        missing.push(spec.family + ' ' + spec.weight + ' first=' + first + ' loaded=' + loaded + ' check=' + check);
+      }
+    });
+    return {
+      media: link ? link.media : null,
+      missing,
+      loaded: faces.filter((f) => f.status === 'loaded').map((f) => f.family + ' ' + f.weight),
+      errored: faces.filter((f) => f.status === 'error').map((f) => f.family + ' ' + f.weight),
+      cls: window.__cls || 0,
+    };
+  }, INTENDED_FACES);
+}
+
+function fontBlockingError(report) {
+  return 'External font blocking: the normal-network matrix requires the painted faces (Inter 400, Unbounded 500, JetBrains Mono 600, and Space Grotesk 600 where that control exists) to load. A system-font fallback is not a pass. ' + JSON.stringify(report);
 }
 
 function hangFonts(page) {
@@ -200,22 +295,46 @@ test.after(async () => {
   if (server) server.kill();
 });
 
-test('marketing pages fit the content box at every width and language', async () => {
+const NORMAL_SHOTS = {
+  'en 390 home': 'fonts-normal-home-390-en',
+  'ru 430 home': 'fonts-normal-home-430-ru',
+  'es 320 lab': 'fonts-normal-lab-320-es',
+  'en 1180 lab': 'fonts-normal-lab-1180-en',
+};
+
+async function shoot(page, file, filename) {
+  fs.mkdirSync(shotDir, { recursive: true });
+  await page.evaluate((which) => {
+    document.documentElement.style.scrollBehavior = 'auto';
+    const target = which === 'index.html'
+      ? document.querySelector('.grid.grid-2 .glass-card')
+      : document.querySelector('h1');
+    if (target) target.scrollIntoView({ block: 'center' });
+  }, file);
+  await page.screenshot({ path: path.join(shotDir, filename + '.png') });
+}
+
+test('marketing pages fit the content box with intended fonts loaded', async () => {
   const failures = [];
   for (const lang of LANGS) {
     const page = await bootPage(browser, lang);
+    // Photo URLs 403. Aborting them keeps the matrix on layout and fonts.
+    // Google Fonts requests are allowed: this matrix is the normal-network pass.
     await page.setRequestInterception(true);
     page.on('request', (req) => {
       const url = req.url();
-      if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com') || url.includes('cloudfront.net')) {
-        req.abort().catch(() => {});
-      } else {
-        req.continue().catch(() => {});
-      }
+      if (url.includes('cloudfront.net')) req.abort().catch(() => {});
+      else req.continue().catch(() => {});
     });
     for (const width of WIDTHS) {
       for (const [name, file] of ROUTES) {
         await open(page, base, file, width);
+        const fonts = await intendedFontReport(page);
+        if (fonts.missing.length || fonts.media !== 'all') {
+          assert.fail(fontBlockingError(fonts));
+        }
+        const shot = NORMAL_SHOTS[lang + ' ' + width + ' ' + name];
+        if (shot) await shoot(page, file, shot);
         if (page.__errors.length) {
           failures.push(lang + ' ' + width + ' ' + name + ' pageerror ' + page.__errors.join(' | '));
           page.__errors.length = 0;
@@ -441,23 +560,20 @@ test('a stalled Google Fonts stylesheet does not block first paint', async () =>
   assert.equal(samples.length, 3);
 });
 
-test('loaded fonts may swap, and a huge layout shift fails', async () => {
+test('a stalled Google Fonts sheet still lays out cards on fallback faces', async () => {
   const page = await bootPage(browser, 'en');
-  await page.setViewport({ width: 390, height: 900, deviceScaleFactor: 1 });
-  await page.goto(base + 'index.html', { waitUntil: 'load', timeout: 20000 });
-  await page.waitForFunction(
-    () => document.body && getComputedStyle(document.body).opacity !== '0',
-    { timeout: 8000 }
-  );
-  await page.evaluate(() => (document.fonts && document.fonts.ready) || Promise.resolve());
-  await new Promise((r) => setTimeout(r, 400));
-  const snap = await page.evaluate(() => ({
-    media: document.getElementById('na-fonts') ? document.getElementById('na-fonts').media : null,
-    cls: window.__cls || 0,
-    h1: document.querySelector('h1').getBoundingClientRect().height,
+  const hung = await hangFonts(page);
+  await open(page, base, 'index.html', 390);
+  const fonts = await page.evaluate(() => ({
+    media: document.getElementById('na-fonts').media,
+    loaded: [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family),
   }));
-  assert.ok(snap.h1 > 0);
-  assert.ok(snap.cls < 0.25, 'cls ' + snap.cls + ' media ' + snap.media);
+  assert.equal(fonts.media, 'print');
+  assert.deepEqual(fonts.loaded, []);
+  const m = await measure(page);
+  assert.deepEqual(m.bad, [], m.bad.slice(0, 6).map((b) => JSON.stringify(b)).join('\n'));
+  await shoot(page, 'index.html', 'fonts-fallback-home-390-en');
+  release(hung);
   await page.close();
 });
 
