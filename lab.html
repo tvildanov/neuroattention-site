@@ -28,7 +28,11 @@
 <meta name="description" content="NeuroAttention Lab — исследовательская платформа, изучающая внимание, состояние и поведение человека через нейронауку, технологии и практические протоколы." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- Optional. media=print until onload so a stalled fonts.googleapis.com
+     stylesheet cannot block first paint. System stacks in styles.css
+     are the fallback until this sheet applies. -->
+<link id="na-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" /></noscript>
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css" />
 <style>
@@ -325,27 +329,40 @@
         </p>
       </div>
       <div class="fade-right delay-1">
-        <div class="img-stack">
-          <div class="stack-layer" data-photo-frame>
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab — Research Center" width="800" height="600" />
-            <span class="photo-fallback">
-              <span class="photo-fallback-label">NeuroAttention Lab — Research Center</span>
-              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
-            </span>
+        <div class="img-stack-set">
+          <div class="img-stack" id="lab-photos">
+            <div class="stack-layer is-selected" id="lab-photo-1" role="tabpanel" aria-labelledby="lab-tab-1" data-photo-frame>
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/3dgQJFUCtYbiJQ-ek77Vc_6e2e9faa.png" alt="NeuroAttention Lab — Research Center" width="800" height="600" />
+              <span class="photo-fallback">
+                <span class="photo-fallback-label">NeuroAttention Lab — Research Center</span>
+                <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+              </span>
+            </div>
+            <div class="stack-layer" id="lab-photo-2" role="tabpanel" aria-labelledby="lab-tab-2" aria-hidden="true" data-photo-frame>
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/lab-people_16bf681d.png" alt="NeuroAttention Lab — Team" width="800" height="600" />
+              <span class="photo-fallback">
+                <span class="photo-fallback-label">NeuroAttention Lab — Team</span>
+                <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+              </span>
+            </div>
+            <div class="stack-layer" id="lab-photo-3" role="tabpanel" aria-labelledby="lab-tab-3" aria-hidden="true" data-photo-frame>
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/9FLlIapWX4OsEeRQFNPo4_bec1ef8e.png" alt="NeuroAttention Headband Device" width="800" height="600" />
+              <span class="photo-fallback">
+                <span class="photo-fallback-label">NeuroAttention Headband Device</span>
+                <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
+              </span>
+            </div>
           </div>
-          <div class="stack-layer" data-photo-frame>
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/lab-people_16bf681d.png" alt="NeuroAttention Lab — Team" width="800" height="600" />
-            <span class="photo-fallback">
-              <span class="photo-fallback-label">NeuroAttention Lab — Team</span>
-              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
-            </span>
-          </div>
-          <div class="stack-layer" data-photo-frame>
-            <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663454572015/aBJyrmaUr6Sd8oJBaNUZr8/9FLlIapWX4OsEeRQFNPo4_bec1ef8e.png" alt="NeuroAttention Headband Device" width="800" height="600" />
-            <span class="photo-fallback">
-              <span class="photo-fallback-label">NeuroAttention Headband Device</span>
-              <span class="photo-fallback-note" data-i18n="media.unavailable">Фото недоступно</span>
-            </span>
+          <div class="img-stack-tabs" role="tablist" aria-label="Фотографии лаборатории" data-i18n-aria-label="media.stack_label">
+            <button type="button" class="img-stack-tab" role="tab" id="lab-tab-1" aria-controls="lab-photo-1" aria-selected="true" data-i18n-aria-label="media.stack_research_label" aria-label="Фотография исследовательского центра">
+              <span data-i18n="media.stack_research">Центр</span>
+            </button>
+            <button type="button" class="img-stack-tab" role="tab" id="lab-tab-2" aria-controls="lab-photo-2" aria-selected="false" tabindex="-1" data-i18n-aria-label="media.stack_team_label" aria-label="Фотография команды лаборатории">
+              <span data-i18n="media.stack_team">Команда</span>
+            </button>
+            <button type="button" class="img-stack-tab" role="tab" id="lab-tab-3" aria-controls="lab-photo-3" aria-selected="false" tabindex="-1" data-i18n-aria-label="media.stack_device_label" aria-label="Фотография устройства">
+              <span data-i18n="media.stack_device">Устройство</span>
+            </button>
           </div>
         </div>
       </div>

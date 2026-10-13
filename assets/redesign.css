@@ -634,16 +634,76 @@ section:first-of-type > .container > .fade-up > p[style*="1.0625rem"],
 .img-stack:hover .stack-layer:nth-child(1) { transform: rotate(-10deg) translate(-40px, 10px); z-index: 3; }
 .img-stack:hover .stack-layer:nth-child(2) { transform: rotate(0deg) translate(0, -14px) scale(1.03); z-index: 4; }
 .img-stack:hover .stack-layer:nth-child(3) { transform: rotate(10deg) translate(40px, 10px); z-index: 3; }
-/* click-to-front: .front class brings layer to top */
+/* click-to-front: .front class brings layer to top (desktop fan only) */
 .img-stack .stack-layer.front { z-index: 10 !important; transform: rotate(0deg) translate(0, 0) scale(1.02) !important; box-shadow: 0 12px 50px rgba(0,0,0,0.6); }
-/* On a phone the fanned rotation paints outside the column. Keep the reserved
-   4/3 frame and let a tap still bring a layer forward. */
+
+/* Narrow screens cannot show the fan: the three layers share one frame.
+   A tablist under the frame selects which photograph is visible. The tabs
+   sit outside .img-stack so overflow:hidden cannot clip them. */
+.img-stack-set { width: 100%; min-width: 0; }
+.img-stack-tabs { display: none; }
+.img-stack-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  cursor: pointer;
+  flex: 1 1 0;
+}
+.img-stack-tab[aria-selected="true"] {
+  color: var(--text-primary);
+  border-color: rgba(78, 205, 196, 0.75);
+  background: rgba(78, 205, 196, 0.14);
+}
+.img-stack-tab:focus-visible {
+  outline: 2px solid rgba(78, 205, 196, 0.95);
+  outline-offset: 2px;
+}
+
 @media (max-width: 860px) {
-  .img-stack { overflow: hidden; }
-  .img-stack .stack-layer:nth-child(1),
-  .img-stack .stack-layer:nth-child(2),
-  .img-stack .stack-layer:nth-child(3) {
-    transform: none;
+  .img-stack { overflow: hidden; cursor: default; }
+  .img-stack .stack-layer,
+  .img-stack .stack-layer.front,
+  .img-stack:hover .stack-layer,
+  .img-stack:hover .stack-layer.front {
+    transform: none !important;
+    box-shadow: none;
+  }
+  .img-stack .stack-layer {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0 !important;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+  }
+  .img-stack .stack-layer.is-selected {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 2 !important;
+  }
+  .img-stack-tabs {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img-stack .stack-layer,
+  .img-stack .stack-layer.front,
+  .img-stack:hover .stack-layer {
+    transition: none !important;
   }
 }
 
