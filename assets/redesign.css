@@ -664,6 +664,16 @@ section:first-of-type > .container > .fade-up > p[style*="1.0625rem"],
   border-color: rgba(78, 205, 196, 0.75);
   background: rgba(78, 205, 196, 0.14);
 }
+/* "Устройство" is the longest of the three labels. At 320px the three tabs
+   share one row, so the label has to fit the button's padding box. */
+@media (max-width: 400px) {
+  .img-stack-tab {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+}
 .img-stack-tab:focus-visible {
   outline: 2px solid rgba(78, 205, 196, 0.95);
   outline-offset: 2px;
