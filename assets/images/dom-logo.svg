@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2.5" stroke-linejoin="round">
+  <!-- Outer frame -->
+  <rect x="60" y="60" width="280" height="340" rx="4"/>
+  <!-- Top V shape -->
+  <path d="M60 60 L200 180 L340 60"/>
+  <!-- Circle/head -->
+  <circle cx="200" cy="165" r="22"/>
+  <!-- Left flowing curves -->
+  <path d="M60 400 C60 280, 120 240, 160 180 C170 165, 175 155, 180 145"/>
+  <path d="M100 400 C100 300, 140 260, 175 200 C185 182, 188 170, 192 158"/>
+  <!-- Right flowing curves -->
+  <path d="M340 400 C340 280, 280 240, 240 180 C230 165, 225 155, 220 145"/>
+  <path d="M300 400 C300 300, 260 260, 225 200 C215 182, 212 170, 208 158"/>
+</svg>

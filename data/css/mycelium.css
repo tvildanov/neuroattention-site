@@ -1,0 +1,859 @@
+/* ============================================================================
+   MYCELIUM — laboratory light-map visual layer for NeuroAttention Lab
+   New, isolated visual system. Does NOT touch any global styles.
+   All classes are namespaced `myc-*`. Tokens live under `:root` but are
+   prefixed `--myc-*` so they never collide with the existing theme.
+
+   Visual language: 85–95% black/white/graphite. Almost-black deep blue-black
+   background, white/milky/translucent light tracts, rare neuro-green & cold
+   cyan accents. No purple. Wine-red only for crisis states.
+   ============================================================================ */
+
+:root {
+  /* — backgrounds (deep, near-black blue-black) — */
+  --myc-bg-0: #020407;
+  --myc-bg-1: #05070B;
+  --myc-bg-2: #070B12;
+
+  /* — light tracts (the white nervous system) — */
+  --myc-line-primary:   rgba(255,255,255,0.88);
+  --myc-line-secondary: rgba(255,255,255,0.28);
+  --myc-line-muted:     rgba(255,255,255,0.10);
+  --myc-line-faint:     rgba(255,255,255,0.045);
+
+  /* — rare accents — */
+  --myc-green:      #8DFFC8;
+  --myc-green-deep: #56F2A6;
+  --myc-cyan:       #A8F7FF;
+  --myc-cyan-deep:  #5EDFFF;
+
+  /* — crisis only — */
+  --myc-wine: #4B111D;
+
+  /* — text — */
+  --myc-text:      rgba(255,255,255,0.92);
+  --myc-text-dim:  rgba(255,255,255,0.46);
+  --myc-text-mono: rgba(255,255,255,0.34);
+}
+
+/* ── Root container ─────────────────────────────────────────────────────── */
+.myc-root {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  background:
+    radial-gradient(120% 80% at 18% 30%, rgba(94,223,255,0.04), transparent 60%),
+    radial-gradient(140% 90% at 85% 70%, rgba(141,255,200,0.03), transparent 55%),
+    linear-gradient(180deg, var(--myc-bg-1), var(--myc-bg-0));
+  border: 1px solid var(--myc-line-muted);
+  overflow: hidden;
+  color: var(--myc-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* C п.9: the path must never text-select (red highlight) when clicking nodes */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+/* C п.11: selected-node ring softly pulses so it reads apart from "current" */
+.myc-node-selected { animation: myc-sel-pulse 2.2s ease-in-out infinite; }
+@keyframes myc-sel-pulse { 0%,100%{opacity:0.55;} 50%{opacity:1;} }
+
+/* horizontal scroll viewport */
+.myc-viewport {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  scrollbar-width: thin;
+  scrollbar-color: var(--myc-line-secondary) transparent;
+}
+.myc-viewport.is-panning { cursor: grabbing; }
+.myc-viewport::-webkit-scrollbar { height: 6px; }
+.myc-viewport::-webkit-scrollbar-track { background: transparent; }
+.myc-viewport::-webkit-scrollbar-thumb {
+  background: var(--myc-line-muted); border-radius: 3px;
+}
+
+.myc-svg { display: block; }
+
+/* fade-in of the whole field */
+.myc-svg .myc-fade {
+  opacity: 0;
+  animation: myc-fade-in 1.1s cubic-bezier(.2,.7,.2,1) forwards;
+}
+@keyframes myc-fade-in { to { opacity: 1; } }
+
+/* node hover scale (smooth) */
+.myc-node { transition: transform .35s cubic-bezier(.2,.7,.2,1); transform-box: fill-box; transform-origin: center; }
+.myc-node:hover { cursor: pointer; }
+.myc-node.is-clickable:hover .myc-node-core { transform: scale(1.18); }
+.myc-node-core { transition: transform .3s cubic-bezier(.2,.7,.2,1); transform-box: fill-box; transform-origin: center; }
+
+/* current-step slow pulse */
+@keyframes myc-pulse {
+  0%,100% { opacity: .35; r: var(--myc-pulse-r0); }
+  50%     { opacity: .08; r: var(--myc-pulse-r1); }
+}
+
+/* ── Hover card ─────────────────────────────────────────────────────────── */
+.myc-card {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 10px 12px;
+  background: rgba(5,7,11,0.92);
+  border: 1px solid var(--myc-line-secondary);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.myc-card.is-visible { opacity: 1; transform: translateY(0); }
+.myc-card-title {
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  color: var(--myc-text); margin: 0 0 4px;
+}
+.myc-card-meta {
+  font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--myc-text-mono); margin: 0 0 6px;
+}
+.myc-card-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--myc-text-dim); margin-top: 3px;
+}
+.myc-card-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.myc-card-dot.done    { background: var(--myc-green); box-shadow: 0 0 8px var(--myc-green); }
+.myc-card-dot.current { background: var(--myc-cyan);  box-shadow: 0 0 8px var(--myc-cyan); }
+.myc-card-dot.open    { background: var(--myc-line-secondary); }
+.myc-card-dot.locked  { background: var(--myc-line-muted); }
+
+/* ── Legend / chrome ────────────────────────────────────────────────────── */
+.myc-legend {
+  position: absolute; left: 14px; bottom: 12px; z-index: 15;
+  display: flex; gap: 14px; flex-wrap: wrap;
+  pointer-events: none;
+}
+.myc-legend span {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; letter-spacing: .03em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--myc-text-mono);
+}
+.myc-legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+.myc-hint {
+  position: absolute; right: 14px; top: 12px; z-index: 15;
+  font-size: 10px; letter-spacing: .04em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--myc-text-mono); pointer-events: none; user-select: none;
+}
+
+/* ── Empty / fallback ───────────────────────────────────────────────────── */
+.myc-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; min-height: 220px; padding: 2rem; text-align: center;
+}
+.myc-empty-glyph { font-size: 26px; opacity: .5; }
+.myc-empty-text { font-size: 13px; color: var(--myc-text-dim); max-width: 320px; line-height: 1.5; }
+
+/* ============================================================================
+   Stage 2 — Personal Evolution Path chrome (shares the tokens above)
+   ============================================================================ */
+.myc-evo-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem;
+}
+.myc-evo-title { margin: 0 0 0.2rem; font-size: 16px; color: var(--myc-text); font-weight: 600; }
+.myc-evo-sub { margin: 0; font-size: 12px; color: var(--myc-text-dim); max-width: 520px; line-height: 1.5; }
+
+.myc-controls { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.myc-seg {
+  display: inline-flex; border: 1px solid var(--myc-line-muted); border-radius: 10px;
+  overflow: hidden; background: rgba(255,255,255,0.02);
+}
+.myc-seg button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  color: var(--myc-text-dim); font-size: 11px; letter-spacing: .02em;
+  padding: 0.4rem 0.7rem; font-family: inherit; transition: background .2s, color .2s;
+  white-space: nowrap;
+}
+.myc-seg button + button { border-left: 1px solid var(--myc-line-faint); }
+.myc-seg button:hover { color: var(--myc-text); }
+.myc-seg button.is-active {
+  background: rgba(168,247,255,0.08); color: var(--myc-cyan);
+  box-shadow: inset 0 -2px 0 var(--myc-cyan-deep);
+}
+
+/* layer-view lane labels */
+.myc-lane-label {
+  font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; fill: var(--myc-text-mono);
+}
+
+/* time-cursor slider (single-character view) */
+.myc-scrub {
+  display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: var(--myc-text-mono);
+}
+.myc-scrub input[type=range] { flex: 1; accent-color: var(--myc-cyan-deep); }
+
+/* small stat readouts */
+.myc-stats { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.myc-stat { display: flex; flex-direction: column; gap: 2px; }
+.myc-stat b { font-size: 15px; color: var(--myc-text); font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.myc-stat span { font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--myc-text-mono); }
+
+/* ============================================================================
+   🅱️ CoursePathView polish — resize, "you are here", course-accent theming
+   (B1–B4). All additive + namespaced; no global overrides.
+   ============================================================================ */
+
+/* — B1: resizable map shell — */
+.myc-resize-shell {
+  position: relative;
+  resize: vertical;
+  overflow: hidden;
+  min-height: 200px;
+  max-height: 90vh;
+  border-radius: 14px;
+}
+.myc-resize-shell.is-fullscreen {
+  position: fixed; inset: 3vh 3vw; z-index: 10050;
+  max-height: none; height: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+}
+/* custom grab handle in the bottom-right corner */
+.myc-resize-handle {
+  position: absolute; right: 4px; bottom: 4px; z-index: 16;
+  width: 16px; height: 16px; cursor: nwse-resize;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  color: var(--myc-text-mono); opacity: 0.6; user-select: none;
+  transition: opacity .2s, color .2s;
+}
+.myc-resize-handle:hover { opacity: 1; color: var(--myc-cyan); }
+.myc-resize-handle svg { width: 12px; height: 12px; display: block; }
+
+/* — B3: "you are here" badge over the current node — */
+.myc-here-badge {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+  fill: var(--myc-cyan);
+}
+.myc-here-bg { fill: rgba(5,9,14,0.85); stroke: var(--myc-cyan); stroke-width: 1; }
+.myc-here-pin { stroke: var(--myc-cyan); stroke-width: 1; opacity: .5; }
+
+/* invisible enlarged hit target keeps the node easy to click/hover (B4) */
+.myc-hit { cursor: pointer; }
+
+/* — B2: course-accent theming inside the course player only — */
+#coursePlayerModal {
+  --course-accent: var(--myc-green-deep, #56F2A6);
+  --course-accent-2: var(--myc-green, #8DFFC8);
+  --course-accent-soft: rgba(86,242,166,0.14);
+}
+#coursePlayerModal .btn-solid {
+  background: var(--course-accent);
+  border-color: var(--course-accent);
+  color: #04130c;
+}
+#coursePlayerModal .btn-solid:hover { background: var(--course-accent-2); border-color: var(--course-accent-2); }
+#coursePlayerModal #cp-progress-text { color: var(--course-accent-2); }
+#coursePlayerModal #cp-joint-panel {
+  background: var(--course-accent-soft) !important;
+  border-color: rgba(86,242,166,0.25) !important;
+}
+#coursePlayerModal #cp-joint-panel h4 { color: var(--course-accent-2) !important; }
+/* progress-bar fills + accent chips inside the player → course green */
+#coursePlayerModal .player-bar-fill,
+#coursePlayerModal .cp-progress-fill { background: var(--course-accent) !important; }
+#coursePlayerModal [style*="--accent-cyan"] { }
+
+/* ============================================================================
+   🅲️ Evolution Path rework — field overlays, detail card, panels, toggles
+   ============================================================================ */
+.evo-node:hover .myc-node-core,
+.evo-node:focus { outline: none; }
+.evo-node circle:not(.evo-hit) { transition: transform .25s cubic-bezier(.2,.7,.2,1); transform-box: fill-box; transform-origin: center; }
+.evo-node:hover circle:not(.evo-hit) { transform: scale(1.5); }
+.evo-hit { cursor: pointer; }
+
+/* svg text labels */
+.evo-mod-num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px;
+  letter-spacing: .03em; fill: var(--myc-text-dim);
+}
+.evo-axis-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 9px;
+  letter-spacing: .02em; fill: var(--myc-text-mono);
+}
+/* per-node labels on the spine branches (rework) */
+.evo-node-label {
+  font-family: 'Inter', system-ui, sans-serif; font-size: 9px; fill: var(--myc-text-dim);
+  pointer-events: none; paint-order: stroke; stroke: rgba(6,9,14,0.85); stroke-width: 2.4px;
+}
+.evo-node:hover .evo-node-label { fill: var(--myc-text); }
+.evo-world { cursor: grab; }
+
+/* — mini-neuromap embed overlay (rework, click-on-node) — */
+.evo-mini-nm {
+  position: absolute; z-index: 40; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: 460px; max-width: 92%; height: 440px; max-height: 86%;
+  display: flex; flex-direction: column;
+  background: rgba(7,11,18,0.96); border: 1px solid var(--myc-line-secondary);
+  border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  backdrop-filter: blur(10px); animation: myc-fade-in .18s ease forwards; overflow: hidden;
+}
+.evo-mini-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  padding: 11px 14px; border-bottom: 1px solid var(--myc-line-faint);
+}
+/* PR94 (item 9): hub title carries real content now — let it wrap (up to ~2 lines)
+   instead of clipping. flex:1 + min-width:0 lets it take the row width. */
+.evo-mini-title { font-size: 13px; font-weight: 600; color: var(--myc-text);
+  flex: 1; min-width: 0; line-height: 1.3; overflow-wrap: anywhere; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.evo-mini-x {
+  background: none; border: none; color: var(--myc-text-dim); font-size: 15px; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 7px; line-height: 1;
+}
+.evo-mini-x:hover { color: var(--myc-text); background: rgba(255,255,255,0.06); }
+.evo-mini-body { flex: 1; min-height: 0; position: relative; }
+.evo-mini-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 14px; border-top: 1px solid var(--myc-line-faint);
+}
+.evo-mini-note { font-size: 11px; color: var(--myc-text-mono); }
+.evo-mini-open {
+  background: rgba(86,242,166,0.12); border: 1px solid var(--myc-green-deep);
+  color: var(--myc-green); border-radius: 9px; padding: 7px 12px; font-size: 12px;
+  cursor: pointer; font-family: inherit; white-space: nowrap; margin-left: auto;
+}
+.evo-mini-open:hover { background: rgba(86,242,166,0.22); }
+.evo-mini-label { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; fill: var(--myc-text); pointer-events: none;
+  paint-order: stroke; stroke: rgba(6,9,14,0.85); stroke-width: 2.8px; }
+.evo-mini-type { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 7px; fill: rgba(6,9,14,0.9); pointer-events: none; text-transform: uppercase; font-weight: 700; }
+/* PR93 — type caption under each drill-down node + navigable hub affordances */
+.evo-mini-typecap { font-family: 'Inter', system-ui, sans-serif; font-size: 8px; fill: var(--myc-text-mono); pointer-events: none;
+  text-transform: uppercase; letter-spacing: 0.06em; paint-order: stroke; stroke: rgba(6,9,14,0.7); stroke-width: 2px; }
+.evo-mini-node { transition: opacity .12s ease; }
+.evo-mini-node:not(.is-hub):hover, .evo-mini-node:not(.is-hub):focus { outline: none; }
+.evo-mini-node:not(.is-hub):hover circle, .evo-mini-node:not(.is-hub):hover rect, .evo-mini-node:not(.is-hub):hover path,
+.evo-mini-node:not(.is-hub):focus circle, .evo-mini-node:not(.is-hub):focus rect, .evo-mini-node:not(.is-hub):focus path {
+  stroke: rgba(255,255,255,0.7); stroke-width: 1.4px; }
+.evo-mini-back {
+  background: none; border: none; color: var(--myc-text-dim); font-size: 16px; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 7px; line-height: 1; margin-right: 4px;
+}
+.evo-mini-back:hover { color: var(--myc-text); background: rgba(255,255,255,0.06); }
+
+/* — event detail card (🅲️ C5) — */
+.evo-detail-card {
+  position: absolute; z-index: 30; right: 14px; top: 56px; width: 290px; max-width: 70%;
+  background: rgba(7,11,18,0.94); border: 1px solid var(--myc-line-secondary);
+  border-radius: 12px; padding: 13px 14px 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px); color: var(--myc-text); font-size: 13px; line-height: 1.45;
+  animation: myc-fade-in .2s ease forwards;
+}
+.evo-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.evo-card-head b { font-size: 14px; line-height: 1.25; }
+.evo-card-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; display: inline-block; }
+.evo-card-row { display: flex; justify-content: space-between; gap: 10px; margin: 3px 0; font-size: 12px; }
+.evo-card-row > span:first-child { color: var(--myc-text-dim); }
+.evo-card-v { text-align: right; color: var(--myc-text); min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.evo-card-note { margin: 7px 0; color: var(--myc-text); font-style: italic; opacity: .9; }
+.evo-card-rel-title { margin: 9px 0 5px; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--myc-text-mono); }
+.evo-card-rel { display: flex; flex-wrap: wrap; gap: 5px; }
+.evo-rel {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--myc-line-muted);
+  border-radius: 7px; padding: 3px 7px; font-size: 11px; color: var(--myc-text-dim);
+  font-family: inherit;
+}
+.evo-rel:hover { color: var(--myc-text); border-color: var(--myc-line-secondary); }
+.evo-card-actions { display: flex; gap: 8px; margin-top: 11px; }
+.evo-open {
+  flex: 1; background: var(--myc-green-deep); color: #04130c; border: none;
+  border-radius: 8px; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.evo-open:hover { background: var(--myc-green); }
+.evo-close {
+  flex: 0 0 auto; background: transparent; color: var(--myc-text-dim);
+  border: 1px solid var(--myc-line-muted); border-radius: 8px; padding: 7px 10px;
+  font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.evo-close:hover { color: var(--myc-text); }
+
+/* — avatars — */
+.evo-avatar { border-radius: 50%; object-fit: cover; border: 1px solid var(--myc-line-secondary); display: block; }
+.evo-avatar-ph {
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, rgba(141,255,200,0.18), rgba(7,11,18,0.9));
+  color: var(--myc-green); font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* — left mini user panel (tunnel) — */
+.evo-user-panel {
+  position: absolute; left: 12px; top: 50px; z-index: 18; width: 144px;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  background: rgba(5,9,14,0.55); border: 1px solid var(--myc-line-muted);
+  border-radius: 12px; padding: 12px; backdrop-filter: blur(4px);
+}
+.evo-user-name { font-size: 13px; font-weight: 600; color: var(--myc-text); margin-bottom: 2px; word-break: break-word; }
+.evo-user-lvl { font-size: 11px; color: var(--myc-green); }
+.evo-user-xp { font-size: 10px; color: var(--myc-text-mono); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+/* — right layer toggles — */
+.evo-layer-toggles {
+  position: absolute; right: 12px; top: 50px; z-index: 18; width: 132px;
+  background: rgba(5,9,14,0.55); border: 1px solid var(--myc-line-muted);
+  border-radius: 12px; padding: 10px 12px; backdrop-filter: blur(4px);
+}
+.evo-lt-title { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: var(--myc-text-mono); margin-bottom: 7px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.evo-lt-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--myc-text-dim); padding: 2px 0; cursor: pointer; }
+.evo-lt-row input { accent-color: var(--myc-green-deep); cursor: pointer; }
+.evo-lt-row:hover { color: var(--myc-text); }
+
+/* — character view panels — */
+.evo-char-panel {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%); z-index: 18; width: 180px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+}
+.evo-char-name { font-size: 16px; font-weight: 600; color: var(--myc-text); }
+.evo-char-sub { font-size: 12px; color: var(--myc-green); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.evo-char-profile {
+  margin-top: 4px; background: transparent; color: var(--myc-cyan); cursor: pointer;
+  border: 1px solid var(--myc-cyan-deep); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-family: inherit;
+}
+.evo-char-profile:hover { background: rgba(168,247,255,0.08); }
+/* #8: stat-card sits in the LEFT column directly under the user panel; layer-
+   toggles stay top-RIGHT. They used to both sit on the right edge (one centered,
+   one top) and overlap. Anchoring the stat card below the user panel keeps them
+   clear in both the embedded card and the taller fullscreen overlay. */
+.evo-char-stats {
+  position: absolute; left: 12px; top: 224px; z-index: 17; width: 180px;
+  background: rgba(5,9,14,0.6); border: 1px solid var(--myc-line-muted);
+  border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(4px);
+}
+.evo-cs-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin: 6px 0; font-size: 11px; }
+.evo-cs-row > span { color: var(--myc-text-dim); }
+.evo-cs-row b { color: var(--myc-text); font-weight: 600; font-size: 12px; text-align: right; }
+
+/* — demo badge — */
+.evo-demo-badge {
+  position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); z-index: 19;
+  font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--myc-text-mono);
+  font-family: 'JetBrains Mono', ui-monospace, monospace; pointer-events: none;
+  border: 1px solid var(--myc-line-muted); border-radius: 20px; padding: 2px 10px; background: rgba(5,9,14,0.6);
+}
+
+/* mobile: panels collapse to keep the field usable */
+/* #3: while panning/zooming, drop the expensive glow/halo blur filters on the
+   moving world so the GPU transform stays cheap (no per-frame filter re-raster).
+   They snap back ~160ms after motion stops. */
+.evo-gesturing .evo-world * { filter: none !important; }
+.evo-world { will-change: transform; }
+/* v4: the tunnel is now a <canvas>. touch-action:none so a finger pans the
+   timeline instead of scrolling the page; cursor hints grab. */
+.myc-evo-canvas canvas.evo-2d { display: block; touch-action: none; cursor: grab; }
+.myc-evo-canvas canvas.evo-2d:active { cursor: grabbing; }
+
+/* PR #81: Evolution Path personal layout — a 3-column flex shell that replaces the
+   old absolute-overlay + ≥1280 padding-gutter hack (which left a black third and
+   pushed the snake off-centre in fullscreen, and overlapped the field between
+   720–1280px). The profile/stats cards live in a left rail, the layer toggles in a
+   right rail, and the field renders into the centre `.evo-stage` (1fr) so the snake
+   fills the whole gap between the rails at every width. The cards no longer float
+   over the canvas. The collective path keeps its own `cp-wrap` layout, untouched. */
+.myc-evo-canvas { display: flex; align-items: flex-start; gap: 16px; }
+.evo-rail { flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.evo-rail-l { width: 200px; }
+.evo-rail-r { width: 172px; }
+.evo-stage { flex: 1 1 0%; min-width: 0; align-self: stretch; position: relative; }
+
+/* PR #82: the personal Evolution Path breaks out of the dashboard's centred
+   1440/1520 column to a full-bleed strip so the snake actually fills the screen
+   (the profile rail hugs the left edge, the layers rail the right edge) instead of
+   being squeezed into the middle with wide black gutters. html/body already clip
+   horizontal overflow, so 100vw can't introduce a sideways scrollbar. Scoped to
+   #evo-path only — the collective path (#collective-path / cp-wrap) keeps the
+   normal dashboard width. The fullscreen overlay re-mounts elsewhere, so this rule
+   doesn't touch it. */
+#evo-path { width: 100vw; margin-left: calc(50% - 50vw); padding: 0 16px; box-sizing: border-box; }
+/* PR: the centre stage is now a framed "Evolution Path" panel — a dark rounded
+   rectangle holding the header (title + mode/period controls, relocated here in
+   paint()), the snake, and the time axis. flex:1 already stretches it wall-to-wall
+   between the profile rail (left) and the layers rail (right); the frame just makes
+   that span read as one panel instead of a snake floating in black. Scoped to
+   #evo-path so the fullscreen overlay and the collective path keep their own look. */
+#evo-path .evo-stage {
+  background: rgba(5,9,14,0.40);
+  border: 1px solid var(--myc-line-muted);
+  border-radius: 16px;
+  overflow: hidden;
+}
+#evo-path .evo-stage > .myc-evo-head { margin: 0; padding: 14px 18px 0; }
+/* empty / loading / error states are a lone child of the flex shell — let them
+   span the full width and stay centred instead of hugging the left rail edge */
+.myc-evo-canvas > .myc-empty { flex: 1 1 100%; width: 100%; }
+/* cards now flow inside their rail — neutralise the legacy absolute coordinates */
+.evo-rail .evo-user-panel,
+.evo-rail .evo-layer-toggles,
+.evo-rail .evo-char-panel,
+.evo-rail .evo-char-stats {
+  position: static; left: auto; right: auto; top: auto; bottom: auto; transform: none;
+  box-sizing: border-box; width: 100%; z-index: auto; margin: 0;
+}
+
+@media (max-width: 760px) {
+  /* phone: collapse the 3 columns into one — profile → snake → layers (source
+     order), each spanning the full width, so the field gets full width instead of
+     a crushed vertical strip. align-items:stretch (vs the desktop flex-start) lets
+     the rails fill the row width. */
+  .myc-evo-canvas { flex-direction: column; align-items: stretch; gap: 10px; overflow-x: hidden; }
+  .evo-rail, .evo-rail-l, .evo-rail-r { width: auto; }
+  .evo-char-stats { font-size: 11px; }
+  /* mobile fullscreen: push the mode/period controls below the overlay's own
+     title so they don't overlap it */
+  .na-fs-body .myc-evo-head { margin-top: 1.6rem; flex-wrap: wrap; gap: 0.5rem; }
+}
+
+/* ============================================================================
+   External Field tool
+   ============================================================================ */
+.ef-root { color: var(--text-primary, #e8edf2); }
+.ef-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.ef-title { margin: 0 0 0.2rem; font-size: 1.15rem; }
+.ef-sub { margin: 0; font-size: 12px; color: var(--text-muted, #8c98a6); max-width: 40rem; line-height: 1.5; }
+.ef-head-actions { display: flex; align-items: center; gap: 0.5rem; }
+.ef-loc-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary, #c3ccd6); border-radius: 9px; padding: 0.4rem 0.8rem; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.ef-loc-btn:hover { background: rgba(255,255,255,0.1); }
+.ef-gear { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: var(--text-secondary, #c3ccd6); border-radius: 9px; width: 34px; height: 32px; font-size: 15px; cursor: pointer; }
+.ef-gear:hover { background: rgba(255,255,255,0.1); }
+.ef-tabs { display: flex; gap: 0.25rem; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 1.25rem; padding-bottom: 1px; }
+.ef-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted, #8c98a6); font-size: 12.5px; font-weight: 500; padding: 0.55rem 0.7rem; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.35rem; }
+.ef-tab:hover { color: var(--text-secondary, #c3ccd6); }
+.ef-tab.active { color: var(--accent-cyan, #39d3c3); border-bottom-color: var(--accent-cyan, #39d3c3); }
+.ef-tab-ic { font-size: 13px; display: inline-flex; align-items: center; }
+.ef-tab-ic svg { display: block; }
+.na-ic { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.15em; line-height: 0; }
+.na-ic svg { display: block; }
+.ex-ic-svg { width: 1.6em; height: 1.6em; }
+.ex-ic .na-ic { width: 100%; height: 100%; }
+.ef-htl { position: relative; margin: 0 0 1.1rem; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; background: rgba(0,0,0,0.22); overflow: hidden; }
+.ef-htl-canvas { display: block; width: 100%; cursor: grab; touch-action: none; }
+.ef-htl-canvas:active { cursor: grabbing; }
+.ef-htl-hint { font-size: 11px; color: var(--text-mono, #5b6b7a); padding: 0.35rem 0.75rem 0.55rem; }
+.ef-htl-tip { position: absolute; top: 28px; z-index: 2; max-width: 220px; padding: 0.45rem 0.6rem; border-radius: 8px; background: rgba(10,14,20,0.94); border: 1px solid rgba(255,255,255,0.12); font-size: 11px; color: var(--text-secondary,#c3ccd6); line-height: 1.4; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+.ef-hist-head { display: flex; align-items: center; gap: 0.4rem; }
+.ef-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.6rem; margin-bottom: 1.25rem; }
+.ef-stat { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.7rem 0.85rem; }
+.ef-stat-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mono, #5b6b7a); margin-bottom: 0.3rem; }
+.ef-stat-v { font-size: 18px; font-weight: 600; color: var(--text-primary, #e8edf2); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-mono, #5b6b7a); margin: 0.5rem 0 0.8rem; }
+.ef-timeline { display: flex; flex-direction: column; gap: 0.5rem; }
+.ef-item { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-left: 2px solid rgba(57,211,195,0.4); border-radius: 10px; padding: 0.6rem 0.8rem; }
+.ef-item-top { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.ef-item-title { font-size: 13px; color: var(--text-primary, #e8edf2); font-weight: 500; }
+.ef-sev { font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--accent-cyan, #39d3c3); background: rgba(57,211,195,0.12); border-radius: 5px; padding: 1px 6px; }
+.ef-item-desc { font-size: 12px; color: var(--text-secondary, #b3bdc7); margin: 0.3rem 0 0; line-height: 1.5; }
+.ef-item-meta { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.4rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-src { color: var(--text-mono, #5b6b7a); text-decoration: none; }
+a.ef-src:hover { color: var(--accent-cyan, #39d3c3); }
+.ef-empty, .ef-loading, .ef-geo-none { color: var(--text-muted, #8c98a6); font-size: 13px; padding: 1.5rem 0.5rem; text-align: center; }
+.ef-note, .ef-need-loc { font-size: 12px; color: var(--text-secondary, #b3bdc7); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 1rem; line-height: 1.55; }
+.ef-warn { font-size: 12px; color: #e9c46a; background: rgba(233,196,106,0.08); border: 1px solid rgba(233,196,106,0.2); border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 1rem; line-height: 1.55; }
+.ef-prompt { text-align: center; padding: 2.5rem 1rem; }
+.ef-prompt-ic { font-size: 30px; margin-bottom: 0.5rem; }
+.ef-prompt p { color: var(--text-secondary, #b3bdc7); font-size: 14px; max-width: 24rem; margin: 0 auto 1.25rem; line-height: 1.55; }
+.ef-loc-line { font-size: 12px; color: var(--text-secondary,#b3bdc7); margin-bottom: 0.75rem; }
+.ef-suntimes { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary,#b3bdc7); margin-bottom: 1.25rem; }
+.ef-foot, .ef-foot-inline { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 1.25rem; line-height: 1.5; }
+/* modals */
+.ef-modal-ov { position: fixed; inset: 0; z-index: 5000; background: rgba(6,8,11,0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.ef-modal { width: 460px; max-width: 100%; max-height: 86vh; overflow: auto; background: rgba(10,14,20,0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+.ef-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.07); color: var(--text-primary,#e8edf2); }
+.ef-modal-x { background: none; border: none; color: var(--text-muted,#8c98a6); font-size: 15px; cursor: pointer; }
+.ef-modal-body { padding: 1.1rem; }
+.ef-modal-p { font-size: 12.5px; color: var(--text-muted,#8c98a6); margin: 0 0 1rem; line-height: 1.55; }
+.ef-input { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; color: var(--text-primary,#e8edf2); padding: 0.6rem 0.75rem; font-size: 13px; margin-bottom: 0.5rem; }
+.ef-coords { display: flex; gap: 0.5rem; }
+.ef-or { text-align: center; font-size: 11px; color: var(--text-mono,#5b6b7a); margin: 0.75rem 0; text-transform: uppercase; letter-spacing: 0.08em; }
+.ef-geo-results { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.25rem; }
+.ef-geo-r { text-align: left; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; color: var(--text-secondary,#c3ccd6); padding: 0.5rem 0.7rem; font-size: 13px; cursor: pointer; }
+.ef-geo-r:hover { background: rgba(57,211,195,0.1); color: var(--text-primary,#e8edf2); }
+.ef-modal-save { width: 100%; justify-content: center; margin-top: 0.75rem; font-size: 13px; }
+.ef-sub-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.ef-sub-name { flex: 1; min-width: 120px; font-size: 13px; color: var(--text-primary,#e8edf2); }
+.ef-chk { font-size: 11px; color: var(--text-muted,#8c98a6); display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer; }
+.ef-chk input { accent-color: var(--accent-cyan, #39d3c3); }
+
+/* ── External Field polish v1: scales/gauges, sparklines, maps, GW timeline ── */
+.ef-gauge { margin-bottom: 1.15rem; }
+.ef-g-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem; }
+.ef-g-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mono, #5b6b7a); }
+.ef-g-val { font-size: 15px; font-weight: 600; color: var(--text-primary, #e8edf2); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+/* PACK 2: value bubble that rides above the marker at the current position */
+.ef-g-valrow { position: relative; height: 20px; }
+.ef-g-bubble { position: absolute; bottom: 1px; transform: translateX(-50%); font-size: 12px; font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--text-primary, #e8edf2);
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); border-radius: 4px;
+  padding: 1px 6px; white-space: nowrap; line-height: 1.3; }
+.ef-g-bubble::after { content: ''; position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%);
+  border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid rgba(255,255,255,0.16); }
+.ef-g-track { position: relative; display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: rgba(255,255,255,0.05); }
+.ef-g-seg { height: 100%; opacity: 0.6; }
+.ef-g-marker { position: absolute; top: -3px; width: 3px; height: 14px; background: #fff; border-radius: 2px; box-shadow: 0 0 6px rgba(255,255,255,0.8); transform: translateX(-50%); z-index: 2; }
+/* PACK 2: per-zone class tags aligned under their colour bands */
+.ef-g-zlabels { display: flex; margin-top: 0.28rem; }
+.ef-g-zl { font-size: 9px; line-height: 1.2; text-align: center; opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 1px; }
+.ef-g-zl.is-cur { opacity: 1; font-weight: 700; }
+/* PACK 2: numeric range endpoints */
+.ef-g-ends { display: flex; justify-content: space-between; margin-top: 0.15rem; font-size: 10px; color: var(--text-mono, #5b6b7a); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-g-meta { display: flex; justify-content: space-between; margin-top: 0.3rem; }
+.ef-g-zone { font-size: 11px; font-weight: 600; }
+.ef-g-note, .ef-g-range { font-size: 10px; color: var(--text-mono, #5b6b7a); margin-top: 0.25rem; }
+/* sparklines */
+.ef-spark-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }
+.ef-spark-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.7rem 0.85rem; }
+.ef-spark-k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mono, #5b6b7a); margin-bottom: 0.3rem; }
+.ef-spark-v { font-size: 18px; font-weight: 600; color: var(--text-primary, #e8edf2); font-family: 'JetBrains Mono', ui-monospace, monospace; margin-bottom: 0.3rem; }
+.ef-spark { display: block; width: 100%; height: 30px; }
+.ef-spark-cap { font-size: 9.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.15rem; }
+/* SDO image */
+.ef-sdo { margin: 0 0 1.1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.3); }
+.ef-sdo img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: #05080d; }
+.ef-sdo figcaption { font-size: 10.5px; color: var(--text-mono, #5b6b7a); padding: 0.5rem 0.7rem; }
+.ef-sdo figcaption a { color: var(--accent-cyan, #39d3c3); text-decoration: none; }
+.ef-sdo-fail img { display: none; }
+.ef-sdo-fail figcaption::before { content: '⚠ '; }
+/* empty state */
+.ef-empty { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 1.6rem 0.5rem; }
+.ef-empty-ic { font-size: 22px; color: var(--text-mono, #5b6b7a); opacity: 0.6; }
+.ef-empty-t { font-size: 13px; color: var(--text-secondary, #b3bdc7); font-weight: 500; }
+.ef-empty-r { font-size: 11px; color: var(--text-mono, #5b6b7a); text-align: center; max-width: 22rem; line-height: 1.45; }
+/* moon */
+.ef-moon-hero { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+.ef-moon-svg { flex: 0 0 auto; }
+.ef-moon-info { flex: 1; }
+.ef-moon-info .ef-stats { margin-bottom: 0; }
+/* earthquake card + world map */
+.ef-quake { background: rgba(255,93,93,0.05); border: 1px solid rgba(255,93,93,0.18); border-radius: 12px; padding: 0.85rem; margin-bottom: 1.25rem; }
+.ef-quake-top { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.7rem; }
+.ef-quake-mag { font-size: 22px; font-weight: 700; color: #ff5d5d; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-quake-place { font-size: 14px; color: var(--text-primary, #e8edf2); font-weight: 600; }
+.ef-quake-sub { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.15rem; }
+.ef-quake-meta { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.6rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-quake-meta a { color: var(--accent-cyan, #39d3c3); text-decoration: none; }
+.ef-worldmap { display: block; width: 100%; max-width: 340px; height: auto; border-radius: 8px; }
+/* gravitational-wave timeline */
+.ef-gw-timeline { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.ef-gw-item { display: flex; align-items: flex-start; gap: 0.6rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 0.55rem 0.75rem; }
+.ef-gw-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; margin-top: 0.25rem; box-shadow: 0 0 8px currentColor; }
+.ef-gw-title { font-size: 13px; color: var(--text-primary, #e8edf2); font-weight: 500; }
+.ef-gw-meta { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.25rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-gw-meta a { color: var(--accent-cyan, #39d3c3); text-decoration: none; }
+.ef-gw-cls { font-weight: 700; }
+/* PACK 5.2: honest "quiet sun" note when DONKI has no flares/CMEs */
+.ef-quiet-note { font-size: 11.5px; color: var(--text-mono, #5b6b7a); line-height: 1.5; margin: 0.1rem 0 0.9rem; padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; }
+/* PACK 5.1: honest "no gravitational waves" empty state + last-event card */
+.ef-gw-empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1.6rem 1rem; text-align: center; }
+.ef-gw-empty-h { font-size: 14px; font-weight: 600; color: var(--text-primary, #e8edf2); max-width: 26rem; line-height: 1.4; }
+.ef-gw-empty-sub { font-size: 12px; color: var(--text-mono, #5b6b7a); max-width: 26rem; line-height: 1.5; }
+.ef-gw-last-btn { margin-top: 0.4rem; font-size: 12px; color: var(--text-secondary, #b3bdc7); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 0.45rem 0.9rem; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.ef-gw-last-btn:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.25); }
+.ef-gw-last-pop { width: 100%; max-width: 26rem; }
+.ef-gw-last-card { margin-top: 0.7rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.7rem 0.85rem; text-align: left; font-size: 12px; color: var(--text-secondary, #b3bdc7); line-height: 1.5; }
+.ef-gw-last-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-mono, #5b6b7a); margin-bottom: 0.35rem; }
+.ef-gw-last-name { font-size: 13px; color: var(--text-primary, #e8edf2); }
+.ef-gw-last-meta { font-size: 10.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.2rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-gw-last-desc { margin-top: 0.35rem; }
+.ef-gw-last-none { margin-bottom: 0.4rem; }
+.ef-gw-last-card a { color: var(--accent-cyan, #39d3c3); text-decoration: none; display: inline-block; margin-top: 0.4rem; }
+/* collapsible help */
+.ef-help { margin-top: 1rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 0.4rem 0.85rem; }
+.ef-help summary { font-size: 12.5px; color: var(--accent-cyan, #39d3c3); cursor: pointer; padding: 0.35rem 0; }
+.ef-help p { font-size: 12px; color: var(--text-secondary, #b3bdc7); line-height: 1.55; margin: 0.4rem 0 0.6rem; }
+/* experimental */
+.ef-exp-block { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.ef-exp-h { font-size: 13px; font-weight: 600; color: var(--text-primary, #e8edf2); margin-bottom: 0.35rem; }
+.ef-exp-desc { font-size: 12px; color: var(--text-secondary, #b3bdc7); line-height: 1.55; margin-bottom: 0.7rem; }
+.ef-harm-row { display: flex; align-items: flex-end; gap: 0.6rem; height: 60px; padding: 0 0.25rem; }
+.ef-harm { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; height: 100%; }
+.ef-harm-bar { width: 60%; max-width: 26px; background: linear-gradient(to top, var(--accent-cyan, #39d3c3), rgba(57,211,195,0.2)); border-radius: 3px 3px 0 0; }
+.ef-harm-hz { font-size: 9.5px; color: var(--text-mono, #5b6b7a); margin-top: 0.25rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-harm-cap { font-size: 10px; color: var(--text-mono, #5b6b7a); text-align: center; margin-top: 0.35rem; }
+.ef-disabled { font-size: 11.5px; color: var(--text-muted, #8c98a6); background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); border-radius: 8px; padding: 0.55rem 0.75rem; margin-top: 0.7rem; line-height: 1.5; }
+.ef-notify-integ { margin-top: 0.7rem; font-size: 12px; color: var(--text-secondary, #b3bdc7); }
+
+/* ── External Field date picker + historical views (PR EF-history) ───────── */
+.ef-datebar { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ef-dseg { display: inline-flex; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 2px; }
+.ef-dmode { background: none; border: none; color: var(--text-muted, #8c98a6); font-size: 12px; font-weight: 500; padding: 0.32rem 0.7rem; border-radius: 7px; cursor: pointer; }
+.ef-dmode:hover { color: var(--text-secondary, #c3ccd6); }
+.ef-dmode.active { background: rgba(57,211,195,0.15); color: var(--accent-cyan, #39d3c3); }
+.ef-dinputs { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ef-drange { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ef-dsep { color: var(--text-mono, #5b6b7a); }
+.ef-date { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: var(--text-primary, #e8edf2); padding: 0.35rem 0.55rem; font-size: 12.5px; font-family: 'JetBrains Mono', ui-monospace, monospace; color-scheme: dark; }
+.ef-hist-head { font-size: 13px; font-weight: 600; color: var(--text-primary, #e8edf2); background: rgba(57,211,195,0.07); border: 1px solid rgba(57,211,195,0.18); border-radius: 10px; padding: 0.55rem 0.8rem; margin-bottom: 1rem; }
+.ef-day-group { margin-bottom: 1.25rem; }
+.ef-day-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0 0 0.55rem; padding-bottom: 0.3rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.ef-day-date { font-size: 11.5px; font-weight: 600; color: var(--text-secondary, #c3ccd6); text-transform: capitalize; }
+.ef-day-count { font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--accent-cyan, #39d3c3); background: rgba(57,211,195,0.12); border-radius: 20px; padding: 1px 8px; }
+.ef-moon-tl { display: flex; flex-direction: column; gap: 0.4rem; }
+.ef-moon-row { display: flex; align-items: center; gap: 0.85rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 0.45rem 0.7rem; }
+.ef-moon-row .ef-moon-svg { width: 42px; height: 42px; }
+.ef-moon-row-d { font-size: 12px; color: var(--text-secondary, #c3ccd6); text-transform: capitalize; }
+.ef-moon-row-p { font-size: 11px; color: var(--text-mono, #5b6b7a); margin-top: 0.1rem; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.ef-wx-days { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+.ef-wx-day { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); border-radius: 9px; padding: 0.45rem 0.75rem; font-size: 12px; }
+.ef-wx-d { color: var(--text-secondary, #c3ccd6); text-transform: capitalize; flex: 1; }
+.ef-wx-t { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--text-primary, #e8edf2); }
+.ef-wx-p { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--text-mono, #5b6b7a); min-width: 4.5rem; text-align: right; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   LK VISUAL POLISH v1 (PR3) — additive, minimal, science-calm.
+   Subtle glow + soft fill/entry animations for the RPG profile dashboard.
+   No aggressive flashes; respects prefers-reduced-motion.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Stat-layer cards: deli­cate left-edge category accent + soft entry. */
+/* border-left overrides the card's inline `border` shorthand, hence !important */
+.rpg-layer-card { animation: rpgFadeInUp .5s cubic-bezier(.2,.7,.2,1) both; }
+.rpg-layer-card.cat-body_core    { border-left: 2px solid rgba(255,236,206,0.5) !important; }  /* warm white / body */
+.rpg-layer-card.cat-mind_control { border-left: 2px solid rgba(94,224,255,0.5)  !important; }  /* cyan light */
+.rpg-layer-card.cat-world        { border-left: 2px solid rgba(86,242,166,0.5)  !important; }  /* green light */
+
+/* Progress fills: gentle glow on the filled part + smooth grow-in. */
+.rpg-stat-fill { box-shadow: 0 0 6px rgba(255,255,255,0.16); animation: rpgFillBar .9s cubic-bezier(.4,0,.2,1) both; }
+#rpg-xp-bar    { box-shadow: 0 0 8px rgba(0,255,180,0.35); }
+
+/* Level / XP card: a touch more presence + a calm pulse on level-up. */
+#rpg-xp-card { transition: box-shadow .4s ease, border-color .4s ease; }
+#rpg-xp-card.rpg-levelup { animation: rpgLevelPulse 1.3s ease; border-color: rgba(0,255,180,0.4); }
+
+/* Cards/buttons: soft press feedback. */
+.rpg-pressable { transition: transform .12s ease; }
+.rpg-pressable:active { transform: scale(0.98); }
+
+/* Locked "expand understanding" button: clearly clickable, not greyed-out. */
+.rpg-locked-cta { opacity: 1 !important; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
+.rpg-locked-cta:hover { border-color: rgba(94,224,255,0.4) !important; color: var(--myc-text, #e8edf2) !important; background: rgba(94,224,255,0.05); }
+.rpg-locked-preview { font-size: 11px; line-height: 1.55; color: var(--myc-text-dim, #8c98a6); margin: 0.5rem 0 0; opacity: 0.85; }
+
+@keyframes rpgFillBar    { from { width: 0; } }
+@keyframes rpgFadeInUp   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rpgLevelPulse { 0%,100% { box-shadow: 0 0 0 rgba(0,255,180,0); } 50% { box-shadow: 0 0 22px rgba(0,255,180,0.28); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rpg-layer-card, .rpg-stat-fill, #rpg-xp-card.rpg-levelup { animation: none; }
+}
+
+/* Primary CTAs in the dashboard: subtle hover glow (no flash). mycelium.css is
+   loaded only on account.html, so this stays scoped to the LK. */
+.btn-solid, .btn-primary { transition: box-shadow .25s ease, transform .12s ease; }
+.btn-solid:hover, .btn-primary:hover { box-shadow: 0 0 16px rgba(94,224,255,0.18); }
+.btn-solid:active, .btn-primary:active { transform: scale(0.985); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Sensation Map — PR4 (4.2 icons / 4.3 body-part hierarchy)
+   ════════════════════════════════════════════════════════════════════════ */
+.sm-ico { opacity: 0.85; }
+.sm-flatrow { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+/* PR6: groups now flow INLINE with plain chips in one list; the sub-parts open as
+   a floating popover under the parent chip so the row layout never breaks. */
+.sm-locgroup { display: inline-flex; position: relative; }
+.sm-parent { width: auto; }
+.sm-caret { opacity: 0.55; font-size: 11px; margin-left: 2px; transition: transform 0.2s ease; }
+.sm-locgroup.pinned .sm-caret { transform: rotate(180deg); }
+.sm-subgroup {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; gap: 0.4rem; width: max-content; max-width: 340px;
+  padding: 0.6rem; opacity: 0; visibility: hidden; transform: translateY(-4px);
+  background: rgba(10,12,18,0.98); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+.sm-subgroup.open { opacity: 1; visibility: visible; transform: translateY(0); }
+.sm-subchip { background: rgba(94,224,255,0.05) !important; }
+.sm-subchip:hover { border-color: rgba(94,224,255,0.45) !important; }
+.sm-loc-add { border-style: dashed !important; opacity: 0.85; }
+.sm-loc-add:hover { opacity: 1; border-color: rgba(94,224,255,0.5) !important; }
+@media (prefers-reduced-motion: reduce) { .sm-subgroup { transition: none; } }
+
+/* ── PR6: interactive body picker (blueprint silhouettes) ── */
+.bp-root { margin-bottom: 1rem; }
+.bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.bp-view { background: rgba(8,12,18,0.5); border: 1px solid rgba(120,210,255,0.12); border-radius: 14px; padding: 0.5rem; }
+.bp-view-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(120,210,255,0.7); text-align: center; margin-bottom: 0.25rem; font-family: 'JetBrains Mono', monospace; }
+.bp-stage { position: relative; height: 250px; } /* PR#109 #2: ~17% smaller so the live-map fits beside the sensation form */
+.bp-region { cursor: pointer; transition: fill 0.15s ease, stroke 0.15s ease, transform 0.15s ease; transform-box: fill-box; transform-origin: center; }
+.bp-region:hover, .bp-region.active { fill: rgba(120,210,255,0.18); stroke: rgba(180,235,255,0.95); stroke-width: 1.4; filter: drop-shadow(0 0 7px rgba(120,210,255,0.85)); transform: scale(1.03); }
+/* persistent highlight for a directly-selected whole zone (single-click) */
+.bp-region.picked { fill: rgba(94,224,255,0.26); stroke: rgba(150,238,255,1); stroke-width: 1.5; filter: drop-shadow(0 0 7px rgba(94,224,255,0.85)); }
+.bp-label { position: absolute; transform: translateX(-50%); padding: 2px 8px; background: rgba(10,14,20,0.95); border: 1px solid rgba(120,210,255,0.4); border-radius: 8px; font-size: 11px; color: #dff2ff; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s ease; z-index: 12; }
+.bp-label.show { opacity: 1; }
+.bp-panel { position: absolute; z-index: 20; display: none; flex-wrap: wrap; gap: 0.3rem; max-width: 200px; padding: 0.5rem; background: rgba(10,13,19,0.98); border: 1px solid rgba(120,210,255,0.25); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
+.bp-panel.open { display: flex; }
+.bp-sub { font-size: 11px; padding: 0.28rem 0.55rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.03); color: #cdd; cursor: pointer; transition: all 0.15s ease; }
+.bp-sub:hover { border-color: rgba(120,210,255,0.6); color: #fff; }
+.bp-sub.picked { background: rgba(94,224,255,0.16); border-color: rgba(94,224,255,0.7); color: #eafaff; }
+.bp-toggle-list { margin-top: 0.75rem; }
+/* PR7: collective path side panel + toolbar */
+.cp-lyr { display: flex; align-items: center; gap: 0.45rem; font-size: 12px; color: var(--text-secondary, #b8c0d0); padding: 0.22rem 0; cursor: pointer; }
+.cp-lyr input { accent-color: var(--accent-cyan, #5ce0ff); }
+.cp-tb-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim, #89a); }
+.cp-seg { display: inline-flex; gap: 2px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; padding: 2px; }
+.cp-pbtn, .cp-dbtn { font-size: 11px; padding: 0.28rem 0.6rem; border: none; border-radius: 7px; background: transparent; color: var(--text-secondary, #b8c0d0); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.cp-pbtn:hover, .cp-dbtn:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.cp-pbtn.active, .cp-dbtn.active { background: rgba(94,224,255,0.16); color: #eafaff; }
+@media (max-width: 560px) { .cp-side { width: 100% !important; } .cp-toolbar { gap: 0.5rem 0.75rem !important; } }
+/* PR11: collective-path mini-map */
+.cp-minimap { position: absolute; right: 10px; bottom: 34px; width: 148px; z-index: 16; }
+.cp-mini-toggle { float: right; background: rgba(10,14,20,0.9); border: 1px solid rgba(255,255,255,0.12); color: #9ab; border-radius: 6px; width: 22px; height: 20px; font-size: 11px; line-height: 1; cursor: pointer; margin-bottom: 3px; }
+.cp-mini-toggle:hover { color: #fff; border-color: rgba(120,200,255,0.5); }
+.cp-mini-body { position: relative; height: 110px; background: rgba(8,11,16,0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; cursor: pointer; clear: both; }
+.cp-minimap.collapsed .cp-mini-body { display: none; }
+.cp-mini-cv { display: block; }
+.cp-mini-vp { position: absolute; left: 0; right: 0; background: rgba(120,200,255,0.14); border: 1px solid rgba(120,200,255,0.55); border-radius: 3px; pointer-events: none; }
+@media (max-width: 480px) { .cp-minimap { display: none !important; } }
+/* PR FIX #10/#11: focus breadcrumb + fullscreen */
+.cp-fs-btn { background: rgba(20,24,30,0.7); border: 1px solid rgba(255,255,255,0.12); color: var(--myc-text,#cdd); border-radius: 8px; height: 30px; padding: 0 0.7rem; font-size: 12px; cursor: pointer; }
+.cp-fs-btn:hover { border-color: rgba(120,200,255,0.5); color: #fff; }
+.cp-breadcrumb { position: absolute; top: 8px; left: 12px; z-index: 18; font-size: 12px; color: #cfe3f5; background: rgba(10,14,20,0.88); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 3px 10px; }
+.cp-bc-root { background: none; border: none; color: var(--accent-cyan,#5cf); cursor: pointer; font-size: 12px; padding: 0; }
+.cp-fullscreen { position: fixed !important; inset: 0 !important; z-index: 10040 !important; background: #06080c; margin: 0 !important; padding: 12px 14px !important; overflow: auto; }
+.cp-fullscreen .cp-canvas-host { height: calc(100vh - 120px) !important; }
+@media (max-width: 560px) {
+  .bp-grid { gap: 0.5rem; }
+  .bp-stage { height: 185px; }
+  /* mobile: sub-buttons cascade below the graphic, not as a floating popover */
+  .bp-panel.open { position: static; display: flex; max-width: 100%; margin-top: 0.5rem; box-shadow: none; background: rgba(255,255,255,0.02); }
+}
+
+/* "+ Add new sensation" button + add-modal */
+.sm-add-btn {
+  padding: 0.4rem 0.8rem; border-radius: 18px; border: 1px dashed rgba(94,224,255,0.4);
+  background: rgba(94,224,255,0.05); color: var(--myc-cyan, #5ee0ff); font-size: 13px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
+}
+.sm-add-btn:hover { border-color: rgba(94,224,255,0.7); background: rgba(94,224,255,0.1); }
+.sm-iconpick { display: flex; flex-wrap: wrap; gap: 6px; }
+.sm-iconpick button {
+  width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.02);
+  color: #cdcdd6; cursor: pointer; transition: all 0.15s;
+}
+.sm-iconpick button.sel, .sm-iconpick button:hover { border-color: rgba(94,224,255,0.6); color: #fff; background: rgba(94,224,255,0.08); }
+
+/* HA / Internal Field tab icons (NAIcons) */
+.ha-tab { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ha-tab-ic { display: inline-flex; align-items: center; line-height: 0; }
+.ha-tab-ic svg { display: block; }
+.evo-ov-lab { display: inline-flex; align-items: center; gap: 0.3rem; }

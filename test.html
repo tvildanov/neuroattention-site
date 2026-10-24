@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>
+(function(){
+  var stored=localStorage.getItem("na_lang");
+  var explicit=localStorage.getItem("na_lang_explicit");
+  var lang=explicit||stored||"en"; // EN always default on first visit (no browser-lang detect)
+  document.documentElement.lang=lang;
+  if(lang!=="ru"){
+    var s=document.createElement("style");
+    s.id="i18n-flash-prevent";
+    s.textContent="body{opacity:0!important;transition:opacity .15s ease!important;}";
+    document.head.appendChild(s);
+    var link=document.createElement("link");
+    link.rel="preload";link.as="fetch";
+    link.href="data/i18n/"+lang+".json";
+    link.crossOrigin="anonymous";
+    document.head.appendChild(link);
+    setTimeout(function(){var el=document.getElementById("i18n-flash-prevent");if(el)el.remove();if(document.body)document.body.style.opacity="";},3000);
+  }
+})();
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Тест адаптации — NeuroAttention Lab</title>
+<meta name="description" content="Тест адаптации к глобальным изменениям. Узнайте свой профиль адаптации и получите персональные рекомендации." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/redesign.css" />
+<style>
+:root {
+  --test-bg: rgba(5,7,10,0.97);
+  --card-bg: rgba(255,255,255,0.12);
+  --card-border: rgba(255,255,255,0.22);
+  --accent-cyan: #00d2be;
+  --accent-rose: #ff6b8a;
+  --accent-amber: #f5a623;
+  --accent-violet: #a78bfa;
+  --accent-green: #34d399;
+  --text-primary: #e8eaed;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+}
+
+/* Override cursor:none from redesign.css */
+body { cursor: default !important; }
+body * { cursor: inherit; }
+button, a, .chat-opt-btn { cursor: pointer !important; }
+
+/* ── Chat test layout ── */
+.test-chat-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Chat header with progress ── */
+.test-chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(78,205,196,0.08);
+  padding: 0.75rem 0;
+}
+.test-chat-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.test-chat-avatar-header {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0,210,190,0.15), rgba(167,139,250,0.12));
+  border: 1px solid rgba(0,210,190,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.test-chat-avatar-header svg {
+  width: 20px;
+  height: 20px;
+}
+.test-chat-header-info {
+  flex: 1;
+  min-width: 0;
+}
+.test-chat-header-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+.test-chat-header-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+/* ── Progress mini-bar ── */
+.chat-progress-wrap {
+  max-width: 640px;
+  margin: 0.5rem auto 0;
+  padding: 0 1.5rem;
+}
+.chat-progress-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.chat-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* ── Messages area ── */
+.test-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 0 2rem;
+  margin-top: 0;
+}
+.test-chat-messages-inner {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Chat row ── */
+.chat-msg {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  animation: fadeSlideIn 0.35s ease-out both;
+}
+.chat-msg.user-msg {
+  justify-content: flex-end;
+}
+.chat-msg.bot-msg {
+  justify-content: flex-start;
+}
+
+/* ── Bot avatar ── */
+.chat-msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0,210,190,0.12), rgba(167,139,250,0.10));
+  border: 1px solid rgba(0,210,190,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.chat-msg-avatar svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Bubble ── */
+.chat-msg-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 85%;
+}
+.chat-msg-bubble {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+.bot-msg .chat-msg-bubble {
+  background: rgba(21,27,36,0.8);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px 16px 16px 4px;
+  padding: 0.85rem 1.1rem;
+  backdrop-filter: blur(20px);
+}
+.user-msg .chat-msg-bubble {
+  background: linear-gradient(135deg, rgba(78,205,196,0.2), rgba(59,130,246,0.14));
+  border: 1px solid rgba(78,205,196,0.25);
+  border-radius: 16px 16px 4px 16px;
+  padding: 0.85rem 1.1rem;
+  backdrop-filter: blur(20px);
+  max-width: 80%;
+}
+
+/* ── Question icon inside bubble ── */
+.q-icon-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.q-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.q-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.q-number-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Options inside bot stack ── */
+.chat-msg-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.chat-opt-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(13,17,23,0.7);
+  border: 1px solid rgba(78,205,196,0.18);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  font-family: 'DM Sans', sans-serif;
+  text-align: left;
+  backdrop-filter: blur(16px);
+}
+.chat-opt-btn:hover {
+  border-color: rgba(78,205,196,0.4);
+  color: var(--text-primary);
+  background: rgba(0,210,190,0.06);
+}
+.chat-opt-btn.disabled,
+.chat-opt-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+.chat-opt-btn.selected {
+  border-color: rgba(167,139,250,0.5);
+  background: rgba(167,139,250,0.08);
+  color: var(--text-primary);
+}
+.chat-opt-btn.selected .chat-opt-letter {
+  background: rgba(167,139,250,0.25);
+  color: var(--accent-violet);
+}
+.chat-opt-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.2s;
+}
+.chat-opt-btn:hover .chat-opt-letter {
+  background: rgba(0,210,190,0.2);
+  color: var(--accent-cyan);
+}
+
+/* ── Typing indicator ── */
+.typing-indicator .chat-msg-bubble {
+  padding: 0.85rem 1.2rem;
+}
+
+/* ── Result screen ── */
+.test-result-wrap {
+  display: none;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+.test-result-wrap.visible {
+  display: block;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: fadeSlideIn 0.5s ease-out forwards;
+}
+.result-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.result-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0,210,190,0.1);
+  border: 1px solid rgba(0,210,190,0.2);
+  border-radius: 24px;
+  padding: 0.4rem 1.2rem;
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1rem;
+}
+.result-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.4rem,3.5vw,2rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+}
+.result-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.5;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.result-section {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.result-section-icon { font-size: 1.1rem; margin-right: 0.4rem; }
+.result-section-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+}
+.result-section p, .result-section li {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 0.5rem;
+}
+.result-section ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.result-section li { margin-bottom: 0.3rem; }
+.scores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.score-item {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 0.75rem;
+  text-align: center;
+}
+.score-item-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+}
+.score-item-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+.score-item-max {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.result-unlock {
+  background: linear-gradient(135deg, rgba(0,210,190,0.08), rgba(167,139,250,0.08));
+  border: 1px solid rgba(0,210,190,0.15);
+  border-radius: 14px;
+  padding: 1.5rem;
+  text-align: center;
+  margin-top: 1.5rem;
+}
+.result-unlock p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 1rem;
+}
+.result-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.85rem 2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  cursor: pointer;
+  text-decoration: none;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: background 0.25s, color 0.25s, border-color 0.25s, transform 0.2s;
+}
+.result-cta:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+}
+
+/* ── Retake link in result ── */
+.result-retake {
+  display: inline-block;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.result-retake:hover { color: var(--text-primary); }
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .test-chat-header-inner { padding: 0 1rem; }
+  .test-chat-messages-inner { padding: 0 1rem; }
+  .chat-msg-stack { max-width: 92%; }
+  .chat-opt-btn { font-size: 0.82rem; padding: 0.6rem 0.75rem; }
+  .result-section { padding: 1.2rem; }
+  .scores-grid { grid-template-columns: repeat(2,1fr); }
+  .chat-progress-wrap { padding: 0 1rem; }
+}
+</style>
+<!-- ═══ Icons / PWA / Social (injected) ═══ -->
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#05070A" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="NeuroAttention Lab" />
+<meta property="og:image" content="https://neuroattention.org/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
+</head>
+<body>
+<div class="deep-atmosphere" aria-hidden="true"></div>
+<div class="noise-overlay" aria-hidden="true"></div>
+
+<nav class="navbar">
+  <div class="container navbar-inner">
+    <a href="index.html" class="nav-logo"><img src="assets/logo-na.png" alt="" class="nav-logo-icon">Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link" data-i18n="nav.home">Главная</a>
+      <a href="test.html" class="nav-link" data-i18n="nav.test">Тест</a>
+      <a href="method.html" class="nav-link" data-i18n="nav.method">Метод</a>
+      <a href="programs.html" class="nav-link" data-i18n="nav.programs">Программы</a>
+      <a href="xr.html" class="nav-link" data-i18n="nav.xr">XR Платформа</a>
+      <a href="lab.html" class="nav-link" data-i18n="nav.lab">Лаборатория</a>
+      <a href="dom.html" class="nav-link" data-i18n="nav.dom">DOM</a>
+      <a href="custom.html" class="nav-link" data-i18n="nav.custom">Custom Group</a>
+    </div>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button class="lang-btn active">RU</button>
+        <button class="lang-btn">EN</button>
+        <button class="lang-btn">ES</button>
+      </div>
+      <a href="account.html" class="nav-login"><span class="login-dot"></span><span data-i18n="nav.cabinet">Кабинет</span></a>
+      <button class="mobile-menu-btn" aria-label="Меню" data-i18n-aria-label="nav.menu">
+        <svg class="icon md" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu">
+    <div class="container mobile-menu-inner">
+      <a href="index.html" class="mobile-link" data-i18n="nav.home">Главная</a>
+      <a href="test.html" class="mobile-link" data-i18n="nav.test">Тест</a>
+      <a href="method.html" class="mobile-link" data-i18n="nav.method">Метод</a>
+      <a href="programs.html" class="mobile-link" data-i18n="nav.programs">Программы</a>
+      <a href="xr.html" class="mobile-link" data-i18n="nav.xr">XR Платформа</a>
+      <a href="lab.html" class="mobile-link" data-i18n="nav.lab">Лаборатория</a>
+      <a href="dom.html" class="mobile-link" data-i18n="nav.dom">DOM</a>
+      <a href="custom.html" class="mobile-link" data-i18n="nav.custom">Custom Group</a>
+      <a href="account.html" class="mobile-link" data-i18n="nav.account">Личный кабинет</a>
+    </div>
+  </div>
+</nav>
+
+<main class="test-chat-page" style="padding-top:3.5rem;">
+
+  <!-- Chat header with progress -->
+  <div class="test-chat-header" id="chat-header">
+    <div class="test-chat-header-inner">
+      <div class="test-chat-avatar-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5">
+          <path d="M9.5 2a3 3 0 0 0-3 3v.25c0 .3.05.59.13.86A3 3 0 0 0 4 8.75v.5a3 3 0 0 0 1.5 2.59v.5A3 3 0 0 0 4 14.75v.5c0 1.24.75 2.3 1.82 2.74A3 3 0 0 0 9.5 21h1V2z"/>
+          <path d="M14.5 2a3 3 0 0 1 3 3v.25c0 .3-.05.59-.13.86A3 3 0 0 1 20 8.75v.5a3 3 0 0 1-1.5 2.59v.5A3 3 0 0 1 20 14.75v.5c0 1.24-.75 2.3-1.82 2.74A3 3 0 0 1 14.5 21h-1V2z"/>
+        </svg>
+      </div>
+      <div class="test-chat-header-info">
+        <p class="test-chat-header-title" data-i18n="t.header.title">Тест адаптации</p>
+        <p class="test-chat-header-sub" id="chat-step-label">Вопрос 1 / 10</p>
+      </div>
+    </div>
+    <div class="chat-progress-wrap">
+      <div class="chat-progress-bar">
+        <div class="chat-progress-fill" id="chat-progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat messages -->
+  <div class="test-chat-messages" id="chat-scroll">
+    <div class="test-chat-messages-inner" id="chat-messages">
+      <!-- messages injected by JS -->
+    </div>
+  </div>
+
+  <!-- Result (hidden until finish) -->
+  <div class="test-result-wrap" id="test-result"></div>
+</main>
+
+<script src="assets/scripts.js"></script>
+<script src="assets/redesign.js"></script>
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/typography.js" defer></script>
+<script>
+(function(){
+  var API_BASE = 'https://neuroattention-api-production.up.railway.app';
+
+  // ── SVG icons per question (inline, themed) ──
+  var Q_ICONS = [
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#00d2be" stroke-width="1.5"><path d="M12 2a7 7 0 0 1 7 7c0 3.87-3.13 7-7 7s-7-3.13-7-7a7 7 0 0 1 7-7z"/><path d="M12 16v2"/><circle cx="12" cy="21" r="1"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2m-10-10h2m16 0h2m-3.5-6.5-1.4 1.4M6.9 17.1l-1.4 1.4m0-13 1.4 1.4m10.2 10.2 1.4 1.4"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#00d2be" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#ff6b8a" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#00d2be" stroke-width="1.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#ff6b8a" stroke-width="1.5"><path d="M18 8V6a2 2 0 1 0-4 0v2"/><path d="M14 8V4a2 2 0 1 0-4 0v4"/><path d="M10 8V6a2 2 0 1 0-4 0v4a8 8 0 0 0 16 0v-2a2 2 0 1 0-4 0"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'
+  ];
+
+  var Q_COLORS = [
+    'rgba(0,210,190,0.15)',
+    'rgba(52,211,153,0.15)', 'rgba(0,210,190,0.15)', 'rgba(255,107,138,0.15)',
+    'rgba(167,139,250,0.15)', 'rgba(245,166,35,0.15)', 'rgba(0,210,190,0.15)',
+    'rgba(52,211,153,0.15)', 'rgba(167,139,250,0.15)', 'rgba(255,107,138,0.15)',
+    'rgba(245,166,35,0.15)'
+  ];
+
+  // ── Rehabilitation flow state ──
+  var rehabFlag = false;
+  var rehabConditions = [];
+  var rehabOtherDescription = '';
+
+  // ── Q0 + 10 Questions ──
+  // Lazy-load translations at render time
+  var QUESTIONS = [
+    { id:'Q0', group:'neuro_filter', key_text:'t.q0.text', key_opts:{A:'t.q0.a1', B:'t.q0.a2', C:'t.q0.a3'} },
+    { id:'Q1', group:'state', key_text:'t.q1.text', key_opts:{A:'t.q1.a1', B:'t.q1.a2', C:'t.q1.a3', D:'t.q1.a4'} },
+    { id:'Q2', group:'attention', key_text:'t.q2.text', key_opts:{A:'t.q2.a1', B:'t.q2.a2', C:'t.q2.a3', D:'t.q2.a4'} },
+    { id:'Q3', group:'state', key_text:'t.q3.text', key_opts:{A:'t.q3.a1', B:'t.q3.a2', C:'t.q3.a3', D:'t.q3.a4'} },
+    { id:'Q4', group:'attention', key_text:'t.q4.text', key_opts:{A:'t.q4.a1', B:'t.q4.a2', C:'t.q4.a3', D:'t.q4.a4'} },
+    { id:'Q5', group:'state', key_text:'t.q5.text', key_opts:{A:'t.q5.a1', B:'t.q5.a2', C:'t.q5.a3', D:'t.q5.a4'} },
+    { id:'Q6', group:'discipline', key_text:'t.q6.text', key_opts:{A:'t.q6.a1', B:'t.q6.a2', C:'t.q6.a3', D:'t.q6.a4'} },
+    { id:'Q7', group:'environment', key_text:'t.q7.text', key_opts:{A:'t.q7.a1', B:'t.q7.a2', C:'t.q7.a3', D:'t.q7.a4'} },
+    { id:'Q8', group:'discipline', key_text:'t.q8.text', key_opts:{A:'t.q8.a1', B:'t.q8.a2', C:'t.q8.a3', D:'t.q8.a4'} },
+    { id:'Q9', group:'specialist', key_text:'t.q9.text', key_opts:{A:'t.q9.a1', B:'t.q9.a2', C:'t.q9.a3', D:'t.q9.a4'} },
+    { id:'Q10', group:'environment', key_text:'t.q10.text', key_opts:{A:'t.q10.a1', B:'t.q10.a2', C:'t.q10.a3', D:'t.q10.a4'} }
+  ];
+
+  // ── 5 Profiles ──
+  var PROFILES = {
+    STABLE_EXPLORER: {
+      key_name:'t.profile.stable_explorer.name', key_subtitle:'t.profile.stable_explorer.subtitle', color:'var(--accent-green)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.stable_explorer.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.stable_explorer.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.stable_explorer.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.stable_explorer.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.stable_explorer.v1' }
+      ],
+      key_unlock:'t.profile.stable_explorer.unlock'
+    },
+    HIGH_LOAD_ADAPTER: {
+      key_name:'t.profile.high_load.name', key_subtitle:'t.profile.high_load.subtitle', color:'var(--accent-amber)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.high_load.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.high_load.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.high_load.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.high_load.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.high_load.v1' }
+      ],
+      key_unlock:'t.profile.high_load.unlock'
+    },
+    NERVOUS_SYSTEM_SENSITIVE: {
+      key_name:'t.profile.nervous.name', key_subtitle:'t.profile.nervous.subtitle', color:'var(--accent-rose)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.nervous.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.nervous.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.nervous.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.nervous.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.nervous.v1' }
+      ],
+      key_unlock:'t.profile.nervous.unlock'
+    },
+    DISTRACTED_EXPLORER: {
+      key_name:'t.profile.fragmented.name', key_subtitle:'t.profile.fragmented.subtitle', color:'var(--accent-violet)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.fragmented.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.fragmented.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.fragmented.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.fragmented.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.fragmented.v1' }
+      ],
+      key_unlock:'t.profile.fragmented.unlock'
+    },
+    FUTURE_SPECIALIST: {
+      key_name:'t.profile.specialist.name', key_subtitle:'t.profile.specialist.subtitle', color:'var(--accent-cyan)',
+      key_sections:[
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', key_title:'t.result.role', key_content:'t.profile.specialist.r1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M7 7l10 10M17 7L7 17"/></svg>', key_title:'t.result.strengths', key_content:'t.profile.specialist.s1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>', key_title:'t.result.limitation', key_content:'t.profile.specialist.l1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>', key_title:'t.result.potential', key_content:'t.profile.specialist.p1' },
+        { icon:'<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>', key_title:'t.result.vector', key_content:'t.profile.specialist.v1' }
+      ],
+      key_unlock:'t.profile.specialist.unlock'
+    }
+  };
+
+  // ── State ──
+  var currentQ = 0;
+  var answers = {};
+  var container = document.getElementById('chat-messages');
+  var scroller = document.getElementById('chat-scroll');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function scrollBottom() {
+    setTimeout(function(){ scroller.scrollTop = scroller.scrollHeight; }, 60);
+  }
+
+  function avatarHTML() {
+    return '<div class="chat-msg-avatar">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5">' +
+      '<path d="M9.5 2a3 3 0 0 0-3 3v.25c0 .3.05.59.13.86A3 3 0 0 0 4 8.75v.5a3 3 0 0 0 1.5 2.59v.5A3 3 0 0 0 4 14.75v.5c0 1.24.75 2.3 1.82 2.74A3 3 0 0 0 9.5 21h1V2z"/>' +
+      '<path d="M14.5 2a3 3 0 0 1 3 3v.25c0 .3-.05.59-.13.86A3 3 0 0 1 20 8.75v.5a3 3 0 0 1-1.5 2.59v.5A3 3 0 0 1 20 14.75v.5c0 1.24-.75 2.3-1.82 2.74A3 3 0 0 1 14.5 21h-1V2z"/>' +
+      '</svg></div>';
+  }
+
+  function updateProgress() {
+    var pct = Math.round(currentQ / QUESTIONS.length * 100);
+    var label = (currentQ === 0) ? t('t.header.preliminary') : t('t.header.question') + ' ' + currentQ + ' / 10';
+    document.getElementById('chat-step-label').textContent = label;
+    document.getElementById('chat-progress-fill').style.width = pct + '%';
+  }
+
+  function addBotMessage(html) {
+    var row = document.createElement('div');
+    row.className = 'chat-msg bot-msg';
+    row.innerHTML = avatarHTML() +
+      '<div class="chat-msg-stack"><div class="chat-msg-bubble">' + html + '</div></div>';
+    container.appendChild(row);
+    scrollBottom();
+    return row;
+  }
+
+  function addUserMessage(text) {
+    var row = document.createElement('div');
+    row.className = 'chat-msg user-msg';
+    row.innerHTML = '<div class="chat-msg-bubble">' + esc(text) + '</div>';
+    container.appendChild(row);
+    scrollBottom();
+  }
+
+  function showTyping() {
+    var row = document.createElement('div');
+    row.className = 'chat-msg bot-msg typing-indicator';
+    row.id = 'typing-ind';
+    row.innerHTML = avatarHTML() +
+      '<div class="chat-msg-stack"><div class="chat-msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>';
+    container.appendChild(row);
+    scrollBottom();
+  }
+
+  function removeTyping() {
+    var t = document.getElementById('typing-ind');
+    if (t) t.parentNode.removeChild(t);
+  }
+
+  function renderQuestionChat(qIdx) {
+    var q = QUESTIONS[qIdx];
+    updateProgress();
+
+    var iconBg = Q_COLORS[qIdx] || 'rgba(0,210,190,0.15)';
+    var iconSvg = Q_ICONS[qIdx] || Q_ICONS[0];
+
+    var qLabel = (qIdx === 0) ? t('t.header.preliminary') : t('t.header.question') + ' ' + qIdx;
+    var qText = t(q.key_text);
+
+    var html = '<div class="q-icon-wrap">' +
+      '<div class="q-icon" style="background:' + iconBg + '">' + iconSvg + '</div>' +
+      '<span class="q-number-label">' + qLabel + '</span>' +
+      '</div>' +
+      '<div>' + esc(qText) + '</div>';
+
+    var row = document.createElement('div');
+    row.className = 'chat-msg bot-msg';
+    row.innerHTML = avatarHTML() +
+      '<div class="chat-msg-stack">' +
+        '<div class="chat-msg-bubble">' + html + '</div>' +
+        '<div class="chat-msg-options" id="opts-' + q.id + '"></div>' +
+      '</div>';
+    container.appendChild(row);
+
+    var optsWrap = row.querySelector('#opts-' + q.id);
+    Object.keys(q.key_opts).forEach(function(letter) {
+      var optKey = q.key_opts[letter];
+      var optText = t(optKey);
+      var btn = document.createElement('button');
+      btn.className = 'chat-opt-btn';
+      btn.innerHTML = '<span class="chat-opt-letter">' + letter + '</span><span>' + esc(optText) + '</span>';
+      btn.addEventListener('click', function() { handleAnswer(q.id, letter, optText); });
+      optsWrap.appendChild(btn);
+    });
+
+    scrollBottom();
+    setTimeout(function() {
+      row.scrollIntoView({ behavior:'smooth', block:'end' });
+    }, 120);
+  }
+
+  // ── Rehabilitation multi-select step (inserted after Q0 if rehab flow) ──
+  function renderRehabClarification() {
+    var conditionsList = [
+      { key:'neurodegenerative', key_label:'t.rehab.neurodegen' },
+      { key:'stroke', key_label:'t.rehab.stroke' },
+      { key:'tbi', key_label:'t.rehab.tbi' },
+      { key:'neuropathy', key_label:'t.rehab.neuropathy' },
+      { key:'asd', key_label:'t.rehab.asd' },
+      { key:'other', key_label:'t.rehab.other' }
+    ];
+    var html = '<div class="q-icon-wrap">' +
+      '<div class="q-icon" style="background:rgba(167,139,250,0.15);">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>' +
+      '</div>' +
+      '<span class="q-number-label">' + t('t.rehab.title') + '</span>' +
+      '</div>' +
+      '<div style="margin-bottom:0.75rem;">' + t('t.rehab.instruction') + '</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:0.5rem;">' + t('t.rehab.multi') + '</div>';
+
+    var row = document.createElement('div');
+    row.className = 'chat-msg bot-msg';
+    row.innerHTML = avatarHTML() +
+      '<div class="chat-msg-stack">' +
+        '<div class="chat-msg-bubble">' + html + '</div>' +
+        '<div class="chat-msg-options" id="opts-rehab-clarify"></div>' +
+      '</div>';
+    container.appendChild(row);
+
+    var optsWrap = row.querySelector('#opts-rehab-clarify');
+    var selected = {};
+
+    conditionsList.forEach(function(c) {
+      var btn = document.createElement('button');
+      btn.className = 'chat-opt-btn';
+      var cLabel = t(c.key_label);
+      btn.innerHTML = '<span class="chat-opt-letter" style="font-size:10px;">☐</span><span>' + esc(cLabel) + '</span>';
+      btn.addEventListener('click', function() {
+        if (selected[c.key]) {
+          delete selected[c.key];
+          btn.classList.remove('selected');
+          btn.querySelector('.chat-opt-letter').textContent = '☐';
+        } else {
+          selected[c.key] = true;
+          btn.classList.add('selected');
+          btn.querySelector('.chat-opt-letter').textContent = '☑';
+        }
+        // Show/hide textarea for "other"
+        var ta = document.getElementById('rehab-other-ta');
+        if (selected['other']) {
+          if (!ta) {
+            ta = document.createElement('textarea');
+            ta.id = 'rehab-other-ta';
+            ta.placeholder = t('t.rehab.other.placeholder');
+            ta.style.cssText = 'width:100%;min-height:60px;margin-top:0.5rem;padding:0.6rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-primary);font-family:inherit;font-size:13px;resize:vertical;';
+            optsWrap.appendChild(ta);
+          }
+        } else if (ta) {
+          ta.parentNode.removeChild(ta);
+        }
+        // Show/hide continue button
+        var keys = Object.keys(selected);
+        var contBtn = document.getElementById('rehab-continue-btn');
+        if (keys.length > 0 && !contBtn) {
+          contBtn = document.createElement('button');
+          contBtn.id = 'rehab-continue-btn';
+          contBtn.className = 'chat-opt-btn';
+          contBtn.style.cssText = 'margin-top:0.75rem;background:rgba(0,210,190,0.12);border-color:rgba(0,210,190,0.3);';
+          contBtn.innerHTML = '<span style="color:var(--accent-cyan);font-weight:500;">' + t('t.rehab.continue') + '</span>';
+          contBtn.addEventListener('click', function() {
+            rehabConditions = Object.keys(selected);
+            var ta2 = document.getElementById('rehab-other-ta');
+            if (ta2) rehabOtherDescription = ta2.value.trim();
+            // Disable all buttons
+            optsWrap.querySelectorAll('.chat-opt-btn').forEach(function(b) { b.disabled = true; b.classList.add('disabled'); });
+            if (ta2) ta2.disabled = true;
+            var summary = rehabConditions.map(function(k) {
+              var found = conditionsList.filter(function(c2){ return c2.key===k; })[0];
+              return found ? t(found.key_label) : k;
+            }).join(', ');
+            addUserMessage(summary);
+            showTyping();
+            setTimeout(function() {
+              removeTyping();
+              addBotMessage(t('t.rehab.thanks'));
+              showTyping();
+              setTimeout(function() {
+                removeTyping();
+                currentQ++;
+                renderQuestionChat(currentQ);
+              }, 600);
+            }, 800);
+          });
+          optsWrap.appendChild(contBtn);
+        } else if (keys.length === 0 && contBtn) {
+          contBtn.parentNode.removeChild(contBtn);
+        }
+      });
+      optsWrap.appendChild(btn);
+    });
+
+    scrollBottom();
+    setTimeout(function() { row.scrollIntoView({ behavior:'smooth', block:'end' }); }, 120);
+  }
+
+  function handleAnswer(qId, letter, text) {
+    answers[qId] = letter;
+
+    // Q0 rehabilitation filter
+    if (qId === 'Q0') {
+      if (letter !== 'A') {
+        rehabFlag = true;
+      } else {
+        rehabFlag = false;
+        rehabConditions = [];
+        rehabOtherDescription = '';
+      }
+    }
+
+    var optsWrap = document.getElementById('opts-' + qId);
+    if (optsWrap) {
+      optsWrap.querySelectorAll('.chat-opt-btn').forEach(function(b) {
+        b.disabled = true;
+        b.classList.add('disabled');
+      });
+    }
+    addUserMessage(text);
+
+    // After Q0, if rehab flow activated → show multi-select clarification
+    if (qId === 'Q0' && rehabFlag) {
+      showTyping();
+      setTimeout(function() {
+        removeTyping();
+        renderRehabClarification();
+      }, 800);
+      return; // Don't advance currentQ yet — renderRehabClarification handles it
+    }
+
+    showTyping();
+    setTimeout(function() {
+      removeTyping();
+      currentQ++;
+      if (currentQ < QUESTIONS.length) {
+        renderQuestionChat(currentQ);
+      } else {
+        finishTest();
+      }
+    }, 800);
+  }
+
+  function scoreAnswer(letter) {
+    return { A:4, B:3, C:2, D:1 }[letter] || 0;
+  }
+
+  function computeProfile(ans) {
+    var scores = {
+      attention: scoreAnswer(ans.Q2) + scoreAnswer(ans.Q4),
+      state: scoreAnswer(ans.Q1) + scoreAnswer(ans.Q3) + scoreAnswer(ans.Q5),
+      discipline: scoreAnswer(ans.Q6) + scoreAnswer(ans.Q8),
+      environment: scoreAnswer(ans.Q7) + scoreAnswer(ans.Q10),
+      specialist: scoreAnswer(ans.Q9)
+    };
+    var total = 0;
+    ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q10'].forEach(function(k) {
+      total += scoreAnswer(ans[k]);
+    });
+    var q9Letter = ans.Q9;
+    var isSpecialist = (q9Letter === 'C' || q9Letter === 'D');
+    var profile;
+    if (isSpecialist && total >= 24) profile = 'FUTURE_SPECIALIST';
+    else if (total >= 30) profile = 'STABLE_EXPLORER';
+    else if ((ans.Q1==='C'||ans.Q1==='D') && (ans.Q3==='C'||ans.Q3==='D') && (ans.Q5==='C'||ans.Q5==='D')) profile = 'NERVOUS_SYSTEM_SENSITIVE';
+    else if ((ans.Q2==='C'||ans.Q2==='D') && (ans.Q4==='C'||ans.Q4==='D')) profile = 'DISTRACTED_EXPLORER';
+    else profile = 'HIGH_LOAD_ADAPTER';
+    return { profile:profile, scores:scores, total:total };
+  }
+
+  function finishTest() {
+    var result = computeProfile(answers);
+    var profile = PROFILES[result.profile];
+    var testResult = {
+      profile: result.profile, answers: answers,
+      scores: result.scores, total: result.total,
+      rehab_flag: rehabFlag,
+      rehab_conditions: rehabConditions,
+      rehab_other_description: rehabOtherDescription,
+      completed_at: new Date().toISOString()
+    };
+    localStorage.setItem('na_test_result', JSON.stringify(testResult));
+    var token = localStorage.getItem('na_token');
+    if (token) saveResultToAPI(token, testResult);
+
+    addBotMessage(t('t.result.message'));
+    document.getElementById('chat-step-label').textContent = t('t.header.completed');
+    document.getElementById('chat-progress-fill').style.width = '100%';
+
+    setTimeout(function() {
+      document.getElementById('chat-scroll').style.display = 'none';
+      document.getElementById('chat-header').style.display = 'none';
+      renderResult(result, profile);
+    }, 1200);
+  }
+
+  function saveResultToAPI(token, data) {
+    fetch(API_BASE + '/api/test-result/save', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + token },
+      body: JSON.stringify({
+        profile: data.profile,
+        answers: data.answers,
+        scores: data.scores,
+        rehab_flag: data.rehab_flag || false,
+        rehab_conditions: data.rehab_conditions || [],
+        rehab_other_description: data.rehab_other_description || ''
+      })
+    }).then(function(r){ return r.json(); })
+    .then(function(d){ if (d.ok) localStorage.removeItem('na_test_result'); })
+    .catch(function(e){ console.warn('Test result save failed:', e); });
+  }
+
+  function renderResult(result, profile) {
+    var wrap = document.getElementById('test-result');
+    var html = '';
+    var profileName = t(profile.key_name);
+    var profileSubtitle = t(profile.key_subtitle);
+    html += '<div class="result-header">';
+    html += '<div class="result-profile-badge" style="border-color:' + profile.color + ';color:' + profile.color + ';">' + t('t.result.badge') + '</div>';
+    html += '<h2 class="result-title" style="letter-spacing:0.05em;">' + profileName + '</h2>';
+    html += '<p class="result-subtitle">' + profileSubtitle + '</p>';
+    html += '</div>';
+    html += '<div class="result-section">';
+    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span> ' + t('t.result.scores.title') + '</div>';
+    html += '<div class="scores-grid">';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.attention') + '</div><div class="score-item-value">' + result.scores.attention + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 8</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.state') + '</div><div class="score-item-value">' + result.scores.state + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 12</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.discipline') + '</div><div class="score-item-value">' + result.scores.discipline + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 8</div></div>';
+    html += '<div class="score-item"><div class="score-item-label">' + t('t.result.scores.environment') + '</div><div class="score-item-value">' + result.scores.environment + '</div><div class="score-item-max">' + t('t.result.scores.max') + ' 8</div></div>';
+    html += '</div>';
+    html += '<p style="text-align:center;margin-top:0.5rem;">' + t('t.result.scores.total') + ' <strong style="color:var(--accent-cyan);">' + result.total + '</strong> ' + t('t.result.scores.max') + ' 36</p>';
+    html += '</div>';
+    profile.key_sections.forEach(function(s) {
+      var sectionTitle = t(s.key_title);
+      var sectionContent = t(s.key_content);
+      html += '<div class="result-section">';
+      html += '<div class="result-section-title"><span class="result-section-icon">' + s.icon + '</span> ' + sectionTitle + '</div>';
+      html += sectionContent;
+      html += '</div>';
+    });
+    // ── Rehabilitation context block (if rehab flow) ──
+    if (rehabFlag && rehabConditions.length > 0) {
+      /* <!-- DRAFT: pending medical review --> */
+      var conditionKeys = {
+        neurodegenerative: 't.rehab.neurodegen',
+        stroke: 't.rehab.stroke',
+        tbi: 't.rehab.tbi',
+        neuropathy: 't.rehab.neuropathy',
+        asd: 't.rehab.asd',
+        other: 't.rehab.other'
+      };
+      var condText = rehabConditions.map(function(k){ return t(conditionKeys[k] || k); }).join(', ');
+      html += '<div class="result-section" style="border-left:2px solid var(--accent-violet);padding-left:1rem;">';
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> ' + t('t.result.context') + '</div>';
+      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;">' + esc(condText) + '</p>';
+      html += '</div>';
+    }
+
+    html += '<div class="result-unlock">';
+    if (rehabFlag) {
+      /* <!-- DRAFT: pending medical review --> */
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span></div>';
+      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:1rem;">' + t('t.result.rehab.text') + '</p>';
+      html += '<a href="rehabilitation-application.html" class="result-cta" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(0,210,190,0.1));border-color:rgba(167,139,250,0.3);">' + t('t.result.rehab.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+    } else {
+      var unlockContent = t(profile.key_unlock);
+      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> ' + t('t.result.unlock.title') + '</div>';
+      html += unlockContent;
+      html += '<a href="account.html?from_test=1" class="result-cta">' + t('t.result.unlock.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+    }
+    html += '</div>';
+    html += '<div style="text-align:center;"><span class="result-retake" onclick="location.reload()">' + t('t.result.retake.link') + '</span></div>';
+    wrap.innerHTML = html;
+    wrap.classList.add('visible');
+    setTimeout(function() {
+      wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 100);
+  }
+
+  // ── Check for existing result ──
+  var existing = localStorage.getItem('na_test_result');
+  if (existing) {
+    try {
+      var parsed = JSON.parse(existing);
+      if (parsed.profile && PROFILES[parsed.profile]) {
+        addBotMessage(t('t.result.existing'));
+        var choiceRow = document.createElement('div');
+        choiceRow.className = 'chat-msg bot-msg';
+        choiceRow.innerHTML = avatarHTML() +
+          '<div class="chat-msg-stack"><div class="chat-msg-options" id="opts-restart">' +
+          '<button class="chat-opt-btn" id="btn-view-result"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' + t('t.result.view') + '</span></button>' +
+          '<button class="chat-opt-btn" id="btn-retake"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' + t('t.result.retake') + '</span></button>' +
+          '</div></div>';
+        container.appendChild(choiceRow);
+        document.getElementById('btn-view-result').addEventListener('click', function() { window._showExisting(); });
+        document.getElementById('btn-retake').addEventListener('click', function() {
+          document.getElementById('opts-restart').querySelectorAll('.chat-opt-btn').forEach(function(b) { b.disabled = true; b.classList.add('disabled'); });
+          addUserMessage(t('t.result.retake'));
+          showTyping();
+          setTimeout(function() {
+            removeTyping();
+            addBotMessage(t('t.result.retake.message'));
+            showTyping();
+            setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
+          }, 500);
+        });
+        window._showExisting = function() {
+          answers = parsed.answers;
+          var result = computeProfile(answers);
+          var profile = PROFILES[result.profile];
+          document.getElementById('chat-scroll').style.display = 'none';
+          document.getElementById('chat-header').style.display = 'none';
+          renderResult(result, profile);
+        };
+        scrollBottom();
+        return;
+      }
+    } catch(e){}
+  }
+
+  // ── Auto-start — skip welcome, go straight to Q0 ──
+  (function autoStart() {
+    showTyping();
+    setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
+  })();
+
+})();
+</script>
+</body>
+</html>

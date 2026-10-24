@@ -1,0 +1,19 @@
+-- Migration 008: Backward-compat data migration from neuro_map_entries to nm_nodes + nm_links
+-- This migration is executed PER-USER via the API endpoint POST /api/neuromap/v2/migrate-legacy
+-- (not as a bulk SQL script, because it needs JSON payload parsing logic).
+--
+-- The API endpoint:
+-- 1. Reads all neuro_map_entries for the authenticated user
+-- 2. Extracts chains (emotion→area→cause→thought) from each entry's payload
+-- 3. Upserts each node into nm_nodes (ON CONFLICT increments count)
+-- 4. Creates links between consecutive chain nodes in nm_links
+-- 5. Preserves original created_at timestamps as last_seen_at
+--
+-- Frontend trigger:
+-- On login/page load, nmMigrateLegacy() runs once (gated by localStorage flag 'na_nm_legacy_migrated').
+-- It checks if nmData has old-format entries and, if so, calls the API endpoint.
+--
+-- Idempotent: safe to run multiple times (ON CONFLICT upsert).
+-- The old neuro_map_entries table is NOT dropped — it remains as a backup.
+--
+-- No destructive SQL operations in this migration.
