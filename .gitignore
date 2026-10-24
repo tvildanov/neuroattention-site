@@ -1,3 +1,15 @@
+node_modules/
+.env
+.DS_Store
+reports/
+
+# anatomy build artifact (regenerate via tools/gen_regions_index.py)
+data/anatomy/regions-index.json
+
+# python bytecode
+tools/__pycache__/
+scripts/node_modules/
+
 
 # --- security: never commit secrets or real data (added 2026-10-23) ---
 # Keep only code, docs, config TEMPLATES without values, and fake fixtures.
