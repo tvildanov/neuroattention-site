@@ -1,0 +1,11 @@
+{
+  "name": "neuroattention-marketing-checks",
+  "private": true,
+  "description": "Reproducible geometry and interaction checks for the marketing pages. Requires system Chrome (CHROME_PATH or /usr/bin/google-chrome).",
+  "scripts": {
+    "test": "node --test typography-nbsp.test.js marketing-geometry.test.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "24.15.0"
+  }
+}

@@ -156,16 +156,90 @@
   }
 
   // ───────────────────────────────────────
-  // 7) Image stack — click to bring layer to front
+  // 7) Image stack
+  //    Wide: click brings a fanned layer to the front.
+  //    Narrow (≤860px): the three photographs occupy one frame, so a tablist
+  //    (and a tap on the visible frame) selects which one is shown.
   // ───────────────────────────────────────
+  var stackQuery = window.matchMedia('(max-width: 860px)');
+  function stackIsNarrow() { return stackQuery.matches; }
+
   document.querySelectorAll('.img-stack').forEach(function (stack) {
-    var layers = stack.querySelectorAll('.stack-layer');
-    layers.forEach(function (layer) {
-      layer.addEventListener('click', function () {
-        layers.forEach(function (l) { l.classList.remove('front'); });
-        layer.classList.add('front');
+    var set = stack.closest('.img-stack-set') || stack;
+    var layers = Array.prototype.slice.call(stack.querySelectorAll('.stack-layer'));
+    var tabs = Array.prototype.slice.call(set.querySelectorAll('.img-stack-tab'));
+    if (!layers.length) return;
+    var index = 0;
+    layers.forEach(function (layer, n) { if (layer.classList.contains('is-selected')) index = n; });
+
+    function show(i, focusTab) {
+      index = ((i % layers.length) + layers.length) % layers.length;
+      var narrow = stackIsNarrow();
+      layers.forEach(function (layer, n) {
+        var on = n === index;
+        layer.classList.toggle('is-selected', on);
+        if (narrow) layer.setAttribute('aria-hidden', on ? 'false' : 'true');
+        else layer.removeAttribute('aria-hidden');
+      });
+      tabs.forEach(function (tab, n) {
+        var on = n === index;
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
+      });
+      if (focusTab && tabs[index]) tabs[index].focus();
+    }
+
+    tabs.forEach(function (tab, n) {
+      tab.addEventListener('click', function () { show(n, false); });
+      tab.addEventListener('keydown', function (e) {
+        var next = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = n + 1;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = n - 1;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = tabs.length - 1;
+        if (next === null) return;
+        e.preventDefault();
+        show(next, true);
       });
     });
+
+    layers.forEach(function (layer, n) {
+      layer.addEventListener('click', function () {
+        if (stackIsNarrow()) show(index + 1, false);
+        else {
+          layers.forEach(function (l) { l.classList.remove('front'); });
+          layer.classList.add('front');
+          show(n, false);
+        }
+      });
+    });
+
+    if (stackQuery.addEventListener) stackQuery.addEventListener('change', function () { show(index, false); });
+    else if (stackQuery.addListener) stackQuery.addListener(function () { show(index, false); });
+    show(index, false);
+  });
+
+  // CloudFront marketing photos 403. Keep the real URL so a later ACL fix
+  // shows the photograph; until then mark the reserved frame unavailable.
+  // A placeholder is not the original portrait.
+  document.querySelectorAll('[data-photo-frame]').forEach(function (frame) {
+    var img = frame.querySelector('img');
+    if (!img) return;
+    var fail = function () {
+      frame.classList.add('is-unavailable');
+      img.setAttribute('aria-hidden', 'true');
+    };
+    var ok = function () {
+      if (img.naturalWidth > 0) {
+        frame.classList.remove('is-unavailable');
+        img.removeAttribute('aria-hidden');
+      } else {
+        fail();
+      }
+    };
+    img.addEventListener('error', fail);
+    img.addEventListener('load', ok);
+    if (img.complete) ok();
   });
 
   // ───────────────────────────────────────
