@@ -1106,3 +1106,35 @@
   "next_session": "Continue on codex/dom-institute-rebrand; recheck main and relevant files before each update to account for Cursor work"
 }
 ```
+
+
+## 2026-11-07 — Historical bug backlog reconciliation
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T17:27:14.610Z",
+  "did": [
+    "Reconciled historical Nick bug package against main journal, handoff files, open issues and merged/open PRs",
+    "Documented missing original 29-item file; distinguished deferred, merged and unverified work"
+  ],
+  "changed": [
+    "Documentation only"
+  ],
+  "files": [
+    "docs/BACKLOG-REVIEW-2026-11-07.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No bug fixes, merges, deploys or task reprioritization; await Nick's selection",
+    "Use backlog review as working reference alongside DOM rebrand"
+  ],
+  "followups": [
+    "Choose which public-site issues to combine with rebrand",
+    "Recover original nick-bugs-backlog file if available later",
+    "Recheck runtime/code before treating historical TODOs as active bugs"
+  ],
+  "next_session": "Read docs/BACKLOG-REVIEW-2026-11-07.md; implement only user-selected corrections"
+}
+```
