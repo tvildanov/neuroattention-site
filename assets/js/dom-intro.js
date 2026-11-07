@@ -9,7 +9,7 @@
   var skip = root.querySelector('.dom-intro-skip');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   var expanded = true, autoAllowed = true, timer = null, concealTimer = null, frame = null;
-  var remaining = 3500, startedAt = 0;
+  var remaining = 2500, startedAt = 0;
 
   function stopAuto() {
     autoAllowed = false;
@@ -43,7 +43,7 @@
       panel.setAttribute('aria-hidden', 'true');
       concealTimer = window.setTimeout(function () {
         if (!expanded) panel.hidden = true;
-      }, reduce.matches ? 0 : 720);
+      }, reduce.matches ? 0 : 470);
     }
   }
   function beginCountdown() {
