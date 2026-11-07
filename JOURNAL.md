@@ -1291,3 +1291,42 @@
   "next_session": "Continue Russian homepage editorial work after user reviews the deployed result"
 }
 ```
+
+
+## 2026-11-07 — Center purpose disclosure and shorten cover
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T19:47:40.699Z",
+  "did": [
+    "Previous release PR170 deployed successfully via Pages run 42404562033; live cover, original font and video resources verified",
+    "Implemented Nick's follow-up: centered purpose label, larger/heavier existing navbar font, arrow directly below label",
+    "Shortened visible countdown to 2500ms and curtain to 450ms",
+    "Chromium passed centered geometry at 320/375/768/1024/1440, countdown ~2.5s, persistent manual reopening and RU/EN/ES label switching; inspected desktop/mobile screenshots"
+  ],
+  "changed": [
+    "Homepage cover disclosure and timing; SW v94"
+  ],
+  "files": [
+    "assets/js/dom-intro.js",
+    "assets/dom-brand.css",
+    "index.html",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "RU purpose label: Для человеческой адаптации; EN/ES label follows selected language",
+    "Full cover translation remains deferred",
+    "Publish the requested iterative adjustment; no unrelated backlog work"
+  ],
+  "followups": [
+    "Verify deployed layout on live homepage"
+  ],
+  "next_session": "Continue user-directed homepage text and design"
+}
+```
