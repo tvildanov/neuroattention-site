@@ -1253,3 +1253,41 @@
   "next_session": "Continue homepage review on codex/dom-institute-rebrand"
 }
 ```
+
+
+## 2026-11-07 — Authorized DOM homepage release and cursor tracking
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T19:05:29.781Z",
+  "did": [
+    "User explicitly requested deployment of the approved DOM homepage",
+    "Reverted Krona One trial to prior hero font and removed trial assets",
+    "Reproduced cursor failures for pointer-only movement and stopped bubbling in the old code; capture-phase pointermove/mousemove fixes both",
+    "Verified widths 320/375/768/1024/1440, cover auto/manual behavior, native touch cursor and native fallback on blur in Chromium"
+  ],
+  "changed": [
+    "DOM homepage release, cursor tracking and cache v93"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "assets/redesign.js",
+    "assets/redesign.css",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "Publish this approved release through main/GitHub Pages",
+    "No API code changes; deferred backlog remains untouched",
+    "Exact cause on visitor hardware is unconfirmed"
+  ],
+  "followups": [
+    "Confirm Pages deployment and live homepage",
+    "Safari and physical-device verification pending"
+  ],
+  "next_session": "Continue Russian homepage editorial work after user reviews the deployed result"
+}
+```

@@ -32,17 +32,41 @@
     var dx = mx, dy = my;
     var stylusX = mx, stylusY = my;
 
-    window.addEventListener('mousemove', function (e) {
-      mx = e.clientX; my = e.clientY;
-    }, { passive: true });
-
-    window.addEventListener('mouseleave', function () {
+    // Track modern mouse/pen events in capture phase: widgets can stop bubbling
+    // mousemove, and some input bridges emit pointermove without mousemove.
+    // Keep native cursor until we have actually received a position.
+    stylus.setAttribute('aria-hidden', 'true');
+    dot.setAttribute('aria-hidden', 'true');
+    var cursorActive = false;
+    function hideCursor() {
+      cursorActive = false;
+      document.documentElement.classList.remove('na-custom-cursor-active');
       stylus.style.opacity = '0';
       dot.style.opacity = '0';
-    });
-    window.addEventListener('mouseenter', function () {
-      stylus.style.opacity = '1';
-      dot.style.opacity = '1';
+    }
+    function trackCursor(e) {
+      if (e.pointerType === 'touch') { hideCursor(); return; }
+      if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+      mx = e.clientX; my = e.clientY;
+      if (!cursorActive) {
+        // No flight from the middle of the page on first movement/re-entry.
+        stylusX = dx = mx; stylusY = dy = my;
+        cursorActive = true;
+        document.documentElement.classList.add('na-custom-cursor-active');
+        stylus.style.opacity = '1';
+        dot.style.opacity = '1';
+      }
+    }
+    hideCursor();
+    window.addEventListener('pointermove', trackCursor, { passive: true, capture: true });
+    window.addEventListener('mousemove', trackCursor, { passive: true, capture: true });
+    window.addEventListener('mouseleave', hideCursor);
+    window.addEventListener('pointerout', function (e) {
+      if (!e.relatedTarget) hideCursor();
+    }, { passive: true, capture: true });
+    window.addEventListener('blur', hideCursor);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) hideCursor();
     });
 
     window.addEventListener('mousedown', function () { dot.classList.add('down'); });

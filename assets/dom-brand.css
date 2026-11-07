@@ -1,11 +1,3 @@
-@font-face {
-  font-family: 'Krona One';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('fonts/krona-one-latin-400-normal.woff2') format('woff2');
-}
-
 /* Homepage DOM identity: keep the existing mark and logoPulse hover rule. */
 .navbar .nav-logo-dom {
   flex-shrink: 0;
@@ -93,9 +85,8 @@
 .dom-intro-identity { width: 100%; }
 .dom-intro-mark { display: block; margin: 0 auto 1.5rem; object-fit: contain; }
 .dom-intro-title {
-  margin: 0; font-family: 'Krona One','Unbounded',sans-serif;
-  font-size: clamp(1.6rem,5.6vw,5rem); font-weight: 400; line-height: 1.2; letter-spacing: -.035em;
-  font-synthesis: none;
+  margin: 0; font-family: var(--hero-font,'Unbounded',sans-serif);
+  font-size: clamp(2rem,6.5vw,6rem); font-weight: 500; line-height: 1.15; letter-spacing: -.04em;
 }
 .dom-intro-purpose {
   margin: 1.2rem 0 0; font: 400 clamp(1.15rem,2.7vw,2.5rem)/1.4 'Space Grotesk',sans-serif;

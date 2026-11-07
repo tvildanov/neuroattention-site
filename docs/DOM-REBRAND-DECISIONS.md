@@ -1,6 +1,6 @@
 # DOM homepage decisions — 2026-11-07
 
-- Work branch: codex/dom-institute-rebrand. Main/live publication awaits the agreed release approval.
+- Work branch: codex/dom-institute-rebrand. User explicitly authorized publication on 2026-11-07; deploy this release after verification.
 - Existing logo asset and logoPulse hover are retained.
 - Header: logo + DOM Institute only. The disclosure bar below reads For Human Adaptation with an arrow; no repeated institute name or visible expand/collapse label.
 - Existing hero narrative (world/new era, adaptation, health and quality of life), accent line, orbit video and all three CTA links remain.
@@ -12,5 +12,5 @@
 - Old backlog remains deferred; no unrelated fixes or automatic merges of existing PRs.
 - Browser checks passed locally in Chromium at 320/375/768/1024/1440. Safari and physical-phone checks remain.
 
-- Cover display title DOM Institute uses self-hosted Krona One Regular (OFL license included). This is a font preview scoped to the cover title; Cyrillic subtitle and other headings retain their prior fonts. Font file inspected: Latin present, Cyrillic absent.
-- Latest typography/layout checks: actual Krona One loaded in Chromium at 320/375/768/1024/1440; no title/header overflow and disclosure reopening passed. Live publication remains pending.
+- User reverted the Krona One trial: the cover title again uses the existing Unbounded/hero font. Remove trial font assets; typography review deferred until content is final.
+- Cursor now tracks pointermove and mousemove in capture phase, keeps the trailing dot, and restores the native pointer until movement and on blur/touch. Local Chromium reproduced pointer-only and stopped-bubble failures in the old implementation and passed both with the fix. Exact cause on the user's device remains unconfirmed.

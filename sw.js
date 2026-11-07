@@ -146,7 +146,8 @@
 // DOM homepage identity: mark and hero copy retained; new wordmark and eyebrow.
 // Retractable DOM identity cover on the homepage (RU editorial pass).
 // DOM cover: Krona One display title and simplified header/disclosure labels.
-var CACHE_NAME = 'na-practices-v92';
+// DOM release: original cover font restored; pointer cursor capture/fallback fix.
+var CACHE_NAME = 'na-practices-v93';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
