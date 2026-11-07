@@ -1215,3 +1215,41 @@
   "next_session": "Continue user-directed homepage revisions; preserve current hero and buttons; publish only after agreed release approval"
 }
 ```
+
+
+## 2026-11-07 — Krona One cover preview and simplified identity labels
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T18:34:52.089Z",
+  "did": [
+    "Revised Russian cover subtitle to Институт человеческой адаптации",
+    "Simplified navbar to logo + DOM Institute; moved For Human Adaptation to disclosure bar with arrow",
+    "Previewed actual self-hosted Krona One on cover title; included OFL license",
+    "Checked font loading, header/title geometry and disclosure behavior in Chromium at 320/375/768/1024/1440; visually inspected screenshots"
+  ],
+  "changed": [
+    "Cover typography and labels; local 11KB font asset; cache v92"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "assets/fonts/Krona-One-OFL.txt",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "assets/fonts/krona-one-latin-400-normal.woff2"
+  ],
+  "decisions": [
+    "Krona One is scoped to DOM Institute cover heading; no global heading-font replacement",
+    "Cyrillic subtitle retains existing font because provided Krona One distribution has Latin only",
+    "Russian editorial sequence remains; no publish"
+  ],
+  "followups": [
+    "Nick to review Krona One preview",
+    "Safari/real-device verification remains pending"
+  ],
+  "next_session": "Continue homepage review on codex/dom-institute-rebrand"
+}
+```

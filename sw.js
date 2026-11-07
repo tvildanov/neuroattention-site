@@ -145,7 +145,8 @@
 // v85: Monad online office + live API + SVG branches
 // DOM homepage identity: mark and hero copy retained; new wordmark and eyebrow.
 // Retractable DOM identity cover on the homepage (RU editorial pass).
-var CACHE_NAME = 'na-practices-v91';
+// DOM cover: Krona One display title and simplified header/disclosure labels.
+var CACHE_NAME = 'na-practices-v92';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
