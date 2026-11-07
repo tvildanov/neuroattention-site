@@ -1072,3 +1072,37 @@
 - Clarified Monad `/api/rhythm` 404 (dashboard live OK; JSON missing) → `docs/MONAD-TAHIR-HANDOFF.md` for Tahir+Monad.
 - Monad LK: multiple chats/tasks, pinned context, file/image uploads, poll shared_context for replies (mig074).
 - Sketch Phase 0/1 shell: 5-layer panel + Atlas viewport placeholder.
+
+
+## 2026-11-07 — DOM Institute rebrand: repository access and workspace setup
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T17:22:13.433Z",
+  "did": [
+    "Verified GitHub read and push permissions for tvildanov/neuroattention-site",
+    "Read AGENTS.md, engineering guide, recent session journal and main commits; inventoried open pull requests",
+    "Confirmed GitHub Pages frontend and Railway neuroattention-api backend; Railway latest deployment SUCCESS",
+    "Created codex/dom-institute-rebrand from main 25a237ab2a7cdf19a41e0974d742575a1a2422be for the user-requested DOM Institute rebrand"
+  ],
+  "changed": [
+    "Session journal only; no application changes or deployment"
+  ],
+  "files": [
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Use current repository sources while Monada MCP connection is being configured",
+    "Keep rebrand work isolated from main and existing Cursor pull requests",
+    "User will provide first concrete corrections before website content edits"
+  ],
+  "followups": [
+    "Implement user-provided website corrections",
+    "Keep RU/EN/ES strings synchronized and bump service worker cache for shippable frontend changes",
+    "Synchronize session journal into Monada once MCP is available"
+  ],
+  "next_session": "Continue on codex/dom-institute-rebrand; recheck main and relevant files before each update to account for Cursor work"
+}
+```
