@@ -143,7 +143,11 @@
 //      shows immediate progress, times out at 15s, and ignores a duplicate submit.
 // v86: Monad focus cross, human fn, semantic search, office scroll, sketch orbit
 // v85: Monad online office + live API + SVG branches
-var CACHE_NAME = 'na-practices-v89';
+// DOM homepage identity: mark and hero copy retained; new wordmark and eyebrow.
+// Retractable DOM identity cover on the homepage (RU editorial pass).
+// DOM cover: Krona One display title and simplified header/disclosure labels.
+// DOM release: original cover font restored; pointer cursor capture/fallback fix.
+var CACHE_NAME = 'na-practices-v93';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

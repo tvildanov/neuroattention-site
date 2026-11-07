@@ -1072,3 +1072,222 @@
 - Clarified Monad `/api/rhythm` 404 (dashboard live OK; JSON missing) → `docs/MONAD-TAHIR-HANDOFF.md` for Tahir+Monad.
 - Monad LK: multiple chats/tasks, pinned context, file/image uploads, poll shared_context for replies (mig074).
 - Sketch Phase 0/1 shell: 5-layer panel + Atlas viewport placeholder.
+
+
+## 2026-11-07 — DOM Institute rebrand: repository access and workspace setup
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T17:22:13.433Z",
+  "did": [
+    "Verified GitHub read and push permissions for tvildanov/neuroattention-site",
+    "Read AGENTS.md, engineering guide, recent session journal and main commits; inventoried open pull requests",
+    "Confirmed GitHub Pages frontend and Railway neuroattention-api backend; Railway latest deployment SUCCESS",
+    "Created codex/dom-institute-rebrand from main 25a237ab2a7cdf19a41e0974d742575a1a2422be for the user-requested DOM Institute rebrand"
+  ],
+  "changed": [
+    "Session journal only; no application changes or deployment"
+  ],
+  "files": [
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Use current repository sources while Monada MCP connection is being configured",
+    "Keep rebrand work isolated from main and existing Cursor pull requests",
+    "User will provide first concrete corrections before website content edits"
+  ],
+  "followups": [
+    "Implement user-provided website corrections",
+    "Keep RU/EN/ES strings synchronized and bump service worker cache for shippable frontend changes",
+    "Synchronize session journal into Monada once MCP is available"
+  ],
+  "next_session": "Continue on codex/dom-institute-rebrand; recheck main and relevant files before each update to account for Cursor work"
+}
+```
+
+
+## 2026-11-07 — Historical bug backlog reconciliation
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T17:27:14.610Z",
+  "did": [
+    "Reconciled historical Nick bug package against main journal, handoff files, open issues and merged/open PRs",
+    "Documented missing original 29-item file; distinguished deferred, merged and unverified work"
+  ],
+  "changed": [
+    "Documentation only"
+  ],
+  "files": [
+    "docs/BACKLOG-REVIEW-2026-11-07.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No bug fixes, merges, deploys or task reprioritization; await Nick's selection",
+    "Use backlog review as working reference alongside DOM rebrand"
+  ],
+  "followups": [
+    "Choose which public-site issues to combine with rebrand",
+    "Recover original nick-bugs-backlog file if available later",
+    "Recheck runtime/code before treating historical TODOs as active bugs"
+  ],
+  "next_session": "Read docs/BACKLOG-REVIEW-2026-11-07.md; implement only user-selected corrections"
+}
+```
+
+
+## 2026-11-07 — Homepage identity: DOM wordmark and directions eyebrow
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T18:11:52.058Z",
+  "did": [
+    "Prepared homepage-only DOM Institute wordmark with readable second line for Human Adaptation",
+    "Preserved existing logo asset, hover logoPulse selector, accent line, hero title/subtitle/description, orbit video and all three CTA links",
+    "Added localized homepage-only direction eyebrow in RU/EN/ES"
+  ],
+  "changed": [
+    "Homepage header/eyebrow and scoped stylesheet; SW cache version"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "sw.js"
+  ],
+  "decisions": [
+    "User retains current hero narrative",
+    "CTA alternatives remain discussion only; existing buttons retained",
+    "No main merge or deploy"
+  ],
+  "followups": [
+    "Visual responsive verification before publishing: local Playwright browser executable unavailable; source invariants and locale JSON verified",
+    "User to review wording and later choose CTA structure"
+  ],
+  "next_session": "Review homepage identity proposal, verify visual layout and continue next user-approved changes"
+}
+```
+
+
+## 2026-11-07 — Retractable DOM institute cover (Russian editorial pass)
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T18:25:06.773Z",
+  "did": [
+    "Implemented a Russian retractable DOM institute cover above the existing homepage hero",
+    "Verified in local Chromium at widths 320,375,768,1024,1440 using the site's font families: geometry, 3.5s auto-collapse, persistent manual reopening, skip, Escape and preserved logo hover",
+    "Verified reduced-motion, deep-link and no-JavaScript fallbacks; visually inspected mobile and desktop screenshots",
+    "Added a portable Playwright verification script"
+  ],
+  "changed": [
+    "Homepage-only cover, scoped CSS, dedicated JS, service worker cache v91; existing hero unchanged"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "assets/js/dom-intro.js",
+    "sw.js",
+    "scripts/dom-intro-verify.mjs"
+  ],
+  "decisions": [
+    "Every ordinary fresh page load opens the cover, then collapses after 3.5s of visible time",
+    "Manual interactions stop automatic dismissal; background-tab time is paused",
+    "Reduced motion and deep links start collapsed; cover is manually reopenable",
+    "RU editorial pass first across pages; do not translate the new cover to EN/ES until requested",
+    "No publication or main merge"
+  ],
+  "followups": [
+    "Nick to review Russian cover and duration",
+    "Safari and real-phone verification pending; orbit video asset playback was not tested in local cover harness",
+    "Translate new cover in the later EN/ES pass"
+  ],
+  "next_session": "Continue user-directed homepage revisions; preserve current hero and buttons; publish only after agreed release approval"
+}
+```
+
+
+## 2026-11-07 — Krona One cover preview and simplified identity labels
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T18:34:52.089Z",
+  "did": [
+    "Revised Russian cover subtitle to Институт человеческой адаптации",
+    "Simplified navbar to logo + DOM Institute; moved For Human Adaptation to disclosure bar with arrow",
+    "Previewed actual self-hosted Krona One on cover title; included OFL license",
+    "Checked font loading, header/title geometry and disclosure behavior in Chromium at 320/375/768/1024/1440; visually inspected screenshots"
+  ],
+  "changed": [
+    "Cover typography and labels; local 11KB font asset; cache v92"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "assets/fonts/Krona-One-OFL.txt",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "assets/fonts/krona-one-latin-400-normal.woff2"
+  ],
+  "decisions": [
+    "Krona One is scoped to DOM Institute cover heading; no global heading-font replacement",
+    "Cyrillic subtitle retains existing font because provided Krona One distribution has Latin only",
+    "Russian editorial sequence remains; no publish"
+  ],
+  "followups": [
+    "Nick to review Krona One preview",
+    "Safari/real-device verification remains pending"
+  ],
+  "next_session": "Continue homepage review on codex/dom-institute-rebrand"
+}
+```
+
+
+## 2026-11-07 — Authorized DOM homepage release and cursor tracking
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T19:05:29.781Z",
+  "did": [
+    "User explicitly requested deployment of the approved DOM homepage",
+    "Reverted Krona One trial to prior hero font and removed trial assets",
+    "Reproduced cursor failures for pointer-only movement and stopped bubbling in the old code; capture-phase pointermove/mousemove fixes both",
+    "Verified widths 320/375/768/1024/1440, cover auto/manual behavior, native touch cursor and native fallback on blur in Chromium"
+  ],
+  "changed": [
+    "DOM homepage release, cursor tracking and cache v93"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "assets/redesign.js",
+    "assets/redesign.css",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "Publish this approved release through main/GitHub Pages",
+    "No API code changes; deferred backlog remains untouched",
+    "Exact cause on visitor hardware is unconfirmed"
+  ],
+  "followups": [
+    "Confirm Pages deployment and live homepage",
+    "Safari and physical-device verification pending"
+  ],
+  "next_session": "Continue Russian homepage editorial work after user reviews the deployed result"
+}
+```

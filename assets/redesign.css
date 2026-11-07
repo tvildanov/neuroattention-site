@@ -28,7 +28,7 @@
 body {
   font-family: var(--body-font);
   letter-spacing: -0.005em;
-  cursor: none;  /* use custom cursor */
+  cursor: auto;  /* native fallback until movement tracking is active */
 }
 
 /* keep native cursor on touch devices */
@@ -274,6 +274,7 @@ body {
    ══════════════════════════════════════════ */
 .cursor-stylus,
 .cursor-dot {
+  opacity: 0;
   position: fixed;
   top: 0;
   left: 0;
@@ -1042,8 +1043,9 @@ body.method-flashlight {
 
 /* BUG-18: custom cursor alone — hide OS arrow/hand on clickable UI */
 @media (hover: hover) and (pointer: fine) {
-  a, button, label, input, select, textarea, summary,
-  .dash-tab, .dash-subtab, .btn, [role="button"], [onclick] {
+  html.na-custom-cursor-active body,
+  html.na-custom-cursor-active body :is(a, button, label, input, select, textarea, summary,
+  .dash-tab, .dash-subtab, .btn, [role="button"], [onclick]) {
     cursor: none !important;
   }
 }
