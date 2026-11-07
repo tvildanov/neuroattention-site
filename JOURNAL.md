@@ -1330,3 +1330,41 @@
   "next_session": "Continue user-directed homepage text and design"
 }
 ```
+
+
+## 2026-11-07 — Pending compact purpose tab and cover order
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T20:05:25.691Z",
+  "did": [
+    "Updated RU tab label, moved arrow inline and reduced bar to 48px",
+    "Added slow cyan text-shadow pulse without scaling, disabled for reduced motion",
+    "Expanded state shows only accessible collapse arrow; moved logo above directions",
+    "Chromium checks at 320/375/768/1440 passed single-line compact tab, label hiding/restoration and logo ordering; reduced-motion pulse opt-out passed",
+    "Reviewed existing Russian Problem/Facts/Solution text for editorial recommendations"
+  ],
+  "changed": [
+    "Pending homepage tab and cover layout only"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No merge or deployment: user explicitly requested batching future changes",
+    "EN/ES tab labels and 2.5-second countdown preserved",
+    "Problem/Facts/Solution copy not changed; recommend preserving structure, substantiating numerical facts and broadening solution framing"
+  ],
+  "followups": [
+    "Discuss Problem/Facts/Solution proposals and Hero CTAs",
+    "Bump service worker on eventual release and recheck current main before publishing"
+  ],
+  "next_session": "Continue on codex/dom-institute-rebrand without deployment until user requests the grouped release"
+}
+```
