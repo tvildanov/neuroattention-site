@@ -1175,3 +1175,43 @@
   "next_session": "Review homepage identity proposal, verify visual layout and continue next user-approved changes"
 }
 ```
+
+
+## 2026-11-07 — Retractable DOM institute cover (Russian editorial pass)
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T18:25:06.773Z",
+  "did": [
+    "Implemented a Russian retractable DOM institute cover above the existing homepage hero",
+    "Verified in local Chromium at widths 320,375,768,1024,1440 using the site's font families: geometry, 3.5s auto-collapse, persistent manual reopening, skip, Escape and preserved logo hover",
+    "Verified reduced-motion, deep-link and no-JavaScript fallbacks; visually inspected mobile and desktop screenshots",
+    "Added a portable Playwright verification script"
+  ],
+  "changed": [
+    "Homepage-only cover, scoped CSS, dedicated JS, service worker cache v91; existing hero unchanged"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "assets/js/dom-intro.js",
+    "sw.js",
+    "scripts/dom-intro-verify.mjs"
+  ],
+  "decisions": [
+    "Every ordinary fresh page load opens the cover, then collapses after 3.5s of visible time",
+    "Manual interactions stop automatic dismissal; background-tab time is paused",
+    "Reduced motion and deep links start collapsed; cover is manually reopenable",
+    "RU editorial pass first across pages; do not translate the new cover to EN/ES until requested",
+    "No publication or main merge"
+  ],
+  "followups": [
+    "Nick to review Russian cover and duration",
+    "Safari and real-phone verification pending; orbit video asset playback was not tested in local cover harness",
+    "Translate new cover in the later EN/ES pass"
+  ],
+  "next_session": "Continue user-directed homepage revisions; preserve current hero and buttons; publish only after agreed release approval"
+}
+```

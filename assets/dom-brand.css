@@ -40,3 +40,97 @@
   .nav-logo-dom .nav-logo-icon { height: 22px; }
   .navbar .nav-logo-dom { gap: 6px; }
 }
+
+/* Retractable homepage cover. No blocking overlay and no scroll lock. */
+.dom-intro {
+  --intro-nav-height: 4.25rem;
+  --intro-bar-height: 44px;
+  position: relative;
+  margin-top: var(--intro-nav-height);
+  color: var(--text-primary);
+}
+.dom-intro-bar {
+  min-height: var(--intro-bar-height);
+  border-block: 1px solid rgba(255,255,255,.08);
+  background: rgba(7,12,17,.86);
+}
+.dom-intro-toggle {
+  width: 100%; min-height: var(--intro-bar-height);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .6rem 0; background: transparent; border: 0;
+  font: 500 12px/1.4 'Space Grotesk',sans-serif; color: var(--text-primary);
+  text-align: left;
+}
+.dom-intro-toggle[hidden] { display: none; }
+.dom-intro-tab-name { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem 1rem; }
+.dom-intro-tab-caption { color: var(--text-muted); font-size: 11px; }
+.dom-intro-tab-action { display: inline-flex; align-items: center; gap: .5rem; color: var(--text-secondary); }
+.dom-intro-tab-action svg { flex-shrink: 0; transition: transform .65s ease; }
+.dom-intro.is-expanded .dom-intro-tab-action svg { transform: rotate(180deg); }
+.dom-intro-toggle:focus-visible, .dom-intro-skip:focus-visible {
+  outline: 2px solid var(--accent-cyan); outline-offset: 4px; border-radius: 4px;
+}
+.dom-intro-panel {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows .7s cubic-bezier(.22,1,.36,1);
+  background: radial-gradient(ellipse at 50% 45%,rgba(78,205,196,.055),transparent 65%);
+}
+.dom-intro-panel[hidden] { display: none; }
+.dom-intro-clip { min-height: 0; overflow: hidden; }
+.dom-intro-cover {
+  min-height: calc(100vh - var(--intro-nav-height) - var(--intro-bar-height));
+  min-height: calc(100svh - var(--intro-nav-height) - var(--intro-bar-height));
+  padding-block: clamp(1.5rem,5vh,4rem) !important;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  gap: 2rem; text-align: center;
+  opacity: 1; transform: translateY(0);
+  transition: opacity .35s ease, transform .7s cubic-bezier(.22,1,.36,1);
+}
+.dom-intro:not(.is-expanded) .dom-intro-panel { grid-template-rows: 0fr; }
+.dom-intro:not(.is-expanded) .dom-intro-cover { opacity: 0; transform: translateY(-28px); }
+.dom-intro-directions, .dom-intro-themes {
+  max-width: 54rem; margin: 0;
+  font: 500 clamp(10px,1vw,12px)/1.9 'JetBrains Mono',monospace;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--text-secondary);
+  text-wrap: balance;
+}
+.dom-intro-identity { width: 100%; }
+.dom-intro-mark { display: block; margin: 0 auto 1.5rem; object-fit: contain; }
+.dom-intro-title {
+  margin: 0; font-family: var(--hero-font,'Unbounded',sans-serif);
+  font-size: clamp(2rem,6.5vw,6rem); font-weight: 500; line-height: 1.15; letter-spacing: -.04em;
+}
+.dom-intro-purpose {
+  margin: 1.2rem 0 0; font: 400 clamp(1.15rem,2.7vw,2.5rem)/1.4 'Space Grotesk',sans-serif;
+  color: var(--text-primary); text-wrap: balance;
+}
+.dom-intro-world {
+  margin: .65rem 0 0; font: 400 clamp(1rem,1.8vw,1.5rem)/1.5 'Space Grotesk',sans-serif;
+  color: var(--text-secondary); text-wrap: balance;
+}
+.dom-intro-bottom { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
+.dom-intro-skip {
+  display: inline-flex; align-items: center; gap: .8rem;
+  min-height: 44px; padding: .65rem 1rem;
+  border: 1px solid rgba(255,255,255,.16); border-radius: 999px;
+  font: 500 13px/1.4 'Space Grotesk',sans-serif; color: var(--text-primary);
+  background: rgba(255,255,255,.025); text-decoration: none;
+}
+.dom-intro-skip:hover { border-color: rgba(78,205,196,.6); background: rgba(78,205,196,.05); }
+.dom-intro + .hero {
+  min-height: calc(100svh - 4.25rem - 44px);
+  padding-top: 3rem !important;
+  scroll-margin-top: calc(4.25rem + 1rem);
+}
+@media (max-width: 480px) {
+  .dom-intro-cover { gap: 1.5rem; padding-block: 1.5rem !important; }
+  .dom-intro-directions, .dom-intro-themes { letter-spacing: .06em; }
+  .dom-intro-tab-action { font-size: 11px; }
+  .dom-intro-tab-caption { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dom-intro-panel, .dom-intro-cover, .dom-intro-tab-action svg { transition: none; }
+}
+@media print {
+  .dom-intro-toggle, .dom-intro-skip { display: none; }
+}
