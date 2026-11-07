@@ -1,0 +1,42 @@
+/* Homepage DOM identity: keep the existing mark and logoPulse hover rule. */
+.navbar .nav-logo-dom {
+  flex-shrink: 0;
+  overflow: visible;
+}
+.nav-logo-dom .dom-brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.nav-logo-dom .dom-brand-name {
+  font-size: 1.35rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.nav-logo-dom .dom-brand-subtitle {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: .035em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.hero .hero-dom-eyebrow {
+  max-width: 100%;
+  line-height: 1.9;
+  letter-spacing: .12em;
+  text-wrap: balance;
+}
+@media (max-width: 768px) {
+  .nav-logo-dom .dom-brand-name { font-size: 17px; }
+  .nav-logo-dom .dom-brand-subtitle { font-size: 10px; letter-spacing: .01em; }
+  .nav-logo-dom .nav-logo-icon { height: 26px; flex-shrink: 0; }
+}
+@media (max-width: 380px) {
+  .nav-logo-dom .dom-brand-name { font-size: 15px; }
+  .nav-logo-dom .dom-brand-subtitle { font-size: 9.5px; letter-spacing: 0; }
+  .nav-logo-dom .nav-logo-icon { height: 22px; }
+  .navbar .nav-logo-dom { gap: 6px; }
+}

@@ -1138,3 +1138,40 @@
   "next_session": "Read docs/BACKLOG-REVIEW-2026-11-07.md; implement only user-selected corrections"
 }
 ```
+
+
+## 2026-11-07 — Homepage identity: DOM wordmark and directions eyebrow
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T18:11:52.058Z",
+  "did": [
+    "Prepared homepage-only DOM Institute wordmark with readable second line for Human Adaptation",
+    "Preserved existing logo asset, hover logoPulse selector, accent line, hero title/subtitle/description, orbit video and all three CTA links",
+    "Added localized homepage-only direction eyebrow in RU/EN/ES"
+  ],
+  "changed": [
+    "Homepage header/eyebrow and scoped stylesheet; SW cache version"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "sw.js"
+  ],
+  "decisions": [
+    "User retains current hero narrative",
+    "CTA alternatives remain discussion only; existing buttons retained",
+    "No main merge or deploy"
+  ],
+  "followups": [
+    "Visual responsive verification before publishing: local Playwright browser executable unavailable; source invariants and locale JSON verified",
+    "User to review wording and later choose CTA structure"
+  ],
+  "next_session": "Review homepage identity proposal, verify visual layout and continue next user-approved changes"
+}
+```
