@@ -1446,3 +1446,41 @@
   "next_session": "Continue from typography draft and documented integration/media diagnosis"
 }
 ```
+
+
+## 2026-11-08 — Attention insight preview, awaiting release approval
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T10:12:53.258Z",
+  "did": [
+    "Prepared attention insight block replacing the current Solution section in the work branch",
+    "Retained original drop-ripple.mp4 and circular mask, including mobile",
+    "Arranged five text points along the circle's right arc on desktop, single column on mobile; cyan/blue markers",
+    "Added a programs.html CTA; preserved following Method and all subsequent sections",
+    "Verified Chromium at 320/375/768/1024/1440: no overflow, five points, expected arc/column, circle clipping and original video readyState 4; inspected screenshots"
+  ],
+  "changed": [
+    "Russian attention insight preview, CSS and cache-busted stylesheet reference"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No deployment or main merge until user confirms preview",
+    "Pending batch also includes approved thin Unbounded purpose tab and title-case labels",
+    "Future sequence proposed: problem/facts, short attention insight, programs, method, ecosystem; program block not yet designed or moved"
+  ],
+  "followups": [
+    "Owner approves or revises layout and copy",
+    "At release recheck main and bump service worker",
+    "Separately agree on homepage program section"
+  ],
+  "next_session": "Show preview and wait for confirmation before publishing grouped changes"
+}
+```
