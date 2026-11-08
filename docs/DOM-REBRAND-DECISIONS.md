@@ -16,3 +16,8 @@
 - Cursor now tracks pointermove and mousemove in capture phase, keeps the trailing dot, and restores the native pointer until movement and on blur/touch. Local Chromium reproduced pointer-only and stopped-bubble failures in the old implementation and passed both with the fix. Exact cause on the user's device remains unconfirmed.
 
 - Follow-up requested by Nick: countdown 2.5s, curtain transition .45s (about 3s total), centered purpose disclosure distinct from the header wordmark. Main hero/CTAs unchanged.
+
+- Pending batch (not deployed): RU disclosure reads Институт человеческой адаптации; EN/ES labels unchanged. Compact 48px single-row tab, arrow immediately after label, slow cyan text-glow pulse with reduced-motion opt-out. Expanded state hides the purpose label and leaves the accessible collapse arrow. Cover order: logo, directions, DOM Institute, purpose, world, themes, skip.
+- Nick explicitly requested no deployment until further changes are grouped. Keep these changes in the work branch. Problem/Facts/Solution edits are proposals only, pending discussion.
+
+- Approved grouped release 2026-11-08: publish pending compact tab/cover order plus the Russian institute question linking to dom.html. Keep current Hero CTA links, 30-year problem wording and subsequent sections unchanged. Merge Problem and Facts into one section, label it Проблема и факты in RU, demote facts title to ordinary text, compact the four existing rows, preserve their text/media/animation classes and the final adaptation CTA. User is still considering programs/approach changes; do not reorder these sections.

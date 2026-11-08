@@ -1330,3 +1330,78 @@
   "next_session": "Continue user-directed homepage text and design"
 }
 ```
+
+
+## 2026-11-07 — Pending compact purpose tab and cover order
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-07T20:05:25.691Z",
+  "did": [
+    "Updated RU tab label, moved arrow inline and reduced bar to 48px",
+    "Added slow cyan text-shadow pulse without scaling, disabled for reduced motion",
+    "Expanded state shows only accessible collapse arrow; moved logo above directions",
+    "Chromium checks at 320/375/768/1440 passed single-line compact tab, label hiding/restoration and logo ordering; reduced-motion pulse opt-out passed",
+    "Reviewed existing Russian Problem/Facts/Solution text for editorial recommendations"
+  ],
+  "changed": [
+    "Pending homepage tab and cover layout only"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No merge or deployment: user explicitly requested batching future changes",
+    "EN/ES tab labels and 2.5-second countdown preserved",
+    "Problem/Facts/Solution copy not changed; recommend preserving structure, substantiating numerical facts and broadening solution framing"
+  ],
+  "followups": [
+    "Discuss Problem/Facts/Solution proposals and Hero CTAs",
+    "Bump service worker on eventual release and recheck current main before publishing"
+  ],
+  "next_session": "Continue on codex/dom-institute-rebrand without deployment until user requests the grouped release"
+}
+```
+
+
+## 2026-11-08 — Approved question and compact facts release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T06:28:14.299Z",
+  "did": [
+    "Added the approved Russian institute question to the cover with link to dom.html",
+    "Combined problem and facts in one section with a small facts introduction and four compact rows",
+    "Preserved four fact texts, media URLs, alternating animation classes and concluding adaptation CTA",
+    "Chromium verification at 320/375/768/1024/1440: no overflow, question link, three original Hero CTAs, four facts in problem section; row stack measures 428px at desktop and 585.5px at 375px width",
+    "Inspected mobile facts and desktop cover screenshots; media binary playback requires live verification"
+  ],
+  "changed": [
+    "Homepage cover and compact facts; Russian combined section label; service worker v95"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "User explicitly authorized deploying this batch together with previous compact tab, pulse and cover-order changes",
+    "Keep the current 30-year wording and Hero CTA buttons",
+    "Do not reorder programs/method/ecosystem or rewrite subsequent sections; user still considering"
+  ],
+  "followups": [
+    "Confirm Pages release and public homepage"
+  ],
+  "next_session": "Continue homepage changes after user reviews this deployed batch"
+}
+```
