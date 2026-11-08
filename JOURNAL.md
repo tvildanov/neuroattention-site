@@ -1484,3 +1484,40 @@
   "next_session": "Show preview and wait for confirmation before publishing grouped changes"
 }
 ```
+
+
+## 2026-11-08 — Mobile-first attention insight revision
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T10:18:06.088Z",
+  "did": [
+    "Recorded explicit approval of desktop insight and rejection of first mobile layout",
+    "Rebuilt mobile composition with two-line heading, compact orb next to intro, divided readable rows and full-width 48px CTA",
+    "Preserved all five point texts and original video; desktop layout unaffected",
+    "Chromium verification at 320/375/390/430/768/1440: no overflow, heading exactly two lines on phones, video readyState 4; desktop arc coordinates and section height unchanged",
+    "Mobile section at 375px reduced from ~1049px to ~807px; visually inspected 390px screenshot"
+  ],
+  "changed": [
+    "Mobile-only insight layout and inline heading spans"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Desktop approved; new phone composition awaits review",
+    "No main merge/deployment until mobile review is complete",
+    "Retain app-friendly fully visible rows and full-width action"
+  ],
+  "followups": [
+    "Owner reviews phone preview",
+    "After approval publish insight with previously prepared thin heading-font tab"
+  ],
+  "next_session": "Continue with mobile review or explicitly approved release"
+}
+```
