@@ -1521,3 +1521,38 @@
   "next_session": "Continue with mobile review or explicitly approved release"
 }
 ```
+
+
+## 2026-11-08 — Approved white markers and grouped insight release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T10:24:50.636Z",
+  "did": [
+    "Applied owner-requested pure-white markers without glow on desktop and mobile",
+    "Changed phone title accent to muted dusty blue #A8C6D5",
+    "Verified Chromium at 320/375/390/430/768/1440: pure-white markers, no shadow, correct phone accent, two-line phone title, no overflow and original video readyState 4",
+    "Prepared owner-authorized deployment including pending attention insight, revised phone composition and thin heading-font purpose tab"
+  ],
+  "changed": [
+    "Final insight color adjustment and cache v96"
+  ],
+  "files": [
+    "assets/dom-brand.css",
+    "index.html",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "Owner explicitly requested immediate deployment; release previous approved pending changes together",
+    "Desktop arc and mobile composition preserved",
+    "No auth/secret/image changes; earlier integration/media diagnosis remains unresolved"
+  ],
+  "followups": [
+    "Confirm Pages success and public site release"
+  ],
+  "next_session": "Continue homepage program section after user reviews published insight"
+}
+```
