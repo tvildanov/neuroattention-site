@@ -1405,3 +1405,154 @@
   "next_session": "Continue homepage changes after user reviews this deployed batch"
 }
 ```
+
+
+## 2026-11-08 — Thin heading-font tab and integration/media diagnosis
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T06:57:52.882Z",
+  "did": [
+    "Prepared thinner 36px purpose tab with existing heading font and title case; preserved responsive font sizes",
+    "Chromium geometry passed at 320/375/768/1440",
+    "Verified site API health, Railway services and public Monad persona health; inspected authentication code and site Unauthorized logs",
+    "Verified all eight external homepage CloudFront images return 403, including AccessDenied body; repository has no matching originals",
+    "Documented diagnosis and precise recovery steps"
+  ],
+  "changed": [
+    "Purpose tab draft and diagnostic documentation"
+  ],
+  "files": [
+    "assets/dom-brand.css",
+    "index.html",
+    "data/i18n/ru.json",
+    "data/i18n/es.json",
+    "docs/INTEGRATION-AND-MEDIA-2026-11-08.md",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "No automatic light-theme redesign; provide design opinion for owner discussion",
+    "No secret access, credential rotation or authentication changes; API key validity remains unverified with current credentials",
+    "No image substitutions without original assets",
+    "Prepared branch changes without deploying this new typography draft"
+  ],
+  "followups": [
+    "Owner reviews tab font and thickness",
+    "Monad administrator validates and refreshes site integration key if needed, then performs authenticated read and persona test",
+    "Recover original CloudFront images and migrate to controlled storage"
+  ],
+  "next_session": "Continue from typography draft and documented integration/media diagnosis"
+}
+```
+
+
+## 2026-11-08 — Attention insight preview, awaiting release approval
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T10:12:53.258Z",
+  "did": [
+    "Prepared attention insight block replacing the current Solution section in the work branch",
+    "Retained original drop-ripple.mp4 and circular mask, including mobile",
+    "Arranged five text points along the circle's right arc on desktop, single column on mobile; cyan/blue markers",
+    "Added a programs.html CTA; preserved following Method and all subsequent sections",
+    "Verified Chromium at 320/375/768/1024/1440: no overflow, five points, expected arc/column, circle clipping and original video readyState 4; inspected screenshots"
+  ],
+  "changed": [
+    "Russian attention insight preview, CSS and cache-busted stylesheet reference"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No deployment or main merge until user confirms preview",
+    "Pending batch also includes approved thin Unbounded purpose tab and title-case labels",
+    "Future sequence proposed: problem/facts, short attention insight, programs, method, ecosystem; program block not yet designed or moved"
+  ],
+  "followups": [
+    "Owner approves or revises layout and copy",
+    "At release recheck main and bump service worker",
+    "Separately agree on homepage program section"
+  ],
+  "next_session": "Show preview and wait for confirmation before publishing grouped changes"
+}
+```
+
+
+## 2026-11-08 — Mobile-first attention insight revision
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T10:18:06.088Z",
+  "did": [
+    "Recorded explicit approval of desktop insight and rejection of first mobile layout",
+    "Rebuilt mobile composition with two-line heading, compact orb next to intro, divided readable rows and full-width 48px CTA",
+    "Preserved all five point texts and original video; desktop layout unaffected",
+    "Chromium verification at 320/375/390/430/768/1440: no overflow, heading exactly two lines on phones, video readyState 4; desktop arc coordinates and section height unchanged",
+    "Mobile section at 375px reduced from ~1049px to ~807px; visually inspected 390px screenshot"
+  ],
+  "changed": [
+    "Mobile-only insight layout and inline heading spans"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "docs/DOM-REBRAND-DECISIONS.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Desktop approved; new phone composition awaits review",
+    "No main merge/deployment until mobile review is complete",
+    "Retain app-friendly fully visible rows and full-width action"
+  ],
+  "followups": [
+    "Owner reviews phone preview",
+    "After approval publish insight with previously prepared thin heading-font tab"
+  ],
+  "next_session": "Continue with mobile review or explicitly approved release"
+}
+```
+
+
+## 2026-11-08 — Approved white markers and grouped insight release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T10:24:50.636Z",
+  "did": [
+    "Applied owner-requested pure-white markers without glow on desktop and mobile",
+    "Changed phone title accent to muted dusty blue #A8C6D5",
+    "Verified Chromium at 320/375/390/430/768/1440: pure-white markers, no shadow, correct phone accent, two-line phone title, no overflow and original video readyState 4",
+    "Prepared owner-authorized deployment including pending attention insight, revised phone composition and thin heading-font purpose tab"
+  ],
+  "changed": [
+    "Final insight color adjustment and cache v96"
+  ],
+  "files": [
+    "assets/dom-brand.css",
+    "index.html",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "Owner explicitly requested immediate deployment; release previous approved pending changes together",
+    "Desktop arc and mobile composition preserved",
+    "No auth/secret/image changes; earlier integration/media diagnosis remains unresolved"
+  ],
+  "followups": [
+    "Confirm Pages success and public site release"
+  ],
+  "next_session": "Continue homepage program section after user reviews published insight"
+}
+```

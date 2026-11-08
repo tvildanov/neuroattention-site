@@ -149,7 +149,8 @@
 // DOM release: original cover font restored; pointer cursor capture/fallback fix.
 // v94: center the localized DOM cover tab and shorten its countdown to 2.5s.
 // v95: approved institute-question cover and compact facts continuation.
-var CACHE_NAME = 'na-practices-v95';
+// v96: approved attention insight, phone composition and thin purpose tab.
+var CACHE_NAME = 'na-practices-v96';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

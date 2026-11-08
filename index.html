@@ -37,7 +37,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css?v=dom-cursor-1" />
-<link rel="stylesheet" href="assets/dom-brand.css?v=7" />
+<link rel="stylesheet" href="assets/dom-brand.css?v=11" />
 <!-- ═══ Icons / PWA / Social (injected) ═══ -->
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -111,7 +111,7 @@
   <div class="dom-intro-bar">
     <div class="container">
       <button class="dom-intro-toggle" type="button" aria-expanded="true" aria-controls="dom-intro-panel" hidden>
-        <span class="dom-intro-tab-name" data-i18n="hero.dom_intro_tab">Институт человеческой адаптации</span>
+        <span class="dom-intro-tab-name" data-i18n="hero.dom_intro_tab">Институт Человеческой Адаптации</span>
         <span class="dom-intro-tab-action"><span class="dom-intro-action-label" data-intro-action>Свернуть</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
       </button>
     </div>
@@ -306,41 +306,45 @@
   </div>
 </section>
 
-<!-- ═══ SCREEN 4: ATTENTION ═══ -->
-<section id="screen-4" class="section">
+<!-- ═══ ATTENTION: CORE INSIGHT ═══ -->
+<section id="screen-4" class="section dom-insight" aria-labelledby="dom-insight-title">
   <div class="section-divider"></div>
   <div class="container">
-    <div class="text-center mb-8 fade-up">
-      <p class="eyebrow" data-i18n="solution.eyebrow">Решение</p>
+    <div class="dom-insight-heading fade-up">
+      <h2 class="heading-space" id="dom-insight-title"><span class="dom-insight-title-start">Адаптация начинается</span> <span class="dom-insight-title-end">с внимания</span></h2>
+      <p>То, чему мы уделяем внимание, влияет на наши решения, действия и направление нашей жизни.</p>
     </div>
-
-    <div class="grid grid-2 max-w-5xl" style="align-items:center;gap:3rem;">
-      <div class="fade-left" style="display:flex;justify-content:center;">
-        <div class="media-box aspect-sq" style="width:min(26rem,90vw);max-width:100%;border-radius:999px;">
-          <video autoplay loop muted playsinline><source src="assets/media/drop-ripple.mp4" type="video/mp4" /></video>
+    <div class="dom-insight-layout">
+      <div class="dom-insight-visual fade-left">
+        <div class="media-box aspect-sq dom-insight-orb">
+          <video autoplay loop muted playsinline aria-label="Анимация расходящихся кругов"><source src="assets/media/drop-ripple.mp4" type="video/mp4" /></video>
         </div>
       </div>
-
-      <div style="display:flex;flex-direction:column;gap:1.25rem;">
-        <div class="fade-up glass-card-elevated card-base card-hover" style="display:flex;align-items:flex-start;gap:1.25rem;">
-          <div class="icon-box lg glass-icon">
-            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
-          </div>
-          <p style="font-size:15px;line-height:1.7;color:#CBD5E1;margin:0;" data-i18n="solution.card1">В основе вышеперечисленных проблем лежит потеря контроля над вниманием и состоянием нервной системы.</p>
-        </div>
-        <div class="fade-up delay-1 glass-card-elevated card-base card-hover" style="display:flex;align-items:flex-start;gap:1.25rem;">
-          <div class="icon-box lg glass-icon">
-            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04Z"/></svg>
-          </div>
-          <p style="font-size:15px;line-height:1.7;color:#CBD5E1;margin:0;" data-i18n="solution.card2">Внимание — центральная функция мозга, объединяющая когнитивные, эмоциональные и телесные процессы.</p>
-        </div>
-        <div class="fade-up delay-2 glass-card-elevated card-base card-hover" style="display:flex;align-items:flex-start;gap:1.25rem;">
-          <div class="icon-box lg glass-icon">
-            <svg class="icon md" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-          </div>
-          <p style="font-size:15px;line-height:1.7;color:#CBD5E1;margin:0;" data-i18n="solution.card3">Поэтому развитие внимания становится фундаментальным инструментом адаптации человека к современному миру.</p>
-        </div>
-      </div>
+      <ol class="dom-insight-points" aria-label="От собственного внимания к общему фокусу">
+        <li class="dom-insight-item fade-up" style="--insight-step:0">
+          <span class="dom-insight-marker" aria-hidden="true"></span>
+          <div><h3>Внимание</h3><p>Выбирать, на чём сосредоточиться.</p></div>
+        </li>
+        <li class="dom-insight-item fade-up" style="--insight-step:1">
+          <span class="dom-insight-marker" aria-hidden="true"></span>
+          <div><h3>Понимать своё внимание</h3><p>Замечать, куда оно направлено и что заставляет его переключаться.</p></div>
+        </li>
+        <li class="dom-insight-item fade-up" style="--insight-step:2">
+          <span class="dom-insight-marker" aria-hidden="true"></span>
+          <div><h3>Направлять осознанно</h3><p>Удерживать, переключать и распределять внимание.</p></div>
+        </li>
+        <li class="dom-insight-item fade-up" style="--insight-step:3">
+          <span class="dom-insight-marker" aria-hidden="true"></span>
+          <div><h3>Распознавать внешнее влияние</h3><p>Видеть, как люди и технологии направляют наше внимание — и в чьих интересах.</p></div>
+        </li>
+        <li class="dom-insight-item fade-up" style="--insight-step:4">
+          <span class="dom-insight-marker" aria-hidden="true"></span>
+          <div><h3>Выбирать общий фокус</h3><p>Вместе определять, что заслуживает внимания: в семье, команде и обществе.</p></div>
+        </li>
+      </ol>
+    </div>
+    <div class="dom-insight-action fade-up">
+      <a class="btn btn-primary" href="programs.html">Посмотреть программы <span aria-hidden="true">↗</span></a>
     </div>
   </div>
 </section>
