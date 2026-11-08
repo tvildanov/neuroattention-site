@@ -1368,3 +1368,40 @@
   "next_session": "Continue on codex/dom-institute-rebrand without deployment until user requests the grouped release"
 }
 ```
+
+
+## 2026-11-08 — Approved question and compact facts release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T06:28:14.299Z",
+  "did": [
+    "Added the approved Russian institute question to the cover with link to dom.html",
+    "Combined problem and facts in one section with a small facts introduction and four compact rows",
+    "Preserved four fact texts, media URLs, alternating animation classes and concluding adaptation CTA",
+    "Chromium verification at 320/375/768/1024/1440: no overflow, question link, three original Hero CTAs, four facts in problem section; row stack measures 428px at desktop and 585.5px at 375px width",
+    "Inspected mobile facts and desktop cover screenshots; media binary playback requires live verification"
+  ],
+  "changed": [
+    "Homepage cover and compact facts; Russian combined section label; service worker v95"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "sw.js",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "User explicitly authorized deploying this batch together with previous compact tab, pulse and cover-order changes",
+    "Keep the current 30-year wording and Hero CTA buttons",
+    "Do not reorder programs/method/ecosystem or rewrite subsequent sections; user still considering"
+  ],
+  "followups": [
+    "Confirm Pages release and public homepage"
+  ],
+  "next_session": "Continue homepage changes after user reviews this deployed batch"
+}
+```
