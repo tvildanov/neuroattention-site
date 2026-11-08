@@ -1405,3 +1405,44 @@
   "next_session": "Continue homepage changes after user reviews this deployed batch"
 }
 ```
+
+
+## 2026-11-08 — Thin heading-font tab and integration/media diagnosis
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-08T06:57:52.882Z",
+  "did": [
+    "Prepared thinner 36px purpose tab with existing heading font and title case; preserved responsive font sizes",
+    "Chromium geometry passed at 320/375/768/1440",
+    "Verified site API health, Railway services and public Monad persona health; inspected authentication code and site Unauthorized logs",
+    "Verified all eight external homepage CloudFront images return 403, including AccessDenied body; repository has no matching originals",
+    "Documented diagnosis and precise recovery steps"
+  ],
+  "changed": [
+    "Purpose tab draft and diagnostic documentation"
+  ],
+  "files": [
+    "assets/dom-brand.css",
+    "index.html",
+    "data/i18n/ru.json",
+    "data/i18n/es.json",
+    "docs/INTEGRATION-AND-MEDIA-2026-11-08.md",
+    "docs/DOM-REBRAND-DECISIONS.md"
+  ],
+  "decisions": [
+    "No automatic light-theme redesign; provide design opinion for owner discussion",
+    "No secret access, credential rotation or authentication changes; API key validity remains unverified with current credentials",
+    "No image substitutions without original assets",
+    "Prepared branch changes without deploying this new typography draft"
+  ],
+  "followups": [
+    "Owner reviews tab font and thickness",
+    "Monad administrator validates and refreshes site integration key if needed, then performs authenticated read and persona test",
+    "Recover original CloudFront images and migrate to controlled storage"
+  ],
+  "next_session": "Continue from typography draft and documented integration/media diagnosis"
+}
+```

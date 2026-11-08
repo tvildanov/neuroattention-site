@@ -21,3 +21,5 @@
 - Nick explicitly requested no deployment until further changes are grouped. Keep these changes in the work branch. Problem/Facts/Solution edits are proposals only, pending discussion.
 
 - Approved grouped release 2026-11-08: publish pending compact tab/cover order plus the Russian institute question linking to dom.html. Keep current Hero CTA links, 30-year problem wording and subsequent sections unchanged. Merge Problem and Facts into one section, label it Проблема и факты in RU, demote facts title to ordinary text, compact the four existing rows, preserve their text/media/animation classes and the final adaptation CTA. User is still considering programs/approach changes; do not reorder these sections.
+
+- 2026-11-08 typography draft: collapsed purpose bar 36px instead of 48px, same responsive font sizes, existing hero Unbounded font family. Title case: Институт Человеческой Адаптации / For Human Adaptation / Para La Adaptación Humana. General light/dark theme remains discussion only. Pending publication.
