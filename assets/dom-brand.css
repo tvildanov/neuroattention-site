@@ -190,6 +190,7 @@
   max-width: 65ch; margin: 0 auto; color: var(--text-secondary);
   font-size: clamp(.95rem,1.2vw,1.05rem); line-height: 1.65; text-wrap: balance;
 }
+.dom-insight-title-end { white-space: nowrap; }
 .dom-insight-layout { max-width: 72rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.25fr); align-items: center; gap: 2.5rem; }
 .dom-insight-visual { display: flex; justify-content: center; }
 .dom-insight-orb { width: min(100%,25rem); max-width: 100%; border-radius: 999px !important; }
@@ -201,7 +202,8 @@
 .dom-insight-marker { width: 10px; height: 10px; margin-top: .5rem; border-radius: 50%; background: #fff; box-shadow: none; }
 .dom-insight-item h3 { margin: 0 0 .3rem; font: 600 clamp(15px,1.3vw,18px)/1.4 'Space Grotesk',sans-serif; color: var(--text-primary); }
 .dom-insight-item p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
-.dom-insight-action { margin-top: 1.75rem; display: flex; justify-content: center; }
+.dom-insight-action { margin-top: 1.75rem; display: flex; flex-direction: column; align-items: center; gap: .85rem; }
+.dom-insight-method { max-width: 58ch; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.65; text-align: center; }
 /* Mobile is a separate composition: two-line title, compact text/video intro, readable rows. */
 @media (max-width: 767px) {
   .dom-insight { padding-block: 2rem; }
@@ -212,10 +214,11 @@
   .dom-insight-heading, .dom-insight-layout { display: contents; }
   .dom-insight-heading h2 {
     grid-column: 1 / -1; margin: 0; text-align: left;
-    font-size: clamp(18px,5.2vw,24px) !important; line-height: 1.35;
+    font-size: clamp(17.5px,4.8vw,22px) !important; line-height: 1.35;
     letter-spacing: -.035em; text-wrap: initial;
   }
-  .dom-insight-title-start { white-space: nowrap; }
+  .dom-insight-title-start { white-space: normal; }
+  .dom-insight-title-human { display: block; }
   .dom-insight-title-end { display: block; color: #A8C6D5; }
   .dom-insight-heading > p {
     grid-column: 1; grid-row: 2; align-self: center; margin: 0;
@@ -233,5 +236,6 @@
   .dom-insight-item h3 { margin-bottom: .3rem; font-size: 15.5px !important; line-height: 1.35; }
   .dom-insight-item p { font-size: 14px; line-height: 1.55; }
   .dom-insight-action { grid-column: 1 / -1; margin: 0; }
+  .dom-insight-method { max-width: none; text-align: left; }
   .dom-insight-action .btn { width: 100%; min-height: 48px; }
 }

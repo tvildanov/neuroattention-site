@@ -1556,3 +1556,120 @@
   "next_session": "Continue homepage program section after user reviews published insight"
 }
 ```
+
+
+## 2026-11-09 — DOM browser title and river-jade palette review
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T04:18:57.966Z",
+  "did": [
+    "Prepared porcelain/graphite/river-jade palette previews only; no palette implementation.",
+    "Confirmed live homepage order remains attention insight -> method -> XR; program move has not been approved.",
+    "Changed homepage document title, social title metadata, site name and shared RU/EN/ES meta.title to the requested DOM name."
+  ],
+  "changed": [
+    "Browser title and social title metadata"
+  ],
+  "files": [
+    "index.html",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json"
+  ],
+  "decisions": [
+    "Keep all favicon links and assets.",
+    "Keep main/deployment unchanged; prepare reviewable branch for the next release.",
+    "Homepage content order and colors remain unchanged."
+  ],
+  "followups": [
+    "Owner selects jade preview and agrees next homepage content block.",
+    "Publish browser-title branch with the next authorized release."
+  ],
+  "next_session": "Review programs vs method placement after the attention insight."
+}
+```
+
+Validation: Chromium confirmed the requested title before translation and after switching RU/EN/ES; four existing favicon declarations retained. Jade previews passed 320/390/736/1024px geometry, equal carousel heights, original video playback and the local insight jump. Prepared PR #174; main/deployment unchanged.
+
+
+## 2026-11-09 — Attention-to-method handoff and XR sequence
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T04:46:23.814Z",
+  "did": [
+    "Changed Russian attention headline to Human adaptation begins with attention.",
+    "Added a compact NeuroAttention method bridge and method.html CTA; removed the redundant standalone homepage method section so XR immediately follows the insight.",
+    "Prepared stronger white-jade Matrix palette preview and paired dark comparison; removed the mockup-only decorative oval.",
+    "Verified actual insight at 320/375/390/736/1024/1440px: no overflow, five points, original video readyState 4, method link; explicit three-line phone title.",
+    "Verified preview at 320/390/736/1024px with no overflow and local insight jump."
+  ],
+  "changed": [
+    "Homepage insight copy, method handoff, section order and responsive title wrapping"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-brand.css",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly chose a compact method mention within insight; next homepage section is XR.",
+    "Keep standalone method.html and all navigation links.",
+    "Color work is preview only; no palette change to repository, no deployment.",
+    "Pending DOM browser-title change remains in the same PR."
+  ],
+  "followups": [
+    "Review white-jade Matrix preview; refine XR section next.",
+    "Bump release cache and deploy only when requested."
+  ],
+  "next_session": "Continue with the DOM XR Platform block immediately after the attention insight."
+}
+```
+
+
+## 2026-11-09 — Authorized homepage Matrix trial release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T05:17:17.737Z",
+  "did": [
+    "Implemented user-approved dark Matrix palette across the homepage using a dedicated stylesheet and body.home-matrix scope.",
+    "Preserved original media, cursor, logo and reveal animations; all other page palettes unchanged.",
+    "Included previously approved DOM browser title, longer attention heading, compact NeuroAttention method bridge and direct insight-to-XR sequence.",
+    "Fixed homepage Problem card heading wrapping and offset the attention anchor below sticky navigation.",
+    "Verified full homepage at 320/375/390/768/1024/1440px, all sections without overflow after reveal; original insight video readyState 4; checked RU/EN/ES title switching and unchanged method-page palette; visually reviewed phone/desktop Hero, insight and cover.",
+    "Prepared a stronger green white-jade Matrix beta preview only."
+  ],
+  "changed": [
+    "Homepage-only palette and small responsive/anchor fixes; pending DOM content/title release"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-home-matrix.css",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly authorized deploying homepage Matrix and all pending approved changes.",
+    "Do not implement or deploy the light theme; do not recolor other pages.",
+    "Keep offline practice-audio service-worker cache unchanged: documents and styles are not cached by this worker. The new theme uses its own versioned CSS URL.",
+    "Publish through the existing GitHub Pages workflow; no Railway/backend changes.",
+    "Deployment outcome and run URL will be recorded in PR #174."
+  ],
+  "followups": [
+    "Observe Pages workflow SUCCESS and verify live homepage after merge.",
+    "Owner evaluates dark homepage; continue XR platform content next."
+  ],
+  "next_session": "Continue DOM XR Platform section after the Matrix homepage trial; light beta remains discussion only."
+}
+```
