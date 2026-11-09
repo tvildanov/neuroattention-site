@@ -37,7 +37,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="assets/styles.css" />
 <link rel="stylesheet" href="assets/redesign.css?v=dom-cursor-1" />
-<link rel="stylesheet" href="assets/dom-brand.css?v=11" />
+<link rel="stylesheet" href="assets/dom-brand.css?v=12" />
 <!-- ═══ Icons / PWA / Social (injected) ═══ -->
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -311,7 +311,7 @@
   <div class="section-divider"></div>
   <div class="container">
     <div class="dom-insight-heading fade-up">
-      <h2 class="heading-space" id="dom-insight-title"><span class="dom-insight-title-start">Адаптация начинается</span> <span class="dom-insight-title-end">с внимания</span></h2>
+      <h2 class="heading-space" id="dom-insight-title"><span class="dom-insight-title-start"><span class="dom-insight-title-human">Человеческая</span> адаптация начинается</span> <span class="dom-insight-title-end">с внимания</span></h2>
       <p>То, чему мы уделяем внимание, влияет на наши решения, действия и направление нашей жизни.</p>
     </div>
     <div class="dom-insight-layout">
@@ -344,86 +344,8 @@
       </ol>
     </div>
     <div class="dom-insight-action fade-up">
-      <a class="btn btn-primary" href="programs.html">Посмотреть программы <span aria-hidden="true">↗</span></a>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ SCREEN 5: METHOD ═══ -->
-<section class="section">
-  <div class="section-divider"></div>
-  <div class="container">
-    <div style="display:grid;grid-template-columns:1fr;align-items:center;gap:4rem;">
-      <div class="fade-left">
-        <p class="eyebrow" data-i18n="method.eyebrow">Метод</p>
-        <h2 class="heading-space h2-block" data-i18n="method.title">
-          Мы разработали научно обоснованный метод регуляции нервной системы и развития внимания — <span class="text-gradient-cyan">NeuroAttention</span>.
-        </h2>
-
-        <div style="display:flex;flex-direction:column;gap:0.85rem;margin:0 0 2.5rem 0;">
-          <div class="flex items-start gap-3">
-            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
-              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-            </div>
-            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;" data-i18n="method.practice1">Практики интероцептивной и проприоцептивной осознанности</p>
-          </div>
-          <div class="flex items-start gap-3">
-            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
-              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-            </div>
-            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;" data-i18n="method.practice2">Тренировки сенсомоторной координации</p>
-          </div>
-          <div class="flex items-start gap-3">
-            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
-              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-            </div>
-            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;" data-i18n="method.practice3">Методы физиологической саморегуляции</p>
-          </div>
-          <div class="flex items-start gap-3">
-            <div class="icon-box glass-icon" style="width:2rem;height:2rem;border-radius:10px;">
-              <svg class="icon sm" style="color:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-            </div>
-            <p style="font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0;" data-i18n="method.practice4">Техники управления вниманием</p>
-          </div>
-        </div>
-
-        <div class="grid grid-3 mb-10 fade-up delay-2" style="gap:1rem;">
-          <div class="stat-box glass-card">
-            <p class="num"><span data-count="12" data-suffix="+">0+</span></p>
-            <p class="label" data-i18n="method.stat_years">лет разработки</p>
-          </div>
-          <div class="stat-box glass-card">
-            <p class="num"><span data-count="500" data-suffix="+">0+</span></p>
-            <p class="label" data-i18n="method.stat_people">обучено людей</p>
-          </div>
-          <div class="stat-box glass-card">
-            <p class="num" style="font-size:1.1rem;letter-spacing:0.02em;">Data-driven</p>
-            <p class="label" data-i18n="method.stat_protocol">персональные протоколы</p>
-          </div>
-        </div>
-
-        <div class="hero-cta">
-          <a href="method.html" class="btn btn-solid">
-            <span data-i18n="method.cta">Узнать о методе</span>
-            <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-          <a href="programs.html" class="btn btn-primary" data-i18n="method.cta2">Начать практику</a>
-        </div>
-        <!-- DRAFT: pending medical review -->
-        <div class="fade-up delay-3" style="margin-top:1.5rem;padding:1rem 1.25rem;background:rgba(167,139,250,0.04);border:1px solid rgba(167,139,250,0.1);border-radius:12px;">
-          <p style="font-size:13px;line-height:1.7;color:var(--text-secondary);margin:0;">
-            <svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span data-i18n="method.rehab_text"><strong style="color:var(--text-primary);">Rehabilitation Program</strong> — восстановление когнитивных функций при нарушениях нервной системы.</span>
-          </p>
-          <!-- CTA on its own line so the text and button never glue together
-               ("impairments.Submit an application") across RU/EN/ES. -->
-          <a href="rehabilitation-application.html" style="display:inline-block;margin-top:0.6rem;color:var(--accent-violet);text-decoration:none;border-bottom:1px solid rgba(167,139,250,0.3);" data-i18n="method.rehab_link">Оставить заявку</a>
-        </div>
-        <!-- /DRAFT -->
-      </div>
-
-      <!-- Removed the "Призма света" (prism/rainbow-on-black) image: it read as a
-           random rainbow glow stacked under the rehab text on mobile. -->
+      <p class="dom-insight-method">Метод NeuroAttention объединяет практики развития внимания и саморегуляции.</p>
+      <a class="btn btn-primary" href="method.html">Подробнее о методе <span aria-hidden="true">↗</span></a>
     </div>
   </div>
 </section>
