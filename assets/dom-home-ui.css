@@ -35,6 +35,19 @@
 }
 .home-matrix .dom-intro.is-peeking:not(.is-expanded) .dom-intro-cover { opacity: .6; transform: none; pointer-events: none; }
 .home-matrix .home-hero-layout { position: relative; }
+@media (min-width:768px) and (max-width:1023px) {
+  .home-matrix #home-hero .home-hero-layout {
+    grid-template-columns: minmax(0,1.15fr) minmax(0,1fr) !important;
+  }
+  .home-matrix #home-hero .home-hero-copy,
+  .home-matrix #home-hero .home-hero-visual { min-width: 0; }
+}
+@media (min-width:768px) and (max-width:1199px) {
+  .home-matrix #home-hero h1.heading-space {
+    font-size: clamp(30px,4vw,48px) !important;
+    overflow-wrap: anywhere;
+  }
+}
 .home-matrix #home-hero .home-hero-orb {
   width: min(100%,32rem); margin-left: auto; border-radius: 50% !important; aspect-ratio: 1;
   overflow: hidden; background: #000;
