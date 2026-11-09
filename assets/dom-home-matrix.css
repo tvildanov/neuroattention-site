@@ -76,6 +76,7 @@ body.home-matrix .grid > * { min-width: 0; }
 body.home-matrix #problem-and-facts .card-row h3 { min-width: 0; overflow-wrap: anywhere; }
 body.home-matrix .pillar p { overflow-wrap: anywhere; }
 body.home-matrix .dom-insight-title-end { color: var(--accent-cyan); }
+body.home-matrix #screen-4 { scroll-margin-top: calc(4.25rem + .5rem); }
 body.home-matrix .section-divider {
   background: linear-gradient(90deg,transparent,rgba(163,210,179,.20),transparent);
 }
