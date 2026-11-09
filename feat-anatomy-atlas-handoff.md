@@ -1,3 +1,14 @@
+# CURRENT POLICY — obsolete envelope removed (2026-11-09)
+
+The notes below are historical. Do not follow their skin/mannequin, procedural
+fallback or wireframe-envelope instructions. The obsolete generic body asset has
+been removed at the owner's request. `body-atlas.js` uses a numeric reference
+frame and renders only configured real anatomy layers. See
+`assets/3d/CREDITS.md` for the current policy. Do not reintroduce a replacement
+body silhouette into the atlas or any public demo.
+
+---
+
 # Handoff — feat/anatomy-atlas
 
 ## ✅ UPDATE 2026-06-18 (Z-Anatomy session, commit `e08f679`)
@@ -178,3 +189,4 @@ These are why the pipeline was not executed blind in the parallel session:
 
 *Handoff written from session in `/Users/tvildanov/Code/neuroattention-site` on
 `feat/anatomy-atlas`. Base commit `d1354a7`.*
+
