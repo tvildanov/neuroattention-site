@@ -1591,3 +1591,5 @@
   "next_session": "Review programs vs method placement after the attention insight."
 }
 ```
+
+Validation: Chromium confirmed the requested title before translation and after switching RU/EN/ES; four existing favicon declarations retained. Jade previews passed 320/390/736/1024px geometry, equal carousel heights, original video playback and the local insight jump. Prepared PR #174; main/deployment unchanged.
