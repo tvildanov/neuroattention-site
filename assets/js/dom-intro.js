@@ -8,6 +8,7 @@
   var action = root.querySelector('[data-intro-action]');
   var skip = root.querySelector('.dom-intro-skip');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   var expanded = true, autoAllowed = true, timer = null, concealTimer = null, frame = null;
   var remaining = 2500, startedAt = 0;
 
@@ -26,6 +27,7 @@
   function setExpanded(next, manual) {
     if (manual) stopAuto();
     window.clearTimeout(concealTimer);
+    root.classList.remove('is-peeking');
     expanded = next;
     if (!next && panel.contains(document.activeElement)) toggle.focus({ preventScroll: true });
     toggle.setAttribute('aria-expanded', String(next));
@@ -46,6 +48,18 @@
       }, reduce.matches ? 0 : 470);
     }
   }
+  function setPeek(next) {
+    if (expanded) return;
+    window.clearTimeout(concealTimer);
+    root.classList.toggle('is-peeking',next);
+    panel.hidden = !next;
+    panel.inert = true;
+    panel.setAttribute('aria-hidden','true');
+  }
+  toggle.addEventListener('pointerenter',function (event) {
+    if (!expanded && event.pointerType !== 'touch' && fine.matches && !reduce.matches) setPeek(true);
+  });
+  root.addEventListener('pointerleave',function () { if (!expanded && root.classList.contains('is-peeking')) setPeek(false); });
   function beginCountdown() {
     if (!autoAllowed || !expanded || timer !== null || document.hidden) return;
     // Do not spend reading time while the existing i18n flash guard hides the page.
@@ -92,7 +106,7 @@
     if (event.persisted) { stopAuto(); setExpanded(false, false); }
   });
   function motionChanged() {
-    if (reduce.matches) { stopAuto(); setExpanded(false, false); }
+    if (reduce.matches) { stopAuto(); setPeek(false); setExpanded(false, false); }
   }
   if (reduce.addEventListener) reduce.addEventListener('change', motionChanged);
   if (window.location.hash || window.scrollY > 8 || reduce.matches) {
@@ -102,3 +116,4 @@
     beginCountdown();
   }
 })();
+

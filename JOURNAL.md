@@ -1673,3 +1673,44 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue DOM XR Platform section after the Matrix homepage trial; light beta remains discussion only."
 }
 ```
+
+
+## 2026-11-09 — Homepage disclosures and mobile composition
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T11:52:18.043Z",
+  "did": [
+    "Made four homepage facts collapsible, initially closed, with fine-pointer partial hover preview and click/keyboard/touch expansion.",
+    "Added bounded soft magnetic child movement and pointer highlight to both homepage disclosure bars.",
+    "Cropped and scaled Hero media into a circle; moved it into a small upper-right thumbnail on phones.",
+    "Enlarged mobile institute-cover logo and tightened cover spacing without changing the 2.5-second auto-collapse.",
+    "Prepared two fresher yellow-green white-nephrite palette previews only.",
+    "Chromium verification passed at 320/375/390/768/1024/1440px: no overflow, circular playable media, closed defaults, hover preview, full expansion, keyboard, touch, reduced motion, RU/EN/ES labels and no-JS fallback. Visually reviewed desktop Hero, phone cover/facts and light preview."
+  ],
+  "changed": [
+    "Homepage disclosures and mobile composition"
+  ],
+  "files": [
+    "index.html",
+    "assets/js/dom-intro.js",
+    "assets/js/dom-home-ui.js",
+    "assets/dom-home-ui.css",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Owner explicitly authorized immediate deployment of this batch.",
+    "Keep the dark Matrix theme live; light variants remain preview only.",
+    "Preserve existing facts, media, program CTA, shared page styles and backend.",
+    "Use existing GitHub Pages publication; no Railway mutation.",
+    "Record terminal deployment outcome and public readback in this release PR."
+  ],
+  "followups": [
+    "Observe Pages success and verify public source/assets after merge.",
+    "Continue XR platform copy when owner is ready."
+  ],
+  "next_session": "Review published mobile homepage and choose whether to pursue a light palette."
+}
+```
