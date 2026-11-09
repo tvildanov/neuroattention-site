@@ -1793,3 +1793,61 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Confirm public release; continue DOM XR section after homepage interaction fixes."
 }
 ```
+
+
+## 2026-11-09 — Public Matrix rollout and readable three-second cover
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T16:56:48.665Z",
+  "did": [
+    "Rolled the approved Matrix palette out to 14 public HTML pages using an explicitly linked shared assets/dom-matrix.css and body.dom-matrix scope.",
+    "Aligned legacy cyan/violet decorative colors and dark surfaces in public page-local styles with the Matrix palette; retained semantic error/warning and program-category colors.",
+    "Kept account.html, private practice.html, internal handoff and developer harness unchanged. Shared base styles and shared dashboard scripts are unchanged.",
+    "Extended the automatic cover reading countdown and mobile signal to 3000ms; wait for fonts/logo with a bounded 1500ms fallback and two paint frames before countdown.",
+    "Increased tremor amplitude from <=0.35px to <=0.85px; stops at close/manual intervention/reduced motion as before.",
+    "Temporarily disable scroll anchoring during the height-collapse animation; no automatic scrolling added.",
+    "Removed a pre-existing unmatched IIFE closer on method.html, verified identical syntax error existed in original main.",
+    "Chromium checked all 14 pages at 390px and 1440px: correct Matrix background/accent and no horizontal overflow. Reviewed method, programs, test and checkout screenshots, including settled chat text.",
+    "Measured phone cover: ~3 seconds open after readiness; height transitions 514px -> 88px -> 0, scrollY remains 0, zero scrollTo/scrollBy calls. Manual reopening stays open and does not repeat tremor. All public inline scripts pass node --check; method page has no page errors after syntax fix."
+  ],
+  "changed": [
+    "Shared public Matrix palette",
+    "Public page palette links/classes and legacy decorative colors",
+    "Three-second cover timing, stronger tremor and collapse anchoring"
+  ],
+  "files": [
+    "index.html",
+    "checkout-confirm.html",
+    "checkout-success.html",
+    "custom.html",
+    "dom.html",
+    "lab.html",
+    "method.html",
+    "payment-coming-soon.html",
+    "privacy-policy.html",
+    "programs.html",
+    "rehabilitation-application.html",
+    "terms-of-service.html",
+    "test.html",
+    "xr.html",
+    "assets/dom-matrix.css",
+    "assets/dom-home-ui.css",
+    "assets/js/dom-intro.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly authorized sitewide public theme and immediate deployment.",
+    "Personal dashboard and its practice player are outside this rollout.",
+    "Retain old homepage-only stylesheet for cached older HTML; new public pages use the shared theme explicitly.",
+    "Keep existing images/animations, product behavior and legal entity data.",
+    "Use existing GitHub Pages publication; record terminal deployment/public readback in release PR."
+  ],
+  "followups": [
+    "Observe Pages terminal success and compare public assets with tested files."
+  ],
+  "next_session": "Review the public Matrix rollout; continue DOM XR platform content."
+}
+```

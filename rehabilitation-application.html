@@ -33,17 +33,17 @@
 <link rel="stylesheet" href="assets/redesign.css" />
 <style>
 :root {
-  --test-bg: rgba(5,7,10,0.97);
+  --test-bg: rgba(3,10,7,0.97);
   --card-bg: rgba(255,255,255,0.12);
   --card-border: rgba(255,255,255,0.22);
-  --accent-cyan: #00d2be;
+  --accent-cyan: #A3D2B3;
   --accent-rose: #ff6b8a;
   --accent-amber: #f5a623;
-  --accent-violet: #a78bfa;
+  --accent-violet: #A3D2B3;
   --accent-green: #34d399;
-  --text-primary: #e8eaed;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --text-primary: #F0FFF5;
+  --text-secondary: #C4D7CC;
+  --text-muted: #B3CCBD;
 }
 
 /* Override cursor:none from redesign.css */
@@ -63,9 +63,9 @@ input, textarea { cursor: text !important; }
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(13,17,23,0.92);
+  background: rgba(9,24,16,0.92);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(167,139,250,0.08);
+  border-bottom: 1px solid rgba(163,210,179,0.08);
   padding: 0.75rem 0;
 }
 .rehab-header-inner {
@@ -80,8 +80,8 @@ input, textarea { cursor: text !important; }
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(0,210,190,0.08));
-  border: 1px solid rgba(167,139,250,0.2);
+  background: linear-gradient(135deg, rgba(163,210,179,0.15), rgba(163,210,179,0.08));
+  border: 1px solid rgba(163,210,179,0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,7 +113,7 @@ input, textarea { cursor: text !important; }
   width: 100%;
   max-width: 540px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(167,139,250,0.12);
+  border: 1px solid rgba(163,210,179,0.12);
   border-radius: 16px;
   padding: 2rem;
 }
@@ -135,8 +135,8 @@ input, textarea { cursor: text !important; }
 
 /* <!-- DRAFT: pending medical review --> */
 .rehab-context-box {
-  background: rgba(167,139,250,0.04);
-  border: 1px solid rgba(167,139,250,0.1);
+  background: rgba(163,210,179,0.04);
+  border: 1px solid rgba(163,210,179,0.1);
   border-radius: 10px;
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
@@ -189,7 +189,7 @@ input, textarea { cursor: text !important; }
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: rgba(167,139,250,0.4);
+  border-color: rgba(163,210,179,0.4);
 }
 .form-group textarea {
   resize: vertical;
@@ -210,8 +210,8 @@ input, textarea { cursor: text !important; }
 .submit-btn {
   width: 100%;
   padding: 0.85rem 1.5rem;
-  background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(0,210,190,0.08));
-  border: 1px solid rgba(167,139,250,0.25);
+  background: linear-gradient(135deg, rgba(163,210,179,0.15), rgba(163,210,179,0.08));
+  border: 1px solid rgba(163,210,179,0.25);
   border-radius: 12px;
   color: var(--text-primary);
   font-family: 'Space Grotesk', sans-serif;
@@ -226,8 +226,8 @@ input, textarea { cursor: text !important; }
   margin-top: 0.5rem;
 }
 .submit-btn:hover {
-  border-color: rgba(167,139,250,0.4);
-  background: linear-gradient(135deg, rgba(167,139,250,0.2), rgba(0,210,190,0.12));
+  border-color: rgba(163,210,179,0.4);
+  background: linear-gradient(135deg, rgba(163,210,179,0.2), rgba(163,210,179,0.12));
 }
 .submit-btn:disabled {
   opacity: 0.5;
@@ -293,7 +293,7 @@ input, textarea { cursor: text !important; }
 .success-card a {
   color: var(--accent-violet);
   text-decoration: none;
-  border-bottom: 1px solid rgba(167,139,250,0.3);
+  border-bottom: 1px solid rgba(163,210,179,0.3);
 }
 
 @media (max-width: 480px) {
@@ -308,7 +308,7 @@ input, textarea { cursor: text !important; }
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#05070A" />
+<meta name="theme-color" content="#030A07" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="NeuroAttention Lab" />
 <meta property="og:image" content="https://neuroattention.org/og-image.png" />
@@ -316,8 +316,9 @@ input, textarea { cursor: text !important; }
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
+  <link rel="stylesheet" href="assets/dom-matrix.css?v=1" />
 </head>
-<body>
+<body class="dom-matrix">
 
 <div class="rehab-page">
   <!-- Header -->
@@ -539,3 +540,4 @@ prefillFromTest();
 </script>
 </body>
 </html>
+

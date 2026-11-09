@@ -98,7 +98,7 @@
     top: 0.85rem;
     width: 6px;
     height: 1px;
-    background: var(--accent-cyan, #4ecdc4);
+    background: var(--accent-cyan, #A3D2B3);
     opacity: 0.4;
   }
   .lab-card {
@@ -115,7 +115,7 @@
     transform: translateY(0);
   }
   .lab-card:hover {
-    border-color: rgba(78,205,196,0.3);
+    border-color: rgba(163,210,179,0.3);
     transform: translateY(-2px);
   }
   .lab-card .card-num {
@@ -123,7 +123,7 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: var(--accent-cyan, #4ecdc4);
+    color: var(--accent-cyan, #A3D2B3);
     margin: 0 0 0.75rem 0;
     opacity: 0.8;
   }
@@ -196,13 +196,13 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--accent-cyan, #4ecdc4);
+    background: var(--accent-cyan, #A3D2B3);
     margin-top: 0.55rem;
   }
 
   /* XR pulse highlight */
   .lab-list li.xr-highlight {
-    color: var(--accent-cyan, #4ecdc4);
+    color: var(--accent-cyan, #A3D2B3);
     font-weight: 500;
   }
   .lab-list li.xr-highlight::before {
@@ -211,8 +211,8 @@
     height: 8px;
   }
   @keyframes xr-pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(78,205,196,0.4); }
-    50% { opacity: 0.7; box-shadow: 0 0 8px 4px rgba(78,205,196,0.2); }
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(163,210,179,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 8px 4px rgba(163,210,179,0.2); }
   }
 
   /* CTA */
@@ -258,7 +258,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#05070A" />
+<meta name="theme-color" content="#030A07" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="NeuroAttention Lab" />
 <meta property="og:image" content="https://neuroattention.org/og-image.png" />
@@ -266,8 +266,9 @@
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
+  <link rel="stylesheet" href="assets/dom-matrix.css?v=1" />
 </head>
-<body>
+<body class="dom-matrix">
 <div class="deep-atmosphere" aria-hidden="true"></div>
 <div class="noise-overlay" aria-hidden="true"></div>
 
@@ -716,3 +717,4 @@
 </script>
 </body>
 </html>
+
