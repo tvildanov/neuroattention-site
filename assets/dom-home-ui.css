@@ -2,7 +2,7 @@
 .home-matrix [data-fold-magnet] { position: relative; isolation: isolate; }
 .home-matrix [data-fold-magnet]::before {
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse 140px 60px at var(--fold-x,50%) var(--fold-y,50%),rgba(163,210,179,.10),transparent);
+  background: radial-gradient(ellipse 140px 60px at 50% 50%,rgba(163,210,179,.10),transparent);
   opacity: 0; transition: opacity .25s ease;
 }
 .home-matrix [data-fold-magnet] > * {
@@ -10,7 +10,7 @@
   transition: transform .18s ease-out;
 }
 .home-matrix [data-fold-magnet]:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 4px; }
-.home-matrix .dom-facts-disclosure { margin-bottom: .75rem; }
+.home-matrix .dom-facts-disclosure { position: relative; margin-bottom: .75rem; }
 .home-matrix .dom-facts-toggle {
   display: flex; width: 100%; min-height: 38px; justify-content: center; align-items: center; gap: .6rem;
   padding: .5rem .25rem; border-block: 1px solid var(--line-soft); color: var(--text-primary);
@@ -22,13 +22,16 @@
 .home-matrix .dom-fold-chevron { flex: 0 0 auto; width: 15px; height: 15px; }
 .home-matrix .dom-fold-chevron svg { display: block; width: 100%; height: 100%; transition: transform .3s ease; }
 .home-matrix .is-open .dom-fold-chevron svg { transform: rotate(180deg); }
-.home-matrix .dom-facts-panel { height: auto; overflow: hidden; transition: height .36s cubic-bezier(.22,1,.36,1); }
+.home-matrix .dom-facts-panel { height: auto; overflow: hidden; }
 .home-matrix .dom-facts-panel[hidden] { display: none; }
 .home-matrix .dom-facts-panel-content { padding-top: .75rem; }
-.home-matrix .dom-facts-disclosure.is-peeking .dom-facts-panel {
-  mask-image: linear-gradient(#000 0%,#000 20%,transparent 100%);
+.home-matrix .dom-facts-disclosure.is-previewing .dom-facts-panel {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 5;
+  background: #06140C; pointer-events: none; contain: layout paint;
+  transition: height .2s ease;
+  mask-image: linear-gradient(#000 0%,#000 75%,transparent 100%);
 }
-.home-matrix .dom-facts-disclosure.is-peeking .fact-card:first-child { opacity: .68 !important; transform: none !important; }
+.home-matrix .dom-facts-disclosure.is-previewing .fact-card { opacity: 1 !important; transform: none !important; }
 .home-matrix .dom-intro.is-peeking:not(.is-expanded) .dom-intro-panel {
   height: 76px; grid-template-rows: 1fr; overflow: hidden;
   mask-image: linear-gradient(#000,transparent);
@@ -80,6 +83,19 @@
   .home-matrix [data-fold-magnet] > * { transform: none !important; transition: none; }
   .home-matrix [data-fold-magnet]::before { transition: none; }
   .home-matrix .dom-facts-panel,.home-matrix .dom-fold-chevron svg { transition: none; }
+}
+/* Only the automatic opening cover trembles; movement stays below half a pixel. */
+@media (prefers-reduced-motion:no-preference) {
+  .home-matrix .dom-intro.is-signalling .dom-intro-cover {
+    will-change: transform;
+    animation: dom-intro-tremor .08s steps(2,end) infinite;
+  }
+}
+@keyframes dom-intro-tremor {
+  0%,100% { transform: translate3d(0,0,0); }
+  25% { transform: translate3d(.35px,-.2px,0); }
+  50% { transform: translate3d(-.3px,.25px,0); }
+  75% { transform: translate3d(.2px,.3px,0); }
 }
 @media print {
   .home-matrix .dom-facts-toggle { display: none; }
