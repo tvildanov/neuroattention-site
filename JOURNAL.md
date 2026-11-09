@@ -1630,3 +1630,46 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue with the DOM XR Platform block immediately after the attention insight."
 }
 ```
+
+
+## 2026-11-09 — Authorized homepage Matrix trial release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T05:17:17.737Z",
+  "did": [
+    "Implemented user-approved dark Matrix palette across the homepage using a dedicated stylesheet and body.home-matrix scope.",
+    "Preserved original media, cursor, logo and reveal animations; all other page palettes unchanged.",
+    "Included previously approved DOM browser title, longer attention heading, compact NeuroAttention method bridge and direct insight-to-XR sequence.",
+    "Fixed homepage Problem card heading wrapping and offset the attention anchor below sticky navigation.",
+    "Verified full homepage at 320/375/390/768/1024/1440px, all sections without overflow after reveal; original insight video readyState 4; checked RU/EN/ES title switching and unchanged method-page palette; visually reviewed phone/desktop Hero, insight and cover.",
+    "Prepared a stronger green white-jade Matrix beta preview only."
+  ],
+  "changed": [
+    "Homepage-only palette and small responsive/anchor fixes; pending DOM content/title release"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-home-matrix.css",
+    "assets/dom-brand.css",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly authorized deploying homepage Matrix and all pending approved changes.",
+    "Do not implement or deploy the light theme; do not recolor other pages.",
+    "Keep offline practice-audio service-worker cache unchanged: documents and styles are not cached by this worker. The new theme uses its own versioned CSS URL.",
+    "Publish through the existing GitHub Pages workflow; no Railway/backend changes.",
+    "Deployment outcome and run URL will be recorded in PR #174."
+  ],
+  "followups": [
+    "Observe Pages workflow SUCCESS and verify live homepage after merge.",
+    "Owner evaluates dark homepage; continue XR platform content next."
+  ],
+  "next_session": "Continue DOM XR Platform section after the Matrix homepage trial; light beta remains discussion only."
+}
+```
