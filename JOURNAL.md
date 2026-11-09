@@ -1714,3 +1714,37 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Review published mobile homepage and choose whether to pursue a light palette."
 }
 ```
+
+
+## 2026-11-09 — Hero desktop-mode breakpoint regression
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T12:17:55.635Z",
+  "did": [
+    "Reproduced the reported Hero stacking between 768 and 1023 CSS pixels, including the width used by phone desktop mode.",
+    "Added a homepage-scoped two-column Hero rule for the missing breakpoint range.",
+    "Adjusted Hero headline sizing from 768 to 1199px to prevent copy extending toward the circle; retained the existing narrow-phone thumbnail and wide desktop composition.",
+    "Verified 390/767/768/820/900/980/1023/1024/1199/1440px across regression runs, with explicit column-position and copy-overflow assertions; verified RU/EN/ES and 980x420 landscape; reviewed corrected 980px screenshot."
+  ],
+  "changed": [
+    "Hero breakpoint layout and intermediate headline size; CSS URL version 2"
+  ],
+  "files": [
+    "assets/dom-home-ui.css",
+    "index.html",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User requested fixing the public regression within the ongoing authorized deployment workflow.",
+    "No changes to facts, intro cover, palette or backend.",
+    "Publish via existing GitHub Pages; record terminal outcome and live readback in release PR."
+  ],
+  "followups": [
+    "Observe successful Pages deployment and verify public page/CSS match tested source."
+  ],
+  "next_session": "Continue homepage content after mobile desktop-mode Hero fix."
+}
+```
