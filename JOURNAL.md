@@ -1556,3 +1556,38 @@
   "next_session": "Continue homepage program section after user reviews published insight"
 }
 ```
+
+
+## 2026-11-09 — DOM browser title and river-jade palette review
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T04:18:57.966Z",
+  "did": [
+    "Prepared porcelain/graphite/river-jade palette previews only; no palette implementation.",
+    "Confirmed live homepage order remains attention insight -> method -> XR; program move has not been approved.",
+    "Changed homepage document title, social title metadata, site name and shared RU/EN/ES meta.title to the requested DOM name."
+  ],
+  "changed": [
+    "Browser title and social title metadata"
+  ],
+  "files": [
+    "index.html",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json"
+  ],
+  "decisions": [
+    "Keep all favicon links and assets.",
+    "Keep main/deployment unchanged; prepare reviewable branch for the next release.",
+    "Homepage content order and colors remain unchanged."
+  ],
+  "followups": [
+    "Owner selects jade preview and agrees next homepage content block.",
+    "Publish browser-title branch with the next authorized release."
+  ],
+  "next_session": "Review programs vs method placement after the attention insight."
+}
+```
