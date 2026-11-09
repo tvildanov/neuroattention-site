@@ -10,7 +10,7 @@
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   var expanded = true, autoAllowed = true, timer = null, concealTimer = null, frame = null;
-  var remaining = 2500, startedAt = 0;
+  var remaining = 3000, startedAt = 0, coverReady = false;
   var signalTimer = null, signalUntil = 0;
   function stopSignal() {
     window.clearTimeout(signalTimer); signalTimer = null;
@@ -23,14 +23,14 @@
         !window.matchMedia('(pointer: coarse)').matches || !navigator.vibrate) return;
     var left = Math.max(0,signalUntil - Date.now()), pattern = [];
     while (left > 0) {
-      var pulse = Math.min(10,left); pattern.push(pulse); left -= pulse;
+      var pulse = Math.min(12,left); pattern.push(pulse); left -= pulse;
       if (left > 0) { var gap = Math.min(70,left); pattern.push(gap); left -= gap; }
     }
     try { navigator.vibrate(pattern); } catch (e) {}
   }
   function startSignal() {
     if (reduce.matches) return;
-    var duration = Math.min(2500,remaining);
+    var duration = Math.min(3000,remaining);
     signalUntil = Date.now() + duration;
     root.classList.add('is-signalling');
     vibrateSignal();
@@ -55,6 +55,7 @@
   function setExpanded(next, manual) {
     if (manual) stopAuto();
     window.clearTimeout(concealTimer);
+    document.documentElement.classList.remove('dom-intro-closing');
     root.classList.remove('is-peeking');
     expanded = next;
     if (!next && panel.contains(document.activeElement)) toggle.focus({ preventScroll: true });
@@ -69,11 +70,13 @@
       root.classList.add('is-expanded');
     } else {
       stopSignal();
+      document.documentElement.classList.add('dom-intro-closing');
       root.classList.remove('is-expanded');
       panel.inert = true;
       panel.setAttribute('aria-hidden', 'true');
       concealTimer = window.setTimeout(function () {
         if (!expanded) panel.hidden = true;
+        document.documentElement.classList.remove('dom-intro-closing');
       }, reduce.matches ? 0 : 470);
     }
   }
@@ -90,7 +93,7 @@
   });
   root.addEventListener('pointerleave',function () { if (!expanded && root.classList.contains('is-peeking')) setPeek(false); });
   function beginCountdown() {
-    if (!autoAllowed || !expanded || timer !== null || document.hidden) return;
+    if (!coverReady || !autoAllowed || !expanded || timer !== null || document.hidden) return;
     // Do not spend reading time while the existing i18n flash guard hides the page.
     if (parseFloat(window.getComputedStyle(document.body).opacity) < .99) {
       if (frame === null) frame = window.requestAnimationFrame(function () {
@@ -143,7 +146,19 @@
     stopAuto(); setExpanded(false, false);
   } else {
     document.addEventListener('langchange', beginCountdown);
-    beginCountdown();
+    // Give the cover its full reading time after fonts/logo are ready, with a
+    // bounded fallback for unavailable external fonts. Manual controls stay live.
+    var mark = root.querySelector('.dom-intro-mark');
+    var fontsReady = document.fonts ? document.fonts.ready : Promise.resolve();
+    var markReady = mark && mark.decode ? mark.decode().catch(function () {}) : Promise.resolve();
+    Promise.race([
+      Promise.all([fontsReady,markReady]),
+      new Promise(function (resolve) { window.setTimeout(resolve,1500); })
+    ]).then(function () {
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () { coverReady = true; beginCountdown(); });
+      });
+    });
   }
 })();
 

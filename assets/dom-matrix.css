@@ -1,0 +1,144 @@
+/* Shared DOM Matrix palette. Loaded explicitly by public pages only. */
+body.dom-matrix {
+  --bg-base: #030A07;
+  --bg-surface: #102519;
+  --bg-elevated: #152D20;
+  --text-primary: #F0FFF5;
+  --text: #F0FFF5;
+  --text-secondary: #C4D7CC;
+  --text-muted: #B3CCBD;
+  --text-dim: #ACC5B6;
+  --text-faint: #A0BDAA;
+  --accent-cyan: #A3D2B3;
+  --accent-blue: #A3D2B3;
+  --accent-green: #A3D2B3;
+  --accent-violet: #A3D2B3;
+  --accent-soft: #D1E6D8;
+  --accent-soft-dim: #A3C1AE;
+  --border-faint: rgba(163,210,179,.08);
+  --border-soft: rgba(163,210,179,.14);
+  --line-soft: rgba(163,210,179,.15);
+  --line-softer: rgba(163,210,179,.08);
+  --glass-bg: rgba(9,24,16,.60);
+  --glass-bg-bright: rgba(17,43,28,.75);
+  --glass-border: rgba(163,210,179,.15);
+  --glass-ultra: rgba(6,20,12,.30);
+  --glass-ultra-hover: rgba(29,109,69,.19);
+  --glow-cyan: rgba(29,109,69,.16);
+  --matrix-green: #1D6D45;
+  --matrix-green-hover: #237E50;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+body.dom-matrix .deep-atmosphere { background: var(--bg-base); }
+body.dom-matrix .noise-overlay { opacity: .35; mix-blend-mode: screen; }
+body.dom-matrix > .section,
+body.dom-matrix > .hero,
+body.dom-matrix > .dom-intro,
+body.dom-matrix > .footer { isolation: isolate; z-index: 2; }
+body.dom-matrix > .section::before,
+body.dom-matrix > .hero::before,
+body.dom-matrix > .dom-intro::before,
+body.dom-matrix > .footer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 60% at -7% 38%,rgba(29,109,69,.95),transparent 100%),
+    radial-gradient(ellipse 48% 44% at 100% 84%,rgba(29,109,69,.80),transparent 100%),
+    radial-gradient(ellipse 39% 28% at 97% 4%,rgba(29,109,69,.70),transparent 100%);
+  filter: blur(24px);
+}
+body.dom-matrix > .section:nth-of-type(even)::before { transform: scaleX(-1); }
+body.dom-matrix .navbar {
+  background: rgba(3,10,7,.83);
+  border-bottom-color: var(--line-softer);
+}
+body.dom-matrix .navbar.scrolled { background: rgba(3,10,7,.94); }
+body.dom-matrix .mobile-menu { background: rgba(3,10,7,.98); }
+body.dom-matrix .nav-link,
+body.dom-matrix .lang-btn { color: var(--text-secondary); }
+body.dom-matrix .lang-btn.active { color: var(--text-primary); background: rgba(163,210,179,.12); }
+body.dom-matrix .eyebrow,
+body.dom-matrix .tag,
+body.dom-matrix .mono-label { color: var(--text-muted) !important; }
+body.dom-matrix .text-gradient-cyan,
+body.dom-matrix .nav-logo .text-gradient-cyan {
+  background: none;
+  color: var(--text-primary);
+  -webkit-text-fill-color: currentColor;
+}
+body.dom-matrix .hero-sub { color: var(--text-primary); }
+body.dom-matrix .hero-desc { color: var(--text-secondary); }
+body.dom-matrix .grid > * { min-width: 0; }
+body.dom-matrix #problem-and-facts .card-row h3 { min-width: 0; overflow-wrap: anywhere; }
+body.dom-matrix .pillar p { overflow-wrap: anywhere; }
+body.dom-matrix .dom-insight-title-end { color: var(--accent-cyan); }
+body.dom-matrix #screen-4 { scroll-margin-top: calc(4.25rem + .5rem); }
+body.dom-matrix .section-divider {
+  background: linear-gradient(90deg,transparent,rgba(163,210,179,.20),transparent);
+}
+body.dom-matrix .line-accent { background: var(--accent-cyan); box-shadow: 0 0 22px rgba(29,109,69,.35); }
+body.dom-matrix .glass-card-bright {
+  background: linear-gradient(135deg,rgba(29,109,69,.13),rgba(9,24,16,.35));
+  border-color: var(--line-soft);
+}
+body.dom-matrix .glass-icon,
+body.dom-matrix .icon-box { background: rgba(29,109,69,.09); border-color: var(--line-soft); }
+body.dom-matrix .glow-cyan { box-shadow: 0 10px 36px rgba(0,0,0,.30),0 0 65px rgba(29,109,69,.10); }
+body.dom-matrix .media-box,
+body.dom-matrix .media-round,
+body.dom-matrix .glass-image-frame { border-color: var(--line-soft); }
+body.dom-matrix .btn-solid,
+body.dom-matrix .dom-insight-action .btn-primary {
+  background: var(--matrix-green);
+  border-color: var(--matrix-green);
+  color: #F4FFF8;
+  box-shadow: 0 6px 26px rgba(29,109,69,.12);
+}
+body.dom-matrix .btn-solid:hover,
+body.dom-matrix .dom-insight-action .btn-primary:hover {
+  background: var(--matrix-green-hover);
+  border-color: var(--matrix-green-hover);
+  color: #F4FFF8;
+}
+body.dom-matrix .btn-primary,
+body.dom-matrix .btn-ghost { border-color: var(--line-soft); color: var(--text-primary); }
+body.dom-matrix .btn-primary:hover,
+body.dom-matrix .btn-ghost:hover { border-color: rgba(163,210,179,.35); }
+body.dom-matrix .hero-cta .btn-rehab-cta {
+  background: rgba(9,24,16,.72) !important;
+  border-color: rgba(163,210,179,.25) !important;
+}
+body.dom-matrix .hero-cta .btn-rehab-cta svg { color: var(--accent-cyan) !important; }
+body.dom-matrix .dom-intro-bar { background: rgba(3,10,7,.90); border-color: var(--line-soft); }
+body.dom-matrix .dom-intro-panel { background: transparent; }
+body.dom-matrix .dom-intro-toggle:hover { background: rgba(29,109,69,.12); }
+body.dom-matrix .dom-intro:not(.is-expanded) .dom-intro-tab-name { animation-name: homeMatrixPurposePulse; }
+body.dom-matrix .dom-intro-skip:hover { border-color: var(--accent-cyan); background: rgba(29,109,69,.12); }
+body.dom-matrix .footer { background: rgba(3,10,7,.40); border-top-color: var(--line-soft); }
+@keyframes homeMatrixPurposePulse {
+  from { text-shadow: 0 0 4px rgba(163,210,179,.12); }
+  to { text-shadow: 0 0 10px rgba(163,210,179,.45); }
+}
+
+/* Public pages with dedicated wrappers share the homepage atmosphere. */
+body.dom-matrix:not(.home-matrix) {
+  --test-bg: transparent;
+  background-image:
+    radial-gradient(ellipse 72vw 62vh at -8vw 35vh,rgba(29,109,69,.70),transparent),
+    radial-gradient(ellipse 65vw 60vh at 100vw 87vh,rgba(29,109,69,.55),transparent),
+    radial-gradient(ellipse 52vw 42vh at 95vw 0,rgba(29,109,69,.40),transparent);
+  background-attachment: fixed;
+}
+body.dom-matrix:not(.home-matrix) .deep-atmosphere { background: transparent; }
+body.dom-matrix :is(.test-chat-page,.checkout-page,.rehab-page,.success-page,.coming-soon-page) { background: transparent; }
+body.dom-matrix :is(.test-chat-header,.checkout-header,.rehab-header) {
+  background: rgba(3,10,7,.94); border-bottom-color: var(--line-soft);
+}
+body.dom-matrix :is(input,textarea,select) { color: var(--text-primary); accent-color: var(--matrix-green); }
+body.dom-matrix :is(.chat-opt-btn,.checkout-btn,.rehab-submit,.btn-pay,.btn-action) { border-color: var(--line-soft); }
+body.dom-matrix .orb-glow { background: radial-gradient(circle,rgba(29,109,69,.14),transparent 70%); }
+

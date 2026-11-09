@@ -84,7 +84,8 @@
   .home-matrix [data-fold-magnet]::before { transition: none; }
   .home-matrix .dom-facts-panel,.home-matrix .dom-fold-chevron svg { transition: none; }
 }
-/* Only the automatic opening cover trembles; movement stays below half a pixel. */
+html.dom-intro-closing { overflow-anchor: none; scroll-behavior: auto !important; }
+/* Only the automatic opening cover trembles; text stays readable. */
 @media (prefers-reduced-motion:no-preference) {
   .home-matrix .dom-intro.is-signalling .dom-intro-cover {
     will-change: transform;
@@ -93,9 +94,9 @@
 }
 @keyframes dom-intro-tremor {
   0%,100% { transform: translate3d(0,0,0); }
-  25% { transform: translate3d(.35px,-.2px,0); }
-  50% { transform: translate3d(-.3px,.25px,0); }
-  75% { transform: translate3d(.2px,.3px,0); }
+  25% { transform: translate3d(.85px,-.55px,0); }
+  50% { transform: translate3d(-.75px,.65px,0); }
+  75% { transform: translate3d(.55px,.75px,0); }
 }
 @media print {
   .home-matrix .dom-facts-toggle { display: none; }
