@@ -83,6 +83,7 @@
   function setPeek(next) {
     if (expanded) return;
     window.clearTimeout(concealTimer);
+    document.documentElement.classList.remove('dom-intro-closing');
     root.classList.toggle('is-peeking',next);
     panel.hidden = !next;
     panel.inert = true;

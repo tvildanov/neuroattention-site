@@ -1851,3 +1851,33 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Review the public Matrix rollout; continue DOM XR platform content."
 }
 ```
+
+
+## 2026-11-09 — Cover close/hover cleanup
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T17:00:59.383Z",
+  "did": [
+    "Final interaction check found that hovering the purpose bar during the 470ms closing transition cancels its conceal timer. Explicitly clear temporary dom-intro-closing scroll-anchor suppression when entering/leaving hover preview.",
+    "Chromium regression passed: hover during automatic collapse, wait 600ms, temporary HTML class is absent; leaving hides panel; no page errors."
+  ],
+  "changed": [
+    "Cleanup for cover-close/hover race; intro script URL version 6"
+  ],
+  "files": [
+    "index.html",
+    "assets/js/dom-intro.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Include this narrow cleanup in the same owner-authorized public Matrix release; no dashboard changes."
+  ],
+  "followups": [
+    "Observe the newest Pages workflow and verify public palette/timer assets."
+  ],
+  "next_session": "Review published Matrix public pages."
+}
+```
