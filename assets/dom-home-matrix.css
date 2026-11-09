@@ -1,0 +1,124 @@
+/* Homepage-only Matrix trial. Other pages do not load this stylesheet. */
+body.home-matrix {
+  --bg-base: #030A07;
+  --bg-surface: #102519;
+  --bg-elevated: #152D20;
+  --text-primary: #F0FFF5;
+  --text: #F0FFF5;
+  --text-secondary: #C4D7CC;
+  --text-muted: #B3CCBD;
+  --text-dim: #ACC5B6;
+  --text-faint: #A0BDAA;
+  --accent-cyan: #A3D2B3;
+  --accent-blue: #A3D2B3;
+  --accent-green: #A3D2B3;
+  --accent-violet: #A3D2B3;
+  --accent-soft: #D1E6D8;
+  --accent-soft-dim: #A3C1AE;
+  --border-faint: rgba(163,210,179,.08);
+  --border-soft: rgba(163,210,179,.14);
+  --line-soft: rgba(163,210,179,.15);
+  --line-softer: rgba(163,210,179,.08);
+  --glass-bg: rgba(9,24,16,.60);
+  --glass-bg-bright: rgba(17,43,28,.75);
+  --glass-border: rgba(163,210,179,.15);
+  --glass-ultra: rgba(6,20,12,.30);
+  --glass-ultra-hover: rgba(29,109,69,.19);
+  --glow-cyan: rgba(29,109,69,.16);
+  --matrix-green: #1D6D45;
+  --matrix-green-hover: #237E50;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+body.home-matrix .deep-atmosphere { background: var(--bg-base); }
+body.home-matrix .noise-overlay { opacity: .35; mix-blend-mode: screen; }
+body.home-matrix > .section,
+body.home-matrix > .hero,
+body.home-matrix > .dom-intro,
+body.home-matrix > .footer { isolation: isolate; z-index: 2; }
+body.home-matrix > .section::before,
+body.home-matrix > .hero::before,
+body.home-matrix > .dom-intro::before,
+body.home-matrix > .footer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 60% at -7% 38%,rgba(29,109,69,.95),transparent 100%),
+    radial-gradient(ellipse 48% 44% at 100% 84%,rgba(29,109,69,.80),transparent 100%),
+    radial-gradient(ellipse 39% 28% at 97% 4%,rgba(29,109,69,.70),transparent 100%);
+  filter: blur(24px);
+}
+body.home-matrix > .section:nth-of-type(even)::before { transform: scaleX(-1); }
+body.home-matrix .navbar {
+  background: rgba(3,10,7,.83);
+  border-bottom-color: var(--line-softer);
+}
+body.home-matrix .navbar.scrolled { background: rgba(3,10,7,.94); }
+body.home-matrix .mobile-menu { background: rgba(3,10,7,.98); }
+body.home-matrix .nav-link,
+body.home-matrix .lang-btn { color: var(--text-secondary); }
+body.home-matrix .lang-btn.active { color: var(--text-primary); background: rgba(163,210,179,.12); }
+body.home-matrix .eyebrow,
+body.home-matrix .tag,
+body.home-matrix .mono-label { color: var(--text-muted) !important; }
+body.home-matrix .text-gradient-cyan,
+body.home-matrix .nav-logo .text-gradient-cyan {
+  background: none;
+  color: var(--text-primary);
+  -webkit-text-fill-color: currentColor;
+}
+body.home-matrix .hero-sub { color: var(--text-primary); }
+body.home-matrix .hero-desc { color: var(--text-secondary); }
+body.home-matrix .grid > * { min-width: 0; }
+body.home-matrix #problem-and-facts .card-row h3 { min-width: 0; overflow-wrap: anywhere; }
+body.home-matrix .pillar p { overflow-wrap: anywhere; }
+body.home-matrix .dom-insight-title-end { color: var(--accent-cyan); }
+body.home-matrix .section-divider {
+  background: linear-gradient(90deg,transparent,rgba(163,210,179,.20),transparent);
+}
+body.home-matrix .line-accent { background: var(--accent-cyan); box-shadow: 0 0 22px rgba(29,109,69,.35); }
+body.home-matrix .glass-card-bright {
+  background: linear-gradient(135deg,rgba(29,109,69,.13),rgba(9,24,16,.35));
+  border-color: var(--line-soft);
+}
+body.home-matrix .glass-icon,
+body.home-matrix .icon-box { background: rgba(29,109,69,.09); border-color: var(--line-soft); }
+body.home-matrix .glow-cyan { box-shadow: 0 10px 36px rgba(0,0,0,.30),0 0 65px rgba(29,109,69,.10); }
+body.home-matrix .media-box,
+body.home-matrix .media-round,
+body.home-matrix .glass-image-frame { border-color: var(--line-soft); }
+body.home-matrix .btn-solid,
+body.home-matrix .dom-insight-action .btn-primary {
+  background: var(--matrix-green);
+  border-color: var(--matrix-green);
+  color: #F4FFF8;
+  box-shadow: 0 6px 26px rgba(29,109,69,.12);
+}
+body.home-matrix .btn-solid:hover,
+body.home-matrix .dom-insight-action .btn-primary:hover {
+  background: var(--matrix-green-hover);
+  border-color: var(--matrix-green-hover);
+  color: #F4FFF8;
+}
+body.home-matrix .btn-primary,
+body.home-matrix .btn-ghost { border-color: var(--line-soft); color: var(--text-primary); }
+body.home-matrix .btn-primary:hover,
+body.home-matrix .btn-ghost:hover { border-color: rgba(163,210,179,.35); }
+body.home-matrix .hero-cta .btn-rehab-cta {
+  background: rgba(9,24,16,.72) !important;
+  border-color: rgba(163,210,179,.25) !important;
+}
+body.home-matrix .hero-cta .btn-rehab-cta svg { color: var(--accent-cyan) !important; }
+body.home-matrix .dom-intro-bar { background: rgba(3,10,7,.90); border-color: var(--line-soft); }
+body.home-matrix .dom-intro-panel { background: transparent; }
+body.home-matrix .dom-intro-toggle:hover { background: rgba(29,109,69,.12); }
+body.home-matrix .dom-intro:not(.is-expanded) .dom-intro-tab-name { animation-name: homeMatrixPurposePulse; }
+body.home-matrix .dom-intro-skip:hover { border-color: var(--accent-cyan); background: rgba(29,109,69,.12); }
+body.home-matrix .footer { background: rgba(3,10,7,.40); border-top-color: var(--line-soft); }
+@keyframes homeMatrixPurposePulse {
+  from { text-shadow: 0 0 4px rgba(163,210,179,.12); }
+  to { text-shadow: 0 0 10px rgba(163,210,179,.45); }
+}
