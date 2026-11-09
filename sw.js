@@ -149,8 +149,9 @@
 // DOM release: original cover font restored; pointer cursor capture/fallback fix.
 // v94: center the localized DOM cover tab and shorten its countdown to 2.5s.
 // v95: approved institute-question cover and compact facts continuation.
+// v97: homepage-only Matrix palette, DOM browser title and compact method handoff.
 // v96: approved attention insight, phone composition and thin purpose tab.
-var CACHE_NAME = 'na-practices-v96';
+var CACHE_NAME = 'na-practices-v97';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
