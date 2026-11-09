@@ -11,14 +11,42 @@
   var fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   var expanded = true, autoAllowed = true, timer = null, concealTimer = null, frame = null;
   var remaining = 2500, startedAt = 0;
+  var signalTimer = null, signalUntil = 0;
+  function stopSignal() {
+    window.clearTimeout(signalTimer); signalTimer = null;
+    if (!root.classList.contains('is-signalling')) return;
+    root.classList.remove('is-signalling'); signalUntil = 0;
+    if (navigator.vibrate) { try { navigator.vibrate(0); } catch (e) {} }
+  }
+  function vibrateSignal() {
+    if (!root.classList.contains('is-signalling') || reduce.matches ||
+        !window.matchMedia('(pointer: coarse)').matches || !navigator.vibrate) return;
+    var left = Math.max(0,signalUntil - Date.now()), pattern = [];
+    while (left > 0) {
+      var pulse = Math.min(10,left); pattern.push(pulse); left -= pulse;
+      if (left > 0) { var gap = Math.min(70,left); pattern.push(gap); left -= gap; }
+    }
+    try { navigator.vibrate(pattern); } catch (e) {}
+  }
+  function startSignal() {
+    if (reduce.matches) return;
+    var duration = Math.min(2500,remaining);
+    signalUntil = Date.now() + duration;
+    root.classList.add('is-signalling');
+    vibrateSignal();
+    signalTimer = window.setTimeout(stopSignal,duration);
+  }
+  document.addEventListener('pointerup',vibrateSignal,{passive:true});
 
   function stopAuto() {
+    stopSignal();
     autoAllowed = false;
     window.clearTimeout(timer); timer = null;
     if (frame !== null) window.cancelAnimationFrame(frame);
     frame = null;
   }
   function pauseAuto() {
+    stopSignal();
     if (timer !== null) {
       remaining = Math.max(0, remaining - (Date.now() - startedAt));
       window.clearTimeout(timer); timer = null;
@@ -40,6 +68,7 @@
       void panel.offsetHeight;
       root.classList.add('is-expanded');
     } else {
+      stopSignal();
       root.classList.remove('is-expanded');
       panel.inert = true;
       panel.setAttribute('aria-hidden', 'true');
@@ -70,6 +99,7 @@
       return;
     }
     startedAt = Date.now();
+    startSignal();
     timer = window.setTimeout(function () {
       timer = null; autoAllowed = false;
       setExpanded(false, false);
