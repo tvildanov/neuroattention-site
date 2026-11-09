@@ -208,7 +208,7 @@
   }
 
   // 8a) Micropulse welcome — gentle double-tap on page load
-  if (canVibrate) {
+  if (canVibrate && !document.getElementById('dom-intro')) {
     setTimeout(function () { haptic([12, 40, 12]); }, 600);
   }
 
@@ -217,9 +217,14 @@
   //     We fire a soft pulse at impact and a secondary ripple pulse at ~3.6s.
   var dropVideo = document.querySelector('#screen-4 video');
   if (dropVideo && canVibrate) {
+    var dropVisible = false;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (entries) {
+      dropVisible = entries[0].isIntersecting;
+    }, {threshold: 0}).observe(dropVideo);
     var dropImpactFired = false;
     var dropRippleFired = false;
     dropVideo.addEventListener('timeupdate', function () {
+      if (!dropVisible || document.hidden) return;
       var t = dropVideo.currentTime;
       // Primary impact pulse at 3.0s
       if (t >= 2.95 && t < 3.3 && !dropImpactFired) {
@@ -259,3 +264,4 @@
     }, { passive: true });
   }
 })();
+
