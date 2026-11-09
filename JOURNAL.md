@@ -1748,3 +1748,48 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue homepage content after mobile desktop-mode Hero fix."
 }
 ```
+
+
+## 2026-11-09 — Half Facts preview, bounded pointer work and intro feedback
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T16:35:48.644Z",
+  "did": [
+    "Checked previous Hero deployment: first deploy timed out in Pages syncing_files; failed-job retry remained queued. Hero fix is already on main.",
+    "Reworked Facts hover into an out-of-flow half-height preview so hovering does not animate the large blurred section height or trigger surrounding page relayout.",
+    "Coalesced magnetic pointer events to one animation frame; cached button bounds and removed moving-gradient repaint. Added small leave debounce and guarded resize writes.",
+    "Replaced homepage footer brand with DOM Institute; retained the existing legal company name.",
+    "Added subpixel cover tremor and short mobile vibration pattern for the automatic 2.5-second intro. Both stop on timeout, manual interaction/collapse, page hiding and reduced motion. Actual vibration depends on browser hardware/user-activation policy.",
+    "Prevented the older welcome pulse from overriding the intro signal and gated drop-video haptics to visible video.",
+    "Chromium checks passed at 390/980/1440px: exact half-height inert preview, stable section height, full click and Escape, touch, reduced motion, footer label in RU/EN/ES, no page errors. A 1000-event pointer burst produced zero bounds reads and two style writes before the next frame. Mock vibration API verified a <=2500ms pattern and stop command at cover close. Reviewed preview screenshot."
+  ],
+  "changed": [
+    "Facts preview performance and size",
+    "DOM footer brand",
+    "Intro visual/haptic feedback"
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-home-ui.css",
+    "assets/js/dom-home-ui.js",
+    "assets/js/dom-intro.js",
+    "assets/redesign.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User reported whole-page lag, not merely visual shaking; remove repeated layout/paint work instead of adding more animation to the Facts bar.",
+    "Hover is visual half-preview; click/tap remains full expansion.",
+    "Only automatic intro receives tremor; respect reduced-motion preference and do not repeat on manual reopening.",
+    "Publish this authorized batch with the previously merged Hero fix; light theme remains preview only.",
+    "A full hardware/browser freeze was not reproduced on the test machine; structural costs were reduced and bounded behavior verified. Deployment outcome belongs in the release PR."
+  ],
+  "followups": [
+    "Observe new Pages workflow terminal status and public asset readback.",
+    "If Pages continues to fail due the existing 2.5GB media artifact, address deployment/media hosting separately without removing practice audio."
+  ],
+  "next_session": "Confirm public release; continue DOM XR section after homepage interaction fixes."
+}
+```
