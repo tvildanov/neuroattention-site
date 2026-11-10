@@ -102,3 +102,13 @@ html.dom-intro-closing { overflow-anchor: none; scroll-behavior: auto !important
   .home-matrix .dom-facts-toggle { display: none; }
   .home-matrix .dom-facts-panel[hidden],.home-matrix .dom-facts-panel { display: block !important; height: auto !important; }
 }
+
+/* Widen only the copy into the existing gutter; preserve the orb column/size. */
+@media(min-width:768px){
+ .home-matrix #home-hero .home-hero-copy{width:calc(100% + clamp(1.5rem,4vw,4rem) - 1.25rem);max-width:none;justify-self:start}
+ .home-matrix #home-hero .hero-desc{max-width:none}
+}
+/* On wide screens also use the empty part of the image column, up to its fixed orb. */
+@media(min-width:1200px){
+ .home-matrix #home-hero .home-hero-copy{width:calc(200% + clamp(1.5rem,4vw,4rem) - 32rem - 1.25rem)}
+}

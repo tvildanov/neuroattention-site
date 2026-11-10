@@ -1881,3 +1881,49 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Review published Matrix public pages."
 }
 ```
+
+
+## 2026-11-09 — Remove obsolete envelope and ground XR preview in real tools
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-09T18:40:52.274Z",
+  "did": [
+    "Owner rejected the obsolete mannequin/skin and wireframe demo. Identified the remaining body-male.glb asset and hidden load/mount path in BodyAtlas.",
+    "Removed the legacy asset from the branch tree, removed its URL and loader/mounter, and initialize numeric 2-unit anatomy metadata instead. No skin group is created; historical skin-toggle requests remain disabled.",
+    "Kept real Z-Anatomy loaders, existing layer coordinates, controls, sensation region mapping, and brain-detail behavior. Preserved asynchronous ready notification so init().then() subscribers receive it.",
+    "Bumped account/harness atlas references to v42; removed obsolete skin/brain-placeholder controls from the developer harness. Updated credits/current geometry policy and marked old handoff instructions historical.",
+    "Read existing account.html Profile, Sensation Map and NeuroMap implementation plus profile-stats.json and the live public sensation vocabulary. The preview uses the actual five configured profile types and all 13 exact default stats.",
+    "Built a revised local-only interactive preview using reduced samples from the actual nervous/vessels GLBs (CC-BY-SA), actual body-part slugs and sensation vocabulary, emotion/thought entry and a local four-node graph. No legacy envelope or net is included.",
+    "Chromium preview checks passed at 320/390/736/1024px: 13 stats, exact configured values, group switching, anatomical layers/rotation, required body/sensation validation, emotion/thought validation and graph text, no page errors.",
+    "Atlas integration test with real Three.js and anatomical loader fixtures: no legacy load requests, no skin geometry before/after toggles, finite height=2 metadata, ready event delivered once after init, nervous/vessels/organs stream, tint/focus/brain enter/exit do not recreate skin, destroy succeeds."
+  ],
+  "changed": [
+    "Remove obsolete body asset and dependency path",
+    "Version atlas loader references; document no-envelope policy"
+  ],
+  "files": [
+    "assets/js/body-atlas.js",
+    "assets/3d/body/body-male.glb (deleted)",
+    "assets/3d/CREDITS.md",
+    "account.html",
+    "test-atlas.html",
+    "feat-anatomy-atlas-handoff.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Owner explicitly requested permanent removal of this obsolete geometry; do not replace it with a generic fallback.",
+    "Do not deploy or merge this turn: the user is reviewing the micro-experience preview first.",
+    "Do not claim this is an authenticated account audit: implementation was inspected in code, not by logging into the user's account.",
+    "Prototype values are configured reference profiles, not measured personal results. Sensation/emotion/thought text stays in-memory and is not submitted to any service.",
+    "Anatomical preview uses downsampled real layers; full clinical anatomy sources are unchanged in the product."
+  ],
+  "followups": [
+    "Owner reviews the revised micro-experience, then authorize publication of the removal branch and separately approve homepage XR integration.",
+    "On eventual publication, verify obsolete asset returns 404 and the account loads atlas v42."
+  ],
+  "next_session": "Review real-profile and sensation-to-NeuroMap preview; keep obsolete generic geometry excluded."
+}
+```

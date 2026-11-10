@@ -4,8 +4,7 @@
  * Vanilla JS + Three.js r128 (lazy-loaded from CDN on first use).
  *
  * Geometry sources (honest provenance — see assets/3d/CREDITS.md):
- *   • Skin layer  — REAL human mesh (body-male.glb), rendered with a
- *                   holographic x-ray wireframe shader.
+ *   • Real Z-Anatomy systems only; no skin envelope or legacy mannequin asset.
  *   • Muscles / skeleton / nervous / vessels / organs / brain-detail — REAL
  *     Z-Anatomy (CC-BY-SA) meshes, streamed per-layer from a CDN and tagged so
  *     every named structure is its own hit-testable region. Each system loads
@@ -32,11 +31,10 @@
   var ORBIT_URL  = 'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js';
   var GLTF_URL   = 'https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js';
   var DRACO_URL  = 'https://unpkg.com/three@0.128.0/examples/js/loaders/DRACOLoader.js';
-  var BODY_GLB   = 'assets/3d/body/body-male.glb';
 
   // Real Z-Anatomy (CC-BY-SA) systems are streamed per-layer from a CDN; URLs
   // live in this config so they can be rotated without a code change. Procedural
-  // capsule layers remain as an instant fallback / preview until the GLB arrives.
+  // only configured anatomical sources can be loaded; no body fallback exists.
   var MODELS_CFG_URL = 'data/config/anatomy-models.json';
   var _cfgPromise = null;
   function loadModelsConfig() {
@@ -135,7 +133,6 @@
   // apart at a glance, while the x-ray rim/glow (cyan-ish) stays for the
   // holographic look. Palette per Nick's spec.
   var LAYER_STYLE = {
-    skin:     { color: 0xA8F7FF, rim: 0xCFF6FF, opacity: 0.40, glow: 0.6, fresnelPower: 2.4 }, // light blue, translucent
     muscles:  { color: 0xFF6B6B, rim: 0xFFC2C2, opacity: 0.50, glow: 0.6, fresnelPower: 2.1 }, // coral
     skeleton: { color: 0xFFD700, rim: 0xFFF1A8, opacity: 0.70, glow: 1.0, fresnelPower: 1.8 }, // gold/yellow
     nervous:  { color: 0x7CFC00, rim: 0xCFFFB0, opacity: 0.60, glow: 1.0, fresnelPower: 1.7 }, // lawn green
@@ -223,13 +220,12 @@
     });
   }
 
-  // PR#129 (Bug 5): CapGeo (the r128 capsule approximation) is gone with the
-  // procedural manikin it built — the body is exclusively the real GLB silhouette now.
+  // No procedural body or capsule envelope is built. Only anatomy is rendered.
 
   // PR#128: makeWireframe() (the holographic "net" overlay) removed. It was the last
   // producer of LineSegments on the body; the legacy segmented outline body that kept
-  // resurfacing in the Medications/Diet tint view came from it. The body now renders as
-  // x-ray fill only. The isolate/tint passes still defensively hide any stray
+  // resurfacing in the Medications/Diet tint view came from it.
+  // The isolate/tint passes still defensively hide any stray
   // LineSegments (e.g. from a GLB) so no future net can leak back in.
 
   // ── brain region catalogue (i18n names + placeholder descriptions) ─────────
@@ -388,10 +384,12 @@
 
     this._bindEvents();
     this._startLoop();
-    // Empty stage + spinner until the first GLB (the body silhouette) arrives —
-    // no procedural capsule is ever shown.
+    // Initialize the reference frame; real anatomy layers stream only on demand.
     this._showLoadingOverlay(loadingMsg());
-    this._loadBody();
+    // A task boundary preserves the asynchronous ready event for init().then()
+    // subscribers without downloading or constructing any hidden legacy model.
+    var self = this;
+    setTimeout(function () { if (!self._destroyed) self._initAnatomyFrame(); }, 0);
     this._applyMode(this.mode);
   };
 
@@ -424,122 +422,21 @@
     if (this._loadingOverlay) this._loadingOverlay.style.display = 'none';
   };
 
-  // ── body load ───────────────────────────────────────────────────────────────
-  Atlas.prototype._loadBody = function () {
-    var self = this, T = window.THREE;
-    var loader = new T.GLTFLoader();
-    // PR#129 (Bug 5): the real body silhouette (body-male.glb) is the ONLY body we
-    // ever show. A transient miss (stale SW, network blip) used to fall back to a
-    // segmented procedural "manikin" — the stylized outline Nick reported floating in
-    // the Medications/Diet tint view with no organs tinted. Retry a few times before
-    // giving up; on final failure we keep an EMPTY stage + message, never a manikin.
-    var tries = 0, MAX_TRIES = 3;
-    function attempt() {
-      tries++;
-      loader.load(BODY_GLB, function (gltf) {
-        self._mountBody(gltf.scene);
-      }, undefined, function (err) {
-        if (tries < MAX_TRIES) { setTimeout(attempt, 600 * tries); return; }
-        console.warn('[BodyAtlas] body GLB failed after ' + tries + ' tries', err);
-        self._mountBody(null);   // empty stage + error message — NO procedural manikin
-      });
-    }
-    attempt();
-  };
-
-  Atlas.prototype._mountBody = function (gltfScene) {
-    var T = window.THREE, self = this;
-    var skin = new T.Group(); skin.name = 'skin';
-
-    var srcMeshes = [];
-    if (gltfScene) {
-      gltfScene.updateMatrixWorld(true);
-      gltfScene.traverse(function (o) { if (o.isMesh && o.geometry) srcMeshes.push(o); });
-    }
-
-    if (srcMeshes.length) {
-      // Real mesh → x-ray fill only, baked to world space.
-      // PR#128: the holographic wireframe "net" overlay is GONE. It was the legacy
-      // segmented outline body ("старая сетчатая модель") that leaked into the
-      // Medications/Diet tint view: tintRegions force-shows the skin layer to isolate
-      // organs, and on a no-match tint the stray cyan LineSegments net kept floating.
-      // The x-ray fill alone gives the body silhouette; nothing else re-creates a net.
-      srcMeshes.forEach(function (m) {
-        var g = m.geometry.clone();
-        g.applyMatrix4(m.matrixWorld);
-        var fill = new T.Mesh(g, makeXrayMaterial({ color: COLD_CYAN, opacity: 0.5, glow: 0.7 }));
-        skin.add(fill);
-      });
-    } else {
-      // PR#129 (Bug 5): body GLB unavailable after retries. Do NOT synthesize a
-      // procedural manikin (Nick: the segmented outline body must be gone). Leave the
-      // skin group EMPTY and surface a persistent message; the rest of the pipeline
-      // still runs on nominal metrics so nothing downstream throws.
-      this._bodyLoadFailed = true;
-    }
-
-    // center + normalize scale so total height ≈ 2.0 units, centered at origin.
-    // PR#129 (Bug 5): when the body GLB failed, skin is empty → its Box3 is degenerate
-    // (min=+Inf/max=-Inf), which would poison every metric with NaN/Infinity. Fall
-    // back to a nominal 2.0-unit humanoid frame so anatomy/sensation placement stays
-    // finite, WITHOUT drawing any manikin geometry.
-    if (!this._bodyLoadFailed) {
-      var box = new T.Box3().setFromObject(skin);
-      var size = new T.Vector3(); box.getSize(size);
-      var center = new T.Vector3(); box.getCenter(center);
-      var targetH = 2.0;
-      var s = size.y > 0.0001 ? targetH / size.y : 1;
-      skin.scale.setScalar(s);
-      // recompute after scale to re-center
-      box = new T.Box3().setFromObject(skin); box.getCenter(center); box.getSize(size);
-      skin.position.sub(center);
-    }
-
-    this.root.add(skin);
-    this._layers.skin = skin;
-    // Skin layer is mounted for backwards-compat (_metrics computation) but
-    // hidden by default: it's no longer a UI-toggleable layer.
-    skin.visible = false;
-    this._layerState.skin = { visible: true, opacity: 0.5 };
-
-    // metrics for anatomy placement (in root space, body centered at origin)
-    var bb = this._bodyLoadFailed
-      ? new T.Box3(new T.Vector3(-0.28, -1.0, -0.14), new T.Vector3(0.28, 1.0, 0.14))
-      : new T.Box3().setFromObject(skin);
-    var H = bb.max.y - bb.min.y;
+  // Anatomy models are already normalized to a 2-unit reference frame.
+  // This frame contains numbers only: no envelope, skin mesh, or body asset.
+  Atlas.prototype._initAnatomyFrame = function () {
+    var T = window.THREE;
+    var bb = new T.Box3(new T.Vector3(-1, -1, -0.18), new T.Vector3(1, 1, 0.18));
+    var H = 2;
     this._metrics = {
-      box: bb,
-      height: H,
-      yMin: bb.min.y, yMax: bb.max.y,
-      // NB: raw bbox width is the ARM SPAN in a T-pose (~stature), useless as a
-      // body-size unit. Use a stature-derived anatomical reference instead
-      // (biacromial breadth ≈ 0.26·H → half torso unit ≈ 0.28·H works for our
-      // proportional multipliers). armSpan kept for reference.
-      armSpan: bb.max.x - bb.min.x,
-      width: H * 0.28,
-      depth: Math.max(bb.max.z - bb.min.z, H * 0.14),
-      // anatomical landmark heights as fraction of stature, expressed as y-coords
-      y: function (frac) { return bb.min.y + H * frac; }
+      box: bb, height: H, yMin: -1, yMax: 1,
+      armSpan: 2, width: H * 0.28, depth: 0.36,
+      y: function (frac) { return -1 + H * frac; }
     };
-
-    // No procedural anatomy layers. Each real Z-Anatomy system (muscles /
-    // skeleton / nervous / vessels / organs) streams in lazily the first time
-    // its layer is toggled on (see _loadRealLayer). Until then the scene shows
-    // only the body silhouette (skin GLB) — never a procedural capsule.
     this._applyLayerConfig();
     this._applyMode(this.mode);
     this._emit('ready', {});
-    if (this._bodyLoadFailed) {
-      // Keep a persistent, non-blocking message instead of a manikin or blank stage.
-      var l = (window.getLang && window.getLang()) || (document.documentElement.lang || 'ru');
-      l = String(l).slice(0, 2);
-      this._showLoadingOverlay(l === 'en' ? 'Could not load the 3D model. Check your connection and reopen.'
-        : l === 'es' ? 'No se pudo cargar el modelo 3D. Revisa la conexión y reábrelo.'
-        : 'Не удалось загрузить 3D-модель. Проверьте соединение и откройте заново.');
-      var sp = this._loadingOverlay && this._loadingOverlay.querySelector('div'); if (sp) sp.style.display = 'none';
-    } else {
-      this._hideLoadingOverlay();   // first GLB is in — drop the spinner
-    }
+    this._hideLoadingOverlay();
   };
 
   // ── real anatomical brain (Z-Anatomy) — lazy, streamed once ──────────────────
@@ -808,15 +705,14 @@
       else visible = false;   // nothing visible by default
       self.toggleLayer(name, visible);
     });
-    // Hide skin group if it was mounted from BODY_GLB, and sync state so
-    // snapshot/restore in enterBrainDetail/exitBrainDetail doesn't revive it.
+    // Ignore historical skin state in saved snapshots; no skin group is created.
     if (self._layers.skin) self._layers.skin.visible = false;
     if (self._layerState.skin) self._layerState.skin.visible = false;
   };
 
   Atlas.prototype.toggleLayer = function (name, visible) {
     visible = !!visible;
-    // PR#129 (Bug 5, take 2): the `skin` layer (body-male.glb x-ray fill) is a
+    // PR#129 (Bug 5, take 2): the historical `skin` envelope is a
     // T-pose body SILHOUETTE that must NEVER render. It has no per-mesh regionId, so
     // tintRegions' isolate pass skips it — a med/diet whose target includes 'skin'
     // (prednisolone → skin thinning) used to force-toggle this layer ON via
@@ -2364,3 +2260,4 @@
     _instances: _instances
   };
 })();
+
