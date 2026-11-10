@@ -33,6 +33,12 @@
 <link rel="stylesheet" href="assets/redesign.css" />
 <style>
   /* DOM page specific styles */
+  .dom-hero-copy { min-width:0; }
+  .dom-hero-copy h1,.dom-hero-copy h2 { max-width:100%;overflow-wrap:anywhere;text-wrap:balance; }
+  .dom-hero-copy .dom-quote-block { display:flex;align-items:center;gap:.8rem; }
+  .dom-hero-copy .dom-quote-block img { flex:0 0 auto;margin-right:0!important; }
+  .dom-hero-copy .dom-quote-block span { min-width:0;overflow-wrap:anywhere; }
+
   .dom-hero {
     padding: 8rem 0 4rem;
   }
@@ -299,7 +305,7 @@
 <section class="dom-hero">
   <div class="container" style="position:relative;z-index:2;">
     <div class="grid grid-2" style="gap:clamp(1.5rem,4vw,4rem);align-items:center;">
-      <div class="fade-up" style="text-align:left;">
+      <div class="fade-up dom-hero-copy" data-na-no-typo="1" style="text-align:left;">
         <div class="line-accent"></div>
         <p class="eyebrow" data-i18n="d.hero.eyebrow">Экосистема</p>
         <h1 class="heading-space" data-i18n="d.hero.title">От адаптации к осознанному участию</h1>
