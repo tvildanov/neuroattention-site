@@ -1,0 +1,75 @@
+/* One clear next action; no layout animation, forced choice, or continuous graph simulation. */
+#dom-xr-neuromap .xr-progress{display:flex;gap:6px;list-style:none;padding:12px 14px;margin:0;border-bottom:1px solid var(--xr-line)}
+#dom-xr-neuromap .xr-progress li{flex:1;color:var(--xr-dim);font-size:11px;line-height:1.45;text-align:center;padding:7px 2px;border-bottom:2px solid transparent}
+#dom-xr-neuromap .xr-progress [aria-current]{color:var(--xr-text);border-bottom-color:var(--xr-accent)}
+#dom-xr-neuromap .xr-guided-content{padding:18px 18px 20px;scroll-margin-top:95px}
+#dom-xr-neuromap .xr-guide-block{margin:0 0 16px;padding:13px 12px;border:1px solid transparent;border-radius:12px;transition:opacity .3s,background .3s,border-color .3s}
+#dom-xr-neuromap .xr-guide-question{display:block;font-family:Inter,sans-serif;font-size:16px;font-weight:500;line-height:1.5;margin:0 0 10px;color:var(--xr-text)}
+#dom-xr-neuromap .xr-guide-hint{font-size:12px;color:var(--xr-dim);line-height:1.65;margin:8px 0 10px}
+#dom-xr-neuromap .xr-guide-block select{width:100%;font-size:15px;min-height:48px;background:var(--xr-panel-soft)}
+#dom-xr-neuromap .guide-pending{opacity:.67}
+#dom-xr-neuromap .guide-pending:focus-within,#dom-xr-neuromap .guide-pending:hover{opacity:1}
+#dom-xr-neuromap .guide-done{opacity:.86}
+#dom-xr-neuromap .guide-current{border-color:rgba(163,210,179,.52);background:rgba(29,109,69,.12);animation:xr-guide-breathe 3.6s ease-in-out infinite}
+#dom-xr-neuromap .guide-current:hover,#dom-xr-neuromap .guide-current:focus-within{animation-duration:5.4s}
+#dom-xr-neuromap .guide-current[data-guide="body"] .bp-wire{animation:xr-body-breathe 3.6s ease-in-out infinite}
+#dom-xr-neuromap .xr-intensity-choices{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:12px}
+#dom-xr-neuromap .xr-intensity-choice{min-height:44px;border:1px solid var(--xr-line);border-radius:8px;background:var(--xr-panel-soft);color:var(--xr-text);font-size:15px}
+#dom-xr-neuromap .xr-intensity-choice[aria-pressed="true"]{background:var(--xr-green);border-color:var(--xr-accent)}
+#dom-xr-neuromap .xr-guided-content .xr-body-picker{padding:0}
+#dom-xr-neuromap .xr-guided-content .bp-stage{height:230px}
+#dom-xr-neuromap .xr-guided-content .xr-anatomy{margin:12px 0 0}
+#dom-xr-neuromap .xr-guided-content .xr-anatomy summary{font-size:12px}
+#dom-xr-neuromap .xr-guided-content .xr-next{margin:0;min-height:48px;width:100%;white-space:normal;line-height:1.5}
+#dom-xr-neuromap .xr-compact-summary{padding:8px 0 16px;color:var(--xr-sub);font-size:12px;line-height:1.6}
+#dom-xr-neuromap .xr-result-title{font-family:Unbounded,sans-serif;font-size:19px;line-height:1.5;font-weight:400;margin:0 0 10px}
+#dom-xr-neuromap .xr-experience-graph{position:relative;width:100%;height:340px;margin:12px 0;touch-action:pan-y;background:radial-gradient(ellipse at 50% 50%,rgba(29,109,69,.13),transparent 70%);isolation:isolate}
+#dom-xr-neuromap .xr-map-lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+#dom-xr-neuromap .xr-observation-line{stroke:rgba(163,210,179,.55);stroke-width:1.5}
+#dom-xr-neuromap .xr-observation-line.is-next{stroke:var(--xr-accent);stroke-width:2.5}
+#dom-xr-neuromap .xr-map-node{position:absolute;transform:translate(-50%,-50%);border:1px solid rgba(163,210,179,.52);border-radius:50%;background:#10251a;color:var(--xr-text);width:90px;min-height:90px;padding:11px 8px;z-index:2;cursor:grab;touch-action:none;display:flex;flex-direction:column;justify-content:center;gap:5px;box-shadow:0 5px 18px #0003}
+#dom-xr-neuromap .xr-map-node:active{cursor:grabbing}
+#dom-xr-neuromap .xr-map-node small{font-size:10px;color:var(--xr-dim)}
+#dom-xr-neuromap .xr-map-node span{font-size:11px;line-height:1.4;max-height:47px;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+#dom-xr-neuromap .xr-map-node[data-map-node="emotion"]{border-color:rgba(219,173,165,.55)}
+#dom-xr-neuromap .xr-map-node[data-map-node="thought"]{border-color:rgba(218,207,162,.55)}
+#dom-xr-neuromap .xr-map-node[data-map-node="body"]{border-color:rgba(173,205,221,.55)}
+#dom-xr-neuromap .xr-edge-action,#dom-xr-neuromap .xr-map-start{position:absolute;z-index:3;transform:translate(-50%,-50%);border:1px solid var(--xr-accent);border-radius:20px;min-height:44px;max-width:170px;padding:10px 12px;line-height:1.4;font-size:12px;background:#193c28;color:var(--xr-text);text-align:center;box-shadow:0 0 20px rgba(163,210,179,.17);animation:xr-guide-breathe 3.6s ease-in-out infinite;text-decoration:none}
+#dom-xr-neuromap .xr-map-start{left:50%;top:53%;width:174px}
+#dom-xr-neuromap .xr-future-line{stroke:rgba(163,210,179,.19);stroke-width:1}
+#dom-xr-neuromap .xr-future-node{fill:#c6dfce;opacity:.8}
+#dom-xr-neuromap .xr-future-node.is-warm{fill:#d2a5a0}
+#dom-xr-neuromap .xr-future-node.is-green{fill:#65ad80}
+#dom-xr-neuromap .is-growing .xr-map-lines{animation:xr-map-reveal .8s ease-out both}
+#dom-xr-neuromap .xr-result-insight{border-top:1px solid var(--xr-line);padding:16px 0 0;margin-top:12px}
+#dom-xr-neuromap .xr-result-insight h3{font-size:16px;line-height:1.5;font-weight:500;margin:0 0 9px}
+#dom-xr-neuromap .xr-result-insight p,#dom-xr-neuromap .xr-result-next p{font-size:13px;line-height:1.75;color:var(--xr-sub)}
+#dom-xr-neuromap .xr-result-next{margin-top:18px}
+#dom-xr-neuromap .xr-result-next small{display:block;margin-top:10px;color:var(--xr-dim);font-size:11px;line-height:1.6}
+#dom-xr-neuromap .xr-graph-help{min-height:40px;text-align:center}
+#dom-xr-neuromap .xr-legal{margin-top:18px}
+.dom-xr-practice-heading{max-width:780px;margin-bottom:36px}
+.dom-xr-practice-heading h2{font-size:clamp(26px,3.2vw,44px);line-height:1.4;letter-spacing:-.04em;margin:0 0 20px}
+.dom-xr-practice-heading>p:last-child{color:var(--text-secondary);line-height:1.7;max-width:62ch}
+.dom-xr-practice-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:start}
+.dom-xr-concept{margin:0;position:sticky;top:100px}
+.dom-xr-concept img{width:100%;height:auto;display:block;aspect-ratio:1.45;object-fit:cover;border-radius:16px}
+.dom-xr-concept figcaption{font-size:12px;color:var(--text-muted);margin-top:12px}
+.dom-xr-practice-path{list-style:none;margin:0;padding:0;display:grid;gap:22px}
+.dom-xr-practice-path li{display:grid;grid-template-columns:28px 1fr;gap:14px}
+.dom-xr-practice-path li>span{font-family:var(--mono-font);font-size:12px;color:var(--accent-cyan);padding-top:4px}
+.dom-xr-practice-path h3,.dom-xr-together h3{font-family:var(--hero-font);font-weight:400;font-size:18px;line-height:1.5;margin:0 0 8px}
+.dom-xr-practice-path p,.dom-xr-together p{font-size:14px;line-height:1.75;color:var(--text-secondary);margin:0}
+.dom-xr-together{margin:28px 0;padding-top:24px;border-top:1px solid var(--line-soft)}
+.dom-xr-practice-actions{display:flex;flex-wrap:wrap;gap:12px}
+.dom-xr-stage-note{font-size:12px;color:var(--text-muted);line-height:1.7;margin:18px 0 0}
+@keyframes xr-guide-breathe{0%,100%{box-shadow:0 0 0 0 rgba(163,210,179,0)}50%{box-shadow:0 0 21px 1px rgba(163,210,179,.16)}}
+@keyframes xr-body-breathe{0%,100%{opacity:.65}50%{opacity:1}}
+@keyframes xr-map-reveal{from{opacity:.2;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@media(max-width:767px){.dom-xr-practice-layout{grid-template-columns:1fr}.dom-xr-concept{position:static}.dom-xr-practice-heading{margin-bottom:24px}.dom-xr-concept img{aspect-ratio:1.55}}
+@media(max-width:420px){#dom-xr-neuromap .xr-guided-content{padding:14px 11px 18px}#dom-xr-neuromap .xr-guide-block{padding:11px 8px}#dom-xr-neuromap .xr-map-node{width:78px;min-height:78px}#dom-xr-neuromap .xr-map-node span{font-size:11px}#dom-xr-neuromap .xr-guide-block select{font-size:16px}#dom-xr-neuromap .xr-progress{padding-inline:8px}#dom-xr-neuromap .xr-progress li{font-size:10px}}
+@media(prefers-reduced-motion:reduce){#dom-xr-neuromap .guide-current,#dom-xr-neuromap .guide-current .bp-wire,#dom-xr-neuromap .xr-edge-action,#dom-xr-neuromap .xr-map-start,#dom-xr-neuromap .is-growing .xr-map-lines{animation:none!important}#dom-xr-neuromap .xr-guide-block{transition:none}}
+
+#dom-xr-neuromap .is-growing .xr-map-node{width:64px;min-height:64px;padding:5px;transition:width .6s,min-height .6s}
+#dom-xr-neuromap .is-growing .xr-map-node small{font-size:11px;color:var(--xr-text)}
+#dom-xr-neuromap .is-growing .xr-map-node span{display:none}

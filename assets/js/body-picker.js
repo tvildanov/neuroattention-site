@@ -213,6 +213,11 @@
     // Track selected slugs (zone-level + sub-level) so the visual .picked state and
     // the re-opened panel buttons stay in sync across hover / open cycles.
     var pickedSet = {};
+    function remember(slug,on){
+      if(on && opts.single){pickedSet={};container.querySelectorAll('.bp-region.picked,.bp-sub.picked').forEach(function(el){el.classList.remove('picked');});}
+      if(on)pickedSet[slug]=1;else delete pickedSet[slug];
+    }
+
 
     // Hover (desktop): show the zone label near the region centroid. Crucially this
     // does NOT open the sub-region panel — that was the source of the cascade where
@@ -241,7 +246,7 @@
       var slug = 'bp_zone_' + view + '_' + rk;
       var picked = !regionEl.classList.contains('picked');
       regionEl.classList.toggle('picked', picked);
-      if (picked) pickedSet[slug] = 1; else delete pickedSet[slug];
+      remember(slug,picked); regionEl.classList.toggle('picked',picked);
       if (typeof onSelect === 'function') onSelect(slug, { ru: reg.label.ru, en: reg.label.en, es: reg.label.es }, picked);
     }
 
@@ -279,7 +284,7 @@
           e.stopPropagation();
           var slug = btn.getAttribute('data-slug');
           var on = btn.classList.toggle('picked');
-          if (on) pickedSet[slug] = 1; else delete pickedSet[slug];
+          remember(slug,on); btn.classList.toggle('picked',on);
           var labels;
           if (btn.getAttribute('data-whole')) {
             labels = { ru: reg.label.ru, en: reg.label.en, es: reg.label.es };
