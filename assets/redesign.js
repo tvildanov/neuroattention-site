@@ -12,7 +12,7 @@
 
   var authScreen=document.getElementById('auth-screen');
   if(authScreen){
-    var authCss=document.createElement('link');authCss.rel='stylesheet';authCss.href='assets/dom-auth-matrix.css?v=1';document.head.appendChild(authCss);
+    var authCss=document.createElement('link');authCss.rel='stylesheet';authCss.href='assets/dom-auth-matrix.css?v=2';document.head.appendChild(authCss);
     var authLogo=document.querySelector('.navbar .nav-logo'),originalLogo=authLogo?authLogo.innerHTML:'';
     function authTheme(){var shown=authScreen.style.display==='block';document.body.classList.toggle('dom-auth-matrix',shown);if(authLogo){if(shown)authLogo.innerHTML='<img src="assets/dom-logo-matrix.svg" alt="" class="nav-logo-icon">DOM Institute';else if(authLogo.innerHTML!==originalLogo)authLogo.innerHTML=originalLogo;}}
     new MutationObserver(authTheme).observe(authScreen,{attributes:true,attributeFilter:['style']});authTheme();
