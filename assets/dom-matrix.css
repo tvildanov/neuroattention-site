@@ -142,3 +142,6 @@ body.dom-matrix :is(input,textarea,select) { color: var(--text-primary); accent-
 body.dom-matrix :is(.chat-opt-btn,.checkout-btn,.rehab-submit,.btn-pay,.btn-action) { border-color: var(--line-soft); }
 body.dom-matrix .orb-glow { background: radial-gradient(circle,rgba(29,109,69,.14),transparent 70%); }
 
+
+body.dom-matrix .navbar .nav-logo-icon{content:url("dom-logo-matrix.svg");filter:none;transition:filter .3s}
+body.dom-matrix .navbar .nav-logo:hover .nav-logo-icon{animation:none;filter:drop-shadow(0 0 5px rgba(89,207,131,.55))}

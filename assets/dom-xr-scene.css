@@ -1,0 +1,58 @@
+
+#dom-xr-scene{--d-bg:#040c09;--d-text:#e5f9f5;--d-sub:#bed5ce;--d-glow:#b8eadb;--d-green:#a3d2b3;color:var(--d-text);font:14px/1.5 Inter,system-ui,sans-serif;background:var(--d-bg);border-radius:14px;overflow:hidden}
+#dom-xr-scene *{box-sizing:border-box}
+#dom-xr-scene header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap}
+#dom-xr-scene .dr-brand{display:flex;gap:9px;align-items:center;font-weight:500}
+#dom-xr-scene .dr-mark{display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--d-green);box-shadow:0 0 13px #5eac7933}
+#dom-xr-scene .dr-mark:after{content:'';width:8px;height:8px;border:1px solid var(--d-green);border-radius:50%}
+#dom-xr-scene .dr-langs{display:flex;gap:3px;margin-right:85px}
+#dom-xr-scene .dr-langs button,#dom-xr-scene .dr-mobile button{font:inherit;color:var(--d-sub);background:transparent;border:0;padding:6px 9px;min-height:36px}
+#dom-xr-scene .dr-langs [aria-pressed="true"],#dom-xr-scene .dr-mobile [aria-pressed="true"]{color:var(--d-text);text-decoration:underline;text-underline-offset:5px}
+#dom-xr-scene .dr-caption{padding:0 18px 10px;font-size:12px;color:var(--d-sub)}
+#dom-xr-scene .dr-mobile{display:none}
+#dom-xr-scene .dr-scene{position:relative;overflow:hidden;isolation:isolate}
+#dom-xr-scene .dr-scene img{display:block;width:100%;height:auto;max-width:none}
+#dom-xr-scene .dr-hotspot{position:absolute;transform:translate(-50%,-50%);width:4.7%;height:10%;min-width:32px;min-height:32px;border:0;padding:0;background:transparent;color:var(--d-glow);border-radius:50%;z-index:1;isolation:isolate}
+#dom-xr-scene .dr-hotspot:before{content:'';position:absolute;inset:0;border-radius:inherit;border:1px solid #d9fff6aa;box-shadow:0 0 12px 5px #9be8c27a,inset 0 0 9px #b5f4d159;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+#dom-xr-scene .dr-hotspot[data-open="profile"]{width:4.8%;height:10%;border-radius:23%}
+#dom-xr-scene .dr-hotspot.is-cued:before{animation:dr-object-cue 2.2s ease-in-out infinite}
+#dom-xr-scene .dr-hotspot:hover:before,#dom-xr-scene .dr-hotspot:focus-visible:before{opacity:1;transform:scale(1.13)}
+#dom-xr-scene .dr-hotspot[aria-pressed="true"]:before{opacity:.7}
+#dom-xr-scene .dr-detail{position:absolute;left:63%;bottom:3%;width:34%;padding:9px 10px;background:rgba(4,15,12,.12);border:0;box-shadow:none;border-radius:8px;backdrop-filter:blur(2px);color:#e9ffff;text-shadow:0 0 5px #b5fff5aa,0 1px 3px #020b09;z-index:2}
+#dom-xr-scene .dr-detail[hidden]{display:none}
+#dom-xr-scene .dr-detail h3{font-size:14px;line-height:1.4;font-weight:500;margin:2px 26px 7px 0}
+#dom-xr-scene .dr-detail p{font-size:12px;line-height:1.45;margin:4px 0;color:#d6efeb}
+#dom-xr-scene .dr-close{position:absolute;right:2px;top:0;background:transparent;border:0;padding:6px;color:#ddfff8;text-shadow:0 0 5px #b5fff5;font:inherit;min-width:32px;min-height:32px}
+#dom-xr-scene .dr-demo{font-size:11px;color:#bedcd4}
+#dom-xr-scene .dr-metrics{display:flex;gap:18px;flex-wrap:wrap}
+#dom-xr-scene .dr-metrics strong{display:block;font-size:19px;font-weight:500}
+#dom-xr-scene .dr-metrics small{font-size:11px;font-weight:400}
+#dom-xr-scene .dr-metrics span{font-size:11px}
+#dom-xr-scene .dr-note{padding:9px 18px 14px;font-size:11px;color:var(--d-sub)}
+@keyframes dr-object-cue{0%,100%{opacity:.12}50%{opacity:.85}}
+@media(max-width:600px){
+ #dom-xr-scene .dr-mobile{display:flex;gap:10px;padding:0 9px 9px}
+ #dom-xr-scene .dr-mobile button{min-height:44px}
+ #dom-xr-scene .dr-scene{aspect-ratio:auto}
+ #dom-xr-scene .dr-scene img{width:200%;transform:translateX(-50%)}
+ #dom-xr-scene .dr-scene[data-view="hands"] img{transform:none}
+ 
+ #dom-xr-scene .dr-hotspot{width:9%;height:9%;min-width:44px;min-height:44px}
+ #dom-xr-scene .dr-hotspot[data-open="profile"]{width:10%;height:10%}
+ #dom-xr-scene .dr-detail{position:relative;left:auto;bottom:auto;width:auto;padding:12px 18px;backdrop-filter:none;background:transparent}
+ #dom-xr-scene .dr-detail h3{font-size:16px}
+ #dom-xr-scene .dr-detail p{font-size:14px}
+ #dom-xr-scene .dr-langs{margin-right:0}
+}
+@media(prefers-reduced-motion:reduce){#dom-xr-scene .dr-hotspot.is-cued:before{animation:none;opacity:.8}}
+
+#dom-xr-scene [hidden]{display:none!important}
+#dom-xr-scene .dr-feedback{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#dom-xr-scene .dr-feedback>g{opacity:0;transition:opacity .35s}
+#dom-xr-scene .dr-scene[data-active="field"] .dr-field-volume,#dom-xr-scene .dr-scene[data-active="sphere"] .dr-sphere-volume,#dom-xr-scene .dr-scene[data-active="point"] .dr-point-light,#dom-xr-scene .dr-scene[data-active="nerve"] .dr-nerve-path{opacity:1}
+#dom-xr-scene .dr-nerve::before{border-color:#b6ecff;box-shadow:0 0 10px 4px #a5e8ff6a}
+#dom-xr-scene .dr-scene[data-active="nerve"] .dr-detail{left:3%;bottom:3%;width:34%}
+@media(max-width:600px){#dom-xr-scene .dr-feedback{width:200%;left:-100%}#dom-xr-scene .dr-scene[data-view="hands"] .dr-feedback{left:0}#dom-xr-scene>.dr-detail{position:relative;left:auto;bottom:auto;width:auto;margin:0;padding:12px 18px}#dom-xr-scene .dr-caption{font-size:12px}}
+@media(prefers-reduced-motion:reduce){#dom-xr-scene .dr-feedback>g{transition:none}}
+/* Preserve source geometry so every hotspot and volume follows its object. */
+#dom-xr-scene .dr-scene img{aspect-ratio:2/1;object-fit:contain;border-radius:0}

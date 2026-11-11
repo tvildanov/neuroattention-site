@@ -10,6 +10,16 @@
 (function () {
   'use strict';
 
+  var authScreen=document.getElementById('auth-screen');
+  if(authScreen){
+    var authCss=document.createElement('link');authCss.rel='stylesheet';authCss.href='assets/dom-auth-matrix.css?v=1';document.head.appendChild(authCss);
+    var authLogo=document.querySelector('.navbar .nav-logo'),originalLogo=authLogo?authLogo.innerHTML:'';
+    function authTheme(){var shown=authScreen.style.display==='block';document.body.classList.toggle('dom-auth-matrix',shown);if(authLogo){if(shown)authLogo.innerHTML='<img src="assets/dom-logo-matrix.svg" alt="" class="nav-logo-icon">DOM Institute';else if(authLogo.innerHTML!==originalLogo)authLogo.innerHTML=originalLogo;}}
+    new MutationObserver(authTheme).observe(authScreen,{attributes:true,attributeFilter:['style']});authTheme();
+    if(new URLSearchParams(location.search).get('from')==='xr-map'){
+      var entry=document.createElement('p');entry.className='dom-auth-entry';entry.textContent=({ru:'Создайте личную карту, чтобы сохранять наблюдения и возвращаться к ним. Пример на главной странице не сохраняется автоматически.',en:'Create a personal map to save observations and return to them. The homepage example is not saved automatically.',es:'Crea tu mapa personal para guardar observaciones y volver a ellas. El ejemplo de la página principal no se guarda automáticamente.'})[document.documentElement.lang]||'Create a personal map to save observations and return to them.';authScreen.prepend(entry);
+    }
+  }
   // ───────────────────────────────────────
   // 1) Custom cursor: stylus + trailing dot
   // ───────────────────────────────────────
