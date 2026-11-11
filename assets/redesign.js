@@ -45,9 +45,11 @@
       dot.style.opacity = '0';
     }
     function trackCursor(e) {
+      if (e.target.closest && e.target.closest('#dom-xr-platform, #dom-xr-practice')) { hideCursor(); return; }
       if (e.pointerType === 'touch') { hideCursor(); return; }
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       mx = e.clientX; my = e.clientY;
+      if (cursorFrame === null) cursorFrame=requestAnimationFrame(tick);
       if (!cursorActive) {
         // No flight from the middle of the page on first movement/re-entry.
         stylusX = dx = mx; stylusY = dy = my;
@@ -81,7 +83,10 @@
       if (e.target.closest && e.target.closest(hoverSelector)) dot.classList.remove('hover');
     });
 
+    var cursorFrame = null;
     function tick() {
+      cursorFrame = null;
+      if (!cursorActive) return;
       // stylus: near-instant (tiny smoothing for feel)
       stylusX += (mx - stylusX) * 0.9;
       stylusY += (my - stylusY) * 0.9;
@@ -92,9 +97,8 @@
       dy += (my - dy) * 0.14;
       dot.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0) translate(-50%,-50%)';
 
-      requestAnimationFrame(tick);
+      if (Math.abs(mx-dx)+Math.abs(my-dy)>.1) cursorFrame=requestAnimationFrame(tick);
     }
-    requestAnimationFrame(tick);
   }
 
   // ───────────────────────────────────────

@@ -73,3 +73,116 @@
 #dom-xr-neuromap .is-growing .xr-map-node{width:64px;min-height:64px;padding:5px;transition:width .6s,min-height .6s}
 #dom-xr-neuromap .is-growing .xr-map-node small{font-size:11px;color:var(--xr-text)}
 #dom-xr-neuromap .is-growing .xr-map-node span{display:none}
+
+/* Compact, stationary walkthrough: choices change inside one viewport-sized window. */
+#dom-xr-platform{padding:22px 0;scroll-margin-top:76px}
+#dom-xr-neuromap{--xr-window-height:clamp(350px,calc(100svh - 324px),570px)}
+#dom-xr-neuromap .xr-intro{max-width:none;text-align:center;margin:0 auto 12px}
+#dom-xr-neuromap .xr-intro h2{font-size:clamp(24px,3vw,34px);margin-bottom:4px}
+#dom-xr-neuromap .xr-kicker{margin-bottom:4px;font-size:10px}
+#dom-xr-neuromap .xr-lead{margin-inline:auto;font-size:14px}
+#dom-xr-neuromap .xr-platform-copy{margin:10px 0 14px;gap:24px;text-align:center}
+#dom-xr-neuromap .xr-platform-copy h3{font-size:16px;margin-bottom:4px}
+#dom-xr-neuromap .xr-platform-copy p{font-size:12px;line-height:1.5;margin-inline:auto}
+#dom-xr-neuromap .xr-grid{align-items:stretch}
+#dom-xr-neuromap .xr-window{height:var(--xr-window-height);display:flex;flex-direction:column;contain:layout style;isolation:isolate}
+#dom-xr-neuromap .xr-head{padding:10px 14px;flex:none;min-height:42px}
+#dom-xr-neuromap .xr-progress{padding:3px 10px;flex:none}
+#dom-xr-neuromap .xr-progress li{padding:5px 2px}
+#dom-xr-neuromap .xr-choice-trail{display:flex;flex-wrap:wrap;gap:4px;padding:6px 12px;flex:none;min-height:12px}
+#dom-xr-neuromap .xr-choice-trail:empty{padding:0;min-height:0}
+#dom-xr-neuromap .xr-choice-trail button{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--xr-line);border-radius:20px;padding:4px 8px;font-size:11px;background:#10251a;color:var(--xr-sub);min-height:28px}
+#dom-xr-neuromap .xr-guided-content{min-height:0;flex:1;padding:12px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#dom-xr-neuromap .xr-guide-block{position:relative;isolation:isolate;margin-bottom:10px;padding:12px;transition:opacity .2s;background:transparent;animation:none!important}
+#dom-xr-neuromap .xr-guide-block::before,#dom-xr-neuromap .xr-edge-action::before,#dom-xr-neuromap .xr-map-start::before{content:'';position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;border:2px solid #a3e1b9;background:rgba(74,161,104,.1);box-shadow:0 0 16px rgba(119,218,151,.3);opacity:0;z-index:-1}
+#dom-xr-neuromap .guide-current{border-color:rgba(163,225,185,.65)}
+#dom-xr-neuromap .guide-current::before,#dom-xr-neuromap .xr-edge-action::before,#dom-xr-neuromap .xr-map-start::before{animation:xr-cue-opacity 1.65s ease-in-out infinite;will-change:opacity}
+#dom-xr-neuromap .guide-current[data-guide="body"] .bp-wire{animation:none}
+#dom-xr-neuromap .guide-current[data-guide="body"] .bp-svg{animation:xr-body-breathe 1.65s ease-in-out infinite}
+#dom-xr-neuromap .guide-current[data-guide="body"]{padding:7px 10px}
+#dom-xr-neuromap .xr-guide-question{font-size:16px;margin-bottom:8px}
+#dom-xr-neuromap .xr-guide-hint{font-size:12px;line-height:1.5;margin:7px 0}
+#dom-xr-neuromap [data-guide="body"]>.xr-guide-hint{display:none}
+#dom-xr-neuromap .xr-guided-content .bp-stage{height:clamp(125px,calc(100svh - 575px),210px)}
+#dom-xr-neuromap .xr-anatomy{margin:3px 0 0;padding-top:0}
+#dom-xr-neuromap .xr-anatomy summary{padding:4px 0;min-height:28px;font-size:11px}
+#dom-xr-neuromap .xr-anatomy .xr-stage{height:200px}
+#dom-xr-neuromap [data-guide="next-context"],#dom-xr-neuromap [data-guide="build"]{padding:5px;margin:0}
+#dom-xr-neuromap .xr-status{font-size:11px;line-height:1.4;margin-top:5px}
+#dom-xr-neuromap .xr-content{flex:1;min-height:0;overflow:auto;padding:12px 14px;overscroll-behavior:contain;scrollbar-width:thin}
+#dom-xr-neuromap .xr-person{margin:10px 0}
+#dom-xr-neuromap .xr-person h3{font-size:16px}
+#dom-xr-neuromap .xr-groups{margin:8px 0}
+#dom-xr-neuromap .xr-groups button{min-height:34px;padding:6px}
+#dom-xr-neuromap .xr-profile-scope{margin:5px 0}
+#dom-xr-neuromap .xr-skill{min-height:38px;padding:6px 8px}
+#dom-xr-neuromap .xr-stat-group h3{margin:5px 8px}
+#dom-xr-neuromap .xr-expand{margin:7px 0;padding:5px;min-height:32px}
+#dom-xr-neuromap .xr-detail{margin-top:6px;padding-top:7px;min-height:0}
+#dom-xr-neuromap .xr-choose-focus{min-height:32px;padding:5px 10px;margin-top:5px}
+#dom-xr-neuromap .xr-personal-cta{padding:8px;margin-top:8px}
+#dom-xr-neuromap .xr-real-note{font-size:10px;margin-top:5px}
+#dom-xr-neuromap .xr-legal{margin-top:8px;font-size:10px;line-height:1.4}
+#dom-xr-neuromap .xr-legal>p{max-width:none}
+#dom-xr-neuromap .xr-experience-graph{height:clamp(145px,calc(100svh - 600px),260px);margin:5px 0}
+#dom-xr-neuromap .xr-map-node{width:66px;min-height:66px;padding:6px}
+#dom-xr-neuromap .xr-map-node span{font-size:10px;-webkit-line-clamp:2;max-height:28px}
+#dom-xr-neuromap .xr-edge-action,#dom-xr-neuromap .xr-map-start{animation:none;isolation:isolate}
+#dom-xr-neuromap .xr-result-title{font-size:17px;margin-bottom:5px}
+#dom-xr-neuromap .xr-result-insight{padding-top:7px;margin-top:5px}
+#dom-xr-neuromap .xr-result-insight h3{font-size:14px;margin-bottom:4px}
+#dom-xr-neuromap .xr-result-insight p,#dom-xr-neuromap .xr-result-next p{font-size:12px;line-height:1.5}
+#dom-xr-neuromap .xr-graph-help{min-height:0;font-size:10px}
+#dom-xr-neuromap .xr-result-next{margin-top:7px}
+#dom-xr-neuromap .xr-node-detail{min-height:0;padding:5px}
+.dom-xr-practice-heading{text-align:center;margin-inline:auto}
+.dom-xr-practice-heading>p:last-child{margin-inline:auto}
+body.dom-matrix>#dom-xr-platform::before,body.dom-matrix>#dom-xr-practice::before{filter:none}
+#dom-xr-neuromap.xr-paused *,#dom-xr-neuromap.xr-paused *::before{animation-play-state:paused!important}
+@keyframes xr-cue-opacity{0%,100%{opacity:.2}50%{opacity:1}}
+@media(max-width:680px){
+ #dom-xr-platform{padding:14px 0}
+ #dom-xr-neuromap{--xr-window-height:clamp(340px,calc(100svh - 290px),620px)}
+ #dom-xr-neuromap .xr-intro{margin-bottom:6px}
+ #dom-xr-neuromap .xr-intro h2{font-size:24px}
+ #dom-xr-neuromap .xr-lead{font-size:12px}
+ #dom-xr-neuromap .xr-platform-copy{display:none}
+ #dom-xr-neuromap .xr-mobile-tabs{margin:8px 0;padding:2px}
+ #dom-xr-neuromap .xr-mobile-tabs button{min-height:38px;padding:7px;font-size:12px}
+ #dom-xr-neuromap .xr-window[data-mobile-visible="false"]{display:none}
+ #dom-xr-neuromap .xr-legal{display:block;font-size:9px}
+ #dom-xr-neuromap .xr-guided-content .bp-stage{height:clamp(125px,calc(100svh - 550px),240px)}
+ #dom-xr-neuromap .xr-choice-trail button{max-width:100px}
+}
+@media(prefers-reduced-motion:reduce){#dom-xr-neuromap .guide-current::before,#dom-xr-neuromap .xr-edge-action::before,#dom-xr-neuromap .xr-map-start::before{animation:none;opacity:.75}#dom-xr-neuromap .bp-svg{animation:none!important}}
+#dom-xr-platform.section{padding:18px 0!important}
+#dom-xr-neuromap .xr-footnote{font-size:10px;line-height:1.4;margin-top:5px}
+#dom-xr-neuromap [data-window="profile"] .xr-content{display:flex;flex-direction:column;gap:5px;overflow:hidden}
+#dom-xr-neuromap [data-stats]{min-height:0;flex:1;overflow:auto;scrollbar-width:thin}
+#dom-xr-neuromap .xr-person{margin:2px 0}
+#dom-xr-neuromap .xr-groups,#dom-xr-neuromap .xr-expand,#dom-xr-neuromap .xr-personal-cta{margin:0;flex:none}
+#dom-xr-neuromap .xr-detail{display:none}
+#dom-xr-neuromap[data-stat-open="true"] .xr-detail{display:block;max-height:90px;overflow:auto;font-size:11px}
+#dom-xr-neuromap .xr-picker{gap:3px!important}
+#dom-xr-neuromap .xr-picker select{min-height:34px;padding:6px}
+#dom-xr-neuromap .xr-skill{min-height:30px;padding:4px 8px}
+#dom-xr-neuromap .xr-skill-line{margin-bottom:3px}
+#dom-xr-neuromap .xr-person p{font-size:11px}
+#dom-xr-neuromap[data-next-action="next-context"] .bp-stage{height:100px}
+#dom-xr-neuromap[data-next-action="next-context"] .xr-anatomy{display:none}
+#dom-xr-neuromap .xr-intro h2{font-size:clamp(24px,3vw,32px)}
+#dom-xr-platform,#dom-xr-practice{cursor:auto}
+@media(max-width:680px){#dom-xr-platform.section{padding:12px 0!important}}
+#dom-xr-platform,#dom-xr-neuromap,#dom-xr-neuromap *{overflow-anchor:none}
+
+#dom-xr-neuromap [data-flow-status],#dom-xr-neuromap [data-context-status]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+@media(max-width:680px){#dom-xr-neuromap .xr-guided-content .bp-stage{height:125px}}
+@media(max-width:680px){#dom-xr-neuromap{--xr-window-height:clamp(320px,calc(100svh - 310px),600px)}#dom-xr-neuromap [data-guide="body"] .xr-anatomy summary{font-size:10px}}
+@media(max-width:680px){#dom-xr-neuromap{--xr-window-height:clamp(340px,calc(100svh - 290px),620px)}#dom-xr-neuromap .xr-kicker{display:none}#dom-xr-platform.section{padding:8px 0!important}}
+#dom-xr-neuromap .xr-choice-trail{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+#dom-xr-neuromap .xr-choice-trail button{flex-shrink:0}
+#dom-xr-neuromap [data-step-panel="3"]>[data-result-summary]{display:none}
+@media(max-width:680px){#dom-xr-neuromap .xr-experience-graph{height:140px}#dom-xr-neuromap .xr-graph-help{font-size:9px;line-height:1.35}}
+#dom-xr-neuromap .xr-result-next{display:none}
+#dom-xr-neuromap [data-step-panel="3"]:has(.is-growing)>.xr-result-title{display:none}
+#dom-xr-neuromap .is-growing.xr-experience-graph{height:120px}
