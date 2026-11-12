@@ -28,6 +28,15 @@
  #dom-xr-practice .dom-xr-practice-path{gap:9px}
  #dom-xr-practice .dom-xr-together{margin:12px 0;padding-top:10px}
 }
+@media(min-width:901px) and (max-width:1100px){
+ #dom-xr-practice{padding-block:22px!important}
+ #dom-xr-practice .dom-xr-practice-heading{margin-bottom:16px}
+ #dom-xr-practice .dom-xr-practice-heading>p:last-child{font-size:13px}
+ #dom-xr-practice .dom-xr-practice-path{gap:9px}
+ #dom-xr-practice .dom-xr-practice-path p,#dom-xr-practice .dom-xr-together p{font-size:12.5px;line-height:1.4}
+ #dom-xr-practice .dom-xr-together{margin:12px 0;padding-top:10px}
+ #dom-xr-practice .dom-xr-stage-note{margin-top:9px;font-size:10.5px}
+}
 @media(max-width:900px){
  #dom-xr-practice{padding:28px 0!important}
  #dom-xr-practice .dom-xr-practice-layout{grid-template-columns:1fr;gap:22px}
@@ -38,3 +47,4 @@
  #dom-xr-practice .dom-xr-practice-path p,#dom-xr-practice .dom-xr-together p{font-size:14px;line-height:1.6}
  #dom-xr-practice .dom-xr-practice-actions .btn{min-height:44px;font-size:13px}
 }
+
