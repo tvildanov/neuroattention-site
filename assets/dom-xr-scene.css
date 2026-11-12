@@ -57,12 +57,11 @@
 /* Preserve source geometry so every hotspot and volume follows its object. */
 #dom-xr-scene .dr-scene img{aspect-ratio:2/1;object-fit:contain;border-radius:0}
 
-/* Glow follows the portrait's octagonal silhouette, never a rounded box. */
+/* A diffuse halo lights the existing portrait; no duplicate outline is drawn. */
 #dom-xr-scene .dr-hotspot{min-width:28px;min-height:28px;cursor:pointer}
 #dom-xr-scene .dr-hotspot[data-open="profile"]{width:4.8%;height:10%;border-radius:0}
 #dom-xr-scene .dr-hotspot[data-open="profile"]:before{display:none}
-#dom-xr-scene .dr-profile-glow{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;opacity:0;transition:opacity .25s;filter:drop-shadow(0 0 3px #b0ffda) drop-shadow(0 0 7px #65d99c)}
-#dom-xr-scene .dr-profile-glow polygon{fill:none;stroke:#b8ffdd;stroke-width:2;stroke-linejoin:round}
+#dom-xr-scene .dr-profile-glow{position:absolute;inset:-18%;width:136%;height:136%;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(ellipse,transparent 37%,rgba(141,255,194,.72) 59%,transparent 78%);filter:blur(4px);mix-blend-mode:screen;border:0;outline:0;box-shadow:none}
 #dom-xr-scene .is-cued .dr-profile-glow{animation:dr-portrait-glow 2.2s ease-in-out infinite}
 #dom-xr-scene .dr-hotspot:is(:hover,:focus-visible,[aria-pressed="true"]) .dr-profile-glow{opacity:.9}
 @keyframes dr-portrait-glow{0%,100%{opacity:.2}50%{opacity:.9}}
@@ -77,9 +76,10 @@
 @media(max-width:600px){
  #dom-xr-scene .dr-hotspot,#dom-xr-scene .dr-hotspot[data-open="profile"]{min-width:44px;min-height:44px}
  #dom-xr-scene .dr-hotspot:before{inset:20%}
- #dom-xr-scene .dr-profile-glow{inset:10%;width:80%;height:80%}
+ #dom-xr-scene .dr-profile-glow{inset:0;width:100%;height:100%;filter:blur(4px)}
  #dom-xr-scene .dr-scene .dr-detail{width:min(240px,calc(100% - 16px))}
  #dom-xr-scene .dr-close{min-width:36px;min-height:36px}
 }
 @media(prefers-reduced-motion:reduce){#dom-xr-scene .is-cued .dr-profile-glow{animation:none;opacity:.8}}
+
 
