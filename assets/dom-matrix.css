@@ -148,5 +148,6 @@ body.dom-matrix .navbar .nav-logo-icon{content:url("dom-logo-matrix.svg");filter
 
 /* Keep the original hover breathing motion in the Matrix palette. */
 body.dom-matrix .navbar .nav-logo:is(:hover,:focus-visible) .nav-logo-icon{animation:domMatrixLogoPulse 1.2s ease-in-out infinite alternate}
-@keyframes domMatrixLogoPulse{from{transform:scale(1);filter:drop-shadow(0 0 4px rgba(89,207,131,.2))}to{transform:scale(1.08);filter:drop-shadow(0 0 10px rgba(89,207,131,.55))}}
+@keyframes domMatrixLogoPulse{from{transform:scale(1);filter:drop-shadow(0 0 3px rgba(89,207,131,.35)) drop-shadow(0 0 7px rgba(89,207,131,.14))}to{transform:scale(1.025);filter:drop-shadow(0 0 7px rgba(124,239,164,.8)) drop-shadow(0 0 14px rgba(89,207,131,.45))}}
 @media(prefers-reduced-motion:reduce){body.dom-matrix .navbar .nav-logo:is(:hover,:focus-visible) .nav-logo-icon{animation:none;transform:none;filter:drop-shadow(0 0 6px rgba(89,207,131,.45))}}
+

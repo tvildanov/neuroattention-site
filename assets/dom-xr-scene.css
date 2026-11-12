@@ -51,8 +51,35 @@
 #dom-xr-scene .dr-feedback>g{opacity:0;transition:opacity .35s}
 #dom-xr-scene .dr-scene[data-active="field"] .dr-field-volume,#dom-xr-scene .dr-scene[data-active="sphere"] .dr-sphere-volume,#dom-xr-scene .dr-scene[data-active="point"] .dr-point-light,#dom-xr-scene .dr-scene[data-active="nerve"] .dr-nerve-path{opacity:1}
 #dom-xr-scene .dr-nerve::before{border-color:#b6ecff;box-shadow:0 0 10px 4px #a5e8ff6a}
-#dom-xr-scene .dr-scene[data-active="nerve"] .dr-detail{left:3%;bottom:3%;width:34%}
+
 @media(max-width:600px){#dom-xr-scene .dr-feedback{width:200%;left:-100%}#dom-xr-scene .dr-scene[data-view="hands"] .dr-feedback{left:0}#dom-xr-scene>.dr-detail{position:relative;left:auto;bottom:auto;width:auto;margin:0;padding:12px 18px}#dom-xr-scene .dr-caption{font-size:12px}}
 @media(prefers-reduced-motion:reduce){#dom-xr-scene .dr-feedback>g{transition:none}}
 /* Preserve source geometry so every hotspot and volume follows its object. */
 #dom-xr-scene .dr-scene img{aspect-ratio:2/1;object-fit:contain;border-radius:0}
+
+/* Glow follows the portrait's octagonal silhouette, never a rounded box. */
+#dom-xr-scene .dr-hotspot{min-width:28px;min-height:28px;cursor:pointer}
+#dom-xr-scene .dr-hotspot[data-open="profile"]{width:4.8%;height:10%;border-radius:0}
+#dom-xr-scene .dr-hotspot[data-open="profile"]:before{display:none}
+#dom-xr-scene .dr-profile-glow{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;opacity:0;transition:opacity .25s;filter:drop-shadow(0 0 3px #b0ffda) drop-shadow(0 0 7px #65d99c)}
+#dom-xr-scene .dr-profile-glow polygon{fill:none;stroke:#b8ffdd;stroke-width:2;stroke-linejoin:round}
+#dom-xr-scene .is-cued .dr-profile-glow{animation:dr-portrait-glow 2.2s ease-in-out infinite}
+#dom-xr-scene .dr-hotspot:is(:hover,:focus-visible,[aria-pressed="true"]) .dr-profile-glow{opacity:.9}
+@keyframes dr-portrait-glow{0%,100%{opacity:.2}50%{opacity:.9}}
+/* JS positions this small label beside the selected object and clamps edges. */
+#dom-xr-scene .dr-scene .dr-detail{position:absolute;left:var(--detail-x,8px);top:var(--detail-y,8px);bottom:auto;width:min(250px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;padding:10px 12px;background:rgba(3,15,10,.45);border:1px solid rgba(163,210,179,.2);border-radius:8px;backdrop-filter:blur(5px);box-shadow:0 3px 18px #0004;text-shadow:0 0 4px #b5fff533;z-index:3}
+#dom-xr-scene .dr-scene .dr-detail h3{font-size:13px;margin:3px 24px 6px 0}
+#dom-xr-scene .dr-scene .dr-detail p{font-size:12px;line-height:1.45;margin:0}
+#dom-xr-scene .dr-scene .dr-demo{font-size:9px;line-height:1.4;padding-right:20px}
+#dom-xr-scene .dr-close{cursor:pointer}
+#dom-xr-scene .dr-metrics{gap:12px}
+#dom-xr-scene .dr-metrics strong{font-size:17px}
+@media(max-width:600px){
+ #dom-xr-scene .dr-hotspot,#dom-xr-scene .dr-hotspot[data-open="profile"]{min-width:44px;min-height:44px}
+ #dom-xr-scene .dr-hotspot:before{inset:20%}
+ #dom-xr-scene .dr-profile-glow{inset:10%;width:80%;height:80%}
+ #dom-xr-scene .dr-scene .dr-detail{width:min(240px,calc(100% - 16px))}
+ #dom-xr-scene .dr-close{min-width:36px;min-height:36px}
+}
+@media(prefers-reduced-motion:reduce){#dom-xr-scene .is-cued .dr-profile-glow{animation:none;opacity:.8}}
+
