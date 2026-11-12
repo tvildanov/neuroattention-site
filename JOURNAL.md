@@ -1927,3 +1927,39 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Review real-profile and sensation-to-NeuroMap preview; keep obsolete generic geometry excluded."
 }
 ```
+
+
+## 2026-11-12 — DOM rebrand continuation and publication recovery
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-12T05:24:09.939Z",
+  "did": [
+    "Recovered DOM rebrand continuity from repository decisions, session reports, current GitHub history, Library XR handoff and prior-conversation retrieval.",
+    "Confirmed GitHub repository push/admin permissions and Railway service configuration.",
+    "Confirmed c437895 restores Matrix logo hover pulse and rotates visible XR cues every 3600ms; d2932f6 refreshes cache references.",
+    "Confirmed Pages runs 43097206532 and 43097790955 ended startup_failure; previous 7330558 release run 43075044607 succeeded.",
+    "Confirmed neuroattention-api is in monad-mcp project, production, /api from main; latest Railway deployment is SUCCESS.",
+    "Shared-chat URL could not be read through web retrieval; continuity is reconstructed from durable sources rather than a full transcript."
+  ],
+  "changed": [
+    "Session journal only; application files remain the existing approved interaction-fix release."
+  ],
+  "files": [
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly authorizes ongoing edits and deployment for neuroattention.org in this continuation.",
+    "Publish through GitHub Pages for public frontend; Railway runs the API and is not a substitute frontend deployment target.",
+    "This journal commit starts a fresh publication attempt for the already approved source; do not claim live until terminal success.",
+    "Previously recorded integration/media issues are historical and require current verification before being reported as active."
+  ],
+  "followups": [
+    "Observe the fresh Pages run; compare published assets if it succeeds.",
+    "Keep the user informed of any remaining publication blocker."
+  ],
+  "next_session": "Continue DOM rebranding from the current main branch and the latest publication status; no need to recreate either interaction fix."
+}
+```
