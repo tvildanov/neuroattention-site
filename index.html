@@ -61,7 +61,7 @@
 <link rel="stylesheet" href="assets/dom-xr-practice.css?v=3">
 <link rel="stylesheet" href="assets/dom-practice-foundation.css?v=1">
 <link rel="stylesheet" href="assets/dom-home-system.css?v=5">
-<link rel="stylesheet" href="assets/dom-platform-journey.css?v=2">
+<link rel="stylesheet" href="assets/dom-platform-journey.css?v=3">
 </head>
 <body class="home-matrix dom-matrix">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -424,7 +424,20 @@
     <section class="xr-window" data-window="body" aria-labelledby="xr2-map-title">
       <header class="xr-head"><h2 id="xr2-map-title"><span data-i18n="home.v2.b350dc353f">Карта ваших ощущений</span></h2><span class="xr-small-tag"><span data-i18n="home.v2.0356fe4beb">Попробуйте сейчас</span></span></header>
 
-      <div data-step-panel="1" class="xr-guided-content"><aside class="xr-body-visual"><h3 class="xr-body-question" data-body-question hidden data-i18n="home.journey.body_question">Где вы это чувствуете?</h3><p data-body-instruction hidden data-i18n="home.journey.body_hint">Нажмите на область тела спереди или сзади.</p><p data-body-preview-title><span data-i18n="home.journey.body_preview">Карта тела</span></p><div class="xr-body-picker" data-body-picker></div></aside>
+      <div data-step-panel="1" class="xr-guided-content"><aside class="xr-body-visual" hidden><h3 class="xr-body-question" data-body-question hidden data-i18n="home.journey.body_question">Где вы это чувствуете?</h3><p data-body-instruction hidden data-i18n="home.journey.body_hint">Нажмите на область тела спереди или сзади.</p><p data-body-preview-title><span data-i18n="home.journey.body_preview">Карта тела</span></p><div class="xr-body-picker" data-body-picker></div>
+        <div class="xr-guide-block guide-pending" data-guide="body">
+          
+          
+          <select id="xr2-location" aria-label="Или выберите область из списка" data-i18n-aria-label="home.journey.body_list"><option value="" data-i18n="home.v2.5eb0860b62">Или выберите область из списка</option></select>
+          <p class="xr-guide-hint" data-location-summary role="status"></p><button type="button" class="btn btn-solid xr-confirm-region" data-confirm-region data-i18n="home.confirm_region" hidden>Подтвердить область и продолжить</button>
+          <details class="xr-anatomy"><summary><span data-i18n="home.v2.0c978ff595">Рассмотреть анатомию в 3D</span></summary>
+            <div class="xr-body-top"><div class="xr-layer" role="group" aria-label="Анатомический слой" data-i18n-aria-label="home.v2.attr.1ffef5a5a5"><button type="button" data-layer="nervous" aria-pressed="true"><span data-i18n="home.v2.f40f793e8c">Нервная система</span></button><button type="button" data-layer="muscles" aria-pressed="false"><span data-i18n="home.v2.534bf4f18a">Мышцы</span></button></div></div>
+            <div class="xr-stage"><canvas role="img" aria-label="Нервная система и мышцы из действующего атласа. Потяните для поворота." data-i18n-aria-label="home.v2.attr.50bb1c825a"></canvas><span class="xr-body-pin" aria-hidden="true" hidden></span><p class="xr-fallback" hidden><span data-i18n="home.v2.3d16cc5c29">3D недоступно. Выберите область на схеме выше или из списка.</span></p></div>
+            <label class="xr-rotation" for="xr2-yaw"><span data-i18n="home.v2.564e51b2f5">Поворот</span><input id="xr2-yaw" type="range" min="-180" max="180" value="0"><output class="xr-angle" for="xr2-yaw">0°</output></label>
+            <p class="xr-status" data-anatomy-status role="status"><span data-i18n="home.v2.4f175804ef">Слои загрузятся при открытии.</span></p>
+          </details>
+        </div>
+      </aside>
         <div class="xr-guide-block guide-current" data-guide="sensation">
           <label class="xr-guide-question" for="xr2-sensation"><span data-i18n="home.v2.f557290aca">Что вы ощущаете в теле прямо сейчас?</span></label>
           <select id="xr2-sensation" aria-describedby="xr-sensation-help"><option value="" data-i18n="home.v2.9352a5d219">Выберите ощущение</option></select>
@@ -435,19 +448,6 @@
           <p class="xr-guide-hint"><span data-i18n="home.v2.b636a8b6d0">Интенсивность ощущения: 1 — едва заметно, 10 — очень сильно.</span></p>
           <div class="xr-intensity-choices" role="group" aria-labelledby="xr-intensity-label"></div>
           <p class="xr-guide-hint" data-intensity-summary><span data-i18n="home.v2.07168332d3">Выберите число.</span></p>
-        </div>
-        <div class="xr-guide-block guide-pending" data-guide="body">
-          <label class="xr-guide-question" for="xr2-location"><span data-i18n="home.journey.body_list">Или выберите область из списка</span></label>
-          
-          
-          <select id="xr2-location"><option value="" data-i18n="home.v2.5eb0860b62">Или выберите область из списка</option></select>
-          <p class="xr-guide-hint" data-location-summary role="status"></p><button type="button" class="btn btn-solid xr-confirm-region" data-confirm-region data-i18n="home.confirm_region" hidden>Подтвердить область и продолжить</button>
-          <details class="xr-anatomy"><summary><span data-i18n="home.v2.0c978ff595">Рассмотреть анатомию в 3D</span></summary>
-            <div class="xr-body-top"><div class="xr-layer" role="group" aria-label="Анатомический слой" data-i18n-aria-label="home.v2.attr.1ffef5a5a5"><button type="button" data-layer="nervous" aria-pressed="true"><span data-i18n="home.v2.f40f793e8c">Нервная система</span></button><button type="button" data-layer="muscles" aria-pressed="false"><span data-i18n="home.v2.534bf4f18a">Мышцы</span></button></div></div>
-            <div class="xr-stage"><canvas role="img" aria-label="Нервная система и мышцы из действующего атласа. Потяните для поворота." data-i18n-aria-label="home.v2.attr.50bb1c825a"></canvas><span class="xr-body-pin" aria-hidden="true" hidden></span><p class="xr-fallback" hidden><span data-i18n="home.v2.3d16cc5c29">3D недоступно. Выберите область на схеме выше или из списка.</span></p></div>
-            <label class="xr-rotation" for="xr2-yaw"><span data-i18n="home.v2.564e51b2f5">Поворот</span><input id="xr2-yaw" type="range" min="-180" max="180" value="0"><output class="xr-angle" for="xr2-yaw">0°</output></label>
-            <p class="xr-status" data-anatomy-status role="status"><span data-i18n="home.v2.4f175804ef">Слои загрузятся при открытии.</span></p>
-          </details>
         </div>
         <p class="xr-status" role="status" data-flow-status><span data-i18n="home.v2.389bcd43aa">Начните с выбора ощущения.</span></p>
       </div>
@@ -782,7 +782,7 @@
 
 <script src="assets/js/body-picker.js?v=6"></script>
 <script src="assets/js/dom-home-copy.js?v=1"></script>
-<script src="assets/js/dom-xr-guided.js?v=7"></script>
+<script src="assets/js/dom-xr-guided.js?v=8"></script>
 <script src="assets/js/dom-xr-scene.js?v=10"></script>
 <script src="assets/js/dom-intro.js?v=8"></script>
 <script src="assets/js/dom-home-ui.js?v=2"></script>
