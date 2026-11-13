@@ -2292,7 +2292,7 @@
   "home.ecosystem.community.text": "Connect people through collaborative projects and shared spaces for living, learning, and working.",
   "home.ecosystem.enterprise.title": "Enterprise & Economic Opportunity",
   "home.ecosystem.enterprise.text": "Help participants turn skills and ideas into viable ventures, adapt existing businesses to changing conditions, and create shared economic value.",
-  "home.routes.label": "Six parts of DOM",
+  "home.routes.label": "Six areas of DOM’s work",
   "home.route.platform.title": "Digital environment",
   "home.route.platform.text": "DOM Platform brings observations, data, and tools for self-understanding together: a life map, an adaptation profile, and development directions.",
   "home.route.xr.title": "Virtual and augmented reality",
@@ -2304,5 +2304,9 @@
   "home.route.agency.title": "Enterprise and economic opportunity",
   "home.route.agency.text": "DOM Agency helps turn ideas and skills into projects, adapt businesses through digital tools and automation, and create economic value.",
   "home.route.unity.title": "Community",
-  "home.route.unity.text": "DOM Unity connects people through shared learning, exchanging experience, research, and projects, online and in person."
+  "home.route.unity.text": "DOM Unity connects people through shared learning, exchanging experience, research, and projects, online and in person.",
+  "home.reorg.education_link": "Learning and specialist training",
+  "home.reorg.programs_link": "Programs",
+  "home.reorg.agency_link": "Agency: one area of work",
+  "home.reorg.direction_note": "These six areas of activity are interconnected. Below are the tools, spaces, and forms of work through which we develop them."
 }

@@ -7,3 +7,7 @@ Moved the old ecosystem introduction out of Campus and placed it before Platform
 All new content and route descriptions supplied in RU/EN/ES. Shared DOM family styling, consistent section typography and responsive layouts.
 
 Validation: DOM checks passed for section order/top-level placement, six numbered one-to-one anchors, unique IDs, unchanged campus image source, Unity/Team adjacency and all new translation keys. Existing sensation-to-map-to-profile integration check passed. Live visual verification follows deployment.
+
+## Owner’s latest correction
+
+Do not equate the six activity fields to the six products/spaces. Keep original Research, Technology, Education, Rehabilitation & Development, Community & Shared Spaces, and Enterprise & Economic Opportunity. Each card links to named tools/spaces. Technology has Platform and XR, research/education have separate anchors within one shared section, rehabilitation links to Programs as well as Platform and Campus. Agency is one economic activity, not the whole economic direction. Destination screens retain 01–06 as reading order; activity cards have no competing route numbers. DOM checks were updated to validate the cross-links and separate research/training anchors.
