@@ -101,3 +101,38 @@
  #dom-xr-neuromap [data-profile-overview] .xr-person{margin:14px 0}
 }
 @media(prefers-reduced-motion:reduce){#dom-xr-neuromap .profile-current{animation:none!important}}
+
+/* Body selection is the primary action; the list remains an alternative. */
+#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{grid-column:1;grid-row:1/8;padding:16px;border:1px solid #b8f8d28c;border-radius:12px}
+#dom-xr-neuromap[data-next-action="body"] [data-guide="body"]{grid-column:2;grid-row:1;animation:none!important;border:0;box-shadow:none;padding:12px 0}
+#dom-xr-neuromap .xr-body-question{font:500 18px/1.4 Inter,sans-serif;margin:0 0 8px;text-align:center}
+#dom-xr-neuromap .xr-body-visual>[data-body-instruction]{font-size:13px;line-height:1.5;color:var(--text-primary)}
+#dom-xr-neuromap [data-guide="body"] .xr-guide-question{font-size:14px}
+#dom-xr-neuromap :is(.guide-current,.profile-current,.xr-edge-action,.xr-map-start:not([hidden])),#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{animation:dom-guide-beacon 2.2s ease-in-out infinite!important}
+#dom-xr-neuromap[data-next-action="body"] [data-guide="body"]{animation:none!important}
+@keyframes dom-guide-beacon{0%,100%{outline:1px solid #baffd8a6;outline-offset:2px;box-shadow:0 0 10px #a9ffd077,inset 0 0 8px #a9ffd019}50%{outline:2px solid #e3ffee;outline-offset:4px;box-shadow:0 0 18px 5px #a9ffd0aa,0 0 34px 9px #73eab555,inset 0 0 16px #b9ffdb33}}
+#dom-xr-neuromap .xr-direction-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;margin:18px 0}
+#dom-xr-neuromap .xr-direction-meaning{grid-column:1/-1;font-size:14px;line-height:1.6;max-width:80ch;margin:0}
+#dom-xr-neuromap .xr-direction-column{padding:14px;border:1px solid var(--line-soft);border-radius:10px;min-width:0}
+#dom-xr-neuromap .xr-direction-column h3{font:500 14px/1.4 Inter,sans-serif;margin:0 0 12px}
+#dom-xr-neuromap .xr-direction-score{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin-top:12px;font-size:12px;line-height:1.4}
+#dom-xr-neuromap .xr-direction-score strong{font:500 12px Inter,sans-serif}
+#dom-xr-neuromap .xr-direction-score .xr-track{grid-column:1/-1;display:block;height:5px}
+#dom-xr-neuromap [data-profile-overview] .xr-person p{font-size:13px;line-height:1.55}
+#dom-xr-neuromap [data-step-panel="3"] .xr-result-insight p{font-size:14px;line-height:1.55}
+@media(min-width:1000px){
+ #dom-xr-practice .dom-xr-concept{transform:none;width:112%;max-width:none;margin-left:-12%}
+ #dom-xr-practice .dom-xr-visual-column{min-width:0}
+}
+#dom-xr-practice .dom-xr-concept{display:flow-root}
+#dom-xr-practice #dom-xr-scene .dr-caption{position:static;height:auto;min-height:0;white-space:normal}
+@media(max-width:760px){
+ #dom-xr-neuromap[data-next-action="body"] .xr-body-visual{order:0;padding:12px;width:100%}
+ #dom-xr-neuromap[data-next-action="body"] [data-guide="body"]:not([hidden]){display:block;order:1;width:100%;padding:8px 0}
+ #dom-xr-neuromap .xr-direction-summary{grid-template-columns:1fr;gap:12px}
+ #dom-xr-neuromap .xr-body-visual .bp-stage{height:300px!important}
+ #dom-xr-neuromap .xr-direction-meaning{grid-column:1}
+}
+@media(prefers-reduced-motion:reduce){
+ #dom-xr-neuromap :is(.guide-current,.profile-current,.xr-edge-action,.xr-map-start:not([hidden])),#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{animation:none!important;outline:2px solid #d9ffe8;outline-offset:2px}
+}

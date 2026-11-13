@@ -61,7 +61,7 @@
 <link rel="stylesheet" href="assets/dom-xr-practice.css?v=3">
 <link rel="stylesheet" href="assets/dom-practice-foundation.css?v=1">
 <link rel="stylesheet" href="assets/dom-home-system.css?v=5">
-<link rel="stylesheet" href="assets/dom-platform-journey.css?v=1">
+<link rel="stylesheet" href="assets/dom-platform-journey.css?v=2">
 </head>
 <body class="home-matrix dom-matrix">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -411,6 +411,7 @@
           <div class="xr-person"><div><h3 data-profile-name></h3><p data-profile-subtitle></p></div></div>
           <button type="button" class="btn btn-solid" data-confirm-profile><span data-i18n="home.journey.profile_pick">Исследовать этот пример</span></button><p class="xr-profile-prompt"><span data-i18n="home.v2.dcf9190f1f">Выберите группу показателей:</span></p>
         </div>
+        <div class="xr-direction-summary" data-direction-summary></div>
         <button type="button" class="xr-profile-back" data-profile-back hidden><span data-i18n="home.v2.23947bac99">← К примерам профилей</span></button>
         <div class="xr-groups" role="group" aria-label="Группа показателей" data-i18n-aria-label="home.v2.attr.d09479249a"><button type="button" data-group="body_core" aria-pressed="false"><span data-i18n="home.v2.eed4bfe9e7">Тело и регуляция</span><small><span data-i18n="home.v2.ad67bedd52">BODY CORE · 5 показателей</span></small></button><button type="button" data-group="mind_control" aria-pressed="false"><span data-i18n="home.v2.a874660b3d">Внимание и управление</span><small><span data-i18n="home.v2.8bed77222a">MIND CONTROL · 4 показателя</span></small></button><button type="button" data-group="world" aria-pressed="false"><span data-i18n="home.v2.e18cc30a21">Взаимодействие с миром</span><small><span data-i18n="home.v2.6db12190b8">WORLD · 4 показателя</span></small></button></div>
         <p class="xr-profile-scope" data-stat-scope hidden></p>
@@ -423,7 +424,7 @@
     <section class="xr-window" data-window="body" aria-labelledby="xr2-map-title">
       <header class="xr-head"><h2 id="xr2-map-title"><span data-i18n="home.v2.b350dc353f">Карта ваших ощущений</span></h2><span class="xr-small-tag"><span data-i18n="home.v2.0356fe4beb">Попробуйте сейчас</span></span></header>
 
-      <div data-step-panel="1" class="xr-guided-content"><aside class="xr-body-visual"><p><span data-i18n="home.journey.body_preview">Карта тела</span></p><div class="xr-body-picker" data-body-picker></div></aside>
+      <div data-step-panel="1" class="xr-guided-content"><aside class="xr-body-visual"><h3 class="xr-body-question" data-body-question hidden data-i18n="home.journey.body_question">Где вы это чувствуете?</h3><p data-body-instruction hidden data-i18n="home.journey.body_hint">Нажмите на область тела спереди или сзади.</p><p data-body-preview-title><span data-i18n="home.journey.body_preview">Карта тела</span></p><div class="xr-body-picker" data-body-picker></div></aside>
         <div class="xr-guide-block guide-current" data-guide="sensation">
           <label class="xr-guide-question" for="xr2-sensation"><span data-i18n="home.v2.f557290aca">Что вы ощущаете в теле прямо сейчас?</span></label>
           <select id="xr2-sensation" aria-describedby="xr-sensation-help"><option value="" data-i18n="home.v2.9352a5d219">Выберите ощущение</option></select>
@@ -436,8 +437,8 @@
           <p class="xr-guide-hint" data-intensity-summary><span data-i18n="home.v2.07168332d3">Выберите число.</span></p>
         </div>
         <div class="xr-guide-block guide-pending" data-guide="body">
-          <label class="xr-guide-question" for="xr2-location"><span data-i18n="home.v2.e85a9ec67b">Где вы это чувствуете?</span></label>
-          <p class="xr-guide-hint"><span data-i18n="home.v2.9cc54206e7">Нажмите на тело спереди или сзади. Для уточнения области — наведите курсор или удерживайте касание.</span></p>
+          <label class="xr-guide-question" for="xr2-location"><span data-i18n="home.journey.body_list">Или выберите область из списка</span></label>
+          
           
           <select id="xr2-location"><option value="" data-i18n="home.v2.5eb0860b62">Или выберите область из списка</option></select>
           <p class="xr-guide-hint" data-location-summary role="status"></p><button type="button" class="btn btn-solid xr-confirm-region" data-confirm-region data-i18n="home.confirm_region" hidden>Подтвердить область и продолжить</button>
@@ -512,6 +513,7 @@
 <button type="button" class="dr-hotspot cursor-interaction" aria-controls="dom-xr-object-detail" data-open="presence" data-x="55" data-y="73" aria-label="Совместное присутствие" data-i18n-aria-label="home.v2.attr.8b66ae4411"></button>
 <button type="button" class="dr-hotspot cursor-interaction" aria-controls="dom-xr-object-detail" data-open="brain" data-x="75.7" data-y="53.4" aria-label="Объёмная модель мозга" data-i18n-aria-label="home.v2.attr.7852b2807a"></button>
 <button type="button" class="dr-hotspot dr-hand cursor-interaction" aria-controls="dom-xr-object-detail" data-open="hand" data-x="18.6" data-y="70.5" aria-label="Ощущения в кисти"></button>
+<button type="button" class="dr-hotspot cursor-interaction" aria-controls="dom-xr-object-detail" data-open="nerve" data-x="31.3" data-y="69" aria-label="Поверхностная ветвь лучевого нерва"></button>
 <button type="button" class="dr-hotspot cursor-interaction" aria-controls="dom-xr-object-detail" data-open="brain_data" data-x="11.6" data-y="27" aria-label="Данные и карта"></button>
 <button type="button" class="dr-hotspot cursor-interaction" aria-controls="dom-xr-object-detail" data-open="eeg" data-x="32" data-y="33.5" aria-label="ЭЭГ"></button>
 <button type="button" class="dr-hotspot cursor-interaction" aria-controls="dom-xr-object-detail" data-open="heart" data-x="14.5" data-y="42" aria-label="Пульс"></button>
@@ -780,8 +782,8 @@
 
 <script src="assets/js/body-picker.js?v=6"></script>
 <script src="assets/js/dom-home-copy.js?v=1"></script>
-<script src="assets/js/dom-xr-guided.js?v=6"></script>
-<script src="assets/js/dom-xr-scene.js?v=9"></script>
+<script src="assets/js/dom-xr-guided.js?v=7"></script>
+<script src="assets/js/dom-xr-scene.js?v=10"></script>
 <script src="assets/js/dom-intro.js?v=8"></script>
 <script src="assets/js/dom-home-ui.js?v=2"></script>
 <script src="assets/scripts.js"></script>
