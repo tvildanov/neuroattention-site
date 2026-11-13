@@ -79,3 +79,7 @@
  .dom-ecosystem-layout .dom-ecosystem-grid{grid-column:1/-1;grid-row:5;grid-template-columns:repeat(3,minmax(0,1fr))}
  .dom-ecosystem-layout .dom-direction-note{grid-column:1/-1;grid-row:6;margin-top:0;max-width:none}
 }
+
+.dom-research-visual{margin:0;min-width:0;height:clamp(400px,60svh,620px);overflow:hidden;border:1px solid var(--line-soft);border-radius:16px}
+.dom-research-visual img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}
+@media(max-width:760px){.dom-research-visual{height:380px;max-width:440px;width:100%;margin:auto}}
