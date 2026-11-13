@@ -1,0 +1,21 @@
+.dom-product-page{--product-title:clamp(32px,4.2vw,62px)}
+.dom-product-page .container{max-width:1240px;width:calc(100% - clamp(36px,6vw,96px))}
+.dom-product-page .navbar .container{width:calc(100% - 48px);max-width:1440px}
+.dom-product-page .nav-links{gap:16px}
+.dom-product-page .nav-link{font-size:12px;white-space:nowrap}
+.dom-product-page .section{padding-block:clamp(40px,7svh,90px)}
+.dom-product-page .dom-product-hero{padding-top:clamp(130px,18svh,190px);padding-bottom:60px}
+.dom-product-page h1{font:500 var(--product-title)/1.18 var(--hero-font,'Unbounded',sans-serif);letter-spacing:-.04em;max-width:25ch;margin:0 0 22px}
+.dom-product-page h2{font:500 clamp(26px,3vw,40px)/1.25 var(--hero-font,'Unbounded',sans-serif);letter-spacing:-.03em;margin:0 0 24px;max-width:40ch}
+.dom-product-lead{font:400 clamp(21px,2.2vw,30px)/1.4 var(--hero-font,'Unbounded',sans-serif);letter-spacing:-.025em;margin:0 0 24px;max-width:50ch}
+.dom-product-bridge{font:500 18px/1.5 Inter,sans-serif;max-width:78ch;margin:0 0 16px;color:var(--text-primary)}
+.dom-product-intro{font-size:16px;line-height:1.75;color:var(--text-secondary);max-width:88ch;margin:0 0 20px}
+.dom-product-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.dom-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+.dom-detail-grid article{border-top:1px solid var(--line-soft);padding-top:24px}
+.dom-detail-grid h3{font:500 22px/1.4 var(--hero-font,'Unbounded',sans-serif);letter-spacing:-.02em;margin:0 0 14px}
+.dom-detail-grid p{font-size:15px;line-height:1.7;color:var(--text-secondary);max-width:65ch}
+.dom-product-status{font-size:13px;line-height:1.65;color:var(--text-muted);max-width:95ch;margin:24px 0}
+.dom-project-card{padding:clamp(24px,4vw,48px);border:1px solid var(--line-soft);border-radius:16px;background:#a3d2b307;margin-bottom:28px}
+.dom-product-page section[id]{scroll-margin-top:90px}
+@media(max-width:760px){.dom-detail-grid{grid-template-columns:1fr}.dom-product-page h1{font-size:34px}.dom-product-intro{font-size:14px}.dom-product-page .dom-product-hero{padding-top:130px}.dom-product-actions .btn{white-space:normal}}
