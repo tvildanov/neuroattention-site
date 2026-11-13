@@ -40,7 +40,8 @@
  }
  function setStep(n){step=n;qa('[data-step-panel]').forEach(p=>p.hidden=+p.dataset.stepPanel!==n);qa('[data-progress]').forEach(p=>{if(+p.dataset.progress===n)p.setAttribute('aria-current','step');else p.removeAttribute('aria-current');});syncGuide(false);requestDraw();if(n===3)drawMap();}
  q('#xr2-sensation').addEventListener('change',()=>{record=null;guideOverride='';finishFeeling();});
- function finishFeeling(){if(sensation()&&intensity&&region){q('[data-sensation-summary]').textContent=tr(sensation().label_ru+' · '+intensity+'/10 · '+selectedPart().label);guideOverride='';setStep(2);}else syncGuide(false);}
+ function finishFeeling(){const ready=!!(sensation()&&intensity&&region);q('[data-confirm-region]').hidden=!ready;if(ready)q('[data-sensation-summary]').textContent=tr(sensation().label_ru+' · '+intensity+'/10 · '+selectedPart().label);syncGuide(false);}
+ q('[data-confirm-region]').addEventListener('click',()=>{if(sensation()&&intensity&&region){guideOverride='';setStep(2);}});
  function chooseRegion(slug){region=slug;record=null;guideOverride='';q('#xr2-location').value=region;q('[data-location-summary]').textContent=tr(region?'Выбрано: '+selectedPart().label+'.':'');finishFeeling();}
  q('#xr2-location').addEventListener('change',e=>chooseRegion(e.target.value));
  const bodyPicker=window.mountBodyPicker(q('[data-body-picker]'),(slug,labels,picked)=>{if(!picked&&region!==slug)return;if(!parts.some(p=>p.id===slug))parts.push({id:slug,label:labels.ru,short:labels.ru});chooseRegion(picked?slug:'');},{lang:document.documentElement.lang,single:true});

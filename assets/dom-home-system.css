@@ -131,3 +131,15 @@ body.home-matrix{--dom-title:clamp(30px,3.6vw,52px);--dom-copy:clamp(14px,1.1vw,
  .home-matrix .dom-intro-title{font-size:clamp(32px,8vw,60px)}
 }
 @media(prefers-reduced-motion:reduce){#dom-xr-scene .dr-hotspot.is-cued:before,#dom-xr-scene .is-cued .dr-profile-glow{animation:none;opacity:1}}
+
+/* Touch devices scroll the page, rather than trapping swipes inside demo cards. */
+#dom-xr-neuromap .xr-confirm-region{display:block;min-height:44px;margin-top:12px;width:100%;white-space:normal}
+#dom-xr-neuromap .xr-confirm-region[hidden]{display:none}
+@media(max-width:680px),(max-width:1100px) and (pointer:coarse){
+ #dom-xr-neuromap .xr-window{height:auto;min-height:350px;max-height:none;contain:style}
+ #dom-xr-neuromap .xr-guided-content,#dom-xr-neuromap .xr-content,#dom-xr-neuromap [data-window="profile"] .xr-content,#dom-xr-neuromap [data-stats]{overflow:visible;overscroll-behavior:auto;flex:0 0 auto;max-height:none}
+ #dom-xr-neuromap .xr-guided-content .bp-stage{height:clamp(290px,80vw,380px)!important}
+ #dom-xr-neuromap .bp-svg,#dom-xr-neuromap .bp-region,#dom-xr-neuromap .xr-map-node,#dom-xr-neuromap canvas{touch-action:pan-y!important}
+ #dom-xr-neuromap .bp-sub{min-height:44px;font-size:14px}
+ #dom-xr-neuromap .xr-anatomy summary{min-height:44px!important}
+}

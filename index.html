@@ -60,7 +60,7 @@
 <link rel="stylesheet" href="assets/dom-xr-scene.css?v=4">
 <link rel="stylesheet" href="assets/dom-xr-practice.css?v=3">
 <link rel="stylesheet" href="assets/dom-practice-foundation.css?v=1">
-<link rel="stylesheet" href="assets/dom-home-system.css?v=1">
+<link rel="stylesheet" href="assets/dom-home-system.css?v=2">
 </head>
 <body class="home-matrix dom-matrix">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -438,7 +438,7 @@
           <p class="xr-guide-hint"><span data-i18n="home.v2.9cc54206e7">Нажмите на тело спереди или сзади. Для уточнения области — наведите курсор или удерживайте касание.</span></p>
           <div class="xr-body-picker" data-body-picker></div>
           <select id="xr2-location"><option value="" data-i18n="home.v2.5eb0860b62">Или выберите область из списка</option></select>
-          <p class="xr-guide-hint" data-location-summary role="status"></p>
+          <p class="xr-guide-hint" data-location-summary role="status"></p><button type="button" class="btn btn-solid xr-confirm-region" data-confirm-region data-i18n="home.confirm_region" hidden>Подтвердить область и продолжить</button>
           <details class="xr-anatomy"><summary><span data-i18n="home.v2.0c978ff595">Рассмотреть анатомию в 3D</span></summary>
             <div class="xr-body-top"><div class="xr-layer" role="group" aria-label="Анатомический слой" data-i18n-aria-label="home.v2.attr.1ffef5a5a5"><button type="button" data-layer="nervous" aria-pressed="true"><span data-i18n="home.v2.f40f793e8c">Нервная система</span></button><button type="button" data-layer="muscles" aria-pressed="false"><span data-i18n="home.v2.534bf4f18a">Мышцы</span></button></div></div>
             <div class="xr-stage"><canvas role="img" aria-label="Нервная система и мышцы из действующего атласа. Потяните для поворота." data-i18n-aria-label="home.v2.attr.50bb1c825a"></canvas><span class="xr-body-pin" aria-hidden="true" hidden></span><p class="xr-fallback" hidden><span data-i18n="home.v2.3d16cc5c29">3D недоступно. Выберите область на схеме выше или из списка.</span></p></div>
@@ -773,8 +773,8 @@
 
 <script src="assets/js/body-picker.js?v=6"></script>
 <script src="assets/js/dom-home-copy.js?v=1"></script>
-<script src="assets/js/dom-xr-guided.js?v=4"></script>
-<script src="assets/js/dom-xr-scene.js?v=6"></script>
+<script src="assets/js/dom-xr-guided.js?v=5"></script>
+<script src="assets/js/dom-xr-scene.js?v=7"></script>
 <script src="assets/js/dom-intro.js?v=8"></script>
 <script src="assets/js/dom-home-ui.js?v=2"></script>
 <script src="assets/scripts.js"></script>

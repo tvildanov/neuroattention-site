@@ -2126,11 +2126,11 @@
   "home.v2.6fc5580597": "Sign in or create an account. This trial entry is not transferred automatically.",
   "home.v2.294d6439aa": "An example profile and your trial entry. Anatomy:",
   "home.v2.23e49f09b9": "Try the tools in the current online prototype. Entries in this demo stay in your browser only until the page is reloaded.",
-  "home.v2.5d7e86a54e": "Select the glowing portrait",
+  "home.v2.5d7e86a54e": "Select the highlighted objects in the image",
   "home.v2.8622805fb5": "Personal experience",
   "home.v2.7221d6df3c": "Together",
   "home.v2.93ec1bc3d3": "Demonstration data",
-  "home.v2.9cc6a68ed7": "Concept. Data is illustrative; no sensors are activated.",
+  "home.v2.9cc6a68ed7": "Values and signals are illustrative.",
   "home.v2.85032f2ab4": "Concept for the DOM XR environment in development",
   "home.v2.df4d549980": "Thousands of miles apart.",
   "home.v2.c948684668": "Right beside each other.",
@@ -2186,5 +2186,6 @@
   "home.v2.attr.8b66ae4411": "Shared presence",
   "home.v2.attr.7852b2807a": "3D brain model",
   "home.v2.attr.360559f793": "Nerve pathway in the hand",
-  "home.v2.attr.dd9463bd5d": "Close"
+  "home.v2.attr.dd9463bd5d": "Close",
+  "home.confirm_region": "Confirm area and continue"
 }
