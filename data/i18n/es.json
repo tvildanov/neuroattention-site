@@ -2027,5 +2027,21 @@
   "a.sketch.layer_d2": "4 · Dibujo 2",
   "a.sketch.layer_d3": "5 · Dibujo 3",
   "a.sketch.viewport_ph": "Pronto: vista del Atlas + capa transparente de dibujo.",
-  "home.confirm_region": "Confirmar zona y continuar"
+  "home.confirm_region": "Confirmar zona y continuar",
+  "home.journey.step4": "4 · Tu personaje",
+  "home.journey.to_profile": "Siguiente: conocerte como personaje",
+  "home.journey.back_map": "Volver a tu mapa",
+  "home.journey.profile_start": "Elige un perfil de ejemplo",
+  "home.journey.profile_pick": "Explorar este ejemplo",
+  "home.journey.group_hint": "Ahora elige un grupo de características",
+  "home.journey.stat_hint": "Elige una característica que quieras comprender mejor",
+  "home.journey.detail_hint": "Explora qué significa y elígela para desarrollar",
+  "home.journey.focus_pick": "Elegir para desarrollar",
+  "home.journey.focus_heading": "Tu dirección de desarrollo",
+  "home.journey.focus_hint": "Has elegido una dirección en un perfil de ejemplo. Para conocer tus valores y elegir un programa, inicia sesión o regístrate y realiza la evaluación.",
+  "home.journey.account_cta": "Entrar y conocer tu perfil",
+  "home.journey.example_note": "Un ejemplo, no el resultado de tu evaluación.",
+  "home.journey.body_preview": "Mapa corporal",
+  "home.journey.intro_note": "Prueba una experiencia breve: de una sensación a un mapa de tu estado y un perfil.",
+  "home.journey.profile_stage": "Paso 4 · Elige un ejemplo, explora sus características y selecciona una dirección."
 }
