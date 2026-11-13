@@ -11,6 +11,8 @@
   var expanded = true, autoAllowed = true, timer = null, concealTimer = null, frame = null;
   var remaining = 3000, startedAt = 0, coverReady = false;
   var signalTimer = null, signalUntil = 0;
+  function introAction(open) { var l=document.documentElement.lang; return l==='en'?(open?'Collapse':'Expand'):l==='es'?(open?'Contraer':'Expandir'):(open?'Свернуть':'Развернуть'); }
+  document.addEventListener('langchange', function(){action.textContent=introAction(expanded);});
   function stopSignal() {
     window.clearTimeout(signalTimer); signalTimer = null;
     if (!root.classList.contains('is-signalling')) return;
@@ -59,7 +61,7 @@
     expanded = next;
     if (!next && panel.contains(document.activeElement)) toggle.focus({ preventScroll: true });
     toggle.setAttribute('aria-expanded', String(next));
-    action.textContent = next ? 'Свернуть' : 'Развернуть';
+    action.textContent = introAction(next);
     if (next) {
       panel.hidden = false;
       panel.inert = false;
