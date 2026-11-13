@@ -9,3 +9,39 @@ data/anatomy/regions-index.json
 # python bytecode
 tools/__pycache__/
 scripts/node_modules/
+
+
+# --- security: never commit secrets or real data (added 2026-10-23) ---
+# Keep only code, docs, config TEMPLATES without values, and fake fixtures.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.env
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.netrc
+.pgpass
+.git-credentials
+*.session
+*.session-journal
+*cookies*.json
+*cookies*.txt
+*_cookie*.txt
+storage_state*.json
+credentials*.json
+service-account*.json
+token.pickle
+*.sqlite
+*.sqlite3
+*.dump
+/.tmp/
+/tmp/
+/exports/
+/dumps/
+/backups/
+*.log
