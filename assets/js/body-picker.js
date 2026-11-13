@@ -362,6 +362,9 @@
       container.__bpOutside = function (e) { if (!e.target.closest('.bp-stage')) closePanels(); };
       document.addEventListener('click', container.__bpOutside);
     }
-    return { close: closePanels };
+    return { close: closePanels, setLang: function(next) {
+      lang = next; closePanels();
+      container.querySelectorAll('.bp-view-title').forEach(function(title, i) { title.textContent = i ? L({ru:'Сзади',en:'Back',es:'Atrás'},lang) : L({ru:'Спереди',en:'Front',es:'Frente'},lang); });
+    } };
   };
 })();
