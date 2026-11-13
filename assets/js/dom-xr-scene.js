@@ -27,27 +27,20 @@ function setView(view){q('.dr-scene').dataset.view=view;qa('.dr-mobile button').
 function positionDetail(){
  if(!selected)return;
  const scene=q('.dr-scene'),detail=q('.dr-detail'),button=q('[data-open="'+selected+'"]');
- const bounds=scene.getBoundingClientRect(),target=button.getBoundingClientRect();
- const x=target.left-bounds.left+target.width/2,y=target.top-bounds.top+target.height/2;
- const width=detail.offsetWidth,height=detail.offsetHeight,pad=8,gap=10;
- // Put the label beside its object; try the opposite side before clamping.
- const right=x+target.width/2+gap,left=x-target.width/2-gap-width;
- let px=right+width<=bounds.width-pad?right:left>=pad?left:(x<bounds.width/2?right:left);
- let py=y-height/2;
- if(left<pad&&right+width>bounds.width-pad){
-  px=x-width/2;
-  py=y+target.height/2+gap;
-  if(py+height>bounds.height-pad)py=y-target.height/2-gap-height;
- }
- px=Math.max(pad,Math.min(px,bounds.width-width-pad));
- py=Math.max(pad,Math.min(py,bounds.height-height-pad));
- detail.style.setProperty('--detail-x',px+'px');
- detail.style.setProperty('--detail-y',py+'px');
+ const rect=scene.getBoundingClientRect(),target=button.getBoundingClientRect();
+ const scale=rect.width/scene.clientWidth||1,width=detail.offsetWidth,height=detail.offsetHeight,pad=8,gap=10;
+ const x=(target.left-rect.left+target.width/2)/scale,y=(target.top-rect.top+target.height/2)/scale;
+ const tw=target.width/scale,th=target.height/scale,sw=scene.clientWidth,sh=scene.clientHeight;
+ const right=x+tw/2+gap,left=x-tw/2-gap-width;
+ let px=right+width<=sw-pad?right:left>=pad?left:(x<sw/2?right:left),py=y-height/2;
+ if(left<pad&&right+width>sw-pad){px=x-width/2;py=y+th/2+gap;if(py+height>sh-pad)py=y-th/2-gap-height;}
+ px=Math.max(pad,Math.min(px,sw-width-pad));py=Math.max(pad,Math.min(py,sh-height-pad));
+ detail.style.setProperty('--detail-x',px+'px');detail.style.setProperty('--detail-y',py+'px');
 }
 function position(){
  const small=matchMedia('(max-width:600px)').matches;
  const scene=q('.dr-scene');
- qa('.dr-hotspot').forEach(b=>{const hands=scene.dataset.view==='hands';b.hidden=small&&(hands?(+b.dataset.x>=50):(+b.dataset.x<50));b.style.left=(small?(+b.dataset.x-(hands?0:50))*2:+b.dataset.x)+'%';b.style.top=b.dataset.y+'%';});
+ qa('.dr-hotspot').forEach(b=>{const hands=scene.dataset.view==='hands';b.hidden=small&&(hands?(+b.dataset.x>=50):(+b.dataset.x<50));b.style.left=(small?(+b.dataset.x-(hands?0:50))*2:(+b.dataset.x<50?+b.dataset.x+50:+b.dataset.x-50))+'%';b.style.top=b.dataset.y+'%';});
  if(selected&&q('[data-open="'+selected+'"]').hidden){selected='';q('.dr-detail').hidden=true;}
  if(!selected&&!visibleKeys().includes(cueKey))cueKey=visibleKeys()[0]||'profile';
  cue();positionDetail();

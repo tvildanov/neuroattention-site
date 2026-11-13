@@ -204,3 +204,22 @@ body.home-matrix{--dom-title:clamp(30px,3.6vw,52px);--dom-copy:clamp(14px,1.1vw,
  .dom-components a{font-size:12px;padding:10px;gap:7px}
 }
 
+
+/* Reorder the original diptych without changing its pixels. Source coordinates remain canonical. */
+#dom-xr-scene .dr-image-pair{position:relative;width:100%;aspect-ratio:2/1}
+#dom-xr-scene .dr-image-frame{position:absolute;top:0;width:50%;height:100%;overflow:hidden}
+#dom-xr-scene .dr-frame-group{left:0}
+#dom-xr-scene .dr-frame-hands{left:50%}
+#dom-xr-scene .dr-image-frame img{display:block;width:200%;height:100%;max-width:none;aspect-ratio:2/1;object-fit:fill}
+#dom-xr-scene .dr-frame-group img{transform:translateX(-50%)}
+#dom-xr-scene .dr-frame-hands img{transform:none}
+@media(min-width:1000px){
+ #dom-xr-practice .dom-xr-concept{transform:scale(1.12);transform-origin:right bottom}
+}
+@media(max-width:600px){
+ #dom-xr-scene .dr-image-pair{aspect-ratio:1/1}
+ #dom-xr-scene .dr-image-frame{width:100%;left:0}
+ #dom-xr-scene .dr-scene[data-view="group"] .dr-frame-hands,#dom-xr-scene .dr-scene[data-view="hands"] .dr-frame-group{display:none}
+ #dom-xr-scene .dr-feedback{width:200%;left:0}
+ #dom-xr-scene .dr-scene[data-view="hands"] .dr-feedback{left:-100%}
+}
