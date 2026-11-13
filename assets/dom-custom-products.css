@@ -1,7 +1,8 @@
 .dom-product-page{--product-title:clamp(32px,4.2vw,62px)}
 .dom-product-page .container{max-width:1240px;width:calc(100% - clamp(36px,6vw,96px))}
 .dom-product-page .navbar .container{width:calc(100% - 48px);max-width:1440px}
-.dom-product-page .nav-links{gap:16px}
+.dom-product-page .nav-logo{flex-shrink:0;white-space:nowrap}
+.dom-product-page .nav-links{gap:12px}
 .dom-product-page .nav-link{font-size:12px;white-space:nowrap}
 .dom-product-page .section{padding-block:clamp(40px,7svh,90px)}
 .dom-product-page .dom-product-hero{padding-top:clamp(130px,18svh,190px);padding-bottom:60px}
