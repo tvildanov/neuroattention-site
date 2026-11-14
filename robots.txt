@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://neuroattention.org/sitemap.xml
+Sitemap: https://dom.institute/sitemap.xml

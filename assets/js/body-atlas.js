@@ -1,5 +1,5 @@
 /* ============================================================================
- * BodyAtlas — interactive 3D anatomy engine for neuroattention.org
+ * BodyAtlas — interactive 3D anatomy engine for dom.institute
  * ----------------------------------------------------------------------------
  * Vanilla JS + Three.js r128 (lazy-loaded from CDN on first use).
  *
