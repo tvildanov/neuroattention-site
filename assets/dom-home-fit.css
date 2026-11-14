@@ -206,3 +206,25 @@
 @media (max-width:1000px) {
   #dom-campus .dom-campus-bottom .btn { max-width:100%; white-space:normal; text-align:center; }
 }
+
+/* Restore the two visuals without moving the XR text columns. */
+@media (min-width:1001px) {
+  #dom-campus .dom-campus-layout {
+    grid-template-rows:auto 1fr; row-gap:4px;
+    --campus-height:max(620px,calc(100svh - 70px - 2 * var(--dom-section-space)));
+  }
+  #dom-campus .dom-campus-heading { grid-column:1; grid-row:1; }
+  #dom-campus .dom-campus-copy { grid-column:1; grid-row:2; }
+  #dom-campus .dom-campus-photo {
+    grid-column:2; grid-row:1 / span 2; align-self:start;
+    --campus-height:inherit;
+    height:var(--campus-height); width:calc(var(--campus-height) * 693 / 1536);
+  }
+  #dom-xr-practice .dom-xr-concept {
+    --xr-bleed:12%;
+    width:calc(100% + var(--xr-bleed)); max-width:none;
+    margin-left:calc(-1 * var(--xr-bleed));
+  }
+  #dom-xr-practice .dom-xr-identity { margin-bottom:4px; }
+  #dom-xr-practice .dom-xr-together { margin-bottom:8px; }
+}
