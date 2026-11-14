@@ -74,8 +74,9 @@
     if (reduce.addEventListener) reduce.addEventListener('change',motionChanged);
     if (fine.addEventListener) fine.addEventListener('change',motionChanged);
   }
-  document.querySelectorAll('[data-fold-magnet]').forEach(function (button) {
+  document.querySelectorAll('[data-fold-magnet], [data-emblem-magnet]').forEach(function (button) {
     var box = null, motionFrame = null, pointerX = 0, pointerY = 0;
+    var emblem = button.hasAttribute('data-emblem-magnet');
     function reset() {
       cancelAnimationFrame(motionFrame); motionFrame = null; box = null;
       button.style.setProperty('--fold-dx','0px'); button.style.setProperty('--fold-dy','0px');
@@ -90,11 +91,11 @@
         if (!box) box = button.getBoundingClientRect();
         var x = Math.max(-1,Math.min(1,((pointerX-box.left)/box.width-.5)*2));
         var y = Math.max(-1,Math.min(1,((pointerY-box.top)/box.height-.5)*2));
-        button.style.setProperty('--fold-dx',(x*4).toFixed(2)+'px');
-        button.style.setProperty('--fold-dy',(y*1).toFixed(2)+'px');
+        button.style.setProperty('--fold-dx',(x*(emblem ? 6 : 4)).toFixed(2)+'px');
+        button.style.setProperty('--fold-dy',(y*(emblem ? 4 : 1)).toFixed(2)+'px');
       });
     },{passive:true});
-    button.addEventListener('pointerleave',reset); button.addEventListener('blur',reset);
+    button.addEventListener('pointercancel',reset); button.addEventListener('pointerleave',reset); button.addEventListener('blur',reset);
     window.addEventListener('scroll',reset,{passive:true}); window.addEventListener('resize',reset,{passive:true});
     if (reduce.addEventListener) reduce.addEventListener('change',reset);
   });

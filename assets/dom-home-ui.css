@@ -112,3 +112,24 @@ html.dom-intro-closing { overflow-anchor: none; scroll-behavior: auto !important
 @media(min-width:1200px){
  .home-matrix #home-hero .home-hero-copy{width:calc(200% + clamp(1.5rem,4vw,4rem) - 32rem - 1.25rem)}
 }
+
+/* Cover emblem: green breathing image inside an independent magnetic target. */
+.home-matrix .dom-intro-emblem {
+  display: inline-block;
+  line-height: 0;
+  transform: translate3d(var(--fold-dx, 0px), var(--fold-dy, 0px), 0);
+  transition: transform .25s cubic-bezier(.2,.9,.3,1.2);
+}
+.home-matrix .dom-intro-mark {
+  animation: domMatrixLogoPulse 2.8s ease-in-out infinite alternate;
+}
+.home-matrix .dom-intro-emblem:hover .dom-intro-mark {
+  animation-duration: 1.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-matrix .dom-intro-emblem { transform: none; transition: none; }
+  .home-matrix .dom-intro-mark {
+    animation: none;
+    filter: drop-shadow(0 0 6px rgba(89,207,131,.45));
+  }
+}

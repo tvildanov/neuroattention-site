@@ -108,6 +108,8 @@
     // Summary focus stays at the new top; no smooth scroll during the curtain animation.
     toggle.focus({ preventScroll: true });
   });
+  var emblem = root.querySelector('[data-emblem-magnet]');
+  if (emblem) emblem.addEventListener('pointerenter', stopAuto);
   root.addEventListener('focusin', stopAuto);
   root.addEventListener('pointerdown', stopAuto);
   root.addEventListener('keydown', function (event) {
