@@ -61,11 +61,11 @@
 <meta name="theme-color" content="#05070A" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="NeuroAttention Lab" />
-<meta property="og:image" content="https://neuroattention.org/og-image.png" />
+<meta property="og:image" content="https://dom.institute/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
+<meta name="twitter:image" content="https://dom.institute/og-image.png" />
 <link rel="stylesheet" href="assets/dom-matrix.css?v=6">
 <link rel="stylesheet" href="assets/dom-account-matrix.css?v=1">
 </head>
@@ -169,7 +169,7 @@ function renderCurrent() {
   if (blk.type === 'audio_part') {
     html += '<h2>' + _t('practice.audio_part','Аудио-часть') + '</h2>';
     var url = p.audio_url || '';
-    if (url && !url.startsWith('http')) url = 'https://neuroattention.org/' + url.replace(/^\//,'');
+    if (url && !url.startsWith('http')) url = 'https://dom.institute/' + url.replace(/^\//,'');
     html += '<audio class="pp-audio" controls preload="metadata" src="' + url + '" id="pp-audio-el"></audio>';
     html += '<div class="pp-actions"><button class="pp-btn" onclick="completeBlock()">' + _t('practice.next','Дальше') + '</button></div>';
   }
