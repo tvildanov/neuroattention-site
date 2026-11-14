@@ -105,7 +105,7 @@
   "eco.pillar_custom": "DOM Custom Group",
   "eco.summary": "All of them are part of a single ecosystem — <span class=\"text-gradient-cyan\" style=\"font-weight:700;\">DOM</span>",
   "eco.desc": "An open ecosystem uniting technology, research, and a community of people working on the development of human potential.",
-  "eco.collab_title": "We are open to collaboration",
+  "eco.collab_title": "We are looking for partners to build together",
   "eco.collab1": "Researchers",
   "eco.collab2": "Engineers and developers",
   "eco.collab3": "Investors and foundations",
@@ -2375,5 +2375,6 @@
   "home.value.project_mindful": "An appliance repair service that connects the quality of technical work with attention to the person and their home environment.",
   "home.value.project_mindful_status": "A DOM ecosystem project. Details about the team, working model, and outcomes will be added to its profile.",
   "home.value.projects_note": "The catalog will grow as project profiles are prepared. Inclusion does not automatically award DOM Crystals.",
-  "home.value.projects_submit": "Propose a project"
+  "home.value.projects_submit": "Propose a project",
+  "home.ecosystem.title": "an ecosystem for the next stage of human development"
 }

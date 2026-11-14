@@ -114,15 +114,24 @@
   // ───────────────────────────────────────
   // 2) FlipLink — wrap nav-link text so hover slides it
   // ───────────────────────────────────────
-  document.querySelectorAll('.nav-link').forEach(function (link) {
-    if (link.querySelector('.flip-inner')) return;
-    var label = link.textContent.trim();
-    if (!label) return;
-    link.innerHTML =
-      '<span class="flip-inner" data-label="' + label.replace(/"/g, '&quot;') + '">' +
-        '<span>' + label + '</span>' +
-      '</span>';
-  });
+  function refreshNavFlip() {
+    document.querySelectorAll('.nav-link').forEach(function (link) {
+      if (link.querySelector('.flip-inner')) return;
+      var label = link.textContent.trim();
+      if (!label) return;
+      var inner = document.createElement('span');
+      inner.className = 'flip-inner';
+      inner.setAttribute('data-label', label);
+      var text = document.createElement('span');
+      text.textContent = label;
+      inner.appendChild(text);
+      link.replaceChildren(inner);
+      link.setAttribute('aria-label', label);
+    });
+  }
+  refreshNavFlip();
+  // Translation replaces link contents; rebuild the effect with the current label.
+  document.addEventListener('langchange', refreshNavFlip);
 
   // ───────────────────────────────────────
   // 3) Magnetic buttons — slight pull toward cursor
@@ -141,6 +150,39 @@
       el.style.transform = '';
     });
   });
+
+  // Keep the hover target stable while its logo follows the pointer.
+  var homeLogo = document.querySelector('body.home-matrix .navbar .nav-logo-dom');
+  if (homeLogo) {
+    var logoBounds = null, logoFrame = null, logoX = 0, logoY = 0;
+    var logoMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    function resetLogo() {
+      if (logoFrame !== null) cancelAnimationFrame(logoFrame);
+      logoFrame = null; logoBounds = null;
+      homeLogo.style.removeProperty('--logo-x');
+      homeLogo.style.removeProperty('--logo-y');
+    }
+    homeLogo.addEventListener('pointerenter', function(e) {
+      if (e.pointerType === 'touch' || logoMotion.matches) return;
+      logoBounds = homeLogo.getBoundingClientRect();
+    });
+    homeLogo.addEventListener('pointermove', function(e) {
+      if (!logoBounds || e.pointerType === 'touch' || logoMotion.matches) return;
+      logoX = Math.max(-6, Math.min(6, (e.clientX - logoBounds.left - logoBounds.width / 2) * .12));
+      logoY = Math.max(-4, Math.min(4, (e.clientY - logoBounds.top - logoBounds.height / 2) * .18));
+      if (logoFrame !== null) return;
+      logoFrame = requestAnimationFrame(function() {
+        logoFrame = null;
+        homeLogo.style.setProperty('--logo-x', logoX + 'px');
+        homeLogo.style.setProperty('--logo-y', logoY + 'px');
+      });
+    });
+    homeLogo.addEventListener('pointerleave', resetLogo);
+    homeLogo.addEventListener('pointercancel', resetLogo);
+    window.addEventListener('resize', resetLogo);
+    window.addEventListener('blur', resetLogo);
+    logoMotion.addEventListener('change', resetLogo);
+  }
 
   // ───────────────────────────────────────
   // 4) Scroll drop — compute drop opacity/scale from scroll progress within .scroll-drop-stage
@@ -278,4 +320,3 @@
     }, { passive: true });
   }
 })();
-

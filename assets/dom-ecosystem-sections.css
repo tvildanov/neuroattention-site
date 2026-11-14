@@ -148,3 +148,100 @@
  .dom-learning-flow{gap:8px}
  .dom-learning-flow li{font-size:12px}
 }
+
+/* Editorial rhythm: retain the existing typefaces, use one readable scale. */
+body.home-matrix{
+ --dom-title:clamp(32px,3.6vw,52px);
+ --dom-copy:clamp(17px,1.32vw,19px);
+ --dom-detail:16px;
+ --dom-section-space:clamp(56px,7svh,88px);
+}
+.home-matrix>section{scroll-margin-top:70px}
+.home-matrix :is(#dom-practice-foundation,#dom-ecosystem,#dom-xr-platform,#dom-xr-practice,#dom-campus,#dom-education-research,#dom-agency,#dom-unity){padding-block:var(--dom-section-space)!important;height:auto;overflow:visible}
+.home-matrix :is(#dom-foundation-title,#dom-ecosystem-title,#dom-xr-neuromap .xr-intro h2,#dom-xr-practice-title,#dom-campus-title,.dom-family-section h2){font-size:var(--dom-title);line-height:1.2;letter-spacing:-.04em;font-weight:500}
+.home-matrix :is(.eyebrow,.xr-kicker){font-size:12px}
+#dom-practice-foundation .dom-foundation-stat span{font-size:var(--dom-detail);line-height:1.55}
+#dom-practice-foundation :is(.dom-foundation-summary,.dom-foundation-link-copy,.dom-foundation-intro,.dom-foundation-uses){font-size:var(--dom-copy);line-height:1.65}
+#dom-practice-foundation .dom-foundation-photo{max-height:none}
+#dom-ecosystem .dom-ecosystem-layout{grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:clamp(28px,4vw,56px)}
+#dom-ecosystem .dom-ecosystem-layout h2{margin-bottom:24px;text-wrap:pretty}
+#dom-ecosystem .dom-ecosystem-layout .dom-family-intro,.home-matrix .dom-family-intro{font-size:var(--dom-copy);line-height:1.65;margin-bottom:28px}
+#dom-ecosystem .dom-direction-card{padding:18px}
+#dom-ecosystem .dom-direction-card h3{font-size:17px;line-height:1.4;margin-bottom:10px}
+#dom-ecosystem .dom-direction-card p{font-size:var(--dom-detail);line-height:1.55;margin-bottom:14px}
+#dom-ecosystem .dom-direction-links a{font-size:13px;min-height:40px;padding:8px 10px}
+#dom-ecosystem .dom-direction-note{font-size:14px;line-height:1.6;margin-top:22px}
+/* Product identity and participant value share the width above the interactive tool. */
+#dom-xr-neuromap{padding:0;background:none;overflow:visible}
+#dom-xr-neuromap .dom-platform-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(28px,5vw,72px);align-items:center;margin:0 0 36px}
+#dom-xr-neuromap .xr-intro{max-width:none;margin:0;text-align:left}
+#dom-xr-neuromap .xr-intro h2{margin:0 0 18px}
+#dom-xr-neuromap .xr-intro .xr-kicker{margin-bottom:16px}
+#dom-xr-neuromap .xr-intro .xr-lead{font-size:clamp(21px,1.9vw,27px);line-height:1.4;max-width:30ch}
+#dom-xr-neuromap .xr-platform-copy{max-width:none;width:100%;margin:0;padding:8px 0 8px 32px;border-left:1px solid var(--line-soft);text-align:left}
+#dom-xr-neuromap .xr-platform-copy h3{font-size:clamp(24px,2.2vw,32px);line-height:1.3;margin:0 0 16px;color:var(--text-primary);text-wrap:pretty}
+#dom-xr-neuromap .xr-platform-copy p{font-size:var(--dom-copy);line-height:1.65;margin:0;max-width:58ch}
+#dom-xr-neuromap .xr-grid,#dom-xr-neuromap>.xr-progress{max-width:none}
+#dom-xr-neuromap>.xr-progress li{font-size:14px;min-height:44px}
+#dom-xr-neuromap .xr-guide-question{font-size:18px;line-height:1.5}
+#dom-xr-neuromap .xr-guide-hint{font-size:14px;line-height:1.55}
+/* Keep the invitation visible without the strong flashing frame. */
+#dom-xr-neuromap .guide-current{animation:none!important;outline:1px solid #a3d2b366;outline-offset:3px;box-shadow:0 0 18px #a3d2b312}
+#dom-xr-practice .dom-xr-practice-heading .dom-family-label{font-size:var(--dom-detail);line-height:1.5;margin:0 0 28px;color:var(--text-secondary)}
+#dom-xr-practice .dom-xr-practice-heading .dom-section-subtitle{padding-top:24px;border-top:1px solid var(--line-soft);margin-bottom:16px}
+#dom-xr-practice .dom-xr-practice-heading>p:last-child,#dom-xr-practice .dom-xr-practice-path p,#dom-xr-practice .dom-xr-together p{font-size:var(--dom-copy);line-height:1.65}
+#dom-xr-practice .dom-xr-practice-path h3{font-size:19px;line-height:1.4;margin-bottom:8px}
+#dom-xr-practice .dom-xr-practice-path{gap:24px}
+#dom-xr-practice .dom-xr-concept{transform:none}
+#dom-campus .dom-campus-copy>.dom-campus-intro,#dom-campus .dom-campus-path p,#dom-campus .dom-campus-facilities{font-size:var(--dom-copy);line-height:1.65}
+#dom-campus .dom-campus-path{gap:24px}
+#dom-campus .dom-campus-path h3{font-size:19px;line-height:1.4;margin-bottom:8px}
+#dom-campus .dom-campus-photo{min-height:640px}
+#dom-campus .dom-family-status,.home-matrix .dom-family-status{font-size:14px;line-height:1.6}
+.home-matrix .dom-section-subtitle{font-size:clamp(22px,2vw,28px);line-height:1.4}
+.home-matrix .dom-learning-products p,.home-matrix .dom-product-result,.home-matrix .dom-agency-values p{font-size:var(--dom-copy);line-height:1.65}
+.home-matrix .dom-learning-flow li{font-size:16px;line-height:1.5}
+.home-matrix .dom-learning-flow small{font-size:12px}
+#dom-unity .dom-unity-copy>.dom-family-intro,#dom-unity .dom-unity-copy>.sub-muted{font-size:var(--dom-copy);line-height:1.65}
+#dom-team .team-photo~p:not(.mono){font-size:16px!important;line-height:1.6!important}
+#dom-team>.container>.max-w-5xl>.text-center>h3{font-size:clamp(25px,2.4vw,34px)!important;line-height:1.4}
+@media(max-width:1000px){
+ #dom-ecosystem .dom-ecosystem-layout{grid-template-columns:minmax(0,1.8fr) minmax(0,.8fr)}
+ #dom-ecosystem .dom-ecosystem-mark{align-self:start;margin-top:12px}
+ #dom-xr-practice .dom-xr-practice-layout{grid-template-columns:1fr}
+ #dom-xr-practice .dom-xr-practice-copy{grid-row:1}
+ #dom-xr-practice .dom-xr-concept{max-width:800px;width:100%;margin:auto}
+}
+@media(max-width:760px){
+ body.home-matrix{--dom-copy:17px;--dom-detail:16px;--dom-section-space:52px}
+ #dom-ecosystem .dom-ecosystem-layout{grid-template-columns:1fr}
+ #dom-ecosystem .dom-direction-links a{min-height:44px;font-size:14px}
+ #dom-xr-neuromap .dom-platform-heading{grid-template-columns:1fr;gap:26px;margin-bottom:28px}
+ #dom-xr-neuromap .xr-platform-copy{border-left:0;border-top:1px solid var(--line-soft);padding:24px 0 0}
+ #dom-xr-neuromap>.xr-progress li{font-size:12px;min-height:48px}
+ #dom-campus .dom-campus-photo{min-height:0}
+ #dom-campus .dom-campus-path{gap:22px}
+}
+/* Let the complete ecosystem heading use the page width; keep six fields beside the emblem. */
+@media(min-width:761px){
+ #dom-ecosystem .dom-ecosystem-layout{grid-template-columns:minmax(0,2.3fr) minmax(0,1fr);gap:24px 36px}
+ #dom-ecosystem .dom-ecosystem-layout>div:first-child{display:contents}
+ #dom-ecosystem .dom-ecosystem-layout h2{grid-column:1/-1;grid-row:1;margin:0;max-width:1100px}
+ #dom-ecosystem .dom-ecosystem-layout .dom-family-intro{grid-column:1/-1;grid-row:2;margin:0 0 8px;max-width:100ch}
+ #dom-ecosystem .dom-ecosystem-layout .dom-ecosystem-grid{grid-column:1;grid-row:3}
+ #dom-ecosystem .dom-ecosystem-layout .dom-ecosystem-mark{grid-column:2;grid-row:3;align-self:center;margin:0}
+ #dom-ecosystem .dom-ecosystem-layout .dom-direction-note{grid-column:1/-1;grid-row:4;margin:0}
+}
+#dom-xr-neuromap [data-step-panel] .guide-current{animation:none!important;outline:1px solid #a3d2b366;outline-offset:3px;box-shadow:0 0 18px #a3d2b312}
+#dom-xr-neuromap [data-step-panel] .guide-current::before{animation:none;opacity:.25;box-shadow:none}
+/* Legacy mobile rules used !important to shrink .h2-block to 20px. */
+.home-matrix>section :is(.h2-block,.dom-insight-heading h2){font-size:var(--dom-title)!important;line-height:1.2}
+/* A slow, restrained green breathing light around the existing collaboration backdrop. */
+#dom-collaborate .cta-video-wrap{animation:dom-collaboration-light 8s ease-in-out infinite}
+#dom-collaborate .cta-content h3{font-size:clamp(25px,2.4vw,34px)!important;line-height:1.35;text-wrap:balance}
+#dom-collaborate .cta-content>.grid>div{font-size:var(--dom-copy)!important;line-height:1.5}
+@keyframes dom-collaboration-light{
+ 0%,100%{box-shadow:0 0 16px #70dca314,inset 0 0 20px #70dca309;border-color:#a3d2b333}
+ 50%{box-shadow:0 0 36px #70dca32b,inset 0 0 32px #70dca314;border-color:#a3d2b366}
+}
+@media(prefers-reduced-motion:reduce){#dom-collaborate .cta-video-wrap{animation:none;box-shadow:0 0 20px #70dca31a}}
