@@ -258,6 +258,12 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   text-align: left;
   backdrop-filter: blur(16px);
 }
+.saved-account-cta {
+  background: rgba(89,207,131,.15);
+  border-color: rgba(89,207,131,.4);
+  color: var(--text-primary);
+  text-decoration: none;
+}
 .chat-opt-btn:hover {
   border-color: rgba(163,210,179,0.4);
   color: var(--text-primary);
@@ -1075,24 +1081,40 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     }, 100);
   }
 
+  // Dynamic messages need the dictionaries, not just the synchronous t() API.
+  var testStarted = false;
+  function startTest() {
+    if (testStarted) return;
+    testStarted = true;
   // ── Check for existing result ──
   var existing = localStorage.getItem('na_test_result');
   if (existing) {
     try {
       var parsed = JSON.parse(existing);
-      if (parsed.profile && PROFILES[parsed.profile]) {
-        addBotMessage(t('t.result.existing'));
+      if (parsed.profile && PROFILES[parsed.profile] && parsed.answers &&
+          QUESTIONS.every(function(q) { return q.id === 'Q0' || /^[ABCD]$/.test(parsed.answers[q.id]); })) {
+        var savedProfile = PROFILES[parsed.profile];
+        var stepLabel = document.getElementById('chat-step-label');
+        stepLabel.setAttribute('data-i18n', 't.header.completed');
+        stepLabel.textContent = t('t.header.completed');
+        document.getElementById('chat-progress-fill').style.width = '100%';
+        addBotMessage('<p data-i18n="t.result.existing">' + esc(t('t.result.existing')) + '</p>' +
+          '<p><span data-i18n="t.result.saved_profile">' + esc(t('t.result.saved_profile')) + '</span><br>' +
+          '<strong data-i18n="' + savedProfile.key_name + '">' + esc(t(savedProfile.key_name)) + '</strong></p>' +
+          '<p data-i18n="t.result.continue">' + esc(t('t.result.continue')) + '</p>');
         var choiceRow = document.createElement('div');
         choiceRow.className = 'chat-msg bot-msg';
         choiceRow.innerHTML = avatarHTML() +
           '<div class="chat-msg-stack"><div class="chat-msg-options" id="opts-restart">' +
-          '<button class="chat-opt-btn" id="btn-view-result"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' + t('t.result.view') + '</span></button>' +
-          '<button class="chat-opt-btn" id="btn-retake"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' + t('t.result.retake') + '</span></button>' +
+          '<a href="account.html?from_test=1" class="chat-opt-btn saved-account-cta" data-i18n="t.result.account">' + esc(t('t.result.account')) + '</a>' +
+          '<button class="chat-opt-btn" id="btn-view-result"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' + '<span data-i18n="t.result.view">' + esc(t('t.result.view')) + '</span></span></button>' +
+          '<button class="chat-opt-btn" id="btn-retake"><span><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' + '<span data-i18n="t.result.retake">' + esc(t('t.result.retake')) + '</span></span></button>' +
           '</div></div>';
         container.appendChild(choiceRow);
         document.getElementById('btn-view-result').addEventListener('click', function() { window._showExisting(); });
         document.getElementById('btn-retake').addEventListener('click', function() {
-          document.getElementById('opts-restart').querySelectorAll('.chat-opt-btn').forEach(function(b) { b.disabled = true; b.classList.add('disabled'); });
+          document.getElementById('chat-step-label').removeAttribute('data-i18n');
+          document.getElementById('opts-restart').querySelectorAll('button.chat-opt-btn').forEach(function(b) { b.disabled = true; b.classList.add('disabled'); });
           addUserMessage(t('t.result.retake'));
           showTyping();
           setTimeout(function() {
@@ -1121,6 +1143,9 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     showTyping();
     setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
   })();
+  }
+  if (t('t.result.existing') !== 't.result.existing') startTest();
+  else document.addEventListener('langchange', startTest, { once: true });
 
 })();
 </script>
