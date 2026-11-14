@@ -19,22 +19,11 @@
   }
 })();
 (function(){
-  var stored=localStorage.getItem("na_lang");
-  var explicit=localStorage.getItem("na_lang_explicit");
-  var lang=explicit||stored||"en"; // EN always default on first visit (no browser-lang detect)
-  document.documentElement.lang=lang;
-  if(lang!=="ru"){
-    var s=document.createElement("style");
-    s.id="i18n-flash-prevent";
-    s.textContent="body{opacity:0!important;transition:opacity .15s ease!important;}";
-    document.head.appendChild(s);
-    var link=document.createElement("link");
-    link.rel="preload";link.as="fetch";
-    link.href="data/i18n/"+lang+".json";
-    link.crossOrigin="anonymous";
-    document.head.appendChild(link);
-    setTimeout(function(){var el=document.getElementById("i18n-flash-prevent");if(el)el.remove();if(document.body)document.body.style.opacity="";},3000);
-  }
+  // Content stays readable even when storage, fonts or translation requests are blocked.
+  try {
+    var lang=localStorage.getItem('na_lang_explicit')||localStorage.getItem('na_lang');
+    if (['ru','en','es'].indexOf(lang)!==-1) document.documentElement.lang=lang;
+  } catch (e) {}
 })();
 </script>
 
@@ -47,7 +36,7 @@
      stylesheet cannot block the parser or the login form. System stacks in
      styles.css are the fallback until this sheet applies. -->
 <link id="na-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/styles.css?v=dom-entry-2" />
 <link rel="stylesheet" href="assets/redesign.css?v=11" />
 <link rel="stylesheet" href="data/css/mycelium.css?v=19" />
 <style>
@@ -685,8 +674,10 @@ a.dash-tab:hover { text-decoration:none; }
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
+<link rel="stylesheet" href="assets/dom-matrix.css?v=6">
+<link rel="stylesheet" href="assets/dom-account-matrix.css?v=1">
 </head>
-<body>
+<body class="dom-account-matrix">
 <div class="deep-atmosphere" aria-hidden="true"></div>
 <div class="noise-overlay" aria-hidden="true"></div>
 
@@ -732,7 +723,7 @@ a.dash-tab:hover { text-decoration:none; }
 <div id="auth-loading" style="display:flex;justify-content:center;align-items:center;min-height:60vh;">
   <div style="text-align:center;position:relative;">
     <canvas id="na-loader-canvas" width="180" height="180" style="display:block;margin:0 auto 1.2rem;"></canvas>
-    <p id="na-loader-text" style="font-size:13px;color:rgba(78,205,196,0.8);letter-spacing:0.5px;margin:0;font-family:inherit;" data-i18n="a.loader.text">загружаем вашу карту...</p>
+    <p id="na-loader-text" style="font-size:13px;color:rgba(163,210,179,0.8);letter-spacing:0.5px;margin:0;font-family:inherit;" data-i18n="a.loader.text">загружаем вашу карту...</p>
   </div>
 </div>
 <script>
@@ -743,17 +734,17 @@ a.dash-tab:hover { text-decoration:none; }
   var W=180, H=180, cx=W/2, cy=H/2;
   var t0=performance.now();
   var nodes=[
-    {r:0,a:0,rad:6,color:'rgba(0,224,255,0.9)',label:''},
-    {r:38,a:0,rad:4,color:'rgba(255,107,107,0.8)'},
-    {r:38,a:Math.PI*0.5,rad:4,color:'rgba(78,205,196,0.8)'},
-    {r:38,a:Math.PI,rad:4,color:'rgba(155,89,182,0.8)'},
-    {r:38,a:Math.PI*1.5,rad:4,color:'rgba(241,196,15,0.8)'},
-    {r:64,a:0.3,rad:2.5,color:'rgba(255,107,107,0.5)'},
-    {r:64,a:1.1,rad:2.5,color:'rgba(78,205,196,0.5)'},
-    {r:64,a:2.2,rad:2.5,color:'rgba(155,89,182,0.5)'},
-    {r:64,a:3.3,rad:2.5,color:'rgba(241,196,15,0.5)'},
-    {r:64,a:4.4,rad:2.5,color:'rgba(0,224,255,0.4)'},
-    {r:64,a:5.2,rad:2.5,color:'rgba(255,107,107,0.4)'}
+    {r:0,a:0,rad:6,color:'rgba(163,210,179,0.9)',label:''},
+    {r:38,a:0,rad:4,color:'rgba(209,230,216,0.8)'},
+    {r:38,a:Math.PI*0.5,rad:4,color:'rgba(163,210,179,0.8)'},
+    {r:38,a:Math.PI,rad:4,color:'rgba(114,197,143,0.8)'},
+    {r:38,a:Math.PI*1.5,rad:4,color:'rgba(117,171,132,0.8)'},
+    {r:64,a:0.3,rad:2.5,color:'rgba(209,230,216,0.5)'},
+    {r:64,a:1.1,rad:2.5,color:'rgba(163,210,179,0.5)'},
+    {r:64,a:2.2,rad:2.5,color:'rgba(114,197,143,0.5)'},
+    {r:64,a:3.3,rad:2.5,color:'rgba(117,171,132,0.5)'},
+    {r:64,a:4.4,rad:2.5,color:'rgba(163,210,179,0.4)'},
+    {r:64,a:5.2,rad:2.5,color:'rgba(209,230,216,0.4)'}
   ];
   var links=[[0,1],[0,2],[0,3],[0,4],[1,5],[2,6],[3,7],[4,8],[1,2],[3,4],[5,9],[8,10]];
   function draw(ts){
@@ -764,12 +755,12 @@ a.dash-tab:hover { text-decoration:none; }
       var rr=i*28;
       var alpha=0.06+0.04*Math.sin(t*1.2+i);
       ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);
-      ctx.strokeStyle='rgba(0,224,255,'+alpha+')';ctx.lineWidth=1;ctx.stroke();
+      ctx.strokeStyle='rgba(163,210,179,'+alpha+')';ctx.lineWidth=1;ctx.stroke();
     }
     // Rotating ring
     ctx.beginPath();
     ctx.arc(cx,cy,78, t*0.5, t*0.5+Math.PI*1.2);
-    ctx.strokeStyle='rgba(0,224,255,0.12)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle='rgba(163,210,179,0.12)';ctx.lineWidth=1.5;ctx.stroke();
     // Node positions
     var pos=nodes.map(function(n,i){
       var a=n.a+t*(i<5?0.3:0.5)*(i%2?1:-1);
@@ -780,19 +771,19 @@ a.dash-tab:hover { text-decoration:none; }
     links.forEach(function(l){
       var a=pos[l[0]], b=pos[l[1]];
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
-      ctx.strokeStyle='rgba(0,224,255,0.1)';ctx.lineWidth=0.8;ctx.stroke();
+      ctx.strokeStyle='rgba(163,210,179,0.1)';ctx.lineWidth=0.8;ctx.stroke();
     });
     // Pulse wave from center
     var pw=(t%2.5)/2.5;
     ctx.beginPath();ctx.arc(cx,cy,pw*80,0,Math.PI*2);
-    ctx.strokeStyle='rgba(0,224,255,'+(0.15*(1-pw))+')';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle='rgba(163,210,179,'+(0.15*(1-pw))+')';ctx.lineWidth=1.5;ctx.stroke();
     // Nodes
     pos.forEach(function(p,i){
       ctx.beginPath();ctx.arc(p.x,p.y,p.rad,0,Math.PI*2);
       ctx.fillStyle=p.color;ctx.fill();
       if(i===0){
         ctx.beginPath();ctx.arc(p.x,p.y,p.rad+3+2*Math.sin(t*2),0,Math.PI*2);
-        ctx.strokeStyle='rgba(0,224,255,0.2)';ctx.lineWidth=1;ctx.stroke();
+        ctx.strokeStyle='rgba(163,210,179,0.2)';ctx.lineWidth=1;ctx.stroke();
       }
     });
     if(document.getElementById('auth-loading').style.display!=='none'){
@@ -3371,7 +3362,7 @@ a.dash-tab:hover { text-decoration:none; }
   </div>
 </section>
 
-<script src="assets/scripts.js"></script>
+<script src="assets/scripts.js?v=dom-entry-2"></script>
 <script src="assets/redesign.js?v=dom-motion-7"></script>
 <script>
 // ── Safe i18n shim ──
@@ -3457,7 +3448,9 @@ var PROG_LABELS = {self:'Self-Guided',guided:'Guided Program',group:'Group Progr
   }
 })();
 
-function naGetToken(){ return localStorage.getItem('na_token'); }
+function naGetToken(){
+  try { return localStorage.getItem('na_token'); } catch (e) { return null; }
+}
 function naSetAuth(token, user){
   localStorage.setItem('na_token', token);
   localStorage.setItem('na_user', JSON.stringify(user));

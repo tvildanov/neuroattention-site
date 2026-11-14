@@ -178,6 +178,8 @@ app.use(cors({
   origin: [
     'https://neuroattention.org',
     'https://www.neuroattention.org',
+    'https://dom.institute',
+    'https://www.dom.institute',
     /\.github\.io$/,
     'http://localhost:8080',
     'http://127.0.0.1:8080'

@@ -1738,3 +1738,9 @@ section {
   .chat-stack { max-width: 92%; }
   .test-messages { padding: 1rem 0; }
 }
+
+/* Progressive enhancement: a blocked script must never hide public page content. */
+html:not(.na-reveal-ready) :is(.fade-up,.fade-left,.fade-right,.fade-scale) {
+  opacity:1;
+  transform:none;
+}

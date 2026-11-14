@@ -1,5 +1,5 @@
 /* Shared DOM Matrix palette. Loaded explicitly by public pages only. */
-body.dom-matrix {
+:is(body.dom-matrix, body.dom-account-matrix) {
   --bg-base: #030A07;
   --bg-surface: #102519;
   --bg-elevated: #152D20;
@@ -125,7 +125,7 @@ body.dom-matrix .footer { background: rgba(3,10,7,.40); border-top-color: var(--
 }
 
 /* Public pages with dedicated wrappers share the homepage atmosphere. */
-body.dom-matrix:not(.home-matrix) {
+:is(body.dom-matrix:not(.home-matrix), body.dom-account-matrix) {
   --test-bg: transparent;
   background-image:
     radial-gradient(ellipse 72vw 62vh at -8vw 35vh,rgba(29,109,69,.70),transparent),

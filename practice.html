@@ -8,20 +8,15 @@
 <!-- ASAP lang detection (FOUC prevention) -->
 <script>
 (function(){
-  var stored = localStorage.getItem('na_lang');
-  var explicit = localStorage.getItem('na_lang_explicit');
-  var lang = explicit || stored || 'en'; // EN always default on first visit (no browser-lang detect)
-  document.documentElement.lang = lang;
-  if (lang !== 'ru') {
-    var s = document.createElement('style');
-    s.id = 'i18n-flash-prevent';
-    s.textContent = 'body{opacity:0!important;}';
-    document.head.appendChild(s);
-  }
+  // Content stays readable even when storage, fonts or translation requests are blocked.
+  try {
+    var lang=localStorage.getItem('na_lang_explicit')||localStorage.getItem('na_lang');
+    if (['ru','en','es'].indexOf(lang)!==-1) document.documentElement.lang=lang;
+  } catch (e) {}
 })();
 </script>
 
-<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/styles.css?v=dom-entry-2">
 <style>
   body { margin:0; background:#0a0a10; color:#e8e8ee; font-family:-apple-system,BlinkMacSystemFont,'Inter','Helvetica Neue',sans-serif; min-height:100vh; }
   .pp-wrap { max-width:780px; margin:0 auto; padding:1.5rem 1rem 4rem; }
@@ -71,8 +66,10 @@
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://neuroattention.org/og-image.png" />
+<link rel="stylesheet" href="assets/dom-matrix.css?v=6">
+<link rel="stylesheet" href="assets/dom-account-matrix.css?v=1">
 </head>
-<body>
+<body class="dom-matrix dom-practice-matrix">
 <div class="pp-wrap">
   <div class="pp-header">
     <button class="pp-back" onclick="window.location.href='account.html'">← <span data-i18n="practice.back">Назад</span></button>

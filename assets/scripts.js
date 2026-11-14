@@ -91,6 +91,7 @@
     },
     { threshold: 0.06, rootMargin: '0px 0px -40px 0px' }
   );
+  document.documentElement.classList.add('na-reveal-ready');
   items.forEach((el) => obs.observe(el));
 })();
 
@@ -139,4 +140,14 @@
       }
     });
   });
+})();
+
+// Revalidate an existing offline worker without installing an app for new visitors.
+(function refreshExistingWorker() {
+  try {
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+    navigator.serviceWorker.getRegistration().then(function (registration) {
+      if (registration) return registration.update();
+    }).catch(function () {});
+  } catch (e) {}
 })();
