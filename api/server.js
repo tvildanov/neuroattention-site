@@ -29,7 +29,7 @@ async function getMonadPrincipal() {
   return _monadPrincipal;
 }
 const EMAIL_FROM = process.env.EMAIL_FROM || 'NeuroAttention Lab <info@neuroattention.org>';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://neuroattention.org';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dom.institute';
 
 // ─── Nodemailer SMTP (Namecheap Private Email) ───
 const nodemailer = require('nodemailer');
@@ -132,7 +132,7 @@ async function sendConfirmationEmail(email, product, sessionId) {
         <p style="color:#555;font-size:14px;line-height:1.6;">В вашем <a href="${FRONTEND_URL}/account.html" style="color:#00e5ff;">личном кабинете</a> уже виден статус приобретённой программы и таймер до активации. Дополнительные инструменты будут открываться по мере прохождения онбординга.</p>
         <p style="color:#999;font-size:13px;margin-top:24px;line-height:1.5;">NeuroAttention — не медицинский сервис. Программы носят образовательный, исследовательский и тренировочный характер. Подробнее: <a href="${FRONTEND_URL}/terms-of-service.html" style="color:#999;">Terms of Service</a> · <a href="${FRONTEND_URL}/privacy-policy.html" style="color:#999;">Privacy Policy</a>.</p>
       </div>
-      <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a></div>
+      <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">dom.institute</a></div>
     </div>
   `);
 }
@@ -3776,7 +3776,7 @@ async function sendResetEmail(to, resetToken) {
         <p style="color:#999;font-size:13px;">Ссылка действительна 1 час. Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>
       </div>
       <div style="background:#f8f8f8;padding:16px 24px;text-align:center;font-size:12px;color:#999;">
-        NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">neuroattention.org</a>
+        NeuroAttention Lab LLC · <a href="${FRONTEND_URL}" style="color:#00e5ff;">dom.institute</a>
       </div>
     </div>
   `);
@@ -10384,8 +10384,8 @@ app.post('/api/donate/checkout', requireAuth, async (req, res) => {
         },
         quantity: 1
       }],
-      success_url: 'https://neuroattention.org/account.html?donation=success',
-      cancel_url: 'https://neuroattention.org/account.html?donation=cancel',
+      success_url: FRONTEND_URL + '/account.html?donation=success',
+      cancel_url: FRONTEND_URL + '/account.html?donation=cancel',
       metadata: { user_id: me, donation_message: message || '', donation: 'true' },
       allow_promotion_codes: true,   // tester can use a 100% coupon to verify the flow
       locale: ['ru','en','es'].includes(lang) ? lang : 'auto'
@@ -14440,8 +14440,8 @@ async function deliverTahirHandoff(opts) {
     const [existing] = await sql`SELECT id, delivered_at FROM site_one_shots WHERE id = ${shotId}`;
     if (existing) return { ok: true, already: true, delivered_at: existing.delivered_at };
   }
-  const pageUrl = (FRONTEND_URL || 'https://neuroattention.org').replace(/\/$/, '') + '/monad-tahir-handoff.html';
-  const mdUrl = (FRONTEND_URL || 'https://neuroattention.org').replace(/\/$/, '') + '/monad-tahir-handoff.md';
+  const pageUrl = (FRONTEND_URL || 'https://dom.institute').replace(/\/$/, '') + '/monad-tahir-handoff.html';
+  const mdUrl = (FRONTEND_URL || 'https://dom.institute').replace(/\/$/, '') + '/monad-tahir-handoff.md';
   let bodyText = '';
   const candidates = [
     path.join(__dirname, '..', 'docs', 'MONAD-TAHIR-HANDOFF.md'),
