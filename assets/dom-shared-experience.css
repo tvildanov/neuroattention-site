@@ -1,0 +1,23 @@
+/* From knowledge/profiles to ecosystem bridge */
+#dom-shared-experience{padding:32px 0 34px!important;scroll-margin-top:76px}
+#dom-shared-experience .dom-shared-heading{max-width:46rem;margin:0 0 28px}
+#dom-shared-experience .dom-shared-heading .eyebrow{margin-bottom:10px}
+#dom-shared-experience .dom-shared-heading h2{font-size:clamp(26px,2.7vw,38px);line-height:1.28;letter-spacing:-.035em;margin:0 0 12px}
+#dom-shared-experience .dom-shared-lead{margin:0;font-size:15px;line-height:1.55;color:var(--text-secondary)}
+#dom-shared-experience .dom-shared-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.95fr);gap:clamp(22px,3vw,42px);align-items:start}
+#dom-shared-experience .dom-shared-profile-intro{margin:0 0 16px}
+#dom-shared-experience .dom-shared-profile-intro .xr-copy-profile{display:block}
+#dom-shared-experience .dom-shared-profile-intro h3{font-size:clamp(18px,1.6vw,22px);margin:0 0 8px}
+#dom-shared-experience .dom-shared-profile-intro p{margin:0;font-size:14px;line-height:1.5;color:var(--text-secondary)}
+#dom-shared-experience .xr-window[data-window="profile"]{display:block;width:100%}
+#dom-shared-experience .dom-shared-methods .dom-section-subtitle{margin:0 0 16px;font-size:15px;line-height:1.5}
+#dom-shared-experience .dom-xr-practice-path{margin:0 0 18px}
+#dom-shared-experience .dom-digital-bridge{margin:28px 0 0;padding-top:22px;border-top:1px solid var(--line-soft);font-family:var(--hero-font);font-weight:400;font-size:clamp(22px,2.3vw,32px);line-height:1.3;letter-spacing:-.03em;color:var(--text-primary);max-width:22ch}
+#dom-xr-practice .dom-xr-light-points{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:10px}
+#dom-xr-practice .dom-xr-light-points li{position:relative;padding-left:18px;font-size:14px;line-height:1.5;color:var(--text-secondary)}
+#dom-xr-practice .dom-xr-light-points li:before{content:'';position:absolute;left:0;top:.55em;width:7px;height:7px;border-radius:50%;background:var(--accent-cyan)}
+#dom-xr-practice .dom-xr-practice-copy--light .dom-section-subtitle{margin:0 0 10px;font-size:clamp(18px,1.7vw,24px);line-height:1.35;color:var(--text-primary)}
+@media(max-width:900px){
+ #dom-shared-experience .dom-shared-layout{grid-template-columns:1fr;gap:24px}
+ #dom-shared-experience .dom-digital-bridge{max-width:none;font-size:clamp(20px,6vw,28px)}
+}

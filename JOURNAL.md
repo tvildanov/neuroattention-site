@@ -7,6 +7,54 @@
 
 ---
 
+## 2026-11-15 — DOM homepage story reorder (Work draft recovery handoff)
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor_cloud",
+  "at": "2026-11-15T07:07:00Z",
+  "did": [
+    "Recovered context from DOM_Work_Draft_Recovery pack; verified GitHub baseline main=4c615b2, editorial=e760e33; no Work-local uncommitted patch available",
+    "Branched cursor/dom-homepage-story-reorder-ffca from codex/dom-editorial-preview to keep prior editorial drafts",
+    "Reordered homepage: practice→Platform→XR→shared experience/profiles→digital bridge→ecosystem→campus…",
+    "Moved character/profile out of Platform step 4 into #dom-shared-experience; lightened XR copy; kept 5 example types + 13 indicators",
+    "Playwright smoke: section order, profile UI, no horizontal overflow at 320/390/1280, no page errors"
+  ],
+  "changed": [
+    "index.html story order and section markup",
+    "assets/js/dom-xr-guided.js dual-root profile queries; map ends at step 3",
+    "assets/dom-shared-experience.css new",
+    "assets/dom-practice-foundation.css bridge emphasis",
+    "data/i18n/ru.json en.json es.json home.story.* keys",
+    "sw.js na-practices-v97"
+  ],
+  "files": [
+    "index.html",
+    "assets/js/dom-xr-guided.js",
+    "assets/dom-shared-experience.css",
+    "assets/dom-practice-foundation.css",
+    "data/i18n/ru.json",
+    "data/i18n/en.json",
+    "data/i18n/es.json",
+    "sw.js",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No Work filesystem draft recovered; implement from LATEST_USER_TASK_SPEC on editorial branch",
+    "Do not invent 12 validated profiles; keep existing 5 examples / 13 indicators",
+    "Deploy = merge to main after PR review; Pages SHA must match before claiming live"
+  ],
+  "followups": [
+    "Owner review of PR then merge to publish accumulated editorial + story reorder",
+    "Visual QA of XR hotspots glow and intro central question on production after deploy"
+  ],
+  "next_session": "Confirm GitHub Pages SUCCESS for merged SHA; do not resurrect site-side LK LLM"
+}
+```
+
+---
+
 ## 2026-10-11 — Font matrix: hung file and a valid woff2 (issue #163)
 
 ```json
