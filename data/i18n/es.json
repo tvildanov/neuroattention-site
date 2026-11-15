@@ -2208,15 +2208,10 @@
   "home.ecosystem.title_human": "del desarrollo humano",
   "home.v2.1195eef548": "En un mundo que cambia rápidamente",
   "home.story.to_platform": "Continuar a DOM Platform",
-  "home.story.map_next": "Siguiente: de la observación a la experiencia compartida",
-  "home.story.xr_space_title": "El espacio XR del instituto",
-  "home.story.xr_space_lead": "Un entorno interactivo para educación, habilidades de adaptación y presencia compartida a distancia: no una videollamada genérica en VR, sino el espacio del instituto para la adaptación humana.",
-  "home.story.xr_point_learn": "Aprender y desarrollar habilidades de adaptación",
-  "home.story.xr_point_together": "Aprender e investigar juntos e interactuar con especialistas",
-  "home.story.xr_point_presence": "Mantener una presencia de confianza entre sí incluso a distancia",
+  "home.story.map_next": "Siguiente — experiencia compartida",
   "home.story.xr_page_cta": "Más sobre DOM XR",
   "home.story.shared_kicker": "DOM · 03",
-  "home.story.shared_lead": "Las observaciones en DOM Platform y la presencia compartida en DOM XR se convierten en un camino personal de aprendizaje, desarrollo, investigación y trabajo con especialistas.",
+  "home.story.shared_lead": "Las observaciones en DOM Platform y la presencia en DOM XR se convierten en un camino de aprendizaje, desarrollo y trabajo con especialistas.",
   "home.story.digital_bridge": "Pero DOM no es solo un entorno digital",
   "home.story.eco_as_dom": "DOM como"
 }

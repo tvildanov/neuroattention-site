@@ -2384,15 +2384,10 @@
   "home.ecosystem.title_next": "for the next stage",
   "home.ecosystem.title_human": "of human development",
   "home.story.to_platform": "Continue to DOM Platform",
-  "home.story.map_next": "Next: from observation to shared experience",
-  "home.story.xr_space_title": "The Institute XR Space",
-  "home.story.xr_space_lead": "An interactive environment for education, adaptation skills, and shared presence across distance—not a generic VR video call, but the institute’s space for human adaptation.",
-  "home.story.xr_point_learn": "Learn and develop adaptation skills",
-  "home.story.xr_point_together": "Learn and explore together, and work with specialists",
-  "home.story.xr_point_presence": "Keep a trusting sense of presence with each other across distance",
-  "home.story.xr_page_cta": "Learn more about DOM XR",
+  "home.story.map_next": "Next — shared experience",
+  "home.story.xr_page_cta": "More about DOM XR",
   "home.story.shared_kicker": "DOM · 03",
-  "home.story.shared_lead": "Observations in DOM Platform and shared presence in DOM XR become a personal path for learning, development, research, and work with specialists.",
+  "home.story.shared_lead": "Observations in DOM Platform and presence in DOM XR become a path of learning, development, and work with specialists.",
   "home.story.digital_bridge": "But DOM is more than a digital environment",
   "home.story.eco_as_dom": "DOM as"
 }

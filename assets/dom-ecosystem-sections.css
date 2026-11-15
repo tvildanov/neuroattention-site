@@ -158,7 +158,7 @@ body.home-matrix{
 }
 .home-matrix>section{scroll-margin-top:70px}
 .home-matrix :is(#dom-practice-foundation,#dom-ecosystem,#dom-xr-platform,#dom-xr-practice,#dom-campus,#dom-education-research,#dom-agency,#dom-unity){padding-block:var(--dom-section-space)!important;height:auto;overflow:visible}
-.home-matrix :is(#dom-foundation-title,#dom-ecosystem-title,#dom-xr-neuromap .xr-intro h2,#dom-xr-practice-title,#dom-campus-title,.dom-family-section h2){font-size:var(--dom-title);line-height:1.2;letter-spacing:-.04em;font-weight:500}
+.home-matrix :is(#dom-foundation-title,#dom-ecosystem-title,.dom-xr-skin .xr-intro h2,#dom-xr-practice-title,#dom-campus-title,.dom-family-section h2){font-size:var(--dom-title);line-height:1.2;letter-spacing:-.04em;font-weight:500}
 .home-matrix :is(.eyebrow,.xr-kicker){font-size:12px}
 #dom-practice-foundation .dom-foundation-stat span{font-size:var(--dom-detail);line-height:1.55}
 #dom-practice-foundation :is(.dom-foundation-summary,.dom-foundation-link-copy,.dom-foundation-intro,.dom-foundation-uses){font-size:var(--dom-copy);line-height:1.65}
@@ -172,21 +172,21 @@ body.home-matrix{
 #dom-ecosystem .dom-direction-links a{font-size:13px;min-height:40px;padding:8px 10px}
 #dom-ecosystem .dom-direction-note{font-size:14px;line-height:1.6;margin-top:22px}
 /* Product identity and participant value share the width above the interactive tool. */
-#dom-xr-neuromap{padding:0;background:none;overflow:visible}
-#dom-xr-neuromap .dom-platform-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(28px,5vw,72px);align-items:center;margin:0 0 36px}
-#dom-xr-neuromap .xr-intro{max-width:none;margin:0;text-align:left}
-#dom-xr-neuromap .xr-intro h2{margin:0 0 18px}
-#dom-xr-neuromap .xr-intro .xr-kicker{margin-bottom:16px}
-#dom-xr-neuromap .xr-intro .xr-lead{font-size:clamp(21px,1.9vw,27px);line-height:1.4;max-width:30ch}
-#dom-xr-neuromap .xr-platform-copy{max-width:none;width:100%;margin:0;padding:8px 0 8px 32px;border-left:1px solid var(--line-soft);text-align:left}
-#dom-xr-neuromap .xr-platform-copy h3{font-size:clamp(24px,2.2vw,32px);line-height:1.3;margin:0 0 16px;color:var(--text-primary);text-wrap:pretty}
-#dom-xr-neuromap .xr-platform-copy p{font-size:var(--dom-copy);line-height:1.65;margin:0;max-width:58ch}
-#dom-xr-neuromap .xr-grid,#dom-xr-neuromap>.xr-progress{max-width:none}
-#dom-xr-neuromap>.xr-progress li{font-size:14px;min-height:44px}
-#dom-xr-neuromap .xr-guide-question{font-size:18px;line-height:1.5}
-#dom-xr-neuromap .xr-guide-hint{font-size:14px;line-height:1.55}
+.dom-xr-skin{padding:0;background:none;overflow:visible}
+.dom-xr-skin .dom-platform-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:clamp(28px,5vw,72px);align-items:center;margin:0 0 36px}
+.dom-xr-skin .xr-intro{max-width:none;margin:0;text-align:left}
+.dom-xr-skin .xr-intro h2{margin:0 0 18px}
+.dom-xr-skin .xr-intro .xr-kicker{margin-bottom:16px}
+.dom-xr-skin .xr-intro .xr-lead{font-size:clamp(21px,1.9vw,27px);line-height:1.4;max-width:30ch}
+.dom-xr-skin .xr-platform-copy{max-width:none;width:100%;margin:0;padding:8px 0 8px 32px;border-left:1px solid var(--line-soft);text-align:left}
+.dom-xr-skin .xr-platform-copy h3{font-size:clamp(24px,2.2vw,32px);line-height:1.3;margin:0 0 16px;color:var(--text-primary);text-wrap:pretty}
+.dom-xr-skin .xr-platform-copy p{font-size:var(--dom-copy);line-height:1.65;margin:0;max-width:58ch}
+.dom-xr-skin .xr-grid,.dom-xr-skin>.xr-progress{max-width:none}
+.dom-xr-skin>.xr-progress li{font-size:14px;min-height:44px}
+.dom-xr-skin .xr-guide-question{font-size:18px;line-height:1.5}
+.dom-xr-skin .xr-guide-hint{font-size:14px;line-height:1.55}
 /* Keep the invitation visible without the strong flashing frame. */
-#dom-xr-neuromap .guide-current{animation:none!important;outline:1px solid #a3d2b366;outline-offset:3px;box-shadow:0 0 18px #a3d2b312}
+.dom-xr-skin .guide-current{animation:none!important;outline:1px solid #a3d2b366;outline-offset:3px;box-shadow:0 0 18px #a3d2b312}
 #dom-xr-practice .dom-xr-practice-heading .dom-family-label{font-size:var(--dom-detail);line-height:1.5;margin:0 0 28px;color:var(--text-secondary)}
 #dom-xr-practice .dom-xr-practice-heading .dom-section-subtitle{padding-top:24px;border-top:1px solid var(--line-soft);margin-bottom:16px}
 #dom-xr-practice .dom-xr-practice-heading>p:last-child,#dom-xr-practice .dom-xr-practice-path p,#dom-xr-practice .dom-xr-together p{font-size:var(--dom-copy);line-height:1.65}
@@ -216,9 +216,9 @@ body.home-matrix{
  body.home-matrix{--dom-copy:17px;--dom-detail:16px;--dom-section-space:52px}
  #dom-ecosystem .dom-ecosystem-layout{grid-template-columns:1fr}
  #dom-ecosystem .dom-direction-links a{min-height:44px;font-size:14px}
- #dom-xr-neuromap .dom-platform-heading{grid-template-columns:1fr;gap:26px;margin-bottom:28px}
- #dom-xr-neuromap .xr-platform-copy{border-left:0;border-top:1px solid var(--line-soft);padding:24px 0 0}
- #dom-xr-neuromap>.xr-progress li{font-size:12px;min-height:48px}
+ .dom-xr-skin .dom-platform-heading{grid-template-columns:1fr;gap:26px;margin-bottom:28px}
+ .dom-xr-skin .xr-platform-copy{border-left:0;border-top:1px solid var(--line-soft);padding:24px 0 0}
+ .dom-xr-skin>.xr-progress li{font-size:12px;min-height:48px}
  #dom-campus .dom-campus-photo{min-height:0}
  #dom-campus .dom-campus-path{gap:22px}
 }
@@ -232,8 +232,8 @@ body.home-matrix{
  #dom-ecosystem .dom-ecosystem-layout .dom-ecosystem-mark{grid-column:2;grid-row:3;align-self:center;margin:0}
  #dom-ecosystem .dom-ecosystem-layout .dom-direction-note{grid-column:1/-1;grid-row:4;margin:0}
 }
-#dom-xr-neuromap [data-step-panel] .guide-current{animation:none!important;outline:1px solid #a3d2b366;outline-offset:3px;box-shadow:0 0 18px #a3d2b312}
-#dom-xr-neuromap [data-step-panel] .guide-current::before{animation:none;opacity:.25;box-shadow:none}
+.dom-xr-skin [data-step-panel] .guide-current{animation:none!important;outline:1px solid #a3d2b366;outline-offset:3px;box-shadow:0 0 18px #a3d2b312}
+.dom-xr-skin [data-step-panel] .guide-current::before{animation:none;opacity:.25;box-shadow:none}
 /* Legacy mobile rules used !important to shrink .h2-block to 20px. */
 .home-matrix>section :is(.h2-block,.dom-insight-heading h2){font-size:var(--dom-title)!important;line-height:1.2}
 /* A slow, restrained green breathing light around the existing collaboration backdrop. */

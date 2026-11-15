@@ -2374,15 +2374,10 @@
   "home.ecosystem.title_next": "для следующего этапа",
   "home.ecosystem.title_human": "человеческого развития",
   "home.story.to_platform": "Перейти к DOM Platform",
-  "home.story.map_next": "Дальше: от наблюдений — к совместному опыту",
-  "home.story.xr_space_title": "XR-пространство института",
-  "home.story.xr_space_lead": "Интерактивная среда для образования, развития навыков адаптации и совместного присутствия на расстоянии — не универсальная видеовстреча в VR, а пространство института человеческой адаптации.",
-  "home.story.xr_point_learn": "Получать образование и развивать адаптационные навыки",
-  "home.story.xr_point_together": "Учиться и исследовать вместе, взаимодействовать со специалистами",
-  "home.story.xr_point_presence": "Сохранять доверительное присутствие друг друга даже на расстоянии",
+  "home.story.map_next": "Дальше — к совместному опыту",
   "home.story.xr_page_cta": "Подробнее о DOM XR",
   "home.story.shared_kicker": "DOM · 03",
-  "home.story.shared_lead": "Наблюдения в DOM Platform и совместное присутствие в DOM XR становятся персональным путём обучения, развития, исследований и работы со специалистами.",
+  "home.story.shared_lead": "Наблюдения в DOM Platform и присутствие в DOM XR складываются в путь обучения, развития и работы со специалистами.",
   "home.story.digital_bridge": "Но DOM — это не только цифровая среда",
   "home.story.eco_as_dom": "DOM как"
 }

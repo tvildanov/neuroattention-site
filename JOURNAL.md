@@ -7,6 +7,28 @@
 
 ---
 
+## 2026-11-15 — DOM homepage story, second pass
+
+```json
+{
+  "project": "neuro",
+  "agent": "cursor",
+  "at": "2026-11-15T08:02:00Z",
+  "did": [
+    "Rebuilt the homepage story from editorial e760e33 after the first composition was rejected",
+    "XR is scene-led with one CTA; profiles stay in their own screen with the existing skin; practice bridge is a large line; Russian headings are no longer auto title-cased",
+    "Not merged and not deployed"
+  ],
+  "changed": ["index.html","assets/js/dom-xr-guided.js","assets/js/dom-editorial.js","assets/dom-story-shared.css","story CSS","i18n","sw.js v98"],
+  "files": ["index.html","assets/js/dom-xr-guided.js","assets/js/dom-editorial.js","assets/dom-story-shared.css","assets/dom-practice-foundation.css","assets/dom-xr-practice.css","data/i18n/ru.json","data/i18n/en.json","data/i18n/es.json","sw.js","JOURNAL.md"],
+  "decisions": ["GPT-5.6 was unavailable on this run","Keep 5 example types and 13 indicators","Russian Title Case skipped as unnatural","No deploy until the owner accepts the visuals"],
+  "followups": ["Owner reviews screenshots before merge to main"],
+  "next_session": "Merge only after visual approval, then confirm GitHub Pages SHA"
+}
+```
+
+---
+
 ## 2026-11-15 — DOM homepage story reorder (Work draft recovery handoff)
 
 ```json

@@ -1,10 +1,9 @@
-/* Requested Title Case style in EN, RU, and ES. User-authored content is excluded. */
+/* Title Case for EN and ES headings. Russian stays as written: capitalizing every word is not natural Russian. */
 (function () {
   'use strict';
   var headingSelector = 'h1,h2,h3,h4,h5,h6,[role="heading"],.dom-section-subtitle,.dom-intro-world';
   var minorWords = {
     en:'a an and as at but by for from if in nor of on or per so the to via vs with yet',
-    ru:'а без в во для до за и из к ко ли либо между на над но о об обо от по под при про с со у через чтобы или как так что чем не ни',
     es:'a al ante bajo con contra de del desde durante e el en entre hacia hasta la las lo los ni o para por que según sin sobre tras u un una unos unas y'
   };
   var acronyms = new Set('DOM XR VR AR AI ИИ MCP API EEG ЭЭГ HRV ВСР ADHD СДВГ PTSD ПТСР ANS АНС DNA ДНК IQ EQ NFT B2B P2P УЗИ MRI МРТ'.split(' '));
