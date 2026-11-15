@@ -108,9 +108,20 @@
 #dom-xr-neuromap .xr-body-question{font:500 18px/1.4 Inter,sans-serif;margin:0 0 8px;text-align:center}
 #dom-xr-neuromap .xr-body-visual>[data-body-instruction]{font-size:13px;line-height:1.5;color:var(--text-primary)}
 #dom-xr-neuromap [data-guide="body"] .xr-guide-question{font-size:14px}
-#dom-xr-neuromap :is(.guide-current,.profile-current,.xr-edge-action,.xr-map-start:not([hidden])),#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{animation:dom-guide-beacon 2.2s ease-in-out infinite!important}
+#dom-xr-neuromap :is(.guide-current,.profile-current,.xr-edge-action,.xr-map-start:not([hidden])),#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{animation:dom-guide-beacon 2.6s ease-in-out infinite!important}
 #dom-xr-neuromap[data-next-action="body"] [data-guide="body"]{animation:none!important}
-@keyframes dom-guide-beacon{0%,100%{outline:1px solid #baffd8a6;outline-offset:2px;box-shadow:0 0 10px #a9ffd077,inset 0 0 8px #a9ffd019}50%{outline:2px solid #e3ffee;outline-offset:4px;box-shadow:0 0 18px 5px #a9ffd0aa,0 0 34px 9px #73eab555,inset 0 0 16px #b9ffdb33}}
+/* Corresponding shadow layers must keep the same inset/outset type in every frame.
+   Mixing an inset layer with an outer layer makes the entire shadow list switch discretely. */
+@keyframes dom-guide-beacon {
+  0%,100% {
+    outline:1px solid #8ce7b980; outline-offset:3px;
+    box-shadow:0 0 10px 0 #7be8a838,0 0 34px 0 #63dc9210,inset 0 0 16px 0 #70eea30d;
+  }
+  50% {
+    outline:1px solid #8ce7b980; outline-offset:3px;
+    box-shadow:0 0 24px 5px #7be8a88c,0 0 48px 9px #63dc9247,inset 0 0 24px 0 #70eea333;
+  }
+}
 #dom-xr-neuromap .xr-direction-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;margin:18px 0}
 #dom-xr-neuromap .xr-direction-meaning{grid-column:1/-1;font-size:14px;line-height:1.6;max-width:80ch;margin:0}
 #dom-xr-neuromap .xr-direction-column{padding:14px;border:1px solid var(--line-soft);border-radius:10px;min-width:0}
@@ -134,7 +145,7 @@
  #dom-xr-neuromap .xr-direction-meaning{grid-column:1}
 }
 @media(prefers-reduced-motion:reduce){
- #dom-xr-neuromap :is(.guide-current,.profile-current,.xr-edge-action,.xr-map-start:not([hidden])),#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{animation:none!important;outline:2px solid #d9ffe8;outline-offset:2px}
+ #dom-xr-neuromap :is(.guide-current,.profile-current,.xr-edge-action,.xr-map-start:not([hidden])),#dom-xr-neuromap[data-next-action="body"] .xr-body-visual{animation:none!important;outline:2px solid #8ce7b9;outline-offset:2px}
 }
 
 /* One centered question at a time; the body and its alternative list share a card. */

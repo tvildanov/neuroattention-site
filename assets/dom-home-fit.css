@@ -280,3 +280,7 @@
  .home-matrix .dom-intro-cover { gap:clamp(16px,4svh,30px); }
  .home-matrix .dom-intro-question { padding:14px 16px; font-size:clamp(17px,4.5vw,22px); }
 }
+
+/* Let the central question use the available cover width; keep its established typography. */
+.home-matrix .dom-intro-bottom { width:100%; }
+.home-matrix .dom-intro-question { max-width:none; }
