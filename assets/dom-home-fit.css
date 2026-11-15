@@ -244,3 +244,23 @@
   #dom-ecosystem .dom-ecosystem-title-line { display:inline; }
   #dom-ecosystem .dom-ecosystem-layout .dom-family-intro { padding:12px 14px; }
 }
+
+/* Editorial preview: one two-line institute name, followed by its context. */
+.home-matrix .dom-intro-title {
+  font:500 clamp(28px,min(5vw,7svh),68px)/1.2 var(--hero-font,'Unbounded',sans-serif);
+  letter-spacing:-.04em; margin:0;
+}
+.home-matrix .dom-intro-brand,.home-matrix .dom-intro-title .dom-intro-purpose { display:block; }
+.home-matrix .dom-intro-title .dom-intro-purpose { font:inherit; letter-spacing:inherit; margin:6px 0 0; color:inherit; text-wrap:initial; }
+.home-matrix .dom-intro-world { font:400 clamp(20px,2.7vw,36px)/1.4 'Space Grotesk',sans-serif; margin:18px 0 0; }
+@media(max-width:600px) {
+ .home-matrix .dom-intro-title { font-size:clamp(21px,4.8vw,29px); }
+ .home-matrix .dom-intro-world { font-size:clamp(17px,4.2vw,24px); }
+}
+
+@media(min-width:1001px) {
+ #dom-ecosystem .dom-direction-card { padding-block:6px; }
+ #dom-ecosystem .dom-direction-card h3 { margin-bottom:6px; }
+ #dom-ecosystem .dom-direction-card p { margin-bottom:6px; }
+ #dom-ecosystem .dom-ecosystem-layout .dom-ecosystem-grid { gap:10px; }
+}

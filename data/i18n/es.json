@@ -1,5 +1,5 @@
 {
-  "meta.title": "DOM Institute For Human Adaptation",
+  "meta.title": "DOM Institute",
   "meta.description": "NeuroAttention Lab — método con base científica para la regulación del sistema nervioso y el desarrollo de la atención, plataforma XR, laboratorio de investigación y comunidad DOM Unity.",
   "nav.home": "Inicio",
   "nav.menu": "Menú",
@@ -2120,15 +2120,15 @@
   "home.ecosystem.heading": "Un ecosistema para la próxima etapa del desarrollo humano",
   "home.ecosystem.intro": "Unimos personas, conocimientos y tecnología. Juntos creamos un entorno físico y digital que ayuda a adaptarse a un mundo cambiante y a desarrollar nuestro potencial, como individuos y como humanidad.",
   "home.ecosystem.research.title": "Investigación del ser humano y la conciencia",
-  "home.ecosystem.research.text": "Estudiamos la adaptación humana, desarrollamos nuevas hipótesis y evaluamos métodos.",
+  "home.ecosystem.research.text": "Investigamos la adaptación consciente de cada persona y de la humanidad. Seleccionamos y evaluamos conocimientos, métodos y herramientas para mejorar la vida y construir el futuro.",
   "home.ecosystem.tech.title": "Tecnología",
-  "home.ecosystem.tech.text": "Desarrollamos herramientas digitales, sistemas de IA y nuevas formas de interacción entre las personas y su entorno.",
+  "home.ecosystem.tech.text": "Desarrollamos DOM Platform, IA y XR: un mapa de estados personales, sucesos y acciones, orientación personalizada y apoyo profesional para una adaptación consciente.",
   "home.ecosystem.education.title": "Educación",
-  "home.ecosystem.education.text": "Compartimos conocimientos, desarrollamos programas educativos y formamos especialistas.",
-  "home.ecosystem.rehab.title": "Rehabilitación y desarrollo",
-  "home.ecosystem.rehab.text": "Desarrollamos programas en línea y un complejo de rehabilitación en el futuro campus para apoyar la recuperación tras el estrés, la sobrecarga y los cambios de salud. Integramos acompañamiento profesional, prácticas corporales y autorregulación.",
-  "home.ecosystem.community.title": "Comunidad y espacios compartidos",
-  "home.ecosystem.community.text": "Conectamos a las personas mediante aprendizaje y proyectos compartidos. El entorno común incluye la plataforma digital, XR y espacios físicos, ahora y a medida que DOM se desarrolla.",
+  "home.ecosystem.education.text": "Creamos una base educativa para la adaptación consciente: atención y autorregulación para uso personal, y formación de especialistas de un nuevo perfil al servicio de personas y comunidades.",
+  "home.ecosystem.rehab.title": "Rehabilitación",
+  "home.ecosystem.rehab.text": "Recuperación del cuerpo, la mente y las capacidades tras efectos adversos del entorno. Evaluación, especialistas y datos orientan programas personales en línea y el complejo de rehabilitación del futuro campus.",
+  "home.ecosystem.community.title": "Comunidad",
+  "home.ecosystem.community.text": "Construimos juntos el futuro de forma consciente. Ayudamos a realizar el potencial genético y personal único de cada individuo en beneficio propio y de la sociedad.",
   "home.ecosystem.enterprise.title": "Emprendimiento y oportunidades económicas",
   "home.ecosystem.enterprise.text": "Ayudamos a convertir habilidades e ideas en proyectos viables, adaptar empresas a condiciones cambiantes y crear valor económico compartido.",
   "home.reorg.education_link": "Programas educativos del instituto",
@@ -2205,5 +2205,6 @@
   "home.ecosystem.title": "un ecosistema para la siguiente etapa del desarrollo humano",
   "home.ecosystem.title_short": "un ecosistema",
   "home.ecosystem.title_next": "para la siguiente etapa",
-  "home.ecosystem.title_human": "del desarrollo humano"
+  "home.ecosystem.title_human": "del desarrollo humano",
+  "home.v2.1195eef548": "En un mundo que cambia rápidamente"
 }
