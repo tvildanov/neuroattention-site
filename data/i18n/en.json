@@ -2290,7 +2290,7 @@
   "home.ecosystem.education.title": "Education",
   "home.ecosystem.education.text": "Share knowledge, develop learning programs, and train specialists.",
   "home.ecosystem.rehab.title": "Rehabilitation & Development",
-  "home.ecosystem.rehab.text": "Develop programs for recovery, adaptation, and personal development.",
+  "home.ecosystem.rehab.text": "We are developing online programs and a rehabilitation complex at the future campus to support recovery after stress, overload, and changes in health. We bring together specialist support, body-based practices, and self-regulation.",
   "home.ecosystem.community.title": "Community & Shared Spaces",
   "home.ecosystem.community.text": "Connect people through shared learning and projects. The shared environment includes the digital platform, XR, and physical spaces, now and as DOM develops.",
   "home.ecosystem.enterprise.title": "Enterprise & Economic Opportunity",
@@ -2379,5 +2379,8 @@
   "home.value.project_mindful_status": "A DOM ecosystem project. Details about the team, working model, and outcomes will be added to its profile.",
   "home.value.projects_note": "The catalog will grow as project profiles are prepared. Inclusion does not automatically award DOM Crystals.",
   "home.value.projects_submit": "Propose a project",
-  "home.ecosystem.title": "an ecosystem for the next stage of human development"
+  "home.ecosystem.title": "an ecosystem for the next stage of human development",
+  "home.ecosystem.title_short": "an ecosystem",
+  "home.ecosystem.title_next": "for the next stage",
+  "home.ecosystem.title_human": "of human development"
 }

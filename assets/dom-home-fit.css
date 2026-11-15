@@ -228,3 +228,19 @@
   #dom-xr-practice .dom-xr-identity { margin-bottom:4px; }
   #dom-xr-practice .dom-xr-together { margin-bottom:8px; }
 }
+
+/* Explain the method before its track record; give the ecosystem statement its own space. */
+#dom-practice-foundation .dom-foundation-stats { margin-block:16px 18px; }
+#dom-ecosystem .dom-ecosystem-title-line { display:block; }
+#dom-ecosystem .dom-ecosystem-layout .dom-family-intro {
+  margin-block:10px 14px; padding:11px 18px;
+  border-left:2px solid #a9efc5; border-radius:0 10px 10px 0;
+  background:linear-gradient(100deg,#83d9a51a,#83d9a507);
+  color:#def6e6; font-weight:500; line-height:1.5;
+  box-shadow:-5px 0 20px -10px #a0efbd66;
+  text-shadow:0 0 18px #a0efbd1f;
+}
+@media (max-width:600px) {
+  #dom-ecosystem .dom-ecosystem-title-line { display:inline; }
+  #dom-ecosystem .dom-ecosystem-layout .dom-family-intro { padding:12px 14px; }
+}

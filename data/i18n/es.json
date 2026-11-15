@@ -2126,7 +2126,7 @@
   "home.ecosystem.education.title": "Educación",
   "home.ecosystem.education.text": "Compartimos conocimientos, desarrollamos programas educativos y formamos especialistas.",
   "home.ecosystem.rehab.title": "Rehabilitación y desarrollo",
-  "home.ecosystem.rehab.text": "Desarrollamos programas de recuperación, adaptación y desarrollo personal.",
+  "home.ecosystem.rehab.text": "Desarrollamos programas en línea y un complejo de rehabilitación en el futuro campus para apoyar la recuperación tras el estrés, la sobrecarga y los cambios de salud. Integramos acompañamiento profesional, prácticas corporales y autorregulación.",
   "home.ecosystem.community.title": "Comunidad y espacios compartidos",
   "home.ecosystem.community.text": "Conectamos a las personas mediante aprendizaje y proyectos compartidos. El entorno común incluye la plataforma digital, XR y espacios físicos, ahora y a medida que DOM se desarrolla.",
   "home.ecosystem.enterprise.title": "Emprendimiento y oportunidades económicas",
@@ -2202,5 +2202,8 @@
   "home.value.project_mindful_status": "Un proyecto del ecosistema DOM. Ampliaremos su ficha con información del equipo, la forma de trabajo y los resultados.",
   "home.value.projects_note": "El catálogo crecerá a medida que se preparen las fichas. La inclusión no concede automáticamente Cristales DOM.",
   "home.value.projects_submit": "Proponer un proyecto",
-  "home.ecosystem.title": "un ecosistema para la siguiente etapa del desarrollo humano"
+  "home.ecosystem.title": "un ecosistema para la siguiente etapa del desarrollo humano",
+  "home.ecosystem.title_short": "un ecosistema",
+  "home.ecosystem.title_next": "para la siguiente etapa",
+  "home.ecosystem.title_human": "del desarrollo humano"
 }
