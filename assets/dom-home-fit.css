@@ -49,12 +49,12 @@
 #dom-xr-practice .dom-xr-concept { position:static; margin:0; }
 #dom-xr-practice .dom-xr-together p { margin:0; }
 /* Reinstate an unmistakable, slow halo on the current interactive step. */
-#dom-xr-neuromap [data-step-panel] .guide-current {
+.dom-xr-skin [data-step-panel] .guide-current {
   outline:0; border-color:#a9f7c7; border-radius:12px;
   background:rgba(80,177,116,.10);
   animation:dom-active-step 2.6s ease-in-out infinite!important;
 }
-#dom-xr-neuromap [data-step-panel] .guide-current::before {
+.dom-xr-skin [data-step-panel] .guide-current::before {
   animation:dom-active-halo 2.6s ease-in-out infinite;
   opacity:1; border:2px solid #b5ffd0; background:rgba(87,198,128,.08);
   box-shadow:0 0 20px 5px #7be8a866,inset 0 0 18px #70eea338;
@@ -74,10 +74,10 @@
   #dom-campus .dom-campus-photo img { object-position:right center; }
 }
 @media (prefers-reduced-motion:reduce) {
-  #dom-xr-neuromap [data-step-panel] .guide-current,
-  #dom-xr-neuromap [data-step-panel] .guide-current::before,
+  .dom-xr-skin [data-step-panel] .guide-current,
+  .dom-xr-skin [data-step-panel] .guide-current::before,
   #dom-collaborate .cta-video-wrap { animation:none!important; }
-  #dom-xr-neuromap [data-step-panel] .guide-current::before { opacity:.75; }
+  .dom-xr-skin [data-step-panel] .guide-current::before { opacity:.75; }
   #dom-collaborate .cta-video-wrap { box-shadow:0 0 28px #70dca366; }
 }
 /* Spend width before height; tighten only spacing inside the compositions. */
@@ -244,3 +244,43 @@
   #dom-ecosystem .dom-ecosystem-title-line { display:inline; }
   #dom-ecosystem .dom-ecosystem-layout .dom-family-intro { padding:12px 14px; }
 }
+
+/* Editorial preview: one two-line institute name, followed by its context. */
+.home-matrix .dom-intro-title {
+  font:500 clamp(28px,min(5vw,7svh),68px)/1.2 var(--hero-font,'Unbounded',sans-serif);
+  letter-spacing:-.04em; margin:0;
+}
+.home-matrix .dom-intro-brand,.home-matrix .dom-intro-title .dom-intro-purpose { display:block; }
+.home-matrix .dom-intro-title .dom-intro-purpose { font:inherit; letter-spacing:inherit; margin:6px 0 0; color:inherit; text-wrap:initial; }
+.home-matrix .dom-intro-world { font:400 clamp(20px,2.7vw,36px)/1.4 'Space Grotesk',sans-serif; margin:18px 0 0; }
+@media(max-width:600px) {
+ .home-matrix .dom-intro-title { font-size:clamp(21px,4.8vw,29px); }
+ .home-matrix .dom-intro-world { font-size:clamp(17px,4.2vw,24px); }
+}
+
+@media(min-width:1001px) {
+ #dom-ecosystem .dom-direction-card { padding-block:6px; }
+ #dom-ecosystem .dom-direction-card h3 { margin-bottom:4px; }
+ #dom-ecosystem .dom-direction-card p { margin-bottom:4px; }
+ #dom-ecosystem .dom-ecosystem-layout .dom-ecosystem-grid { gap:8px; }
+ #dom-ecosystem .dom-ecosystem-layout .dom-family-intro { margin-block:8px; }
+}
+
+/* Bring the institute name and its central question into one compact composition. */
+.home-matrix .dom-intro-cover { justify-content:center; gap:clamp(32px,8.5svh,80px); }
+.home-matrix .dom-intro-question {
+  width:100%; max-width:1000px; box-sizing:border-box;
+  padding:18px 24px; border:1px solid #a9efc545; border-radius:14px;
+  font:600 clamp(19px,1.8vw,26px)/1.45 'Space Grotesk',sans-serif;
+  color:#edfff3; text-shadow:0 0 20px #98e9b52b;
+  background:linear-gradient(110deg,#7fdba518,#7fdba508);
+  box-shadow:0 0 32px #74d99a1c,inset 0 0 24px #74d99a08;
+}
+@media(max-width:767px) {
+ .home-matrix .dom-intro-cover { gap:clamp(16px,4svh,30px); }
+ .home-matrix .dom-intro-question { padding:14px 16px; font-size:clamp(17px,4.5vw,22px); }
+}
+
+/* Let the central question use the available cover width; keep its established typography. */
+.home-matrix .dom-intro-bottom { width:100%; }
+.home-matrix .dom-intro-question { max-width:none; }

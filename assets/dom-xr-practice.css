@@ -37,6 +37,10 @@
  #dom-xr-practice .dom-xr-together{margin:12px 0;padding-top:10px}
  #dom-xr-practice .dom-xr-stage-note{margin-top:9px;font-size:10.5px}
 }
+#dom-xr-practice.is-light .dom-xr-practice-layout{grid-template-columns:minmax(0,1fr);max-width:1080px}
+#dom-xr-practice.is-light .dom-xr-together{max-width:40rem}
+#dom-xr-practice.is-light .dom-xr-light-foot{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;margin-top:16px}
+#dom-xr-practice.is-light .dom-xr-stage-note{margin:0;max-width:46ch}
 @media(max-width:900px){
  #dom-xr-practice{padding:28px 0!important}
  #dom-xr-practice .dom-xr-practice-layout{grid-template-columns:1fr;gap:22px}
