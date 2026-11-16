@@ -1,0 +1,44 @@
+{
+  "version": "0.1",
+  "status": "working-specification-not-installed-skill",
+  "date": "2026-11-16",
+  "complete_method_archive": false,
+  "monad_connected": false,
+  "files": [
+    {
+      "path": "AGENT-CONTRACT.md",
+      "sha256": "c17745c9294dc636e3e8a8994169d4c924c4e33f0c8e16fc8810b777caa805f6",
+      "size_bytes": 6849
+    },
+    {
+      "path": "DECISIONS.md",
+      "sha256": "1bdea7709b6bb1ee4f51fe964d9ad4c4ac3c6760bf9e575dc47b01f954aff880",
+      "size_bytes": 6961
+    },
+    {
+      "path": "INTEGRATION.md",
+      "sha256": "38fdab047b28f538c38b54ded329d654cced352bbbae0847792f29743ea7e4f2",
+      "size_bytes": 4726
+    },
+    {
+      "path": "README.md",
+      "sha256": "8e7514487fc1a9802f173570742d546fcd40c3d9054cbda93f03fe6eba61245d",
+      "size_bytes": 3237
+    },
+    {
+      "path": "SOURCES.md",
+      "sha256": "a6e04f370dc172d92bb5577296cdb18e98f5bad33a12739ac20d4f0788e3db92",
+      "size_bytes": 3605
+    },
+    {
+      "path": "sources/2026-11-16-homo-conscius-notes.md",
+      "sha256": "f42fc9fefda178d4f7720d42dd5904eba387693b1b9ae547cdf804203a8dde51",
+      "size_bytes": 19456
+    },
+    {
+      "path": "sources/2026-11-16-user-requirements.md",
+      "sha256": "51554a5fcfcffd699f37e9cf9297a81917809153732573bb02f7063afdd09809",
+      "size_bytes": 2857
+    }
+  ]
+}
