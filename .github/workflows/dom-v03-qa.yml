@@ -1,0 +1,32 @@
+name: DOM v03 checks
+on:
+  push:
+    branches: ['codex/home-master-v03-*']
+  pull_request:
+    branches: [main]
+    paths: ['assets/js/dom-v03*', 'assets/js/dom-journey*', 'assets/dom-v03.css', 'index.html', 'partner.html', 'api/partner*', 'scripts/test-dom-v03*', '.github/workflows/dom-v03-qa.yml']
+permissions:
+  contents: read
+jobs:
+  public-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test dependencies
+        run: npm install --prefix /tmp/dom-v03-qa --no-save playwright@1.56.1
+      - name: Install browsers
+        run: /tmp/dom-v03-qa/node_modules/.bin/playwright install --with-deps chromium firefox webkit
+      - name: Check DOM narrative, progression and layout
+        env:
+          NODE_PATH: /tmp/dom-v03-qa/node_modules
+        run: node scripts/test-dom-v03.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dom-v03-public-ui
+          path: qa-v03
+          retention-days: 7
