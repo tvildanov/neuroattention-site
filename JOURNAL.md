@@ -1976,3 +1976,19 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Reduced team portraits and added selectable illustrative profiles using the existing 13 indicators in three groups. Values are explicitly labelled demonstration scenarios, not personal measurements.
 - Validation: browser interaction checks for pin/unpin/Escape, theme defaults, DOM overview, all 13 team indicators, cursor over XR, wide scene and overflow at 390/768/1366px in RU/EN/ES. No runtime errors. Existing shared pages and API are untouched.
 - Publish through GitHub Pages; verify the terminal workflow result and deployed assets before reporting live.
+
+
+## 2026-11-16 — Viewport composition, theme preview and lightweight interaction
+
+- Moved the theme control after Account as a small luminous point without persistent text. Added a soft preview corner on hover/focus, short localized tooltip, radial full-screen reveal and a non-View-Transition fallback. Decorative preview clones are inert and stripped of IDs/data bindings.
+- Replaced explanatory text beneath the attention visual with a side arrow that responds to the video ripple. Retained drop defaults/haptics and pinned explanations. Measured alignment of the third point with the visual centre.
+- Reworked desktop spacing to fit attention, founder practice, Platform, XR, methods, ecosystem, campus, Institute & Lab and team within the available viewport on 1366×768, 1440×900 and 1536×864, RU/EN/ES and both themes. Founder image retains a large vertical format.
+- Constrained XR by the space remaining between actual header/footer heights; did not crop the interactive image or remove text.
+- Replaced the detached digital-only bridge with a compact positive ecosystem transition in RU/EN/ES. Standardized ecosystem title size.
+- Displayed the cleaned anatomy at full opacity in its own left column; original green in dark theme, electric blue in light theme.
+- Moved all 13 illustrative team indicators into translucent panes covering the three unselected cards; no extra section height. Values remain explicitly demonstrative.
+- Fixed full-width cream intro bar, rehabilitation CTA and light-theme electric-blue highlights. Kept ecosystem logo monochrome without colour flashing; XR scene colours are unchanged.
+- Reduced cover-question background opacity by roughly fivefold, unified supporting type and colour, and added a shared frame-limited pointer reaction to buttons and distinguished cards.
+- Prioritized the light-cover image, prepared videos ahead of scrolling while retaining viewport-only playback, shortened decorative image reveal delays, and used opacity for large halos. Preview recolouring is limited to the visible corner.
+- Browser checks: 18 desktop theme/language/viewport combinations fit; theme preview/switch, rings, all four team overlays, mobile width and reduced-motion pass without runtime errors. Focused five-hover run recorded one 56ms task; no continuous animation loop added for pointer reactions.
+- Publication authorized by the user; frontend destination is verified GitHub Pages repository tvildanov/neuroattention-site with CNAME dom.institute.

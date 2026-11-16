@@ -8,7 +8,7 @@ function init(){
  function play(v){if(document.hidden||reduce.matches||themedStatic(v)||!visible.has(v)||v.dataset.naNoAutoplay==='1'){v.pause();return;}prepare(v);v.muted=true;v.playsInline=true;const p=v.play();if(p&&p.catch)p.catch(()=>{});}
  videos.forEach(v=>{v.removeAttribute('autoplay');v.pause();});
  if('IntersectionObserver'in window){
-  const prepareObserver=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){prepare(e.target);prepareObserver.unobserve(e.target);}}),{rootMargin:'320px'});
+  const prepareObserver=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){prepare(e.target);prepareObserver.unobserve(e.target);}}),{rootMargin:'850px'});
   const playObserver=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)visible.add(e.target);else visible.delete(e.target);play(e.target);}),{threshold:.05});
   videos.forEach(v=>{prepareObserver.observe(v);playObserver.observe(v);});
  }else{const refresh=()=>videos.forEach(v=>{const r=v.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)visible.add(v);else visible.delete(v);play(v);});window.addEventListener('scroll',refresh,{passive:true});refresh();}
