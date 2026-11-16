@@ -1,0 +1,51 @@
+/* Relationships, not an invented hierarchy: six peers share the DOM centre. */
+#dom-ecosystem .dom-ecosystem-diagram-heading h2{max-width:1100px;margin:0 0 18px}
+#dom-ecosystem .dom-ecosystem-diagram-heading>.dom-family-intro{max-width:1000px;margin:0 0 24px;color:var(--text-secondary);font-size:16px;line-height:1.65}
+#dom-ecosystem .dom-eco-map-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:center;gap:32px}
+.dom-eco-wheel{position:relative;width:100%;max-width:540px;aspect-ratio:1;margin:auto;color:var(--accent-cyan)}
+.dom-eco-connections{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1;opacity:.3}
+.dom-eco-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;flex-direction:column;gap:7px}
+.dom-eco-center img{width:90px;height:90px;object-fit:contain}
+.dom-eco-center>span{font:500 14px var(--hero-font);letter-spacing:.1em;color:var(--text-primary)}
+.dom-eco-node{position:absolute;left:var(--eco-x);top:var(--eco-y);transform:translate(-50%,-50%);width:34%;min-height:62px;padding:9px 10px;box-sizing:border-box;border:1px solid transparent;border-radius:10px;background:var(--bg-base);color:var(--text-secondary);font:500 clamp(12px,1.1vw,15px)/1.4 var(--body-font,'Inter',sans-serif);text-align:center;cursor:pointer}
+.dom-eco-node:before{content:'';display:block;width:6px;height:6px;border-radius:50%;background:currentColor;margin:0 auto 7px;opacity:.6}
+.dom-eco-node:hover,.dom-eco-node:focus-visible{color:var(--text-primary);background:var(--bg-surface)}
+.dom-eco-node[aria-pressed='true']{color:var(--text-primary);background:var(--bg-surface);border-color:var(--line-soft);box-shadow:0 0 24px #a3d2b310}
+.dom-eco-node:focus-visible{outline:2px solid var(--accent-cyan);outline-offset:3px}
+#dom-ecosystem .dom-eco-panels article{padding:26px;border-left:1px solid var(--line-soft);border-radius:0;background:transparent;box-shadow:none;min-height:250px}
+#dom-ecosystem .dom-eco-panels article[hidden]{display:none}
+#dom-ecosystem .dom-eco-panels h3{font-size:clamp(22px,2vw,29px);line-height:1.35;margin:0 0 18px}
+#dom-ecosystem .dom-eco-panels p{font-size:16px;line-height:1.7;margin:0 0 20px}
+#dom-ecosystem .dom-eco-panels .dom-direction-links{margin-top:24px}
+.dom-method-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:18px 0 26px}
+.dom-method-stages button{position:relative;border:1px solid var(--line-soft);padding:18px 8px;min-height:92px;color:var(--text-secondary);border-radius:10px;background:transparent;font:500 15px/1.4 var(--body-font,'Inter',sans-serif);cursor:pointer}
+.dom-method-stages button+button:before{content:'→';position:absolute;right:calc(100% + 5px);top:50%;transform:translateY(-50%);width:14px;color:var(--accent-cyan);font:400 18px/1 Inter,sans-serif}
+.dom-method-stages button[aria-pressed='true']{background:var(--bg-surface);color:var(--text-primary);border-color:var(--accent-cyan)}
+.dom-method-stages button:focus-visible{outline:2px solid var(--accent-cyan);outline-offset:3px}
+#dom-profile-methods .dom-method-panels h3{font-size:21px;margin:0 0 12px}
+#dom-profile-methods .dom-method-panels p{font-size:15px;line-height:1.7;color:var(--text-secondary);margin:0}
+.dom-method-panels{min-height:210px}
+.dom-team-portrait{width:100%;aspect-ratio:4/5;margin-bottom:20px;border-radius:10px;overflow:hidden;background:var(--bg-surface)}
+.dom-team-portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 25%}
+html[data-dom-theme='light'] .dom-eco-center img{filter:grayscale(1) brightness(.65)}
+html[data-dom-theme='light'] .dom-method-stages button[aria-pressed='true']{background:#afcbf82b;color:#204c8e;border-color:#204c8e55}
+html[data-dom-theme='light'] .dom-eco-node[aria-pressed='true']{background:#afcbf825;color:#204c8e;border-color:#204c8e30;box-shadow:none}
+@media(max-width:900px){#dom-ecosystem .dom-eco-map-layout{grid-template-columns:1fr;gap:12px}.dom-eco-wheel{max-width:490px}#dom-ecosystem .dom-eco-panels article{border-left:0;border-top:1px solid var(--line-soft);padding:20px 0;min-height:210px}.dom-eco-node{font-size:13px}}
+@media(max-width:500px){.dom-eco-node{font-size:12px;padding-inline:4px;min-height:52px}.dom-eco-center img{width:66px;height:66px}.dom-method-stages{grid-template-columns:1fr;gap:20px}.dom-method-stages button{min-height:60px}.dom-method-stages button+button:before{content:'↓';right:auto;left:50%;top:-18px;transform:translateX(-50%)}.dom-method-panels{min-height:0}.dom-eco-center>span{font-size:12px}}
+.dom-eco-center img{mix-blend-mode:screen}
+html[data-dom-theme='light'] .dom-eco-center img{filter:invert(1);mix-blend-mode:multiply;opacity:.75}
+
+.dom-eco-center img{width:112px;height:112px}
+@media(max-width:500px){.dom-eco-center img{width:70px;height:70px}}
+
+/* A full-width centred headline precedes both the wheel and its detail panel. */
+#dom-ecosystem .dom-ecosystem-diagram-heading{width:100%;text-align:center}
+#dom-ecosystem .dom-ecosystem-diagram-heading h2{max-width:none;width:100%;font-size:clamp(25px,2.65vw,40px)!important;line-height:1.3;margin:0 auto 18px}
+#dom-ecosystem .dom-ecosystem-diagram-heading h2>span{display:block;white-space:nowrap}
+#dom-ecosystem .dom-ecosystem-diagram-heading>.dom-family-intro{margin-inline:auto;text-align:center}
+.dom-eco-center img{width:128px;height:128px}
+html[data-dom-theme='light'] .dom-eco-center img{opacity:1}
+.dom-team-portrait{aspect-ratio:1;padding:2px;border-radius:0;clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%);background:linear-gradient(140deg,var(--accent-cyan),var(--bg-surface),var(--accent-cyan))}
+.dom-team-portrait img{clip-path:inherit;border-radius:0;object-position:center 24%}
+@media(max-width:900px){#dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:clamp(19px,2.7vw,26px)!important}.dom-eco-center img{width:96px;height:96px}}
+@media(max-width:600px){#dom-ecosystem .dom-ecosystem-diagram-heading h2>span{white-space:normal}.dom-eco-center img{width:86px;height:86px}}

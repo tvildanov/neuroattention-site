@@ -2413,5 +2413,11 @@
   "seo.checkout-success.title": "DOM Institute — Статус оплаты",
   "seo.checkout-success.description": "Статус оплаты заказа DOM Institute.",
   "seo.payment-coming-soon.title": "DOM Institute — Оплата",
-  "seo.payment-coming-soon.description": "Информация об оплате в DOM Institute."
+  "seo.payment-coming-soon.description": "Информация об оплате в DOM Institute.",
+  "home.cover.brand": "DOM Институт",
+  "home.cover.purpose": "Человеческой Адаптации",
+  "home.ecosystem.enterprise.wheel": "Экономика и проекты",
+  "home.ecosystem.heading_top": "DOM как экосистема",
+  "home.ecosystem.heading_bottom": "для следующего этапа человеческого развития",
+  "home.attention.diagram": "Пять уровней: от внимания к общему фокусу"
 }

@@ -1,0 +1,20 @@
+/* Attention at the centre; four expanding rings match the five existing points. */
+#screen-4 .dom-insight-orb{position:relative;isolation:isolate;background:transparent;overflow:visible;box-shadow:none}
+.dom-attention-map{display:block;width:100%;height:100%;color:var(--accent-cyan);overflow:visible}
+.dom-attention-hit{fill:transparent;pointer-events:all;cursor:pointer}
+.dom-attention-visual{pointer-events:none;transform-origin:200px 200px;transition:transform .38s cubic-bezier(.22,1,.36,1),filter .38s ease;}
+.dom-attention-circle{fill:none;stroke:currentColor;stroke-width:1.1;opacity:.42;transition:opacity .3s ease,stroke-width .3s ease}
+.dom-attention-wash{fill:currentColor;opacity:.025;transition:opacity .3s ease}
+.dom-attention-core{fill:currentColor;opacity:.85;transition:opacity .3s ease}
+.dom-attention-map [aria-pressed='true'] .dom-attention-visual{transform:translate(3px,-3px);filter:drop-shadow(0 0 6px currentColor)}
+.dom-attention-map [aria-pressed='true'] .dom-attention-circle{opacity:1;stroke-width:1.8}
+.dom-attention-map [aria-pressed='true'] .dom-attention-wash{opacity:.065}
+.dom-attention-map [aria-pressed='true'] .dom-attention-core{opacity:1}
+#screen-4 .dom-insight-item{transition:transform .38s cubic-bezier(.22,1,.36,1);cursor:default}
+#screen-4 .dom-insight-item h3,#screen-4 .dom-insight-item p{transition:color .3s ease,text-shadow .3s ease}
+#screen-4 .dom-insight-item.is-attention-active{transform:translateX(3px)}
+#screen-4 .dom-insight-item.is-attention-active h3{color:var(--text-primary);text-shadow:0 0 20px color-mix(in srgb,var(--accent-cyan) 30%,transparent)}
+#screen-4 .dom-insight-item.is-attention-active p{color:var(--text-primary)}
+#screen-4 .dom-insight-item.is-attention-active .dom-insight-marker{background:var(--accent-cyan);box-shadow:0 0 12px color-mix(in srgb,var(--accent-cyan) 45%,transparent)}
+.dom-attention-map [data-attention-layer]:focus-visible .dom-attention-circle{stroke-width:2.5;opacity:1}
+@media(prefers-reduced-motion:reduce){.dom-attention-visual,.dom-attention-circle,.dom-attention-wash,.dom-attention-core,#screen-4 .dom-insight-item,#screen-4 .dom-insight-item h3,#screen-4 .dom-insight-item p{transition:none}.dom-attention-map [aria-pressed='true'] .dom-attention-visual,#screen-4 .dom-insight-item.is-attention-active{transform:none}}

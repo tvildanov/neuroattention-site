@@ -2248,5 +2248,11 @@
   "seo.checkout-success.title": "DOM Institute — Estado del Pago",
   "seo.checkout-success.description": "Estado del pago de tu pedido de DOM Institute.",
   "seo.payment-coming-soon.title": "DOM Institute — Pago",
-  "seo.payment-coming-soon.description": "Información de pago en DOM Institute."
+  "seo.payment-coming-soon.description": "Información de pago en DOM Institute.",
+  "home.cover.brand": "DOM Instituto",
+  "home.cover.purpose": "para la Adaptación Humana",
+  "home.ecosystem.enterprise.wheel": "Emprendimiento",
+  "home.ecosystem.heading_top": "DOM como ecosistema",
+  "home.ecosystem.heading_bottom": "para la próxima etapa del desarrollo humano",
+  "home.attention.diagram": "Cinco niveles: de la atención al enfoque compartido"
 }

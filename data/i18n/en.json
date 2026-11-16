@@ -2423,5 +2423,11 @@
   "seo.checkout-success.title": "DOM Institute — Payment Status",
   "seo.checkout-success.description": "Payment status for your DOM Institute order.",
   "seo.payment-coming-soon.title": "DOM Institute — Payment",
-  "seo.payment-coming-soon.description": "Payment information for DOM Institute."
+  "seo.payment-coming-soon.description": "Payment information for DOM Institute.",
+  "home.cover.brand": "DOM Institute",
+  "home.cover.purpose": "for Human Adaptation",
+  "home.ecosystem.enterprise.wheel": "Enterprise",
+  "home.ecosystem.heading_top": "DOM as an Ecosystem",
+  "home.ecosystem.heading_bottom": "for the Next Stage of Human Development",
+  "home.attention.diagram": "Five levels: from attention to shared focus"
 }
