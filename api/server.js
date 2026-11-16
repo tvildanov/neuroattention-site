@@ -3245,6 +3245,14 @@ function signToken(user) {
   );
 }
 
+// Isolated partner intake; shares JWT signing and SMTP but verifies email before account creation.
+require('./partner').install(app,{
+ sql,requireAuth,signToken,secret:JWT_SECRET,
+ hashPassword:password=>bcrypt.hash(password,BCRYPT_ROUNDS),
+ mailReady:()=>!!mailTransport,
+ deliver:message=>mailTransport.sendMail({from:EMAIL_FROM,...message})
+});
+
 // ── AUTH ENDPOINTS ──
 
 // Register

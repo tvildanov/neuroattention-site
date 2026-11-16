@@ -2192,3 +2192,10 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Added versioned anonymous local journey state (30-day TTL), passive section completion and local-only optional observation inputs. Existing profile values/method triad and campus/anatomy source images retained.
 - Added safe partner return-state hooks; partner destination and backend are the next stage, so this feature branch is not publishable yet.
 - Checks executed: JS parser compilation via orchestration runtime and pure journey direct-DOM/out-of-order/repeat-close/completion checks. Browser/layout/API checks have NOT run. Local execution remains unavailable.
+
+
+## 2026-11-16 — v0.3 partner API checkpoint
+
+- Added verified-email partner intake reusing JWT signing and SMTP transport, namespaced additive application/challenge/proof/permission/audit/rate tables; user role is always user for new accounts.
+- Real submissions require email proof and consent, use authenticated DB ownership and idempotency key. User reads are owner-only; admin review uses superadmin or explicit read/manage permission; readonly service principals denied. Status updates use version checks and atomic audit.
+- Added isolated PostgreSQL integration tests; SMTP test adapter only. Syntax checked in orchestration runtime; CI results pending. No production migration/deployment yet.

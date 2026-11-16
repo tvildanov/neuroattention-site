@@ -111,3 +111,7 @@ DOM Space is working branding; six direction labels are editorial clusters, all 
 | HOME-71 | Pending | Matrix green/electric blue, one suggested control per active screen; keyboard/aria/focus/touch/reduced-motion. |
 | HOME-72 | Pending | Final CTA/anchor audit after route assembled; preserve working links until replacement verified. |
 | HOME-73 | Pending | QA all steps, RU/EN/ES, dark/light, 1440×900/1366×768/1280×720/320/375px, history, permissions, true backend submission, terminal deployments/live check. |
+
+## Backend checkpoint
+
+`api/partner.js` and additive `078_partner_applications.sql` provide verified-email challenge flow, existing identity reuse, real idempotent applications, owner-only reads, explicit read/manage reviewer grants and optimistic audited status changes. Raw roles/owners from the frontend are ignored; MONAD readonly identity is refused. SMTP absence/failure does not return successful verification/delivery. Production handler shares the existing JWT/SMTP context. PostgreSQL-backed integration tests added to branch CI; test mail is isolated, not sent to people. UI flow/cabinet remain the next stage. Tests not yet passed; no merge/deploy.
