@@ -281,3 +281,7 @@ html[data-dom-theme='light'] :is(#dom-xr-neuromap,#dom-profile-neuromap) .xr-map
 .dom-team-sheet{grid-template-rows:80px minmax(0,1fr) 48px}
 @media(min-width:1001px){#dom-education-research .dom-education-anatomy img{top:-2%}#dom-education-research>.container{translate:0 clamp(0px,calc((100svh - 720px)*.75),36px)}}
 @media(max-width:1000px){.dom-team-sheet{grid-template-rows:86px minmax(0,1fr) 64px}}
+/* Fit the complete source vertically: its existing thigh crop ends at the section edge. */
+@media(min-width:1001px){
+ #dom-education-research .dom-education-anatomy img{height:100%;width:auto;top:auto;bottom:0;left:calc((100svh - 70px)*-.09);object-fit:contain;object-position:left bottom}
+}

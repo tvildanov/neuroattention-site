@@ -2029,3 +2029,34 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue from the deployed large-anatomy, larger-XR and unified team profile layout."
 }
 ```
+
+
+## 2026-11-16 — Fit the complete anatomical figure
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T18:12:50.634182+00:00",
+  "did": [
+    "Corrected the anatomy fit: display the complete source height instead of 142% enlargement. The original lower-thigh crop aligns with the section bottom; the foreground bounding box fits horizontally.",
+    "Retained the source quality, theme-specific colours and existing Institute & Lab text layout. Corrected intrinsic image dimensions to 935×1681.",
+    "Verified both themes at 1366×768, 1280×720 and 1440×900; image and section heights match, the top and bottom edges align, and the complete foreground remains inside its column. Visually inspected the result."
+  ],
+  "changed": [
+    "Figure sizing and stylesheet cache revision only."
+  ],
+  "files": [
+    "assets/dom-home-composition.css",
+    "index.html",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Keep the full silhouette rather than cropping the torso to simulate a larger figure."
+  ],
+  "followups": [
+    "Verify the deployed homepage after GitHub Pages completes."
+  ],
+  "next_session": "Continue from the fully fitted anatomical figure; do not restore 142% scaling."
+}
+```
