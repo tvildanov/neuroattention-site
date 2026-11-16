@@ -2060,3 +2060,96 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue from the fully fitted anatomical figure; do not restore 142% scaling."
 }
 ```
+
+
+## 2026-11-16 — Pending cover wrap and parallel-work handoff
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T18:24:53.103076+00:00",
+  "did": [
+    "Prepared a Russian light-theme desktop cover line break after «условиям»; dark theme and narrow screens retain natural wrapping.",
+    "Prepared docs/DOM-PARALLEL-WORK.md with separate checkout/branch ownership, shared-file rules, sequential fresh-main publication and context handoff guidance."
+  ],
+  "changed": [
+    "Pending homepage branch only; no production publication."
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-home-composition.css",
+    "assets/js/dom-home-refinements.js",
+    "docs/DOM-PARALLEL-WORK.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly requested batching the small copy-layout change into the next homepage release.",
+    "A new typology work should start from fresh main in its own checkout and feature branch, not reuse this pending homepage branch.",
+    "The handoff is a coordination protocol, not an installed branch-protection or automatic publishing lock."
+  ],
+  "followups": [
+    "Include the pending line break in the next authorized homepage batch.",
+    "Give the new work the handoff document and have it inspect the current account implementation."
+  ],
+  "next_session": "Read docs/DOM-PARALLEL-WORK.md and current main; preserve the pending cover line break."
+}
+```
+
+
+## 2026-11-16 — Site-wide themes and cabinet presentation
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T19:01:17.144764+00:00",
+  "did": [
+    "Extended persisted dark/light theme to all 17 public-facing HTML pages, including account and standalone application/payment/legal pages.",
+    "Restyled cabinet auth, navigation, cards, profile bars and dynamic dialog surfaces with Matrix dark and cream/blue light palettes.",
+    "Included previously deferred Russian light-cover break after условиям.",
+    "Verified all public pages with local browser fixtures; original cabinet executable inline scripts are byte-for-byte unchanged."
+  ],
+  "changed": [
+    "New isolated theme and cabinet stylesheets; shared theme controller; local font connections and DOM navigation wordmark."
+  ],
+  "files": [
+    "checkout-success.html",
+    "terms-of-service.html",
+    "projects.html",
+    "index.html",
+    "xr.html",
+    "custom.html",
+    "method.html",
+    "account.html",
+    "programs.html",
+    "practice.html",
+    "dom.html",
+    "payment-coming-soon.html",
+    "checkout-confirm.html",
+    "privacy-policy.html",
+    "lab.html",
+    "rehabilitation-application.html",
+    "test.html",
+    "assets/dom-site-theme.css",
+    "assets/dom-site-light.css",
+    "assets/dom-account-light.css",
+    "assets/dom-account-skin.css",
+    "assets/js/dom-theme.js",
+    "assets/dom-home-composition.css",
+    "assets/js/dom-home-refinements.js",
+    "docs/DOM-PARALLEL-WORK.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No changes to typology calculations, backend, API, DB, access control or profile values.",
+    "Default remains dark. Stored theme persists between pages and syncs between tabs.",
+    "Separate typology work should use fresh main; changes and ownership documented in DOM-PARALLEL-WORK.md."
+  ],
+  "followups": [
+    "Observe terminal GitHub Pages deployment success and verify live domain.",
+    "Authenticated production account flows were not exercised with real credentials; visual dashboard/modal checks use local fixtures without API writes."
+  ],
+  "next_session": "Read current main and docs/DOM-PARALLEL-WORK.md before typology changes. Use shared theme variables for new account components."
+}
+```

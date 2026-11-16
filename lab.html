@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<script data-dom-theme-bootstrap>try{var dt=localStorage.getItem('dom_theme');document.documentElement.dataset.domTheme=dt==='light'?'light':'dark';}catch(e){document.documentElement.dataset.domTheme='dark';}document.documentElement.style.colorScheme=document.documentElement.dataset.domTheme;document.documentElement.style.backgroundColor=document.documentElement.dataset.domTheme==='light'?'#fffbf2':'#030a07';</script>
 <script>
 (function(){
   // Content stays readable even when storage, fonts or translation requests are blocked.
@@ -16,9 +17,6 @@
 <title data-i18n-meta="seo.lab.title">DOM Institute — NeuroAttention Lab</title>
 <link rel="canonical" href="https://dom.institute/lab.html" />
 <meta name="description" data-i18n-meta="seo.lab.description" content="NeuroAttention Lab explores attention, self-regulation and human adaptation through methods, protocols and research collaboration at DOM Institute." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"  media="print" onload="this.media='all'" />
 <link rel="stylesheet" href="assets/styles.css?v=dom-entry-2" />
 <link rel="stylesheet" href="assets/redesign.css" />
 <style>
@@ -262,14 +260,19 @@
 <meta property="og:description" content="NeuroAttention Lab explores attention, self-regulation and human adaptation through methods, protocols and research collaboration at DOM Institute." />
 <meta name="twitter:title" content="DOM Institute — NeuroAttention Lab" />
 <meta name="twitter:description" content="NeuroAttention Lab explores attention, self-regulation and human adaptation through methods, protocols and research collaboration at DOM Institute." />
+
+<link rel="stylesheet" href="assets/dom-fonts.css?v=site-theme-20261116">
+<link rel="stylesheet" href="assets/dom-site-light.css?v=site-theme-20261116">
+<link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
+<script src="assets/js/dom-theme.js?v=site-theme-20261116" defer></script>
 </head>
-<body class="dom-matrix">
+<body class="dom-matrix dom-site" data-dom-page="lab">
 <div class="deep-atmosphere" aria-hidden="true"></div>
 <div class="noise-overlay" aria-hidden="true"></div>
 
 <nav class="navbar">
   <div class="container navbar-inner">
-    <a href="index.html" class="nav-logo"><img src="assets/logo-na.png" alt="" class="nav-logo-icon">Neuro<span class="text-gradient-cyan">Attention</span><span class="lab">Lab</span></a>
+    <a href="index.html" class="nav-logo"><img src="assets/dom-logo-matrix.svg" alt="" class="nav-logo-icon"><span class="dom-brand-name">DOM Institute</span></a>
     <div class="nav-links">
       <a href="index.html" class="nav-link" data-i18n="nav.home">Главная</a>
       <a href="test.html" class="nav-link" data-i18n="nav.test">Тест</a>
