@@ -1,5 +1,5 @@
 {
-  "version": "0.2",
+  "version": "0.3",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-16",
   "complete_method_archive": false,
@@ -22,8 +22,9 @@
     },
     {
       "path": "README.md",
-      "sha256": "ad5a540db59d06fb2a73b24f10945c28f7e136d798440a0a09401be95b008e37",
-      "size_bytes": 3679
+      "git_blob_sha": "9dcdda33d09a44997709016fdfe9b107e2503d47",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 4201
     },
     {
       "path": "SOURCES.md",
@@ -54,9 +55,22 @@
       "path": "sources/2026-08-26-handoff-chat-transcription.md",
       "sha256": "ecebb33fdd6c3dbbd20c7d150ca44ceea68926098c9a72a63bc78a257b671388",
       "size_bytes": 52766
+    },
+    {
+      "path": "CONTINUE.md",
+      "git_blob_sha": "914eb62ddc66c7283c3169c55f41daacf3e3f72d",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 10010
+    },
+    {
+      "path": "sources/2026-11-16-guided-development-request.md",
+      "git_blob_sha": "4a23750a017f2b01d65ccc104f4918deee86afad",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 3232
     }
   ],
   "full_handoff_text_included": true,
   "attachment_byte_identity_verified": false,
-  "shared_chat_read": false
+  "shared_chat_read": false,
+  "active_checkpoint": "CONTINUE.md"
 }
