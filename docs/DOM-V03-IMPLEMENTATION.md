@@ -17,6 +17,10 @@ Canonical master attachment: `DOM_Institute_Site_Changes_Master_v0.3_2026-11-16.
 - `requireAuth` accepts a MONAD read-only service principal mapped to a privileged human. Partner personal-data routes must explicitly reject `req.monadReadonly` and read real user roles/permissions from DB.
 - Frontend uses GitHub Pages; Railway `neuroattention-api`: project `1dd157e4-547e-4b08-9ba3-0be4202bfab3`, environment `502fd87d-1730-4c7b-bc36-efc96f082065`, service `90c8e681-c84e-4b59-8074-942afde84f7a`, repo main. Current latest deployment SUCCESS `650b1c4e-154e-412f-a0ea-6f3ba967d1fc` (existing release, not v0.3).
 
+## Current implementation checkpoint
+
+Public UI code prepared: seven-step ecosystem, four DOM Space perspectives, six working direction clusters and full catalogue, four pilot questions, common CTA, anonymous journey state, optional local-only observations and return-state hooks. Syntax compilation and pure journey logic checked in orchestration JS runtime; **not browser-tested yet**. Partner links intentionally target the next implementation stage; this branch is not published. No production claim.
+
 ## Delivery stages
 
 1. Source/audit/checkpoint (this commit).

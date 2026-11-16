@@ -2184,3 +2184,11 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Read docs/DOM-V03-IMPLEMENTATION.md; continue from branch codex/home-master-v03-20261116, inspect latest commit and checks."
 }
 ```
+
+
+## 2026-11-16 — v0.3 public experience implementation checkpoint
+
+- Added isolated localized narrative data, existing-wheel seven-step controller, four Space perspectives, six directions/full catalogue, four pilot disclosures and common invitation.
+- Added versioned anonymous local journey state (30-day TTL), passive section completion and local-only optional observation inputs. Existing profile values/method triad and campus/anatomy source images retained.
+- Added safe partner return-state hooks; partner destination and backend are the next stage, so this feature branch is not publishable yet.
+- Checks executed: JS parser compilation via orchestration runtime and pure journey direct-DOM/out-of-order/repeat-close/completion checks. Browser/layout/API checks have NOT run. Local execution remains unavailable.
