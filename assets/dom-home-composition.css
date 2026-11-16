@@ -208,3 +208,7 @@ html[data-dom-theme='light'] .home-matrix .line-accent{box-shadow:0 0 22px #4c9b
 .home-matrix :is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current::before{animation:dom-soft-halo 2.6s ease-in-out infinite!important;will-change:opacity}
 @keyframes dom-soft-halo{0%,100%{opacity:.45}50%{opacity:1}}
 @media(prefers-reduced-motion:reduce){.home-matrix :is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current::before{animation:none!important;opacity:.75}}
+html[data-dom-theme='light'] .home-matrix :is(#dom-xr-neuromap,#dom-profile-neuromap) .guide-current{outline-color:#7db7ff88;box-shadow:0 0 18px #4c9bff20}
+html[data-dom-theme='light'] :is(#dom-xr-neuromap,#dom-profile-neuromap) :is(.xr-observation-line,.xr-future-line){stroke:#4c9bff66}
+html[data-dom-theme='light'] :is(#dom-xr-neuromap,#dom-profile-neuromap) .xr-future-node{fill:#92bdf2}
+html[data-dom-theme='light'] :is(#dom-xr-neuromap,#dom-profile-neuromap) .xr-map-node{border-color:#4c9bff88}
