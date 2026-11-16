@@ -1994,3 +1994,38 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Publication authorized by the user; frontend destination is verified GitHub Pages repository tvildanov/neuroattention-site with CNAME dom.institute.
 
 - Additional short-window pass: 1280×720 fits all nine target sections; 1366×700 uses the same compact spacing. Below the supported desktop width, content stays readable with natural page scrolling rather than clipping or shrinking all typography. Corrected the 1001–1100px team grid to keep overlays aligned with portraits.
+
+
+## 2026-11-16 — Larger anatomy and XR; shared team profile
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T17:59:27.866979+00:00",
+  "did": [
+    "Enlarged Institute & Lab anatomy to 142% of the section height; full head remains visible, eyes align with the heading and lower body continues beyond the section boundary. Original green and light-theme electric blue are preserved.",
+    "Exported the original 935×1681 transparent cutout to a 244 KB WebP to retain detail at the larger display size.",
+    "Rebuilt XR into one compact header and a three-column footer with a separate CTA. Scene width increased from approximately 838px to 1023px at 1366×768, with all text visible.",
+    "Replaced repeated team metadata with one shared title, one demo note, one explanation and one close control. Edge portraits open one continuous sheet; middle portraits open two sheets around the selected card. All 13 indicators remain interactive."
+  ],
+  "changed": [
+    "Homepage composition, XR caption placement and team renderer only."
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-home-composition.css",
+    "assets/js/dom-home-refinements.js",
+    "assets/images/theme/anatomical-presence-hd.webp",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "No personal measurement claims were introduced; the existing illustrative values are unchanged.",
+    "Preserve all XR narrative text, theme behaviour and section height while increasing the image."
+  ],
+  "followups": [
+    "Observe GitHub Pages publication and verify the live homepage before reporting completion."
+  ],
+  "next_session": "Continue from the deployed large-anatomy, larger-XR and unified team profile layout."
+}
+```
