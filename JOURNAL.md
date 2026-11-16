@@ -1963,3 +1963,16 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue DOM rebranding from the current main branch and the latest publication status; no need to recreate either interaction fix."
 }
 ```
+
+
+## 2026-11-16 — Homepage interaction refinements
+
+- Restored the original drop video and existing impact/ripple haptic listener; dark defaults to drop, light defaults to rings. Explicit mode switch, viewport playback, reduced-motion handling.
+- Added pinned ring explanations with dimmed surrounding content, keyboard controls and Escape; hover preview stays available when unpinned.
+- Added an explicit theme label and split light/dark icon, electric-blue light-theme cursor, and restored the attention trail over XR with a homepage-scoped script.
+- Matched cover title sizes across languages; enlarged light-cover brain by 30%; restored wide XR composition.
+- Compacted ecosystem wheel and made center DOM open its own overview.
+- Replaced anatomy background with an AI-cleaned transparent cutout and removed CSS white-key filtering.
+- Reduced team portraits and added selectable illustrative profiles using the existing 13 indicators in three groups. Values are explicitly labelled demonstration scenarios, not personal measurements.
+- Validation: browser interaction checks for pin/unpin/Escape, theme defaults, DOM overview, all 13 team indicators, cursor over XR, wide scene and overflow at 390/768/1366px in RU/EN/ES. No runtime errors. Existing shared pages and API are untouched.
+- Publish through GitHub Pages; verify the terminal workflow result and deployed assets before reporting live.

@@ -1,5 +1,5 @@
 (()=>{'use strict';const root=document.getElementById('screen-4');if(!root)return;const layers=[...root.querySelectorAll('[data-attention-layer]')],points=[...root.querySelectorAll('[data-attention-point]')];if(layers.length!==5||points.length!==5)return;
-function activate(index){layers.forEach((layer,i)=>layer.setAttribute('aria-pressed',String(i===index)));points.forEach((point,i)=>point.classList.toggle('is-attention-active',i===index));}
+function activate(index){if(root.dataset.attentionPinned!==undefined && Number(root.dataset.attentionPinned)!==index)return;layers.forEach((layer,i)=>layer.setAttribute('aria-pressed',String(i===index)));points.forEach((point,i)=>point.classList.toggle('is-attention-active',i===index));}
 function localize(){layers.forEach((layer,i)=>{const title=points[i].querySelector('h3');if(title)layer.setAttribute('aria-label',title.textContent.trim());});}
 function pointAt(event){const box=root.querySelector('.dom-attention-map').getBoundingClientRect(),x=(event.clientX-box.left)/box.width*400-200,y=(event.clientY-box.top)/box.height*400-200,r=Math.hypot(x,y);if(r<=193)activate(r<25?0:r<67.5?1:r<112.5?2:r<157.5?3:4);}
 const map=root.querySelector('.dom-attention-map');map.addEventListener('pointermove',pointAt);map.addEventListener('pointerdown',pointAt);map.addEventListener('click',pointAt);
