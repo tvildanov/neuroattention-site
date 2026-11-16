@@ -1,4 +1,4 @@
-/* DOM v0.3 editorial working direction labels. No official faculties or results claimed. */
+/* DOM v0.3 editorial working directions; no official faculties or proven results claimed. */
 window.DOMV03Copy={
   "ru": {
     "ui": {
@@ -163,7 +163,62 @@ window.DOMV03Copy={
         "title": "Как бизнесу оставаться актуальным в новом мире?",
         "body": "Разрабатываем способы адаптации предпринимателей, команд, продуктов и бизнес-моделей. Три масштаба: внимание и устойчивость руководителя; взаимодействие и процессы команды; полезность продукта людям. ИИ и автоматизация — инструменты для жизнеспособности бизнеса и реальной ценности, а не самоцель."
       }
-    ]
+    ],
+    "xr": {
+      "note": "Веб-инструменты находятся в кабинете с учётом прав доступа. Совместная XR-среда развивается; персональные наложения, числа и сигналы на иллюстрации — демонстрационные.",
+      "intro": "В DOM XR вы изучаете собственное тело и внимание, видите изменения во время практики и развиваете навыки — самостоятельно, со специалистом или вместе с людьми на расстоянии.",
+      "profile": [
+        "Профиль участника",
+        "Алекс",
+        "Профиль адаптации · Stable Explorer",
+        "Пульс · 72 уд/мин",
+        "ЭЭГ · частотный пик 10,2 Гц"
+      ],
+      "brain": [
+        "Объёмная модель мозга",
+        "Изучайте мозг, нервную систему и другие системы организма в интерактивном 3D-атласе — от строения и функций до практических уроков. Связывайте знания об анатомии с ощущениями, заданиями и собственной картой наблюдений."
+      ],
+      "devices": [
+        "Подключаемые устройства",
+        "Совместимые сенсоры, носимые устройства, XR-очки и ИИ-помощники соединяют данные, сопровождение практик и личную карту. Для участников без собственных устройств DOM развивает интегрированный комплект."
+      ],
+      "point": [
+        "Точка внимания",
+        "Выбранный фокус становится видимым в XR: отмечайте область тела или пространства и удерживайте на ней внимание во время практики. Так легче понимать задание и возвращаться к выбранному фокусу."
+      ],
+      "sphere": [
+        "Сфера внимания",
+        "От одной точки — к объёму внутренних ощущений. Сфера помогает удерживать внимание на дыхании, напряжении и других сигналах тела, уточняя интероцептивную карту — понимание того, что происходит внутри."
+      ],
+      "field": [
+        "Поле внимания",
+        "Расширяйте фокус до тела в движении и пространства вокруг. Поле помогает исследовать положение и перемещение тела — основу проприоцепции — и взаимодействие с окружающей средой."
+      ],
+      "presence": [
+        "Рядом на расстоянии",
+        "Компактные камеры и XR-очки создают ощущение совместного присутствия: участники видят друг друга, жесты и общие 3D-объекты в пространстве занятия — даже находясь в разных странах."
+      ],
+      "nerve": [
+        "Анатомия на вашем теле",
+        "Пример — поверхностная ветвь лучевого нерва, связанная с чувствительностью части тыльной стороны кисти со стороны большого пальца. Анатомические слои поверх тела помогают сопоставлять изучаемые структуры с ощущениями и движением."
+      ],
+      "hand": [
+        "Ощущения в кисти",
+        "Отмечайте голосом или на модели, где вы чувствуете тепло, напряжение или покалывание и насколько сильно. Эти субъективные отметки становятся видимыми на карте тела и сохраняются, чтобы проследить изменения во времени."
+      ],
+      "brain_data": [
+        "От сигналов к личной карте",
+        "Показания совместимых датчиков соединяются с ощущениями, эмоциями и событиями на личной временной карте. Возвращайтесь к записям, наблюдайте изменения и исследуйте повторяющиеся связи между состоянием, нагрузкой и повседневной жизнью."
+      ],
+      "eeg": [
+        "ЭЭГ · активность мозга",
+        "Наблюдайте ритмы электрической активности мозга во время занятий и сопоставляйте изменения с заданиями и собственными наблюдениями. Временная запись сигнала может помогать анализировать ход практики."
+      ],
+      "heart": [
+        "Пульс · реакция организма",
+        "Следите за изменением пульса во время упражнений и сопоставляйте его с дыханием, нагрузкой и ощущениями. Так физиологическая реакция становится наглядной частью практики."
+      ]
+    }
   },
   "en": {
     "ui": {
@@ -328,7 +383,62 @@ window.DOMV03Copy={
         "title": "How can businesses stay relevant in a changing world?",
         "body": "We develop approaches to adapting founders, teams, products and business models. Three scales: leaders’ attention and resilience; team interaction and processes; and the product’s usefulness to people. AI and automation serve business viability and real value rather than becoming ends in themselves."
       }
-    ]
+    ],
+    "xr": {
+      "note": "Web tools are in the account, subject to access permissions. Shared XR is under development; personal overlays, values and signals in the illustration are demonstrative.",
+      "intro": "In DOM XR, explore your body and attention, observe changes during practice and develop skills — independently, with a practitioner or together with people across distance.",
+      "profile": [
+        "Participant profile",
+        "Alex",
+        "Adaptation profile · Stable Explorer",
+        "Heart rate · 72 bpm",
+        "EEG · frequency peak 10.2 Hz"
+      ],
+      "brain": [
+        "3D brain model",
+        "Explore the brain, nervous system and other body systems in an interactive 3D atlas — from structure and function to practical lessons. Connect anatomy with sensations, exercises and your own observation map."
+      ],
+      "devices": [
+        "Connected devices",
+        "Compatible sensors, wearables, XR glasses and AI assistants connect data, practice support and a personal map. DOM is developing an integrated kit for participants without their own devices."
+      ],
+      "point": [
+        "Attention point",
+        "Make a chosen focus visible in XR: mark an area of the body or space and sustain attention during practice. This helps clarify the task and return to the chosen focus."
+      ],
+      "sphere": [
+        "Attention sphere",
+        "From one point to a volume of internal sensations. The sphere guides attention to breathing, tension and other body signals, refining an interoceptive map — understanding what is happening inside."
+      ],
+      "field": [
+        "Attention field",
+        "Broaden the focus to the moving body and surrounding space. The field helps explore body position and movement — the basis of proprioception — and interaction with the environment."
+      ],
+      "presence": [
+        "Together across distance",
+        "Compact cameras and XR glasses create a sense of shared presence: participants see one another, gestures and shared 3D objects in a learning space, even from different countries."
+      ],
+      "nerve": [
+        "Anatomy on your body",
+        "For example, the superficial radial nerve is associated with sensation in part of the thumb-side back of the hand. Anatomical layers over the body help relate the structures being studied to sensations and movement."
+      ],
+      "hand": [
+        "Sensations in the hand",
+        "Use voice or the model to record where you feel warmth, tension or tingling and how intense it is. These self-reported observations become visible on a body map and can be saved to review changes over time."
+      ],
+      "brain_data": [
+        "From signals to a personal map",
+        "Compatible sensor readings join your sensations, emotions and events on a personal timeline. Revisit records, observe changes and explore recurring relationships between state, load and everyday life."
+      ],
+      "eeg": [
+        "EEG · brain activity",
+        "Observe rhythms of the brain’s electrical activity during sessions and compare changes with tasks and your own observations. A time-based signal record can support review of practice."
+      ],
+      "heart": [
+        "Heart rate · the body’s response",
+        "Follow heart-rate changes during exercises alongside breathing, load and sensations. A physiological response becomes a visible part of practice."
+      ]
+    }
   },
   "es": {
     "ui": {
@@ -493,6 +603,61 @@ window.DOMV03Copy={
         "title": "¿Cómo puede seguir siendo relevante una empresa?",
         "body": "Desarrollamos enfoques para adaptar a emprendedores, equipos, productos y modelos de negocio. Tres escalas: atención y resiliencia del liderazgo; interacción y procesos del equipo; y utilidad del producto. La IA y la automatización sirven a la viabilidad y al valor real, no son fines en sí mismas."
       }
-    ]
+    ],
+    "xr": {
+      "note": "Las herramientas web están en la cuenta, según los permisos de acceso. La XR compartida está en desarrollo; las capas personales, cifras y señales de la ilustración son de demostración.",
+      "intro": "En DOM XR puedes explorar tu cuerpo y atención, observar cambios durante la práctica y desarrollar habilidades — de forma independiente, con un especialista o con otras personas a distancia.",
+      "profile": [
+        "Perfil del participante",
+        "Alex",
+        "Perfil de adaptación · Stable Explorer",
+        "Pulso · 72 lpm",
+        "EEG · pico de frecuencia 10,2 Hz"
+      ],
+      "brain": [
+        "Modelo cerebral 3D",
+        "Explora el cerebro, el sistema nervioso y otros sistemas corporales en un atlas 3D interactivo: de la estructura y función a lecciones prácticas. Relaciona anatomía, sensaciones, ejercicios y tu mapa de observaciones."
+      ],
+      "devices": [
+        "Dispositivos conectados",
+        "Sensores compatibles, dispositivos portátiles, gafas XR y asistentes de IA conectan datos, acompañamiento y mapa personal. DOM desarrolla un conjunto integrado para quienes no disponen de dispositivos propios."
+      ],
+      "point": [
+        "Punto de atención",
+        "Haz visible un foco elegido en XR: señala una zona del cuerpo o del espacio y mantén la atención durante la práctica. Así es más fácil comprender la tarea y volver al foco elegido."
+      ],
+      "sphere": [
+        "Esfera de atención",
+        "De un punto al volumen de sensaciones internas. La esfera orienta la atención a la respiración, la tensión y otras señales corporales, afinando el mapa interoceptivo: comprender lo que ocurre dentro."
+      ],
+      "field": [
+        "Campo de atención",
+        "Amplía el foco al cuerpo en movimiento y al espacio que lo rodea. El campo ayuda a explorar posición y movimiento corporal —base de la propiocepción— y la interacción con el entorno."
+      ],
+      "presence": [
+        "Juntos a distancia",
+        "Cámaras compactas y gafas XR crean una sensación de presencia compartida: los participantes ven a otras personas, sus gestos y objetos 3D comunes en un espacio de práctica, incluso desde distintos países."
+      ],
+      "nerve": [
+        "Anatomía sobre tu cuerpo",
+        "Por ejemplo, la rama superficial del nervio radial se relaciona con la sensibilidad de parte del dorso de la mano del lado del pulgar. Las capas anatómicas sobre el cuerpo ayudan a relacionar estructuras, sensaciones y movimiento."
+      ],
+      "hand": [
+        "Sensaciones en la mano",
+        "Registra por voz o sobre el modelo dónde sientes calor, tensión u hormigueo y su intensidad. Estas observaciones subjetivas se muestran en el mapa corporal y pueden guardarse para revisar cambios en el tiempo."
+      ],
+      "brain_data": [
+        "De las señales al mapa personal",
+        "Las lecturas de sensores compatibles se unen a sensaciones, emociones y acontecimientos en una línea de tiempo personal. Vuelve a los registros, observa cambios y explora relaciones recurrentes entre estado, carga y vida cotidiana."
+      ],
+      "eeg": [
+        "EEG · actividad cerebral",
+        "Observa los ritmos eléctricos del cerebro durante las sesiones y compara los cambios con las tareas y tus observaciones. El registro temporal puede ayudar a analizar la práctica."
+      ],
+      "heart": [
+        "Pulso · respuesta del organismo",
+        "Observa los cambios del pulso durante los ejercicios junto con la respiración, la carga y las sensaciones. La respuesta fisiológica se vuelve una parte visible de la práctica."
+      ]
+    }
   }
 };

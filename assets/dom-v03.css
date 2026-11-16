@@ -119,3 +119,16 @@ html[data-dom-theme=light] .home-matrix{--v03-accent:#204c8e;--v03-glow:#4c9bff3
  .dom-v03-invitation>.btn{white-space:normal}
 }
 @media(prefers-reduced-motion:reduce){.is-v03-active .is-suggested{animation:none;outline:1px solid var(--v03-accent)}.dom-v03-arrow{transition:none}}
+
+/* Keep full XR scene; one scene disclosure replaces repeated badges. */
+#dom-xr-scene .dr-demo{display:none!important}
+#dom-xr-scene .dr-note{font-size:10px;line-height:1.35}
+#dom-xr-scene .dr-profile-row{margin:5px 0;font:400 12px/1.4 Inter,sans-serif}
+#dom-xr-scene .dr-demo-avatar{display:flex;width:36px;height:36px;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:50%;margin-bottom:8px;font:500 16px/1 Inter,sans-serif}
+@media(min-width:1001px){
+ #dom-xr-practice .dom-xr-panorama-heading{display:grid;grid-template-columns:1fr 1fr;align-items:center}
+ #dom-xr-practice .dom-xr-panorama-heading h3{display:block;text-align:center;white-space:normal}
+ #dom-xr-practice .dom-xr-panorama-heading h3 br{display:initial}
+ #dom-xr-practice .dom-xr-footer{grid-template-columns:minmax(0,1fr) auto}
+ #dom-xr-practice .dom-xr-identity .dom-family-label{margin-top:3px}
+}
