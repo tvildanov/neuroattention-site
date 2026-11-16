@@ -2060,3 +2060,38 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Continue from the fully fitted anatomical figure; do not restore 142% scaling."
 }
 ```
+
+
+## 2026-11-16 — Pending cover wrap and parallel-work handoff
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T18:24:53.103076+00:00",
+  "did": [
+    "Prepared a Russian light-theme desktop cover line break after «условиям»; dark theme and narrow screens retain natural wrapping.",
+    "Prepared docs/DOM-PARALLEL-WORK.md with separate checkout/branch ownership, shared-file rules, sequential fresh-main publication and context handoff guidance."
+  ],
+  "changed": [
+    "Pending homepage branch only; no production publication."
+  ],
+  "files": [
+    "index.html",
+    "assets/dom-home-composition.css",
+    "assets/js/dom-home-refinements.js",
+    "docs/DOM-PARALLEL-WORK.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "User explicitly requested batching the small copy-layout change into the next homepage release.",
+    "A new typology work should start from fresh main in its own checkout and feature branch, not reuse this pending homepage branch.",
+    "The handoff is a coordination protocol, not an installed branch-protection or automatic publishing lock."
+  ],
+  "followups": [
+    "Include the pending line break in the next authorized homepage batch.",
+    "Give the new work the handoff document and have it inspect the current account implementation."
+  ],
+  "next_session": "Read docs/DOM-PARALLEL-WORK.md and current main; preserve the pending cover line break."
+}
+```

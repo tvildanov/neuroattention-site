@@ -285,3 +285,7 @@ html[data-dom-theme='light'] :is(#dom-xr-neuromap,#dom-profile-neuromap) .xr-map
 @media(min-width:1001px){
  #dom-education-research .dom-education-anatomy img{height:100%;width:auto;top:auto;bottom:0;left:calc((100svh - 70px)*-.09);object-fit:contain;object-position:left bottom}
 }
+
+/* Pending cover copy layout: Russian light theme, wide screens only. */
+.dom-intro-question .dom-cover-ru-break{display:none}
+@media(min-width:1101px){html[data-dom-theme='light'][lang='ru'] .dom-intro-question .dom-cover-ru-break{display:initial}}
