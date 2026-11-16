@@ -49,12 +49,12 @@
 #dom-xr-practice .dom-xr-concept { position:static; margin:0; }
 #dom-xr-practice .dom-xr-together p { margin:0; }
 /* Reinstate an unmistakable, slow halo on the current interactive step. */
-#dom-xr-neuromap [data-step-panel] .guide-current {
+:is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current {
   outline:0; border-color:#a9f7c7; border-radius:12px;
   background:rgba(80,177,116,.10);
   animation:dom-active-step 2.6s ease-in-out infinite!important;
 }
-#dom-xr-neuromap [data-step-panel] .guide-current::before {
+:is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current::before {
   animation:dom-active-halo 2.6s ease-in-out infinite;
   opacity:1; border:2px solid #b5ffd0; background:rgba(87,198,128,.08);
   box-shadow:0 0 20px 5px #7be8a866,inset 0 0 18px #70eea338;
@@ -74,10 +74,10 @@
   #dom-campus .dom-campus-photo img { object-position:right center; }
 }
 @media (prefers-reduced-motion:reduce) {
-  #dom-xr-neuromap [data-step-panel] .guide-current,
-  #dom-xr-neuromap [data-step-panel] .guide-current::before,
+  :is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current,
+  :is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current::before,
   #dom-collaborate .cta-video-wrap { animation:none!important; }
-  #dom-xr-neuromap [data-step-panel] .guide-current::before { opacity:.75; }
+  :is(#dom-xr-neuromap,#dom-profile-neuromap) [data-step-panel] .guide-current::before { opacity:.75; }
   #dom-collaborate .cta-video-wrap { box-shadow:0 0 28px #70dca366; }
 }
 /* Spend width before height; tighten only spacing inside the compositions. */

@@ -2045,7 +2045,7 @@
   "home.journey.account_cta": "Crear una cuenta y conocer mi perfil",
   "home.journey.example_note": "Los valores ilustran un ejemplo. Tu perfil se determina mediante la evaluación.",
   "home.journey.body_preview": "Mapa corporal",
-  "home.journey.intro_note": "Prueba una experiencia breve: de una sensación a un mapa de tu estado y un perfil.",
+  "home.journey.intro_note": "Prueba una breve experiencia: de una sensación a un mapa de tu estado actual.",
   "home.journey.profile_stage": "Paso 4 · Elige un ejemplo, explora sus características y selecciona una dirección.",
   "home.journey.direction_label": "Elige una dirección de desarrollo",
   "home.journey.focus_title": "Enfoque principal de trabajo",
@@ -2203,8 +2203,16 @@
   "home.value.projects_note": "El catálogo crecerá a medida que se preparen las fichas. La inclusión no concede automáticamente Cristales DOM.",
   "home.value.projects_submit": "Proponer un proyecto",
   "home.ecosystem.title": "un ecosistema para la siguiente etapa del desarrollo humano",
-  "home.ecosystem.title_short": "un ecosistema",
+  "home.ecosystem.title_short": "como un ecosistema",
   "home.ecosystem.title_next": "para la siguiente etapa",
   "home.ecosystem.title_human": "del desarrollo humano",
-  "home.v2.1195eef548": "En un mundo que cambia rápidamente"
+  "home.v2.1195eef548": "En un mundo que cambia rápidamente",
+  "home.journey.to_xr": "Siguiente: el espacio XR",
+  "home.v2.a0eca6b8cc": "Desarrollamos el espacio XR del instituto para aprender, investigar y adquirir habilidades de adaptación a un mundo cambiante. Junto a otros participantes y especialistas, de forma individual o en grupo.",
+  "home.xr.presence": "Un DOM donde sentir la presencia de los demás y cultivar relaciones de confianza, incluso a distancia.",
+  "home.xr.explore": "Explorar DOM XR",
+  "home.xr.stage": "Concepto del espacio XR del instituto. El entorno compartido está en desarrollo.",
+  "home.profile.method_intro": "La tipología DOM conecta las características del cuerpo, la atención y la interacción con el mundo con la práctica de NeuroAttention. La evaluación permite establecer un punto de partida; los métodos, protocolos y programas orientan el trabajo posterior.",
+  "home.profile.ecosystem_bridge": "Pero DOM es más que un entorno digital",
+  "home.foundation.open_platform": "Explorar la plataforma"
 }

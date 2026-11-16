@@ -1,0 +1,59 @@
+/* A single narrative: experience → map → shared XR → practice → ecosystem. */
+#dom-practice-foundation .dom-foundation-link-copy {
+  padding:13px 18px;margin-block:18px 0;border-left:2px solid #a9efc5;
+  background:linear-gradient(100deg,#83d9a51d,#83d9a505);border-radius:0 10px 10px 0;
+  color:#e1fbea;font-size:17px;font-weight:600;line-height:1.6;
+  box-shadow:-5px 0 24px -10px #a0efbd66;text-shadow:0 0 18px #a0efbd1f;
+}
+#dom-xr-neuromap>.xr-progress { grid-template-columns:repeat(3,minmax(0,1fr)); }
+#dom-xr-practice .dom-xr-practice-layout {
+  display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.35fr);
+  align-items:center;gap:clamp(28px,4vw,56px);
+}
+#dom-xr-practice .dom-xr-concept {
+  width:100%;max-width:none;margin:0;transform:none;align-self:center;
+}
+#dom-xr-practice .dom-xr-together {margin:12px 0 0;padding:0;}
+#dom-xr-practice .dom-xr-together p {font-size:16px;line-height:1.65;}
+#dom-xr-practice .dom-xr-together .dom-xr-presence {
+  margin:22px 0;color:#e1fbea;font-weight:600;padding-left:15px;
+  border-left:2px solid #a9efc5;text-shadow:0 0 20px #8be8ad26;
+}
+#dom-xr-practice .dom-xr-together .dom-xr-stage-note {font-size:12px;margin-top:14px;color:var(--text-secondary);}
+.home-matrix #dom-profile-methods {
+  padding-block:var(--dom-section-space);scroll-margin-top:70px;
+  min-height:calc(100svh - 70px);display:flex;flex-direction:column;justify-content:center;
+}
+#dom-profile-methods h2#dom-profile-methods-title {
+  font-family:var(--hero-font);font-size:var(--dom-title);font-weight:500;
+  line-height:1.18;letter-spacing:-.04em;margin:0 0 28px;
+}
+#dom-profile-methods .dom-profile-methods-layout {
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+  gap:clamp(28px,4vw,56px);align-items:start;
+}
+#dom-profile-neuromap {padding:0;background:none;overflow:visible;min-width:0;}
+#dom-profile-neuromap .xr-window:not([hidden]) {display:block!important;min-height:0;max-height:none;height:auto;}
+#dom-profile-neuromap .xr-profile-content {padding:18px 20px;}
+#dom-profile-methods .dom-profile-methods-intro h3 {font-size:22px;line-height:1.4;margin:0 0 12px;font-weight:500;}
+#dom-profile-methods .dom-profile-methods-intro p {font-size:15px;line-height:1.65;margin:0 0 20px;color:var(--text-secondary);}
+#dom-profile-methods .dom-xr-practice-path {display:grid;gap:16px;list-style:none;padding:0;margin:0;}
+#dom-profile-methods .dom-xr-practice-path li {display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;}
+#dom-profile-methods .dom-xr-practice-path li>span {font-size:12px;color:#a9efc5;padding-top:4px;}
+#dom-profile-methods .dom-xr-practice-path h3 {font-size:17px;font-weight:600;line-height:1.4;margin:0 0 5px;}
+#dom-profile-methods .dom-xr-practice-path p {font-size:14px;line-height:1.6;margin:0;color:var(--text-secondary);}
+#dom-profile-methods .dom-xr-practice-actions {margin-top:22px;}
+#dom-profile-methods .dom-narrative-bridge {
+  margin:30px 0 0;text-align:center;font-family:var(--hero-font);font-size:clamp(20px,2vw,28px);
+  font-weight:500;line-height:1.45;color:#d8f9e5;text-shadow:0 0 24px #8be8ad33;
+}
+@media(max-width:1000px) {
+  #dom-xr-practice .dom-xr-practice-layout,#dom-profile-methods .dom-profile-methods-layout {grid-template-columns:1fr;}
+  #dom-xr-practice .dom-xr-concept {width:100%;max-width:none;margin:0;}
+  #dom-xr-practice .dom-xr-together {margin-bottom:12px;}
+  #dom-profile-methods .dom-profile-methods-layout {gap:28px;}
+  #dom-profile-methods h2#dom-profile-methods-title {font-size:clamp(26px,5vw,40px);}
+}
+
+#dom-practice-foundation .dom-foundation-layout {row-gap:14px;}
+#dom-practice-foundation .dom-foundation-link-copy {grid-column:1/-1;margin:0;}
