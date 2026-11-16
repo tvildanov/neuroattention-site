@@ -18,3 +18,6 @@
 #screen-4 .dom-insight-item.is-attention-active .dom-insight-marker{background:var(--accent-cyan);box-shadow:0 0 12px color-mix(in srgb,var(--accent-cyan) 45%,transparent)}
 .dom-attention-map [data-attention-layer]:focus-visible .dom-attention-circle{stroke-width:2.5;opacity:1}
 @media(prefers-reduced-motion:reduce){.dom-attention-visual,.dom-attention-circle,.dom-attention-wash,.dom-attention-core,#screen-4 .dom-insight-item,#screen-4 .dom-insight-item h3,#screen-4 .dom-insight-item p{transition:none}.dom-attention-map [aria-pressed='true'] .dom-attention-visual,#screen-4 .dom-insight-item.is-attention-active{transform:none}}
+#screen-4 .dom-insight-item h3,#screen-4 .dom-insight-item p{opacity:.72;transition:opacity .3s ease,color .3s ease,text-shadow .3s ease}
+#screen-4 .dom-insight-item.is-attention-active h3,#screen-4 .dom-insight-item.is-attention-active p{opacity:1}
+@media(prefers-reduced-motion:reduce){#screen-4 .dom-insight-item h3,#screen-4 .dom-insight-item p{transition:none}}
