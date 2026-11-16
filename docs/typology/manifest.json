@@ -1,5 +1,5 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-16",
   "complete_method_archive": false,
@@ -7,8 +7,8 @@
   "files": [
     {
       "path": "AGENT-CONTRACT.md",
-      "sha256": "c17745c9294dc636e3e8a8994169d4c924c4e33f0c8e16fc8810b777caa805f6",
-      "size_bytes": 6849
+      "sha256": "8abc2096d19c1819182ef194b92253fe1201f62c552e472422e5ff06a0d982d1",
+      "size_bytes": 8591
     },
     {
       "path": "DECISIONS.md",
@@ -22,13 +22,13 @@
     },
     {
       "path": "README.md",
-      "sha256": "8e7514487fc1a9802f173570742d546fcd40c3d9054cbda93f03fe6eba61245d",
-      "size_bytes": 3237
+      "sha256": "ad5a540db59d06fb2a73b24f10945c28f7e136d798440a0a09401be95b008e37",
+      "size_bytes": 3679
     },
     {
       "path": "SOURCES.md",
-      "sha256": "a6e04f370dc172d92bb5577296cdb18e98f5bad33a12739ac20d4f0788e3db92",
-      "size_bytes": 3605
+      "sha256": "a3d9a86b3aa777c89e388507c23723f3b6db71669e0f02da25ac706a431b71b0",
+      "size_bytes": 5407
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -39,6 +39,24 @@
       "path": "sources/2026-11-16-user-requirements.md",
       "sha256": "51554a5fcfcffd699f37e9cf9297a81917809153732573bb02f7063afdd09809",
       "size_bytes": 2857
+    },
+    {
+      "path": "FOUNDATION-REVIEW.md",
+      "sha256": "e4279a6c4c1155bd9aa55321cec786105b8cfb70b71c0ea65c5d6633ad9bb115",
+      "size_bytes": 12992
+    },
+    {
+      "path": "HANDOFF-REVIEW.md",
+      "sha256": "dae29bb7c0a6f9de58d13d13544cd96eeb561e083ff32da9d2f31695ade9c11f",
+      "size_bytes": 13604
+    },
+    {
+      "path": "sources/2026-08-26-handoff-chat-transcription.md",
+      "sha256": "ecebb33fdd6c3dbbd20c7d150ca44ceea68926098c9a72a63bc78a257b671388",
+      "size_bytes": 52766
     }
-  ]
+  ],
+  "full_handoff_text_included": true,
+  "attachment_byte_identity_verified": false,
+  "shared_chat_read": false
 }
