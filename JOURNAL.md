@@ -2153,3 +2153,34 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Read current main and docs/DOM-PARALLEL-WORK.md before typology changes. Use shared theme variables for new account components."
 }
 ```
+
+
+## 2026-11-16 — DOM v0.3 source intake and safe implementation branch
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T23:29:56.746Z",
+  "did": [
+    "Read full user-pasted Quickstart and master XR-01…16 / HOME-17…73 through final changelog.",
+    "Audited main/parallel branch, existing scene handlers and backend auth; established feature branch and requirement registry."
+  ],
+  "changed": [
+    "Documentation checkpoint only; production unchanged."
+  ],
+  "files": [
+    "docs/DOM-V03-IMPLEMENTATION.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Package 03 and current explicit deployment authorisation supersede collection-era no-edit notes.",
+    "Require real verified-email partner flow; reject readonly service principal on application data.",
+    "Preserve parallel typology documentation and existing client functionality."
+  ],
+  "followups": [
+    "Implement in staged commits; remote CI required while local environment unavailable; no untested production claims."
+  ],
+  "next_session": "Read docs/DOM-V03-IMPLEMENTATION.md; continue from branch codex/home-master-v03-20261116, inspect latest commit and checks."
+}
+```
