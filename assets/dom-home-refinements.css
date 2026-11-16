@@ -77,3 +77,6 @@ html[data-dom-theme='light'] #dom-education-research .dom-education-anatomy img{
 #screen-4 .dom-insight-layout{position:relative}
 #screen-4 .dom-attention-map [data-attention-layer]{outline:none}
 @media(min-width:768px){#screen-4 .dom-attention-detail{position:absolute;right:0;top:50%;transform:translateY(-50%);width:56%;box-sizing:border-box;z-index:4;background:color-mix(in srgb,var(--bg-surface) 94%,transparent);backdrop-filter:blur(12px)}#screen-4.is-attention-pinned .dom-insight-points{opacity:.2;filter:blur(1px)}}
+html[data-dom-theme='light'] #screen-4 .dom-attention-toggle{color:#d5e7ff;border-color:#afcbf866;background:#afcbf80c}
+html[data-dom-theme='light'] #screen-4 .dom-attention-toggle:hover{background:#afcbf81c;border-color:#afcbf8}
+html[data-dom-theme='light'] #dom-education-research .dom-product-result{background:#afcbf80a;border-color:#afcbf830;color:#d5e0ed}
