@@ -1992,3 +1992,5 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Prioritized the light-cover image, prepared videos ahead of scrolling while retaining viewport-only playback, shortened decorative image reveal delays, and used opacity for large halos. Preview recolouring is limited to the visible corner.
 - Browser checks: 18 desktop theme/language/viewport combinations fit; theme preview/switch, rings, all four team overlays, mobile width and reduced-motion pass without runtime errors. Focused five-hover run recorded one 56ms task; no continuous animation loop added for pointer reactions.
 - Publication authorized by the user; frontend destination is verified GitHub Pages repository tvildanov/neuroattention-site with CNAME dom.institute.
+
+- Additional short-window pass: 1280×720 fits all nine target sections; 1366×700 uses the same compact spacing. Below the supported desktop width, content stays readable with natural page scrolling rather than clipping or shrinking all typography. Corrected the 1001–1100px team grid to keep overlays aligned with portraits.
