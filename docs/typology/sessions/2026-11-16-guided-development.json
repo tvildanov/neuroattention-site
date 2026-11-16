@@ -1,0 +1,28 @@
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-16",
+  "did": [
+    "Saved a scoped summary of founder requirements",
+    "Created CONTINUE.md with one pending founder question FQ01",
+    "Updated package entry and manifest; verified new files through GitHub"
+  ],
+  "changed": [
+    "Project documentation only"
+  ],
+  "files": [
+    "docs/typology/CONTINUE.md",
+    "docs/typology/sources/2026-11-16-guided-development-request.md",
+    "docs/typology/README.md",
+    "docs/typology/manifest.json"
+  ],
+  "decisions": [
+    "Objective-evidence coverage is a target requiring a method, not a fixed weight",
+    "One concrete founder question per step; preserve source and interpretation separately"
+  ],
+  "followups": [
+    "Receive a real anonymous before/after example and derive useful assessment requirements"
+  ],
+  "next_session": "Read CONTINUE.md; FQ01 is unanswered.",
+  "journal_note": "Automatic review rejected rewriting the full root JOURNAL.md because of potentially sensitive historical details. This minimal session record preserves current work without republishing that historical payload."
+}
