@@ -105,14 +105,24 @@
     }
 
     // <title> + meta description
-    var titleVal = dict['meta.title'] || fb['meta.title'];
+    var titleEl = document.querySelector('title');
+    var titleKey = titleEl && titleEl.getAttribute('data-i18n-meta') || 'meta.title';
+    var titleVal = dict[titleKey] || fb[titleKey];
     if (titleVal) document.title = titleVal;
 
     var metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
-      var descVal = dict['meta.description'] || fb['meta.description'];
+      var descKey = metaDesc.getAttribute('data-i18n-meta') || 'meta.description';
+      var descVal = dict[descKey] || fb[descKey];
       if (descVal) metaDesc.setAttribute('content', descVal);
     }
+
+    // Keep share metadata consistent with the page-specific localized metadata.
+    ['og:title', 'twitter:title', 'og:description', 'twitter:description'].forEach(function (name) {
+      var el = document.querySelector('meta[property="' + name + '"],meta[name="' + name + '"]');
+      var value = name.indexOf('description') !== -1 ? (metaDesc && metaDesc.getAttribute('content')) : document.title;
+      if (el && value) el.setAttribute('content', value);
+    });
 
     // html lang attribute
     document.documentElement.lang = currentLang;
