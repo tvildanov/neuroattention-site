@@ -61,7 +61,7 @@ function positionDetail(){
 function position(){
  const small=matchMedia('(max-width:600px)').matches;
  const scene=q('.dr-scene');
- qa('.dr-hotspot').forEach(b=>{const hands=scene.dataset.view==='hands';b.hidden=small&&(hands?(+b.dataset.x>=50):(+b.dataset.x<50));b.style.left=(small?(+b.dataset.x-(hands?0:50))*2:(+b.dataset.x<50?+b.dataset.x+50:+b.dataset.x-50))+'%';b.style.top=b.dataset.y+'%';});
+ qa('.dr-hotspot').forEach(b=>{const hands=scene.dataset.view==='hands';b.hidden=small&&(hands?(+b.dataset.x>=50):(+b.dataset.x<50));b.style.left=(small?(+b.dataset.x-(hands?0:50))*2:+b.dataset.x)+'%';b.style.top=b.dataset.y+'%';});
  if(selected&&q('[data-open="'+selected+'"]').hidden){selected='';q('.dr-detail').hidden=true;}
  if(!selected&&!visibleKeys().includes(cueKey))cueKey=visibleKeys()[0]||'profile';
  cue();positionDetail();

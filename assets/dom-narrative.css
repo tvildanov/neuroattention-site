@@ -61,3 +61,16 @@
 
 #dom-practice-foundation .dom-foundation-layout {row-gap:14px;}
 #dom-practice-foundation .dom-foundation-link-copy {grid-column:1/-1;margin:0;}
+
+/* Let the image use the space left by real heading/footer heights on laptops. */
+@media(min-width:1001px) and (min-height:600px) {
+  .home-matrix #dom-xr-practice {--dom-section-space:20px;height:calc(100svh - 70px);padding-block:20px!important;box-sizing:border-box;}
+  #dom-xr-practice>.container {height:100%;}
+  #dom-xr-practice .dom-xr-practice-layout {height:100%;grid-template-rows:auto minmax(0,1fr) auto;gap:14px;}
+  #dom-xr-practice .dom-xr-concept {container-type:size;min-height:0;align-self:stretch;display:grid;grid-template-rows:minmax(0,1fr) 16px;justify-items:center;}
+  #dom-xr-practice #dom-xr-scene {width:min(100%,calc((100cqh - 16px) * 2));max-height:calc(100cqh - 16px);align-self:center;}
+  #dom-xr-practice .dom-xr-concept figcaption {font-size:11px;line-height:16px;margin:0;justify-self:center;}
+  #dom-xr-practice .dom-xr-footer p {font-size:15px;line-height:1.5;}
+  #dom-xr-practice .dom-xr-footer .dom-xr-presence {margin-bottom:10px;}
+  #dom-xr-practice .dom-xr-footer .dom-xr-stage-note {font-size:11px;line-height:1.4;margin-top:8px;}
+}

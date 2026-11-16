@@ -64,9 +64,9 @@
   50% { box-shadow:0 0 30px 6px #7be8a88c,inset 0 0 24px #70eea33d; }
 }
 @keyframes dom-active-halo { 0%,100% { opacity:.45; } 50% { opacity:1; } }
-#dom-collaborate .cta-video-wrap { border:1px solid #b0f7c8; animation:dom-invitation-halo 3.4s ease-in-out infinite; }
+#dom-collaborate .cta-video-wrap { border:1px solid #b0f7c8; animation:dom-invitation-halo 4.8s ease-in-out infinite; }
 @keyframes dom-invitation-halo {
-  0%,100% { border-color:#a9f4c28c; box-shadow:0 0 16px 2px #70dca34d,inset 0 0 18px #70dca31f; }
+  0%,100% { border-color:#a9f4c28c; box-shadow:0 0 16px 2px #70dca34d,0 0 48px #70dca321,inset 0 0 18px #70dca31f; }
   50% { border-color:#c9ffdd; box-shadow:0 0 32px 7px #70dca38c,0 0 72px #70dca347,inset 0 0 30px #70dca338; }
 }
 @media (max-width:1000px) {
