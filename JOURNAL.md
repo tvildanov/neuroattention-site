@@ -2239,3 +2239,11 @@ Validation: Chromium confirmed the requested title before translation and after 
 ## 2026-11-17 — v0.4.1 usability checkpoint
 
 User requested original drop restoration, a reusable export of the new renderer, visible contained text scrolling, octagonal journey/reset, stepped ecosystem heading, image recrops, native modal cursor, noun research labels, and updated Crystal positioning. Implemented on an isolated branch from ade9700. Initial 1366x768 visual inspection passed for ecosystem, Space and Institute reading surfaces. The local environment disconnected during export upload; no claim of saved Library delivery or final QA/publication is made. Continue with GitHub CI and export artifact generation. Account/API/profile values and parallel typology work are outside this change.
+
+
+## 2026-11-17 — Monad cabinet authorization repair
+
+- Observed authenticated cabinet inbox calls failing downstream in MCP with Unauthorized; existing per-human Persona routing is preserved.
+- Updated only neuroattention-api MONAD_API_KEY to the protected Railway reference to monad-server.MONAD_API_KEY. No credential value was read, logged or committed. No master key, user role or permission changes.
+- Added a read-only operator CLI with an offline routing check for Nikita/Egor/Nastya and unmapped users. Live mode uses the existing MCP client and prints booleans only.
+- Deployment and live verification are in progress; see docs/MONAD-AUTH-REPAIR-20261117.md for final evidence. No user conversations have been sent during verification. Parallel typology branch remains untouched.

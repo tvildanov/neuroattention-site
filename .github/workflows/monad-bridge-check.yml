@@ -1,0 +1,20 @@
+name: Monad bridge routing
+on:
+  pull_request:
+    paths:
+      - 'api/services/monad.js'
+      - 'api/scripts/check-monad-connection.js'
+      - '.github/workflows/monad-bridge-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  routing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check api/scripts/check-monad-connection.js
+      - run: node api/scripts/check-monad-connection.js --offline
