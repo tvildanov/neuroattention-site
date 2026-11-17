@@ -1,5 +1,5 @@
 {
-  "version": "0.4",
+  "version": "0.5",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-16",
   "complete_method_archive": false,
@@ -13,9 +13,9 @@
     },
     {
       "path": "DECISIONS.md",
-      "git_blob_sha": "4837d38ecb251ac54455372a826583f8945d0293",
+      "git_blob_sha": "108294754e1fa9d0a6c3beefbeb065b9cb80ff86",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 9450
+      "size_bytes": 11791
     },
     {
       "path": "INTEGRATION.md",
@@ -30,9 +30,9 @@
     },
     {
       "path": "SOURCES.md",
-      "git_blob_sha": "b0eb9a6f452e2bcc00e5f5dd44a8658175995fec",
+      "git_blob_sha": "1409e3e58d913d8c952584fb182567231979b96a",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 6376
+      "size_bytes": 7281
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -61,9 +61,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "a96905d43906bf611efe37f3786f56812534e801",
+      "git_blob_sha": "7e79a56364b2152aa633192648a520152c527911",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 13067
+      "size_bytes": 13812
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -76,6 +76,18 @@
       "git_blob_sha": "bda7916043de1169a31ae3fe2b24671773571d4e",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 7610
+    },
+    {
+      "path": "SPACE-AWARENESS.md",
+      "git_blob_sha": "879bcf3514ff7b9ba76a40bcdd82bcb2f9ae2494",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 8256
+    },
+    {
+      "path": "sources/2026-11-16-space-awareness-expansion.md",
+      "git_blob_sha": "108c92555298ae4436b10eaf67c5ff7748518cdb",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 5011
     }
   ],
   "full_handoff_text_included": true,
