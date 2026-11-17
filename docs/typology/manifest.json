@@ -1,7 +1,7 @@
 {
-  "version": "0.5",
+  "version": "0.6",
   "status": "working-specification-not-installed-skill",
-  "date": "2026-11-16",
+  "date": "2026-11-17",
   "complete_method_archive": false,
   "monad_connected": false,
   "files": [
@@ -13,9 +13,9 @@
     },
     {
       "path": "DECISIONS.md",
-      "git_blob_sha": "108294754e1fa9d0a6c3beefbeb065b9cb80ff86",
+      "git_blob_sha": "5a57af368bf52678917038b4e432a4222f1a8be3",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 11791
+      "size_bytes": 14800
     },
     {
       "path": "INTEGRATION.md",
@@ -30,9 +30,9 @@
     },
     {
       "path": "SOURCES.md",
-      "git_blob_sha": "1409e3e58d913d8c952584fb182567231979b96a",
+      "git_blob_sha": "7029a650cff25a97757394091d93812ee7ffaa12",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 7281
+      "size_bytes": 8472
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -61,9 +61,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "7e79a56364b2152aa633192648a520152c527911",
+      "git_blob_sha": "c7b51e2eb4d598eb60dec97be5c26c6de27ee269",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 13812
+      "size_bytes": 16057
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -79,15 +79,21 @@
     },
     {
       "path": "SPACE-AWARENESS.md",
-      "git_blob_sha": "879bcf3514ff7b9ba76a40bcdd82bcb2f9ae2494",
+      "git_blob_sha": "5ba7452d005ebb6a5ea860a4cda8009cf14bdfe8",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 8256
+      "size_bytes": 16061
     },
     {
       "path": "sources/2026-11-16-space-awareness-expansion.md",
       "git_blob_sha": "108c92555298ae4436b10eaf67c5ff7748518cdb",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 5011
+    },
+    {
+      "path": "sources/2026-11-17-space-body-and-intentional-use.md",
+      "git_blob_sha": "e82eb26ca043c5f3d4c1b0a8f799c79603f88ee7",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 14352
     }
   ],
   "full_handoff_text_included": true,
