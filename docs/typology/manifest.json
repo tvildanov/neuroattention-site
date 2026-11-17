@@ -1,5 +1,5 @@
 {
-  "version": "0.3",
+  "version": "0.4",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-16",
   "complete_method_archive": false,
@@ -7,13 +7,15 @@
   "files": [
     {
       "path": "AGENT-CONTRACT.md",
-      "sha256": "8abc2096d19c1819182ef194b92253fe1201f62c552e472422e5ff06a0d982d1",
-      "size_bytes": 8591
+      "git_blob_sha": "3e09c1fc045be4b8ace376c8209bb53201f01665",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 11290
     },
     {
       "path": "DECISIONS.md",
-      "sha256": "1bdea7709b6bb1ee4f51fe964d9ad4c4ac3c6760bf9e575dc47b01f954aff880",
-      "size_bytes": 6961
+      "git_blob_sha": "4837d38ecb251ac54455372a826583f8945d0293",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 9450
     },
     {
       "path": "INTEGRATION.md",
@@ -28,8 +30,9 @@
     },
     {
       "path": "SOURCES.md",
-      "sha256": "a3d9a86b3aa777c89e388507c23723f3b6db71669e0f02da25ac706a431b71b0",
-      "size_bytes": 5407
+      "git_blob_sha": "b0eb9a6f452e2bcc00e5f5dd44a8658175995fec",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 6376
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -58,15 +61,21 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "914eb62ddc66c7283c3169c55f41daacf3e3f72d",
+      "git_blob_sha": "a96905d43906bf611efe37f3786f56812534e801",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 10010
+      "size_bytes": 13067
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
       "git_blob_sha": "4a23750a017f2b01d65ccc104f4918deee86afad",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 3232
+    },
+    {
+      "path": "sources/2026-11-16-characteristic-first-multimethod.md",
+      "git_blob_sha": "bda7916043de1169a31ae3fe2b24671773571d4e",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 7610
     }
   ],
   "full_handoff_text_included": true,
