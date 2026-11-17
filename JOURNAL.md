@@ -2106,3 +2106,38 @@ Read current branch source/decision registers and journal through GitHub. Local 
   "next_session": "Use full handoff and HANDOFF-REVIEW rather than repeating the superseded partial-source plan"
 }
 ```
+
+
+## 2026-11-16 — Founder clarification: characteristic-first, multi-method DOM
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex_chatgpt_work",
+  "at": "2026-11-16",
+  "did": [
+    "Received explicit founder instruction to update the existing shared JOURNAL.md",
+    "Rechecked GitHub metadata: tvildanov/neuroattention-site is public",
+    "Recorded founder correction that DOM profiling and research are independent of any one intervention method"
+  ],
+  "changed": [
+    "New project-only journal entry; existing historical text preserved byte-for-byte"
+  ],
+  "files": [
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Use the 13 characteristics as the current modelling foundation; NeuroAttention is one candidate intervention among others",
+    "Support recommendations by profile, existing program and a participant-selected characteristic",
+    "Treat founder experience as retrospective reports, not validated treatment evidence; do not append participant health details to this public journal",
+    "Continue one shared journal; do not create additional technical journals for this session"
+  ],
+  "followups": [
+    "Update active continuation and agent instructions to remove single-method framing",
+    "Ask one concrete question on the intended scope of Space Awareness"
+  ],
+  "next_session": "Continue characteristic-first, multi-method development from docs/typology/CONTINUE.md"
+}
+```
+
+Previous guided-development session was recorded in [its existing minimal record](docs/typology/sessions/2026-11-16-guided-development.json) after an automatic-review rejection of a journal update. The founder has now explicitly requested updates to this shared journal; no additional per-session journal is created here.
