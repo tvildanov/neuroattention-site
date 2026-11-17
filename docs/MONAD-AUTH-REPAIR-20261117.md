@@ -29,3 +29,7 @@ Deployment 87d937a0-7886-44e0-948a-d2a6bd145816 reached SUCCESS. At 2026-11-17T1
 ```
 
 The follow-up runtime-health probe deployment d88fb6a3-e469-4a8e-a23f-5ba7759a3572 is still BUILDING as of 2026-11-17T16:43Z; no runtime-health result is claimed yet. Current configured start command is restored to node server.js and temporary pre-deploy checks have been cleared for future deployments. The protected credential reference remains.
+
+
+## Follow-up: Egor's missing replies and duplicate messages
+The previously pending d88fb6a3-e469-4a8e-a23f-5ba7759a3572 deployment subsequently succeeded. The current Persona runtime is enabled and ticking, but its actual inference calls fail on exhausted Cursor weekly quota. Authorization was repaired; complete model replies were not verified by that repair. The separate site echo/race fix is now released in PR #194. See [the follow-up report](MONAD-CHAT-REPAIR-20261117.md) for final evidence and the remaining provider decision.

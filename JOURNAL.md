@@ -2266,3 +2266,12 @@ User requested original drop restoration, a reusable export of the new renderer,
 - Local syntax/routing/UI checks pass; isolated PostgreSQL CI and publication remain pending. Real user conversations and provider calls have not been sent during these checks.
 
 - Added a sanitized model-quota status for the currently selected LK provider and RU/EN/ES notices; the cabinet no longer labels the Persona live when current runtime telemetry reports an exhausted weekly quota. Provider policy is unchanged.
+
+
+## 2026-11-17 — Monad cabinet echo fix published
+
+- PR #194 merged as 7cdb2711e54f9dab5c399532b138c68da357e38f after successful final API/PostgreSQL/container CI 44137576840, including six concurrent imports and owner isolation; UI send/poll/thread and RU/EN/ES quota notice checks passed.
+- Pages 44137989183 succeeded. Public Monad JS v24 and SW v97 match the tested source byte-for-byte; account references v24.
+- Railway 7a2bfdb0-a71e-468a-a5c1-b09fd801d037 reached SUCCESS. API startup, five canonical profiles and the read-only partner schema audit are healthy. No schema migration, role changes, provider changes or real user chats were performed.
+- Outstanding: Cursor weekly quota blocks model inference. Enabling the existing Anthropic transport only for LK requires an explicit provider/billing decision; key presence and a closed circuit do not prove paid inference. Russian/VPN failure still needs the exact failed URL and Chrome error.
+- Full report: docs/MONAD-CHAT-REPAIR-20261117.md. Keep the independent typology branch untouched.
