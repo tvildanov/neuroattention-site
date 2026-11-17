@@ -2239,3 +2239,33 @@ Validation: Chromium confirmed the requested title before translation and after 
 ## 2026-11-17 — v0.4.1 usability checkpoint
 
 User requested original drop restoration, a reusable export of the new renderer, visible contained text scrolling, octagonal journey/reset, stepped ecosystem heading, image recrops, native modal cursor, noun research labels, and updated Crystal positioning. Implemented on an isolated branch from ade9700. Initial 1366x768 visual inspection passed for ecosystem, Space and Institute reading surfaces. The local environment disconnected during export upload; no claim of saved Library delivery or final QA/publication is made. Continue with GitHub CI and export artifact generation. Account/API/profile values and parallel typology work are outside this change.
+
+
+## 2026-11-17 — v0.4.1 published and independently verified
+
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-17",
+  "did": [
+    "Restored the original drop and saved the new renderer as an offline HTML/WebM/PNG bundle",
+    "Published PR #191 at 310d046f890eaeb4a2301103df1fe8bd36c9b56a",
+    "Passed UI/API/export CI, terminal Pages SUCCESS and independent production byte/health smoke"
+  ],
+  "changed": [
+    "Usability, anonymous journey reset, image presentation, modal cursor and localized copy only"
+  ],
+  "files": [
+    "assets/dom-v041.css",
+    "assets/js/dom-v041-usability.js",
+    "downloads/DOM_Attention_Ripple.html",
+    "docs/DOM-CRYSTALS-CONCEPT-20261117.md",
+    "docs/DOM-V041-RELEASE.md"
+  ],
+  "decisions": [
+    "Progress-only reset preserves account/profile/application and observation data",
+    "Crystal methodology remains a proposal; marks must not be bought"
+  ],
+  "followups": [],
+  "next_session": "Continue from current main. Final v0.4.1 report is on codex/dom-v041-release-report-20261117 and linked in PR #191; preserve independent typology work."
+}
