@@ -1,0 +1,35 @@
+name: DOM v041 live smoke
+on:
+  push:
+    branches: ['codex/dom-v041-release-report-20261117']
+    paths: ['.github/workflows/dom-v041-live-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  published-site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Verify live release and unchanged original media
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --retry 3 --max-time 30 -fsSL 'https://dom.institute/?release=v041' -o /tmp/site.html
+          grep -q 'assets/dom-v041.css' /tmp/site.html
+          grep -q 'assets/js/dom-v041-usability.js' /tmp/site.html
+          grep -q 'assets/media/drop-ripple.mp4' /tmp/site.html
+          if grep -q 'src="assets/js/dom-v04-media.js' /tmp/site.html; then echo 'Old replacement module still loaded'; exit 1; fi
+          curl --retry 3 --max-time 30 -fsSL 'https://dom.institute/assets/js/dom-v041-usability.js?v=20261117-1' -o /tmp/ui.js
+          grep -q 'dom-v041-reset' /tmp/ui.js
+          grep -q 'scrollRegion' /tmp/ui.js
+          curl --retry 3 --max-time 30 -fsSL 'https://dom.institute/downloads/DOM_Attention_Ripple.html' -o /tmp/export.html
+          grep -q 'DOMV04Media' /tmp/export.html
+          for item in assets/media/drop-ripple.mp4 assets/images/crowd-phones.jpg assets/images/world-map.jpg; do
+            curl --retry 3 --max-time 30 -fsSL "https://dom.institute/$item" -o /tmp/live-media
+            curl --retry 3 --max-time 30 -fsSL "https://raw.githubusercontent.com/tvildanov/neuroattention-site/ade97009cb8db9bb0cd3b471560c0bbbcceb1eae/$item" -o /tmp/source-media
+            cmp /tmp/live-media /tmp/source-media
+            echo "UNCHANGED_LIVE_MEDIA $item"
+          done
+          curl --retry 3 --max-time 30 -fsSL 'https://neuroattention-api-production.up.railway.app/health' -o /tmp/health.json
+          python3 -c "import json;d=json.load(open('/tmp/health.json'));assert d['ok'] and d['profile_config_ready'] and d['profile_count']==5;print('LIVE_HEALTH_PASS')"
+          echo 'DOM_V041_LIVE_PASS'
