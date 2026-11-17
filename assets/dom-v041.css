@@ -1,14 +1,14 @@
 /* Discoverable bounded text, local wheel gestures, octagonal journey. */
 .dom-v041-scroll[hidden],.dom-v041-scroll-cue[hidden],.dom-v041-reset-status[hidden]{display:none}
 .dom-v041-scroll{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;overscroll-behavior-y:contain}
-.dom-v041-scroll>.dom-v03-detail{min-height:0;scrollbar-width:auto;scrollbar-color:var(--accent-cyan) var(--bg-surface);overscroll-behavior-y:contain;scroll-padding:12px}
-.dom-v041-scroll>.dom-v03-detail::-webkit-scrollbar{width:9px}
-.dom-v041-scroll>.dom-v03-detail::-webkit-scrollbar-track{background:var(--bg-surface);border-radius:9px}
-.dom-v041-scroll>.dom-v03-detail::-webkit-scrollbar-thumb{background:var(--accent-cyan);border:2px solid var(--bg-surface);border-radius:9px}
+.dom-v041-scroll>.dom-v041-reading{min-height:0;scrollbar-width:auto;scrollbar-color:var(--accent-cyan) var(--bg-surface);overscroll-behavior-y:contain;scroll-padding:12px}
+.dom-v041-scroll>.dom-v041-reading::-webkit-scrollbar{width:9px}
+.dom-v041-scroll>.dom-v041-reading::-webkit-scrollbar-track{background:var(--bg-surface);border-radius:9px}
+.dom-v041-scroll>.dom-v041-reading::-webkit-scrollbar-thumb{background:var(--accent-cyan);border:2px solid var(--bg-surface);border-radius:9px}
 .dom-v041-scroll.has-more::after{content:'';position:absolute;left:0;right:11px;bottom:29px;height:28px;background:linear-gradient(transparent,var(--bg-base));pointer-events:none}
 .dom-v041-scroll>.dom-v041-scroll-cue{flex:none;display:flex;align-items:center;justify-content:center;min-height:29px;width:100%;padding:4px 8px;border:1px solid var(--v03-accent);border-radius:6px;background:var(--bg-base);color:var(--v03-accent);font:500 12px/1.4 Inter,sans-serif;cursor:pointer;box-shadow:0 0 14px var(--v03-glow)}
 .dom-v041-scroll>.dom-v041-scroll-cue:hover{background:var(--v03-wash)}
-.dom-v041-scroll>.dom-v03-detail:focus-visible{outline:2px solid var(--v03-accent);outline-offset:2px}
+.dom-v041-scroll>.dom-v041-reading:focus-visible{outline:2px solid var(--v03-accent);outline-offset:2px}
 #dom-education-research .dom-v04-faculty>.dom-v041-scroll{flex:1;min-height:0}
 #dom-education-research .dom-v04-faculty #dom-direction-detail{flex:1;min-height:0}
 .dom-v03-rail{gap:2px;padding:7px 3px}
@@ -38,7 +38,7 @@ html.na-custom-cursor-active dialog[open] :is(button,a,summary){cursor:pointer!i
  #dom-ecosystem .dom-ecosystem-diagram-heading h2>span:nth-child(2){text-align:right;padding-right:7%}
  #dom-ecosystem .dom-ecosystem-diagram-heading h2>span:nth-child(3){text-align:right}
  #dom-ecosystem .dom-eco-map-layout{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);align-items:start;gap:22px}
- #dom-ecosystem .dom-eco-wheel{width:min(100%,calc(100svh - 174px));max-width:760px;margin:-108px auto 0 0}
+ #dom-ecosystem .dom-eco-wheel{width:min(100%,calc(100svh - 190px));max-width:760px;margin:-124px auto 0 0}
  #dom-ecosystem .dom-eco-node{font-size:clamp(13px,1.25vw,19px)}
 }
 @media(max-width:1000px){
@@ -47,3 +47,8 @@ html.na-custom-cursor-active dialog[open] :is(button,a,summary){cursor:pointer!i
  .dom-v041-reset-mobile .dom-v041-reset-icon{inset:9px}
  .dom-v041-reset-status{left:14px;right:14px;bottom:52px;text-align:center}
 }
+
+@media(min-width:1001px){#dom-ecosystem .dom-eco-map-layout>.dom-v041-scroll{max-height:var(--eco-reading-height)}#dom-eco-reading{overflow:auto;min-height:0;padding-right:12px;overscroll-behavior-y:contain}}
+
+.dom-v041-scroll>.dom-v041-scroll-cue[hidden]{display:none}
+#dom-eco-reading{display:flow-root}

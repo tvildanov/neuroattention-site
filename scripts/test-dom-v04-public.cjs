@@ -20,7 +20,8 @@ try{for(const lang of ['ru','en','es'])for(const theme of ['dark','light'])for(c
 
  if(await p.locator('[data-v03-group=space] button').nth(0).getAttribute('aria-expanded')!=='true')await p.locator('[data-v03-group=space] button').nth(0).click();
  await p.locator('[data-v03-direction="3"]').click();
- for(const id of ['dom-space-detail','dom-lab-detail','dom-direction-detail']){
+ await p.locator('[data-eco-node=dom]').click();
+ for(const id of ['dom-eco-reading','dom-space-detail','dom-lab-detail','dom-direction-detail']){
   const panel=p.locator('#'+id),shell=p.locator('[data-scroll-region="'+id+'"]');await panel.scrollIntoViewIfNeeded();const overflowing=await panel.evaluate(n=>n.scrollHeight>n.clientHeight+3);
   if(overflowing){assert.ok(await shell.locator('.dom-v041-scroll-cue').isVisible());await panel.evaluate(n=>n.scrollTop=0);const y=await p.evaluate(()=>scrollY);await panel.hover();await p.mouse.wheel(0,100);await p.waitForTimeout(90);assert.ok(await panel.evaluate(n=>n.scrollTop)>0,id+' inner wheel');assert.ok(Math.abs(await p.evaluate(()=>scrollY)-y)<2,id+' must not move the page');await panel.evaluate(n=>n.scrollTop=n.scrollHeight);await p.mouse.wheel(0,500);await p.waitForTimeout(90);assert.ok(Math.abs(await p.evaluate(()=>scrollY)-y)<2,id+' boundary must not move page');await panel.hover();await p.mouse.wheel(0,-80);await p.waitForTimeout(90);assert.ok(await panel.evaluate(n=>n.scrollTop+n.clientHeight<n.scrollHeight-5),id+' reentry must remain local');}
  }
