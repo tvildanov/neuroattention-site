@@ -2146,3 +2146,8 @@ Previous guided-development session was recorded in [its existing minimal record
 ## 2026-11-16 — Space Awareness scope clarification
 
 Recorded the founder's expanded conceptual scope in docs/typology/SPACE-AWARENESS.md. Saved the source separately and updated CONTINUE.md, DECISIONS.md, SOURCES.md and the manifest. Experiential scope, proposed observable abilities and untested neural mechanisms remain distinct. No scores, diagnoses, product changes or deployment. Next: FQ03 asks for one concrete distinction from ordinary room familiarity.
+
+
+## 2026-11-17 — Space-body and intentional environment use
+
+Read and archived the founder's full FQ03 response. Updated SPACE-AWARENESS.md to distinguish habitual familiarity, deliberate practical use, goals, feedback and extended self-identification. Descriptions of spatial atmosphere, information sensing and direct influence remain attributed experience/hypotheses rather than validated abilities or scores. Updated CONTINUE.md, DECISIONS.md, SOURCES.md and manifest; verified the published source matches the prepared text. FQ04 asks what concrete change is meant by direct influence. No product code, scores, deployment or Monad changes. Existing journal history preserved; only this project note appended.
