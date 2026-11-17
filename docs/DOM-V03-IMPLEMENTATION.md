@@ -115,3 +115,7 @@ DOM Space is working branding; six direction labels are editorial clusters, all 
 ## Backend checkpoint
 
 `api/partner.js` and additive `078_partner_applications.sql` provide verified-email challenge flow, existing identity reuse, real idempotent applications, owner-only reads, explicit read/manage reviewer grants and optimistic audited status changes. Raw roles/owners from the frontend are ignored; MONAD readonly identity is refused. SMTP absence/failure does not return successful verification/delivery. Production handler shares the existing JWT/SMTP context. PostgreSQL-backed integration tests added to branch CI; test mail is isolated, not sent to people. UI flow/cabinet remain the next stage. Tests not yet passed; no merge/deploy.
+
+## Recovery after interrupted save
+
+Remote checkpoint confirmed e3cbc41a3026de11d427a4fb3d32af1847275e5c. Form/cabinet files from the interrupted operation are not committed; restore these next. API integration job 133703979774 passed. Browser assertion found #dom-ecosystem 797.78px tall at 1366x768; test process failed to exit and hit job timeout. Fail-fast and selector-precedence fixes are now committed for another CI pass. Production untouched.

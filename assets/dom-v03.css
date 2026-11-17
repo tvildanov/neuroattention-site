@@ -132,3 +132,10 @@ html[data-dom-theme=light] .home-matrix{--v03-accent:#204c8e;--v03-glow:#4c9bff3
  #dom-xr-practice .dom-xr-footer{grid-template-columns:minmax(0,1fr) auto}
  #dom-xr-practice .dom-xr-identity .dom-family-label{margin-top:3px}
 }
+
+/* Explicit compact geometry wins over the older heading/intro selectors. */
+@media(min-width:1001px){
+ #dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:clamp(28px,2.3vw,34px)!important;line-height:1.12!important;margin:0 auto 6px!important}
+ #dom-ecosystem .dom-ecosystem-diagram-heading>.dom-family-intro{font-size:14px!important;line-height:1.4!important;max-width:65%!important;margin:0 0 4px auto!important}
+ .home-matrix #dom-ecosystem .dom-eco-wheel{width:min(100%,calc(100svh - 280px));max-width:480px}
+}

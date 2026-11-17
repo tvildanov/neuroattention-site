@@ -2199,3 +2199,11 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Added verified-email partner intake reusing JWT signing and SMTP transport, namespaced additive application/challenge/proof/permission/audit/rate tables; user role is always user for new accounts.
 - Real submissions require email proof and consent, use authenticated DB ownership and idempotency key. User reads are owner-only; admin review uses superadmin or explicit read/manage permission; readonly service principals denied. Status updates use version checks and atomic audit.
 - Added isolated PostgreSQL integration tests; SMTP test adapter only. Syntax checked in orchestration runtime; CI results pending. No production migration/deployment yet.
+
+
+## 2026-11-16 — Interrupted operation recovery and browser QA correction
+
+- Verified remote feature head e3cbc41a3026de11d427a4fb3d32af1847275e5c; production main remains 687f60703fb54d70536534ef39e95b8ee0a5a0e7.
+- Latest partner form/cabinet commit did not reach the branch and must be restored; do not claim it saved.
+- Isolated PostgreSQL partner API suite passed (Actions job 133703979774).
+- Browser job reported ecosystem height 797.78px at 1366x768, then test harness kept browser processes alive until job timeout. Fixed fail-fast termination, added computed-geometry/screenshot evidence, and corrected selector precedence for compact heading/intro/wheel. Not a passing browser result yet.
