@@ -2255,3 +2255,12 @@ User requested original drop restoration, a reusable export of the new renderer,
 - Railway deployment 87d937a0-7886-44e0-948a-d2a6bd145816 reached SUCCESS; the actual production MCP client successfully called get_architecture at 16:39:48 UTC. Offline routing checks for three personas passed in the same deployed image.
 - Protected MONAD_API_KEY reference retained; startCommand restored to node server.js; temporary preDeployCommand cleared. A subsequent runtime-health-only verification deployment d88fb6a3-e469-4a8e-a23f-5ba7759a3572 remains BUILDING at this checkpoint.
 - No real user chat or model response was generated during verification. No roles, model policy or parallel typology work changed. Detailed evidence: docs/MONAD-AUTH-REPAIR-20261117.md.
+
+
+## 2026-11-17 — Egor chat regression investigation
+
+- Current persona_runtime logs show repeated Cursor HTTP 429 weekly-usage-limit errors (reset reported in three days), explaining silence after MCP authorization was restored. Existing Anthropic key and closed circuit were observed via the public runtime health endpoint; no provider/model or billing setting was changed.
+- Fixed empty-success poll falling back into raw context, which bypassed Monad's origin=lk_site echo filter. Added permanent human seed matching, batch import serialized per chat, and non-destructive display filtering of identifiable historical echoes. Voice transcripts and human technical vocabulary are preserved.
+- Added frontend send/poll guards and stale-thread response isolation; advanced Monad asset and service-worker revisions. Preserved the separate typology work and per-user Persona entry points.
+- Public home and cabinet login rendered in cloud Chrome outside Russia; this does not reproduce Egor's Russian/VPN network. Exact failed URL and Chrome error remain needed.
+- Local syntax/routing/UI checks pass; isolated PostgreSQL CI and publication remain pending. Real user conversations and provider calls have not been sent during these checks.

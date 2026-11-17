@@ -8,6 +8,8 @@
 
   var STATE = {
     loaded: false,
+    sending: false,
+    polling: false,
     status: null,
     arch: null,
     rhythm: null,
@@ -446,6 +448,7 @@
   }
 
   function isTechMessage(m) {
+    if (m.role === 'you') return false;
     var meta = parseMeta(m);
     if (meta.ack || meta.delivery || meta.channel_ack) return true;
     if (m.role === 'system') return true;
@@ -458,6 +461,7 @@
   }
 
   function displayText(m) {
+    if (m.role === 'you') return String(m.text || '');
     return stripTechIds(m.text) || String(m.text || '');
   }
 
@@ -618,6 +622,7 @@
     renderAttachmentsBar();
     renderChatList();
     var data = await api('/api/monad/chats/' + encodeURIComponent(id));
+    if (STATE.activeChatId !== id) return;
     // refresh chat object (pins)
     STATE.chats = STATE.chats.map(function (c) { return c.id === id ? Object.assign({}, c, data.chat) : c; });
     if (!STATE.chats.filter(function (c) { return c.id === id; }).length && data.chat) STATE.chats.unshift(data.chat);
@@ -691,38 +696,43 @@
 
   async function sendMessage() {
     var input = document.getElementById('monad-chat-input');
-    if (!input) return;
+    if (!input || STATE.sending) return;
     var text = String(input.value || '').trim();
     if (!text) return;
-    if (!STATE.activeChatId) {
-      await createChat();
-    }
-    var chat = STATE.chats.filter(function (c) { return c.id === STATE.activeChatId; })[0];
-    var pins = (chat && chat.pinned_context) || [];
-    input.value = '';
+    STATE.sending = true;
     var btn = document.getElementById('monad-chat-send');
     if (btn) btn.disabled = true;
-    STATE.messages.push({ role: 'you', text: text, attachments: STATE.pendingAttachments || [] });
-    STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
-    renderMessages();
+    var sentChatId = null;
     try {
+      if (!STATE.activeChatId) {
+        await createChat();
+      }
+      sentChatId = STATE.activeChatId;
+      var chat = STATE.chats.filter(function (c) { return c.id === sentChatId; })[0];
+      var pins = (chat && chat.pinned_context) || [];
+      input.value = '';
+      STATE.messages.push({ role: 'you', text: text, attachments: STATE.pendingAttachments || [] });
+      STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
+      renderMessages();
       var data = await api('/api/monad/message', {
         method: 'POST',
         body: JSON.stringify({
           text: text,
-          chat_id: STATE.activeChatId,
+          chat_id: sentChatId,
           attachments: STATE.pendingAttachments,
           pinned_context: pins,
           title: (chat && chat.title && chat.title !== 'Новый чат') ? chat.title : text.slice(0, 80),
         }),
       });
+      if (STATE.activeChatId !== sentChatId) return;
       STATE.pendingAttachments = [];
       renderAttachmentsBar();
       STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       if (data && data.reply && data.reply.text) {
         STATE.messages.push(data.reply);
       }
-      var thr = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId));
+      var thr = await api('/api/monad/chats/' + encodeURIComponent(sentChatId));
+      if (STATE.activeChatId !== sentChatId) return;
       if (thr && thr.messages && thr.messages.length) STATE.messages = thr.messages;
       var last = STATE.messages[STATE.messages.length - 1];
       var personaAlreadyHere = last && last.role === 'monad' && !(last.meta && last.meta.typing);
@@ -743,21 +753,26 @@
         startPoll();
       }
     } catch (err) {
+      if (sentChatId && STATE.activeChatId !== sentChatId) return;
       STATE.awaitingPersona = false;
       STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
       STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
       renderMessages();
     } finally {
+      STATE.sending = false;
       if (btn) btn.disabled = false;
     }
   }
 
   async function pollReplies() {
-    if (!STATE.activeChatId || STATE.sub !== 'chat') return;
+    if (!STATE.activeChatId || STATE.sub !== 'chat' || STATE.sending || STATE.polling) return;
+    var polledChatId = STATE.activeChatId;
+    STATE.polling = true;
     try {
-      var data = await api('/api/monad/chats/' + encodeURIComponent(STATE.activeChatId) + '/poll', {
+      var data = await api('/api/monad/chats/' + encodeURIComponent(polledChatId) + '/poll', {
         method: 'POST', body: JSON.stringify({}),
       });
+      if (STATE.activeChatId !== polledChatId) return;
       if (data && data.messages) {
         var before = STATE.messages.length;
         var hadTyping = STATE.messages.some(function (m) { return m.meta && m.meta.typing; });
@@ -779,7 +794,8 @@
           renderMessages();
         }
       }
-    } catch (e) { /* quiet */ }
+    } catch (e) { /* preserve this chat on transient poll errors */ }
+    finally { STATE.polling = false; }
   }
 
   function startPoll() {

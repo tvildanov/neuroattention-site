@@ -40,6 +40,8 @@ jobs:
           node --check api/server.js
           node --check api/partner.js
           node scripts/test-dom-v03-partner.cjs
+          node scripts/test-monad-chat.cjs
+          node scripts/test-monad-chat-ui.cjs
 
   canonical-profile-container:
     runs-on: ubuntu-24.04

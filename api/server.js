@@ -156,6 +156,7 @@ wearablesSvc.init({ sql });
 
 // Monad MCP client (site → Monad). Key stays server-side (MONAD_API_KEY).
 const monadSvc = require('./services/monad');
+const monadChat = require('./services/monad-chat');
 
 // Load vocabulary aliases for node normalization
 let vocabAliases = {};
@@ -14101,8 +14102,8 @@ app.get('/api/monad/chats/:id', requireAuth, async (req, res) => {
     const [chat] = await sql`SELECT * FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
     if (!chat) return res.status(404).json({ error: 'not found' });
     const messages = await sql`
-      SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at ASC LIMIT 500`;
-    res.json({ ok: true, chat, messages });
+      SELECT * FROM (SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at DESC, id DESC LIMIT 500) recent ORDER BY created_at ASC, id ASC`;
+    res.json({ ok: true, chat, messages: monadChat.visibleMessages(messages) });
   } catch (err) {
     console.error('GET /api/monad/chats/:id:', err);
     res.status(500).json({ error: err.message || 'Internal error' });
@@ -14182,6 +14183,7 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
     const humanId = monadSvc.resolveHumanId(caller);
     let imported = 0;
     let via = null;
+    let pollSucceeded = false;
     const candidates = [];
 
     try {
@@ -14190,21 +14192,16 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           human_id: humanId,
           chat_id: String(chat.id),
           limit: 100,
+          include_site_echo: false,
         };
         if (req.body && req.body.since) pollArgs.since = String(req.body.since);
         const polled = await monadSvc.mcpCall('human_chat_poll', pollArgs);
+        pollSucceeded = true;
         const msgs = (polled && Array.isArray(polled.messages)) ? polled.messages
           : (Array.isArray(polled) ? polled : []);
         for (const m of msgs) {
-          const text = String(m.text || m.body || m.message || '');
-          if (monadSvc.isChannelAckText(text)) continue; // never store channel noise
-          candidates.push({
-            key: m.key || m.id || '',
-            role: (m.role === 'you' || m.role === 'human') ? 'you' : (m.role === 'system' ? 'system' : 'monad'),
-            text,
-            seed_id: m.seed_id || null,
-            meta_extra: {},
-          });
+          const candidate = monadChat.pollCandidate(m, monadSvc.isChannelAckText);
+          if (candidate) candidates.push(candidate);
         }
         via = 'human_chat_poll';
       }
@@ -14212,7 +14209,7 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
       via = 'human_chat_poll_failed:' + (ePoll.message || 'err');
     }
 
-    if (!candidates.length) {
+    if (!pollSucceeded) {
       try {
         const prefix = `neuroattention.lk.chat.${chat.id}.`;
         const raw = await monadSvc.mcpCall('read_context', {
@@ -14226,19 +14223,8 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
             : (raw && Array.isArray(raw.entries) ? raw.entries
               : (raw && Array.isArray(raw.context) ? raw.context : [])));
         for (const it of items) {
-          const key = it.key || it.id || '';
-          const val = it.value != null ? it.value : it;
-          const text = String((typeof val === 'string') ? val
-            : (val && (val.text || val.body || val.message)) || '');
-          if (monadSvc.isChannelAckText(text)) continue;
-          const roleRaw = (val && val.role) || 'monad';
-          candidates.push({
-            key,
-            role: (roleRaw === 'you' || roleRaw === 'human') ? 'you' : (roleRaw === 'system' ? 'system' : 'monad'),
-            text,
-            seed_id: (val && val.seed_id) || null,
-            meta_extra: {},
-          });
+          const candidate = monadChat.pollCandidate(it, monadSvc.isChannelAckText);
+          if (candidate) candidates.push(candidate);
         }
         via = (via && String(via).startsWith('human_chat_poll_failed')) ? (via + '+read_context') : 'read_context';
       } catch (eRead) {
@@ -14246,42 +14232,12 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
       }
     }
 
-    for (const c of candidates) {
-      const text = String(c.text || '').trim();
-      if (!text) continue;
-      const key = String(c.key || '');
-      const role = ['you', 'monad', 'system', 'err'].includes(c.role) ? c.role : 'monad';
-      if (key) {
-        const exists = await sql`
-          SELECT 1 FROM monad_chat_messages
-          WHERE chat_id = ${chat.id} AND meta->>'source_key' = ${key}
-          LIMIT 1`;
-        if (exists.length) continue;
-      }
-      // Skip poll echo of a reply we already stored (same text in last 2 minutes).
-      const recent = await sql`
-        SELECT 1 FROM monad_chat_messages
-        WHERE chat_id = ${chat.id} AND role = ${role} AND text = ${text.slice(0, 20000)}
-          AND created_at > now() - interval '2 minutes'
-        LIMIT 1`;
-      if (recent.length) continue;
-      const meta = Object.assign(
-        { source_key: key || null, from_poll: true, via },
-        c.meta_extra || {}
-      );
-      await sql`
-        INSERT INTO monad_chat_messages (chat_id, user_id, role, text, seed_id, meta)
-        VALUES (
-          ${chat.id}, ${caller.id}, ${role}, ${text.slice(0, 20000)}, ${c.seed_id || null},
-          ${JSON.stringify(meta)}::jsonb
-        )`;
-      imported++;
-    }
+    imported = await monadChat.importPollMessages(sql, chat.id, caller.id, candidates, via);
     if (imported) await sql`UPDATE monad_chats SET updated_at = now() WHERE id = ${chat.id}`;
 
     const messages = await sql`
-      SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at ASC LIMIT 500`;
-    res.json({ ok: true, imported, via, messages });
+      SELECT * FROM (SELECT * FROM monad_chat_messages WHERE chat_id = ${chat.id} ORDER BY created_at DESC, id DESC LIMIT 500) recent ORDER BY created_at ASC, id ASC`;
+    res.json({ ok: true, imported, via, messages: monadChat.visibleMessages(messages) });
   } catch (err) {
     console.error('POST /api/monad/chats/:id/poll:', err);
     res.status(500).json({ error: err.message || 'Internal error' });
