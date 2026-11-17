@@ -1,5 +1,5 @@
 {
-  "version": "0.6",
+  "version": "0.7",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-17",
   "complete_method_archive": false,
@@ -7,15 +7,15 @@
   "files": [
     {
       "path": "AGENT-CONTRACT.md",
-      "git_blob_sha": "3e09c1fc045be4b8ace376c8209bb53201f01665",
+      "git_blob_sha": "33520898e883d899b1a8cf7000691265169e3bce",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 11290
+      "size_bytes": 13544
     },
     {
       "path": "DECISIONS.md",
-      "git_blob_sha": "5a57af368bf52678917038b4e432a4222f1a8be3",
+      "git_blob_sha": "359b636117e85aa6a21ac4badfca5abf9e809c35",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 14800
+      "size_bytes": 17266
     },
     {
       "path": "INTEGRATION.md",
@@ -30,9 +30,9 @@
     },
     {
       "path": "SOURCES.md",
-      "git_blob_sha": "7029a650cff25a97757394091d93812ee7ffaa12",
+      "git_blob_sha": "93cc94fc6e35f779fe52e07364642e2c778abefe",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 8472
+      "size_bytes": 9690
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -61,9 +61,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "c7b51e2eb4d598eb60dec97be5c26c6de27ee269",
+      "git_blob_sha": "72b9265fb33f6d4000fd46792c680b1d5cf9e159",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 16057
+      "size_bytes": 17592
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -79,9 +79,9 @@
     },
     {
       "path": "SPACE-AWARENESS.md",
-      "git_blob_sha": "5ba7452d005ebb6a5ea860a4cda8009cf14bdfe8",
+      "git_blob_sha": "4732f263d513017e229fa8c7744ac2049b29e51c",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 16061
+      "size_bytes": 19689
     },
     {
       "path": "sources/2026-11-16-space-awareness-expansion.md",
@@ -94,6 +94,12 @@
       "git_blob_sha": "e82eb26ca043c5f3d4c1b0a8f799c79603f88ee7",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 14352
+    },
+    {
+      "path": "sources/2026-11-17-interaction-channels-and-evidence.md",
+      "git_blob_sha": "e3cc862c4ee0f91ff7f9269557c86ddd4d141658",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 5702
     }
   ],
   "full_handoff_text_included": true,
