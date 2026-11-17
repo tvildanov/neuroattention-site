@@ -146,22 +146,26 @@ window.DOMV03Copy={
       {
         "id": "longevity",
         "title": "Как сохранить качество жизни с возрастом?",
-        "body": "Как продлить годы высокого качества жизни? Разрабатываем исследования и программы, объединяющие внимание, движение, когнитивную активность, работу специалистов и повседневную среду. Цель — поддерживать ясность мышления, подвижность, самостоятельность и вовлечённость людей старшего возраста, в том числе в домах престарелых."
+        "body": "Как продлить годы высокого качества жизни? Разрабатываем исследования и программы, объединяющие внимание, движение, когнитивную активность, работу специалистов и повседневную среду. Цель — поддерживать ясность мышления, подвижность, самостоятельность и вовлечённость людей старшего возраста, в том числе в домах престарелых.",
+        "topicTitle": "Долголетие и качество жизни"
       },
       {
         "id": "youth",
         "title": "Как уверенно начать взрослую жизнь?",
-        "body": "Разрабатываем программу для молодых людей на переходе из школы, семьи или системы опеки в самостоятельную жизнь: исследовать способности, отношения и цели, освоить внимание и саморегуляцию, выбирать направление и новые технологии. Не навязанный сценарий, а основа для здоровья, работы и самореализации."
+        "body": "Разрабатываем программу для молодых людей на переходе из школы, семьи или системы опеки в самостоятельную жизнь: исследовать способности, отношения и цели, освоить внимание и саморегуляцию, выбирать направление и новые технологии. Не навязанный сценарий, а основа для здоровья, работы и самореализации.",
+        "topicTitle": "Самостоятельность и развитие молодых людей"
       },
       {
         "id": "human-ai",
         "title": "Как людям и ИИ развиваться вместе?",
-        "body": "Исследуем осознанное, безопасное и взаимно полезное взаимодействие с развивающимися интеллектуальными системами: их влияние на внимание, мышление, решения и отношения. В исследовательской оптике DOM ИИ — потенциальный партнёр человечества. Ищем формы сотрудничества, расширяющие возможности человека и сохраняющие его самостоятельность."
+        "body": "Исследуем осознанное, безопасное и взаимно полезное взаимодействие с развивающимися интеллектуальными системами: их влияние на внимание, мышление, решения и отношения. В исследовательской оптике DOM ИИ — потенциальный партнёр человечества. Ищем формы сотрудничества, расширяющие возможности человека и сохраняющие его самостоятельность.",
+        "topicTitle": "Совместное развитие человечества и искусственного интеллекта"
       },
       {
         "id": "business",
         "title": "Как бизнесу оставаться актуальным в новом мире?",
-        "body": "Разрабатываем способы адаптации предпринимателей, команд, продуктов и бизнес-моделей. Три масштаба: внимание и устойчивость руководителя; взаимодействие и процессы команды; полезность продукта людям. ИИ и автоматизация — инструменты для жизнеспособности бизнеса и реальной ценности, а не самоцель."
+        "body": "Разрабатываем способы адаптации предпринимателей, команд, продуктов и бизнес-моделей. Три масштаба: внимание и устойчивость руководителя; взаимодействие и процессы команды; полезность продукта людям. ИИ и автоматизация — инструменты для жизнеспособности бизнеса и реальной ценности, а не самоцель.",
+        "topicTitle": "Адаптация и актуальность бизнеса в меняющемся мире"
       }
     ],
     "xr": {
@@ -366,22 +370,26 @@ window.DOMV03Copy={
       {
         "id": "longevity",
         "title": "How can we maintain quality of life as we age?",
-        "body": "How can we extend years of high-quality life? We are developing research and programmes combining attention, movement, cognitive activity, specialist input and everyday environments, aiming to support clarity, mobility, independence and engagement in older people, including care-home residents."
+        "body": "How can we extend years of high-quality life? We are developing research and programmes combining attention, movement, cognitive activity, specialist input and everyday environments, aiming to support clarity, mobility, independence and engagement in older people, including care-home residents.",
+        "topicTitle": "Healthy longevity and quality of life"
       },
       {
         "id": "youth",
         "title": "How can young people start adult life with confidence?",
-        "body": "We are developing a programme for young people moving from school, family or care into independent life: explore abilities, relationships and goals, learn attention and self-regulation, and choose directions and new technologies. The aim is a foundation for health, work and fulfilment rather than a prescribed life path."
+        "body": "We are developing a programme for young people moving from school, family or care into independent life: explore abilities, relationships and goals, learn attention and self-regulation, and choose directions and new technologies. The aim is a foundation for health, work and fulfilment rather than a prescribed life path.",
+        "topicTitle": "Youth development and independent adulthood"
       },
       {
         "id": "human-ai",
         "title": "How can humans and AI develop together?",
-        "body": "We study conscious, safe and mutually beneficial interaction with evolving intelligent systems and their effects on attention, thinking, decisions and relationships. DOM’s research perspective considers AI a potential partner for humanity. We seek forms of collaboration that expand human capability while preserving autonomy."
+        "body": "We study conscious, safe and mutually beneficial interaction with evolving intelligent systems and their effects on attention, thinking, decisions and relationships. DOM’s research perspective considers AI a potential partner for humanity. We seek forms of collaboration that expand human capability while preserving autonomy.",
+        "topicTitle": "Co-development of humanity and artificial intelligence"
       },
       {
         "id": "business",
         "title": "How can businesses stay relevant in a changing world?",
-        "body": "We develop approaches to adapting founders, teams, products and business models. Three scales: leaders’ attention and resilience; team interaction and processes; and the product’s usefulness to people. AI and automation serve business viability and real value rather than becoming ends in themselves."
+        "body": "We develop approaches to adapting founders, teams, products and business models. Three scales: leaders’ attention and resilience; team interaction and processes; and the product’s usefulness to people. AI and automation serve business viability and real value rather than becoming ends in themselves.",
+        "topicTitle": "Business adaptation in a changing world"
       }
     ],
     "xr": {
@@ -586,22 +594,26 @@ window.DOMV03Copy={
       {
         "id": "longevity",
         "title": "¿Cómo mantener la calidad de vida al envejecer?",
-        "body": "¿Cómo prolongar los años de buena calidad de vida? Desarrollamos investigación y programas que combinan atención, movimiento, actividad cognitiva, apoyo profesional y entorno cotidiano para favorecer claridad, movilidad, autonomía y participación en personas mayores, también en residencias."
+        "body": "¿Cómo prolongar los años de buena calidad de vida? Desarrollamos investigación y programas que combinan atención, movimiento, actividad cognitiva, apoyo profesional y entorno cotidiano para favorecer claridad, movilidad, autonomía y participación en personas mayores, también en residencias.",
+        "topicTitle": "Longevidad saludable y calidad de vida"
       },
       {
         "id": "youth",
         "title": "¿Cómo empezar la vida adulta con confianza?",
-        "body": "Desarrollamos un programa para jóvenes que pasan de la escuela, la familia o el sistema de tutela a una vida autónoma: explorar capacidades, relaciones y metas, aprender atención y autorregulación y elegir caminos y tecnologías. Buscamos una base para la salud, el trabajo y la realización personal, sin imponer una trayectoria."
+        "body": "Desarrollamos un programa para jóvenes que pasan de la escuela, la familia o el sistema de tutela a una vida autónoma: explorar capacidades, relaciones y metas, aprender atención y autorregulación y elegir caminos y tecnologías. Buscamos una base para la salud, el trabajo y la realización personal, sin imponer una trayectoria.",
+        "topicTitle": "Desarrollo juvenil y autonomía en la vida adulta"
       },
       {
         "id": "human-ai",
         "title": "¿Cómo pueden desarrollarse juntos las personas y la IA?",
-        "body": "Estudiamos la interacción consciente, segura y mutuamente beneficiosa con sistemas inteligentes en evolución y su influencia en atención, pensamiento, decisiones y relaciones. La perspectiva investigadora de DOM considera a la IA un posible socio de la humanidad. Buscamos cooperación que amplíe capacidades y preserve la autonomía."
+        "body": "Estudiamos la interacción consciente, segura y mutuamente beneficiosa con sistemas inteligentes en evolución y su influencia en atención, pensamiento, decisiones y relaciones. La perspectiva investigadora de DOM considera a la IA un posible socio de la humanidad. Buscamos cooperación que amplíe capacidades y preserve la autonomía.",
+        "topicTitle": "Desarrollo conjunto de la humanidad y la inteligencia artificial"
       },
       {
         "id": "business",
         "title": "¿Cómo puede seguir siendo relevante una empresa?",
-        "body": "Desarrollamos enfoques para adaptar a emprendedores, equipos, productos y modelos de negocio. Tres escalas: atención y resiliencia del liderazgo; interacción y procesos del equipo; y utilidad del producto. La IA y la automatización sirven a la viabilidad y al valor real, no son fines en sí mismas."
+        "body": "Desarrollamos enfoques para adaptar a emprendedores, equipos, productos y modelos de negocio. Tres escalas: atención y resiliencia del liderazgo; interacción y procesos del equipo; y utilidad del producto. La IA y la automatización sirven a la viabilidad y al valor real, no son fines en sí mismas.",
+        "topicTitle": "Adaptación y vigencia del negocio en un mundo cambiante"
       }
     ],
     "xr": {
