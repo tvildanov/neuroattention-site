@@ -1,11 +1,11 @@
 'use strict';
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
-const source = fs.readFileSync(require.resolve('../assets/js/monad-lk.js'), 'utf8').replace(/\}\)\(\);\s*$/, 'window.fixture = { STATE, sendMessage, pollReplies, isTechMessage, displayText };})();');
-const elements = { 'monad-chat-input': { value: 'fixture question' }, 'monad-chat-send': {}, 'monad-chat-log': {} };
+const source = fs.readFileSync(require.resolve('../assets/js/monad-lk.js'), 'utf8').replace(/\}\)\(\);\s*$/, 'window.fixture = { STATE, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar };})();');
+const elements = { 'monad-chat-input': { value: 'fixture question' }, 'monad-chat-send': {}, 'monad-chat-log': {}, 'monad-status-bar': {} };
 let sends = 0, polls = 0, releaseSend, releasePoll;
 const window = {};
 const ok = data => ({ ok: true, json: async () => data });
-const ctx = { window, document: { readyState: 'loading', addEventListener() {}, getElementById: id => elements[id] || null, querySelectorAll: () => [] }, localStorage: { getItem: () => null }, setInterval: () => 1, clearInterval() {}, console,
+const ctx = { window, document: { readyState: 'loading', documentElement: { lang: 'ru' }, addEventListener() {}, getElementById: id => elements[id] || null, querySelectorAll: () => [] }, localStorage: { getItem: () => null }, setInterval: () => 1, clearInterval() {}, console,
   fetch: async (url, opts) => {
     if (url.endsWith('/message')) { sends++; assert.equal(JSON.parse(opts.body).chat_id, 'chat-a'); await new Promise(r => { releaseSend = r; }); return ok({ awaiting_persona: true }); }
     if (url.endsWith('/poll')) { polls++; await new Promise(r => { releasePoll = r; }); return ok({ messages: [{ role: 'monad', text: 'old thread answer' }] }); }
@@ -15,8 +15,14 @@ const ctx = { window, document: { readyState: 'loading', addEventListener() {}, 
   }
 };
 vm.runInNewContext(source, ctx);
-const { STATE, sendMessage, pollReplies, isTechMessage, displayText } = window.fixture;
+const { STATE, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar } = window.fixture;
 (async () => {
+  STATE.status = { configured: true, lk_llm: true };
+  STATE.personaHealth = { availability_code: 'MODEL_QUOTA_EXCEEDED' };
+  for (const [lang, expected] of [['ru', 'исчерпан'], ['en', 'limit'], ['es', 'límite']]) {
+    ctx.document.documentElement.lang = lang; renderStatusBar(); assert.ok(elements['monad-status-bar'].innerHTML.includes(expected));
+    assert.ok(!elements['monad-status-bar'].innerHTML.includes('живая Persona'));
+  }
   STATE.activeChatId = 'chat-a'; STATE.chats = [{ id: 'chat-a' }];
   assert.equal(isTechMessage({ role: 'you', text: 'мы ждем ответ? shared_context' }), false);
   assert.equal(displayText({ role: 'you', text: 'shared_context seed=example' }), 'shared_context seed=example');

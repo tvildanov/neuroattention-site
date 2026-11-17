@@ -34,6 +34,7 @@
     inboxSyncing: false,
     inboxViewId: null,
     personaHealth: null,
+    healthCheckedAt: 0,
     live: null,
     livePollTimer: null,
     agentSearch: '',
@@ -159,6 +160,12 @@
     if (id !== 'architecture' && window.MonadCross) window.MonadCross.destroy();
   }
 
+  function quotaNotice() {
+    var lang = String(document.documentElement.lang || 'ru').slice(0, 2);
+    var texts = { ru: 'Ответы приостановлены: исчерпан лимит модели.', en: 'Replies are paused: the model usage limit has been reached.', es: 'Las respuestas están en pausa: se alcanzó el límite de uso del modelo.' };
+    return texts[lang] || texts.en;
+  }
+
   function renderStatusBar() {
     var el = document.getElementById('monad-status-bar');
     if (!el) return;
@@ -172,7 +179,9 @@
     bits.push(s.configured
       ? '<span class="monad-ok">● ' + esc(t('a.monad.connected', 'ключ на сервере есть')) + '</span>'
       : '<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
-    if (s.lk_llm) {
+    if (STATE.personaHealth && STATE.personaHealth.availability_code === 'MODEL_QUOTA_EXCEEDED') {
+      bits.push('<span class="monad-warn" role="status">' + esc(quotaNotice()) + '</span>');
+    } else if (s.lk_llm) {
       bits.push('<span class="monad-ok">● ' + esc(t('a.monad.live_model', 'живая Persona в Манаде')) + '</span>');
     } else if (s.lk_live_reply) {
       bits.push('<span class="monad-warn">● ' + esc(t('a.monad.need_key', 'нужен MONAD_API_KEY на Railway')) + '</span>');
@@ -793,6 +802,10 @@
         ) {
           renderMessages();
         }
+      }
+      if (STATE.awaitingPersona && Date.now() - STATE.healthCheckedAt > 60000) {
+        STATE.healthCheckedAt = Date.now();
+        try { STATE.personaHealth = await api('/api/monad/persona/health'); renderStatusBar(); } catch (e) { /* keep last known status */ }
       }
     } catch (e) { /* preserve this chat on transient poll errors */ }
     finally { STATE.polling = false; }
@@ -1420,6 +1433,7 @@
     catch (err) { STATE.status = { configured: false, note: (err.data && err.data.error) || err.message }; }
     try { STATE.personaHealth = await api('/api/monad/persona/health'); }
     catch (e) { STATE.personaHealth = null; }
+    STATE.healthCheckedAt = Date.now();
     renderStatusBar();
     try { await loadChats(); }
     catch (e) {

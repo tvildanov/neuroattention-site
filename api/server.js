@@ -13495,6 +13495,8 @@ app.get('/api/monad/persona/health', requireAuth, async (req, res) => {
         anthropic: { hosted: !!health.llm, note: health.note || null },
       };
     }
+    const availabilityCode = providers.lk === 'cursor' && /weekly usage limit reached/i.test(String(health.note || ''))
+      ? 'MODEL_QUOTA_EXCEEDED' : null;
     let note = health.note || null;
     const myPersona = humanId ? monadSvc.resolvePersonaAgent(humanId) : null;
     if (note && myPersona) {
@@ -13513,6 +13515,7 @@ app.get('/api/monad/persona/health', requireAuth, async (req, res) => {
       llm: !!health.llm,
       last_tick: health.last_tick || null,
       note,
+      availability_code: availabilityCode,
       providers,
       source: health.providers ? 'monad-server' : 'site-proxy',
     });

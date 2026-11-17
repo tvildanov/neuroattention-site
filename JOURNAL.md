@@ -2264,3 +2264,5 @@ User requested original drop restoration, a reusable export of the new renderer,
 - Added frontend send/poll guards and stale-thread response isolation; advanced Monad asset and service-worker revisions. Preserved the separate typology work and per-user Persona entry points.
 - Public home and cabinet login rendered in cloud Chrome outside Russia; this does not reproduce Egor's Russian/VPN network. Exact failed URL and Chrome error remain needed.
 - Local syntax/routing/UI checks pass; isolated PostgreSQL CI and publication remain pending. Real user conversations and provider calls have not been sent during these checks.
+
+- Added a sanitized model-quota status for the currently selected LK provider and RU/EN/ES notices; the cabinet no longer labels the Persona live when current runtime telemetry reports an exhausted weekly quota. Provider policy is unchanged.
