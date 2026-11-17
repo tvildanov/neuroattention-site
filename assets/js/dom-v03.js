@@ -35,11 +35,11 @@ function render(){
  qa('[data-v03-direction]').forEach(b=>b.setAttribute('aria-expanded',String(+b.dataset.v03Direction===direction)));
  const panel=q('#dom-direction-detail');panel.hidden=direction===null;if(direction!==null){const item=d.directions[direction];q('[data-v03-direction-title]').textContent=item.title;q('[data-v03-direction-body]').textContent=item.body;q('[data-v03-direction-link]').href=partnerURL(item.id);}
  facultyGrid.classList.toggle('has-selection',direction!==null);facultyGrid.style.setProperty('--faculty-selected-column',String((direction||0)%2+1));facultyGrid.style.setProperty('--faculty-other-column',String((direction||0)%2?1:2));qa('.dom-v04-faculty',facultyGrid).forEach((wrap,i)=>wrap.classList.toggle('is-selected',i===direction));
- if(direction!==null){const wrap=qa('.dom-v04-faculty',facultyGrid)[direction];wrap.append(panel);}
+ if(direction!==null){const wrap=qa('.dom-v04-faculty',facultyGrid)[direction];wrap.append(panel.closest('.dom-v041-scroll')||panel);}
  q('[data-v03-direction-link]').hidden=direction===null||activeContext!=='direction';q('[data-v03-direction-link]').textContent=d.ui.facultyAction;
  q('[data-v03-research-link]').hidden=state.labSelected===null||activeContext!=='lab';
  q('.dom-v03-invitation>a').href=activeContext==='direction'&&direction!==null?partnerURL(d.directions[direction].id):activeContext==='lab'&&state.labSelected!==null?partnerURL('',d.pilots[state.labSelected].id):partnerURL();
- const demo=q('[data-v03-profile-demo]');if(demo)demo.textContent=d.ui.demoProfile;renderObservations();railRender();
+ const demo=q('[data-v03-profile-demo]');if(demo)demo.textContent=d.ui.demoProfile;renderObservations();railRender();document.dispatchEvent(new Event('domjourneychange'));
 }
 function drawArrows(){
  const wheel=q('.dom-eco-wheel');if(!wheel)return;
@@ -81,5 +81,5 @@ function setupObservations(){const root=q('#problem-and-facts'),grid=q('.grid-2'
 function saveObservations(){const root=q('#dom-observation-cards');write(safeSession,'dom_observations_v1',{expiresAt:Date.now()+86400000,choosing:q('#problem-and-facts').classList.contains('is-choosing-observations'),choices:qa('input:checked',root).map(n=>n.value),other:qa('textarea',root).map(n=>n.value.slice(0,500))});}
 function renderObservations(){}
 setupObservations();render();drawArrows();save();window.addEventListener('resize',()=>{requestAnimationFrame(drawArrows)},{passive:true});document.addEventListener('langchange',render);window.addEventListener('pageshow',restoreReturn);restoreReturn();
-window.DOMJourney={getState:()=>C.read(state),reset:()=>{state=C.fresh(Date.now());direction=null;save();render();}};
+window.DOMJourney={getState:()=>C.read(state),reset:()=>{timers.forEach(clearTimeout);timers.clear();state=C.fresh(Date.now());direction=null;activeContext='';save();render();}};
 })();

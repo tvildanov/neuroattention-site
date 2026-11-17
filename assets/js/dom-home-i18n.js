@@ -29,7 +29,7 @@
   var currentLang = DEFAULT_LANG;
   var ready = false;
   // Release key allows normal browser/CDN caching between page visits.
-  var DICT_VERSION = 'home-theme-20261116';
+  var DICT_VERSION = 'home-review-20261117';
 
   /* ── path helpers ── */
   function getBasePath() {

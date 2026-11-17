@@ -55,6 +55,7 @@
       dot.style.opacity = '0';
     }
     function trackCursor(e) {
+      if(document.querySelector('dialog[open]')){hideCursor();return;}
       
       if (e.pointerType === 'touch') { hideCursor(); return; }
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
@@ -69,6 +70,7 @@
         dot.style.opacity = '1';
       }
     }
+    document.addEventListener('toggle',function(e){if(e.target.matches?.('dialog[open]'))hideCursor();},true);
     hideCursor();
     window.addEventListener('pointermove', trackCursor, { passive: true, capture: true });
     window.addEventListener('mousemove', trackCursor, { passive: true, capture: true });
