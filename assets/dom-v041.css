@@ -26,7 +26,7 @@
 #dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:clamp(30px,3.6vw,52px);line-height:1.1;margin-bottom:16px}
 #dom-ecosystem .dom-ecosystem-diagram-heading h2>span{display:block;white-space:normal}
 #dom-ecosystem .dom-ecosystem-diagram-heading h2>span:first-child::after{content:none}
-#dom-observation-cards .media-box:first-child img:not(.dom-v041-map-image){object-position:center 23%}
+#dom-observation-cards .media-box:first-child img:not(.dom-v041-map-image){object-position:center 35%}
 #dom-observation-cards .media-box .dom-v041-map-image{position:absolute;left:50%;top:50%;width:var(--map-height);height:var(--map-width);max-width:none;object-fit:cover;transform:translate(-50%,-50%) rotate(-90deg)}
 html.na-custom-cursor-active dialog[open],html.na-custom-cursor-active dialog[open] *{cursor:auto!important}
 html.na-custom-cursor-active dialog[open] :is(button,a,summary){cursor:pointer!important}
