@@ -2227,3 +2227,10 @@ Validation: Chromium confirmed the requested title before translation and after 
 - XR suite exposed controller-before-copy initialization; deferred the scene controller. Mobile detail cards now flow below the image to keep selected controls reachable. One disclosure follows the full scene. Fixed navy-screen light-theme link contrast and Space primary CTA visibility.
 - Added localized privacy notice. Remote analytics remains disabled. Real production OTP delivery still requires a mailbox exercise; no real personal application has been sent by these tests.
 - Production still unchanged; final remote CI and fresh-main release observation remain required.
+
+
+## 2026-11-17 — v0.4 interrupted-work recovery and release QA
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-17","did":["Recovered the existing v0.4 feature branch and draft PR #190 rather than restarting v0.3","Fixed faculty repeat-click overlap, cover CSS specificity, restored CTA context and observation skip state","Passed 30 narrative, 24 additional Retina/wide-screen, 12 XR and 6 isolated partner browser scenarios; API/container CI passed"],"changed":["Homepage v0.4 only; added narrow API Docker context so the root build excludes 2.5GB of unrelated media"],"files":["assets/dom-v04.css","assets/js/dom-v03.js","scripts/test-dom-v04-public.cjs",".github/workflows/dom-v03-qa.yml",".dockerignore","docs/DOM-V04-RELEASE.md"],"decisions":["Typology branch remains separate and untouched","Higher-resolution media sources and real mailbox delivery remain explicitly unverified"],"followups":["Observe final CI and merge; set Railway build context to repository root; verify terminal Pages/Railway success and read-only startup schema audit"],"next_session":"Read docs/DOM-V04-RELEASE.md; preserve current main and the independent typology branch."}
+```
