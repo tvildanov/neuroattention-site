@@ -398,3 +398,4 @@ index 36a8696..9bbba37 100644
  let own=await call('GET','/api/partner/me?user_id='+superId,null,ownerToken);assert.equal(own.body.applications.length,1);assert.equal(own.body.applications[0].contact_email,'new@example.test');assert.equal(own.body.permissions.read,false);
  let other=await call('GET','/api/partner/me?user_id='+ownerId,null,token(ordinaryId));assert.equal(other.body.applications.length,0,'Cannot read another owner by query');
  assert.equal((await call('GET','/api/partner/admin/applications',null,token(readId))).status,200);
+
