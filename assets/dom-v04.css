@@ -1,7 +1,7 @@
 /* Package 04: a single homepage composition layer, using existing DOM tokens. */
 .home-matrix{--v04-cue:#a3ecc0;--v04-halo:#79e7a551}
 html[data-dom-theme=light] .home-matrix{--v04-cue:#347ad5;--v04-halo:#4c9bff45}
-html[data-dom-theme=light] .home-matrix .dom-intro-panel::after{background-size:auto 100%;opacity:.82}
+html[data-dom-theme=light] #dom-intro .dom-intro-panel::after{background-size:auto 100%;opacity:.82}
 .home-matrix .dom-intro-question{max-width:min(70%,980px);font-size:clamp(17px,1.5vw,24px);line-height:1.45;text-wrap:pretty}
 html[data-dom-theme=light][lang=ru] .home-matrix .dom-intro-question .dom-cover-ru-break{display:none}
 /* Choice remains inside the original consequence cards. */
@@ -48,12 +48,13 @@ html[data-dom-theme=light][lang=ru] .home-matrix .dom-intro-question .dom-cover-
 #dom-education-research .dom-v04-mission{font-size:15px;line-height:1.45;color:var(--text-primary);margin:0 0 8px}
 .dom-v04-lab-intro{font:400 12px/1.45 Inter,sans-serif;color:var(--text-secondary);margin:0 0 8px}
 .dom-v04-faculty{position:relative;min-width:0}
-.dom-v04-faculty>button{width:100%;height:100%;min-height:68px;font-size:13px;line-height:1.35}
+.dom-v04-faculty>button{width:100%;height:auto;min-height:68px;font-size:13px;line-height:1.35}
 .has-selection .dom-v04-faculty:not(.is-selected)>button{opacity:.45;filter:blur(.3px)}
 .dom-v04-faculty.is-selected{z-index:9}
  .dom-v04-faculty #dom-direction-detail{position:static;z-index:2;width:auto;min-height:0;max-height:none;overflow:auto;box-sizing:border-box;padding:12px;background:var(--bg-base);border:1px solid var(--v03-accent);border-top:0;border-radius:0 0 10px 10px;scrollbar-width:thin;flex:1}
 
 .dom-v04-detail-close{float:right;width:28px;height:28px;min-height:28px;padding:0;margin:-9px -9px 0 4px;background:none;border:0;color:var(--text-primary);font-size:24px;cursor:pointer}
+#dom-direction-detail>.dom-v04-detail-close{display:block;min-height:28px;height:28px;padding:0;text-align:center;border:0;background:none;font-size:24px}
 #dom-education-research #dom-direction-detail p{font-size:14px;line-height:1.55}
 #dom-education-research .dom-v03-choices button{font-size:13px;line-height:1.35;padding:8px 10px}
 #dom-education-research .dom-v03-invitation{margin-top:14px;padding-top:14px;gap:20px}
@@ -110,7 +111,7 @@ html[data-dom-theme=light][lang=ru] .home-matrix .dom-intro-question .dom-cover-
 }
 @media(max-width:600px){
  .home-matrix .dom-intro-question{max-width:100%;font-size:16px;background:color-mix(in srgb,var(--bg-base) 85%,transparent)}
- html[data-dom-theme=light] .home-matrix .dom-intro-panel::after{background-size:auto 75%;opacity:.3;background-position:right bottom}
+ html[data-dom-theme=light] #dom-intro .dom-intro-panel::after{background-size:auto 75%;opacity:.3;background-position:right bottom}
  #dom-observation-cards .dom-v04-other textarea{height:32px}
  #dom-ecosystem .dom-eco-node{font-size:12px}
  #dom-ecosystem .dom-eco-panels article{padding:10px 0}
