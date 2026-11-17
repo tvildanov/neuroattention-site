@@ -123,17 +123,17 @@ async function fetchLatest() {
 
   // ── Solar wind plasma (sun) ──
   try {
-    const sw = await getJson('https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json');
-    const rows = sw.slice(1);
-    const last = rows[rows.length - 1]; // [time, density, speed, temperature]
-    if (last && last[2]) {
-      out.push({ layer: 'sun', source: 'NOAA SWPC', source_url: 'https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json',
-        event_type: 'solar_wind', title: 'Solar wind speed: ' + Math.round(last[2]) + ' km/s',
-        description: 'Density ' + last[1] + ' p/cm³.', timestamp: isoUtc(last[0]),
-        severity: Math.round(last[2]) + ' km/s', location_scope: 'global',
-        dedup_key: 'noaa:sw:' + last[0], raw_payload: { time: last[0], density: last[1], speed: last[2] } });
+    const source = 'https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json';
+    const sw = await getJson(source);
+    const last = latestWind(sw);
+    if (last) {
+      out.push({ layer:'sun', source:'NOAA SWPC', source_url:source,
+        event_type:'solar_wind', title:'Solar wind speed: '+Math.round(last.speed)+' km/s',
+        description:last.density==null?'Solar wind observation.':'Density '+last.density+' p/cm³.',
+        timestamp:last.time, severity:Math.round(last.speed)+' km/s', location_scope:'global',
+        dedup_key:'noaa:sw:'+last.time, raw_payload:last });
     }
-  } catch (e) { console.warn('[ext/noaa] solarwind:', e.message); }
+  } catch (e) { require('./_availability').warn('noaa:solarwind',e); }
 
   // ── Active alerts/warnings (sun or earth by content) ──
   try {
@@ -153,4 +153,12 @@ async function fetchLatest() {
   return out.filter(function (e) { return e.timestamp; });
 }
 
-module.exports = { fetchLatest, fetchHistory };
+function latestWind(rows) {
+  if (!Array.isArray(rows)) return null;
+  const valid=rows.filter(r=>r&&r.active===true&&r.proton_speed!=null&&Number.isFinite(Number(r.proton_speed))&&Number(r.proton_speed)>0&&Number(r.proton_speed)<4000&&isoUtc(r.time_tag));
+  valid.sort((a,b)=>Date.parse(isoUtc(b.time_tag))-Date.parse(isoUtc(a.time_tag)));
+  const r=valid[0];if(!r)return null;
+  const density=r.proton_density==null?null:Number(r.proton_density);
+  return {time:isoUtc(r.time_tag),speed:Number(r.proton_speed),density:Number.isFinite(density)&&density>=0?density:null,source:r.source};
+}
+module.exports = { fetchLatest, fetchHistory, latestWind };

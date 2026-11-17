@@ -28,7 +28,7 @@ async function fetchRange(s, e, key) {
         start_time: iso(f.beginTime), end_time: iso(f.endTime), severity: f.classType, location_scope: 'global',
         dedup_key: 'donki:flr:' + f.flrID, raw_payload: f });
     });
-  } catch (err) { console.warn('[ext/donki] flr:', err.message); }
+  } catch (err) { require('./_availability').warn('donki:flr',err);const fallback=await require('./noaa').fetchHistory({from:s,to:e});out.push(...fallback); }
   try {
     const cme = await getJson('https://api.nasa.gov/DONKI/CME?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
     (cme || []).forEach(function (c) {
@@ -39,7 +39,7 @@ async function fetchRange(s, e, key) {
         start_time: iso(c.startTime), severity: a.type || null, location_scope: 'global',
         dedup_key: 'donki:cme:' + c.activityID, raw_payload: c });
     });
-  } catch (err) { console.warn('[ext/donki] cme:', err.message); }
+  } catch (err) { require('./_availability').warn('donki:cme',err); }
   try {
     const gst = await getJson('https://api.nasa.gov/DONKI/GST?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
     (gst || []).forEach(function (g) {
@@ -49,7 +49,7 @@ async function fetchRange(s, e, key) {
         timestamp: iso(g.startTime), start_time: iso(g.startTime), severity: kp != null ? 'Kp' + kp : null,
         location_scope: 'global', dedup_key: 'donki:gst:' + g.gstID, raw_payload: g });
     });
-  } catch (err) { console.warn('[ext/donki] gst:', err.message); }
+  } catch (err) { require('./_availability').warn('donki:gst',err); }
   return out.filter(function (x) { return x.timestamp; });
 }
 // Raw CME analyses for [from,to] (YYYY-MM-DD or ms). Used by the Sun M-flare
@@ -78,7 +78,7 @@ async function fetchCmeAnalyses(ctx) {
         });
       });
     });
-  } catch (err) { console.warn('[ext/donki] cme-analyses:', err.message); }
+  } catch (err) { require('./_availability').warn('donki:cme-analyses',err); }
   return out;
 }
 
