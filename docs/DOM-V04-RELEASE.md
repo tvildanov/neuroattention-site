@@ -48,14 +48,14 @@ Base: published v0.3 `d3c8cd516a654cfeac482b0c9ff82a6a65f6bc2a`. Separate branch
 | V04-29 | DONE | Вопрос 04 — бизнес: сохранить текущий или усилить без изменения смысла [ЧАСТИЧНО УТВЕРЖДЕНО, P1] |
 | V04-30 | DONE | Одна общая CTA вместо нагромождения кнопок [УТВЕРЖДЕНО, P1] |
 | V04-31 | DONE | Удалить декоративный публичный абзац о «четырёх приоритетах» [УТВЕРЖДЕНО, P1] |
-| V04-32 | PENDING DEPLOY | `/data/profile-stats.json`: исправить доступность конфигурации профилей [P1, ТЕХНИЧЕСКИЙ ДЕФЕКТ ПОДТВЕРЖДЁН] |
+| V04-32 | DONE | `/data/profile-stats.json`: исправить доступность конфигурации профилей [P1, ТЕХНИЧЕСКИЙ ДЕФЕКТ ПОДТВЕРЖДЁН] |
 | V04-33 | DONE | NOAA SWPC: убрать запрос к устаревшему solar-wind endpoint [P1, ПРИЧИНА С ВЫСОКОЙ УВЕРЕННОСТЬЮ] |
 | V04-34 | PARTIAL | NASA DONKI FLR: проверить ключ и реальный HTTP-ответ [P1, ДИАГНОЗ ЕЩЁ НЕ ПОДТВЕРЖДЁН] |
-| V04-35 | PENDING DEPLOY | Что такое проверка рабочей БД партнёрской регистрации [P1, ПРОВЕРИТЬ БЕЗ ЗАПИСИ РЕАЛЬНЫХ ДАННЫХ] |
+| V04-35 | DONE | Что такое проверка рабочей БД партнёрской регистрации [P1, ПРОВЕРИТЬ БЕЗ ЗАПИСИ РЕАЛЬНЫХ ДАННЫХ] |
 | V04-36 | BLOCKED: authorised mailbox required | Тест настоящего письма и партнёрской заявки [P1, НУЖЕН РЕАЛЬНЫЙ АДРЕС ТОЛЬКО С СОГЛАСИЯ] |
-| V04-37 | PENDING DEPLOY | Отдельно отметить не связанные с v0.4 предупреждения [P2] |
+| V04-37 | DONE | Отдельно отметить не связанные с v0.4 предупреждения [P2] |
 | V04-38 | PARTIAL | Сквозная визуальная и функциональная матрица [УТВЕРЖДЕНО] |
-| V04-39 | PARTIAL | Финальный отчёт Work и выпуск [УТВЕРЖДЕНО] |
+| V04-39 | DONE | Финальный отчёт Work и выпуск [УТВЕРЖДЕНО] |
 
 ## API implementation checkpoint
 
@@ -105,4 +105,16 @@ V04-01/02 remain PARTIAL because no higher-resolution historical source was foun
 
 ## Deployment evidence
 
-Pending terminal GitHub Pages / Railway results. Do not interpret this pre-release section as a claim of publication.
+Released through merged PR https://github.com/tvildanov/neuroattention-site/pull/190 . Production commit: `ade97009cb8db9bb0cd3b471560c0bbbcceb1eae`.
+
+- GitHub Pages: **SUCCESS**, run https://github.com/tvildanov/neuroattention-site/actions/runs/44039195038 .
+- Railway production API: **SUCCESS**, deployment `c011b52d-cf40-47b1-8baf-c112e9ba6059`, building the release commit with the root Dockerfile. Configuration was read back: root `/`, builder `DOCKERFILE`, `/health`, narrow API/profile watch paths.
+- https://dom.institute/ returns HTTP 200 and the v0.4 stylesheet revision. Live Chromium smoke check found 12 XR hotspots and 10 inline consequence controls; faculty repeat-close worked and no runtime errors were observed. Canonical URL remains https://dom.institute/ .
+- https://neuroattention-api-production.up.railway.app/health returns HTTP 200, `ok:true`, `profile_config_ready:true`, `profile_count:5`.
+- Runtime: `Loaded profile-stats.json with 5 profiles`; `SMTP connected`; read-only partner audit `ok:true`, six tables, required columns/foreign keys/idempotency/status check/runtime privileges/indexes all true; legacy profile tables present.
+- Runtime upstream status: NASA FLR still returns HTTP 404, safely handled with a bounded key-free warning; NOAA ingestion records new events. No false claim that NASA upstream was repaired. This affects the NASA source, not homepage/API availability.
+- Typology remained independently active: its branch advanced from the initially observed `a376ecf` to `795b7bb5e96bcd97b7a7536022768471976c0a84`; this release neither merged nor overwrote it.
+
+Successful source-equivalent browser CI: https://github.com/tvildanov/neuroattention-site/actions/runs/44037924366 (Chromium matrix plus Firefox/WebKit). QA screenshots/inventories: https://github.com/tvildanov/neuroattention-site/actions/runs/44037924366/artifacts/14308820906 (112,435,400-byte ZIP; expires 24 November 2026). Final Docker-context/API CI: https://github.com/tvildanov/neuroattention-site/actions/runs/44038911301 and https://github.com/tvildanov/neuroattention-site/actions/runs/44038904840 . The only later changes after the successful browser source were `.dockerignore` and documentation; frontend and test source were verified byte-identical.
+
+This final report is preserved on a documentation branch based on the deployed merge, without scheduling another unchanged 2.5GB website publication. The release PR links this report. Remaining PARTIAL/BLOCKED rows above are source-resolution limits, incomplete NASA response-body diagnosis, historical visual-baseline coverage and the unauthorised real-mailbox exercise; they are not hidden as completed tasks.
