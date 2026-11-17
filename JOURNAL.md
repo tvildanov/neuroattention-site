@@ -2153,3 +2153,77 @@ Validation: Chromium confirmed the requested title before translation and after 
   "next_session": "Read current main and docs/DOM-PARALLEL-WORK.md before typology changes. Use shared theme variables for new account components."
 }
 ```
+
+
+## 2026-11-16 — DOM v0.3 source intake and safe implementation branch
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-16T23:29:56.746Z",
+  "did": [
+    "Read full user-pasted Quickstart and master XR-01…16 / HOME-17…73 through final changelog.",
+    "Audited main/parallel branch, existing scene handlers and backend auth; established feature branch and requirement registry."
+  ],
+  "changed": [
+    "Documentation checkpoint only; production unchanged."
+  ],
+  "files": [
+    "docs/DOM-V03-IMPLEMENTATION.md",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Package 03 and current explicit deployment authorisation supersede collection-era no-edit notes.",
+    "Require real verified-email partner flow; reject readonly service principal on application data.",
+    "Preserve parallel typology documentation and existing client functionality."
+  ],
+  "followups": [
+    "Implement in staged commits; remote CI required while local environment unavailable; no untested production claims."
+  ],
+  "next_session": "Read docs/DOM-V03-IMPLEMENTATION.md; continue from branch codex/home-master-v03-20261116, inspect latest commit and checks."
+}
+```
+
+
+## 2026-11-16 — v0.3 public experience implementation checkpoint
+
+- Added isolated localized narrative data, existing-wheel seven-step controller, four Space perspectives, six directions/full catalogue, four pilot disclosures and common invitation.
+- Added versioned anonymous local journey state (30-day TTL), passive section completion and local-only optional observation inputs. Existing profile values/method triad and campus/anatomy source images retained.
+- Added safe partner return-state hooks; partner destination and backend are the next stage, so this feature branch is not publishable yet.
+- Checks executed: JS parser compilation via orchestration runtime and pure journey direct-DOM/out-of-order/repeat-close/completion checks. Browser/layout/API checks have NOT run. Local execution remains unavailable.
+
+
+## 2026-11-16 — v0.3 partner API checkpoint
+
+- Added verified-email partner intake reusing JWT signing and SMTP transport, namespaced additive application/challenge/proof/permission/audit/rate tables; user role is always user for new accounts.
+- Real submissions require email proof and consent, use authenticated DB ownership and idempotency key. User reads are owner-only; admin review uses superadmin or explicit read/manage permission; readonly service principals denied. Status updates use version checks and atomic audit.
+- Added isolated PostgreSQL integration tests; SMTP test adapter only. Syntax checked in orchestration runtime; CI results pending. No production migration/deployment yet.
+
+
+## 2026-11-16 — Interrupted operation recovery and browser QA correction
+
+- Verified remote feature head e3cbc41a3026de11d427a4fb3d32af1847275e5c; production main remains 687f60703fb54d70536534ef39e95b8ee0a5a0e7.
+- Latest partner form/cabinet commit did not reach the branch and must be restored; do not claim it saved.
+- Isolated PostgreSQL partner API suite passed (Actions job 133703979774).
+- Browser job reported ecosystem height 797.78px at 1366x768, then test harness kept browser processes alive until job timeout. Fixed fail-fast termination, added computed-geometry/screenshot evidence, and corrected selector precedence for compact heading/intro/wheel. Not a passing browser result yet.
+
+
+## 2026-11-16 — Local executor recovered; partner integration hardening
+
+- Recovered branch 67fb611 into a separate worktree; original worktree and its unrelated attention CSS change preserved.
+- Changed only the account theme-controller cache revision; the partner module injects its independent tab and reuses existing tab switching without replacing account calculations.
+- Removed unverified signup-to-privileged-role/identity assignment and limited boot allowlist healing to already privileged accounts.
+- Added payload digest protection against silently treating changed content as the same idempotent submission; existing account roles and client access are retained.
+- Added browser form/account/history integration scenarios with explicitly isolated API fixtures; backend suite uses real isolated PostgreSQL.
+- First local form test found a return-scroll defect caused by a stale interaction flag and smooth-scroll restoration. Reset the return interaction flag and restore without scrolling animation. Checks remain pending until observed.
+- Production has not been updated.
+
+## 2026-11-16 — Final visual and source checkpoint
+
+- Temporary feature-branch patch application succeeded at e54ebef; this avoids retransmitting entire large account/API files. Remove temporary sync workflow before release.
+- Local Chromium: all 30 locale/theme/viewport public cases pass, including expanded Space/Lab layouts; all six partner form/history/cabinet cases pass with an isolated API fixture.
+- Added XR regression suite: 12 cases (RU/EN/ES, dark/light, 1280x720 and 375px), all 12 hotspots, actual new copy, Hz/bpm, repeat-close, full scene size, all direction/pilot detail heights. All pass.
+- XR suite exposed controller-before-copy initialization; deferred the scene controller. Mobile detail cards now flow below the image to keep selected controls reachable. One disclosure follows the full scene. Fixed navy-screen light-theme link contrast and Space primary CTA visibility.
+- Added localized privacy notice. Remote analytics remains disabled. Real production OTP delivery still requires a mailbox exercise; no real personal application has been sent by these tests.
+- Production still unchanged; final remote CI and fresh-main release observation remain required.

@@ -1,0 +1,67 @@
+name: DOM v03 checks
+on:
+  push:
+    branches: ['codex/home-master-v03-*']
+  pull_request:
+    branches: [main]
+    paths: ['assets/js/dom-v03*', 'assets/js/dom-journey*', 'assets/dom-v03.css', 'index.html', 'partner.html', 'api/partner*', 'scripts/test-dom-v03*', '.github/workflows/dom-v03-qa.yml']
+permissions:
+  contents: read
+jobs:
+  public-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test dependencies
+        run: npm install --prefix /tmp/dom-v03-qa --no-save playwright@1.56.1
+      - name: Install browsers
+        run: /tmp/dom-v03-qa/node_modules/.bin/playwright install --with-deps chromium firefox webkit
+      - name: Check DOM narrative, progression and layout
+        env:
+          NODE_PATH: /tmp/dom-v03-qa/node_modules
+        run: |
+          node scripts/test-dom-v03.cjs
+          node scripts/test-dom-v03-forms.cjs
+          node scripts/test-dom-v03-xr.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dom-v03-public-ui
+          path: qa-v03
+          retention-days: 7
+
+  partner-api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dom_v03
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated API test dependencies
+        run: npm install --prefix /tmp/dom-v03-api --no-save express@4.21.2 pg@8.16.3 jsonwebtoken@9.0.2
+      - name: Check source and real isolated Postgres requests
+        env:
+          NODE_PATH: /tmp/dom-v03-api/node_modules
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/dom_v03
+        run: |
+          node --check api/server.js
+          node --check api/partner.js
+          node scripts/test-dom-v03-partner.cjs

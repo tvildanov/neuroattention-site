@@ -3245,6 +3245,14 @@ function signToken(user) {
   );
 }
 
+// Isolated partner intake; shares JWT signing and SMTP but verifies email before account creation.
+require('./partner').install(app,{
+ sql,requireAuth,signToken,secret:JWT_SECRET,
+ hashPassword:password=>bcrypt.hash(password,BCRYPT_ROUNDS),
+ mailReady:()=>!!mailTransport,
+ deliver:message=>mailTransport.sendMail({from:EMAIL_FROM,...message})
+});
+
 // ── AUTH ENDPOINTS ──
 
 // Register
@@ -3269,14 +3277,8 @@ app.post('/api/auth/register', async (req, res) => {
     const existing = await sql`SELECT id FROM users WHERE LOWER(email) = ${email}`;
     if (existing.length) return res.status(409).json({ error: 'Email already registered' });
 
-    // Determine role: superadmin if email is in SUPERADMIN_EMAILS and limit not reached
-    let role = 'user';
-    if (SUPERADMIN_EMAILS.includes(email)) {
-      const saCount = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'superadmin'`;
-      if (parseInt(saCount[0].cnt) < SUPERADMIN_LIMIT) {
-        role = 'superadmin';
-      }
-    }
+    // An unverified email must never grant a privileged role.
+    const role = 'user';
 
     const inserted = await sql`
       INSERT INTO users (email, password_hash, display_name, phone, role, location_country, location_city, location_lat, location_lon)
@@ -3284,20 +3286,7 @@ app.post('/api/auth/register', async (req, res) => {
       RETURNING id, email, display_name, phone, role, created_at, location_country, location_city, location_lat, location_lon
     `;
     const user = inserted[0];
-    // Known Monad humans (Nick/Tahir/Nastya/Egor…): grant tab + persona on signup
-    try {
-      const mapped = (monadSvc.EMAIL_HUMAN_MAP || {})[email];
-      if (mapped) {
-        await sql`
-          UPDATE users
-          SET monad_human_id = ${mapped}, monad_access = TRUE
-          WHERE id = ${user.id}`;
-        user.monad_human_id = mapped;
-        user.monad_access = true;
-      }
-    } catch (mapErr) {
-      console.warn('[register] monad map link skipped:', mapErr.message);
-    }
+    // Privileged identity links require explicit administrative verification.
     const token = signToken(user);
 
     res.status(201).json({
@@ -14541,11 +14530,11 @@ app.listen(PORT, () => {
             await sql`
               UPDATE users
               SET role = 'superadmin', monad_human_id = ${mapped}, monad_access = TRUE
-              WHERE lower(email) = ${email}`;
+              WHERE lower(email) = ${email} AND role IN ('superadmin','founder')`;
           } else {
             await sql`
               UPDATE users SET role = 'superadmin', monad_access = TRUE
-              WHERE lower(email) = ${email}`;
+              WHERE lower(email) = ${email} AND role IN ('superadmin','founder')`;
           }
         }
         try {

@@ -49,10 +49,13 @@ copy.ru.nerve=["Лучевой нерв · поверхностная ветвь
 copy.en.nerve=["Radial nerve · superficial branch"];short.en.nerve="The superficial sensory branch of the radial nerve supplies part of the back of the hand on the thumb side. The point marks its general projection area, showing how sensations can be explored alongside anatomy. The illustration does not show its exact course.";
 copy.es.nerve=["Nervio radial · rama superficial"];short.es.nerve="La rama sensitiva superficial del nervio radial inerva parte del dorso de la mano del lado del pulgar. El punto señala su zona general de proyección para relacionar sensaciones y anatomía. La ilustración no muestra su recorrido exacto.";
 
+
+['ru','en','es'].forEach(locale=>{const values=window.DOMV03Copy?.[locale]?.xr;if(!values)return;Object.keys(values).forEach(key=>{if(Array.isArray(values[key])){copy[locale][key]=values[key];if(key!=='profile')short[locale][key]=values[key][1];}});copy[locale].note=values.note;});
+
 function cue(){q('.dr-scene').dataset.active=selected;qa('.dr-hotspot').forEach(b=>{b.classList.toggle('is-cued',!selected&&cueKeys.includes(b.dataset.open));b.setAttribute('aria-pressed',String(b.dataset.open===selected));b.setAttribute('aria-expanded',String(b.dataset.open===selected));});q('[data-caption]').textContent=ui[lang][cueKey==='profile'?'start':'next'];scheduleCue();}
 function setView(view){q('.dr-scene').dataset.view=view;qa('.dr-mobile button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));position();}
 function positionDetail(){
- if(!selected)return;
+ if(!selected||matchMedia('(max-width:600px)').matches)return;
  const scene=q('.dr-scene'),detail=q('.dr-detail'),button=q('[data-open="'+selected+'"]');
  const rect=scene.getBoundingClientRect(),target=button.getBoundingClientRect();
  const scale=rect.width/scene.clientWidth||1,width=detail.offsetWidth,height=detail.offsetHeight,pad=8,gap=10;
@@ -66,16 +69,19 @@ function positionDetail(){
 }
 function position(){
  const small=matchMedia('(max-width:600px)').matches;
- const scene=q('.dr-scene');
+ const scene=q('.dr-scene'),detail=q('.dr-detail');
+ // Touch layouts read the full card below the image rather than over its controls.
+ if(small&&detail.parentElement!==root)root.append(detail);
+ else if(!small&&detail.parentElement!==scene)scene.append(detail);
  qa('.dr-hotspot').forEach(b=>{const hands=scene.dataset.view==='hands';b.hidden=small&&(hands?(+b.dataset.x>=50):(+b.dataset.x<50));b.style.left=(small?(+b.dataset.x-(hands?0:50))*2:+b.dataset.x)+'%';b.style.top=b.dataset.y+'%';});
  if(selected&&q('[data-open="'+selected+'"]').hidden){selected='';q('.dr-detail').hidden=true;}
  if(!selected&&!visibleKeys().includes(cueKey))cueKey=visibleKeys()[0]||'profile';
  cue();positionDetail();
 }
-function open(key){selected=key;const c=copy[lang],v=c[key];q('.dr-detail').hidden=false;q('[data-title]').textContent=key==='profile'?v[1]:v[0];q('[data-body]').replaceChildren();if(key==='profile'){const m=document.createElement('div');m.className='dr-metrics';m.innerHTML='<div><strong>72 <small>'+v[4]+'</small></strong><span>'+v[2]+' · demo</span></div><div><strong>10.2 <small>'+v[5]+'</small></strong><span>'+v[3]+'</span></div>';q('[data-body]').appendChild(m);}else{const p=document.createElement('p');p.textContent=short[lang][key];q('[data-body]').appendChild(p);}cue();positionDetail();}
+function open(key){selected=key;const c=copy[lang],v=c[key];q('.dr-detail').hidden=false;q('[data-title]').textContent=key==='profile'?v[1]:v[0];q('[data-body]').replaceChildren();if(key==='profile'){const avatar=document.createElement('span');avatar.className='dr-demo-avatar';avatar.textContent='A';avatar.setAttribute('aria-hidden','true');q('[data-body]').append(avatar);[v[2],v[3],v[4]].forEach(text=>{const row=document.createElement('p');row.className='dr-profile-row';row.textContent=text;q('[data-body]').append(row);});}else{const p=document.createElement('p');p.textContent=short[lang][key];q('[data-body]').appendChild(p);}cue();positionDetail();}
 function close(){if(selected){const side=cueGroups.findIndex(group=>group.includes(selected));const visible=cueGroups[side].filter(k=>!q('[data-open="'+k+'"]').hidden);cueKeys[side]=visible[(visible.indexOf(selected)+1)%visible.length]||'';}selected='';q('.dr-detail').hidden=true;cue();}
-function render(){const c=copy[lang];q('[data-demo]').textContent=c.demo;q('[data-note]').textContent=c.note;q('[data-close]').setAttribute('aria-label',c.close);qa('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===lang)));qa('.dr-mobile button').forEach(b=>b.textContent=ui[lang][b.dataset.view]);qa('.dr-hotspot').forEach(b=>b.setAttribute('aria-label',c[b.dataset.open][0]));if(selected)open(selected);else cue();}
+function render(){const c=copy[lang];q('[data-demo]').hidden=true;q('[data-note]').textContent=c.note;q('[data-close]').setAttribute('aria-label',c.close);qa('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===lang)));qa('.dr-mobile button').forEach(b=>b.textContent=ui[lang][b.dataset.view]);qa('.dr-hotspot').forEach(b=>b.setAttribute('aria-label',c[b.dataset.open][0]));if(selected)open(selected);else cue();}
 qa('.dr-hotspot').forEach(b=>{b.addEventListener('click',()=>{if(selected===b.dataset.open)close();else open(b.dataset.open);});b.addEventListener('pointerenter',()=>{hoveredKey=b.dataset.open;stopCueTimer();});b.addEventListener('pointerleave',()=>{hoveredKey='';scheduleCue();});b.addEventListener('focus',()=>{focusedKey=b.dataset.open;stopCueTimer();});b.addEventListener('blur',()=>{focusedKey='';scheduleCue();});});
 new IntersectionObserver(entries=>{sceneVisible=entries[0].isIntersecting;scheduleCue();},{threshold:.15}).observe(q('.dr-scene'));
 document.addEventListener('visibilitychange',scheduleCue);window.addEventListener('pagehide',stopCueTimer);reducedMotion.addEventListener('change',scheduleCue);
-qa('[data-lang]').forEach(b=>b.addEventListener('click',()=>{lang=b.dataset.lang;render();}));qa('.dr-mobile button').forEach(b=>b.addEventListener('click',()=>{close();setView(b.dataset.view);}));q('[data-close]').addEventListener('click',close);root.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',position);document.addEventListener('langchange',()=>{lang=['ru','en','es'].includes(document.documentElement.lang)?document.documentElement.lang:'en';render();});const detailObserver=new ResizeObserver(positionDetail);detailObserver.observe(q('.dr-scene'));detailObserver.observe(q('.dr-detail'));position();render();})();
+qa('[data-lang]').forEach(b=>b.addEventListener('click',()=>{lang=b.dataset.lang;render();}));qa('.dr-mobile button').forEach(b=>b.addEventListener('click',()=>{close();setView(b.dataset.view);}));q('[data-close]').addEventListener('click',close);root.addEventListener('keydown',e=>{if(e.key==='Escape'){const button=selected?q('[data-open="'+selected+'"]'):null;close();button?.focus({preventScroll:true});}});window.addEventListener('resize',position);document.addEventListener('langchange',()=>{lang=['ru','en','es'].includes(document.documentElement.lang)?document.documentElement.lang:'en';render();});const detailObserver=new ResizeObserver(positionDetail);detailObserver.observe(q('.dr-scene'));detailObserver.observe(q('.dr-detail'));position();render();})();
