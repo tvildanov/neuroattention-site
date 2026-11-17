@@ -2247,3 +2247,11 @@ User requested original drop restoration, a reusable export of the new renderer,
 - Updated only neuroattention-api MONAD_API_KEY to the protected Railway reference to monad-server.MONAD_API_KEY. No credential value was read, logged or committed. No master key, user role or permission changes.
 - Added a read-only operator CLI with an offline routing check for Nikita/Egor/Nastya and unmapped users. Live mode uses the existing MCP client and prints booleans only.
 - Deployment and live verification are in progress; see docs/MONAD-AUTH-REPAIR-20261117.md for final evidence. No user conversations have been sent during verification. Parallel typology branch remains untouched.
+
+
+## 2026-11-17 — Monad authorization restored; production checkpoint
+
+- PR #192 merged at 023940a after successful routing, API and canonical-profile container checks.
+- Railway deployment 87d937a0-7886-44e0-948a-d2a6bd145816 reached SUCCESS; the actual production MCP client successfully called get_architecture at 16:39:48 UTC. Offline routing checks for three personas passed in the same deployed image.
+- Protected MONAD_API_KEY reference retained; startCommand restored to node server.js; temporary preDeployCommand cleared. A subsequent runtime-health-only verification deployment d88fb6a3-e469-4a8e-a23f-5ba7759a3572 remains BUILDING at this checkpoint.
+- No real user chat or model response was generated during verification. No roles, model policy or parallel typology work changed. Detailed evidence: docs/MONAD-AUTH-REPAIR-20261117.md.
