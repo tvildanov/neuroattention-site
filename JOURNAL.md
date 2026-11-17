@@ -2151,3 +2151,8 @@ Recorded the founder's expanded conceptual scope in docs/typology/SPACE-AWARENES
 ## 2026-11-17 — Space-body and intentional environment use
 
 Read and archived the founder's full FQ03 response. Updated SPACE-AWARENESS.md to distinguish habitual familiarity, deliberate practical use, goals, feedback and extended self-identification. Descriptions of spatial atmosphere, information sensing and direct influence remain attributed experience/hypotheses rather than validated abilities or scores. Updated CONTINUE.md, DECISIONS.md, SOURCES.md and manifest; verified the published source matches the prepared text. FQ04 asks what concrete change is meant by direct influence. No product code, scores, deployment or Monad changes. Existing journal history preserved; only this project note appended.
+
+
+## 2026-11-17 — Interaction channels and practical pilot boundary
+
+Saved a project-only summary without personal or spiritual details. Distinguished ordinary environment interaction, subjective reports and unverified mechanisms. Checked official NIMH/NHLBI descriptions of MEG/ECG; their narrow signal-registration facts do not establish unusual environmental effects. Updated Space Awareness, continuation, decisions, sources, agent instructions and manifest; verified published summary content. Next: FQ05 selects one practical assessment task. No diagnostic scores, product changes, deployment or Monad writes. Existing public journal text preserved unchanged; only this project note appended.
