@@ -2141,3 +2141,8 @@ Read current branch source/decision registers and journal through GitHub. Local 
 ```
 
 Previous guided-development session was recorded in [its existing minimal record](docs/typology/sessions/2026-11-16-guided-development.json) after an automatic-review rejection of a journal update. The founder has now explicitly requested updates to this shared journal; no additional per-session journal is created here.
+
+
+## 2026-11-16 — Space Awareness scope clarification
+
+Recorded the founder's expanded conceptual scope in docs/typology/SPACE-AWARENESS.md. Saved the source separately and updated CONTINUE.md, DECISIONS.md, SOURCES.md and the manifest. Experiential scope, proposed observable abilities and untested neural mechanisms remain distinct. No scores, diagnoses, product changes or deployment. Next: FQ03 asks for one concrete distinction from ordinary room familiarity.
