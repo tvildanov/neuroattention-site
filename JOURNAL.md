@@ -2218,3 +2218,12 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Added browser form/account/history integration scenarios with explicitly isolated API fixtures; backend suite uses real isolated PostgreSQL.
 - First local form test found a return-scroll defect caused by a stale interaction flag and smooth-scroll restoration. Reset the return interaction flag and restore without scrolling animation. Checks remain pending until observed.
 - Production has not been updated.
+
+## 2026-11-16 — Final visual and source checkpoint
+
+- Temporary feature-branch patch application succeeded at e54ebef; this avoids retransmitting entire large account/API files. Remove temporary sync workflow before release.
+- Local Chromium: all 30 locale/theme/viewport public cases pass, including expanded Space/Lab layouts; all six partner form/history/cabinet cases pass with an isolated API fixture.
+- Added XR regression suite: 12 cases (RU/EN/ES, dark/light, 1280x720 and 375px), all 12 hotspots, actual new copy, Hz/bpm, repeat-close, full scene size, all direction/pilot detail heights. All pass.
+- XR suite exposed controller-before-copy initialization; deferred the scene controller. Mobile detail cards now flow below the image to keep selected controls reachable. One disclosure follows the full scene. Fixed navy-screen light-theme link contrast and Space primary CTA visibility.
+- Added localized privacy notice. Remote analytics remains disabled. Real production OTP delivery still requires a mailbox exercise; no real personal application has been sent by these tests.
+- Production still unchanged; final remote CI and fresh-main release observation remain required.

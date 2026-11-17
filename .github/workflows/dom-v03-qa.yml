@@ -23,7 +23,10 @@ jobs:
       - name: Check DOM narrative, progression and layout
         env:
           NODE_PATH: /tmp/dom-v03-qa/node_modules
-        run: node scripts/test-dom-v03.cjs
+        run: |
+          node scripts/test-dom-v03.cjs
+          node scripts/test-dom-v03-forms.cjs
+          node scripts/test-dom-v03-xr.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

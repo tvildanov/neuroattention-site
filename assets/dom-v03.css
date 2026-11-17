@@ -139,3 +139,19 @@ html[data-dom-theme=light] .home-matrix{--v03-accent:#204c8e;--v03-glow:#4c9bff3
  #dom-ecosystem .dom-ecosystem-diagram-heading>.dom-family-intro{font-size:14px!important;line-height:1.4!important;max-width:65%!important;margin:0 0 4px auto!important}
  .home-matrix #dom-ecosystem .dom-eco-wheel{width:min(100%,calc(100svh - 280px));max-width:480px}
 }
+
+/* New controls inherit the contrast of the navy editorial screen in light mode. */
+html[data-dom-theme=light] .home-matrix #dom-education-research{--v03-accent:#afcbf8;--v03-glow:#4c9bff35;--v03-wash:#afcbf80b}
+html[data-dom-theme=light] .home-matrix #dom-education-research .dom-v03-invitation>.btn{background:#afcbf8;color:#142434;border-color:#afcbf8}
+#dom-campus .dom-v03-actions>.btn{background:var(--accent-cyan);color:var(--bg-base);border:1px solid var(--accent-cyan);text-decoration:none}
+#dom-campus .dom-v03-actions>.btn>span{color:inherit;opacity:1;visibility:visible}
+#dom-xr-practice .dom-xr-identity{display:block}
+#dom-xr-practice .dom-xr-identity .dom-family-label{max-width:none;margin-top:3px!important}
+
+/* Keep the one shared disclosure below the complete image pair. */
+#dom-xr-practice #dom-xr-scene{overflow:visible;background:transparent}
+#dom-xr-practice #dom-xr-scene .dr-note{position:static;display:block;max-width:none;width:auto;transform:none;padding:5px 0 0;margin:0;background:transparent;color:var(--text-secondary);font-size:10px;line-height:1.35;white-space:normal}
+@media(min-width:1001px){#dom-xr-practice #dom-xr-scene{width:min(100%,calc((100cqh - 36px)*2))!important;max-height:100cqh!important}}
+
+#dom-xr-scene .dr-hotspot[aria-expanded=true]{z-index:4}
+@media(max-width:600px){#dom-xr-scene>.dr-detail{position:relative!important;inset:auto!important;width:auto!important;max-height:none!important;margin:10px 0 0;padding:14px;background:var(--bg-surface);color:var(--text-primary);text-shadow:none;border:1px solid var(--line-soft);border-radius:10px;overflow:visible}}

@@ -55,7 +55,7 @@ copy.es.nerve=["Nervio radial · rama superficial"];short.es.nerve="La rama sens
 function cue(){q('.dr-scene').dataset.active=selected;qa('.dr-hotspot').forEach(b=>{b.classList.toggle('is-cued',!selected&&cueKeys.includes(b.dataset.open));b.setAttribute('aria-pressed',String(b.dataset.open===selected));b.setAttribute('aria-expanded',String(b.dataset.open===selected));});q('[data-caption]').textContent=ui[lang][cueKey==='profile'?'start':'next'];scheduleCue();}
 function setView(view){q('.dr-scene').dataset.view=view;qa('.dr-mobile button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));position();}
 function positionDetail(){
- if(!selected)return;
+ if(!selected||matchMedia('(max-width:600px)').matches)return;
  const scene=q('.dr-scene'),detail=q('.dr-detail'),button=q('[data-open="'+selected+'"]');
  const rect=scene.getBoundingClientRect(),target=button.getBoundingClientRect();
  const scale=rect.width/scene.clientWidth||1,width=detail.offsetWidth,height=detail.offsetHeight,pad=8,gap=10;
@@ -69,7 +69,10 @@ function positionDetail(){
 }
 function position(){
  const small=matchMedia('(max-width:600px)').matches;
- const scene=q('.dr-scene');
+ const scene=q('.dr-scene'),detail=q('.dr-detail');
+ // Touch layouts read the full card below the image rather than over its controls.
+ if(small&&detail.parentElement!==root)root.append(detail);
+ else if(!small&&detail.parentElement!==scene)scene.append(detail);
  qa('.dr-hotspot').forEach(b=>{const hands=scene.dataset.view==='hands';b.hidden=small&&(hands?(+b.dataset.x>=50):(+b.dataset.x<50));b.style.left=(small?(+b.dataset.x-(hands?0:50))*2:+b.dataset.x)+'%';b.style.top=b.dataset.y+'%';});
  if(selected&&q('[data-open="'+selected+'"]').hidden){selected='';q('.dr-detail').hidden=true;}
  if(!selected&&!visibleKeys().includes(cueKey))cueKey=visibleKeys()[0]||'profile';
