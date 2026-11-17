@@ -38,7 +38,7 @@ html[data-dom-theme='light'] #screen-4 .dom-attention-detail{background:#1a3145;
 #dom-xr-practice .dom-xr-footer .dom-xr-stage-note{font-size:11px}
 /* Compact wheel, readable detail, brighter original logo. */
 .home-matrix #dom-ecosystem{min-height:0;padding-block:44px}
-#dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:clamp(21px,2.25vw,32px)!important;margin-bottom:12px}
+#dom-ecosystem .dom-ecosystem-diagram-heading h2{margin-bottom:12px}
 #dom-ecosystem .dom-eco-map-layout{max-width:1080px;margin:auto;grid-template-columns:minmax(0,.95fr) minmax(0,1fr);gap:28px}
 #dom-ecosystem .dom-eco-wheel{max-width:410px}
 #dom-ecosystem .dom-eco-panels article{min-height:210px;padding:20px}

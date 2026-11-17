@@ -117,7 +117,7 @@ html[data-dom-theme='light'] .home-matrix .line-accent{box-shadow:0 0 22px #4c9b
  #dom-profile-methods .dom-method-stages button{min-height:70px;padding:10px}
  #dom-profile-methods .dom-method-panels{min-height:0;padding:14px 0}
  #dom-profile-methods .dom-method-panels p{margin-bottom:12px}
- #dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:var(--dom-title)!important;line-height:1.2;margin-bottom:12px}
+ #dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:var(--dom-title);line-height:1.1;margin-bottom:8px}
  #dom-ecosystem .dom-ecosystem-diagram-heading h2>span{white-space:normal}
  #dom-ecosystem .dom-family-intro{margin-bottom:10px}
  #dom-ecosystem .dom-eco-wheel{max-width:min(410px,calc(100svh - 320px))}

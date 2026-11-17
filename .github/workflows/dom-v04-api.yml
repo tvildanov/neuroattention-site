@@ -1,0 +1,54 @@
+name: DOM v04 API and container checks
+on:
+  push:
+    branches: ['codex/dom-v04-review-*']
+  pull_request:
+    branches: [main]
+    paths: ['api/**', 'Dockerfile', 'data/profile-stats.json', 'scripts/test-dom-v04*', '.github/workflows/dom-v04*']
+permissions:
+  contents: read
+jobs:
+  partner-api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dom_v03
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated API test dependencies
+        run: npm install --prefix /tmp/dom-v03-api --no-save express@4.21.2 pg@8.16.3 jsonwebtoken@9.0.2
+      - name: Check source and real isolated Postgres requests
+        env:
+          NODE_PATH: /tmp/dom-v03-api/node_modules
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/dom_v03
+        run: |
+          node scripts/test-dom-v04-api.cjs
+          node --check api/server.js
+          node --check api/partner.js
+          node scripts/test-dom-v03-partner.cjs
+
+  canonical-profile-container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API with the repository root context
+        run: docker build -t dom-v04-api .
+      - name: Verify canonical profile availability inside the actual image
+        run: |
+          docker run --rm dom-v04-api node -e "const fs=require('fs'),p=require('path').join('/app','..','data','profile-stats.json'),c=JSON.parse(fs.readFileSync(p));if(!c.profiles.STABLE_EXPLORER)throw Error('Default profile missing');console.log('CONTAINER_PROFILE_PASS',Object.keys(c.profiles).length)"
+          test "$(docker run --rm dom-v04-api sha256sum /data/profile-stats.json | cut -d' ' -f1)" = "$(sha256sum data/profile-stats.json | cut -d' ' -f1)"
