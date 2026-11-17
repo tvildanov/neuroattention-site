@@ -2207,3 +2207,14 @@ Validation: Chromium confirmed the requested title before translation and after 
 - Latest partner form/cabinet commit did not reach the branch and must be restored; do not claim it saved.
 - Isolated PostgreSQL partner API suite passed (Actions job 133703979774).
 - Browser job reported ecosystem height 797.78px at 1366x768, then test harness kept browser processes alive until job timeout. Fixed fail-fast termination, added computed-geometry/screenshot evidence, and corrected selector precedence for compact heading/intro/wheel. Not a passing browser result yet.
+
+
+## 2026-11-16 — Local executor recovered; partner integration hardening
+
+- Recovered branch 67fb611 into a separate worktree; original worktree and its unrelated attention CSS change preserved.
+- Changed only the account theme-controller cache revision; the partner module injects its independent tab and reuses existing tab switching without replacing account calculations.
+- Removed unverified signup-to-privileged-role/identity assignment and limited boot allowlist healing to already privileged accounts.
+- Added payload digest protection against silently treating changed content as the same idempotent submission; existing account roles and client access are retained.
+- Added browser form/account/history integration scenarios with explicitly isolated API fixtures; backend suite uses real isolated PostgreSQL.
+- First local form test found a return-scroll defect caused by a stale interaction flag and smooth-scroll restoration. Reset the return interaction flag and restore without scrolling animation. Checks remain pending until observed.
+- Production has not been updated.

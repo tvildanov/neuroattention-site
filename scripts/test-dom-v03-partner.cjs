@@ -23,7 +23,7 @@ let bad=await call('POST','/api/partner/auth/verify-code',{challenge_id:challeng
 let verified=await call('POST','/api/partner/auth/verify-code',{challenge_id:challengeId,code});assert.equal(verified.status,200);assert.equal(verified.body.user.role,'user');const ownerToken=verified.body.token,ownerId=verified.body.user.id;
 assert.equal((await call('POST','/api/partner/auth/verify-code',{challenge_id:challengeId,code})).status,401,'Code single use');
 let submitted=await call('POST','/api/partner/applications',{...payload,user_id:superId,role:'superadmin'},ownerToken);assert.equal(submitted.status,201);const id=submitted.body.application.id;assert.equal(submitted.cache,'no-store');
-assert.equal((await call('POST','/api/partner/applications',payload,ownerToken)).status,200,'Idempotent retry');assert.equal((await sql`SELECT id FROM partner_applications`).length,1);
+assert.equal((await call('POST','/api/partner/applications',payload,ownerToken)).status,200,'Idempotent retry');assert.equal((await sql`SELECT id FROM partner_applications`).length,1);assert.equal((await call('POST','/api/partner/applications',{...payload,proposal:'Changed content under a saved idempotency key.'},ownerToken)).status,409);
 let own=await call('GET','/api/partner/me?user_id='+superId,null,ownerToken);assert.equal(own.body.applications.length,1);assert.equal(own.body.applications[0].contact_email,'new@example.test');assert.equal(own.body.permissions.read,false);
 let other=await call('GET','/api/partner/me?user_id='+ownerId,null,token(ordinaryId));assert.equal(other.body.applications.length,0,'Cannot read another owner by query');
 assert.equal((await call('GET','/api/partner/admin/applications',null,token(readId))).status,200);

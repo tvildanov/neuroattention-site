@@ -42,3 +42,5 @@ CREATE TABLE IF NOT EXISTS partner_application_audit (
 );
 
 CREATE TABLE IF NOT EXISTS partner_rate_limits (key_hash TEXT PRIMARY KEY,hits INTEGER NOT NULL DEFAULT 1,window_started TIMESTAMPTZ NOT NULL DEFAULT now());
+
+ALTER TABLE partner_applications ADD COLUMN IF NOT EXISTS payload_digest TEXT NOT NULL DEFAULT '';

@@ -42,6 +42,7 @@ async function ensureSchema(sql){
  previous_status TEXT, next_status TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 )`;
   await sql`CREATE TABLE IF NOT EXISTS partner_rate_limits (key_hash TEXT PRIMARY KEY,hits INTEGER NOT NULL DEFAULT 1,window_started TIMESTAMPTZ NOT NULL DEFAULT now())`;
+  await sql`ALTER TABLE partner_applications ADD COLUMN IF NOT EXISTS payload_digest TEXT NOT NULL DEFAULT ''`;
 }
 function install(app,{sql,requireAuth,signToken,hashPassword,mailReady,deliver,secret}){
  let ready=ensureSchema(sql);ready.catch(()=>{});
@@ -89,14 +90,15 @@ function install(app,{sql,requireAuth,signToken,hashPassword,mailReady,deliver,s
   res.json({user:{id:user.id,email:user.email,display_name:user.display_name,avatar_url:user.avatar_url},email_verified:proof.length>0,permissions:access,applications:rows});
  }));
  app.post('/api/partner/applications',...auth,wrap(async(req,res)=>{
-  const a=application(req.body||{}),user=req.partnerUser;
+  const a=application(req.body||{}),user=req.partnerUser,digest=crypto.createHash('sha256').update(JSON.stringify(a)).digest('hex');
   const proof=await sql`SELECT verified_at FROM partner_email_proofs WHERE user_id=${user.id} AND email=LOWER(${user.email})`;if(!proof.length)return error(res,403,'email_verification_required');
   // Ignore frontend identity and role fields. The owner/email come only from current DB identity.
-  const rows=await sql`INSERT INTO partner_applications(user_id,client_request_id,display_name,contact_email,directions,custom_direction,interest,research_topic,country,city,competence,proposal,portfolio_url,consent_version,marketing_opt_in)
-   VALUES(${user.id},${a.client_request_id},${a.display_name},${user.email},${JSON.stringify(a.directions)}::jsonb,${a.custom_direction},${a.interest},${a.research_topic},${a.country},${a.city},${a.competence},${a.proposal},${a.portfolio_url},'dom-partner-v1',${a.marketing_opt_in})
+  const rows=await sql`INSERT INTO partner_applications(user_id,client_request_id,display_name,contact_email,directions,custom_direction,interest,research_topic,country,city,competence,proposal,portfolio_url,consent_version,marketing_opt_in,payload_digest)
+   VALUES(${user.id},${a.client_request_id},${a.display_name},${user.email},${JSON.stringify(a.directions)}::jsonb,${a.custom_direction},${a.interest},${a.research_topic},${a.country},${a.city},${a.competence},${a.proposal},${a.portfolio_url},'dom-partner-v1',${a.marketing_opt_in},${digest})
    ON CONFLICT(user_id,client_request_id) DO NOTHING RETURNING id,status,created_at`;
-  const result=rows.length?rows:await sql`SELECT id,status,created_at FROM partner_applications WHERE user_id=${user.id} AND client_request_id=${a.client_request_id}`;
-  res.status(rows.length?201:200).json({application:result[0]});
+  const result=rows.length?rows:await sql`SELECT id,status,created_at,payload_digest FROM partner_applications WHERE user_id=${user.id} AND client_request_id=${a.client_request_id}`;
+  if(!rows.length&&result[0]?.payload_digest!==digest)return error(res,409,'application_already_submitted');
+  const receipt=result[0];res.status(rows.length?201:200).json({application:{id:receipt.id,status:receipt.status,created_at:receipt.created_at}});
  }));
  app.get('/api/partner/admin/applications',...auth,wrap(async(req,res)=>{
   const access=await permissions(req.partnerUser);if(!access.read)return error(res,403,'partner_access_denied');

@@ -63,6 +63,8 @@
 
   // One-time modal for users registered before location was mandatory.
   function maybeLocationModal(user, token, apiBase, onSaved) {
+    // Partnership intake intentionally allows declining location; do not interrupt its receipt.
+    if (location.hash === '#partnerships') return;
     if (!user || (user.location_lat != null && user.location_lon != null)) return;
     if (localStorage.getItem('na_loc_prompt_dismissed') === '1') return;
     var lang = langOf();
