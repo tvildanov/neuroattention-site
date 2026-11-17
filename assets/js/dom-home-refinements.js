@@ -45,7 +45,7 @@ function teamRender(){
 function teamClose(focus){const old=person;person=null;teamRender();if(focus&&old!==null)buttons[old].focus({preventScroll:true});}
 matchMedia('(max-width:1000px)').addEventListener('change',()=>{if(person!==null)teamRender();});
 buttons.forEach((b,i)=>b.addEventListener('click',()=>{person=person===i?null:i;teamRender();}));
-function coverQuestionBreak(){const q=document.querySelector('.dom-intro-question>[data-i18n]');if(!q||lang()!=='ru')return;const text=q.textContent,match=/условиям\s*/u.exec(text);if(!match)return;const at=match.index+'условиям'.length,br=el('br','dom-cover-ru-break');q.replaceChildren(document.createTextNode(text.slice(0,at)+' '),br,document.createTextNode(text.slice(at).trimStart()));}
+function coverQuestionBreak(){}
 function localize(){coverQuestionBreak();themeLabel();teamHint.textContent=t().teamHint;teamHint.style.maxWidth='65ch';toggle.textContent='↔';toggle.setAttribute('aria-label',root.dataset.attentionView==='drop'?t().diagram:t().drop);hint.textContent='';hint.hidden=true;showDetail();teamRender();}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(pinned!==null)unpin(true);if(person!==null)teamClose(true);}});
 document.addEventListener('domthemechange',()=>{themeLabel();defaultView();});document.addEventListener('langchange',localize);defaultView();localize();

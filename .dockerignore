@@ -1,0 +1,7 @@
+# The API image needs no frontend media or audio-course archive.
+**
+!Dockerfile
+!api/
+!api/**
+!data/
+!data/profile-stats.json

@@ -40,12 +40,12 @@ html[data-dom-theme='light'] .dom-eco-center img{filter:invert(1);mix-blend-mode
 
 /* A full-width centred headline precedes both the wheel and its detail panel. */
 #dom-ecosystem .dom-ecosystem-diagram-heading{width:100%;text-align:center}
-#dom-ecosystem .dom-ecosystem-diagram-heading h2{max-width:none;width:100%;font-size:clamp(25px,2.65vw,40px)!important;line-height:1.3;margin:0 auto 18px}
+#dom-ecosystem .dom-ecosystem-diagram-heading h2{max-width:none;width:100%;line-height:1.3;margin:0 auto 18px}
 #dom-ecosystem .dom-ecosystem-diagram-heading h2>span{display:block;white-space:nowrap}
 #dom-ecosystem .dom-ecosystem-diagram-heading>.dom-family-intro{margin-inline:auto;text-align:center}
 .dom-eco-center img{width:128px;height:128px}
 html[data-dom-theme='light'] .dom-eco-center img{opacity:1}
 .dom-team-portrait{aspect-ratio:1;padding:2px;border-radius:0;clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%);background:linear-gradient(140deg,var(--accent-cyan),var(--bg-surface),var(--accent-cyan))}
 .dom-team-portrait img{clip-path:inherit;border-radius:0;object-position:center 24%}
-@media(max-width:900px){#dom-ecosystem .dom-ecosystem-diagram-heading h2{font-size:clamp(19px,2.7vw,26px)!important}.dom-eco-center img{width:96px;height:96px}}
+@media(max-width:900px){#dom-ecosystem .dom-ecosystem-diagram-heading h2{}.dom-eco-center img{width:96px;height:96px}}
 @media(max-width:600px){#dom-ecosystem .dom-ecosystem-diagram-heading h2>span{white-space:normal}.dom-eco-center img{width:86px;height:86px}}

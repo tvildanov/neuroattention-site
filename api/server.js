@@ -322,7 +322,7 @@ app.get('/health', (req, res) => {
     // LLM face is hosted on monad-server, not this API. lk_llm follows Monad key.
     lkLlm = monadConfigured;
   } catch (_) { monadConfigured = !!process.env.MONAD_API_KEY; }
-  res.json({ ok: true, monad_configured: monadConfigured, lk_live_reply: true, lk_llm: lkLlm });
+  res.json({ ok: true, monad_configured: monadConfigured, lk_live_reply: true, lk_llm: lkLlm, profile_config_ready: Object.keys(profileStatsConfig.profiles || {}).length > 0, profile_count: Object.keys(profileStatsConfig.profiles || {}).length });
 });
 
 // ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
@@ -5768,6 +5768,7 @@ app.post('/api/stats/init', requireAuth, async (req, res) => {
     // Also check localStorage-based profile from request body
     if (req.body && req.body.profileKey) profileKey = req.body.profileKey;
 
+    if (!Object.keys(profileStatsConfig.profiles || {}).length) return res.status(503).json({ error: 'Profile configuration unavailable' });
     const profile = (profileStatsConfig.profiles || {})[profileKey];
     if (!profile) {
       return res.status(400).json({ error: 'Unknown profile: ' + profileKey });

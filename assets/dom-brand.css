@@ -170,7 +170,7 @@
   position: absolute; inset: 0; width: 100% !important; height: 100% !important; object-fit: cover;
 }
 .dom-facts-conclusion { margin: 1.5rem auto 0; }
-.dom-facts-conclusion > div { padding: 1.25rem 1.5rem !important; }
+.dom-facts-conclusion > div { padding: 1.25rem 1.5rem; }
 @media (max-width: 767px) {
   .dom-facts-compact { margin-top: 1.75rem; }
   .dom-facts-compact .fact-card .text { grid-template-columns: 25px minmax(0,1fr); gap: .5rem; padding: .75rem; }

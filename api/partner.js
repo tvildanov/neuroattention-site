@@ -45,7 +45,7 @@ async function ensureSchema(sql){
   await sql`ALTER TABLE partner_applications ADD COLUMN IF NOT EXISTS payload_digest TEXT NOT NULL DEFAULT ''`;
 }
 function install(app,{sql,requireAuth,signToken,hashPassword,mailReady,deliver,secret}){
- let ready=ensureSchema(sql);ready.catch(()=>{});
+ let ready=ensureSchema(sql).then(async()=>{const report=await require('./services/partner-schema-audit').audit(sql);console.info('[partner-schema-readonly]',JSON.stringify(report));if(!report.ok)throw Error('partner_schema_invalid');});ready.catch(()=>{});
  const codeHash=(id,code)=>crypto.createHmac('sha256',secret).update(id+':'+code).digest('hex');
  const error=(res,status,code)=>res.status(status).json({error:code});
  const wrap=handler=>async(req,res)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');try{await ready;await handler(req,res);}catch(e){if(['invalid_fields','choose_direction','invalid_portfolio','consent_required'].includes(e.message))return error(res,422,e.message);console.error('[partner] request failed');return error(res,503,'partner_service_unavailable');}};
