@@ -1,5 +1,5 @@
 {
-  "version": "0.7",
+  "version": "0.8",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-17",
   "complete_method_archive": false,
@@ -7,15 +7,15 @@
   "files": [
     {
       "path": "AGENT-CONTRACT.md",
-      "git_blob_sha": "33520898e883d899b1a8cf7000691265169e3bce",
+      "git_blob_sha": "658dd1e32052324c308dc7e4cc25776f54f6c2f4",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 13544
+      "size_bytes": 14752
     },
     {
       "path": "DECISIONS.md",
-      "git_blob_sha": "359b636117e85aa6a21ac4badfca5abf9e809c35",
+      "git_blob_sha": "3a98f9ca01b5de0a726a39b330c9d2ad3012f6a6",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 17266
+      "size_bytes": 18704
     },
     {
       "path": "INTEGRATION.md",
@@ -30,9 +30,9 @@
     },
     {
       "path": "SOURCES.md",
-      "git_blob_sha": "93cc94fc6e35f779fe52e07364642e2c778abefe",
+      "git_blob_sha": "8d6faa830d6483c4494d27471431ec7bfc8d4250",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 9690
+      "size_bytes": 10633
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -61,9 +61,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "72b9265fb33f6d4000fd46792c680b1d5cf9e159",
+      "git_blob_sha": "044fd438693189f91f657022a376e8f9dff61f77",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 17592
+      "size_bytes": 19478
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -79,9 +79,9 @@
     },
     {
       "path": "SPACE-AWARENESS.md",
-      "git_blob_sha": "4732f263d513017e229fa8c7744ac2049b29e51c",
+      "git_blob_sha": "1d237de0ae7a9cd5d47fec9446a456fcc747f59d",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 19689
+      "size_bytes": 21203
     },
     {
       "path": "sources/2026-11-16-space-awareness-expansion.md",
@@ -100,6 +100,18 @@
       "git_blob_sha": "e3cc862c4ee0f91ff7f9269557c86ddd4d141658",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 5702
+    },
+    {
+      "path": "sources/2026-11-17-diagnostic-purpose-and-scope.md",
+      "git_blob_sha": "24ff1cae8d9c6744e8b42ad72a13b0af78fcac73",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 2642
+    },
+    {
+      "path": "SPACE-AWARENESS-ASSESSMENT-DRAFT.md",
+      "git_blob_sha": "cda7f05f1f5d3ef577c2ba262e0429bc6411c7a6",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 9899
     }
   ],
   "full_handoff_text_included": true,
