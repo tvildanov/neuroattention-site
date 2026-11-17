@@ -1,0 +1,25 @@
+name: Apply verified DOM v03 patch
+on:
+  push:
+    branches: ['codex/home-master-v03-20261116']
+    paths: ['.github/patches/dom-v03-final.patch']
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/home-master-v03-20261116
+      - name: Apply reviewed source changes on feature branch
+        run: |
+          test "$(git branch --show-current)" = "codex/home-master-v03-20261116"
+          test "$(git hash-object .github/patches/dom-v03-final.patch)" = "86e93ea74d038b8b9e45fecd834faa836ff3be1c"
+          git apply --check .github/patches/dom-v03-final.patch
+          git apply .github/patches/dom-v03-final.patch
+          rm .github/patches/dom-v03-final.patch .github/workflows/dom-v03-sync.yml
+          git add -A
+          git -c user.name="DOM release checkpoint" -c user.email="128026364+tvildanov@users.noreply.github.com" commit -m "Apply locally verified partner hardening, browser tests and checkpoint"
+          git push origin HEAD:codex/home-master-v03-20261116
