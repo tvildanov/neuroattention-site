@@ -44,8 +44,8 @@
   const pick=a=>a[ix()];
   function renderPrograms(){
     if(document.body.dataset.domPage!=='programs')return;
-    const hero=E('[data-i18n="p.hero.title"]');if(hero)hero.innerHTML=t('Программы <span class="text-gradient-cyan">DOM Institute</span>','<span class="text-gradient-cyan">DOM Institute</span> Programs','Programas <span class="text-gradient-cyan">DOM Institute</span>');
-    const subtitle=E('[data-i18n="p.hero.subtitle"]');if(subtitle)subtitle.textContent=t('Программы и практики для адаптации к быстрым переменам, устойчивости и повышения качества жизни.','Programs and practices for adaptation to rapid change, resilience and quality of life.','Programas y prácticas para la adaptación al cambio, resiliencia y calidad de vida.');
+    const hero=E('[data-dom-v06="program-title"],[data-i18n="p.hero.title"]');if(hero)hero.innerHTML=t('Программы <span class="text-gradient-cyan">DOM Institute</span>','<span class="text-gradient-cyan">DOM Institute</span> Programs','Programas <span class="text-gradient-cyan">DOM Institute</span>');
+    const subtitle=E('[data-dom-v06="program-subtitle"],[data-i18n="p.hero.subtitle"]');if(subtitle)subtitle.textContent=t('Программы и практики для адаптации к быстрым переменам, устойчивости и повышения качества жизни.','Programs and practices for adaptation to rapid change, resilience and quality of life.','Programas y prácticas para la adaptación al cambio, resiliencia y calidad de vida.');
     const section=E('#programs-main');if(!section)return;
     section.classList.add('dom-v06-programs');
     const badge=t('Формат и условия уточняются','Format and terms being developed','Formato y condiciones en desarrollo');
@@ -70,32 +70,46 @@
   ];
   function renderLab(){
     if(document.body.dataset.domPage!=='lab')return;
-    const hero=E('[data-i18n="l.hero.title"]');if(hero)hero.textContent=t('Операционная система для человеческой адаптации','An operating system for human adaptation','Un sistema operativo para la adaptación humana');
-    const sub=E('[data-i18n="l.hero.subtitle"]');if(sub)sub.textContent=t('Инфраструктура данных и исследований, формирующая новые подходы к адаптации и развитию человека в технологическом мире.','Data and research infrastructure for new approaches to human adaptation and development.','Infraestructura de datos e investigación para la adaptación y desarrollo humano.');
+    const hero=E('[data-dom-v06="lab-title"],[data-i18n="l.hero.title"]');if(hero)hero.textContent=t('Операционная система для человеческой адаптации','An operating system for human adaptation','Un sistema operativo para la adaptación humana');
+    const sub=E('[data-dom-v06="lab-subtitle"],[data-i18n="l.hero.subtitle"]');if(sub)sub.textContent=t('Инфраструктура данных и исследований, формирующая новые подходы к адаптации и развитию человека в технологическом мире.','Data and research infrastructure for new approaches to human adaptation and development.','Infraestructura de datos e investigación para la adaptación y desarrollo humano.');
     const stack=E('.img-stack');
     if(stack) {
       const photos=['assets/images/theme/anatomical-presence-hd.webp','assets/images/dom-xr-presence-brain-v3.jpg','assets/images/dom-campus-original.jpg'];
       stack.querySelectorAll('img').forEach((img,i)=>{if(photos[i]){img.src=photos[i];img.loading=i?'lazy':'eager';img.decoding='async';img.alt=t('Концептуальная иллюстрация исследования и среды DOM','Concept illustration of DOM research and environment','Ilustración conceptual de investigación y entorno DOM');}});
     }
     const dirs=E('[data-i18n="l.research.title"]');const oldSection=dirs&&dirs.closest('section');if(oldSection)oldSection.hidden=true;
-    const pTitle=E('[data-i18n="l.programs.title"]');if(!pTitle)return;const area=pTitle.closest('section');
+    const pTitle=E('[data-dom-v06="lab-program-title"],[data-i18n="l.programs.title"]');if(!pTitle)return;const area=pTitle.closest('section');
     pTitle.textContent=t('Первые исследовательские программы','Early research programs','Primeros programas de investigación');
-    const intro=E('[data-i18n="l.programs.intro"]',area);
+    const intro=E('[data-dom-v06="lab-program-intro"],[data-i18n="l.programs.intro"]',area);
     if(intro)intro.textContent=t('Четыре вопроса, с которых мы начинаем: что помогает человеку и обществу адаптироваться и осознанно строить будущее? Программы формируются, результаты исследований не заявлены.','Four starting questions about how humans and societies adapt and deliberately shape their future. These research programs are forming; no outcomes are claimed.','Cuatro preguntas sobre cómo adaptarnos y construir el futuro. Los programas están en desarrollo; no se afirman resultados.');
     const cards=E('.lab-cards-grid',area);
     if(cards)cards.innerHTML=labPilots.map((p,i)=>'<article class="lab-card dom-v06-research-card"><p class="card-num">0'+(i+1)+'</p><h3>'+pick(p.name)+'</h3><p class="dom-v06-question">'+pick(p.question)+'</p><p>'+pick(p.desc)+'</p><small>'+t('Статус: формируется','Status: in development','Estado: en desarrollo')+'</small></article>').join('');
-    const disclaimer=E('[data-i18n="l.programs.disclaimer"]',area);
+    const disclaimer=E('[data-dom-v06="lab-program-disclaimer"],[data-i18n="l.programs.disclaimer"]',area);
     if(disclaimer)disclaimer.textContent=t('Приглашаем исследователей и партнёров к совместной разработке. Клинические результаты пока не подтверждены.','Researchers and partners are welcome to co-develop the work. Clinical outcomes are not established.','Invitamos a investigadores y colaboradores. No se han establecido resultados clínicos.');
   }
   function renderPlatform(){
     if(document.body.dataset.domPage!=='xr')return;
-    const hero=E('[data-i18n="xr_page.title"]');if(hero)hero.textContent='DOM Platform';
-    const sub=E('[data-i18n="xr_page.subtitle"]');if(sub)sub.textContent=t('Операционная система для человеческой адаптации','Operating system for human adaptation','Sistema operativo para la adaptación humana');
-    const desc=E('[data-i18n="xr_page.desc"]');if(desc)desc.textContent=t('Личная карта, оценка состояния, практики, программы и взаимодействие со специалистами — в единой среде, помогающей увидеть связи между вашей жизнью, вниманием и изменениями вокруг. XR — её иммерсивное направление.','Your personal map, self-observation, practices, programs and specialist collaboration in one environment. Understand connections between your life, attention and change. XR is its immersive branch.','Mapa personal, observación, prácticas, programas y colaboración con especialistas en un mismo entorno. XR es su dimensión inmersiva.');
+    const hero=E('[data-dom-v06="xr-title"],[data-i18n="xr_page.title"]');if(hero)hero.textContent='DOM Platform';
+    const sub=E('[data-dom-v06="xr-subtitle"],[data-i18n="xr_page.subtitle"]');if(sub)sub.textContent=t('Операционная система для человеческой адаптации','Operating system for human adaptation','Sistema operativo para la adaptación humana');
+    const desc=E('[data-dom-v06="xr-description"],[data-i18n="xr_page.desc"]');if(desc)desc.textContent=t('Личная карта, оценка состояния, практики, программы и взаимодействие со специалистами — в единой среде, помогающей увидеть связи между вашей жизнью, вниманием и изменениями вокруг. XR — её иммерсивное направление.','Your personal map, self-observation, practices, programs and specialist collaboration in one environment. Understand connections between your life, attention and change. XR is its immersive branch.','Mapa personal, observación, prácticas, programas y colaboración con especialistas en un mismo entorno. XR es su dimensión inmersiva.');
     const img=E('.glass-image-frame[src*="cloudfront"]');
     if(img){img.src='assets/images/dom-xr-presence-brain-v3.jpg';img.alt=t('Концептуальная сцена совместной XR-практики','Concept of shared XR practice','Concepto de práctica XR compartida');img.decoding='async';}
   }
-  function render(){brand();renderDom();renderPrograms();renderLab();renderPlatform();}
+  function render(){
+    brand();renderDom();renderPrograms();renderLab();renderPlatform();
+    // The legacy i18n loader may complete after DOMContentLoaded and overwrite
+    // dynamic copy. Mark our updated nodes as independently localized instead.
+    const n_program_title=E('[data-i18n="p.hero.title"]');if(n_program_title){n_program_title.dataset.domV06="program-title";n_program_title.removeAttribute('data-i18n');}
+    const n_program_subtitle=E('[data-i18n="p.hero.subtitle"]');if(n_program_subtitle){n_program_subtitle.dataset.domV06="program-subtitle";n_program_subtitle.removeAttribute('data-i18n');}
+    const n_lab_title=E('[data-i18n="l.hero.title"]');if(n_lab_title){n_lab_title.dataset.domV06="lab-title";n_lab_title.removeAttribute('data-i18n');}
+    const n_lab_subtitle=E('[data-i18n="l.hero.subtitle"]');if(n_lab_subtitle){n_lab_subtitle.dataset.domV06="lab-subtitle";n_lab_subtitle.removeAttribute('data-i18n');}
+    const n_lab_program_title=E('[data-i18n="l.programs.title"]');if(n_lab_program_title){n_lab_program_title.dataset.domV06="lab-program-title";n_lab_program_title.removeAttribute('data-i18n');}
+    const n_lab_program_intro=E('[data-i18n="l.programs.intro"]');if(n_lab_program_intro){n_lab_program_intro.dataset.domV06="lab-program-intro";n_lab_program_intro.removeAttribute('data-i18n');}
+    const n_lab_program_disclaimer=E('[data-i18n="l.programs.disclaimer"]');if(n_lab_program_disclaimer){n_lab_program_disclaimer.dataset.domV06="lab-program-disclaimer";n_lab_program_disclaimer.removeAttribute('data-i18n');}
+    const n_xr_title=E('[data-i18n="xr_page.title"]');if(n_xr_title){n_xr_title.dataset.domV06="xr-title";n_xr_title.removeAttribute('data-i18n');}
+    const n_xr_subtitle=E('[data-i18n="xr_page.subtitle"]');if(n_xr_subtitle){n_xr_subtitle.dataset.domV06="xr-subtitle";n_xr_subtitle.removeAttribute('data-i18n');}
+    const n_xr_description=E('[data-i18n="xr_page.desc"]');if(n_xr_description){n_xr_description.dataset.domV06="xr-description";n_xr_description.removeAttribute('data-i18n');}
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();
   document.addEventListener('langchange',render);
 })();
