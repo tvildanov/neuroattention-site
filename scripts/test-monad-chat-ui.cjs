@@ -1,21 +1,22 @@
 'use strict';
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
-const source = fs.readFileSync(require.resolve('../assets/js/monad-lk.js'), 'utf8').replace(/\}\)\(\);\s*$/, 'window.fixture = { STATE, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar };})();');
-const elements = { 'monad-chat-input': { value: 'fixture question' }, 'monad-chat-send': {}, 'monad-chat-log': {}, 'monad-status-bar': {} };
+const source = fs.readFileSync(require.resolve('../assets/js/monad-lk.js'), 'utf8').replace(/\}\)\(\);\s*$/, 'window.fixture = { STATE, openChat, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar };})();');
+const elements = { 'monad-chat-input': { value: 'fixture question' }, 'monad-chat-send': {}, 'monad-chat-log': { querySelectorAll: () => [] }, 'monad-status-bar': {}, 'monad-chat-notice': { replaceChildren() {}, append() {} } };
 let sends = 0, polls = 0, releaseSend, releasePoll;
 const window = {};
 const ok = data => ({ ok: true, json: async () => data });
-const ctx = { window, document: { readyState: 'loading', documentElement: { lang: 'ru' }, addEventListener() {}, getElementById: id => elements[id] || null, querySelectorAll: () => [] }, localStorage: { getItem: () => null }, setInterval: () => 1, clearInterval() {}, console,
+const ctx = { window, document: { readyState: 'loading', documentElement: { lang: 'ru' }, addEventListener() {}, getElementById: id => elements[id] || null, querySelectorAll: () => [], createTextNode: value => value }, localStorage: { getItem: () => null }, setTimeout: () => 1, clearTimeout() {}, setInterval: () => 1, clearInterval() {}, console,
   fetch: async (url, opts) => {
     if (url.endsWith('/message')) { sends++; assert.equal(JSON.parse(opts.body).chat_id, 'chat-a'); await new Promise(r => { releaseSend = r; }); return ok({ awaiting_persona: true }); }
     if (url.endsWith('/poll')) { polls++; await new Promise(r => { releasePoll = r; }); return ok({ messages: [{ role: 'monad', text: 'old thread answer' }] }); }
     if (url.endsWith('/chats/chat-a')) return ok({ chat: { id: 'chat-a' }, messages: [{ role: 'you', text: 'fixture question' }] });
+    if (url.endsWith('/chats/chat-b')) return ok({ chat: { id: 'chat-b' }, messages: [{ role: 'you', text: 'different thread' }] });
     if (url.endsWith('/chats')) return ok({ chats: [{ id: 'chat-a' }] });
     throw Error('unexpected fixture URL');
   }
 };
 vm.runInNewContext(source, ctx);
-const { STATE, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar } = window.fixture;
+const { STATE, openChat, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar } = window.fixture;
 (async () => {
   STATE.status = { configured: true, lk_llm: true };
   STATE.personaHealth = { availability_code: 'MODEL_QUOTA_EXCEEDED' };
@@ -36,7 +37,7 @@ const { STATE, sendMessage, pollReplies, isTechMessage, displayText, renderStatu
   assert.equal(elements['monad-chat-send'].disabled, false);
   // startFastPoll was called while sending and therefore did not launch a poll.
   const p = pollReplies(); await pollReplies(); assert.equal(polls, 1, 'poll calls cannot overlap');
-  STATE.activeChatId = 'chat-b'; STATE.messages = [{ role: 'you', text: 'different thread' }];
+  await openChat('chat-b');
   releasePoll(); await p;
   assert.equal(STATE.messages[0].text, 'different thread', 'late response cannot replace the newly selected thread');
   assert.equal(STATE.polling, false);

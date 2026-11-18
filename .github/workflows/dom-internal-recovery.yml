@@ -6,6 +6,9 @@ on:
       - 'assets/js/dom-inner-pages-v06.js'
       - 'assets/dom-inner-pages-v06.css'
       - 'assets/js/dom-theme.js'
+      - 'assets/js/dom-cabinet-v07.js'
+      - 'assets/dom-cabinet-v07.css'
+      - 'scripts/test-dom-cabinet-v07.cjs'
       - 'assets/js/monad-cross.js'
       - 'assets/js/monad-lk.js'
       - 'scripts/test-dom-inner-v06.cjs'
@@ -26,6 +29,8 @@ jobs:
         run: |
           node --check assets/js/dom-inner-pages-v06.js
           node --check assets/js/dom-theme.js
+          node --check assets/js/dom-cabinet-v07.js
+          node --check scripts/test-dom-cabinet-v07.cjs
           node --check assets/js/monad-cross.js
           node --check assets/js/monad-lk.js
           node --check api/server.js

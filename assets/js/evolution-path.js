@@ -1843,6 +1843,7 @@
      a fresh tiny renderer (the full neuromap is a non-reusable monolith). The
      "Открыть в нейромапе" button hands off to the full tool. */
   var MINI_STR = {
+    full: { ru: 'Показать цепочку', en: 'Show chain', es: 'Ver cadena' },
     chain:   { ru: 'Цепочка', en: 'Chain', es: 'Cadena' },
     single:  { ru: 'Событие', en: 'Event', es: 'Evento' },
     del:     { ru: '🗑 Удалить событие', en: '🗑 Delete event', es: '🗑 Eliminar evento' },
@@ -1880,10 +1881,11 @@
         '<button class="evo-mini-back" title="' + L(MINI_STR.back, lang) + '" style="display:none;">←</button>' +
         '<span class="evo-mini-title">🧠 <span class="evo-mini-ttl"></span></span>' +
         '<button class="evo-mini-x" title="' + L(CARD_STR.close, lang) + '">✕</button></div>' +
-      '<div class="evo-mini-body"></div>' +
+      '<p class="evo-mini-meta"></p><div class="evo-mini-body"></div>' +
       '<div class="evo-mini-foot">' +
         '<span class="evo-mini-note"></span>' +
         (canDelMini ? '<button class="evo-mini-del" style="border-color:rgba(232,93,111,0.6);color:#ff9aa8;">' + L(MINI_STR.del, lang) + '</button>' : '') +
+        '<button class="evo-mini-chain" type="button">' + L(MINI_STR.full, lang) + '</button>' +
         '<button class="evo-mini-open">' + L(MINI_STR.openNm, lang) + ' →</button>' +
       '</div>';
     canvas.appendChild(box);
@@ -1894,7 +1896,29 @@
     var noteEl = box.querySelector('.evo-mini-note');
     var backBtn = box.querySelector('.evo-mini-back');
     var nav = [];        // breadcrumb stack of previously-centred events
-    var current = ev;    // event currently at the hub
+    var current = ev;
+    var meta = box.querySelector('.evo-mini-meta');
+    var showChain = box.querySelector('.evo-mini-chain');
+    var fullChain = function() {
+      return current.session_id ? Object.values(EVENT_INDEX).filter(function(event) {
+        return event.session_id === current.session_id;
+      }).sort(function(a,b){ return (a.position ?? Infinity) - (b.position ?? Infinity) || a.t - b.t; }) : [];
+    };
+    showChain.addEventListener('click', function() {
+      var list = document.createElement('ol');
+      fullChain().forEach(function(event) {
+        var item = document.createElement('li');
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = prettyTitle(event, lang);
+        if (event.id === current.id) button.setAttribute('aria-current', 'true');
+        button.addEventListener('click', function(){ nav.push(current); draw(event); });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      body.replaceChildren(list);
+      list.querySelector('[aria-current]')?.focus();
+    });
 
     // Render the graph centred on `center`: hub node + its 1-hop neighbours on a
     // ring, with directed (chronological) links. Re-callable — clicking a satellite
@@ -1909,6 +1933,10 @@
       var hubTxt = prettyTitle(center, lang);
       ttlEl.textContent = hubTxt;
       ttlEl.setAttribute('title', hubTxt);
+      meta.textContent = [humanLabel(center.kind || center.layer, lang),
+        center.t ? new Date(center.t).toLocaleString(lang) : ''].filter(Boolean).join(' · ');
+      showChain.hidden = fullChain().length < 2;
+      box.querySelector('.evo-mini-open').hidden = !center.payload?.nm_node_id;
       noteEl.textContent = neighbours.length ? L(MINI_STR.walkHint, lang) : L(MINI_STR.noLinks, lang);
       backBtn.style.display = nav.length ? '' : 'none';
       body.innerHTML = '';
@@ -2015,11 +2043,14 @@
     // 5.3: open the FULL neuromap in a NEW TAB, deep-linked to the CURRENT hub + its
     // chain, so the embedded path stays put. account.html reads ?focus / ?chain.
     box.querySelector('.evo-mini-open').addEventListener('click', function () {
-      var chainIds = [current.id].concat(miniNeighbours(current).map(function (n) { return n.id; }));
-      var url = '/account.html?tab=tools&subtab=neuromap' +
-                '&focus=' + encodeURIComponent(current.id) +
-                '&chain=' + encodeURIComponent(chainIds.join(',')) +
-                '&lang=' + encodeURIComponent(lang || 'ru');
+      var focus = current.payload?.nm_node_id;
+      if (!focus) return;
+      var params = new URLSearchParams({tab:'tools', subtab:'neuromap', focus:focus, lang:lang || 'ru'});
+      var chainIds = fullChain().map(function(event){ return event.payload?.nm_node_id; }).filter(Boolean);
+      if (current.session_id) params.set('session', current.session_id);
+      if (current.position != null) params.set('position', current.position);
+      if (chainIds.length) params.set('chain', chainIds.join(','));
+      var url = '/account.html?' + params.toString();
       // PR94 (item 5a): a 3rd windowFeatures arg makes some browsers (and iOS Safari)
       // open a detached popup WINDOW instead of a background TAB. Omit it for a real
       // new tab; null the opener manually to keep the noopener security benefit.

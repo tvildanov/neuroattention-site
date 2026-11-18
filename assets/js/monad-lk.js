@@ -29,9 +29,10 @@
     messages: [],
     pendingAttachments: [],
     pollTimer: null,
-    awaitingPersona: false,
-    waitStartedAt: 0,
     pollFailure: null,
+    progress: new Map(),
+    chatGeneration: 0,
+    composerFailure: null,
     showTech: false,
     vertLayer: null,
     vertCell: null,
@@ -109,6 +110,7 @@
         var host = document.getElementById('monad-cross-host');
         if (host) {
           window.MonadCross.mount(host, STATE.arch, {
+            onAgent: function (id) { window.DOMRoomAgents?.showAgent(id,host.parentElement); },
             onNavigate: function (nav) {
               if (!nav || !nav.target) return;
               setArchSub(nav.target);
@@ -501,19 +503,77 @@
     return bits.join(' · ');
   }
 
-  function waitNotice() {
-    var lang = String(document.documentElement.lang || 'ru').slice(0,2);
-    function tr(ru,en,es){return ({ru:ru,en:en,es:es})[lang] || en;}
-    if (STATE.personaHealth && STATE.personaHealth.availability_code === 'MODEL_QUOTA_EXCEEDED')
-      return tr('Монада получила сообщение, но сейчас не может ответить: закончился лимит модели. Сообщение сохранено.','Monad received your message, but the model has reached its usage limit. Your message is saved.','Monad recibió tu mensaje, pero se agotó el límite del modelo. El mensaje está guardado.');
-    if (STATE.pollFailure === 'not_found')
-      return tr('Не удаётся найти эту беседу на сервере. Обновите список чатов.','This chat could not be found on the server. Refresh the chat list.','No se encuentra esta conversación. Actualiza la lista.');
-    if (STATE.pollFailure === 'network')
-      return tr('Не удаётся проверить ответ из-за ошибки связи. Сообщение сохранено; проверьте подключение.','Cannot check the reply because of a connection problem. Your message is saved.','No se puede comprobar la respuesta por un problema de conexión. Tu mensaje está guardado.');
-    var elapsed=Date.now()-(STATE.waitStartedAt||Date.now());
-    if(elapsed>=90000)
-      return tr('Ответ задерживается. Монада получила сообщение, но мы пока не можем подтвердить, что модель его обрабатывает.','Reply delayed. Monad received the message, but we cannot confirm that the model is processing it.','Respuesta demorada. Monad recibió el mensaje, pero no podemos confirmar que el modelo lo esté procesando.');
-    return tr('Сообщение отправлено. Проверяем ответ Монады','Message sent. Checking for a reply from Monad','Mensaje enviado. Esperando la respuesta de Monad');
+  function chatText(ru,en,es) {
+    return ({ru:ru,en:en,es:es})[String(document.documentElement.lang || 'ru').slice(0,2)] || en;
+  }
+  function failureCopy(reason) {
+    var tr=chatText;
+    switch(reason){
+      case 'quota': return tr('Лимит модели исчерпан.','The model has reached its usage limit.','Se agotó el límite del modelo.');
+      case 'rate_limit': return tr('Слишком много запросов к модели.','The model is receiving too many requests.','Hay demasiadas solicitudes al modelo.');
+      case 'context_limit': return tr('Сообщение и контекст превышают лимит модели. Сократите запрос или вложения.','The message and its context exceed the model limit. Shorten the request or attachments.','El mensaje y su contexto superan el límite del modelo. Reduce el texto o los archivos.');
+      case 'session': return tr('Сессия истекла. Войдите в кабинет снова.','Your session expired. Sign in again.','Tu sesión caducó. Vuelve a iniciar sesión.');
+      case 'forbidden': return tr('У этого аккаунта нет доступа к беседе.','This account cannot access the conversation.','Esta cuenta no tiene acceso a la conversación.');
+      case 'not_found': return tr('Беседа больше недоступна. Обновите список чатов.','This conversation is unavailable. Refresh the chat list.','La conversación no está disponible. Actualiza la lista.');
+      case 'network': return tr('Не удалось связаться с сервером. Проверьте интернет.','Could not reach the server. Check your connection.','No se pudo conectar con el servidor. Comprueba tu conexión.');
+      case 'upstream': case 'upstream_access': return tr('Сервис Монады сейчас недоступен.','The Monad service is currently unavailable.','El servicio de Monad no está disponible.');
+      case 'timeout': return tr('Истекло время ожидания подтверждения.','The confirmation timed out.','Se agotó el tiempo de confirmación.');
+      default: return tr('Точная причина пока неизвестна.','The cause is not yet known.','Todavía se desconoce la causa.');
+    }
+  }
+  function progressCopy(info) {
+    var tr=chatText;
+    switch(info.status) {
+      case 'received': return tr('Сообщение сохранено. Передаём Монаде…','Message saved. Sending to Monad…','Mensaje guardado. Enviando a Monad…');
+      case 'queued': return tr('Монада получила сообщение. Ожидаем начала обработки.','Monad received the message. Waiting for processing to start.','Monad recibió el mensaje. A la espera de que empiece el procesamiento.');
+      case 'processing': return tr('Монада работает над ответом…','Monad is working on a reply…','Monad está preparando una respuesta…');
+      case 'response_ready': return tr('Работа завершена. Проверяем доставку ответа.','Processing finished. Checking reply delivery.','Procesamiento finalizado. Comprobando la entrega.');
+      case 'delivered': return tr('Ответ доставлен.','Reply delivered.','Respuesta entregada.');
+      case 'retryable_error': return failureCopy(info.reason_code) + (info.retry_after ? ' ' + tr('Проверим снова через','Checking again in','Comprobaremos de nuevo en') + ' ' + info.retry_after + ' s' : '');
+      case 'failed': return tr('Обработка завершилась ошибкой.','Processing failed.','Falló el procesamiento.') + ' ' + failureCopy(info.reason_code);
+      case 'expired_or_unconfirmed': return tr('Сообщение сохранено. Передача не подтверждена.','Message saved. Handoff is unconfirmed.','Mensaje guardado. La entrega no está confirmada.') + ' ' + failureCopy(info.reason_code);
+      default: return tr('Ответ задерживается. Проверяем его получение.','The reply is delayed. Checking for delivery.','La respuesta se demora. Comprobando la entrega.');
+    }
+  }
+  function progressHtml(m) {
+    if(m.role!=='you'||!m.id)return '';
+    var info=STATE.progress.get(String(m.id));
+    if(!info)return '';
+    var button=info.status==='delivered' || terminalPoll() ? '' : '<button type="button" data-monad-check>'+esc(chatText('Проверить состояние','Check status','Comprobar estado'))+'</button>';
+    var when=info.last_confirmed_at ? new Date(info.last_confirmed_at).toLocaleTimeString(document.documentElement.lang) : '';
+    var detail=info.correlation_id ? '<details><summary>'+esc(chatText('Подробнее','Details','Detalles'))+'</summary><small>'+esc(info.correlation_id)+'</small></details>' : '';
+    var moving=['received','queued','processing','response_ready'].includes(info.status)?' monad-progress-active':'';
+    return '<div class="monad-message-progress"><span class="monad-progress-text'+moving+'" role="status">'+esc(progressCopy(info))+'</span> '+esc(when)+' '+button+detail+'</div>';
+  }
+  function requestFailure(e) {
+    return ({401:'session',403:'forbidden',404:'not_found',429:'rate_limit',502:'upstream',503:'upstream'})[e?.status] || (e?.status?'unknown':'network');
+  }
+  function terminalPoll() {
+    return ['session','forbidden','not_found'].includes(STATE.pollFailure);
+  }
+  function renderChatNotice() {
+    var target=document.getElementById('monad-chat-notice');
+    if(!target){
+      target=document.createElement('div');
+      target.id='monad-chat-notice';
+      target.setAttribute('role','status');
+      document.getElementById('monad-chat-log')?.after(target);
+    }
+    target.replaceChildren();
+    var error=STATE.composerFailure||STATE.pollFailure;
+    if(!error)return;
+    target.append(document.createTextNode(failureCopy(error)+' '));
+    if(error==='not_found'){
+      var button=document.createElement('button');
+      button.type='button';
+      button.textContent=chatText('Обновить список чатов','Refresh chat list','Actualizar lista de chats');
+      button.onclick=async function(){
+        STATE.activeChatId=null;STATE.messages=[];STATE.progress.clear();STATE.pollFailure=null;
+        await loadChats();
+        if(STATE.chats.length)await openChat(STATE.chats[0].id);else renderMessages();
+      };
+      target.append(button);
+    }
   }
   function safeRichText(m){
     var txt=esc(displayText(m));
@@ -524,14 +584,10 @@
       .replace(/(^|\n)[-*] +/g,'$1• ')
       .replace(/\n/g,'<br>');
   }
-  function typingHtml(){
-    return '<span class="monad-wait-copy" role="status" aria-live="polite">'+esc(waitNotice())+
-      '</span><span class="monad-wait-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>';
-  }
-
   function renderMessages() {
     var box = document.getElementById('monad-chat-log');
     if (!box) return;
+    renderChatNotice();
     if (!STATE.activeChatId) {
       box.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.pick_chat', 'Выбери или создай чат слева.')) + '</p>';
       return;
@@ -543,17 +599,16 @@
 
     var visible = [];
     var hiddenTech = [];
-    var lastVis = null;
+    var messageKeys = new Set();
     STATE.messages.forEach(function (m, idx) {
       if (isTechMessage(m)) { hiddenTech.push({ m: m, idx: idx }); return; }
-      var body = displayText(m);
-      if (lastVis && lastVis.role === m.role && displayText(lastVis) === body && (m.role === 'monad' || m.role === 'system')) return;
-      lastVis = m;
+      if (m.id && messageKeys.has(m.id)) return;
+      if (m.id) messageKeys.add(m.id);
       visible.push({ m: m, idx: idx });
     });
 
     if (!visible.length && !STATE.showTech) {
-      box.innerHTML = '<p class="monad-muted">' + esc(t('a.monad.waiting_quiet', 'Монада думает… Ответ появится здесь.')) + '</p>' +
+      box.innerHTML = '<p class="monad-muted">' + esc(chatText('Ответов пока нет.','No replies yet.','Todavía no hay respuestas.')) + '</p>' +
         (hiddenTech.length
           ? '<p class="monad-muted" style="font-size:11px;"><button type="button" class="btn btn-ghost" id="monad-show-tech" style="font-size:11px;padding:0.2rem 0.5rem;">' +
             esc(t('a.monad.show_tech', 'Служебные сообщения')) + ' (' + hiddenTech.length + ')</button></p>'
@@ -571,6 +626,7 @@
       if (atts && atts.length) {
         attHtml = '<div class="monad-msg-atts">' + atts.map(function (a) {
           var url = a.url || a.href || '';
+          if (!/^https:\/\//i.test(url)) return esc(a.name || a.filename || 'file');
           var name = a.name || a.filename || 'file';
           var isImg = /^image\//.test(a.mime || '') || /\.(png|jpe?g|gif|webp)$/i.test(name);
           if (isImg && url) return '<a href="' + esc(url) + '" target="_blank" rel="noopener"><img class="monad-msg-img" src="' + esc(url) + '" alt="' + esc(name) + '"/></a>';
@@ -583,7 +639,7 @@
           '<div class="monad-msg-meta">' + esc(details) + '</div></details>')
         : '';
       return '<div class="monad-msg monad-msg-' + esc(m.role || 'monad') + '" data-msg-i="' + row.idx + '">' +
-        '<div class="monad-msg-body">' + ((m.meta && m.meta.typing) ? typingHtml() : safeRichText(m)) + '</div>' + attHtml + techToggle +
+        '<div class="monad-msg-body">' + safeRichText(m) + '</div>' + attHtml + progressHtml(m) + techToggle +
         '</div>';
     }).join('');
 
@@ -604,10 +660,12 @@
       }).join('');
     }
 
+    var following=box.scrollHeight-box.scrollTop-box.clientHeight<80;
     box.innerHTML = html;
+    box.querySelectorAll('[data-monad-check]').forEach(function(b){b.addEventListener('click',pollReplies);});
     var btn = document.getElementById('monad-toggle-tech');
     if (btn) btn.addEventListener('click', function () { STATE.showTech = !STATE.showTech; renderMessages(); });
-    box.scrollTop = box.scrollHeight;
+    if(following)box.scrollTop = box.scrollHeight;
   }
 
   async function loadChats() {
@@ -665,32 +723,32 @@
   }
 
   async function openChat(id) {
-    STATE.activeChatId = id;
-    STATE.pendingAttachments = [];
+    stopPoll();
+    var generation=++STATE.chatGeneration;
+    STATE.activeChatId=id;
+    STATE.pendingAttachments=[];
+    STATE.progress.clear();
+    STATE.pollFailure=null;
+    STATE.composerFailure=null;
+    STATE.messages=[];
     renderAttachmentsBar();
     renderChatList();
-    var data = await api('/api/monad/chats/' + encodeURIComponent(id));
-    if (STATE.activeChatId !== id) return;
-    // refresh chat object (pins)
-    STATE.chats = STATE.chats.map(function (c) { return c.id === id ? Object.assign({}, c, data.chat) : c; });
-    if (!STATE.chats.filter(function (c) { return c.id === id; }).length && data.chat) STATE.chats.unshift(data.chat);
-    STATE.messages = data.messages || [];
-    var last = STATE.messages[STATE.messages.length - 1];
-    // Last bubble is from the human — Persona reply may still be in flight.
-    if (last && last.role === 'you') {
-      STATE.awaitingPersona = true;
-      STATE.waitStartedAt = last.created_at ? new Date(last.created_at).getTime() : Date.now();
-      STATE.pollFailure = null;
-      STATE.messages = STATE.messages.concat([{ role: 'monad', text: '…', meta: { typing: true } }]);
+    renderMessages();
+    try{
+      var data=await api('/api/monad/chats/'+encodeURIComponent(id));
+      if(generation!==STATE.chatGeneration)return;
+      STATE.chats=STATE.chats.map(function(c){return c.id===id?Object.assign({},c,data.chat):c;});
+      if(!STATE.chats.some(function(c){return c.id===id;})&&data.chat)STATE.chats.unshift(data.chat);
+      STATE.messages=data.messages||[];
       renderMessages();
       renderPinned();
-      startFastPoll();
-      return;
+      startPoll();
+    }catch(e){
+      if(generation!==STATE.chatGeneration)return;
+      STATE.pollFailure=requestFailure(e);
+      renderMessages();
+      if(!terminalPoll())startPoll();
     }
-    STATE.awaitingPersona = false;
-    renderMessages();
-    renderPinned();
-    startPoll();
   }
 
   async function removePin(i) {
@@ -745,164 +803,93 @@
   }
 
   async function sendMessage() {
-    var input = document.getElementById('monad-chat-input');
-    if (!input || STATE.sending) return;
-    var text = String(input.value || '').trim();
-    if (!text) return;
-    STATE.sending = true;
-    var btn = document.getElementById('monad-chat-send');
-    if (btn) btn.disabled = true;
-    var sentChatId = null;
-    try {
-      if (!STATE.activeChatId) {
-        await createChat();
-      }
-      sentChatId = STATE.activeChatId;
-      STATE.waitStartedAt = Date.now();
-      STATE.pollFailure = null;
-      var chat = STATE.chats.filter(function (c) { return c.id === sentChatId; })[0];
-      var pins = (chat && chat.pinned_context) || [];
-      input.value = '';
-      STATE.messages.push({ role: 'you', text: text, attachments: STATE.pendingAttachments || [] });
-      STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
-      renderMessages();
-      var data = await api('/api/monad/message', {
-        method: 'POST',
-        body: JSON.stringify({
-          text: text,
-          chat_id: sentChatId,
-          attachments: STATE.pendingAttachments,
-          pinned_context: pins,
-          reply_locale: (typeof window.getLang === 'function' ? window.getLang() : (document.documentElement.lang || 'ru')).slice(0,2),
-          title: (chat && chat.title && chat.title !== 'Новый чат') ? chat.title : text.slice(0, 80),
-        }),
+    var input=document.getElementById('monad-chat-input');
+    if(!input||STATE.sending)return;
+    var text=String(input.value||'').trim();
+    if(!text)return;
+    STATE.sending=true;
+    STATE.composerFailure=null;
+    var button=document.getElementById('monad-chat-send');
+    if(button)button.disabled=true;
+    var chatId=null;
+    try{
+      if(!STATE.activeChatId)await createChat();
+      chatId=STATE.activeChatId;
+      var generation=STATE.chatGeneration;
+      var chat=STATE.chats.find(function(c){return c.id===chatId;});
+      var data=await api('/api/monad/message',{
+        method:'POST',
+        body:JSON.stringify({
+          text:text,chat_id:chatId,attachments:STATE.pendingAttachments,
+          pinned_context:chat?.pinned_context||[],reply_locale:locLang(),
+          title:chat?.title&&chat.title!=='Новый чат'?chat.title:text.slice(0,80)
+        })
       });
-      if (STATE.activeChatId !== sentChatId) return;
-      STATE.pendingAttachments = [];
+      if(generation!==STATE.chatGeneration)return;
+      if(data.message){
+        STATE.messages=STATE.messages.filter(function(m){return m.id!==data.message.id;});
+        STATE.messages.push(data.message);
+        var meta=data.message.meta||{};
+        STATE.progress.set(String(data.message.id),{
+          status:meta.delivery_error?'expired_or_unconfirmed':data.handoff_id?'queued':'awaiting_external_reply',
+          reason_code:meta.delivery_error, correlation_id:meta.correlation_id,
+          last_confirmed_at:meta.delivery_updated_at||data.message.created_at
+        });
+      }
+      if(data.reply?.text)STATE.messages.push(data.reply);
+      if(input.value.trim()===text)input.value='';
+      STATE.pendingAttachments=[];
       renderAttachmentsBar();
-      STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
-      if (data && data.reply && data.reply.text) {
-        STATE.messages.push(data.reply);
-      }
-      var thr = await api('/api/monad/chats/' + encodeURIComponent(sentChatId));
-      if (STATE.activeChatId !== sentChatId) return;
-      if (thr && thr.messages && thr.messages.length) STATE.messages = thr.messages;
-      var last = STATE.messages[STATE.messages.length - 1];
-      var personaAlreadyHere = last && last.role === 'monad' && !(last.meta && last.meta.typing);
-      if (data && data.awaiting_persona && !personaAlreadyHere) {
-        STATE.awaitingPersona = true;
-        STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
-        last = STATE.messages[STATE.messages.length - 1];
-        if (!last || last.role !== 'monad') {
-          STATE.messages.push({ role: 'monad', text: '…', meta: { typing: true } });
-        }
-        renderMessages();
-        await loadChats();
-        startFastPoll();
-      } else {
-        STATE.awaitingPersona = false;
-        renderMessages();
-        await loadChats();
-        startPoll();
-      }
-    } catch (err) {
-      if (sentChatId && STATE.activeChatId !== sentChatId) return;
-      STATE.awaitingPersona = false;
-      STATE.messages = STATE.messages.filter(function (m) { return !(m.meta && m.meta.typing); });
-      STATE.messages.push({ role: 'err', text: (err.data && err.data.error) || err.message || 'Error' });
       renderMessages();
-    } finally {
-      STATE.sending = false;
-      if (btn) btn.disabled = false;
+      startPoll();
+    }catch(e){
+      if(!chatId||chatId===STATE.activeChatId){STATE.composerFailure=requestFailure(e);renderMessages();}
+    }finally{
+      STATE.sending=false;
+      if(button)button.disabled=false;
     }
   }
 
   async function pollReplies() {
-    if (!STATE.activeChatId || STATE.sub !== 'chat' || STATE.sending || STATE.polling) return;
-    var polledChatId = STATE.activeChatId;
-    STATE.polling = true;
-    try {
-      var data = await api('/api/monad/chats/' + encodeURIComponent(polledChatId) + '/poll', {
-        method: 'POST', body: JSON.stringify({}),
-      });
-      if (STATE.activeChatId !== polledChatId) return;
-      STATE.pollFailure = null;
-      if (data && data.messages) {
-        var before = STATE.messages.length;
-        var hadTyping = STATE.messages.some(function (m) { return m.meta && m.meta.typing; });
-        STATE.messages = data.messages;
-        var last = STATE.messages[STATE.messages.length - 1];
-        // Real Persona text arrived — stop waiting, drop «…».
-        if (last && last.role === 'monad' && !(last.meta && last.meta.typing)) {
-          STATE.awaitingPersona = false;
-        } else if (STATE.awaitingPersona && (!last || last.role === 'you')) {
-          // Keep typing indicator while Persona is still working — no resend timeout.
-          STATE.messages = STATE.messages.concat([{ role: 'monad', text: '…', meta: { typing: true } }]);
-        }
-        if (
-          STATE.messages.length !== before ||
-          (data.imported > 0) ||
-          STATE.awaitingPersona ||
-          hadTyping
-        ) {
-          renderMessages();
-        }
+    if(!STATE.activeChatId||STATE.sub!=='chat'||STATE.sending||STATE.polling||terminalPoll())return;
+    var generation=STATE.chatGeneration;
+    var id=encodeURIComponent(STATE.activeChatId);
+    STATE.polling=true;
+    try{
+      var data=await api('/api/monad/chats/'+id+'/poll',{method:'POST',body:'{}'});
+      if(generation!==STATE.chatGeneration)return;
+      if(data?.messages)STATE.messages=data.messages;
+      STATE.pollFailure=null;
+      var status=await api('/api/dom-monad/chats/'+id+'/progress');
+      if(generation!==STATE.chatGeneration)return;
+      STATE.progress=new Map((status.statuses||[]).map(function(info){return [String(info.message_id),info];}));
+      renderMessages();
+    }catch(e){
+      if(generation===STATE.chatGeneration){
+        STATE.pollFailure=requestFailure(e);
+        renderMessages();
+        if(terminalPoll())stopPoll();
       }
-      if (STATE.awaitingPersona && Date.now() - STATE.healthCheckedAt > 60000) {
-        STATE.healthCheckedAt = Date.now();
-        try { STATE.personaHealth = await api('/api/monad/persona/health'); renderStatusBar(); renderMessages(); } catch (e) { /* keep last known status */ }
-      }
-    } catch (e) {
-      // Keep the saved conversation; never disguise an API error as model thinking.
-      if (STATE.activeChatId === polledChatId) {
-        STATE.pollFailure = e && e.status === 404 ? 'not_found' : 'network';
-        if (STATE.awaitingPersona) renderMessages();
-      }
-    }
-    finally { STATE.polling = false; }
+    }finally{STATE.polling=false;}
   }
-
-  // Refresh the visible wait duration even when no new message is received.
-  setInterval(function(){if(STATE.awaitingPersona && STATE.sub === 'chat' && !STATE.sending)renderMessages();}, 15000);
 
   function startPoll() {
     stopPoll();
-    if (!STATE.activeChatId) return;
-    STATE.pollTimer = setInterval(pollReplies, 20000);
-    pollReplies();
-  }
-
-  /**
-   * Fast poll while waiting for Persona:
-   *   ~5 min every 5s, then every 8s for as long as awaitingPersona.
-   * When the reply arrives, fall back to the normal 20s poll.
-   * Never show «Ответ не пришёл / напиши ещё раз» and never clear wait by timer.
-   */
-  function startFastPoll() {
-    stopPoll();
-    if (!STATE.activeChatId) return;
-    var startedAt = Date.now();
-    var phaseMs = 5000;
-    function arm(ms) {
-      stopPoll();
-      phaseMs = ms;
-      STATE.pollTimer = setInterval(function () {
-        pollReplies().then(function () {
-          if (!STATE.awaitingPersona) {
-            stopPoll();
-            startPoll();
-            return;
-          }
-          var nextMs = (Date.now() - startedAt) < (5 * 60 * 1000) ? 5000 : 8000;
-          if (nextMs !== phaseMs) arm(nextMs);
-        });
-      }, ms);
-    }
-    arm(5000);
-    pollReplies();
+    if(!STATE.activeChatId||terminalPoll())return;
+    var tick=async function(){
+      STATE.pollTimer=null;
+      var generation=STATE.chatGeneration;
+      await pollReplies();
+      if(generation!==STATE.chatGeneration||STATE.pollTimer||terminalPoll()||STATE.sub!=='chat')return;
+      var recent=Array.from(STATE.progress.values()).some(function(info){
+        return ['received','queued','processing','response_ready'].includes(info.status);
+      });
+      STATE.pollTimer=setTimeout(tick,document.hidden||STATE.pollFailure?30000:recent?5000:15000);
+    };
+    STATE.pollTimer=setTimeout(tick,0);
   }
   function stopPoll() {
-    if (STATE.pollTimer) { clearInterval(STATE.pollTimer); STATE.pollTimer = null; }
+    if(STATE.pollTimer){clearTimeout(STATE.pollTimer);STATE.pollTimer=null;}
   }
 
   /* ── architecture / rhythm ─────────────────────────────────────────── */
@@ -976,7 +963,8 @@
       html += '<dt>' + esc(t('a.monad.confirmed_activity', 'Подтверждённая работа')) + '</dt><dd>' +
         esc(({ru:'События выполнения не получены. Статус «активен» сам по себе не доказывает, что агент выполняет задачу.',en:'No execution events available. An “active” label alone does not prove the agent is performing work.',es:'No hay eventos de ejecución verificados. «Activo» por sí solo no demuestra que el agente esté trabajando.'})[locLang()] || 'Execution not verified') + '</dd>';
     }
-    html += '</dl></div>';
+    html += '</dl><button type="button" data-monad-inspect="' + esc(a.agent_id) + '">' +
+      esc(chatText('Карточка агента','Agent card','Ficha del agente')) + '</button></div>';
     return html;
   }
   function walkAgents(fn) {
@@ -1088,6 +1076,7 @@
       if (!agents.length) html += '<p class="monad-muted">' + esc(t('a.monad.no_agents', 'В этой ветке пока нет агентов.')) + '</p>';
       agents.forEach(function (a) { html += agentCard(a); });
       html += '</div>';
+      html += '<div id="monad-vert-provision"></div>';
       html += '<div id="monad-vert-agent-detail">' + (STATE.pickedAgent ? agentDetail(findAgent(STATE.pickedAgent)) : '') + '</div>';
     }
     html += renderUnplaced(arch);
@@ -1109,6 +1098,7 @@
       });
     });
     bindAgentClicks(host, 'monad-vert-agent-detail');
+    if(selectedCell)window.DOMRoomAgents?.mountProvision(host.querySelector('#monad-vert-provision'),selectedCell.code||('L'+selected.layer+'xL'+selectedCell.n));
   }
 
   function renderUnplaced(arch) {
@@ -1513,6 +1503,12 @@
   }
 
   function wire() {
+    document.getElementById('tab-monad')?.addEventListener('click',function(event){
+      var button=event.target.closest('[data-monad-inspect]');
+      if(button)window.DOMRoomAgents?.showAgent(button.dataset.monadInspect,button.parentElement);
+    });
+    window.addEventListener('online',function(){if(STATE.sub==='chat')startPoll();});
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&STATE.sub==='chat')startPoll();});
     document.querySelectorAll('.monad-subtab').forEach(function (b) {
       b.addEventListener('click', function () { setSub(b.getAttribute('data-monad-sub')); });
     });

@@ -16,7 +16,7 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
 })();
 
 /* Isolated cabinet enhancement; original account markup/calculations remain untouched. */
-(()=>{if(!document.body.matches('.dom-account-matrix')||document.querySelector('[data-dom-partner-loader]'))return;const marker=document.createElement('meta');marker.dataset.domPartnerLoader='';document.head.append(marker);const style=document.createElement('link');style.rel='stylesheet';style.href='assets/dom-partner.css?v=dom-v03-1';document.head.append(style);function script(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=reject;document.head.append(s)})}script('assets/js/dom-v03-copy.js?v=dom-v03-1').then(()=>script('assets/js/dom-partner-copy.js?v=dom-v03-1')).then(()=>script('assets/js/dom-partner.js?v=dom-v03-1')).catch(()=>console.warn('Partner interface could not be loaded'));})();
+(()=>{if(!document.body.matches('.dom-account-matrix')||document.querySelector('[data-dom-partner-loader]'))return;const marker=document.createElement('meta');marker.dataset.domPartnerLoader='';document.head.append(marker);const style=document.createElement('link');style.rel='stylesheet';style.href='assets/dom-partner.css?v=dom-v03-1';document.head.append(style);function script(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=reject;document.head.append(s)})}script('assets/js/dom-v03-copy.js?v=dom-v03-1').then(()=>script('assets/js/dom-partner-copy.js?v=dom-v03-1')).then(()=>script('assets/js/dom-partner.js?v=dom-v03-2')).catch(()=>console.warn('Partner interface could not be loaded'));})();
 
 /* DOM internal pages: one shared, locally versioned enhancement. */
 (function(){
@@ -27,3 +27,6 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
 
 /* Keep graph text legible in both cabinet themes without changing typology styles. */
 (function(){if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;var el=document.createElement('link');el.rel='stylesheet';el.href='assets/dom-account-graph-readability-v06.css?v=1';document.head.appendChild(el);})();
+
+/* Shared cabinet v0.7 loader (no duplicated NeuroMap handlers). */
+(()=>{if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;const css=document.createElement('link');css.rel='stylesheet';css.href='assets/dom-cabinet-v07.css?v=2-3';document.head.append(css);const script=document.createElement('script');script.src='assets/js/dom-cabinet-v07.js?v=2-1';script.defer=true;document.head.append(script);})();

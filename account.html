@@ -681,7 +681,7 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=dom-v03-partner-1" defer></script>
+<script src="assets/js/dom-theme.js?v=dom-v07-3" defer></script>
 </head>
 <body class="dom-account-matrix dom-site" data-dom-page="account">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -2278,8 +2278,8 @@ a.dash-tab:hover { text-decoration:none; }
           <select id="nm-target-select" onchange="nmSetTarget(this.value)" style="width:100%;background:rgba(10,14,20,0.7);border:1px solid rgba(255,255,255,0.14);color:var(--text-primary);border-radius:8px;height:34px;padding:0 0.6rem;font-size:13px;cursor:pointer;"></select>
           <div id="nm-target-hint" style="display:none;font-size:11px;color:rgba(0,224,255,0.85);margin-top:0.4rem;"></div>
         </div>
-        <!-- Three hub actions -->
-        <div style="display:flex;flex-direction:column;gap:0.55rem;">
+        <!-- Shared NeuroMap entry controls -->
+        <div id="nm-entry-actions" style="display:flex;flex-direction:column;gap:0.55rem;">
           <button class="btn btn-solid" style="width:100%;justify-content:space-between;font-size:13px;text-align:left;" onclick="openNmSurvey()">
             <span data-i18n="a.tools.fill_emotion_map">Заполнить карту эмоций / переживаний</span>
             <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
@@ -2335,7 +2335,7 @@ a.dash-tab:hover { text-decoration:none; }
     </div>
 
     <!-- NeuroMap SURVEY MODAL (split: form left, live graph right) -->
-    <div class="modal-overlay" id="nmSurveyModal">
+    <div class="modal-overlay" id="nmSurveyModal" role="dialog" aria-modal="true" aria-label="NeuroMap">
       <div style="display:flex;gap:1.5rem;width:95%;max-width:1100px;max-height:90vh;align-items:stretch;">
         <!-- Left: survey form -->
         <div class="modal-box" style="max-width:480px;flex:0 0 480px;overflow-y:auto;margin:0;">
@@ -4564,7 +4564,7 @@ function rebuildGraph(){
 }
 
 // The four people panels share one top «Люди» tab + a sub-tab bar.
-var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-purchases','admin-stats','admin-pathmap','admin-trash'];
+var ADMIN_PEOPLE_SUBS = ['admin-users','admin-rehab','admin-partners','admin-purchases','admin-stats','admin-pathmap','admin-trash'];
 function switchAdminTab(id){
   // «Люди» group entry → resolve to the last/first visible people sub.
   if(id==='admin-people'){
@@ -7680,7 +7680,7 @@ function nmNodeViewCount(node){
   if(!node) return 1;
   var r = (typeof nmViewRange==='function') ? nmViewRange() : null;
   if(!r) return node.count||1;                     // 'all' → global dedup count
-  var chains=(window.nmV2Graph&&nmV2Graph.chains)||[]; var total=0, id=String(node.id);
+  var chains=(window.nmV2Graph&&nmV2Graph.chains)||[]; var total=0, id=String(node.dbId||node.id);
   chains.forEach(function(c){
     var t=c.started_at?new Date(c.started_at).getTime():null;
     if(t!=null && !nmTsInRange(t)) return;          // chain outside the window
@@ -7698,7 +7698,7 @@ function nmCoOccurInView(node){
   var chains=(window.nmV2Graph&&nmV2Graph.chains)||[];
   if(!chains.length) return null;
   var byId={}; ((window.nmV2Graph&&nmV2Graph.nodes)||[]).forEach(function(n){ byId[String(n.id)]=n; });
-  var id=String((node&&(node.id!=null?node.id:node.dbId))||''); if(!id) return null;
+  var id=String((node&&(node.dbId||node.id))||''); if(!id) return null;
   var cnt={}, seenChain=false;
   chains.forEach(function(c){
     var t=c.started_at?new Date(c.started_at).getTime():null;
@@ -7923,6 +7923,8 @@ var EMOJI_THOUGHTS = {'Я не справляюсь':'😞','Мне не хва�
 // Survey modal
 var _nmOpenThoughtMode=false; // PR#109: openNmThought sets this for the next openNmSurvey
 function openNmSurvey(){
+  var modal = document.getElementById('nmSurveyModal');
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
   var _wasHandoff = nmSessionHandoff; // PR#111 (#1): is this a cross-link continuation?
   nmConsumeSessionHandoff(); // PR#96: keep session if chained here, else fresh
   // A fresh, standalone emotion survey starts with a blank map — drop any carried
@@ -7939,8 +7941,8 @@ function openNmSurvey(){
   nmPendingConcept=null;
   // Pull the user's personal vocabulary so prior custom terms appear in the pickers,
   // coloured by their saved valence. Re-render once it arrives (non-blocking).
-  nmLoadUserVocab(function(){ if(document.getElementById('nmSurveyModal').classList.contains('open')) renderNmStep(); });
-  document.getElementById('nmSurveyModal').classList.add('open');
+  nmLoadUserVocab(function(){ if(modal.classList.contains('open')) renderNmStep(); });
+  modal.classList.add('open');
   renderNmStep();
 }
 // PR#108→#109 (#3/#1): «Заполнить мысль». Runs INSIDE the survey modal: Step 1 of 6
@@ -8127,6 +8129,7 @@ function renderNmStep(){
     h+='<textarea id="nm-thought-input" class="glass-input" rows="3" placeholder="'+_pr95t('a.tools.thought_intro_ph','Напишите свою мысль...')+'" style="width:100%;padding:0.75rem 0.9rem;border-radius:12px;font-size:14px;resize:vertical;" oninput="nmSetThoughtText(this.value)">'+nmEscHtml(_c.label||'')+'</textarea>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0.9rem 0 0.5rem;">'+_pr95t('a.tools.valence_q','Это больше позитивное, нейтральное или негативное?')+'</p>';
     h+='<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">'+nmValenceChips(_c.valence||'neutral','nmSetThoughtValence')+'</div>';
+    h+='<button type="button" id="nm-save-thought" class="btn btn-ghost" style="margin-top:0.9rem;" onclick="if(nmCaptureThought()) nmFinishAndSave()">'+_pr95t('a.tools.save_thought_only','Сохранить только мысль')+'</button>';
     content.innerHTML=h;
   }
   else if(es===0){
@@ -8818,19 +8821,24 @@ function nmSetIntensity(v){
   if(el) el.textContent=v;
 }
 
+function nmCaptureThought(){
+  var input=document.getElementById('nm-thought-input');
+  var label=(input&&input.value||'').trim();
+  if(!label){ if(input) input.focus(); return false; }
+  var concept=nmSurveyState._concept||{label:label,valence:'neutral'};
+  concept.label=label;
+  nmSurveyState._concept=concept;
+  nmPendingConcept={label:label,valence:concept.valence||'neutral'};
+  nmVocabValence[label]=nmPendingConcept.valence;
+  return true;
+}
+
 function nmNext(){
   var es=nmEffStep();
   // PR#109 (#1): thought step — require text, capture the concept + valence so it
   // prepends on save and the live map already shows the concept node.
   if(es===-1){
-    var ti=document.getElementById('nm-thought-input');
-    var lbl=(ti&&ti.value||'').trim();
-    if(!lbl) return;
-    var c=nmSurveyState._concept||{label:lbl,valence:'neutral'};
-    c.label=lbl;
-    nmSurveyState._concept=c;
-    nmPendingConcept={label:c.label,valence:c.valence||'neutral'};
-    nmVocabValence[c.label]=c.valence||'neutral';
+    if(!nmCaptureThought()) return;
     nmCurrentStep++;
     renderNmStep();
     return;
@@ -8936,7 +8944,7 @@ function nmSaveSurvey(){
   // via nmAppendV2 (which carries dependent_id). The parent's local store / legacy
   // API / today-summary / graph must NOT change.
   var _emoDep = (typeof nmTargetDep !== 'undefined' && nmTargetDep);
-  if(!_emoDep){
+  if(!_emoDep && chains.length){
     nmData[key].push(entry);
     // Persist to old API (backward compat)
     nmSaveToAPI(key, entry);
@@ -9157,7 +9165,7 @@ async function nmLoadV2Graph(){
     if(!resp.ok){ console.warn('[NM] graph status='+resp.status); return; }
     var json=await resp.json();
     if(json.ok){
-      nmV2Graph={nodes:json.nodes||[], links:json.links||[], chains:json.chains||[]};
+      nmV2Graph={nodes:json.nodes||[], links:json.links||[], chains:json.chains||[], explicit_links:json.explicit_links||[]};
       console.log('[NM] graph loaded: '+nmV2Graph.nodes.length+' nodes, '+nmV2Graph.links.length+' links, '+(nmV2Graph.chains?nmV2Graph.chains.length:0)+' chains');
       try { buildNmGraph(); } catch(e){ console.warn('[NM] buildNmGraph after graph load:', e); }
     }
@@ -9180,20 +9188,23 @@ function nmAppendV2(chainItems, occurredAt){
   // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
   var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
   if (_depTargeted) _nmBody.dependent_id = nmTargetDep.id;
-  fetch(base+'/api/neuromap/v2/append',{
+  return fetch(base+'/api/neuromap/v2/append',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify(_nmBody)
   }).then(function(r){
-    if(!r.ok) console.warn('[NM] v2/append status='+r.status);
-    else return r.json();
+    if(!r.ok)throw new Error('NeuroMap save HTTP '+r.status);
+    return r.json();
   }).then(function(json){
-    if(json&&json.ok){
-      // Reload v2 graph to get updated counts — but only for the parent's own map;
-      // a child-targeted save doesn't change the parent's graph.
-      if(!_depTargeted) nmLoadV2Graph();
-    }
-  }).catch(function(err){ console.warn('[NM] v2/append FAILED:',err); });
+    if(!json?.ok)throw new Error('NeuroMap save was not confirmed');
+    if(!_depTargeted) nmLoadV2Graph();
+    document.dispatchEvent(new CustomEvent('neuromap:save',{detail:{ok:true}}));
+    return json;
+  }).catch(function(err){
+    console.warn('[NM] v2/append FAILED:',err);
+    document.dispatchEvent(new CustomEvent('neuromap:save',{detail:{ok:false}}));
+    return null;
+  });
 }
 
 // ── Diary Persistence ──
@@ -10910,28 +10921,22 @@ function buildNmGraph(){
   var linkMap={};
 
   if(nmV2Graph && nmV2Graph.nodes.length>0){
-    // PR#114 (HYBRID — reverts PR#113 split-on-render): render ONE shared node per
-    // deduplicated (type,label,valence). Splitting per-session lost the gestalt
-    // ("this emotion repeated 10×") and shattered the map into look-alike twins.
-    // Instead the node is a single big field sized by its global `count` (see
-    // nmNodeR), and a click opens the info-panel listing the CHAINS it belongs to.
-    // Links come from v3 (chain consecutive pairs): one edge per pair, thickness ∝
-    // how many chains share it, chain_ids carried for hover. No cross-product, no
-    // fusion — the only edges drawn are real repetition points inside chains.
     var now=Date.now();
-    nmV2Graph.nodes.forEach(function(n){
+    var occurrences=nmV2Graph.chains && nmV2Graph.chains.length && typeof window.nmOccurrenceGraph==='function';
+    var graph=occurrences ? window.nmOccurrenceGraph(nmV2Graph,nmTsInRange) : nmV2Graph;
+    graph.nodes.forEach(function(n){
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
-      if(!nmTsInRange(lastSeen)) return;   // PR94 (#5d/#5c): crop to the selected period / custom range
+      if(!occurrences && !nmTsInRange(lastSeen)) return;
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      nodeMap[n.id]={id:n.id,dbId:n.id,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      nodeMap[n.id]={id:n.id,dbId:n.concept_id||n.id,sessionId:n.session_id,position:n.position,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
-    nmV2Graph.links.forEach(function(l){
+    graph.links.forEach(function(l){
       var f=l.source, t=l.target;
       if(!nodeMap[f]||!nodeMap[t]) return;   // an endpoint fell outside the date window
       var key=f+'||'+t;
-      if(!linkMap[key]) linkMap[key]={source:f,target:t,count:l.count||1,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
+      if(!linkMap[key]) linkMap[key]={source:f,target:t,count:l.count||1,kind:l.kind,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
     });
   } else {
     // Fallback: build from old nmData entries
@@ -10982,7 +10987,7 @@ function buildNmGraph(){
   });
   Object.keys(linkMap).forEach(function(k){
     var l=linkMap[k];
-    if(nmRepeatFilter && l.count<2) return;
+    if(nmRepeatFilter && l.count<2 && !l.chain_ids?.length) return;
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
 
@@ -11087,9 +11092,10 @@ function applyNmDeepLink(canvas){
   var focusN = null, any = false;
   nmNodes.forEach(function(n){ n._hl = false; n._hlFocus = false; });
   nmNodes.forEach(function(n){
+    if(dl.session && n.sessionId !== dl.session) return;
     var match = set[String(n.id)] || (n.dbId != null && set[String(n.dbId)]) ||
                 set[norm(n.label)] || (n.label && set[norm(n.label)]);
-    if(match){ n._hl = true; any = true; if(norm(dl.focus) && (String(n.id)===String(dl.focus) || String(n.dbId)===String(dl.focus) || norm(n.label)===norm(dl.focus))){ n._hlFocus = true; focusN = n; } }
+    if(match){ n._hl = true; any = true; if((dl.position == null || n.position === dl.position) && norm(dl.focus) && (String(n.id)===String(dl.focus) || String(n.dbId)===String(dl.focus) || norm(n.label)===norm(dl.focus))){ n._hlFocus = true; focusN = n; } }
   });
   if(any){
     var f = focusN || nmNodes.find(function(n){ return n._hl; });
@@ -17929,7 +17935,10 @@ function domGroupOpen(roomId, roomName){
   // Inline Go Live toggle for admins
   var isAdmin = currentUser && (currentUser.role==='founder'||currentUser.role==='admin'||currentUser.serverRole==='superadmin');
   var liveToggle = isAdmin ? ' <button class="btn btn-ghost" onclick="domGroupToggleLive(' + roomId + ',' + (room.is_live?'false':'true') + ')" style="font-size:11px;padding:0.2rem 0.5rem;margin-left:0.4rem;">' + (room.is_live ? '⏹ Завершить LIVE' : '🔴 Начать LIVE') + '</button>' : '';
-  document.getElementById('dom-group-head').innerHTML = (room.name || roomName || '—') + liveBadge + liveToggle;
+  var head=document.getElementById('dom-group-head');
+  head.textContent=room.name || roomName || '—';
+  head.insertAdjacentHTML('beforeend', liveBadge + liveToggle);
+  window.DOMRoomAgents?.open(roomId,head);
   var annBtn = document.getElementById('dom-group-announce-btn');
   if (annBtn && isAdmin) annBtn.style.display = '';
   domGroupLoadMessages();
@@ -17964,33 +17973,53 @@ function domGroupToggleLive(roomId, makeLive){
 }
 window.domGroupToggleLive = domGroupToggleLive;
 function domGroupLoadMessages(){
-  if (!domGroups.activeId) return;
-  domApi('/api/chat/rooms/' + domGroups.activeId + '/messages').then(function(d){
-    var box = document.getElementById('dom-group-messages');
-    if (!box) return;
-    var me = currentUser && currentUser.id;
-    box.innerHTML = (d.messages||[]).map(function(m){
-      var mine = m.sender_id === me;
-      var ann = m.is_announcement;
-      var bg = ann ? 'rgba(255,200,0,0.1)' : (mine ? 'rgba(0,229,255,0.15)' : 'rgba(255,255,255,0.05)');
-      var nameSpan = m.sender_id
-        ? '<span onclick="domShowUserProfile(\'' + m.sender_id + '\')" style="cursor:pointer;text-decoration:underline dotted;">' + (m.sender_name||'—') + '</span>'
-        : (m.sender_name||'—');
-      return '<div style="align-self:'+(mine?'flex-end':'flex-start')+';max-width:75%;background:'+bg+';color:var(--text-primary);padding:0.45rem 0.7rem;border-radius:12px;font-size:13px;line-height:1.4;">'
-           + (ann ? '<div style="font-size:9px;color:#fc0;font-weight:600;margin-bottom:0.2rem;text-transform:uppercase;">📢 Объявление</div>' : '')
-           + '<div style="font-size:10px;color:var(--text-muted);margin-bottom:0.2rem;">'+nameSpan+'</div>'
-           + m.body
-           + '<div style="font-size:9px;color:var(--text-muted);margin-top:0.2rem;">'+new Date(m.created_at).toLocaleString()+'</div>'
-           + '</div>';
-    }).join('');
-    box.scrollTop = box.scrollHeight;
+  var id=domGroups.activeId;
+  if(!id||dom.sub!=='groups')return;
+  domApi('/api/chat/rooms/'+id+'/messages').then(function(data){
+    if(domGroups.activeId!==id)return;
+    var box=document.getElementById('dom-group-messages');
+    if(!box)return;
+    var next=data.messages||[];
+    var signature=next.map(function(message){return message.id;}).join(',');
+    if(box.dataset.room===String(id)&&box.dataset.signature===signature)return;
+    var follow=box.dataset.room!==String(id)||box.scrollHeight-box.scrollTop-box.clientHeight<80;
+    box.dataset.room=String(id);
+    box.dataset.signature=signature;
+    var items=next.map(function(m){
+      var mine=m.sender_id===currentUser?.id;
+      var row=document.createElement('article');
+      row.className='dom-group-message'+(mine?' dom-group-message-mine':'');
+      row.dataset.messageId=m.id;
+      if(m.in_reply_to)row.dataset.replyTo=m.in_reply_to;
+      var sender=document.createElement(m.is_agent||m.sender_id?'button':'span');
+      sender.type='button';
+      sender.textContent=(m.sender_name||'—')+(m.is_agent?' · Monad':'');
+      if(m.is_agent)sender.onclick=function(){window.DOMRoomAgents?.showAgent(m.agent_id);};
+      else if(m.sender_id)sender.onclick=function(){domShowUserProfile(m.sender_id);};
+      var body=document.createElement('div');
+      body.textContent=m.body;
+      var time=document.createElement('time');
+      time.dateTime=m.created_at;
+      time.textContent=new Date(m.created_at).toLocaleString();
+      row.append(sender,body,time);
+      return row;
+    });
+    box.replaceChildren.apply(box,items);
+    if(follow)box.scrollTop=box.scrollHeight;
   }).catch(function(){});
 }
 function domGroupSend(isAnnouncement){
-  var inp = document.getElementById('dom-group-input');
-  if (!inp || !inp.value.trim() || !domGroups.activeId) return;
-  domApi('/api/chat/rooms/' + domGroups.activeId + '/messages', { method:'POST', body: { body: inp.value, is_announcement: !!isAnnouncement } })
-    .then(function(){ inp.value=''; domGroupLoadMessages(); });
+  var inp=document.getElementById('dom-group-input'),id=domGroups.activeId;
+  if(!inp||!inp.value.trim()||!id||inp.dataset.sending)return;
+  var text=inp.value;
+  inp.dataset.sending='true';
+  domApi('/api/chat/rooms/'+id+'/messages',{method:'POST',body:{body:text,is_announcement:!!isAnnouncement}})
+    .then(function(){
+      if(domGroups.activeId===id&&inp.value===text)inp.value='';
+      domGroupLoadMessages();
+    }).catch(function(){
+      window.DOMRoomAgents?.notice('send_failed');
+    }).finally(function(){delete inp.dataset.sending;});
 }
 window.domLoadGroups = domLoadGroups;
 window.domGroupCreate = domGroupCreate;
@@ -18776,7 +18805,8 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/evolution-path.js?v=35"></script>
+<script src="assets/js/neuromap-chains.js?v=1"></script>
+<script src="assets/js/evolution-path.js?v=36"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/na-icons.js?v=2"></script>
@@ -18801,9 +18831,10 @@ window.pbMove = pbMove;
 
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=42"></script>
-<script src="assets/js/monad-cross.js?v=4"></script>
+<script src="assets/js/monad-cross.js?v=5"></script>
 <script src="assets/js/monad-office.js?v=2"></script>
-<script src="assets/js/monad-lk.js?v=24"></script>
+<script src="assets/js/dom-room-agents.js?v=2" defer></script>
+<script src="assets/js/monad-lk.js?v=26"></script>
 <script src="assets/js/sketch-tool.js?v=7"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>
@@ -20497,7 +20528,8 @@ window.pbMove = pbMove;
     var focus = q.get('focus');
     var chain = (q.get('chain') || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
     if(focus == null && !chain.length) return;
-    window.__nmDeepLink = { focus: focus, chain: chain };
+    window.__nmDeepLink = { focus: focus, chain: chain, session: q.get('session'),
+      position: q.has('position') ? Number(q.get('position')) : null };
     var tries = 0;
     var timer = setInterval(function(){
       tries++;

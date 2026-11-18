@@ -1,0 +1,45 @@
+name: DOM cabinet account and NeuroMap tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'account.html'
+      - 'api/**'
+      - 'assets/**'
+      - 'data/i18n/**'
+      - 'scripts/test-dom-account-api.cjs'
+      - 'scripts/test-dom-cabinet-v07.cjs'
+      - 'scripts/test-monad-cross.cjs'
+      - 'scripts/fixtures/dom-account-server.cjs'
+      - '.github/workflows/dom-cabinet-v07.yml'
+permissions:
+  contents: read
+jobs:
+  account-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install account test dependencies
+        run: |
+          npm ci --prefix api
+          npm install --prefix /tmp/dom-v07-ui --no-save playwright@1.56.1 @electric-sql/pglite@0.5.16 three@0.128.0
+      - name: Test signed-in accounts, database, NeuroMap and room delivery
+        env:
+          NODE_PATH: /tmp/dom-v07-ui/node_modules
+          DOM_ACCOUNT_TEST_INBOX: /tmp/dom-v07-test-inbox.json
+        run: |
+          node scripts/fixtures/dom-account-server.cjs > /tmp/dom-v07-test-api.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if grep -q ACCOUNT_FIXTURE_READY /tmp/dom-v07-test-api.log; then break; fi
+            sleep 1
+          done
+          grep -q ACCOUNT_FIXTURE_READY /tmp/dom-v07-test-api.log
+          node scripts/test-dom-account-api.cjs
+          node scripts/test-dom-cabinet-v07.cjs
+          node scripts/test-monad-cross.cjs

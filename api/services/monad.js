@@ -43,7 +43,9 @@ async function mcpCall(toolName, args) {
       'X-API-Key': MONAD_API_KEY,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
   });
+  if (!res.ok) throw Object.assign(new Error('Monad MCP HTTP '+res.status), { status: res.status });
   const raw = await res.text();
   // MCP may return SSE (`data: {...}`) or plain JSON
   let payload = null;
