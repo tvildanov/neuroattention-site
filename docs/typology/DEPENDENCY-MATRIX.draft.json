@@ -1,0 +1,1614 @@
+{
+  "schema_version": "0.1",
+  "status": "draft-not-canonical-numeric-matrix",
+  "date": "2026-11-17",
+  "source": "sources/2026-08-26-handoff-chat-transcription.md",
+  "canonical_numeric_values_recovered": false,
+  "enabled_for_scoring": false,
+  "interpretation": "Концептуальные связи из текста, не доказанная причинная модель. Unreviewed не означает нулевой связи. Не изменять измеренные оценки по этой матрице.",
+  "stat_order": [
+    "stability",
+    "energy_regulation",
+    "interoception",
+    "proprioception",
+    "vital_engagement",
+    "attention_control",
+    "awareness",
+    "adaptation_flexibility",
+    "execution",
+    "technoperception",
+    "socioperception",
+    "relational_awareness",
+    "space_awareness"
+  ],
+  "dimensions": [
+    13,
+    13
+  ],
+  "candidate_edge_count": 27,
+  "rows": [
+    {
+      "source_stat": "stability",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.5",
+            "handoff§12.8"
+          ]
+        },
+        {
+          "target_stat": "interoception",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.1"
+          ]
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "energy_regulation",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.5"
+          ]
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.1",
+            "handoff§12.4",
+            "handoff§12.8"
+          ]
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "interoception",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.1",
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "interoception",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.3"
+          ]
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "proprioception",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "vital_engagement",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.3"
+          ]
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.6"
+          ]
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.5"
+          ]
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "attention_control",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.2",
+            "handoff§12.8"
+          ]
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.1",
+            "handoff§12.3",
+            "handoff§12.4",
+            "handoff§12.7"
+          ]
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "awareness",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.2",
+            "handoff§12.8",
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "adaptation_flexibility",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.2",
+            "handoff§12.8"
+          ]
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "execution",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.1",
+            "handoff§12.8"
+          ]
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.3"
+          ]
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.2"
+          ]
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.7"
+          ]
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.6"
+          ]
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.4"
+          ]
+        }
+      ]
+    },
+    {
+      "source_stat": "technoperception",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.7",
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "socioperception",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.6"
+          ]
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "relational_awareness",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.5"
+          ]
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    },
+    {
+      "source_stat": "space_awareness",
+      "cells": [
+        {
+          "target_stat": "stability",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "energy_regulation",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§12.4",
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "interoception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "proprioception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "vital_engagement",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "attention_control",
+          "status": "recovered-conceptual-candidate",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": [
+            "handoff§11-explicit-example"
+          ]
+        },
+        {
+          "target_stat": "awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "adaptation_flexibility",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "execution",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "technoperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "socioperception",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "relational_awareness",
+          "status": "unreviewed",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        },
+        {
+          "target_stat": "space_awareness",
+          "status": "self-not-modelled",
+          "strength": null,
+          "relationship_type": null,
+          "use_for_scoring": false,
+          "evidence_sources": []
+        }
+      ]
+    }
+  ],
+  "contours": [
+    {
+      "id": "stabilization",
+      "source": "handoff§12.1",
+      "path": [
+        "interoception",
+        "energy_regulation",
+        "attention_control",
+        "execution",
+        "stability",
+        "interoception"
+      ]
+    },
+    {
+      "id": "learning",
+      "source": "handoff§12.2",
+      "path": [
+        "attention_control",
+        "awareness",
+        "adaptation_flexibility",
+        "execution",
+        "attention_control"
+      ]
+    },
+    {
+      "id": "aliveness",
+      "source": "handoff§12.3",
+      "path": [
+        "interoception",
+        "vital_engagement",
+        "attention_control",
+        "execution",
+        "vital_engagement"
+      ]
+    },
+    {
+      "id": "space",
+      "source": "handoff§12.4",
+      "path": [
+        "space_awareness",
+        "energy_regulation",
+        "attention_control",
+        "execution",
+        "space_awareness"
+      ]
+    },
+    {
+      "id": "relationship",
+      "source": "handoff§12.5",
+      "path": [
+        "relational_awareness",
+        "stability",
+        "energy_regulation",
+        "vital_engagement",
+        "relational_awareness"
+      ]
+    },
+    {
+      "id": "social_realization",
+      "source": "handoff§12.6",
+      "path": [
+        "socioperception",
+        "vital_engagement",
+        "execution",
+        "socioperception"
+      ]
+    },
+    {
+      "id": "digital_environment",
+      "source": "handoff§12.7",
+      "path": [
+        "technoperception",
+        "attention_control",
+        "execution",
+        "technoperception"
+      ]
+    },
+    {
+      "id": "meta_development",
+      "source": "handoff§12.8",
+      "path": [
+        "awareness",
+        "adaptation_flexibility",
+        "execution",
+        "stability",
+        "energy_regulation",
+        "attention_control",
+        "awareness"
+      ]
+    }
+  ],
+  "open_work": [
+    "Проверить смысл/направление каждой связи, не предполагая независимость или причинность.",
+    "Согласовать тип Foundation/Amplifier/Constraint/другое; пока null.",
+    "Определить необходимость и основания численных сил; пока null.",
+    "Отделить влияние состояния/контекста от влияния способности.",
+    "Сопоставить с будущими наблюдениями; не исправлять измеренный балл по предположенной зависимости."
+  ]
+}
