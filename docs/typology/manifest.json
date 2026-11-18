@@ -1,5 +1,5 @@
 {
-  "version": "0.9",
+  "version": "0.10",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-17",
   "complete_method_archive": false,
@@ -13,9 +13,9 @@
     },
     {
       "path": "DECISIONS.md",
-      "git_blob_sha": "5620660e0655153e302d256f0f62b02505b3d24c",
+      "git_blob_sha": "22010220b310227df511fe001939cdedd0bc1d72",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 21196
+      "size_bytes": 23448
     },
     {
       "path": "INTEGRATION.md",
@@ -24,9 +24,9 @@
     },
     {
       "path": "README.md",
-      "git_blob_sha": "9dcdda33d09a44997709016fdfe9b107e2503d47",
+      "git_blob_sha": "c0f7e093f08d59cc51a17d505615b794b91f6646",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 4201
+      "size_bytes": 4952
     },
     {
       "path": "SOURCES.md",
@@ -61,9 +61,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "a670d236dbd1be8b1a46969ced90dc7d1c958d75",
+      "git_blob_sha": "28059f987de46457727cb696e58a7c978df6055e",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 21276
+      "size_bytes": 24368
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -130,10 +130,71 @@
       "git_blob_sha": "416af555d6ddff394353842b92f5081e14f43dec",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 46077
+    },
+    {
+      "path": "../../data/typology/baseline-13.draft.json",
+      "git_blob_sha": "e7ad3cb3f9d7519f2d9e2b5b0cb2e8588ce0c3d4",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 98774
+    },
+    {
+      "path": "../../assets/js/dom-typology-core.js",
+      "git_blob_sha": "ac4890a1736602757b1d8131a4c3310a9fa37dc3",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 7749
+    },
+    {
+      "path": "../../assets/js/dom-typology-baseline.js",
+      "git_blob_sha": "63b56bc5476a64527b3bda63fd3d32b6044c19dd",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 11213
+    },
+    {
+      "path": "../../assets/dom-typology-baseline.css",
+      "git_blob_sha": "1fadc08945d257b361436934f9268c3fb8c87d4d",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 2426
+    },
+    {
+      "path": "../../typology-baseline.html",
+      "git_blob_sha": "83c9aa4afe91f2cfb1d9420b2bc83715241afc27",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 923
+    },
+    {
+      "path": "../../scripts/tests/typology-baseline.test.cjs",
+      "git_blob_sha": "58c3e351b46b367109b226049aa96e583c7c9965",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 3889
+    },
+    {
+      "path": "../../scripts/tests/typology-baseline.browser.cjs",
+      "git_blob_sha": "2c70d98d40b72af317aeb715ccca82e080406792",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 4508
+    },
+    {
+      "path": "BASELINE-13-REVIEW.md",
+      "git_blob_sha": "4c7118ef5599b07be29c4eee5584e257422c9a81",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 37753
     }
   ],
   "full_handoff_text_included": true,
   "attachment_byte_identity_verified": false,
   "shared_chat_read": false,
-  "active_checkpoint": "CONTINUE.md"
+  "active_checkpoint": "CONTINUE.md",
+  "baseline": {
+    "instrument_id": "dom-baseline-13",
+    "version": "draft-2026-11-17.1",
+    "core_questions": 40,
+    "context_questions": 1,
+    "stat_definitions": 13,
+    "scoring_enabled": false,
+    "objective_fraction": null,
+    "production_deployed": false,
+    "account_integrated": false,
+    "unit_checks_passed": 7,
+    "browser_check_status": "blocked-by-environment"
+  }
 }
