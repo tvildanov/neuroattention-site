@@ -109,17 +109,17 @@ const delta = (a, b, x, y) => [...pixel(a, x, y)].reduce((sum, v, i) => sum + Ma
         assert.equal((await pseudo(page)).content, 'none');
         await page.locator('[data-theme-switch]').click();
         await page.waitForFunction(() => document.documentElement.dataset.domTheme === 'light');
-        const coursesLink = page.locator('#client-dashboard .dash-nav-primary a[data-tab="courses"]:visible').first();
-        if (await coursesLink.isVisible()) {
-          await coursesLink.click();
-        } else {
-          // The concurrent cabinet layout may put navigation behind a mobile drawer.
-          const toggle = page.locator('.dom-cabinet-toggle');
-          await toggle.click();
-          await coursesLink.click();
-        }
+        const toggle = page.locator('.dom-cabinet-toggle');
+        const openNavigation = async () => {
+          if (await toggle.isVisible() && await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+        };
+        await openNavigation();
+        const group = page.locator('.dom-cabinet-path-group');
+        if (await group.isVisible() && !await group.evaluate(element => element.open)) await group.locator('summary').click();
+        await page.locator('#client-dashboard .dash-nav-primary a[data-tab="courses"]:visible').first().click();
         assert.equal((await pseudo(page)).content, 'none');
-        await page.evaluate(() => switchTab('overview'));
+        await openNavigation();
+        await page.locator('#client-dashboard .dash-nav-primary a[data-tab="overview"]:visible').first().click();
         assert.match((await pseudo(page)).image, /dom-profile-neural-light\.webp/);
         await page.evaluate(() => showSection('auth'));
         assert.equal((await pseudo(page)).content, 'none');
