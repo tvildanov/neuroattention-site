@@ -1,0 +1,13 @@
+name: DOM full account inspection
+on:
+  pull_request:
+    branches: [main]
+    paths: ['scripts/dom-recovery-inspect.cjs', '.github/workflows/dom-recovery-inspect.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/dom-recovery-inspect.cjs
