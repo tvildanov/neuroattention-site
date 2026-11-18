@@ -1,5 +1,5 @@
 {
-  "version": "0.8",
+  "version": "0.9",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-17",
   "complete_method_archive": false,
@@ -13,9 +13,9 @@
     },
     {
       "path": "DECISIONS.md",
-      "git_blob_sha": "3a98f9ca01b5de0a726a39b330c9d2ad3012f6a6",
+      "git_blob_sha": "5620660e0655153e302d256f0f62b02505b3d24c",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 18704
+      "size_bytes": 21196
     },
     {
       "path": "INTEGRATION.md",
@@ -30,9 +30,9 @@
     },
     {
       "path": "SOURCES.md",
-      "git_blob_sha": "8d6faa830d6483c4494d27471431ec7bfc8d4250",
+      "git_blob_sha": "82bc4e4978b26d890284f829a9415aae64262f27",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 10633
+      "size_bytes": 11961
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -61,9 +61,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "044fd438693189f91f657022a376e8f9dff61f77",
+      "git_blob_sha": "a670d236dbd1be8b1a46969ced90dc7d1c958d75",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 19478
+      "size_bytes": 21276
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -79,9 +79,9 @@
     },
     {
       "path": "SPACE-AWARENESS.md",
-      "git_blob_sha": "1d237de0ae7a9cd5d47fec9446a456fcc747f59d",
+      "git_blob_sha": "656882e4b7c0acbe397f0533014a5bfba2b7047c",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 21203
+      "size_bytes": 22183
     },
     {
       "path": "sources/2026-11-16-space-awareness-expansion.md",
@@ -109,9 +109,27 @@
     },
     {
       "path": "SPACE-AWARENESS-ASSESSMENT-DRAFT.md",
-      "git_blob_sha": "cda7f05f1f5d3ef577c2ba262e0429bc6411c7a6",
+      "git_blob_sha": "ad79e4aa5ba65132d84dab9dcccd0b1db10837b9",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 9899
+      "size_bytes": 7057
+    },
+    {
+      "path": "sources/2026-11-17-short-baseline-format.md",
+      "git_blob_sha": "f235f292241054ba661489787cdd601e198fe038",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 4096
+    },
+    {
+      "path": "SPACE-AWARENESS-ITEMS.draft.json",
+      "git_blob_sha": "aaa8a8ad79d7751fd2db05965bf7611ac04fe79e",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 11781
+    },
+    {
+      "path": "DEPENDENCY-MATRIX.draft.json",
+      "git_blob_sha": "416af555d6ddff394353842b92f5081e14f43dec",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 46077
     }
   ],
   "full_handoff_text_included": true,
