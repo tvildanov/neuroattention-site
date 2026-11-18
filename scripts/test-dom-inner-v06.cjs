@@ -31,12 +31,12 @@ const srv=http.createServer((req,res)=>{
    const order=await page.evaluate(()=>{let x=document.querySelector('#programs-main'),t=document.querySelector('[data-i18n="p.spec.title"]')?.closest('section');return x&&t&&!!(x.compareDocumentPosition(t)&Node.DOCUMENT_POSITION_FOLLOWING)});
    assert(order,'programs ahead of specialist training');
    assert.equal(await page.locator('[data-i18n="p.research.title"]').isVisible(),false,'research section hidden');
-   await open('xr','[data-i18n="xr_page.title"]');
-   assert.equal((await page.locator('[data-i18n="xr_page.title"]').innerText()).replace(/\s+/g,' ').trim(),'DOM Platform');
+   await open('xr','[data-dom-v06="xr-title"]');
+   assert.equal((await page.locator('[data-dom-v06="xr-title"]').innerText()).replace(/\s+/g,' ').trim(),'DOM Platform');
    assert.match(await page.locator('.glass-image-frame').getAttribute('src'),/assets\/images\//);
    await open('lab','.dom-v06-research-card');
    assert.equal(await page.locator('.dom-v06-research-card').count(),4);
-   assert.match(await page.locator('[data-i18n="l.hero.title"]').innerText(),/адаптац|adaptation|adaptaci/i);
+   assert.match(await page.locator('[data-dom-v06="lab-title"]').innerText(),/адаптац|adaptation|adaptaci/i);
    assert(!errors.some(e=>e.includes('SyntaxError')||e.includes('ReferenceError')),lang+': '+errors.join('; '));
    await context.close();
   }
