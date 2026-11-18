@@ -18,7 +18,7 @@ html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
  :where(body > section ~ section, body > main > section ~ section)
  :is(h2,h3,h4,.section-title,.dom-v06-summary strong) {
  font-family:'Libre Baskerville',Georgia,serif!important;
- font-weight:400;
+ font-weight:500;
  letter-spacing:-.025em;
  color:var(--text-primary);
 }
