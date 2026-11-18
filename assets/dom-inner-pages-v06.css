@@ -44,8 +44,9 @@ body[data-dom-page=xr] section:first-of-type .grid.grid-2,
 body[data-dom-page=lab] section:first-of-type .grid.grid-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:clamp(1rem,3vw,3rem)!important}
 body[data-dom-page=xr] section:first-of-type .grid.grid-2>div,
 body[data-dom-page=lab] section:first-of-type .grid.grid-2>div{min-width:0}
+body[data-dom-page=xr] [data-dom-v06="xr-title"],
 body[data-dom-page=xr] [data-i18n="xr_page.title"],
-body[data-dom-page=lab] [data-i18n="l.hero.title"]{overflow-wrap:break-word;word-break:normal;hyphens:auto;max-width:100%;font-size:clamp(2rem,3.6vw,3.65rem)!important;line-height:1.12}
+body[data-dom-page=lab] [data-i18n="l.hero.title"],body[data-dom-page=lab] [data-dom-v06="lab-title"]{overflow-wrap:break-word;word-break:normal;hyphens:auto;max-width:100%;font-size:clamp(2rem,3.6vw,3.65rem)!important;line-height:1.12}
 body[data-dom-page=xr] .glass-image-frame{width:100%;height:auto;object-fit:contain;image-rendering:auto}
 body[data-dom-page=lab] .img-stack{max-width:100%;overflow:visible}
 body[data-dom-page=lab] .img-stack img{object-fit:cover;image-rendering:auto}
