@@ -27,3 +27,6 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
 
 /* Keep graph text legible in both cabinet themes without changing typology styles. */
 (function(){if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;var el=document.createElement('link');el.rel='stylesheet';el.href='assets/dom-account-graph-readability-v06.css?v=1';document.head.appendChild(el);})();
+
+/* Shared cabinet v0.7 loader (no duplicated NeuroMap handlers). */
+(()=>{if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;const css=document.createElement('link');css.rel='stylesheet';css.href='assets/dom-cabinet-v07.css?v=1';document.head.append(css);const script=document.createElement('script');script.src='assets/js/dom-cabinet-v07.js?v=1';script.defer=true;document.head.append(script);})();
