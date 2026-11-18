@@ -5,3 +5,5 @@ for(const key of anchors){let start=0,idxs=[];while((start=s.indexOf(key,start))
 console.log('END size='+s.length+' scriptSrc='+[...s.matchAll(/<script[^>]+src="([^"]+)"/g)].map(x=>x[1]).slice(-42).join(';'));
 
 for(const word of ['/api/chat/rooms','function domLoadRooms','function domOpenRoom','function domSwitch(','dom-room-messages','id="dom-subtab-rooms"','id="dom-rooms"','id="dom-room-log"','id="dom-chat-messages"']){let at=0,count=0;while((at=s.indexOf(word,at))!==-1&&count++<4){console.log('CHAT ANCHOR '+word+' #'+count+' OFFSET '+at+'\\n'+s.slice(Math.max(0,at-1300),at+2700));at+=word.length}}
+
+const dg=s.indexOf('// ── Groups (chat rooms) ──');if(dg>=0)console.log('DOM_CHAT_ROOMS_START'+s.slice(dg,dg+18500)+'DOM_CHAT_ROOMS_END');
