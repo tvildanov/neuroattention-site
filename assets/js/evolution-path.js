@@ -748,11 +748,13 @@
 
   var CV_COLORS = null;
   function cvColors() {
-    if (CV_COLORS) return CV_COLORS;
+    var light = document.documentElement.dataset.domTheme === 'light';
+    if (CV_COLORS && CV_COLORS.light === light) return CV_COLORS;
     var cs = getComputedStyle(document.documentElement);
     var g = function (n, fb) { var v = (cs.getPropertyValue(n) || '').trim(); return v || fb; };
-    CV_COLORS = { cyan: g('--myc-cyan', '#5ee0ff'), green: g('--myc-green', '#56F2A6'),
-      lineSecondary: 'rgba(255,255,255,0.45)', lineFaint: 'rgba(255,255,255,0.06)',
+    CV_COLORS = { light: light, cyan: g('--myc-cyan', '#5ee0ff'), green: g('--myc-green', '#56F2A6'),
+      lineSecondary: light ? 'rgba(32,76,142,0.45)' : 'rgba(255,255,255,0.45)',
+      lineFaint: light ? 'rgba(32,76,142,0.09)' : 'rgba(255,255,255,0.06)',
       lineMuted: 'rgba(255,255,255,0.16)', textDim: g('--myc-text-dim', '#8c98a6'),
       textMono: g('--myc-text-mono', '#5b6b7a') };
     return CV_COLORS;
@@ -837,6 +839,7 @@
       fieldTop: fieldTop, fieldBot: fieldBot, cy: cy, half: half, isMobile: isMobile,
       lang: lang, data: data, events: events, container: container, overlay: ovZone,
       components: buildTunnelComponents(events, half) };
+    cv.repaintEvolution = function () { drawTunnel(st); };
     drawTunnel(st);
     wireCanvasPanZoom(container, st, lang);
   }
@@ -1043,7 +1046,8 @@
     var firstEvX = T.events.length ? sx(T.events[0].t) : sNow;
     if (firstEvX > x0 + 8) {
       var fade = ctx.createLinearGradient(x0, 0, Math.min(firstEvX, x1), 0);
-      fade.addColorStop(0, 'rgba(3,6,10,0.5)'); fade.addColorStop(1, 'rgba(3,6,10,0)');
+      fade.addColorStop(0, C.light ? 'rgba(237,225,203,0.38)' : 'rgba(3,6,10,0.5)');
+      fade.addColorStop(1, C.light ? 'rgba(237,225,203,0)' : 'rgba(3,6,10,0)');
       ctx.fillStyle = fade; ctx.fillRect(x0, 0, Math.min(firstEvX, x1) - x0, H);
     }
 
@@ -2990,6 +2994,11 @@
   }
 
   window.mountEvolutionPath = mountEvolutionPath;
+  document.addEventListener('domthemechange', function () {
+    document.querySelectorAll('canvas.evo-2d').forEach(function (canvas) {
+      if (canvas.repaintEvolution) canvas.repaintEvolution();
+    });
+  });
   // Part B — re-render the personal Path after a schedule create/toggle/delete so
   // the on-the-fly scheduled events refresh (only if it is currently mounted).
   var _lastPersonalPath = null;

@@ -2356,3 +2356,38 @@ User requested original drop restoration, a reusable export of the new renderer,
   "next_session": "Continue the remaining homepage v0.4 work independently of the profile and typography changes."
 }
 ```
+
+## 2026-11-18 — DOM site Package 06 and v0.4 follow-up
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-18T17:33:03.856Z",
+  "did": [
+    "Verified already-published v0.4 and v0.4.1 before changing the site",
+    "Implemented P06-01 through P06-08, the new six NeuroMap forms and palettes, and the current NASA CCMC DONKI archive"
+  ],
+  "changed": [
+    "Cabinet surface, navigation and existing NeuroMap entry UI",
+    "Light editorial color hierarchy, Method layout and responsive card motion",
+    "Theme-aware node rendering and external weather feed recovery"
+  ],
+  "files": [
+    "account.html",
+    "assets/dom-cabinet-v07.css",
+    "assets/dom-site-theme.css",
+    "method.html",
+    "api/services/external/donki.js"
+  ],
+  "decisions": [
+    "Use circle, pentagon, diamond, hexagon, octagon and dodecagon by layer; retain labelled emotion icons with a subdued presentation",
+    "Keep the existing NASA gateway and NOAA flare service as fallback paths",
+    "Preserve the original v0.4 media; higher-resolution source files remain needed for full Retina detail"
+  ],
+  "followups": [
+    "Check exact CI revisions, static page hashes and Railway health after publishing"
+  ],
+  "next_session": "Use the current release as the baseline for further website work."
+}
+```

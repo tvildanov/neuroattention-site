@@ -145,3 +145,5 @@ html[data-dom-theme=light][lang=ru] .home-matrix .dom-intro-question .dom-cover-
 #dom-observation-cards .list-bullet input{left:0}
 #dom-observation-cards .list-bullet .dot{position:absolute;left:5px;top:9px}
 #problem-and-facts.is-choosing-observations .list-bullet .dot{visibility:hidden}
+
+html[data-dom-theme="light"] .home-matrix #problem-and-facts .dom-v04-problem-heading h2 {color:var(--accent-cyan)}

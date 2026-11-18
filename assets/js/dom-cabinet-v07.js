@@ -73,9 +73,12 @@
    if(!profile||!actions||q('#dom-quick-record'))return;
    const host=el('div','dom-quick-record');host.id='dom-quick-record';
    const button=el('button','dom-quick-trigger');
+   const hint=el('p','dom-quick-hint');
+   hint.id='dom-quick-hint';
    button.type='button';
    button.setAttribute('aria-expanded','false');
    button.setAttribute('aria-controls','dom-quick-popup');
+   button.setAttribute('aria-describedby',hint.id);
    const panel=el('div','dom-quick-popup');
    panel.id='dom-quick-popup';
    panel.hidden=true;
@@ -93,7 +96,7 @@
    const toolbar=el('div','dom-quick-toolbar');
    toolbar.append(heading,expand);
    panel.append(toolbar);
-   host.append(button,panel,status);
+   host.append(button,hint,panel,status);
    const hero=q('#rpg-hero');
    if(hero)hero.before(host);else profile.prepend(host);
    if(hero && !hero.closest('#rpg-dashboard'))hero.after(host);
@@ -144,7 +147,9 @@
  }
  function refreshTranslations(){
    const trigger=q('#dom-quick-record .dom-quick-trigger');
-   if(trigger)trigger.textContent=txt('Записать сейчас','Record now','Registrar ahora');
+   if(trigger)trigger.textContent=txt('Добавить запись','Add an entry','Añadir un registro');
+   const hint=q('#dom-quick-hint');
+   if(hint)hint.textContent=txt('Мысль, эмоция, ощущение или событие','A thought, emotion, sensation or event','Un pensamiento, una emoción, una sensación o un evento');
    const expand=q('.dom-quick-expand');
    if(expand)expand.textContent=expand.getAttribute('aria-expanded')==='true'
      ?txt('Свернуть','Collapse','Contraer'):txt('Развернуть','Expand','Ampliar');

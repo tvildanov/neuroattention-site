@@ -1,7 +1,24 @@
 // NASA DONKI — solar flares (FLR), coronal mass ejections (CME), geomagnetic
-// storms (GST). Needs a NASA API key (env NASA_API_KEY, falls back to DEMO_KEY).
+// storms (GST). The public CCMC service is primary; retain the NASA Open APIs
+// gateway as a backup for existing deployments with a configured key.
 const { getJson, iso } = require('./_util');
 function d10(t) { return new Date(t).toISOString().slice(0, 10); }
+
+async function fetchDonki(type, startDate, endDate, key) {
+  const dates = new URLSearchParams({ startDate, endDate });
+  try {
+    const entries = await getJson('https://ccmc.gsfc.nasa.gov/DONKI/WS/get/' + type + '?' + dates);
+    if (!Array.isArray(entries)) throw new Error('Unexpected CCMC DONKI payload');
+    return entries;
+  } catch (primaryError) {
+    dates.set('api_key', key);
+    try {
+      return await getJson('https://api.nasa.gov/DONKI/' + type + '?' + dates);
+    } catch {
+      throw primaryError;
+    }
+  }
+}
 
 async function fetchLatest(ctx) {
   const key = (ctx && ctx.nasaKey) || process.env.NASA_API_KEY || 'DEMO_KEY';
@@ -10,8 +27,7 @@ async function fetchLatest(ctx) {
 
 // Historical FLR/CME/GST for an explicit [from,to] window (YYYY-MM-DD or ms).
 // Same normalized shape as fetchLatest — DONKI's endpoints are already
-// date-ranged, so this is the archive path for the Sun/Earth layers. Needs a
-// real NASA key for coverage; on DEMO_KEY it is rate-limited and returns little.
+// date-ranged, so this is the archive path for the Sun/Earth layers.
 async function fetchHistory(ctx) {
   const key = (ctx && ctx.nasaKey) || process.env.NASA_API_KEY || 'DEMO_KEY';
   return fetchRange(d10((ctx && ctx.from) || Date.now()), d10((ctx && ctx.to) || Date.now()), key);
@@ -20,7 +36,7 @@ async function fetchHistory(ctx) {
 async function fetchRange(s, e, key) {
   const out = [];
   try {
-    const flr = await getJson('https://api.nasa.gov/DONKI/FLR?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
+    const flr = await fetchDonki('FLR', s, e, key);
     (flr || []).forEach(function (f) {
       out.push({ layer: 'sun', source: 'NASA DONKI', source_url: f.link, event_type: 'flare',
         title: 'Solar flare ' + (f.classType || '') + (f.sourceLocation ? ' (' + f.sourceLocation + ')' : ''),
@@ -28,9 +44,12 @@ async function fetchRange(s, e, key) {
         start_time: iso(f.beginTime), end_time: iso(f.endTime), severity: f.classType, location_scope: 'global',
         dedup_key: 'donki:flr:' + f.flrID, raw_payload: f });
     });
-  } catch (err) { require('./_availability').warn('donki:flr',err);const fallback=await require('./noaa').fetchHistory({from:s,to:e});out.push(...fallback); }
+  } catch (err) {
+    require('./_availability').warn('donki:flr',err);
+    out.push(...await require('./noaa').fetchHistory({from:s,to:e}));
+  }
   try {
-    const cme = await getJson('https://api.nasa.gov/DONKI/CME?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
+    const cme = await fetchDonki('CME', s, e, key);
     (cme || []).forEach(function (c) {
       const a = (c.cmeAnalyses && c.cmeAnalyses[0]) || {};
       out.push({ layer: 'sun', source: 'NASA DONKI', source_url: c.link, event_type: 'cme',
@@ -41,7 +60,7 @@ async function fetchRange(s, e, key) {
     });
   } catch (err) { require('./_availability').warn('donki:cme',err); }
   try {
-    const gst = await getJson('https://api.nasa.gov/DONKI/GST?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
+    const gst = await fetchDonki('GST', s, e, key);
     (gst || []).forEach(function (g) {
       const kp = (g.allKpIndex && g.allKpIndex.length) ? g.allKpIndex[g.allKpIndex.length - 1].kpIndex : null;
       out.push({ layer: 'earth', source: 'NASA DONKI', source_url: g.link, event_type: 'geomagnetic_storm',
@@ -57,13 +76,13 @@ async function fetchRange(s, e, key) {
 // it coincides with an Earth-directed CME. Returns the flattened, most-accurate
 // analyses with their heliographic apex (latitude/longitude, Stonyhurst — lon 0 =
 // Sun–Earth line) + halfAngle + speed + time, so the caller can test whether
-// Earth lies inside the CME cone. Needs a real NASA key for coverage.
+// Earth lies inside the CME cone.
 async function fetchCmeAnalyses(ctx) {
   const key = (ctx && ctx.nasaKey) || process.env.NASA_API_KEY || 'DEMO_KEY';
   const s = d10((ctx && ctx.from) || Date.now()), e = d10((ctx && ctx.to) || Date.now());
   const out = [];
   try {
-    const cme = await getJson('https://api.nasa.gov/DONKI/CME?startDate=' + s + '&endDate=' + e + '&api_key=' + key);
+    const cme = await fetchDonki('CME', s, e, key);
     (cme || []).forEach(function (c) {
       const analyses = c.cmeAnalyses || [];
       analyses.forEach(function (a) {

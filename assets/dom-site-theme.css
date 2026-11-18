@@ -18,9 +18,18 @@ html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
  :where(body > section ~ section, body > main > section ~ section)
  :is(h2,h3,h4,.section-title,.dom-v06-summary strong) {
  font-family:'Libre Baskerville',Georgia,serif!important;
- font-weight:500;
+ font-weight:400;
  letter-spacing:-.025em;
+}
+html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
+ :where(body > section ~ section, body > main > section ~ section)
+ :is(h3,h4,.dom-v06-summary strong):not(.section-title) {
  color:var(--text-primary);
+}
+html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
+ :where(body > section ~ section, body > main > section ~ section)
+ :is(h2,.section-title) {
+ color:var(--accent-cyan);
 }
 html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
  :where(body > section ~ section, body > main > section ~ section)

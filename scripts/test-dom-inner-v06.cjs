@@ -23,9 +23,20 @@ const srv=http.createServer((req,res)=>{
    assert.equal(await page.locator('#dom-unity .dom-v06-entities .dom-card').count(),6,'DOM card count');
    for(const name of ['DOM Institute','DOM Platform','DOM Space','DOM Tech','NeuroAttention Lab','Custom Group Agency'])assert.equal(await page.getByRole('heading',{name,exact:true}).count(),1,name);
    assert.equal(await page.locator('.navbar .nav-logo-dom').count(),1,'same navbar brand');
+   await page.evaluate(()=>{document.documentElement.dataset.domTheme='light'});
+   const heading=page.locator('[data-i18n="d.idea.title"]');
+   assert.equal(await heading.evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
+   assert.match(await heading.evaluate(e=>getComputedStyle(e).fontFamily),/Libre Baskerville/);
    await open('programs','.dom-v06-programs');
    assert.equal(await page.locator('#programs-main .dom-v06-program-card').count(),6);
    assert.equal(await page.locator('#programs-main .dom-v06-subscription').count(),1);
+   const summary=page.locator('.dom-v06-program-card summary').first();
+   await summary.hover();
+   assert.equal(await summary.evaluate(e=>e.parentElement.classList.contains('dom-card-lit')),true);
+   await page.emulateMedia({reducedMotion:'reduce'});
+   await summary.hover();
+   assert.equal(await summary.evaluate(e=>e.parentElement.classList.contains('dom-card-lit')),false);
+   await page.emulateMedia({reducedMotion:'no-preference'});
    await page.locator('.dom-v06-program-card summary').first().click();
    assert.equal(await page.locator('.dom-v06-program-card').first().evaluate(e=>e.open),true);
    const order=await page.evaluate(()=>{let x=document.querySelector('#programs-main'),t=document.querySelector('[data-i18n="p.spec.title"]')?.closest('section');return x&&t&&!!(x.compareDocumentPosition(t)&Node.DOCUMENT_POSITION_FOLLOWING)});
@@ -37,6 +48,13 @@ const srv=http.createServer((req,res)=>{
    await open('lab','.dom-v06-research-card');
    assert.equal(await page.locator('.dom-v06-research-card').count(),4);
    assert.match(await page.locator('[data-dom-v06="lab-title"]').innerText(),/адаптац|adaptation|adaptaci/i);
+   await open('method','.method-final-layout');
+   await page.locator('[data-i18n="m.practice.tools"]').waitFor();
+   assert.equal(await page.locator('[data-i18n="m.modules.title"]').count(),0);
+   assert.deepEqual(await page.locator('.method-final-layout a').evaluateAll(links=>links.map(a=>a.getAttribute('href'))),['test.html','programs.html']);
+   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.method-final-layout')).display==='grid');
+   const desktop=await page.locator('.method-final-layout').evaluate(e=>Array.from(e.children,c=>c.getBoundingClientRect().left));
+   assert(desktop[0]<desktop[1],'animation left of CTA');
    assert(!errors.some(e=>e.includes('SyntaxError')||e.includes('ReferenceError')),lang+': '+errors.join('; '));
    await context.close();
   }
@@ -47,6 +65,10 @@ const srv=http.createServer((req,res)=>{
   await page.locator('.dom-v06-program-grid').waitFor();
   const over=await page.locator('.dom-v06-program-grid').evaluate(e=>e.getBoundingClientRect().right>window.innerWidth+3);
   assert.equal(over,false,'mobile program grid fits viewport');
+  await page.goto('http://127.0.0.1:'+port+'/method.html',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>getComputedStyle(document.querySelector('.method-final-layout')).display==='grid');
+  const mobileCTA=await page.locator('.method-final-layout').evaluate(e=>Array.from(e.children,c=>c.getBoundingClientRect().top));
+  assert(mobileCTA[0]<mobileCTA[1],'mobile animation above CTA');
   await mobile.close();
   console.log('DOM_INNER_RELEASE_PASS: 4 pages x RU/EN/ES + mobile disclosure');
  }finally{await browser.close();srv.close();}
