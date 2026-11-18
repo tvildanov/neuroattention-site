@@ -112,4 +112,22 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();
   document.addEventListener('langchange',render);
+
+  const cardSelector='.dom-v06-program-card,.prog-card,.level-card,.dom-card,.dom-v06-research-card,.dom-v06-subscription,.card-hover,.hero-route-card';
+  const canTrack=window.matchMedia('(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
+  let litCard;
+  function clearLight(){
+    litCard?.classList.remove('dom-card-lit');
+    litCard=null;
+  }
+  document.addEventListener('pointermove',event=>{
+    const card=canTrack.matches&&event.pointerType!=='touch'&&event.target.closest(cardSelector);
+    if(card!==litCard){clearLight();if(!card)return;litCard=card;card.classList.add('dom-card-lit');}
+    if(!litCard)return;
+    const bounds=litCard.getBoundingClientRect();
+    litCard.style.setProperty('--dom-light-x',`${event.clientX-bounds.left}px`);
+    litCard.style.setProperty('--dom-light-y',`${event.clientY-bounds.top}px`);
+  },{passive:true});
+  document.addEventListener('pointerleave',clearLight);
+  canTrack.addEventListener('change',clearLight);
 })();

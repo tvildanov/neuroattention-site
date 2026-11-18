@@ -62,6 +62,8 @@ async function request(route,token,body){
    await page.locator('.dom-cabinet-sidebar a[data-tab="overview"]').click();
    await page.locator('#tab-overview.active').waitFor();
    const quick=page.locator('#dom-quick-record .dom-quick-trigger');
+   assert.equal(await quick.getAttribute('aria-describedby'),'dom-quick-hint');
+   assert.match(await page.locator('#dom-quick-hint').innerText(),{ru:/мысль, эмоция/i,en:/thought, emotion/i,es:/pensamiento, una emoción/i}[lang]);
    await quick.click();
    const entry=page.locator('#dom-quick-popup #nm-entry-actions');
    assert.equal(await entry.locator('button').count(),4);
@@ -75,6 +77,38 @@ async function request(route,token,body){
      await page.locator('#nm-save-thought').click();
      assert.equal((await saved).status(),200);
      await page.locator('#dom-quick-record .dom-quick-status').getByText(/сохранена/i).waitFor();
+     await quick.click();
+     await entry.locator('button').first().click();
+     const emotionPanel=page.locator('#nm-step-content');
+     for(const emotion of ['спокойствие','любовь','забота','радость','тревога','раздражение']){
+       const option=emotionPanel.getByRole('button',{name:new RegExp('^'+emotion+'$','i')});
+       await option.click();
+       assert.equal(await option.getAttribute('aria-pressed'),'true');
+       await page.locator('#nm-next').click();
+       assert.match(await emotionPanel.locator('h3').innerText(),/С какой сферой жизни связано это переживание/);
+       assert.match(await emotionPanel.locator('.nm-selected-emotion').innerText(),new RegExp(emotion,'i'));
+       await page.locator('#nm-prev').click();
+     }
+     await page.evaluate(()=>window.closeNmSurvey());
+     const drawing=await page.evaluate(()=>{
+       const types=['sensation','emotion','area','concept','cause','action'];
+       function trace(type){
+         const points=[];
+         const pen={beginPath(){},arc(){points.push('circle')},moveTo(){points.push('point')},lineTo(){points.push('point')},closePath(){}};
+         nmTraceNode(pen,{type},0,0,10);
+         return points[0]==='circle'?'circle':points.length;
+       }
+       const colored={};
+       for(const theme of ['dark','light']){
+         document.documentElement.dataset.domTheme=theme;
+         colored[theme]=types.map(type=>nmGetNodeColor({type}));
+       }
+       return {shapes:types.map(trace),colored};
+     });
+     assert.deepEqual(drawing.shapes,['circle',5,4,6,8,12]);
+     assert.equal(new Set(drawing.colored.dark).size,6);
+     assert.equal(new Set(drawing.colored.light).size,6);
+     assert.notDeepEqual(drawing.colored.light,drawing.colored.dark);
      const paths=[];
      for(const label of ['first','second']){
        const append=await request('/api/neuromap/v2/append',token,{chain:[{type:'emotion',label:'repeat'},{type:'thought',label}]});
@@ -90,6 +124,10 @@ async function request(route,token,body){
      const nodes=mapped.nodes.filter(n=>n.concept_id===paths[0].node_ids[0]);
      assert.equal(nodes.length,2);
      assert.ok(!mapped.links.some(l=>nodes.some(n=>n.id===l.source)&&nodes.some(n=>n.id===l.target)));
+     await page.evaluate(()=>window.switchTab('evolution'));
+     const stage=page.locator('#evo-path .evo-stage').first();
+     await stage.waitFor();
+     assert.equal(await stage.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 251, 242)');
      assert.equal((await request('/api/dom-monad/admin/agent/canon_fixture/harness',token)).status,403);
      await page.reload({waitUntil:'domcontentloaded'});
      await page.locator('#client-dashboard').waitFor();

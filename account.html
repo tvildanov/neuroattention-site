@@ -681,7 +681,7 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=dom-v07-3" defer></script>
+<script src="assets/js/dom-theme.js?v=dom-p06-1" defer></script>
 </head>
 <body class="dom-account-matrix dom-site" data-dom-page="account">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -3934,8 +3934,7 @@ var RPG_I18N = {
     nm_of_total: 'of',
     nm_what_feeling: 'What are you feeling right now?',
     nm_choose_one_emotion: 'Choose one emotion — you can add more later',
-    nm_which_area: 'In which area did',
-    nm_which_area_suffix: 'manifest?',
+    nm_which_area: 'Which area of life is this feeling connected to?',
     nm_up_to_3: 'You can select up to 3',
     nm_describe_area: 'Describe the area...',
     nm_what_caused: 'What exactly caused this state?',
@@ -4129,8 +4128,7 @@ var RPG_I18N = {
     nm_of_total: 'de',
     nm_what_feeling: '¿Qué estás sintiendo ahora?',
     nm_choose_one_emotion: 'Elige una emoción — luego podrás agregar más',
-    nm_which_area: '¿En qué área se manifestó',
-    nm_which_area_suffix: '?',
+    nm_which_area: '¿Con qué ámbito de tu vida se relaciona esta emoción?',
     nm_up_to_3: 'Puedes seleccionar hasta 3',
     nm_describe_area: 'Describe el área...',
     nm_what_caused: '¿Qué causó exactamente este estado?',
@@ -7746,6 +7744,7 @@ var NM_LAYERS = {
   // for type-only lookups; default an unclassified area to its historical home, 3.
   area:      {num:3, name:'Образы', nameShort:'Образы'},
   thought:   {num:4, name:'Понятия', nameShort:'Понят.'},
+  concept:   {num:4, name:'Понятия', nameShort:'Понят.'},
   cause:     {num:5, name:'Смыслы', nameShort:'Смысл'},
   context:   {num:5, name:'Смыслы', nameShort:'Смысл'},
   event:     {num:6, name:'Действия', nameShort:'Действ.'},
@@ -7783,63 +7782,48 @@ function nmBuildPolarityMap(){
     });
   });
 }
-function nmPolarityColor(ps){
-  // ps: -1.0 (dark red) to +1.0 (white-green)
-  // Returns [r,g,b]
-  var t=(ps+1)/2; // 0..1
-  t=Math.max(0,Math.min(1,t));
-  // Negative: dark red #3A0000 at t=0 → medium red #FF7878 at t=0.35
-  // Neutral: grey-blue #8CA0B8 at t=0.5
-  // Positive: light green #A0FFB0 at t=0.7 → white-green #E8FFEB at t=1.0
-  var r,g,b;
-  if(t<0.35){
-    var s=t/0.35;
-    r=58+Math.round(s*(255-58)); g=Math.round(s*120); b=Math.round(s*120);
-  } else if(t<0.5){
-    var s=(t-0.35)/0.15;
-    r=255-Math.round(s*(255-140)); g=120+Math.round(s*(160-120)); b=120+Math.round(s*(184-120));
-  } else if(t<0.7){
-    var s=(t-0.5)/0.2;
-    r=140-Math.round(s*(140-160)); g=160+Math.round(s*(255-160)); b=184-Math.round(s*(184-176));
-  } else {
-    var s=(t-0.7)/0.3;
-    r=160+Math.round(s*(232-160)); g=255; b=176+Math.round(s*(235-176));
-  }
-  return [r,g,b];
+var NM_NODE_SIDES = [0, 0, 5, 4, 6, 8, 12];
+// Sensation, experience, image, concept, meaning, action.
+var NM_NODE_PALETTES = {
+  light: [[95,110,135],[35,107,172],[169,58,102],[75,81,174],[115,67,166],[144,91,29],[31,116,79]],
+  dark: [[164,177,203],[99,179,235],[232,134,175],[148,166,248],[189,147,239],[229,184,103],[115,211,155]]
+};
+function nmNodeSides(node){
+  return NM_NODE_SIDES[node._layer || nmNodeLayer(node)] || 0;
 }
-function nmGetNodeColor(n){
-  // Emotion nodes: gradient by polarity_strength
-  if(n.type==='emotion'){
-    var ps=NM_POLARITY_MAP[n.label];
-    if(typeof ps!=='number') ps=(n.valence<0?-0.5:0.5);
-    var rgb=nmPolarityColor(ps);
-    return 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',';
+function nmGetNodeColor(node){
+  var layer = node._layer || nmNodeLayer(node);
+  var theme = document.documentElement.dataset.domTheme === 'light' ? 'light' : 'dark';
+  var rgb = NM_NODE_PALETTES[theme][layer] || NM_NODE_PALETTES[theme][0];
+  if(node.type==='emotion'){
+    var strength=NM_POLARITY_MAP[node.label];
+    if(typeof strength!=='number') strength=Number(node.valence)||0;
+    var target=strength<0?(theme==='light'?[173,50,60]:[247,136,121]):(theme==='light'?[156,46,134]:[244,164,216]);
+    var weight=Math.min(1,Math.abs(strength))*.72;
+    rgb=rgb.map(function(channel,i){return Math.round(channel*(1-weight)+target[i]*weight);});
   }
-  // Practice nodes: bright white-cyan
-  if(n.type==='practice') return 'rgba(220,240,255,';
-  // PR#109: concept (мысль from the thought flow) — violet, matching the layer palette.
-  if(n.type==='concept') return 'rgba(166,112,226,';
-  // PR94 (#10): sensation layer (1, "Ощущения") had NO entry → fell to the dim grey
-  // fallback below and read as "тёмный/невидимый" on the black canvas. Cyan, matching
-  // the Evolution Path sensation colour.
-  if(n.type==='sensation') return 'rgba(120,200,235,';
-  // PR#103 #2 / PR#104 #2: body-location anchors share layer 1 with sensations (blue,
-  // distinct from the cyan bubbles); life-sphere areas live in layer 3 ("Образы") and
-  // get a lavender tone so the two area kinds read apart on the map.
-  if(n.type==='area'){
-    var _ak = (n._layer===3 || (typeof nmAreaKind==='function' && nmAreaKind(n)==='sphere' && n._layer!==1));
-    return _ak ? 'rgba(175,150,240,' : 'rgba(140,180,255,';
+  return 'rgba('+rgb.join(',')+',';
+}
+function nmTraceNode(ctx,node,x,y,radius){
+  var sides=nmNodeSides(node);
+  ctx.beginPath();
+  if(!sides){ctx.arc(x,y,radius,0,Math.PI*2);return;}
+  for(var i=0;i<sides;i++){
+    var angle=i*2*Math.PI/sides-Math.PI/2;
+    var px=x+Math.cos(angle)*radius, py=y+Math.sin(angle)*radius;
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
   }
-  // Other layers: subtle neutral tones by layer
-  var layerTones={
-    1:'rgba(120,200,235,', // Ощущения - cyan
-    3:'rgba(140,180,255,', // Образы - blue
-    4:'rgba(200,180,240,', // Понятия - lavender
-    5:'rgba(200,180,140,', // Смыслы - warm
-    6:'rgba(100,220,180,'  // Действия - teal
-  };
-  var layer=n._layer||0;
-  return layerTones[layer]||'rgba(180,190,210,';
+  ctx.closePath();
+}
+function nmThreeNode(node,label){
+  if(!THREE)return false;
+  var sides=nmNodeSides(node), radius=Math.cbrt(Math.max(1,node.val||1))*4;
+  var geometry=sides
+    ? new THREE.CylinderGeometry(radius,radius,radius*.5,sides).rotateX(Math.PI/2)
+    : new THREE.SphereGeometry(radius,12,8);
+  var mesh=new THREE.Mesh(geometry,new THREE.MeshLambertMaterial({color:node.color}));
+  if(label)mesh.add(label);
+  return mesh;
 }
 function nmGetEdgeColor(s,t){
   // Both positive valence → green
@@ -8141,7 +8125,8 @@ function renderNmStep(){
     NM_ALL_EMOTIONS.forEach(function(em){
       var neg=isNegEmotion(em);
       var sel=(em===currentChainEmo);
-      h+='<span class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+nmEmoji(EMOJI_EMOTIONS,em)+nmTranslate(em)+'</span>';
+      var symbol=EMOJI_EMOTIONS[em] ? '<span class="nm-emotion-symbol" aria-hidden="true"><span>'+EMOJI_EMOTIONS[em]+'</span></span>' : '';
+      h+='<button type="button" class="nm-chip'+(neg?' neg':' pos')+(sel?' selected':'')+'" aria-pressed="'+sel+'" onclick="nmToggleEmotion(this,\''+em+'\')">'+symbol+nmEscHtml(nmTranslate(em))+'</button>';
     });
     h+='</div>';
     content.innerHTML=h;
@@ -8150,7 +8135,8 @@ function renderNmStep(){
     var emo=nmSurveyState.emotions[nmSurveyState._chainIdx||0];
     if(!emo){ nmNext(); return; }
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_which_area')||'В какой сфере проявилась')+' <span style="color:'+(isNegEmotion(emo)?'rgba(255,140,140,1)':'rgba(140,255,170,1)')+';">'+(EMOJI_EMOTIONS[emo]||'')+' '+nmTranslate(emo)+'</span>'+(rpgT('nm_which_area_suffix')||'?')+'</h3>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_which_area')||'С какой сферой жизни связано это переживание?')+'</h3>';
+    h+='<p class="nm-selected-emotion">'+nmEscHtml(nmTranslate(emo))+'</p>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+' '+(rpgT('nm_describe_area_2')||'сфер')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-areas-wrap">';
     var chain=nmSurveyState.emotionChains[nmSurveyState._chainIdx||0]||{};
@@ -8431,10 +8417,10 @@ function buildLiveGraph(){
       var col=nmGetNodeColor(n);
       // Glow
       ctx.globalAlpha=fade;
-      ctx.beginPath();ctx.arc(n.x,n.y,drawR+8,0,Math.PI*2);
+      nmTraceNode(ctx,n,n.x,n.y,drawR+8);
       ctx.fillStyle=col+'0.15)';ctx.fill();
       // Node
-      ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
+      nmTraceNode(ctx,n,n.x,n.y,drawR);
       ctx.fillStyle=col+'0.7)';ctx.fill();
       // Label
       ctx.fillStyle='rgba(255,255,255,0.8)';
@@ -8583,12 +8569,12 @@ function nmMiniDraw(canvas, model){
     var x=n.x*W, y=n.y*H, r=n.r||10;
     var col = nmGetNodeColor(n);
     // halo
-    ctx.beginPath(); ctx.arc(x,y,r+5,0,Math.PI*2); ctx.fillStyle=col+'0.15)'; ctx.fill();
+    nmTraceNode(ctx,n,x,y,r+5); ctx.fillStyle=col+'0.15)'; ctx.fill();
     // body
-    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=col+'0.85)'; ctx.fill();
+    nmTraceNode(ctx,n,x,y,r); ctx.fillStyle=col+'0.85)'; ctx.fill();
     // valence ring (for diary +/- borders & grown duplicates)
     if(n.ring){
-      ctx.beginPath(); ctx.arc(x,y,r+2,0,Math.PI*2);
+      nmTraceNode(ctx,n,x,y,r+2);
       ctx.strokeStyle=n.ring; ctx.lineWidth=2; ctx.stroke();
     }
     // label
@@ -8736,11 +8722,13 @@ function nmToggleEmotion(el,emo){
     // Deselect
     nmSurveyState.emotions[ci]=undefined;
     el.classList.remove('selected');
+    el.setAttribute('aria-pressed','false');
   } else {
     // Single-select: clear all chips, set this one
     nmSurveyState.emotions[ci]=emo;
-    el.parentElement.querySelectorAll('.nm-chip').forEach(function(c){c.classList.remove('selected');});
+    el.parentElement.querySelectorAll('.nm-chip').forEach(function(c){c.classList.remove('selected');c.setAttribute('aria-pressed','false');});
     el.classList.add('selected');
+    el.setAttribute('aria-pressed','true');
   }
   buildLiveGraph();
 }
@@ -9741,10 +9729,10 @@ function nmFsStartRender(){
         ctx.beginPath();ctx.arc(nx,ny,drawR+14+5*Math.sin(animT*2),0,Math.PI*2);
         ctx.fillStyle='rgba(220,240,255,'+pulse*fade+')';ctx.fill();
       } else {
-        ctx.beginPath();ctx.arc(nx,ny,drawR+8,0,Math.PI*2);
+        nmTraceNode(ctx,n,nx,ny,drawR+8);
         ctx.fillStyle=col+(brightness*0.15)+')';ctx.fill();
       }
-      ctx.beginPath();ctx.arc(nx,ny,drawR,0,Math.PI*2);
+      nmTraceNode(ctx,n,nx,ny,drawR);
       ctx.fillStyle=col+brightness+')';ctx.fill();
       if(_fsClipped){ ctx.restore(); }
       // Label: show for top-N or all depending on mode
@@ -10228,6 +10216,10 @@ function nmBuildFs3DGraph(container){
       gLinks.push({ source: l.source, target: l.target, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
     }
   });
+  if(!THREE)nmEnsureThree(function(){
+    if(THREE && nmFs3DGraph && document.getElementById('nm-fs-3d-container')===container)
+      nmFs3DGraph.nodeThreeObject(nmFs3DGraph.nodeThreeObject());
+  });
   var _fsTopNIds = nmGetTopNIds();
   nmFs3DGraph = ForceGraph3D()(container)
     .graphData({ nodes: gNodes, links: gLinks })
@@ -10235,12 +10227,12 @@ function nmBuildFs3DGraph(container){
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
-    .nodeThreeObjectExtend(true)
+    .nodeThreeObjectExtend(function(){return !THREE;})
     .nodeThreeObject(function(node){
       if(!THREE) return false;
       // Persistent labels: show for top-N always, all when mode='all', none when mode='off'
       var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _fsTopNIds[node.id]);
-      if(!show) return false;
+      if(!show) return nmThreeNode(node);
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(nmTranslate(node.label)),
@@ -10249,7 +10241,7 @@ function nmBuildFs3DGraph(container){
       );
       sprite.scale.set(40, 10, 1);
       sprite.position.set(0, -8, 0);
-      return sprite;
+      return nmThreeNode(node,sprite);
     })
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
@@ -10484,6 +10476,9 @@ function nmBuild3DGraph(){
   var W = wrap.clientWidth;
   var H = wrap.clientHeight;
 
+  if(!THREE)nmEnsureThree(function(){
+    if(THREE && nm3DGraph && container.isConnected)nm3DGraph.nodeThreeObject(nm3DGraph.nodeThreeObject());
+  });
   var _miniTopNIds = nmGetTopNIds();
   nm3DGraph = ForceGraph3D()(container)
     .width(W)
@@ -10494,11 +10489,11 @@ function nmBuild3DGraph(){
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
-    .nodeThreeObjectExtend(true)
+    .nodeThreeObjectExtend(function(){return !THREE;})
     .nodeThreeObject(function(node){
       if(!THREE) return false;
       var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _miniTopNIds[node.id]);
-      if(!show) return false;
+      if(!show) return nmThreeNode(node);
       var sprite = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: nmMake3DLabel(nmTranslate(node.label)),
@@ -10507,7 +10502,7 @@ function nmBuild3DGraph(){
       );
       sprite.scale.set(40, 10, 1);
       sprite.position.set(0, -8, 0);
-      return sprite;
+      return nmThreeNode(node,sprite);
     })
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
@@ -10735,7 +10730,7 @@ function nmDrawChainMini(data){
     var hi=(nmNiNode && String(nd.id)===String(nmNiNode.dbId));
     var hov=(nmNiMiniHover===k);
     var r=hi?12:9; if(hov) r+=2;
-    ctx.beginPath(); ctx.arc(pts[k].x,pts[k].y,r,0,Math.PI*2);
+    nmTraceNode(ctx,nd,pts[k].x,pts[k].y,r);
     ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=(hi||hov)?16:6; ctx.fill(); ctx.shadowBlur=0;
     if(hi||hov){ ctx.lineWidth=2.5; ctx.strokeStyle='#fff'; ctx.stroke(); }
     // step number badge — makes the "order it was entered" explicit
@@ -10822,7 +10817,7 @@ function nmDrawChainMini3D(data){
     if(m) hex='#'+((1<<24)+(parseInt(m[1])<<16)+(parseInt(m[2])<<8)+parseInt(m[3])).toString(16).slice(1);
     var hi=(nmNiNode && String(nd.id)===String(nmNiNode.dbId));
     return { id:String(nd.id)+'@'+i, label:(i+1)+'. '+nmTranslate(nd.label), color:hi?'#ffffff':hex, _col:hex,
-             val:hi?7:5, fx:(i-span/2)*step, fy:0, fz:0 };
+             type:nd.type, _layer:nmNodeLayer(nd), val:hi?7:5, fx:(i-span/2)*step, fy:0, fz:0 };
   });
   var gLinks=[]; for(var i=0;i<n-1;i++) gLinks.push({source:gNodes[i].id,target:gNodes[i+1].id});
   var W=box.clientWidth||300, H=box.clientHeight||250;
@@ -10861,7 +10856,7 @@ function nmDrawChainMini3D(data){
   // renders spheres+edges meanwhile so the panel is never blank).
   nmEnsureThree(function(){
     if(nmNiMini3DGraph!==g) return;   // panel closed / re-rendered while loading
-    try{ g.nodeThreeObjectExtend(true).nodeThreeObject(nmMini3DLabelObj); }catch(e){}
+    if(THREE)g.nodeThreeObjectExtend(false).nodeThreeObject(function(nd){return nmThreeNode(nd,nmMini3DLabelObj(nd));});
   });
 }
 function nmDeleteNode(dbId){
@@ -11403,29 +11398,29 @@ function nmSimulate(canvas, initAlpha){
         var pulse=0.3+0.25*Math.sin(animT*2.5);
         ctx.beginPath();ctx.arc(n.x,n.y,drawR+12+4*Math.sin(animT*2),0,Math.PI*2);
         ctx.fillStyle='rgba(220,240,255,'+pulse*fade+')';ctx.fill();
-        ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
+        nmTraceNode(ctx,n,n.x,n.y,drawR+6);
         ctx.fillStyle='rgba(220,240,255,'+(pulse*0.6*fade)+')';ctx.fill();
       } else {
         // Normal glow halo
-        ctx.beginPath();ctx.arc(n.x,n.y,drawR+6,0,Math.PI*2);
+        nmTraceNode(ctx,n,n.x,n.y,drawR+6);
         ctx.fillStyle=col+(brightness*0.2)+')';ctx.fill();
       }
       // Node body
-      ctx.beginPath();ctx.arc(n.x,n.y,drawR,0,Math.PI*2);
+      nmTraceNode(ctx,n,n.x,n.y,drawR);
       ctx.fillStyle=col+brightness+')';ctx.fill();
       if(_clipped){ ctx.restore(); }
       // Deep-link highlight (5.3): pulsing cyan ring around the focus node + its chain
       if(n._hl){
         var hp=0.45+0.35*Math.sin(animT*3);
         ctx.save();
-        ctx.beginPath();ctx.arc(n.x,n.y,drawR+(n._hlFocus?9:6)+2*Math.sin(animT*3),0,Math.PI*2);
+        nmTraceNode(ctx,n,n.x,n.y,drawR+(n._hlFocus?9:6)+2*Math.sin(animT*3));
         ctx.strokeStyle='rgba(94,224,255,'+hp+')';ctx.lineWidth=n._hlFocus?3:2;ctx.stroke();
         ctx.restore();
       }
       // PR#120: ring the nodes of the chain hovered in the info-panel list.
       if(nmHoverChainNodes && nmHoverChainNodes[String(n.dbId||n.id)]){
         ctx.save();
-        ctx.beginPath();ctx.arc(n.x,n.y,drawR+5,0,Math.PI*2);
+        nmTraceNode(ctx,n,n.x,n.y,drawR+5);
         ctx.strokeStyle='rgba(92,200,255,0.9)';ctx.lineWidth=2.5;ctx.stroke();
         ctx.restore();
       }
@@ -18806,7 +18801,7 @@ window.pbMove = pbMove;
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
 <script src="assets/js/neuromap-chains.js?v=1"></script>
-<script src="assets/js/evolution-path.js?v=36"></script>
+<script src="assets/js/evolution-path.js?v=37"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/na-icons.js?v=2"></script>

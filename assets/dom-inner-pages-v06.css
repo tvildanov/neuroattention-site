@@ -57,3 +57,21 @@ body[data-dom-page=lab] .dom-v06-research-card small{color:var(--accent-cyan,#a3
 @media(max-width:800px){body[data-dom-page=xr] section:first-of-type .grid.grid-2,body[data-dom-page=lab] section:first-of-type .grid.grid-2{grid-template-columns:1fr!important}body[data-dom-page=lab] .img-stack{max-width:540px;margin:auto}}
 /* HTMLElement.hidden must outrank legacy section layout declarations. */
 body.dom-site section[hidden]{display:none!important}
+.method-practice-note {margin:0 0 1.25rem;max-width:65ch}
+.method-final-layout {
+  display:grid;grid-template-columns:minmax(0,340px) minmax(0,410px);
+  align-items:center;gap:clamp(.75rem,3vw,2rem);margin-inline-start:0;
+}
+.method-final-media {width:100%;max-width:340px}
+.method-final-media video {object-fit:contain}
+@media(max-width:640px) {
+  .method-final-layout {grid-template-columns:minmax(0,1fr);gap:1rem}
+  .method-final-media {width:min(100%,270px)}
+}
+
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  body.dom-site .dom-card-lit {
+    background-image:radial-gradient(circle 130px at var(--dom-light-x) var(--dom-light-y),color-mix(in srgb,var(--accent-cyan) 17%,transparent),transparent) !important;
+    border-color:color-mix(in srgb,var(--accent-cyan) 44%,var(--line-soft)) !important;
+  }
+}
