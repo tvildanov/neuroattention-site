@@ -2248,5 +2248,15 @@
   "home.ecosystem.enterprise.wheel": "Emprendimiento",
   "home.ecosystem.heading_top": "DOM como ecosistema",
   "home.ecosystem.heading_bottom": "para la próxima etapa del desarrollo humano",
-  "home.attention.diagram": "Cinco niveles: de la atención al enfoque compartido"
+  "home.attention.diagram": "Cinco niveles: de la atención al enfoque compartido",
+  "rehab_app.label_contact_name": "Nombre completo",
+  "rehab_app.label_contact_email": "Correo electrónico",
+  "a.domunity.add_agent": "Añadir agente",
+  "a.enroll.existing_access": "Gestionar el acceso a programas existentes",
+  "a.tools.nm_3d_unavailable": "No se pudo iniciar 3D. El mapa está abierto en 2D.",
+  "a.admin.rehab.open_application": "Abrir solicitud",
+  "a.admin.rehab.close_application": "Cerrar",
+  "a.admin.rehab.application_title": "Solicitud",
+  "a.admin.rehab.unknown_name": "Sin nombre",
+  "a.admin.rehab.unknown_email": "Sin correo electrónico"
 }

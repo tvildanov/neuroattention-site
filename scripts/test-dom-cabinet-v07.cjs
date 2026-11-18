@@ -27,8 +27,8 @@ async function request(route,token,body){
  try{
   for(const [lang,width,role] of [['ru',1360,'user'],['en',390,'owner-a'],['es',1024,'owner-b']]){
    const browser=await chromium.launch(executablePath
-     ? {executablePath,args:['--single-process','--no-zygote']}
-     : {channel:'chrome'});
+     ? {executablePath,args:['--single-process','--no-zygote','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']}
+     : {channel:'chrome',args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
    try {
    const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width,height:820}});
    await ctx.addInitScript(l=>{localStorage.setItem('na_lang',l);localStorage.setItem('na_geo_done','1');localStorage.setItem('na_loc_prompt_dismissed','1')},lang);
@@ -41,6 +41,7 @@ async function request(route,token,body){
      await route.abort();
    });
    await page.goto(local+'/account.html',{waitUntil:'domcontentloaded'});
+   assert.equal(await page.locator('.navbar .nav-logo-dom .dom-brand-name').count(),1);
    await page.locator('#login-id').fill('qa-'+role+'@example.invalid');
    await page.locator('#login-pass').fill('local-scenario-password');
    await page.locator('form').filter({has:page.locator('#login-id')}).locator('button[type="submit"]').click();
@@ -129,10 +130,44 @@ async function request(route,token,body){
      const nodes=mapped.nodes.filter(n=>n.concept_id===paths[0].node_ids[0]);
      assert.equal(nodes.length,2);
      assert.ok(!mapped.links.some(l=>nodes.some(n=>n.id===l.source)&&nodes.some(n=>n.id===l.target)));
+     await request('/api/neuromap/v2/append',token,{chain:[
+       {type:'area',label:'QA shoulder',metadata:{area_kind:'body'}},
+       {type:'sensation',label:'QA warmth'},
+       {type:'emotion',label:'QA joy'}
+     ]});
+     await page.evaluate(async()=>{
+       switchTab('tools');setToolsMode('nm');await nmLoadV2Graph();
+     });
+     const map=page.locator('#nm-graph-wrap');
+     await map.waitFor();
+     assert.equal(await page.locator('#nm-filters .nm-layer-symbol').count(),6);
+     assert.equal(await page.evaluate(()=>{
+       const body=nmNodes.find(n=>n.label==='QA shoulder'),sensation=nmNodes.find(n=>n.label==='QA warmth');
+       return body&&sensation&&sensation._anchorIds?.includes(body.id)&&nmGetNodeColor(body)!==nmGetNodeColor(sensation);
+     }),true);
+     await page.locator('#nm-3d-toggle').click();
+     await page.waitForFunction(()=>nm3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
+     await page.locator('#nm-3d-container canvas').first().waitFor();
+     assert.equal(await page.evaluate(()=>nm3DGraph.graphData().links.some(link=>link.bodyBond&&!nm3DGraph.linkVisibility()(link))),true);
+     await page.locator('#nm-3d-toggle').click();
+     await page.locator('#nm-canvas').waitFor();
+     await page.locator('#nm-fs-toggle').click();
+     await page.locator('#nm-fs-3d-toggle').click();
+     await page.waitForFunction(()=>nmFs3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
+     await page.locator('#nm-fs-3d-toggle').click();
+     await page.evaluate(()=>nmToggleFullscreen());
      await page.evaluate(()=>window.switchTab('evolution'));
      const stage=page.locator('#evo-path .evo-stage').first();
      await stage.waitFor();
      assert.equal(await stage.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(255, 251, 242)');
+     for(const expanded of ['true','false']){
+       if(await sidebar.getAttribute('aria-expanded')!==expanded)await sidebar.click();
+       await page.waitForFunction(()=>{
+         const rail=document.querySelector('#evo-path .evo-rail');
+         const navigation=document.querySelector('.dom-cabinet-sidebar');
+         return rail&&navigation&&rail.getBoundingClientRect().left>=navigation.getBoundingClientRect().right;
+       });
+     }
      assert.equal((await request('/api/dom-monad/admin/agent/canon_fixture/harness',token)).status,403);
      await page.reload({waitUntil:'domcontentloaded'});
      await page.locator('#client-dashboard').waitFor();

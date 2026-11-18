@@ -79,6 +79,15 @@ const threeDir=path.dirname(require.resolve('three/package.json'));
     await page.locator('#monad-cross-back').click();
     assert.equal(await count(null),0);
   }
+  for(const layer of ['L7','L6','L5']){
+    const spine=await coords(layer,null);
+    await page.mouse.click(spine.x,spine.y);
+  }
+  assert.equal(await count(null),21,'three rows coexist');
+  const second=await coords('L6',null);
+  await page.mouse.click(second.x,second.y);
+  assert.equal(await count(null),14,'only the selected row closes');
+  assert.equal(await count('L7'),7);
   await page.evaluate(()=>window.MonadCross.destroy());
   assert.equal(await canvas.count(),0);
   console.log('MONAD_CROSS_BROWSER_PASS: 7 layers, 49 real canvas picks, orbit and agent card');

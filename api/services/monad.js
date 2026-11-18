@@ -1335,14 +1335,17 @@ const CIRCLE_SLOTS = {
   sofia: 5,
   takhir: 6,
   tahir: 6,
+  viktor: 7,
+  victor: 7,
   egor: 9,
   artem: 10,
 };
-const CIRCLE_INACTIVE = [2, 4, 7, 8, 11];
+const CIRCLE_INACTIVE = [2, 4, 8, 11];
 
 function circleSlotFor(human) {
   const id = String((human && human.human_id) || '').toLowerCase();
   if (CIRCLE_SLOTS[id]) return CIRCLE_SLOTS[id];
+  if (/^виктор(?:\b|\s|$)/iu.test(String(human?.display_name||'')))return 7;
   const meta = (human && human.metadata) || {};
   const raw = meta.circle_slot || meta.clock || meta.hour || meta.clock_hour;
   const n = parseInt(raw, 10);

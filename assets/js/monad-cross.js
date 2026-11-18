@@ -55,7 +55,7 @@
     this._mouse = null;
     this._onClickBound = null;
     this._detailEl = null;
-    this._expandGroup = null;
+    this._expandedRows = new Map();
   }
 
   CrossScene.prototype.mount = function () {
@@ -177,40 +177,36 @@
 
   CrossScene.prototype._applyFocus = function () {
     var mode = (this._focus && this._focus.mode) || 'full';
-    var vertical = mode === 'vertical' || mode === 'cell';
-    var layer = vertical ? (this._focus.layerId || null) : null;
     var keep = mode === 'full' ? null : mode;
     var self = this;
-    // Never retain stale raycast targets from a previous expanded grid.
-    if (this._expandGroup && (!vertical || this._expandedLayer !== layer)) {
-      var obsolete = new Set();
-      this._expandGroup.traverse(function (obj) {
-        obsolete.add(obj);
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) obj.material.dispose();
-      });
-      this._pickables = this._pickables.filter(function (obj) { return !obsolete.has(obj); });
-      this._groups.vertCells = [];
-      this.scene.remove(this._expandGroup);
-      this._expandGroup = null;
-    }
     Object.keys(this._groups).forEach(function (g) {
       var hi = !keep || g === keep || ((keep === 'vertical' || keep === 'cell') && (g === 'vertCells' || g === 'vertical'));
       (self._groups[g] || []).forEach(function (mesh) {
         self._setOpacity(mesh, hi ? 1 : 0.12);
       });
     });
-    // Selecting a cell must not collapse its parent grid.
-    if (vertical && !this._expandGroup) this._expandVerticalDetail(layer);
-    else if (mode === 'horizontal') this._expandHorizontalDetail();
+    if (mode === 'horizontal') this._expandHorizontalDetail();
     this._renderDetailPanel();
+  };
+
+  CrossScene.prototype._closeVerticalDetail = function (layer) {
+    var group = this._expandedRows.get(layer);
+    if (!group) return;
+    var obsolete = new Set(group.children);
+    group.children.forEach(function (object) {
+      object.geometry.dispose();
+      object.material.dispose();
+    });
+    this._pickables = this._pickables.filter(function (object) {return !obsolete.has(object);});
+    this._groups.vertCells = (this._groups.vertCells || []).filter(function (object) {return !obsolete.has(object);});
+    this.scene.remove(group);
+    this._expandedRows.delete(layer);
   };
 
   CrossScene.prototype._expandVerticalDetail = function (layer) {
     var T = window.THREE;
     var g = new T.Group();
-    this._expandGroup = g;
-    this._expandedLayer = layer;
+    this._expandedRows.set(layer,g);
     this.scene.add(g);
     if (!this._groups.vertCells) this._groups.vertCells = [];
     var layers = (this.arch.vertical || []).slice().sort(function (a, b) { return (a.layer || 0) - (b.layer || 0); });
@@ -219,7 +215,7 @@
       var y = 0.55 + li * 0.95;
       for (var j = 1; j <= 7; j++) {
         var cell = ((L.cells || []).filter(function (c) { return c.n === j; })[0]) || {};
-        var x = (j - 4) * 0.42;
+        var x = 0.64 + (j - 1) * 0.42;
         var mesh = new T.Mesh(
           new T.BoxGeometry(0.32, 0.28, 0.32),
           this._mat(cell.occupied ? 0x00e0ff : 0x335566, cell.occupied ? 0.95 : 0.45)
@@ -316,6 +312,7 @@
     var self = this;
     var back = document.getElementById('monad-cross-back');
     if (back) back.addEventListener('click', function () {
+      Array.from(self._expandedRows.keys()).forEach(function (id) {self._closeVerticalDetail(id);});
       self._focus = { mode: 'full' };
       self._resetCamera();
       self._applyFocus();
@@ -356,8 +353,7 @@
       // Blank space does not discard a carefully selected layer.
       if (!hits.length) return;
       // Large invisible axis hitboxes must not mask the visible small cells.
-      var cellHit = (self._focus.mode === 'vertical' || self._focus.mode === 'cell') &&
-        hits.find(function (h) { return h.object && h.object.userData && h.object.userData.monadNav && h.object.userData.monadNav.focus === 'cell'; });
+      var cellHit = self._expandedRows.size && hits.find(function (h) { return h.object && h.object.userData && h.object.userData.monadNav && h.object.userData.monadNav.focus === 'cell'; });
       var visibleHit = hits.find(function (h) { return h.object.userData.monadNav && h.object.material.visible !== false; });
       var chosen = cellHit || visibleHit || hits.find(function (h) { return h.object.userData.monadNav; });
       var nav = chosen && chosen.object.userData.monadNav;
@@ -375,7 +371,11 @@
         return;
       }
       if (nav.target === 'vertical') {
-        self._focus = { mode: 'vertical', layerId: nav.layerId };
+        if (self._expandedRows.has(nav.layerId)) self._closeVerticalDetail(nav.layerId);
+        else self._expandVerticalDetail(nav.layerId);
+        self._focus = self._expandedRows.size
+          ? {mode:'vertical',layerId:Array.from(self._expandedRows.keys()).slice(-1)[0]}
+          : {mode:'full'};
         self._applyFocus();
         return;
       }

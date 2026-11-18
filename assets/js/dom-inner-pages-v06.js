@@ -4,18 +4,6 @@
   const E = (s,root=document) => root.querySelector(s);
   const L = () => {const v=(typeof window.getLang==='function'&&window.getLang())||document.documentElement.lang||'ru';return ['ru','en','es'].includes(v.slice(0,2))?v.slice(0,2):'ru';};
   const t = (ru,en,es) => ({ru,en,es})[L()];
-  function brand() {
-    // Retain the homepage as the sole header template. Inner pages must match it.
-    if (/\/(?:index\.html)?$/.test(location.pathname)) return;
-    const nav=E('nav.navbar .nav-logo'); if (!nav || nav.dataset.domUnified) return;
-    nav.dataset.domUnified='1';
-    nav.classList.add('nav-logo-dom');
-    nav.innerHTML='<img src="assets/logo-na.png" alt="" class="nav-logo-icon"><span class="dom-brand-copy"><span class="dom-brand-name">DOM <span class="text-gradient-cyan">Institute</span></span></span>';
-    if(!nav.parentElement.classList.contains('dom-brand-group')) {
-      const group=document.createElement('div');group.className='dom-brand-group';
-      nav.parentNode.insertBefore(group,nav);group.appendChild(nav);
-    }
-  }
   const domCards=[
     ['DOM Institute','index.html#dom-education-research', ['Институт человеческой адаптации','Institute for Human Adaptation','Instituto para la Adaptación Humana'],['Исследования, образование и восстановление. Вместе ищем ответы на вопрос о будущем человека.','Research, education and restoration. Exploring humanity’s future together.','Investigación, educación y recuperación. Exploramos juntos el futuro humano.']],
     ['DOM Platform','xr.html',['Цифровая среда','Digital environment','Entorno digital'],['Личная карта, программы, практики и инструменты, помогающие увидеть связи между состоянием, действиями и окружающим миром.','Personal map, programs and practices to understand the links between your state, actions and environment.','Mapa personal, programas y prácticas para comprender las relaciones entre estado, acciones y entorno.']],
@@ -43,19 +31,21 @@
   const ix=()=>({ru:0,en:1,es:2})[L()];
   const pick=a=>a[ix()];
   function renderPrograms(){
-    if(document.body.dataset.domPage!=='programs')return;
+    const inCabinet=document.body.classList.contains('dom-account-matrix');
+    if(!inCabinet&&document.body.dataset.domPage!=='programs')return;
     const hero=E('[data-dom-v06="program-title"],[data-i18n="p.hero.title"]');if(hero)hero.innerHTML=t('Программы <span class="text-gradient-cyan">DOM Institute</span>','<span class="text-gradient-cyan">DOM Institute</span> Programs','Programas <span class="text-gradient-cyan">DOM Institute</span>');
     const subtitle=E('[data-dom-v06="program-subtitle"],[data-i18n="p.hero.subtitle"]');if(subtitle)subtitle.textContent=t('Программы и практики для адаптации к быстрым переменам, устойчивости и повышения качества жизни.','Programs and practices for adaptation to rapid change, resilience and quality of life.','Programas y prácticas para la adaptación al cambio, resiliencia y calidad de vida.');
-    const section=E('#programs-main');if(!section)return;
+    const section=E(inCabinet?'#dom-cabinet-programs':'#programs-main');if(!section)return;
     section.classList.add('dom-v06-programs');
     const badge=t('Формат и условия уточняются','Format and terms being developed','Formato y condiciones en desarrollo');
     let content='<div class="section-divider"></div><div class="container"><div class="dom-v06-programs-head"><p class="eyebrow">'+t('Шесть направлений','Six entry pathways','Seis opciones')+'</p><h2 class="heading-space h2-block">'+t('Выберите свой маршрут','Choose your pathway','Elige tu camino')+'</h2><p>'+t('Четыре тематические программы, базовый курс метода и персональное сопровождение. Выберите карточку, чтобы увидеть смысл и формат работы.','Four themed programs, a foundation course and specialist-led care. Open a card to explore its purpose and format.','Cuatro programas temáticos, un curso básico y acompañamiento individual. Abre cada tarjeta para saber más.')+'</p></div><div class="dom-v06-program-grid">';
     programs.forEach((p,i)=>{
       const status=p.status?pick(p.status):badge;
-      content+='<details class="dom-v06-program-card"><summary><span class="dom-v06-index">0'+(i+1)+'</span><span class="dom-v06-summary"><strong>'+pick(p.title)+'</strong><small>'+pick(p.intro)+'</small></span><span class="dom-v06-expand" aria-hidden="true">+</span></summary><div class="dom-v06-detail"><span class="dom-v06-status">'+status+'</span><h4>'+t('Для кого','For whom','Para quién')+'</h4><p>'+pick(p.who)+'</p><h4>'+t('Что происходит внутри','What happens','Qué sucede')+'</h4><p>'+pick(p.inside)+'</p><h4>'+t('Какие возможности развиваем','What we work toward','Qué desarrollamos')+'</h4><p>'+pick(p.out)+'</p><p class="dom-v06-duration">'+(p.duration?pick(p.duration):t('Продолжительность и условия формируются','Length and terms to be confirmed','Duración y condiciones por confirmar'))+'</p><a href="account.html" class="btn btn-primary">'+t('Перейти в личный кабинет','Go to your account','Ir a mi cuenta')+'</a></div></details>';
+      content+='<details class="dom-v06-program-card"><summary><span class="dom-v06-index">0'+(i+1)+'</span><span class="dom-v06-summary"><strong>'+pick(p.title)+'</strong><small>'+pick(p.intro)+'</small></span><span class="dom-v06-expand" aria-hidden="true">+</span></summary><div class="dom-v06-detail"><span class="dom-v06-status">'+status+'</span><h4>'+t('Для кого','For whom','Para quién')+'</h4><p>'+pick(p.who)+'</p><h4>'+t('Что происходит внутри','What happens','Qué sucede')+'</h4><p>'+pick(p.inside)+'</p><h4>'+t('Какие возможности развиваем','What we work toward','Qué desarrollamos')+'</h4><p>'+pick(p.out)+'</p><p class="dom-v06-duration">'+(p.duration?pick(p.duration):t('Продолжительность и условия формируются','Length and terms to be confirmed','Duración y condiciones por confirmar'))+'</p><a href="'+(inCabinet?'programs.html#programs-main':'account.html#enroll')+'" class="btn btn-primary">'+(inCabinet?t('О программе','Program details','Más información'):t('Перейти в личный кабинет','Go to your account','Ir a mi cuenta'))+'</a></div></details>';
     });
     content+='</div><div class="dom-v06-subscription"><div><p class="eyebrow">'+t('Седьмой вариант входа','Seventh entry option','Séptima opción')+'</p><h3>DOM Platform · '+t('подписка на инструменты','tools subscription','suscripción de herramientas')+'</h3><p>'+t('Исследуйте себя вне учебного курса: NeuroMap, личный дневник, наблюдения, история и доступные цифровые инструменты. Подписка, прохождение программы и работа специалиста — разные продукты. Стоимость и состав подписки пока не утверждены.','Explore yourself outside a course: NeuroMap, journal, reflections, history and digital tools. Subscription, courses and specialist services are distinct products. Pricing and tiers are not yet finalized.','Explora NeuroMap, diario, observaciones e historia fuera de un curso. Suscripción, programas y atención profesional son productos distintos. Los precios aún no están definidos.')+'</p></div><a href="account.html" class="btn btn-primary">'+t('Посмотреть платформу','Explore the platform','Explorar la plataforma')+'</a></div></div>';
     section.innerHTML=content;
+    if(inCabinet)return;
     const heroSection=hero&&hero.closest('section');if(heroSection&&heroSection.nextElementSibling!==section)heroSection.after(section);
     const profTitle=E('[data-i18n="p.spec.title"]');const prof=profTitle&&profTitle.closest('section');if(prof&&section.nextElementSibling!==prof)section.after(prof);
     // Research participation belongs on the laboratory page, not here.
@@ -96,7 +86,7 @@
     if(img){img.src='assets/images/dom-xr-presence-brain-v3.jpg';img.alt=t('Концептуальная сцена совместной XR-практики','Concept of shared XR practice','Concepto de práctica XR compartida');img.decoding='async';}
   }
   function render(){
-    brand();renderDom();renderPrograms();renderLab();renderPlatform();
+    renderDom();renderPrograms();renderLab();renderPlatform();
     // The legacy i18n loader may complete after DOMContentLoaded and overwrite
     // dynamic copy. Mark our updated nodes as independently localized instead.
     const n_program_title=E('[data-i18n="p.hero.title"]');if(n_program_title){n_program_title.dataset.domV06="program-title";n_program_title.removeAttribute('data-i18n');}
@@ -113,21 +103,4 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();
   document.addEventListener('langchange',render);
 
-  const cardSelector='.dom-v06-program-card,.prog-card,.level-card,.dom-card,.dom-v06-research-card,.dom-v06-subscription,.card-hover,.hero-route-card';
-  const canTrack=window.matchMedia('(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
-  let litCard;
-  function clearLight(){
-    litCard?.classList.remove('dom-card-lit');
-    litCard=null;
-  }
-  document.addEventListener('pointermove',event=>{
-    const card=canTrack.matches&&event.pointerType!=='touch'&&event.target.closest(cardSelector);
-    if(card!==litCard){clearLight();if(!card)return;litCard=card;card.classList.add('dom-card-lit');}
-    if(!litCard)return;
-    const bounds=litCard.getBoundingClientRect();
-    litCard.style.setProperty('--dom-light-x',`${event.clientX-bounds.left}px`);
-    litCard.style.setProperty('--dom-light-y',`${event.clientY-bounds.top}px`);
-  },{passive:true});
-  document.addEventListener('pointerleave',clearLight);
-  canTrack.addEventListener('change',clearLight);
 })();

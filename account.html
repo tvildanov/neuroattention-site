@@ -550,7 +550,7 @@ a.dash-tab:hover { text-decoration:none; }
      and only continues a step after the previous global exists. -->
 <script>
 (function(){
-  var GRAPH_SRC = 'https://unpkg.com/3d-force-graph@1';
+  var GRAPH_SRC = 'assets/vendor/3d-force-graph-1.73.4.min.js';
   var D3_STEPS = [
     ['https://cdn.jsdelivr.net/npm/d3-selection@3.0.0/dist/d3-selection.min.js', function(){ return !!(window.d3 && typeof window.d3.select === 'function'); }],
     ['https://cdn.jsdelivr.net/npm/d3-path@3.1.0/dist/d3-path.min.js', function(){ return !!(window.d3 && typeof window.d3.path === 'function'); }],
@@ -681,7 +681,9 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=dom-p06-1" defer></script>
+<script src="assets/js/dom-theme.js?v=dom-review-1" defer></script>
+<link rel="stylesheet" href="assets/dom-interface.css?v=1">
+<script src="assets/js/dom-interface.js?v=1" defer></script>
 </head>
 <body class="dom-account-matrix dom-site" data-dom-page="account">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -689,7 +691,10 @@ a.dash-tab:hover { text-decoration:none; }
 
 <nav class="navbar">
   <div class="container navbar-inner">
-    <a href="index.html" class="nav-logo"><img src="assets/dom-logo-matrix.svg" alt="" class="nav-logo-icon"><span class="dom-brand-name">DOM Institute</span></a>
+    <div class="dom-brand-group"><a href="index.html" class="nav-logo nav-logo-dom">
+      <img src="assets/logo-na.png" alt="" class="nav-logo-icon">
+      <span class="dom-brand-copy"><span class="dom-brand-name">DOM <span class="text-gradient-cyan">Institute</span></span></span>
+    </a></div>
     <div class="nav-links">
       <a href="index.html" class="nav-link" data-i18n="nav.home">Главная</a>
       <a href="test.html" class="nav-link" data-i18n="nav.test">Тест</a>
@@ -1180,7 +1185,6 @@ a.dash-tab:hover { text-decoration:none; }
       <button class="dash-tab" id="evo-subtab-family" onclick="evoSwitchSub('family')" data-i18n="a.evo.family_team">Семья и команда</button>
       <!-- Wearables recovery layer toggle. Hidden until the user has device data. -->
       <button class="dash-tab" id="evo-layer-recovery" onclick="wearToggleRecoveryLayer(this)" style="display:none;margin-left:auto;" title="Oura / WHOOP"><span class="ha-tab-ic" data-na-ic="heart" style="opacity:0.9;"></span> <span data-i18n="a.wearables.layer_recovery">Восстановление</span></button>
-      <button type="button" class="dash-tab" id="evo-sketch-copy" onclick="try{var el=document.querySelector('#evo-path .myc-evo-canvas')||document.getElementById('evo-path');window.SketchTool&&SketchTool.fromElement(el,'Путь');}catch(e){}" data-i18n="a.sketch.create_copy">Создать копию</button>
     </div>
     <!-- Recovery ribbon: one cell per day, green(>70)/yellow(50-70)/red(<50); hover
          shows HRV / RHR / sleep. Populated by wearRenderRecoveryBar (wearables). -->
@@ -1436,7 +1440,6 @@ a.dash-tab:hover { text-decoration:none; }
       <a class="dash-tab dash-subtab" id="tools-mode-anatomy" href="?tool=internal-field" onclick="event.preventDefault();setToolsMode('internal-field');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.internal_field">Внутреннее воздействие</a>
       <a class="dash-tab dash-subtab" id="tools-mode-library" href="?tool=library" onclick="event.preventDefault();setToolsMode('library');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.library">Library</a>
       <a class="dash-tab dash-subtab" id="tools-mode-exercises" href="?tool=exercises" onclick="event.preventDefault();setToolsMode('exercises');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.exercises">Упражнения и тесты</a>
-      <a class="dash-tab dash-subtab" id="tools-mode-sketch" href="?tool=sketch" onclick="event.preventDefault();setToolsMode('sketch');" style="border:none;border-bottom:2px solid transparent;" data-i18n="a.tools.sketch">Скетч</a>
       <button class="btn btn-ghost" onclick="toolsExpandActive()" title="Раскрыть на весь экран" data-i18n-title="a.tools.fullscreen_tooltip" style="margin-left:auto;font-size:12px;padding:0.3rem 0.7rem;">⤢ <span data-i18n="a.tools.fullscreen">Раскрыть</span></button>
     </div>
 
@@ -2195,12 +2198,12 @@ a.dash-tab:hover { text-decoration:none; }
         <div id="nm-filters" style="display:none;margin-top:0.75rem;">
           <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--text-dim);letter-spacing:0.12em;text-transform:uppercase;" data-i18n="a.tools.layers">Слои:</span>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="1" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer1">1 Ощущения</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer2">2 Переживания</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer3">3 Образы</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer4">4 Понятия</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="5" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer5">5 Смыслы</span></label>
-            <label class="nm-layer-chk"><input type="checkbox" data-layer="6" checked onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer6">6 Действия</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="1" checked onchange="nmLayerToggle()"><span class="nm-layer-marker" data-marker="1"></span><span class="nm-lbl" data-i18n="a.tools.layer1">1 Ощущения</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="2" checked onchange="nmLayerToggle()"><span class="nm-layer-marker" data-marker="2"></span><span class="nm-lbl" data-i18n="a.tools.layer2">2 Переживания</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="3" checked onchange="nmLayerToggle()"><span class="nm-layer-marker" data-marker="3"></span><span class="nm-lbl" data-i18n="a.tools.layer3">3 Образы</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="4" checked onchange="nmLayerToggle()"><span class="nm-layer-marker" data-marker="4"></span><span class="nm-lbl" data-i18n="a.tools.layer4">4 Понятия</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="5" checked onchange="nmLayerToggle()"><span class="nm-layer-marker" data-marker="5"></span><span class="nm-lbl" data-i18n="a.tools.layer5">5 Смыслы</span></label>
+            <label class="nm-layer-chk"><input type="checkbox" data-layer="6" checked onchange="nmLayerToggle()"><span class="nm-layer-marker" data-marker="6"></span><span class="nm-lbl" data-i18n="a.tools.layer6">6 Действия</span></label>
             <label class="nm-layer-chk" style="margin-left:auto;"><input type="checkbox" data-layer="repeat" onchange="nmLayerToggle()"><span class="nm-lbl" data-i18n="a.tools.layer_repeat">Повторяющиеся</span></label>
           </div>
         </div>
@@ -2467,6 +2470,9 @@ a.dash-tab:hover { text-decoration:none; }
         </div>
       </div>
 
+      <section id="dom-cabinet-programs" style="grid-column:span 12;"></section>
+      <details class="dash-card" style="grid-column:span 12;">
+        <summary data-i18n="a.enroll.existing_access">Управление доступом к существующим программам</summary>
       <!-- Program cards -->
       <div class="program-cards-grid" data-na-no-typo="1" style="grid-column:span 12;">
         <!-- Self-Guided -->
@@ -2555,6 +2561,7 @@ a.dash-tab:hover { text-decoration:none; }
 
       <!-- DRAFT: pending medical review -->
       <!-- ═══ REHABILITATION PROGRAM DETAIL (shown via JS when rehab user) ═══ -->
+      </details>
       <div id="rehab-detail-section" style="display:none;grid-column:span 12;">
         <!-- (А) Contextual block — condition-specific text -->
         <div class="dash-card glass-card-elevated" style="border-left:2px solid var(--accent-violet);margin-bottom:1rem;">
@@ -3369,7 +3376,7 @@ a.dash-tab:hover { text-decoration:none; }
 </section>
 
 <script src="assets/scripts.js?v=dom-entry-2"></script>
-<script src="assets/redesign.js?v=dom-motion-7"></script>
+<script src="assets/redesign.js?v=dom-motion-8"></script>
 <script>
 // ── Safe i18n shim ──
 // i18n.js loads AFTER this inline script block, so t() is undefined
@@ -4475,27 +4482,56 @@ function renderRehabApps(apps){
   var statusLabels = { new:t('a.admin.rehab.status_new','Новая'), contacted:t('a.admin.rehab.status_contacted','Связались'), in_progress:t('a.admin.rehab.status_in_progress','В работе'), accepted:t('a.admin.rehab.status_accepted','Принята'), declined:t('a.admin.rehab.status_declined','Отклонена') };
   var statusColors = { new:'var(--accent-amber)', contacted:'var(--accent-cyan)', in_progress:'var(--accent-violet)', accepted:'var(--accent-green)', declined:'var(--accent-rose)' };
   var rehabLocale = (typeof getLocale === 'function') ? getLocale() : ({ru:'ru-RU',en:'en-US',es:'es-ES'}[(typeof getLang==='function'?getLang():'ru')]||'en-US');
-  tbody.innerHTML = apps.map(function(a){
-    var name = a.user_name || '—';
-    var email = a.user_email || '';
-    var conditions = (a.rehab_conditions || []).join(', ') || '—';
-    var desc = (a.description || '').length > 80 ? a.description.substring(0,80) + '...' : (a.description || '—');
-    var date = a.created_at ? new Date(a.created_at).toLocaleDateString(rehabLocale) : '—';
-    var statusOpts = ['new','contacted','in_progress','accepted','declined'].map(function(s){
-      return '<option value="'+s+'"'+(s===a.status?' selected':'')+'>'+statusLabels[s]+'</option>';
-    }).join('');
-    return '<tr>' +
-      '<td><div style="font-size:13px;color:var(--text-primary);">'+name+'</div><div style="font-size:11px;color:var(--text-muted);">'+email+'</div></td>' +
-      '<td style="font-size:13px;">'+a.city+'</td>' +
-      '<td style="font-size:13px;">'+a.phone+'</td>' +
-      '<td style="font-size:13px;">'+a.age+'</td>' +
-      '<td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(a.description||'').replace(/"/g,'&quot;')+'">'+desc+'</td>' +
-      '<td style="font-size:11px;color:var(--text-muted);">'+conditions+'</td>' +
-      '<td><select onchange="updateRehabAppStatus('+a.id+',this.value)" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:'+statusColors[a.status]+';font-size:12px;padding:0.3rem 0.5rem;cursor:pointer;">'+statusOpts+'</select></td>' +
-      '<td style="font-size:12px;color:var(--text-muted);">'+date+'</td>' +
-    '</tr>';
-  }).join('');
+  tbody.replaceChildren(...apps.map(function(a){
+    var row=document.createElement('tr');
+    function cell(value){var td=document.createElement('td');td.textContent=value||'—';row.append(td);return td;}
+    var who=cell(a.user_name||t('a.admin.rehab.unknown_name','Имя не указано'));
+    var email=document.createElement('div');email.textContent=a.user_email||t('a.admin.rehab.unknown_email','Почта не указана');
+    who.append(email);
+    cell(a.city);cell(a.phone);cell(String(a.age||''));
+    var details=document.createElement('button');
+    details.type='button';details.className='btn btn-ghost';
+    details.textContent=t('a.admin.rehab.open_application','Открыть заявку');
+    details.onclick=function(){openRehabApplication(a,statusLabels,rehabLocale);};
+    cell('').replaceChildren(details);
+    cell((a.rehab_conditions||[]).join(', '));
+    var status=document.createElement('select');status.style.color=statusColors[a.status]||'';
+    Object.keys(statusLabels).forEach(function(key){status.add(new Option(statusLabels[key],key,key===a.status,key===a.status));});
+    status.onchange=function(){updateRehabAppStatus(a.id,status.value);};
+    cell('').replaceChildren(status);
+    cell(a.created_at?new Date(a.created_at).toLocaleDateString(rehabLocale):'—');
+    return row;
+  }));
 }
+function openRehabApplication(a,statusLabels,locale){
+  var dialog=document.createElement('dialog');
+  dialog.className='dom-rehab-detail';
+  var title=document.createElement('h2');title.textContent=t('a.admin.rehab.application_title','Заявка')+' № '+a.id;
+  var close=document.createElement('button');close.type='button';close.className='btn btn-ghost';
+  close.textContent=t('a.admin.rehab.close_application','Закрыть');
+  close.onclick=function(){dialog.close();};
+  var list=document.createElement('dl');
+  [
+    [t('rehab_app.label_contact_name','Имя'),a.user_name],
+    [t('rehab_app.label_contact_email','Электронная почта'),a.user_email],
+    [t('rehab_app.label_city','Город'),a.city],
+    [t('rehab_app.label_phone','Телефон'),a.phone],
+    [t('rehab_app.label_age','Возраст'),a.age],
+    [t('a.admin.rehab.application_status','Статус'),statusLabels[a.status]],
+    [t('a.admin.rehab.application_date','Получена'),a.created_at?new Date(a.created_at).toLocaleString(locale):''],
+    [t('rehab_app.label_description','Описание ситуации'),a.description],
+    [t('a.admin.rehab.conditions','Состояния'),(a.rehab_conditions||[]).join(', ')],
+    [t('a.admin.rehab.more_details','Дополнительные сведения'),a.rehab_other_description]
+  ].forEach(function(pair){
+    var dt=document.createElement('dt');dt.textContent=pair[0];
+    var dd=document.createElement('dd');dd.textContent=pair[1]||'—';list.append(dt,dd);
+  });
+  dialog.append(title,list,close);
+  document.body.append(dialog);
+  dialog.addEventListener('close',function(){dialog.remove();});
+  dialog.showModal();
+}
+
 function filterRehabApps(status, btn){
   if(btn){
     var siblings = btn.parentElement.querySelectorAll('.nm-filter-btn');
@@ -7795,6 +7831,7 @@ function nmGetNodeColor(node){
   var layer = node._layer || nmNodeLayer(node);
   var theme = document.documentElement.dataset.domTheme === 'light' ? 'light' : 'dark';
   var rgb = NM_NODE_PALETTES[theme][layer] || NM_NODE_PALETTES[theme][0];
+  if(node.type==='area' && nmAreaKind(node)==='body') rgb=theme==='light'?[22,111,101]:[125,222,201];
   if(node.type==='emotion'){
     var strength=NM_POLARITY_MAP[node.label];
     if(typeof strength!=='number') strength=Number(node.valence)||0;
@@ -7803,6 +7840,21 @@ function nmGetNodeColor(node){
     rgb=rgb.map(function(channel,i){return Math.round(channel*(1-weight)+target[i]*weight);});
   }
   return 'rgba('+rgb.join(',')+',';
+}
+function nmLayerSymbol(layer){
+  var sides=NM_NODE_SIDES[layer];
+  var style='';
+  if(sides){
+    var points=[];
+    for(var i=0;i<sides;i++){
+      var angle=i*2*Math.PI/sides-Math.PI/2;
+      points.push((50+48*Math.cos(angle)).toFixed(1)+'% '+(50+48*Math.sin(angle)).toFixed(1)+'%');
+    }
+    style='clip-path:polygon('+points.join(',')+');';
+  }
+  var light=NM_NODE_PALETTES.light[layer].join(',');
+  var dark=NM_NODE_PALETTES.dark[layer].join(',');
+  return '<span class="nm-layer-symbol" aria-hidden="true" style="'+style+'--nm-symbol-light:rgb('+light+');--nm-symbol-dark:rgb('+dark+');"></span>';
 }
 function nmTraceNode(ctx,node,x,y,radius){
   var sides=nmNodeSides(node);
@@ -7815,9 +7867,24 @@ function nmTraceNode(ctx,node,x,y,radius){
   }
   ctx.closePath();
 }
+function nmBodyBond(source,target){
+  return (source.type==='sensation' && target.type==='area' && nmAreaKind(target)==='body')
+    || (target.type==='sensation' && source.type==='area' && nmAreaKind(source)==='body');
+}
+function nmThreeRadius(node){
+  return Math.cbrt(Math.max(1,node.val||1))*4;
+}
+function nmThreeLinkConfig(graph){
+  graph.linkVisibility(function(link){return !link.bodyBond;});
+  graph.linkDirectionalArrowLength(function(link){return link.bodyBond?0:5;});
+  graph.d3Force('charge').strength(-70);
+  graph.d3Force('link')
+    .distance(function(link){return link.bodyBond?nmThreeRadius(link.source)+nmThreeRadius(link.target)-2:60;})
+    .strength(function(link){return link.bodyBond ? .95 : .55;});
+}
 function nmThreeNode(node,label){
   if(!THREE)return false;
-  var sides=nmNodeSides(node), radius=Math.cbrt(Math.max(1,node.val||1))*4;
+  var sides=nmNodeSides(node), radius=nmThreeRadius(node);
   var geometry=sides
     ? new THREE.CylinderGeometry(radius,radius,radius*.5,sides).rotateX(Math.PI/2)
     : new THREE.SphereGeometry(radius,12,8);
@@ -9538,7 +9605,7 @@ function nmFsBuildFilters(){
   ].forEach(function(l){
     var checked = nmActiveLayers[l.layer] ? 'checked' : '';
     var dis = l.disabled ? 'disabled style="opacity:0.45;"' : '';
-    html += '<label class="nm-layer-chk" '+dis+'><input type="checkbox" data-layer="'+l.layer+'" '+checked+' '+(l.disabled?'disabled':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">'+l.layer+' '+(nmTranslateLayer(l.layer)||l.name)+'</span></label>';
+    html += '<label class="nm-layer-chk" '+dis+'><input type="checkbox" data-layer="'+l.layer+'" '+checked+' '+(l.disabled?'disabled':'')+' onchange="nmFsFilterToggle(this)">'+nmLayerSymbol(l.layer)+'<span class="nm-lbl">'+l.layer+' '+(nmTranslateLayer(l.layer)||l.name)+'</span></label>';
   });
   html += '<label class="nm-layer-chk" style="margin-top:0.5rem;"><input type="checkbox" data-layer="repeat" '+(nmRepeatFilter?'checked':'')+' onchange="nmFsFilterToggle(this)"><span class="nm-lbl">Повторяющиеся</span></label>';
   cont.innerHTML = html;
@@ -10123,10 +10190,25 @@ var nm3DMode = false;
 var nm3DGraph = null;
 
 // Load ForceGraph3D on demand. Callers must not touch the global until this resolves.
+function nm3DError(fullscreen){
+  if(!nm3DMode)return;
+  if(fullscreen)nmFsToggle3D();else nmToggle3D();
+  var btn=document.getElementById(fullscreen?'nm-fs-3d-toggle':'nm-3d-toggle');
+  if(!btn)return;
+  var notice=document.getElementById('nm-3d-notice')||document.createElement('span');
+  notice.id='nm-3d-notice';notice.setAttribute('role','status');
+  notice.textContent=_pr95t('a.tools.nm_3d_unavailable','3D не удалось запустить. Карта открыта в 2D.');
+  btn.after(notice);
+}
+function nmStart3D(fullscreen,container){
+  document.getElementById('nm-3d-notice')?.remove();
+  try{if(fullscreen)nmBuildFs3DGraph(container);else nmBuild3DGraph();}
+  catch(error){nm3DError(fullscreen);}
+}
 function nmWithForceGraph(host, stillWanted, onReady, onMissing){
   if(typeof ForceGraph3D==='function'){
     if(window.THREE) THREE=window.THREE;
-    onReady();
+    try{onReady();}catch(error){if(onMissing)onMissing(error);}
     return;
   }
   if(!host || host._nmVizWait) return;
@@ -10169,7 +10251,7 @@ function nmFsToggle3D(){
     fs3d.style.display = 'block';
     fsCanvas.style.display = 'none';
     // Defer 3D build to next frame so container has layout dimensions
-    requestAnimationFrame(function(){ nmBuildFs3DGraph(fs3d); });
+    requestAnimationFrame(function(){ nmStart3D(true,fs3d); });
   } else {
     fsBtn.classList.remove('active');
     fsBtn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D';
@@ -10186,7 +10268,7 @@ var nmFs3DGraph = null;
 function nmBuildFs3DGraph(container){
   if(!container) return;
   if(typeof ForceGraph3D==='undefined'){
-    nmWithForceGraph(container, function(){ return nm3DMode; }, function(){ nmBuildFs3DGraph(container); });
+    nmWithForceGraph(container, function(){ return nm3DMode; }, function(){ nmBuildFs3DGraph(container); },function(){nm3DError(true);});
     return;
   }
   // Guard against 0-dimension container (layout not ready)
@@ -10213,7 +10295,7 @@ function nmBuildFs3DGraph(container){
       var tn = nmNodes[nodeIdx[l.target]];
       var ec = nmGetEdgeColor(sn, tn);
       var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
-      gLinks.push({ source: l.source, target: l.target, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
+      gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn), count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
     }
   });
   if(!THREE)nmEnsureThree(function(){
@@ -10246,7 +10328,6 @@ function nmBuildFs3DGraph(container){
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
-    .linkDirectionalArrowLength(5)
     .linkDirectionalArrowRelPos(1)
     .linkDirectionalArrowColor(function(l){ return l.color; })
     .backgroundColor('rgba(0,0,0,0)')
@@ -10257,8 +10338,7 @@ function nmBuildFs3DGraph(container){
       if(origNode) openFsDrilldown(origNode);
     })
     .showNavInfo(false);
-  nmFs3DGraph.d3Force('charge').strength(-120);
-  nmFs3DGraph.d3Force('link').distance(60);
+  nmThreeLinkConfig(nmFs3DGraph);
 }
 
 function nmToggleLabels(){
@@ -10303,7 +10383,7 @@ function nmToggle3D(){
     btn.textContent = '2D';
     container3d.classList.add('active');
     canvas2d.style.display = 'none';
-    nmBuild3DGraph();
+    nmStart3D(false);
   } else {
     btn.classList.remove('active');
     btn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D';
@@ -10427,7 +10507,7 @@ function nmBuild3DGraph(){
   var container = document.getElementById('nm-3d-container');
   if(!container) return;
   if(typeof ForceGraph3D==='undefined'){
-    nmWithForceGraph(container, function(){ return nm3DMode; }, function(){ nmBuild3DGraph(); });
+    nmWithForceGraph(container, function(){ return nm3DMode; }, function(){ nmBuild3DGraph(); },function(){nm3DError(false);});
     return;
   }
   container.innerHTML = '';
@@ -10466,6 +10546,7 @@ function nmBuild3DGraph(){
       gLinks.push({
         source: l.source,
         target: l.target,
+        bodyBond:nmBodyBond(sn,tn),
         color: hex,
         width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2))
       });
@@ -10507,7 +10588,6 @@ function nmBuild3DGraph(){
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
-    .linkDirectionalArrowLength(5)
     .linkDirectionalArrowRelPos(1)
     .linkDirectionalArrowColor(function(l){ return l.color; })
     .onNodeClick(function(node){
@@ -10517,9 +10597,7 @@ function nmBuild3DGraph(){
     })
     .showNavInfo(false);
 
-  // Spread nodes in 3D space based on layer
-  nm3DGraph.d3Force('charge').strength(-120);
-  nm3DGraph.d3Force('link').distance(60);
+  nmThreeLinkConfig(nm3DGraph);
 }
 
 
@@ -10782,7 +10860,7 @@ function nmEnsureThree(cb){
   if(cb) _nmThreeCbs.push(cb);
   if(_nmThreeLoading) return; _nmThreeLoading=true;
   var s=document.createElement('script');
-  s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  s.src='assets/vendor/three-0.128.0.min.js';
   var done=function(){ THREE=window.THREE||null; _nmThreeLoading=false; var cbs=_nmThreeCbs.slice(); _nmThreeCbs=[]; cbs.forEach(function(f){ try{ f&&f(); }catch(e){} }); };
   s.onload=done; s.onerror=done; document.head.appendChild(s);
 }
@@ -11037,7 +11115,8 @@ function buildNmGraph(){
   nmNodes.forEach(function(n,i){
     if(nmPrevPositions[n.id]){
       // Existing node — keep position, zero velocity
-      n.x=nmPrevPositions[n.id].x; n.y=nmPrevPositions[n.id].y;
+      n.x=Math.max(canvas.width*.13,Math.min(canvas.width*.87,nmPrevPositions[n.id].x));
+      n.y=Math.max(canvas.height*.13,Math.min(canvas.height*.87,nmPrevPositions[n.id].y));
       n.vx=0; n.vy=0;
       n._fade=1;
     } else {
@@ -11054,9 +11133,10 @@ function buildNmGraph(){
       });
       if(!placed){
         var a=(i/nmNodes.length)*Math.PI*2;
-        var r=Math.min(cx,cy)*0.55;
-        n.x=cx+Math.cos(a)*r*(0.5+Math.random()*0.5);
-        n.y=cy+Math.sin(a)*r*(0.5+Math.random()*0.5);
+        var r=Math.min(cx,cy)*.64*Math.sqrt((i+.5)/nmNodes.length);
+        a=i*2.399963229728653;
+        n.x=cx+Math.cos(a)*r;
+        n.y=cy+Math.sin(a)*r;
       }
       n.vx=0; n.vy=0;
       n._fade=0; // start invisible for fade-in
@@ -11152,10 +11232,9 @@ function nmSimulate(canvas, initAlpha){
     l._sticky=false; l._sensBody=false;
     var s=_nmById[l.source], t=_nmById[l.target];
     if(!s||!t) return;
-    var sIsSens=(s.type==='sensation'), tIsSens=(t.type==='sensation');
-    if(sIsSens===tIsSens) return;          // need exactly one sensation endpoint
+    var sIsSens=(s.type==='sensation');
+    if(!nmBodyBond(s,t)) return;
     var sens=sIsSens?s:t, other=sIsSens?t:s;
-    if(other.type!=='area' || nmAreaKind(other)!=='body') return; // body parts only
     l._sensBody=true;                      // never draw an arrow for a body bond
     (_bodyLinksBySens[sens.id]=_bodyLinksBySens[sens.id]||[]).push({ l:l, anchor:other });
   });
@@ -11214,7 +11293,7 @@ function nmSimulate(canvas, initAlpha){
         var dx=nmNodes[j].x-nmNodes[i].x;
         var dy=nmNodes[j].y-nmNodes[i].y;
         var d2=dx*dx+dy*dy+1;
-        var f=alpha*800/d2;
+        var f=alpha*Math.min(6,800/d2);
         // PR#102: dampen repulsion so the bubble cluster stays tight around the body
         // part. (a) sensation↔its anchor → strong damp (the ring-slot force holds it
         // glued). (b) sibling sensations on the SAME anchor → moderate damp; the slots
@@ -11258,8 +11337,9 @@ function nmSimulate(canvas, initAlpha){
         // off its anchor, and (being _sensBody) it is never drawn as an arrow.
         f = l._sensBody ? alpha*(d-170)*0.004 : alpha*(d-120)*0.01;
       }
-      s.vx+=dx*f; s.vy+=dy*f;
-      t.vx-=dx*f; t.vy-=dy*f;
+      var pull=Math.min(14*alpha,Math.max(-14*alpha,f*55));
+      s.vx+=dx/d*pull; s.vy+=dy/d*pull;
+      t.vx-=dx/d*pull; t.vy-=dy/d*pull;
     });
     // Center gravity + apply positions
     nmNodes.forEach(function(n){
@@ -11307,8 +11387,8 @@ function nmSimulate(canvas, initAlpha){
           return;
         }
       }
-      n.vx+=(W/2-n.x)*alpha*0.01;
-      n.vy+=(H/2-n.y)*alpha*0.01;
+      n.vx+=(W/2-n.x)*alpha*0.034;
+      n.vy+=(H/2-n.y)*alpha*0.034;
       n.vx*=0.85; n.vy*=0.85;
       n.x+=n.vx; n.y+=n.vy;
       n.x=Math.max(40,Math.min(W-40,n.x));
@@ -17566,18 +17646,17 @@ function loadStorageStatus(){
   var body = document.getElementById('storage-status-body');
   if (!body) return;
   domApi('/api/admin/storage-status').then(function(d){
-    var primary = d.primary === 'r2' ? '<span style="color:#0e9;font-weight:600;">✓ Cloudflare R2 (рекомендуется)</span>' : '<span style="color:#fc0;font-weight:600;">⚠ GitHub Pages (заслужил замену)</span>';
-    var r2line = d.r2_configured
-      ? '<span style="color:#0e9;">✓ Настроен · bucket: <code>' + (d.r2_bucket||'') + '</code> · public: <code>' + (d.r2_public_base||'') + '</code></span>'
-      : '<span style="color:var(--text-muted);">не настроен</span>';
-    var ghline = d.github_configured
-      ? '<span style="color:#0e9;">✓ Доступен · repo: <code>' + (d.github_repo||'') + '</code></span>'
-      : '<span style="color:#f55;">❌ GITHUB_PAT отсутствует</span>';
-    body.innerHTML = '<div><strong>Активный бэкенд:</strong> ' + primary + '</div>'
-      + '<div style="margin-top:0.3rem;"><strong>R2:</strong> ' + r2line + '</div>'
-      + '<div style="margin-top:0.3rem;"><strong>GitHub:</strong> ' + ghline + '</div>'
-      + (d.primary === 'github' ? '<div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:rgba(255,200,0,0.08);border-radius:6px;font-size:11px;">GitHub Pages подходит до 5 GB репозитория. С учётом видео + стрим-записями ты быстро упрёшься. Настрой R2 ниже — миграция бесшовная (старые файлы продолжат работать).</div>' : '');
-  }).catch(function(e){ body.innerHTML = '<span style="color:#f55;">Ошибка: '+e.message+'</span>'; });
+    var names={verified:'Бакет доступен · выбран для загрузок',unconfigured:'Не настроен',unverified:'Настройки есть · доступ не подтверждён',permission_denied:'Настройки есть · проверка прав отклонена'};
+    var rows=[
+      ['Медиа · Cloudflare R2',names[d.buckets?.public]||names.unverified],
+      ['Закрытые медицинские файлы · R2',names[d.buckets?.medical]||names.unverified],
+      ['GitHub · резервный путь',d.github_configured?'Настроен':'Не настроен']
+    ];
+    body.replaceChildren(...rows.map(function(row){
+      var line=document.createElement('div'),label=document.createElement('strong');
+      label.textContent=row[0]+': ';line.append(label,document.createTextNode(row[1]));return line;
+    }));
+  }).catch(function(e){body.textContent=e.message;});
 }
 window.loadStorageStatus = loadStorageStatus;
 function domPublishPost(){
@@ -17659,6 +17738,20 @@ function domOpenThread(threadId, peerName){
   document.getElementById('dom-dm-empty').style.display = 'none';
   document.getElementById('dom-dm-thread').style.display = 'flex';
   document.getElementById('dom-dm-thread-head').textContent = peerName || '—';
+  var head=document.getElementById('dom-dm-thread-head');
+  delete head.dataset.agentRoom;
+  var invite=document.createElement('button');
+  invite.type='button';invite.className='btn btn-ghost';
+  invite.textContent=t('a.domunity.add_agent','Добавить агента');
+  invite.onclick=async function(){
+    invite.disabled=true;
+    try{
+      var data=await domApi('/api/dm/threads/'+threadId+'/agent-room',{method:'POST',body:{}});
+      if(dom.activeThread===threadId){head.dataset.agentRoom=String(data.room_id);invite.remove();await window.DOMRoomAgents?.open(data.room_id,head,true);}
+    }catch(error){invite.disabled=false;alert(error.message);}
+  };
+  head.append(invite);
+
   domLoadThreadMessages(true);
   if (domDM.pollTimer) clearInterval(domDM.pollTimer);
   domDM.pollTimer = setInterval(function(){
@@ -17667,22 +17760,39 @@ function domOpenThread(threadId, peerName){
   }, 5000);
 }
 function domLoadThreadMessages(forceRender){
-  if (!dom.activeThread) return;
-  domApi('/api/dm/threads/' + dom.activeThread + '/messages').then(function(d){
-    var box = document.getElementById('dom-dm-messages');
-    if (!box) return;
-    var me = currentUser && currentUser.id;
-    var msgs = d.messages || [];
-    if (!forceRender && msgs.length === domDM.lastCount && box.children.length === msgs.length) return;
-    var wasNearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 80;
-    box.innerHTML = msgs.map(function(m){
-      var mine = m.sender_id === me;
-      return '<div style="align-self:'+(mine?'flex-end':'flex-start')+';max-width:75%;background:'+(mine?'rgba(0,229,255,0.15)':'rgba(255,255,255,0.05)')+';color:var(--text-primary);padding:0.45rem 0.7rem;border-radius:12px;font-size:13px;line-height:1.4;">'+m.body+'<div style="font-size:9px;color:var(--text-muted);margin-top:0.2rem;">'+new Date(m.created_at).toLocaleString()+'</div></div>';
-    }).join('');
-    domDM.lastCount = msgs.length;
-    if (wasNearBottom) box.scrollTop = box.scrollHeight;
-    if (typeof window.domPollBadges === 'function') window.domPollBadges();
-  });
+  var id=dom.activeThread;
+  if(!id)return;
+  domApi('/api/dm/threads/'+id+'/messages').then(function(d){
+    if(dom.activeThread!==id)return;
+    var box=document.getElementById('dom-dm-messages');
+    if(!box)return;
+    var head=document.getElementById('dom-dm-thread-head');
+    if(d.agent_room_id&&head.dataset.agentRoom!==String(d.agent_room_id)){
+      head.dataset.agentRoom=String(d.agent_room_id);head.querySelector('button')?.remove();
+      window.DOMRoomAgents?.open(d.agent_room_id,head);
+    }
+    var messages=d.messages||[];
+    var signature=messages.map(function(m){return m.id;}).join(',');
+    if(!forceRender&&box.dataset.signature===signature)return;
+    box.dataset.signature=signature;
+    var follow=forceRender||box.scrollHeight-box.scrollTop-box.clientHeight<80;
+    box.replaceChildren(...messages.map(function(m){
+      var row=document.createElement('article');
+      row.className='dom-group-message'+(m.sender_id===currentUser?.id?' dom-group-message-mine':'');
+      if(m.is_agent){
+        row.classList.add('dom-direct-agent');row.dataset.replyTo=m.in_reply_to;
+        var sender=document.createElement('button');
+        sender.type='button';sender.textContent=m.sender_name+' · Monad';
+        sender.onclick=function(){window.DOMRoomAgents?.showAgent(m.agent_id,document.getElementById('dom-dm-thread'));};
+        row.append(sender);
+      }
+      var text=document.createElement('div');text.textContent=m.body;
+      var time=document.createElement('time');time.textContent=new Date(m.created_at).toLocaleString();
+      row.append(text,time);return row;
+    }));
+    if(follow)box.scrollTop=box.scrollHeight;
+    if(typeof window.domPollBadges==='function')window.domPollBadges();
+  }).catch(function(){});
 }
 function domSendDM(){
   var inp = document.getElementById('dom-dm-input');
@@ -18801,7 +18911,7 @@ window.pbMove = pbMove;
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
 <script src="assets/js/neuromap-chains.js?v=1"></script>
-<script src="assets/js/evolution-path.js?v=37"></script>
+<script src="assets/js/evolution-path.js?v=review-1"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/na-icons.js?v=2"></script>
@@ -18826,10 +18936,10 @@ window.pbMove = pbMove;
 
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=42"></script>
-<script src="assets/js/monad-cross.js?v=5"></script>
+<script src="assets/js/monad-cross.js?v=review-5"></script>
 <script src="assets/js/monad-office.js?v=2"></script>
-<script src="assets/js/dom-room-agents.js?v=2" defer></script>
-<script src="assets/js/monad-lk.js?v=26"></script>
+<script src="assets/js/dom-room-agents.js?v=review-1" defer></script>
+<script src="assets/js/monad-lk.js?v=review-1"></script>
 <script src="assets/js/sketch-tool.js?v=7"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>
@@ -22766,5 +22876,10 @@ window.pbMove = pbMove;
 })();
 </script>
 <script src="assets/js/dom-editorial.js?v=1"></script>
+<script>
+document.querySelectorAll('.nm-layer-marker').forEach(function(marker){
+  marker.innerHTML=nmLayerSymbol(Number(marker.dataset.marker));
+});
+</script>
 </body>
 </html>

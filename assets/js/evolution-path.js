@@ -750,7 +750,7 @@
   function cvColors() {
     var light = document.documentElement.dataset.domTheme === 'light';
     if (CV_COLORS && CV_COLORS.light === light) return CV_COLORS;
-    var cs = getComputedStyle(document.documentElement);
+    var cs = getComputedStyle(document.querySelector('#evo-path.myc-root, #evo-path .myc-root') || document.documentElement);
     var g = function (n, fb) { var v = (cs.getPropertyValue(n) || '').trim(); return v || fb; };
     CV_COLORS = { light: light, cyan: g('--myc-cyan', '#5ee0ff'), green: g('--myc-green', '#56F2A6'),
       lineSecondary: light ? 'rgba(32,76,142,0.45)' : 'rgba(255,255,255,0.45)',

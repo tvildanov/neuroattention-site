@@ -1294,6 +1294,7 @@ app.post('/api/run-migrations', async (req, res) => {
       created_at TIMESTAMP DEFAULT now()
     )`;
     await sql`CREATE INDEX IF NOT EXISTS idx_chat_room_messages_room ON chat_room_messages(room_id, created_at)`;
+    await applyDomReviewSchema();
 
     // News feed (admin posts visible to all logged-in users)
     await sql`CREATE TABLE IF NOT EXISTS feed_posts (
@@ -3295,7 +3296,7 @@ app.post('/api/auth/register', async (req, res) => {
       user: { id: user.id, email: user.email, display_name: user.display_name, phone: user.phone, role: user.role, avatar_url: null,
               location_country: user.location_country, location_city: user.location_city, location_lat: user.location_lat, location_lon: user.location_lon,
               monad_human_id: user.monad_human_id || null, monad_access: !!user.monad_access,
-              monad_tab: ['superadmin', 'founder'].includes(user.role) || !!user.monad_access }
+              monad_tab: ['superadmin', 'founder', 'admin'].includes(user.role) || !!user.monad_access }
     });
   } catch (err) {
     console.error('POST /api/auth/register:', err);
@@ -3328,7 +3329,7 @@ app.post('/api/auth/login', async (req, res) => {
     await sql`UPDATE users SET last_login_at = now() WHERE id = ${user.id}`;
 
     const token = signToken(user);
-    const monadTab = ['superadmin', 'founder'].includes(user.role) || !!user.monad_access;
+    const monadTab = ['superadmin', 'founder', 'admin'].includes(user.role) || !!user.monad_access;
     res.json({
       token,
       user: {
@@ -3365,7 +3366,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     const user = rows[0];
     user.monad_human_resolved = monadSvc.resolveHumanId(user);
-    user.monad_tab = ['superadmin', 'founder'].includes(user.role) || !!user.monad_access;
+    user.monad_tab = ['superadmin', 'founder', 'admin'].includes(user.role) || !!user.monad_access;
     res.json({ user });
   } catch (err) {
     console.error('GET /api/auth/me:', err);
@@ -3381,7 +3382,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
       user.monad_human_id = null;
       user.monad_access = false;
       user.monad_human_resolved = monadSvc.resolveHumanId(user);
-      user.monad_tab = ['superadmin', 'founder'].includes(user.role);
+      user.monad_tab = ['superadmin', 'founder', 'admin'].includes(user.role);
       return res.json({ user });
     } catch (e2) {
       res.status(500).json({ error: 'Internal error' });
@@ -5153,7 +5154,7 @@ async function requireMonadAccess(req, res) {
     return null;
   }
   const u = caller[0];
-  const privileged = ['superadmin', 'founder'].includes(u.role);
+  const privileged = ['superadmin', 'founder', 'admin'].includes(u.role);
   if (!privileged && !u.monad_access) {
     res.status(403).json({ error: 'Monad tab access not granted' });
     return null;
@@ -5872,9 +5873,14 @@ function optionalAuth(req, res, next) {
 // POST /api/rehab/apply — public (rate-limited), optional auth
 app.post('/api/rehab/apply', rehabRateLimit, optionalAuth, async (req, res) => {
   try {
-    const { city, phone, age, description, rehab_conditions, rehab_other_description } = req.body;
-    if (!city || !phone || !age || !description) {
-      return res.status(400).json({ error: 'All fields required: city, phone, age, description' });
+    const { city, phone, age, description, rehab_conditions, rehab_other_description } = req.body || {};
+    const contactName = String(req.body?.contact_name || '').trim();
+    const contactEmail = String(req.body?.contact_email || '').trim().toLowerCase();
+    if (!contactName || contactName.length > 180 || contactEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+      return res.status(400).json({ error: 'valid_contact_required' });
+    }
+    if (![city,phone,description].every(field => typeof field === 'string' && field.trim()) || !age) {
+      return res.status(400).json({ error: 'required_fields' });
     }
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum < 1 || ageNum > 119) {
@@ -5884,8 +5890,8 @@ app.post('/api/rehab/apply', rehabRateLimit, optionalAuth, async (req, res) => {
     const userId = req.user?.sub || req.user?.id || null;
 
     const rows = await sql`
-      INSERT INTO rehab_applications (user_id, city, phone, age, description, rehab_conditions, rehab_other_description)
-      VALUES (${userId}, ${city.trim()}, ${phone.trim()}, ${ageNum}, ${description.trim()}, ${conditionsArr}, ${(rehab_other_description || '').trim()})
+      INSERT INTO rehab_applications (user_id, contact_name, contact_email, city, phone, age, description, rehab_conditions, rehab_other_description)
+      VALUES (${userId}, ${contactName}, ${contactEmail}, ${city.trim()}, ${phone.trim()}, ${ageNum}, ${description.trim()}, ${conditionsArr}, ${(rehab_other_description || '').trim()})
       RETURNING id, created_at
     `;
     res.json({ ok: true, id: rows[0].id, created_at: rows[0].created_at });
@@ -5902,11 +5908,12 @@ app.get('/api/admin/rehab/applications', requireAuth, async (req, res) => {
     if (!caller.length || !['superadmin', 'founder'].includes(caller[0].role)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
+    res.set('Cache-Control','no-store');
     const { status: filterStatus } = req.query;
     let rows;
     if (filterStatus && filterStatus !== 'all') {
       rows = await sql`
-        SELECT ra.*, u.display_name as user_name, u.email as user_email
+        SELECT ra.*, COALESCE(ra.contact_name,u.display_name) AS user_name, COALESCE(ra.contact_email,u.email) AS user_email
         FROM rehab_applications ra
         LEFT JOIN users u ON ra.user_id = u.id
         WHERE ra.status = ${filterStatus}
@@ -5915,7 +5922,7 @@ app.get('/api/admin/rehab/applications', requireAuth, async (req, res) => {
       `;
     } else {
       rows = await sql`
-        SELECT ra.*, u.display_name as user_name, u.email as user_email
+        SELECT ra.*, COALESCE(ra.contact_name,u.display_name) AS user_name, COALESCE(ra.contact_email,u.email) AS user_email
         FROM rehab_applications ra
         LEFT JOIN users u ON ra.user_id = u.id
         ORDER BY ra.created_at DESC
@@ -6144,17 +6151,29 @@ if (r2Configured || r2MedicalConfigured) {
 }
 
 // Public status (admin can inspect)
-function getStorageStatus() {
+async function getStorageStatus() {
+  async function check(configured, bucket) {
+    if (!configured) return 'unconfigured';
+    if (!r2Client) return 'unverified';
+    try {
+      const { HeadBucketCommand } = require('@aws-sdk/client-s3');
+      await r2Client.send(new HeadBucketCommand({ Bucket: bucket }), { abortSignal: AbortSignal.timeout(3500) });
+      return 'verified';
+    } catch (err) {
+      return err?.$metadata?.httpStatusCode === 403 ? 'permission_denied' : 'unverified';
+    }
+  }
+  const [publicStatus,medicalStatus] = await Promise.all([check(r2Configured,R2_BUCKET_PUBLIC),check(r2MedicalConfigured,R2_BUCKET_MEDICAL)]);
   return {
-    primary: r2Client ? 'r2' : 'github',
+    primary: publicStatus === 'verified' ? 'r2' : GITHUB_PAT ? 'github_fallback' : 'unverified',
     r2_configured: r2Configured,
     r2_bucket: R2_BUCKET_PUBLIC || null,
     r2_public_base: R2_PUBLIC_BASE_URL || null,
     r2_endpoint: R2_ENDPOINT || null,
     medical_configured: r2MedicalConfigured,
     buckets: {
-      public: r2Configured ? 'ok' : 'unconfigured',
-      medical: r2MedicalConfigured ? 'ok' : 'unconfigured'
+      public: publicStatus,
+      medical: medicalStatus
     },
     github_configured: !!GITHUB_PAT,
     github_repo: GITHUB_REPO_OWNER + '/' + GITHUB_REPO_NAME
@@ -10043,16 +10062,36 @@ app.post('/api/dm/threads', requireAuth, async (req, res) => {
   } catch (err) { console.error('POST dm thread:', err); res.status(500).json({ error: err.message }); }
 });
 
+// An opt-in agent in a direct conversation uses the existing room transport.
+app.post('/api/dm/threads/:id/agent-room', requireAuth, async (req,res) => {
+  if(req.monadReadonly)return res.status(403).json({error:'Forbidden'});
+  const me=req.user.sub||req.user.id;
+  const tid=Number(req.params.id);
+  if(!Number.isSafeInteger(tid)||tid<1)return res.status(400).json({error:'Invalid thread'});
+  try{
+    const [thread]=await sql`SELECT id,user_a,user_b FROM dm_threads WHERE id=${tid} AND (user_a=${me} OR user_b=${me})`;
+    if(!thread)return res.status(404).json({error:'Thread not found'});
+    const [room]=await sql`INSERT INTO chat_rooms(slug,name,created_by,dm_thread_id)
+      VALUES (${'direct-conversation-'+tid},'Direct conversation',${me},${tid})
+      ON CONFLICT(dm_thread_id) DO UPDATE SET dm_thread_id=EXCLUDED.dm_thread_id RETURNING id`;
+    await sql`INSERT INTO chat_room_members(room_id,user_id,role)
+      VALUES (${room.id},${thread.user_a},'admin'),(${room.id},${thread.user_b},'admin') ON CONFLICT DO NOTHING`;
+    res.json({room_id:room.id});
+  }catch(error){console.error('[dm agent room]',error.code||'unavailable');res.status(500).json({error:'Agent room unavailable'});}
+});
+
 app.get('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const tid = parseInt(req.params.id, 10);
     const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
     if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
-    const msgs = await sql`SELECT * FROM dm_messages WHERE thread_id = ${tid} ORDER BY created_at ASC LIMIT 200`;
+    const msgs = await sql`SELECT * FROM dm_messages WHERE thread_id = ${tid} ORDER BY created_at DESC, id DESC LIMIT 200`;
     // Mark incoming as read
     await sql`UPDATE dm_messages SET read_at = now() WHERE thread_id = ${tid} AND sender_id <> ${me} AND read_at IS NULL`;
-    res.json({ thread: t, messages: msgs });
+    const [room]=await sql`SELECT id FROM chat_rooms WHERE dm_thread_id=${tid}`;
+    const agentReplies=room?await domMonadV07.roomReplies({sql,roomId:room.id}).catch(()=>[]):[];
+    res.json({thread:t,agent_room_id:room?.id||null,messages:msgs.concat(agentReplies).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).slice(-200)});
   } catch (err) { console.error('GET dm messages:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -10066,6 +10105,17 @@ app.post('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
     if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
     const [row] = await sql`INSERT INTO dm_messages (thread_id, sender_id, body) VALUES (${tid}, ${me}, ${String(body)}) RETURNING *`;
     await sql`UPDATE dm_threads SET last_message_at = now() WHERE id = ${tid}`;
+    // Only explicit mentions typed after the invitation enter the agent transport.
+    if(/(?:^|\s)@[a-z0-9_]+/i.test(String(body))){
+      try{
+        const [room]=await sql`SELECT id FROM chat_rooms WHERE dm_thread_id=${tid}`;
+        if(room){
+          const [entry]=await sql`INSERT INTO chat_room_messages(room_id,sender_id,body)
+            VALUES(${room.id},${me},${String(body)}) RETURNING id`;
+          await domMonadV07.recordRoomMessage({sql,roomId:room.id,messageId:entry.id,body:String(body)});
+        }
+      }catch(error){console.warn('[dm agent dispatch]',error.code||'unavailable');}
+    }
     // Notification for recipient
     const recipient = t.user_a === me ? t.user_b : t.user_a;
     await notifyUser(recipient, 'dm', { thread_id: tid, from: me, preview: String(body).slice(0, 80) });
@@ -10322,7 +10372,7 @@ app.post('/api/admin/chat/rooms', requireAuth, async (req, res) => {
     const [user] = await sql`SELECT role FROM users WHERE id = ${me}`;
     if (!user || !['superadmin','founder','admin'].includes(user.role)) return res.status(403).json({ error: 'Admin only' });
     const { slug, name, description, course_id, member_ids } = req.body || {};
-    if (!slug || !name) return res.status(400).json({ error: 'slug and name required' });
+    if (!slug || !name || String(slug).startsWith('direct-conversation-')) return res.status(400).json({ error: 'valid slug and name required' });
     const [room] = await sql`INSERT INTO chat_rooms (slug, name, description, course_id, created_by)
                               VALUES (${slug}, ${name}, ${description||''}, ${course_id ? parseInt(course_id,10) : null}, ${me}) RETURNING *`;
     // Add creator as admin member
@@ -10341,6 +10391,8 @@ app.get('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const rid = parseInt(req.params.id, 10);
+    const [directRoom]=await sql`SELECT dm_thread_id FROM chat_rooms WHERE id=${rid}`;
+    if(directRoom?.dm_thread_id)return res.status(404).json({error:'Room not found'});
     // Access check
     const [member] = await sql`SELECT 1 FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
     const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
@@ -10357,6 +10409,8 @@ app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const rid = parseInt(req.params.id, 10);
+    const [directRoom]=await sql`SELECT dm_thread_id FROM chat_rooms WHERE id=${rid}`;
+    if(directRoom?.dm_thread_id)return res.status(404).json({error:'Room not found'});
     const { body, is_announcement } = req.body || {};
     if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
     const [member] = await sql`SELECT role FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
@@ -10487,6 +10541,8 @@ app.post('/api/chat/rooms/:id/recordings', requireAuth, uploadRecording.single('
   try {
     const me = req.user.sub || req.user.id;
     const rid = parseInt(req.params.id, 10);
+    const [directRoom]=await sql`SELECT dm_thread_id FROM chat_rooms WHERE id=${rid}`;
+    if(directRoom?.dm_thread_id)return res.status(404).json({error:'Room not found'});
     if (!req.file || !req.file.buffer) return res.status(400).json({ error: 'file part required' });
     const [room] = await sql`SELECT created_by FROM chat_rooms WHERE id = ${rid}`;
     if (!room) return res.status(404).json({ error: 'Room not found' });
@@ -10520,6 +10576,8 @@ app.get('/api/chat/rooms/:id/recordings', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const rid = parseInt(req.params.id, 10);
+    const [directRoom]=await sql`SELECT dm_thread_id FROM chat_rooms WHERE id=${rid}`;
+    if(directRoom?.dm_thread_id)return res.status(404).json({error:'Room not found'});
     const [member] = await sql`SELECT 1 FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
     const [caller] = await sql`SELECT role FROM users WHERE id = ${me}`;
     const isAdmin = caller && ['superadmin','founder','admin'].includes(caller.role);
@@ -10534,6 +10592,8 @@ app.patch('/api/chat/rooms/:id', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const rid = parseInt(req.params.id, 10);
+    const [directRoom]=await sql`SELECT dm_thread_id FROM chat_rooms WHERE id=${rid}`;
+    if(directRoom?.dm_thread_id)return res.status(404).json({error:'Room not found'});
     const [room] = await sql`SELECT * FROM chat_rooms WHERE id = ${rid}`;
     if (!room) return res.status(404).json({ error: 'Not found' });
     const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
@@ -10659,7 +10719,8 @@ app.get('/api/admin/storage-status', requireAuth, async (req, res) => {
     const callerId = req.user.sub || req.user.id;
     const [caller] = await sql`SELECT role FROM users WHERE id = ${callerId}`;
     if (!caller || !['superadmin','founder','admin'].includes(caller.role)) return res.status(403).json({ error: 'Admin only' });
-    res.json(getStorageStatus());
+    res.set('Cache-Control','no-store');
+    res.json(await getStorageStatus());
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -14538,8 +14599,23 @@ app.post('/api/monad/deliver-tahir-handoff', requireAuth, async (req, res) => {
 const domMonadV07=require('./services/dom-monad-v07');
 domMonadV07.install(app,{requireAuth,sql,monadSvc});
 
-app.listen(PORT, () => {
+async function applyDomReviewSchema() {
+  await sql`ALTER TABLE IF EXISTS rehab_applications ADD COLUMN IF NOT EXISTS contact_name TEXT, ADD COLUMN IF NOT EXISTS contact_email TEXT`;
+  await sql`ALTER TABLE IF EXISTS chat_rooms ADD COLUMN IF NOT EXISTS dm_thread_id INTEGER REFERENCES dm_threads(id) ON DELETE CASCADE`;
+  if (await sql`SELECT to_regclass('chat_rooms') AS available`.then(rows=>rows[0]?.available)) {
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_rooms_dm_thread ON chat_rooms(dm_thread_id)`;
+  }
+}
+function startServer() {
+  app.listen(PORT, onServerListening);
+}
+function onServerListening() {
   console.log(`NeuroAttention API running on port ${PORT}`);
+  if (r2Configured || r2MedicalConfigured) {
+    getStorageStatus().then(({ buckets })=>{
+      console.info('[media storage checks]', JSON.stringify(buckets));
+    }).catch(()=>console.warn('[media storage checks] unavailable'));
+  }
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
   try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
   try { wearablesSvc.startCron(); } catch (e) { console.warn('[wearables] cron start failed:', e.message); }
@@ -14670,4 +14746,8 @@ app.listen(PORT, () => {
       }
     })();
   }, 2500);
+}
+applyDomReviewSchema().then(startServer).catch(error=>{
+  console.error('[dom review schema]',error.code||'migration failed');
+  process.exit(1);
 });

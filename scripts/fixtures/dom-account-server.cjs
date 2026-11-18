@@ -51,10 +51,17 @@ async function ddl(name) {
  for (const file of ['001_point_ab.sql','003_user_roles.sql','004_password_resets.sql','007_nm_nodes_links.sql','012_avatar_url.sql','014_rehab_applications.sql','070_monad_human_id.sql','071_monad_access.sql','074_monad_chats.sql','078_partner_applications.sql']) {
    try {await db.exec(fs.readFileSync(path.join(migrations,file),'utf8'));} catch(e){console.warn('fixture migration',file,e.message)}
  }
- for (const name of ['courses','course_blocks','journey_events','journey_links','teams','chat_rooms','chat_room_members','chat_room_messages']) await ddl(name);
+ for (const name of ['courses','course_blocks','journey_events','journey_links','teams','dm_threads','dm_messages','chat_rooms','chat_room_members','chat_room_messages']) await ddl(name);
+ await db.exec('ALTER TABLE rehab_applications ADD COLUMN contact_name TEXT, ADD COLUMN contact_email TEXT');
+ await db.exec('ALTER TABLE chat_rooms ADD COLUMN dm_thread_id INTEGER UNIQUE REFERENCES dm_threads(id) ON DELETE CASCADE');
  await db.exec(fs.readFileSync(path.join(migrations,'022_family_dependents.sql'),'utf8'));
  require(path.join(root,'api/server.js'));
- const response=await fetch('http://127.0.0.1:'+config.PORT+'/api/run-migrations',{method:'POST'});
+ const base='http://127.0.0.1:'+config.PORT;
+ for(let attempt=0;attempt<50;attempt++){
+   if(await fetch(base+'/health').then(r=>r.ok).catch(()=>false))break;
+   await new Promise(resolve=>setTimeout(resolve,100));
+ }
+ const response=await fetch(base+'/api/run-migrations',{method:'POST'});
  console.log('FIXTURE_SCHEMA',response.status, (await response.text()).slice(0,250));
  const bcrypt=require(path.join(root,'api/node_modules/bcryptjs'));
  const password=await bcrypt.hash('local-scenario-password',10);

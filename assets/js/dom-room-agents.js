@@ -41,7 +41,9 @@
     conflict:['Версия изменилась. Откройте её снова перед публикацией.','This version changed. Reopen it before publishing.','La versión cambió. Vuelve a abrirla antes de publicar.'],
     send_failed:['Не удалось отправить сообщение. Текст остался в поле ввода.','The message could not be sent. Your draft is still in the composer.','No se pudo enviar el mensaje. Tu borrador sigue en el campo de texto.'],
     empty:['Подходящих участников нет','No matching participants','No hay participantes que coincidan'],
-    activity:['Фактическая активность','Recorded activity','Actividad registrada'],
+    activity:['Активность и задачи','Activity and tasks','Actividad y tareas'],
+    active_tasks:['В работе','In progress','En curso'],
+    none_recorded:['За этот период нет зарегистрированных задач','No tasks recorded in this time range','No hay tareas registradas en este periodo'],
     hours:['24 часа','24 hours','24 horas'],
     days:['7 дней','7 days','7 días'],
     awaiting:['Загружаем…','Loading…','Cargando…'],
@@ -55,6 +57,8 @@
     instructions:['Инструкции агента','Agent instructions','Instrucciones del agente'],
     public_role:['Публичная роль в DOMunity (необязательно)','Public role in DOMunity (optional)','Rol público en DOMunity (opcional)'],
     canon_content:['Содержание канона','Canon content','Contenido del canon'],
+    canon_sources:['Материалы канона владельца','Owner canon materials','Materiales del canon del propietario'],
+    canon_scope:['Здесь видны доступные материалы владельца. Журнал не подтверждает, какие из них загрузил этот агент.','These are available owner materials. The activity log does not establish which materials the agent loaded.','Estos son materiales disponibles del propietario. El registro no indica cuáles cargó el agente.'],
     canon_invalid:['Содержание должно быть объектом JSON.','Content must be a JSON object.','El contenido debe ser un objeto JSON.'],
     pending_onboarding:['Зарегистрирован · ожидает настройки','Registered · awaiting onboarding','Registrado · en espera de configuración'],
     training:['Начать обучение','Start training','Iniciar formación'],
@@ -85,6 +89,7 @@
   }
   const failure = err => tr(err?.status===409?'conflict':err?.status===403?'denied':'error');
   let room = null;
+  let roomHead = null;
   let roomPanel = null;
   let indicator = null;
   let inspector = null;
@@ -111,7 +116,7 @@
     roomPanel?.remove();
     const p=panel(title);
     roomPanel=p.aside;
-    document.getElementById('dom-group-head').after(p.aside);
+    roomHead?.after(p.aside);
     p.aside.focus();
     return p;
   }
@@ -181,7 +186,7 @@
     const search=element('input');
     search.placeholder=tr('search');search.type='search';search.setAttribute('aria-label',tr('search'));
     const type=element('select');type.setAttribute('aria-label',tr('invite'));
-    for(const key of ['human','persona','agent','contour']){
+    for(const key of (members?.direct?['persona','agent','contour']:['human','persona','agent','contour'])){
       const option=element('option',tr(key));option.value=key;type.append(option);
     }
     type.value='persona';
@@ -195,7 +200,7 @@
     const refresh=async()=>{
       const request=++query;
       const term=search.value.trim().toLowerCase();
-      mode.hidden=type.value==='human';
+      mode.hidden=members?.direct||type.value==='human';
       try {
         const entries=type.value==='human'
           ? (term.length>=2 ? (await api('/api/users/search?q='+encodeURIComponent(term))).users || [] : [])
@@ -234,7 +239,7 @@
     const {aside,body}=panel('description');
     inspector=aside;
     aside.classList.add('dom-agent-inspector');
-    if(room && !mount && document.getElementById('dom-group-head')) document.getElementById('dom-group-head').after(aside);
+    if(room && !mount && roomHead?.isConnected) roomHead.after(aside);
     else (mount||document.getElementById('tab-monad')||document.body).append(aside);
     const matching=members?.agents?.find(a=>a.agent_id===id) || directory.find(a=>a.agent_id===id);
     const description=element('div');
@@ -244,9 +249,11 @@
     body.append(tabs,content);
     content.append(description);
     tabs.append(button('description',()=>content.replaceChildren(description)));
+    const loading=element('p',tr('awaiting'));description.append(loading);
     try {
       const details=await api('/api/dom-monad/admin/agent/'+encodeURIComponent(id)+'/harness');
       if(!aside.isConnected)return;
+      loading.remove();
       description.append(element('p',[details.agent.name,details.agent.status,details.agent.owner,...(details.agent.domains||[])].filter(Boolean).join(' · ')));
       if(details.next_onboarding_status){
         const next=details.next_onboarding_status;
@@ -261,7 +268,7 @@
       }
       tabs.append(button('scope',()=>renderHarness(content,id,details)),button('activity',()=>renderActivity(content,id)));
     }catch(err){
-      if(err.status!==403)description.append(element('p',failure(err)));
+      loading.textContent=failure(err);
     }
     aside.focus();
   }
@@ -274,6 +281,7 @@
     const output=element('div');
     const endpoint='/api/dom-monad/admin/agent/'+encodeURIComponent(id);
     const sources=element('ul');
+    host.append(element('h4',tr('instructions')));
     for(const [layer,source] of Object.entries(details.sources||{}))sources.append(element('li',layer+' · '+source));
     host.append(prompt,status,output,sources);
     function preview() {
@@ -288,7 +296,7 @@
       }));
     }
     if(details.can_publish)host.append(button('preview',preview));
-    host.append(button('versions',async()=>{
+    if(details.can_publish)host.append(button('versions',async()=>{
       try{
         const data=await api(endpoint+'/versions');
         output.replaceChildren();
@@ -301,6 +309,7 @@
         }));
       }catch(err){status.textContent=failure(err);}
     }));
+    if(details.canon?.length)host.append(element('h4',tr('canon_sources')),element('p',tr('canon_scope')));
     for(const item of details.canon||[]) host.append(button(item.title,async()=>{
       try {
         await showCanon(output,item.artifact_id);
@@ -351,7 +360,13 @@
           element('p',tr('interactions')+' · '+(data.interactions||[]).join(', '))
         );
         const list=element('ul');
-        for(const task of data.handoffs)list.append(element('li',[tr(task.status),task.completed_at&&new Date(task.completed_at).toLocaleString()].filter(Boolean).join(' · ')));
+        const ongoing=data.handoffs.filter(task=>['accepted','in_progress'].includes(task.status));
+        view.append(element('p',tr('active_tasks')+' · '+(data.handoffs_available?ongoing.length:tr('unavailable'))));
+        if(!data.handoffs.length&&data.handoffs_available)view.append(element('p',tr('none_recorded')));
+        for(const task of data.handoffs)list.append(element('li',[
+          tr(task.status),task.description||task.domain,task.from_agent+' → '+task.to_agent,
+          new Date(task.completed_at||task.created_at).toLocaleString()
+        ].filter(Boolean).join(' · ')));
         for(const action of (data.actions||[]).slice(0,30))list.append(element('li',[
           action.action_type,action.agent_id!==id&&action.agent_id,
           action.success===false&&tr('failed'),action.created_at&&new Date(action.created_at).toLocaleString()
@@ -396,7 +411,7 @@
   const refreshStatus=async()=>{
     const id=room;
     const generation=updateToken;
-    if(!id||!indicator?.isConnected||document.hidden||window.dom?.sub!=='groups')return;
+    if(!id||!indicator?.isConnected||document.hidden||!['groups','dms'].includes(window.dom?.sub))return;
     try{
       const data=await api(roomPath(id)+'/agent-events');
       if(generation!==updateToken)return;
@@ -406,12 +421,18 @@
   };
   setInterval(refreshStatus,10000);
   window.DOMRoomAgents={
-    open(id, head){
-      room=id;members=null;updateToken++;roomPanel?.remove();inspector?.remove();
+    async open(id, head, invite=false){
+      room=id;roomHead=head;members=null;updateToken++;roomPanel?.remove();inspector?.remove();
       head.append(button('participants',showParticipants));
+      async function openInvite(){
+        await showParticipants();
+        if(room===id&&members?.can_manage)await showInvite();
+      }
+      head.append(button('invite',openInvite));
       indicator=element('small');indicator.className='dom-agent-notice';indicator.setAttribute('role','status');
       head.append(indicator);
       refreshStatus();
+      if(invite)await openInvite();
     },
     showAgent,mountProvision,notice
   };
