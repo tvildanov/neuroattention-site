@@ -1,0 +1,22 @@
+/* High-contrast NeuroMap / Path drill-down panels; scoped to account only. */
+body.dom-account-matrix .myc-root .evo-mini-nm,
+body.dom-account-matrix .myc-root .evo-detail-card {
+  background:#07111b!important; color:#effaff!important;
+  opacity:1!important;filter:none!important;text-shadow:none!important;
+  border:1px solid rgba(132,226,232,.53)!important;
+  box-shadow:0 16px 50px rgba(0,0,0,.73)!important;
+}
+body.dom-account-matrix .myc-root .evo-mini-title,
+body.dom-account-matrix .myc-root .evo-card-head,
+body.dom-account-matrix .myc-root .evo-card-head b,
+body.dom-account-matrix .myc-root .evo-card-v,
+body.dom-account-matrix .myc-root .evo-card-note{color:#f1fbff!important;opacity:1!important}
+body.dom-account-matrix .myc-root .evo-card-row>span:first-child,
+body.dom-account-matrix .myc-root .evo-mini-note,
+body.dom-account-matrix .myc-root .evo-card-rel-title{color:#bbd4df!important;opacity:1!important}
+body.dom-account-matrix .myc-root .evo-rel{background:rgba(75,137,160,.2)!important;border-color:rgba(140,224,229,.4)!important;color:#edfaff!important;font-size:12px!important;padding:5px 9px!important}
+body.dom-account-matrix .myc-root .evo-mini-label{fill:#efffff!important;stroke:#06141c!important;stroke-width:3px!important;font-size:12px!important}
+body.dom-account-matrix .myc-root .evo-mini-typecap{fill:#d1e9ef!important;stroke:#06141c!important;stroke-width:2.5px!important;font-size:9px!important}
+body.dom-account-matrix .myc-root .evo-mini-type{fill:#05131b!important}
+body.dom-account-matrix .myc-root .evo-mini-nm button:focus-visible,
+body.dom-account-matrix .myc-root .evo-detail-card button:focus-visible{outline:2px solid #8ef1fc;outline-offset:2px}
