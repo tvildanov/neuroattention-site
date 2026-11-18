@@ -6,6 +6,15 @@
 (function () {
   'use strict';
 
+  // Polite, continuous progress cue. Reduced-motion visitors receive a static label.
+  (function(){
+    if(typeof document.createElement!=='function'||!document.head)return;
+    if(document.getElementById('monad-wait-ux-css'))return;
+    var style=document.createElement('style');style.id='monad-wait-ux-css';
+    style.textContent='.monad-wait-copy{font-size:.95rem;line-height:1.55;white-space:normal}.monad-wait-dots{display:inline-flex;margin-left:.4rem;gap:2px}.monad-wait-dots i{font-style:normal;font-size:1.4em;opacity:.2;animation:monadWaitDots 1.3s ease-in-out infinite}.monad-wait-dots i:nth-child(2){animation-delay:.2s}.monad-wait-dots i:nth-child(3){animation-delay:.4s}@keyframes monadWaitDots{0%,70%,100%{opacity:.2;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}@media(prefers-reduced-motion:reduce){.monad-wait-dots i{animation:none;opacity:.65}}';
+    document.head.appendChild(style);
+  })();
+
   var STATE = {
     loaded: false,
     sending: false,
@@ -21,6 +30,8 @@
     pendingAttachments: [],
     pollTimer: null,
     awaitingPersona: false,
+    waitStartedAt: 0,
+    pollFailure: null,
     showTech: false,
     vertLayer: null,
     vertCell: null,
@@ -490,6 +501,34 @@
     return bits.join(' · ');
   }
 
+  function waitNotice() {
+    var lang = String(document.documentElement.lang || 'ru').slice(0,2);
+    function tr(ru,en,es){return ({ru:ru,en:en,es:es})[lang] || en;}
+    if (STATE.personaHealth && STATE.personaHealth.availability_code === 'MODEL_QUOTA_EXCEEDED')
+      return tr('Монада получила сообщение, но сейчас не может ответить: закончился лимит модели. Сообщение сохранено.','Monad received your message, but the model has reached its usage limit. Your message is saved.','Monad recibió tu mensaje, pero se agotó el límite del modelo. El mensaje está guardado.');
+    if (STATE.pollFailure === 'not_found')
+      return tr('Не удаётся найти эту беседу на сервере. Обновите список чатов.','This chat could not be found on the server. Refresh the chat list.','No se encuentra esta conversación. Actualiza la lista.');
+    if (STATE.pollFailure === 'network')
+      return tr('Не удаётся проверить ответ из-за ошибки связи. Сообщение сохранено; проверьте подключение.','Cannot check the reply because of a connection problem. Your message is saved.','No se puede comprobar la respuesta por un problema de conexión. Tu mensaje está guardado.');
+    var elapsed=Date.now()-(STATE.waitStartedAt||Date.now());
+    if(elapsed>=90000)
+      return tr('Ответ задерживается. Монада получила сообщение, но мы пока не можем подтвердить, что модель его обрабатывает.','Reply delayed. Monad received the message, but we cannot confirm that the model is processing it.','Respuesta demorada. Monad recibió el mensaje, pero no podemos confirmar que el modelo lo esté procesando.');
+    return tr('Сообщение отправлено. Проверяем ответ Монады','Message sent. Checking for a reply from Monad','Mensaje enviado. Esperando la respuesta de Monad');
+  }
+  function safeRichText(m){
+    var txt=esc(displayText(m));
+    if(m.role!=='monad')return txt;
+    // Interpret common Markdown without allowing untrusted HTML or script injection.
+    return txt.replace(/^#{1,4} +(.+)$/gm,'<strong>$1</strong>')
+      .replace(/\*\*([^\n*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/(^|\n)[-*] +/g,'$1• ')
+      .replace(/\n/g,'<br>');
+  }
+  function typingHtml(){
+    return '<span class="monad-wait-copy" role="status" aria-live="polite">'+esc(waitNotice())+
+      '</span><span class="monad-wait-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>';
+  }
+
   function renderMessages() {
     var box = document.getElementById('monad-chat-log');
     if (!box) return;
@@ -544,7 +583,7 @@
           '<div class="monad-msg-meta">' + esc(details) + '</div></details>')
         : '';
       return '<div class="monad-msg monad-msg-' + esc(m.role || 'monad') + '" data-msg-i="' + row.idx + '">' +
-        '<div class="monad-msg-body">' + esc(displayText(m)) + '</div>' + attHtml + techToggle +
+        '<div class="monad-msg-body">' + ((m.meta && m.meta.typing) ? typingHtml() : safeRichText(m)) + '</div>' + attHtml + techToggle +
         '</div>';
     }).join('');
 
@@ -640,6 +679,8 @@
     // Last bubble is from the human — Persona reply may still be in flight.
     if (last && last.role === 'you') {
       STATE.awaitingPersona = true;
+      STATE.waitStartedAt = last.created_at ? new Date(last.created_at).getTime() : Date.now();
+      STATE.pollFailure = null;
       STATE.messages = STATE.messages.concat([{ role: 'monad', text: '…', meta: { typing: true } }]);
       renderMessages();
       renderPinned();
@@ -717,6 +758,8 @@
         await createChat();
       }
       sentChatId = STATE.activeChatId;
+      STATE.waitStartedAt = Date.now();
+      STATE.pollFailure = null;
       var chat = STATE.chats.filter(function (c) { return c.id === sentChatId; })[0];
       var pins = (chat && chat.pinned_context) || [];
       input.value = '';
@@ -730,6 +773,7 @@
           chat_id: sentChatId,
           attachments: STATE.pendingAttachments,
           pinned_context: pins,
+          reply_locale: (typeof window.getLang === 'function' ? window.getLang() : (document.documentElement.lang || 'ru')).slice(0,2),
           title: (chat && chat.title && chat.title !== 'Новый чат') ? chat.title : text.slice(0, 80),
         }),
       });
@@ -782,6 +826,7 @@
         method: 'POST', body: JSON.stringify({}),
       });
       if (STATE.activeChatId !== polledChatId) return;
+      STATE.pollFailure = null;
       if (data && data.messages) {
         var before = STATE.messages.length;
         var hadTyping = STATE.messages.some(function (m) { return m.meta && m.meta.typing; });
@@ -805,11 +850,20 @@
       }
       if (STATE.awaitingPersona && Date.now() - STATE.healthCheckedAt > 60000) {
         STATE.healthCheckedAt = Date.now();
-        try { STATE.personaHealth = await api('/api/monad/persona/health'); renderStatusBar(); } catch (e) { /* keep last known status */ }
+        try { STATE.personaHealth = await api('/api/monad/persona/health'); renderStatusBar(); renderMessages(); } catch (e) { /* keep last known status */ }
       }
-    } catch (e) { /* preserve this chat on transient poll errors */ }
+    } catch (e) {
+      // Keep the saved conversation; never disguise an API error as model thinking.
+      if (STATE.activeChatId === polledChatId) {
+        STATE.pollFailure = e && e.status === 404 ? 'not_found' : 'network';
+        if (STATE.awaitingPersona) renderMessages();
+      }
+    }
     finally { STATE.polling = false; }
   }
+
+  // Refresh the visible wait duration even when no new message is received.
+  setInterval(function(){if(STATE.awaitingPersona && STATE.sub === 'chat' && !STATE.sending)renderMessages();}, 15000);
 
   function startPoll() {
     stopPoll();
@@ -917,6 +971,10 @@
       if (a.last_seen) html += (a.actions_per_min != null ? ' · ' : '') + esc(a.last_seen);
       if (a.live) html += ' · <span class="monad-ok">live</span>';
       html += '</dd>';
+    }
+    if (a.actions_per_min == null && !a.last_seen) {
+      html += '<dt>' + esc(t('a.monad.confirmed_activity', 'Подтверждённая работа')) + '</dt><dd>' +
+        esc(({ru:'События выполнения не получены. Статус «активен» сам по себе не доказывает, что агент выполняет задачу.',en:'No execution events available. An “active” label alone does not prove the agent is performing work.',es:'No hay eventos de ejecución verificados. «Activo» por sí solo no demuestra que el agente esté trabajando.'})[locLang()] || 'Execution not verified') + '</dd>';
     }
     html += '</dl></div>';
     return html;
@@ -1205,6 +1263,7 @@
       html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span>';
     }
     html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help_short', 'Активность слоёв L1–L7 и агентов. «Живой ритм» обновляет данные каждые ~1.2 с.')) + '</p></div>';
+    html += '<p class="monad-muted" style="margin:0.3rem 0 0;">' + esc(({ru:'«Активен» означает статус системы, а не подтверждённую работу. Для подтверждения нужны последние действия и время выполнения.',en:'“Active” reflects system status, not proof of work. Verify recent actions and execution timestamps.',es:'«Activo» indica estado del sistema, no trabajo confirmado. Verifica acciones y fechas de ejecución.'})[locLang()]||'Active does not imply executing work') + '</p>';
     if (showLiveBtn !== false) {
       html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
         esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';

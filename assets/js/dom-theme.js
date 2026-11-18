@@ -17,3 +17,13 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
 
 /* Isolated cabinet enhancement; original account markup/calculations remain untouched. */
 (()=>{if(!document.body.matches('.dom-account-matrix')||document.querySelector('[data-dom-partner-loader]'))return;const marker=document.createElement('meta');marker.dataset.domPartnerLoader='';document.head.append(marker);const style=document.createElement('link');style.rel='stylesheet';style.href='assets/dom-partner.css?v=dom-v03-1';document.head.append(style);function script(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=reject;document.head.append(s)})}script('assets/js/dom-v03-copy.js?v=dom-v03-1').then(()=>script('assets/js/dom-partner-copy.js?v=dom-v03-1')).then(()=>script('assets/js/dom-partner.js?v=dom-v03-1')).catch(()=>console.warn('Partner interface could not be loaded'));})();
+
+/* DOM internal pages: one shared, locally versioned enhancement. */
+(function(){
+  if(!document.body||!document.body.classList.contains('dom-site')||document.body.classList.contains('home-matrix'))return;
+  var link=document.createElement('link');link.rel='stylesheet';link.href='assets/dom-inner-pages-v06.css?v=1';document.head.appendChild(link);
+  var script=document.createElement('script');script.src='assets/js/dom-inner-pages-v06.js?v=1';script.defer=true;document.head.appendChild(script);
+})();
+
+/* Keep graph text legible in both cabinet themes without changing typology styles. */
+(function(){if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;var el=document.createElement('link');el.rel='stylesheet';el.href='assets/dom-account-graph-readability-v06.css?v=1';document.head.appendChild(el);})();

@@ -175,17 +175,23 @@
     var mode = (this._focus && this._focus.mode) || 'full';
     var keep = mode === 'full' ? null : mode;
     var self = this;
+    // Never retain stale raycast targets from a previous expanded grid.
+    if (this._expandGroup) {
+      var obsolete = new Set();
+      this._expandGroup.traverse(function (obj) { obsolete.add(obj); });
+      this._pickables = this._pickables.filter(function (obj) { return !obsolete.has(obj); });
+      this._groups.vertCells = [];
+      this.scene.remove(this._expandGroup);
+      this._expandGroup = null;
+    }
     Object.keys(this._groups).forEach(function (g) {
-      var hi = !keep || g === keep || (keep === 'vertical' && g === 'vertCells');
+      var hi = !keep || g === keep || ((keep === 'vertical' || keep === 'cell') && (g === 'vertCells' || g === 'vertical'));
       (self._groups[g] || []).forEach(function (mesh) {
         self._setOpacity(mesh, hi ? 1 : 0.12);
       });
     });
-    if (this._expandGroup) {
-      this.scene.remove(this._expandGroup);
-      this._expandGroup = null;
-    }
-    if (mode === 'vertical') this._expandVerticalDetail();
+    // Selecting a cell must not collapse its parent grid.
+    if (mode === 'vertical' || mode === 'cell') this._expandVerticalDetail();
     else if (mode === 'horizontal') this._expandHorizontalDetail();
     this._renderDetailPanel();
   };
@@ -252,8 +258,8 @@
     var html = '';
     if (f.mode === 'full') {
       html = '<p class="monad-muted">' + (lang === 'en'
-        ? 'Click an axis or block to zoom in. Empty space resets. Drag to orbit.'
-        : 'Кликни ось или блок — приблизим на месте. Пустое место — назад. Мышью крути.') + '</p>';
+        ? 'Click an axis or block to zoom in. Drag to orbit. Use Full cross to close an expanded layer.'
+        : 'Кликни ось или блок — приблизим на месте. Вращай без потери раскрытия. Назад — кнопкой «Весь крест».') + '</p>';
     } else {
       html = '<button type="button" class="btn btn-ghost" id="monad-cross-back" style="font-size:12px;margin-bottom:0.4rem;">← ' +
         (lang === 'en' ? 'Full cross' : 'Весь крест') + '</button>';
@@ -317,23 +323,24 @@
     if (!T || !this.renderer) return;
     this._raycaster = new T.Raycaster();
     this._mouse = new T.Vector2();
+    var pointerStart = null;
+    this._onPointerDownBound = function (e) { pointerStart = { x: e.clientX, y: e.clientY }; };
     this._onClickBound = function (e) {
       if (!self._pickables.length) return;
+      // OrbitControls emits a click after pointer drag on some browsers.
+      if (pointerStart && Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y) > 6) return;
       var rect = self.renderer.domElement.getBoundingClientRect();
       self._mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       self._mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       self._raycaster.setFromCamera(self._mouse, self.camera);
       var hits = self._raycaster.intersectObjects(self._pickables, true);
-      if (!hits.length) {
-        // empty space → reset
-        if (self._focus.mode !== 'full') {
-          self._focus = { mode: 'full' };
-          self._resetCamera();
-          self._applyFocus();
-        }
-        return;
-      }
-      var nav = hits[0].object && hits[0].object.userData && hits[0].object.userData.monadNav;
+      // Blank space does not discard a carefully selected layer.
+      if (!hits.length) return;
+      // Large invisible axis hitboxes must not mask the visible small cells.
+      var cellHit = (self._focus.mode === 'vertical' || self._focus.mode === 'cell') &&
+        hits.find(function (h) { return h.object && h.object.userData && h.object.userData.monadNav && h.object.userData.monadNav.focus === 'cell'; });
+      var chosen = cellHit || hits.find(function (h) { return h.object && h.object.userData && h.object.userData.monadNav; });
+      var nav = chosen && chosen.object.userData.monadNav;
       if (!nav) return;
       if (nav.focus === 'cell') {
         self._focus = {
@@ -377,6 +384,7 @@
         if (btn) btn.addEventListener('click', function () { self.opts.onNavigate({ target: 'online' }); });
       }
     };
+    this.renderer.domElement.addEventListener('pointerdown', this._onPointerDownBound);
     this.renderer.domElement.addEventListener('click', this._onClickBound);
     this.renderer.domElement.style.cursor = 'pointer';
     this._renderDetailPanel();
@@ -533,6 +541,7 @@
     if (this._onResizeBound) window.removeEventListener('resize', this._onResizeBound);
     if (this.renderer && this._onClickBound) {
       this.renderer.domElement.removeEventListener('click', this._onClickBound);
+      if (this._onPointerDownBound) this.renderer.domElement.removeEventListener('pointerdown', this._onPointerDownBound);
     }
     if (this.controls) this.controls.dispose();
     if (this.renderer) {
