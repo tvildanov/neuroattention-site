@@ -135,7 +135,9 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
    assert.equal((await get(200,route+'/harness',who)).system_prompt,card.system_prompt);
  }
  await get(403,'/api/dom-monad/admin/agent/persona_nikita/harness',member);
- await get(403,'/api/dom-monad/admin/agent/persona_nikita/harness',admin);
+ const adminHarness=await get(200,'/api/dom-monad/admin/agent/persona_nikita/harness',admin);
+ assert.equal(adminHarness.can_publish,false);
+ await expect(403,'PUT','/api/dom-monad/admin/agent/persona_nikita/prompt',admin.token,{system_prompt:'Cannot be published by an admin'});
  const canonRoute='/api/dom-monad/admin/canon/fixture_canon';
  const publication={expected_version:'1.0.0',content:{text:'Updated canon fixture'}};
  await expect(403,'PUT',canonRoute,member.token,publication);
@@ -165,10 +167,22 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  assert.equal((await get(200,'/api/partner/me',partner)).applications[0].id,application.application.id);
  assert.equal((await get(200,'/api/partner/admin/applications',a)).applications[0].id,application.application.id);
  await get(403,'/api/partner/admin/applications',member);
- const rehab=await post(200,'/api/rehab/apply',member,{city:'Test city',phone:'5550100',age:33,description:'Isolated regression record'});
+ const rehabFields={city:'Test city',phone:'5550100',age:33,description:'Isolated regression record'};
+ await post(400,'/api/rehab/apply',member,rehabFields);
+ const rehab=await post(200,'/api/rehab/apply',null,{...rehabFields,contact_name:'Rehab fixture',contact_email:'rehab@example.invalid'});
  const rehabList=await get(200,'/api/admin/rehab/applications',b);
- assert.equal(rehabList.applications.find(x=>x.id===rehab.id).user_name,member.user.display_name);
+ assert.equal(rehabList.applications.find(x=>x.id===rehab.id).user_name,'Rehab fixture');
+ assert.equal(rehabList.applications.find(x=>x.id===rehab.id).user_email,'rehab@example.invalid');
  await get(403,'/api/admin/rehab/applications',member);
+ const dm=await post(200,'/api/dm/threads',a,{peer_id:member.user.id});
+ const dmPath='/api/dm/threads/'+dm.thread_id;
+ const roomLink=await post(200,dmPath+'/agent-room',a,{});
+ assert.equal((await post(200,dmPath+'/agent-room',member,{})).room_id,roomLink.room_id);
+ await post(404,dmPath+'/agent-room',b,{});
+ await get(404,'/api/chat/rooms/'+roomLink.room_id+'/messages',b);
+ const invited=await post(200,'/api/chat/rooms/'+roomLink.room_id+'/agents',a,{agent_id:'fixture_agent',mode:'active'});
+ assert.equal(invited.mode,'mention');
+ await post(403,'/api/chat/rooms/'+roomLink.room_id+'/members',a,{user_id:b.user.id});
  console.log('ACCOUNT_API_PASS local OTP, submission, own-only queue and authenticated rehab admin');
  const {chat}=await post(200,'/api/monad/chats',a,{title:'QA delay'});
  const message=await post(200,'/api/monad/message',a,{chat_id:chat.id,text:'Fixture delayed answer'});

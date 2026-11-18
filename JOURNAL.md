@@ -2391,3 +2391,11 @@ User requested original drop restoration, a reusable export of the new renderer,
   "next_session": "Use the current release as the baseline for further website work."
 }
 ```
+
+## 2026-11-18 — DOM site corrections from production review
+
+- Shared the homepage brand and standardized blue headings in light mode. Added frosted buttons and pointer motion.
+- Restored NeuroMap force layout, shape legends and local 3D dependencies. Enabled independent expansion of the seven Monad rows.
+- Added agent invitations to direct conversations, read-only agent inspection for administrators and evidence-backed activity.
+- Updated the program catalog, hid unfinished Sketch entry points and added required contact fields and a full, protected application detail view.
+- Added read-only object storage checks. Historical applications retain their original fields, with account contact details used when present.

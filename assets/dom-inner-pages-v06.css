@@ -1,12 +1,5 @@
 /* Scoped DOM inner-page release; keep main homepage design untouched. */
 body.dom-site .navbar .dom-brand-group{display:flex;align-items:center;min-width:0}
-body.dom-site .navbar .nav-logo-dom{display:inline-flex;align-items:center;gap:.75rem;text-decoration:none;max-width:100%}
-body.dom-site .navbar .nav-logo-dom .nav-logo-icon{width:38px;height:38px;object-fit:contain;flex-shrink:0;transition:filter .3s ease,transform .4s ease}
-body.dom-site .navbar .nav-logo-dom .dom-brand-name{font-weight:700;white-space:nowrap;letter-spacing:-.045em}
-body.dom-site .navbar .nav-logo-dom:hover .nav-logo-icon,body.dom-site .navbar .nav-logo-dom:focus-visible .nav-logo-icon{animation:domInnerLogoPulse 2s ease-in-out infinite}
-body.dom-site .navbar .nav-logo-dom:hover .dom-brand-name,body.dom-site .navbar .nav-logo-dom:focus-visible .dom-brand-name{text-shadow:0 0 14px rgba(91,193,242,.45)}
-@keyframes domInnerLogoPulse{0%,100%{filter:drop-shadow(0 0 1px rgba(100,220,255,.4));transform:scale(1)}50%{filter:drop-shadow(0 0 12px rgba(107,228,255,.84));transform:scale(1.07)}}
-@media(prefers-reduced-motion:reduce){body.dom-site .navbar .nav-logo-dom:hover .nav-logo-icon{animation:none;filter:drop-shadow(0 0 5px rgba(111,203,255,.58))}}
 /* DOM — seven entities with Unity as the final wide membership card */
 body[data-dom-page=dom] #dom-unity .dom-v06-entities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:1rem}
 body[data-dom-page=dom] #dom-unity .dom-v06-entities .dom-card{min-width:0;padding:1.5rem;min-height:175px;align-content:start}
@@ -15,30 +8,30 @@ body[data-dom-page=dom] #dom-unity .dom-v06-entities .dom-card p:last-child{line
 @media(max-width:960px){body[data-dom-page=dom] #dom-unity .dom-v06-entities{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:580px){body[data-dom-page=dom] #dom-unity .dom-v06-entities{grid-template-columns:1fr!important}}
 /* Expanded program cards: readable summaries and disclosure; all CTAs retain account route. */
-body[data-dom-page=programs] .dom-v06-programs{padding:3rem 0 4rem}
-body[data-dom-page=programs] .dom-v06-programs-head{max-width:820px;margin:0 auto 2rem;text-align:center}
-body[data-dom-page=programs] .dom-v06-programs-head>p:last-child{font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.65;color:var(--text-secondary)}
-body[data-dom-page=programs] .dom-v06-program-grid{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
-body[data-dom-page=programs] .dom-v06-program-card{min-width:0;border:1px solid var(--line-soft,rgba(164,210,200,.22));border-radius:18px;background:var(--bg-card,rgba(99,132,122,.08));color:var(--text-primary);transition:border-color .2s,box-shadow .2s;overflow:hidden}
-body[data-dom-page=programs] .dom-v06-program-card[open]{border-color:var(--accent-cyan,#a3d2b3);box-shadow:0 0 24px rgba(70,182,191,.12)}
-body[data-dom-page=programs] .dom-v06-program-card summary{display:grid;grid-template-columns:40px minmax(0,1fr) 24px;gap:1rem;align-items:start;list-style:none;cursor:pointer;padding:1.5rem;min-height:132px}
-body[data-dom-page=programs] .dom-v06-program-card summary::-webkit-details-marker{display:none}
-body[data-dom-page=programs] .dom-v06-program-card summary:focus-visible{outline:2px solid var(--accent-cyan,#a3d2b3);outline-offset:-3px}
-body[data-dom-page=programs] .dom-v06-program-card .dom-v06-index{font-size:.8rem;letter-spacing:.08em;color:var(--accent-cyan,#a3d2b3);padding-top:4px}
-body[data-dom-page=programs] .dom-v06-summary strong{display:block;font-size:clamp(1.05rem,1.5vw,1.4rem);line-height:1.25;margin-bottom:.75rem}
-body[data-dom-page=programs] .dom-v06-summary small{display:block;font-size:.95rem;font-weight:400;line-height:1.65;color:var(--text-secondary)}
-body[data-dom-page=programs] .dom-v06-expand{font-size:1.5rem;color:var(--accent-cyan,#a3d2b3)}
-body[data-dom-page=programs] details[open] .dom-v06-expand{transform:rotate(45deg)}
-body[data-dom-page=programs] .dom-v06-detail{padding:.25rem 1.5rem 1.75rem 4.95rem;border-top:1px solid var(--line-soft,rgba(164,210,200,.18))}
-body[data-dom-page=programs] .dom-v06-detail h4{font-size:.88rem;font-weight:700;margin:1rem 0 .35rem}
-body[data-dom-page=programs] .dom-v06-detail p{font-size:.95rem;line-height:1.6;color:var(--text-secondary)}
-body[data-dom-page=programs] .dom-v06-status{font-size:.75rem;color:var(--accent-cyan,#a3d2b3)}
-body[data-dom-page=programs] .dom-v06-duration{font-size:.85rem!important;margin:1rem 0}
-body[data-dom-page=programs] .dom-v06-subscription{max-width:1200px;margin:1rem auto 0;display:flex;align-items:center;justify-content:space-between;gap:2rem;background:var(--bg-card,rgba(99,132,122,.08));padding:2rem;border:1px solid var(--line-soft,rgba(164,210,200,.22));border-radius:18px}
-body[data-dom-page=programs] .dom-v06-subscription h3{font-size:clamp(1.15rem,2vw,1.6rem);line-height:1.25;margin:.4rem 0}
-body[data-dom-page=programs] .dom-v06-subscription p:last-child{color:var(--text-secondary);line-height:1.7;max-width:750px;margin:.65rem 0 0}
-body[data-dom-page=programs] .dom-v06-subscription a{white-space:nowrap}
-@media(max-width:730px){body[data-dom-page=programs] .dom-v06-program-grid{grid-template-columns:1fr}body[data-dom-page=programs] .dom-v06-subscription{flex-direction:column;align-items:stretch}body[data-dom-page=programs] .dom-v06-program-card summary{grid-template-columns:24px minmax(0,1fr) 20px;gap:.65rem;padding:1.1rem}body[data-dom-page=programs] .dom-v06-detail{padding:1.1rem}}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-programs{padding:3rem 0 4rem}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-programs-head{max-width:820px;margin:0 auto 2rem;text-align:center}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-programs-head>p:last-child{font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.65;color:var(--text-secondary)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-grid{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card{min-width:0;border:1px solid var(--line-soft,rgba(164,210,200,.22));border-radius:18px;background:var(--bg-card,rgba(99,132,122,.08));color:var(--text-primary);transition:border-color .2s,box-shadow .2s;overflow:hidden}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card[open]{border-color:var(--accent-cyan,#a3d2b3);box-shadow:0 0 24px rgba(70,182,191,.12)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card summary{display:grid;grid-template-columns:40px minmax(0,1fr) 24px;gap:1rem;align-items:start;list-style:none;cursor:pointer;padding:1.5rem;min-height:132px}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card summary::-webkit-details-marker{display:none}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card summary:focus-visible{outline:2px solid var(--accent-cyan,#a3d2b3);outline-offset:-3px}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card .dom-v06-index{font-size:.8rem;letter-spacing:.08em;color:var(--accent-cyan,#a3d2b3);padding-top:4px}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-summary strong{display:block;font-size:clamp(1.05rem,1.5vw,1.4rem);line-height:1.25;margin-bottom:.75rem}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-summary small{display:block;font-size:.95rem;font-weight:400;line-height:1.65;color:var(--text-secondary)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-expand{font-size:1.5rem;color:var(--accent-cyan,#a3d2b3)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) details[open] .dom-v06-expand{transform:rotate(45deg)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-detail{padding:.25rem 1.5rem 1.75rem 4.95rem;border-top:1px solid var(--line-soft,rgba(164,210,200,.18))}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-detail h4{font-size:.88rem;font-weight:700;margin:1rem 0 .35rem}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-detail p{font-size:.95rem;line-height:1.6;color:var(--text-secondary)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-status{font-size:.75rem;color:var(--accent-cyan,#a3d2b3)}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-duration{font-size:.85rem!important;margin:1rem 0}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-subscription{max-width:1200px;margin:1rem auto 0;display:flex;align-items:center;justify-content:space-between;gap:2rem;background:var(--bg-card,rgba(99,132,122,.08));padding:2rem;border:1px solid var(--line-soft,rgba(164,210,200,.22));border-radius:18px}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-subscription h3{font-size:clamp(1.15rem,2vw,1.6rem);line-height:1.25;margin:.4rem 0}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-subscription p:last-child{color:var(--text-secondary);line-height:1.7;max-width:750px;margin:.65rem 0 0}
+:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-subscription a{white-space:nowrap}
+@media(max-width:730px){:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-grid{grid-template-columns:1fr}:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-subscription{flex-direction:column;align-items:stretch}:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-program-card summary{grid-template-columns:24px minmax(0,1fr) 20px;gap:.65rem;padding:1.1rem}:is(body[data-dom-page=programs],body.dom-account-matrix #dom-cabinet-programs) .dom-v06-detail{padding:1.1rem}}
 /* Lab and platform: complete image on the right, title never hides behind image. */
 body[data-dom-page=xr] section:first-of-type .grid.grid-2,
 body[data-dom-page=lab] section:first-of-type .grid.grid-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:clamp(1rem,3vw,3rem)!important}

@@ -358,6 +358,10 @@ input, textarea { cursor: text !important; }
 
       <form id="rehab-form" onsubmit="submitApplication(event)">
         <div class="form-row">
+          <div class="form-group"><label for="f-contact-name" data-i18n="rehab_app.label_contact_name">Имя и фамилия</label><input type="text" id="f-contact-name" name="contact_name" required maxlength="180" autocomplete="name"></div>
+          <div class="form-group"><label for="f-contact-email" data-i18n="rehab_app.label_contact_email">Электронная почта</label><input type="email" id="f-contact-email" name="contact_email" required maxlength="254" autocomplete="email"></div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label for="f-city" data-i18n="rehab_app.label_city">Город</label>
             <input type="text" id="f-city" name="city" required data-i18n-placeholder="rehab_app.placeholder_city" placeholder="Москва" autocomplete="address-level2" />
@@ -460,12 +464,14 @@ function submitApplication(e) {
   msgSuccess.style.display = 'none';
   msgError.style.display = 'none';
 
+  var contactName = document.getElementById('f-contact-name').value.trim();
+  var contactEmail = document.getElementById('f-contact-email').value.trim();
   var city = document.getElementById('f-city').value.trim();
   var phone = document.getElementById('f-phone').value.trim();
   var age = parseInt(document.getElementById('f-age').value, 10);
   var description = document.getElementById('f-description').value.trim();
 
-  if (!city || !phone || !age || !description) {
+  if (!contactName || !contactEmail || !city || !phone || !age || !description) {
     msgError.textContent = 'Заполните все поля.';
     msgError.style.display = '';
     return;
@@ -489,6 +495,8 @@ function submitApplication(e) {
   } catch(ex) {}
 
   var payload = {
+    contact_name: contactName,
+    contact_email: contactEmail,
     city: city,
     phone: phone,
     age: age,

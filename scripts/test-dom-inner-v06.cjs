@@ -27,12 +27,21 @@ const srv=http.createServer((req,res)=>{
    const heading=page.locator('[data-i18n="d.idea.title"]');
    assert.equal(await heading.evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
    assert.match(await heading.evaluate(e=>getComputedStyle(e).fontFamily),/Libre Baskerville/);
+   assert.equal(await page.locator('.dom-hero h1').evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
+   assert.equal(await page.locator('.navbar .dom-brand-name').evaluate(e=>getComputedStyle(e).fontSize),'21.6px');
+
    await open('programs','.dom-v06-programs');
    assert.equal(await page.locator('#programs-main .dom-v06-program-card').count(),6);
    assert.equal(await page.locator('#programs-main .dom-v06-subscription').count(),1);
    const summary=page.locator('.dom-v06-program-card summary').first();
    await summary.hover();
    assert.equal(await summary.evaluate(e=>e.parentElement.classList.contains('dom-card-lit')),true);
+   const level=page.locator('.level-card summary').first();
+   await level.hover({position:{x:12,y:12}});
+   assert.notEqual(await level.evaluate(e=>e.parentElement.style.getPropertyValue('--dom-pointer-x')),'0px');
+   await level.click();
+   assert.equal(await level.evaluate(e=>e.parentElement.open),true);
+
    await page.emulateMedia({reducedMotion:'reduce'});
    await summary.hover();
    assert.equal(await summary.evaluate(e=>e.parentElement.classList.contains('dom-card-lit')),false);

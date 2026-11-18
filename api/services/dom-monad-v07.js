@@ -41,17 +41,17 @@ async function identity(req,sql,monad){
   const found=await sql`SELECT id,email,role,monad_human_id FROM users WHERE id=${id} LIMIT 1`;
   const u=found[0];if(!u)return null;
   const human=u.monad_human_id || null;
-  return {...u,human,founder:['superadmin','founder'].includes(u.role)&&['nikita','takhir'].includes(human)};
+  return {...u,human,admin:['admin','superadmin','founder'].includes(u.role),founder:['superadmin','founder'].includes(u.role)&&['nikita','takhir'].includes(human)};
 }
 async function roomGate(req,sql,monad){
   const u=await identity(req,sql,monad),roomId=Number(req.params.id);
   if(!u||!Number.isSafeInteger(roomId)||roomId<1)return {status:400};
-  const rooms=await sql`SELECT id,created_by FROM chat_rooms WHERE id=${roomId} LIMIT 1`;
+  const rooms=await sql`SELECT id,created_by,dm_thread_id FROM chat_rooms WHERE id=${roomId} LIMIT 1`;
   if(!rooms.length)return {status:404};
   const membership=await sql`SELECT role FROM chat_room_members WHERE room_id=${roomId} AND user_id=${u.id} LIMIT 1`;
   const role=membership[0]?.role||null;
   if(!role)return {status:403};
-  return {status:200,u,roomId,canManage:role==='admin'||String(rooms[0].created_by)===String(u.id)};
+  return {status:200,u,roomId,direct:!!rooms[0].dm_thread_id,canManage:role==='admin'||String(rooms[0].created_by)===String(u.id)};
 }
 async function recordRoomMessage({sql,roomId,messageId,body}){
   await ensureSchema(sql);
@@ -95,6 +95,11 @@ async function latestHarness(sql,roomId){
 function install(app,{requireAuth,sql,monadSvc}){
   const go=fn=>(req,res)=>Promise.resolve(fn(req,res)).catch(e=>{console.error('[dom-monad-v07]',e?.message);if(!res.headersSent)res.status(502).json({ok:false,error:explain(e),code:'MONAD_REQUEST_FAILED'});});
   const found=async(req,res)=>{const u=await identity(req,sql,monadSvc);if(!u?.founder){res.status(403).json({ok:false,error:'Только суперадминистраторы Монады могут редактировать инструкции агентов.'});return null;}return u;};
+  const admin=async(req,res)=>{
+    const u=await identity(req,sql,monadSvc);
+    if(!u?.admin){res.status(403).json({ok:false,error:'admin_required'});return null;}
+    return u;
+  };
   const gate=async(req,res)=>{const g=await roomGate(req,sql,monadSvc);if(g.status!==200){res.status(g.status).json({ok:false,error:'Беседа не найдена или доступ запрещён.'});return null;}return g;};
   const ready=async()=>{await ensureSchema(sql);if(!monadSvc.configured())throw Error('Monad connection not configured');};
   app.get('/api/dom-monad/agents',requireAuth,go(async(req,res)=>{
@@ -104,22 +109,22 @@ function install(app,{requireAuth,sql,monadSvc}){
     res.json({ok:true,can_edit_harness:u.founder,can_register:u.founder&&!!process.env.DOM_ACCOUNT_ADMIN_KEY,agents:agents.filter(a=>canInvite(a,u))});
   }));
   app.get('/api/dom-monad/admin/agent/:agentId/harness',requireAuth,go(async(req,res)=>{
-    const u=await found(req,res);if(!u)return;await ready();
+    const u=await admin(req,res);if(!u)return;await ready();
     const id=req.params.agentId;if(!validId(id))return res.status(400).json({error:'Неверный идентификатор агента.'});
     const agents=arr(await monadSvc.mcpCall('list_agents',{}));
     const agent=agents.find(a=>a.agent_id===id);if(!agent)return res.status(404).json({error:'Агент не найден.'});
     const prompt=await readPrompt(monadSvc,id);
-    const canon=arr(await monadSvc.mcpCall('list_canon',{source_human_id:agent.owner||u.human,include_drafts:true,limit:100}));
+    const canon=arr(await monadSvc.mcpCall('list_canon',{source_human_id:agent.owner||u.human||undefined,include_drafts:u.founder,limit:100}));
     res.json({ok:true,agent,system_prompt:prompt,etag:crypto.createHash('sha256').update(prompt).digest('hex'),canon,
       sources:{system_prompt:'agents',canon:'canon_artifacts',domains:'agent_domains',
-        memory:'restricted',runtime:'no_agent_snapshot'}, can_publish:agent.owner===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY,
-      next_onboarding_status:agent.owner===u.human&&process.env.DOM_ACCOUNT_ADMIN_KEY ? nextOnboardingStatus[agent.status]||null : null});
+        memory:'restricted',runtime:'no_agent_snapshot'}, can_publish:u.founder&&(agent.owner===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY),
+      next_onboarding_status:u.founder&&agent.owner===u.human&&process.env.DOM_ACCOUNT_ADMIN_KEY ? nextOnboardingStatus[agent.status]||null : null});
   }));
   app.get('/api/dom-monad/admin/canon/:artifactId',requireAuth,go(async(req,res)=>{
-    const u=await found(req,res);if(!u)return;await ready();
+    const u=await admin(req,res);if(!u)return;await ready();
     const canon=await monadSvc.mcpCall('get_canon',{artifact_id:String(req.params.artifactId).slice(0,160)});
     if(!canon?.artifact_id||canon.error)return res.status(404).json({error:'canon_not_found'});
-    res.json({ok:true,canon,can_publish:canon.source_human_id===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY});
+    res.json({ok:true,canon,can_publish:u.founder&&(canon.source_human_id===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY)});
   }));
   app.put('/api/dom-monad/admin/canon/:artifactId',requireAuth,go(async(req,res)=>{
     const u=await found(req,res);if(!u)return;await ready();
@@ -173,7 +178,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     res.json({ok:true,result});
   }));
   app.get('/api/dom-monad/admin/agent/:agentId/versions',requireAuth,go(async(req,res)=>{
-    const u=await found(req,res);if(!u)return;await ready();
+    const u=await admin(req,res);if(!u)return;await ready();
     const rows=await sql`SELECT id,agent_id,changed_by,created_at,new_sha256 FROM dom_agent_prompt_versions
       WHERE agent_id=${req.params.agentId} ORDER BY created_at DESC LIMIT 40`;
     res.json({ok:true,versions:rows});
@@ -208,10 +213,10 @@ function install(app,{requireAuth,sql,monadSvc}){
     res.json({ok:true,restored:true});
   }));
   app.get('/api/dom-monad/admin/agent/:agentId/activity',requireAuth,go(async(req,res)=>{
-    const u=await found(req,res);if(!u)return;await ready();
+    const u=await admin(req,res);if(!u)return;await ready();
     const id=req.params.agentId;if(!validId(id))return res.status(400).json({error:'Неверный идентификатор.'});
     const minutes=req.query.window==='7d'?10080:1440;
-    const actions=arr(await monadSvc.mcpCall('read_action_log',{agent_id:id,since_minutes:minutes,limit:500,include_heartbeat:false,include_target:true}));
+    const log=await monadSvc.mcpCall('read_action_log',{agent_id:id,since_minutes:minutes,limit:500,include_heartbeat:false,include_target:true}).then(value=>({ok:true,items:arr(value)}),()=>({ok:false,items:[]}));
     const headers={'X-API-Key':process.env.MONAD_API_KEY||''};
     const sources=await Promise.allSettled(['to_agent','from_agent'].map(async key=>{
       const url=monadSvc.MONAD_BASE+'/api/handoffs?hours='+(minutes/60)+'&limit=200&'+key+'='+encodeURIComponent(id);
@@ -222,16 +227,17 @@ function install(app,{requireAuth,sql,monadSvc}){
     const handoffs=[...new Map(sources.flatMap(source=>source.status==='fulfilled'?source.value:[])
       .filter(h=>h.to_agent===id||h.from_agent===id).map(h=>[h.handoff_id,{
         handoff_id:h.handoff_id,status:h.status,from_agent:h.from_agent,to_agent:h.to_agent,
-        created_at:h.created_at,completed_at:h.completed_at
+        created_at:h.created_at,completed_at:h.completed_at,
+        description:u.founder&&h.domain!=='domunity'?String(h.task_description||'').slice(0,240):undefined,domain:h.domain
       }])).values()];
-    const safeActions=actions.map(a=>({action_type:a.action_type,created_at:a.created_at,
+    const safeActions=log.items.map(a=>({action_type:a.action_type,created_at:a.created_at,
       success:a.success,duration_ms:a.duration_ms,agent_id:a.agent_id,target:a.target}));
     const times=[...safeActions.map(a=>a.created_at),...handoffs.map(h=>h.completed_at||h.created_at)].filter(Boolean);
     const last=times.reduce((max,t)=>!max||Date.parse(t)>Date.parse(max)?t:max,null);
     const statuses=Object.create(null);
     for(const h of handoffs)statuses[h.status]=(statuses[h.status]||0)+1;
     res.json({ok:true,actions:safeActions,handoffs,statuses,last_event_at:last,
-      handoffs_available:sources.every(source=>source.status==='fulfilled'),
+      actions_available:log.ok,handoffs_available:sources.every(source=>source.status==='fulfilled'),
       interactions:[...new Set(handoffs.map(h=>h.from_agent===id?h.to_agent:h.from_agent).filter(Boolean))]});
   }));
   app.get('/api/chat/rooms/:id/agents',requireAuth,go(async(req,res)=>{
@@ -241,11 +247,11 @@ function install(app,{requireAuth,sql,monadSvc}){
     const people=await sql`SELECT u.id,u.display_name AS name,m.role FROM chat_room_members m
       JOIN users u ON u.id=m.user_id WHERE m.room_id=${g.roomId} ORDER BY m.joined_at`;
     res.json({ok:true,people,agents:members.map(member=>({...registry.get(member.agent_id),...member})),
-      can_manage:g.canManage,can_edit_harness:g.u.founder,harness:await latestHarness(sql,g.roomId)});
+      can_manage:g.canManage,direct:g.direct,can_edit_harness:g.u.founder,harness:await latestHarness(sql,g.roomId)});
   }));
   app.post('/api/chat/rooms/:id/agents',requireAuth,go(async(req,res)=>{
     const g=await gate(req,res);if(!g)return;if(!g.canManage)return res.status(403).json({error:'room_manage_required'});await ready();
-    const id=String(req.body?.agent_id||''),mode=String(req.body?.mode||'mention');
+    const id=String(req.body?.agent_id||''),mode=g.direct?'mention':String(req.body?.mode||'mention');
     if(!validId(id)||!['mention','listen','active'].includes(mode))return res.status(400).json({error:'invalid_participant'});
     const registered=(await directory(monadSvc)).find(a=>a.agent_id===id);
     if(!registered||!canInvite(registered,g.u))return res.status(403).json({error:'agent_unavailable'});
@@ -266,7 +272,7 @@ function install(app,{requireAuth,sql,monadSvc}){
   }));
   app.post('/api/chat/rooms/:id/members',requireAuth,go(async(req,res)=>{
     const g=await gate(req,res);if(!g)return;
-    if(!g.canManage)return res.status(403).json({error:'room_manage_required'});
+    if(!g.canManage||g.direct)return res.status(403).json({error:'room_manage_required'});
     const id=String(req.body?.user_id||'');
     if(!/^[a-f0-9-]{36}$/i.test(id))return res.status(400).json({error:'invalid_user'});
     const [person]=await sql`SELECT id FROM users WHERE id=${id}`;

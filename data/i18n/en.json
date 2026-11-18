@@ -2423,5 +2423,15 @@
   "home.ecosystem.enterprise.wheel": "Enterprise",
   "home.ecosystem.heading_top": "DOM as an Ecosystem",
   "home.ecosystem.heading_bottom": "for the Next Stage of Human Development",
-  "home.attention.diagram": "Five levels: from attention to shared focus"
+  "home.attention.diagram": "Five levels: from attention to shared focus",
+  "rehab_app.label_contact_name": "Full name",
+  "rehab_app.label_contact_email": "Email address",
+  "a.domunity.add_agent": "Add an agent",
+  "a.enroll.existing_access": "Manage access to existing programs",
+  "a.tools.nm_3d_unavailable": "3D could not start. The map is open in 2D.",
+  "a.admin.rehab.open_application": "Open application",
+  "a.admin.rehab.close_application": "Close",
+  "a.admin.rehab.application_title": "Application",
+  "a.admin.rehab.unknown_name": "Name not provided",
+  "a.admin.rehab.unknown_email": "Email not provided"
 }

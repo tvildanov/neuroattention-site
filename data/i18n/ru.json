@@ -2413,5 +2413,15 @@
   "home.ecosystem.enterprise.wheel": "Экономика и проекты",
   "home.ecosystem.heading_top": "DOM как экосистема",
   "home.ecosystem.heading_bottom": "для следующего этапа человеческого развития",
-  "home.attention.diagram": "Пять уровней: от внимания к общему фокусу"
+  "home.attention.diagram": "Пять уровней: от внимания к общему фокусу",
+  "rehab_app.label_contact_name": "Имя и фамилия",
+  "rehab_app.label_contact_email": "Электронная почта",
+  "a.domunity.add_agent": "Добавить агента",
+  "a.enroll.existing_access": "Управление доступом к существующим программам",
+  "a.tools.nm_3d_unavailable": "3D не удалось запустить. Карта открыта в 2D.",
+  "a.admin.rehab.open_application": "Открыть заявку",
+  "a.admin.rehab.close_application": "Закрыть",
+  "a.admin.rehab.application_title": "Заявка",
+  "a.admin.rehab.unknown_name": "Имя не указано",
+  "a.admin.rehab.unknown_email": "Почта не указана"
 }

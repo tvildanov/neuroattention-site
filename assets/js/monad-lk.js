@@ -75,7 +75,7 @@
     if (user.monad_tab === true || user.monad_access === true) return true;
     var sr = String(user.serverRole || '').toLowerCase();
     var dr = String(user.role || '').toLowerCase();
-    return sr === 'superadmin' || sr === 'founder' || dr === 'founder';
+    return ['superadmin','founder','admin'].includes(sr) || ['superadmin','founder','admin'].includes(dr);
   }
   function showTabButton(user) {
     var btn = document.getElementById('tab-btn-monad');
@@ -1166,7 +1166,7 @@
     html += '</div></div>';
     if (h.unseated && h.unseated.length) {
       html += '<p class="monad-muted">' + esc(t('a.monad.unseated', 'В круге без часа')) + ': ' +
-        h.unseated.map(function (u) { return u.display_name || u.human_id; }).join(', ') + '</p>';
+        esc(h.unseated.map(function (u) { return u.display_name || u.human_id; }).join(', ')) + '</p>';
     }
     html += '</div>';
     html += '<aside class="monad-viz-panel monad-horiz-panel">';
