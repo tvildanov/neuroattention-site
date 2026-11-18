@@ -2314,3 +2314,33 @@ User requested original drop restoration, a reusable export of the new renderer,
   "next_session": "Continue PR #197 and tvildanov/monad#119, verify both head SHAs and complete the linked acceptance and release."
 }
 ```
+
+## 2026-11-18 — DOMunity participant styles and release
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-18T07:19:38.370Z",
+  "did": [
+    "Released the checked Monad server branch with its real OpenRouter room transport",
+    "Gave responses from Monad agents a separate violet style inside the shared DOMunity timeline",
+    "Added a browser regression that checks the three participant colors in both themes"
+  ],
+  "changed": [
+    "Room message styling and its browser coverage"
+  ],
+  "files": [
+    "assets/dom-cabinet-v07.css",
+    "assets/js/dom-theme.js",
+    "scripts/test-dom-cabinet-v07.cjs"
+  ],
+  "decisions": [
+    "Use OpenRouter for this test release. The owner's direction removed the live OTP check from the release gates."
+  ],
+  "followups": [
+    "Check exact Railway production revisions and the live DOMunity room after coordinated release"
+  ],
+  "next_session": "Continue the remaining homepage v0.4 work independently of the profile and typography changes."
+}
+```

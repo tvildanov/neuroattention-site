@@ -94,6 +94,27 @@ async function request(route,token,body){
      await page.reload({waitUntil:'domcontentloaded'});
      await page.locator('#client-dashboard').waitFor();
      assert.ok((await request('/api/neuromap/v3/graph?range=all',token)).body.nodes.some(n=>n.label==='Authenticated quick record'));
+     const timestamp=new Date().toISOString();
+     const messages=[
+       {id:1001,sender_id:profile.body.user.id,sender_name:'Me',body:'My message',created_at:timestamp},
+       {id:1002,sender_id:'room-peer',sender_name:'Other person',body:'Their message',created_at:timestamp},
+       {id:1003,sender_id:null,is_agent:true,agent_id:'fixture_agent',sender_name:'Fixture agent',body:'Agent reply',in_reply_to:1002,created_at:timestamp},
+     ];
+     await page.route('**/api/chat/rooms/731/messages',route=>route.fulfill({json:{messages}}));
+     if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+     await page.locator('.dom-cabinet-sidebar a[data-tab="domunity"]').click();
+     await page.locator('#dom-subtab-groups').click();
+     await page.evaluate(()=>window.domGroupOpen(731,'DOMunity bubble test'));
+     const room=page.locator('#dom-group-messages');
+     await room.getByText('Fixture agent · Monad',{exact:true}).waitFor();
+     assert.equal(await room.locator('.dom-group-message-mine').getByText('My message').count(),1);
+     assert.equal(await room.locator('[data-reply-to="1002"]').getByText('Agent reply').count(),1);
+     for(const theme of ['dark','light']){
+       await page.evaluate(value=>{document.documentElement.dataset.domTheme=value},theme);
+       const colors=await room.locator('.dom-group-message').evaluateAll(rows=>rows.map(row=>getComputedStyle(row).backgroundColor));
+       assert.equal(new Set(colors).size,3,`${theme} message backgrounds: ${colors.join(', ')}`);
+     }
+     console.log('DOMUNITY_BROWSER_PASS: three message colors in both themes');
    }
    console.log('ACCOUNT_BROWSER_PASS',lang,width,role);
    } finally {await browser.close();}

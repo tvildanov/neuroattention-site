@@ -71,7 +71,16 @@
 .dom-agent-notice {display:block;padding:.2rem 0}
 .dom-agent-notice:empty,#monad-chat-notice:empty {display:none}
 .dom-group-message {align-self:flex-start;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;padding:.55rem .75rem;border-radius:.75rem;background:var(--bg-card,#122520)}
-.dom-group-message-mine {align-self:flex-end;border:1px solid var(--accent-cyan,#5fd3c1)}
+.dom-group-message-mine {
+  align-self:flex-end;border:1px solid var(--accent-cyan,#5fd3c1);
+  background:color-mix(in srgb,var(--bg-card,#122520) 88%,#2ca28c);
+}
+/* Agent replies are the only room messages linked to their triggering message. */
+.dom-group-message[data-reply-to] {
+  border-inline-start:3px solid #9b76d7;
+  background:color-mix(in srgb,var(--bg-card,#122520) 82%,#9b76d7);
+}
+.dom-group-message[data-reply-to] > button {background:transparent;border-color:#9b76d7}
 .dom-group-message time,.monad-message-progress {display:block;font-size:.82rem}
 .monad-progress-active::before {content:'';display:inline-block;width:.45em;height:.45em;margin-inline-end:.5em;border-radius:50%;background:currentColor;animation:monad-progress-pulse 1.1s ease-in-out infinite alternate}
 @keyframes monad-progress-pulse {from{opacity:.3;transform:scale(.75)}to{opacity:1;transform:scale(1.15)}}
