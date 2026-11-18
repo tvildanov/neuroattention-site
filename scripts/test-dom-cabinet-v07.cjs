@@ -16,13 +16,14 @@ const srv=http.createServer((req,res)=>{let file;try{file=path.resolve(root,'.'+
    await page.goto('http://127.0.0.1:'+srv.address().port+'/account.html',{waitUntil:'domcontentloaded',timeout:30000});
    await page.locator('#dom-quick-record').waitFor({timeout:20000,state:'attached'});
    await page.locator('.dom-cabinet-sidebar').waitFor({timeout:20000,state:'attached'});
-   await page.evaluate(()=>{document.getElementById('client-dashboard').style.setProperty('display','block','important');document.getElementById('tab-overview').style.setProperty('display','block','important')});
+   await page.evaluate(()=>{document.getElementById('client-dashboard').style.setProperty('display','block','important');document.getElementById('tab-overview').style.setProperty('display','block','important');document.getElementById('rpg-dashboard').style.setProperty('display','block','important')});
    assert.equal(await page.locator('.dom-cabinet-sidebar a[data-tab]').count(),8);
    const course=page.locator('.dom-cabinet-path-group a[data-tab="courses"]');
    assert.equal(await course.count(),1,'courses remains in path hierarchy');
    assert.equal(await page.locator('a[data-tab="courses"]').count(),1,'original courses tab is reused, not cloned');
    await page.locator('.dom-cabinet-toggle').click();
    assert.equal(await page.locator('.dom-cabinet-toggle').getAttribute('aria-expanded'),'true');
+   await page.locator('.dom-cabinet-toggle').click();
    const quick=page.locator('#dom-quick-record .dom-quick-trigger');
    await quick.click();assert.equal(await page.locator('#dom-quick-record .dom-quick-option').count(),4);
    const methods=['openNmSurvey','openNmThought','nmOpenSensationOverlay','nmOpenDiaryOverlay'];
@@ -33,7 +34,6 @@ const srv=http.createServer((req,res)=>{let file;try{file=path.resolve(root,'.'+
     const called=await page.evaluate(()=>window.__quickCalled);
     assert.equal(called,methods[i],'quick record must call canonical NeuroMap method');
    }
-   await page.locator('.dom-cabinet-toggle').click();
    assert.equal(await page.locator('.dom-cabinet-toggle').getAttribute('aria-expanded'),'false');
    await ctx.close();
   }
