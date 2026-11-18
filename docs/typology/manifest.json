@@ -1,5 +1,5 @@
 {
-  "version": "0.10",
+  "version": "0.11",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-17",
   "complete_method_archive": false,
@@ -10,12 +10,6 @@
       "git_blob_sha": "658dd1e32052324c308dc7e4cc25776f54f6c2f4",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 14752
-    },
-    {
-      "path": "DECISIONS.md",
-      "git_blob_sha": "22010220b310227df511fe001939cdedd0bc1d72",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 23448
     },
     {
       "path": "INTEGRATION.md",
@@ -58,12 +52,6 @@
       "path": "sources/2026-08-26-handoff-chat-transcription.md",
       "sha256": "ecebb33fdd6c3dbbd20c7d150ca44ceea68926098c9a72a63bc78a257b671388",
       "size_bytes": 52766
-    },
-    {
-      "path": "CONTINUE.md",
-      "git_blob_sha": "28059f987de46457727cb696e58a7c978df6055e",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 24368
     },
     {
       "path": "sources/2026-11-16-guided-development-request.md",
@@ -132,12 +120,6 @@
       "size_bytes": 46077
     },
     {
-      "path": "../../data/typology/baseline-13.draft.json",
-      "git_blob_sha": "e7ad3cb3f9d7519f2d9e2b5b0cb2e8588ce0c3d4",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 98774
-    },
-    {
       "path": "../../assets/js/dom-typology-core.js",
       "git_blob_sha": "ac4890a1736602757b1d8131a4c3310a9fa37dc3",
       "digest_kind": "git-blob-sha1",
@@ -174,10 +156,34 @@
       "size_bytes": 4508
     },
     {
-      "path": "BASELINE-13-REVIEW.md",
-      "git_blob_sha": "4c7118ef5599b07be29c4eee5584e257422c9a81",
+      "path": "STABILITY-CLARIFICATION.md",
+      "git_blob_sha": "e04a3283bb2ddaef1c45ea2b85669df4601c5159",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 37753
+      "size_bytes": 6487
+    },
+    {
+      "path": "../../data/typology/baseline-13.draft.json",
+      "git_blob_sha": "040c6f9c69228edc0b7c564b7b29eb3dff17fc5b",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 100441
+    },
+    {
+      "path": "BASELINE-13-REVIEW.md",
+      "git_blob_sha": "2e73237e2358b5818de223e5eab38852085118e1",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 39531
+    },
+    {
+      "path": "CONTINUE.md",
+      "git_blob_sha": "bc99f599c6214aae6ef216be87e9e4d40c116397",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 26237
+    },
+    {
+      "path": "DECISIONS.md",
+      "git_blob_sha": "10f72fbd90470b3eb9bf686826b8f9a31b7837a8",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 24546
     }
   ],
   "full_handoff_text_included": true,
@@ -186,7 +192,7 @@
   "active_checkpoint": "CONTINUE.md",
   "baseline": {
     "instrument_id": "dom-baseline-13",
-    "version": "draft-2026-11-17.1",
+    "version": "draft-2026-11-17.2",
     "core_questions": 40,
     "context_questions": 1,
     "stat_definitions": 13,
