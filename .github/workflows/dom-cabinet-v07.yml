@@ -1,0 +1,31 @@
+name: DOM cabinet account and NeuroMap tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'assets/js/dom-cabinet-v07.js'
+      - 'assets/dom-cabinet-v07.css'
+      - 'assets/js/dom-theme.js'
+      - 'scripts/test-dom-cabinet-v07.cjs'
+      - '.github/workflows/dom-cabinet-v07.yml'
+permissions:
+  contents: read
+jobs:
+  account-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate syntax
+        run: |
+          node --check assets/js/dom-cabinet-v07.js
+          node --check scripts/test-dom-cabinet-v07.cjs
+      - name: Install Playwright harness
+        run: npm install --prefix /tmp/dom-v07-ui --no-save playwright@1.56.1
+      - name: Browser test desktop and mobile, RU EN ES
+        env:
+          NODE_PATH: /tmp/dom-v07-ui/node_modules
+        run: node scripts/test-dom-cabinet-v07.cjs
