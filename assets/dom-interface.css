@@ -91,6 +91,9 @@ body.dom-account-matrix button:is(.btn-primary,.btn-ghost,.dash-tab,.dom-cabinet
 .dom-rehab-detail dt {font-weight:700;margin-top:.85rem}
 .dom-rehab-detail dd {margin:.3rem 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #nm-step-content h3 {text-transform:none}
+body.dom-account-matrix button:is([data-sketch-copy],[data-i18n="a.sketch.create_copy"],:has(>[data-i18n="a.sketch.create_copy"])) {
+  display:none !important;
+}
 /* The shape is the selection indicator: retain the native checkbox in the tab order. */
 .nm-layer-chk:has(.nm-layer-symbol) {position:relative;gap:.3rem}
 .nm-layer-chk:has(.nm-layer-symbol) > input[data-layer]:not([data-layer="repeat"]) {

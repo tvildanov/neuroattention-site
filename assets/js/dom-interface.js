@@ -2,7 +2,7 @@
   'use strict';
   const motion = matchMedia('(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference)');
   const cards = '.dom-v06-program-card,.level-card,.prog-card,.dom-card,.dom-v06-research-card,.dom-v06-subscription,.card-hover,.hero-route-card,#client-dashboard .dash-card';
-  const buttons = '.btn,body:not(.home-matrix) .nav-logo-dom,body.dom-account-matrix button:not(.nm-chip)';
+  const buttons = '.btn,body:not(.home-matrix) .nav-logo-dom,button:not(:disabled,.nm-chip,.cursor-interaction)';
   let card;
   let button;
   function reset(node) {
@@ -36,7 +36,8 @@
   document.addEventListener('pointermove',event => {
     if (!motion.matches || event.pointerType === 'touch') {clear();return;}
     if (!(event.target instanceof Element)) return;
-    const nextButton = event.target.closest(buttons);
+    const candidate = event.target.closest(buttons);
+    const nextButton = candidate?.matches('.home-matrix .magnetic') ? null : candidate;
     const nextCard = event.target.closest(cards);
     if (nextButton !== button) reset(button);
     if (nextCard !== card) {reset(card);card?.classList.remove('dom-card-lit');}
