@@ -43,7 +43,7 @@
 }
 #client-dashboard .dom-quick-popup :is(button,summary):focus-visible {outline:2px solid var(--cabinet-accent);outline-offset:2px}
 html[data-dom-theme="light"] body.dom-account-matrix #evo-path .evo-stage {
-  background:#fffbf2;
+  background:#fffbf2 !important;
   border-color:#204c8e24;
 }
 html[data-dom-theme="light"] body.dom-account-matrix #evo-path :is(.evo-ov-card,.myc-dual-child) {
