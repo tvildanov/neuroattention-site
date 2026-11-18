@@ -1,0 +1,21 @@
+/* Paint within the existing fixed atmosphere, below the cabinet and its cards. */
+@media screen {
+  html[data-dom-theme="light"] body[data-account-section="client"][data-account-tab="overview"] > .deep-atmosphere::after {
+    --profile-texture-fade: radial-gradient(ellipse 100% 78% at 100% 65%, #000 12%, #000d 42%, transparent 100%);
+    content: "";
+    position: absolute;
+    inset: 0 0 0 42%;
+    background: url("images/dom-profile-neural-light.webp") center right / cover no-repeat;
+    -webkit-mask-image: var(--profile-texture-fade);
+    mask-image: var(--profile-texture-fade);
+    opacity: 0.83;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  html[data-dom-theme="light"] body[data-account-section="client"][data-account-tab="overview"] > .deep-atmosphere::after {
+    inset-inline-start: 32%;
+    background-position: 70% center;
+    opacity: 0.61;
+  }
+}
