@@ -7,6 +7,12 @@
 
 ---
 
+## 2026-11-18 — Restore the light editorial typography
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-18T06:35:25Z","did":["Traced the inconsistent typography to the light theme spanning section headings but not inner-page cards and to legacy per-page text colors","Matched the public sections below the hero to the homepage's heading family and weight and its reading palette","Passed 21 before-and-after Chrome page cases plus the existing DOM, Programs, XR and Lab behavior checks in Actions run 44252350298"],"changed":["Light editorial stylesheet and cache version on seven public pages"],"files":["assets/dom-site-theme.css","dom.html","lab.html","xr.html","programs.html","method.html","custom.html","projects.html"],"decisions":["Use the homepage as the visual reference and apply the correction to public editorial sections below the hero"],"followups":["Confirm the GitHub Pages publication and production asset checksums"],"next_session":"Continue small site refinements from codex/dom-site-refinements. Site and Monad cabinet work are tracked in their separate pull requests."}
+```
+
 ## 2026-11-17 — Light profile texture
 
 ```json
