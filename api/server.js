@@ -13942,6 +13942,8 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
     const chatId = req.body && req.body.chat_id ? String(req.body.chat_id) : null;
     const attachments = Array.isArray(req.body && req.body.attachments) ? req.body.attachments.slice(0, 8) : [];
     const pinned = Array.isArray(req.body && req.body.pinned_context) ? req.body.pinned_context.slice(0, 12) : [];
+    // Channel preference travels with each message; global agent canons stay untouched.
+    const replyLocale = ['ru','en','es'].includes(req.body && req.body.reply_locale) ? req.body.reply_locale : 'ru';
 
     let chat = null;
     if (chatId) {
@@ -13983,6 +13985,8 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
         `site_user: ${caller.email}`,
         `at: ${new Date().toISOString()}`,
         '',
+        'Reply in the human sender\'s language (' + replyLocale + '). Use natural wording. Explain errors and uncertainty plainly; avoid raw technical logs or code unless requested.',
+        '',
         'Their message:',
         text,
       ].filter((line, i, arr) => line !== '' || (i > 0 && arr[i - 1] !== ''));
@@ -14003,6 +14007,7 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
           channel: 'neuroattention_lk',
           requested_to_agent: toAgent || null,
           pinned_context: pinned,
+          reply_locale: replyLocale,
         },
       };
       if (projectSlug) args.project_id = projectSlug;
