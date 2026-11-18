@@ -37,6 +37,7 @@
 <link rel="stylesheet" href="assets/styles.css?v=dom-entry-2" />
 <link rel="stylesheet" href="assets/redesign.css?v=11" />
 <link rel="stylesheet" href="data/css/mycelium.css?v=19" />
+<link rel="stylesheet" href="assets/dom-account-profile.css?v=1" />
 <style>
 /* ── Auth ── */
 .auth-wrap { max-width:440px;margin:9rem auto 4rem;padding:2.5rem;border-radius:22px; }
@@ -3524,6 +3525,7 @@ function toggleAuthMode(mode){
 
 // Show/hide sections
 function showSection(which){
+  document.body.dataset.accountSection = which;
   var loader = document.getElementById('auth-loading');
   if(loader) loader.style.display = 'none';
   document.getElementById('auth-screen').style.display = which==='auth' ? 'block' : 'none';
