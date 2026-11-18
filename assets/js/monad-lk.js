@@ -6,6 +6,14 @@
 (function () {
   'use strict';
 
+  // Polite, continuous progress cue. Reduced-motion visitors receive a static label.
+  (function(){
+    if(document.getElementById('monad-wait-ux-css'))return;
+    var style=document.createElement('style');style.id='monad-wait-ux-css';
+    style.textContent='.monad-wait-copy{font-size:.95rem;line-height:1.55;white-space:normal}.monad-wait-dots{display:inline-flex;margin-left:.4rem;gap:2px}.monad-wait-dots i{font-style:normal;font-size:1.4em;opacity:.2;animation:monadWaitDots 1.3s ease-in-out infinite}.monad-wait-dots i:nth-child(2){animation-delay:.2s}.monad-wait-dots i:nth-child(3){animation-delay:.4s}@keyframes monadWaitDots{0%,70%,100%{opacity:.2;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}@media(prefers-reduced-motion:reduce){.monad-wait-dots i{animation:none;opacity:.65}}';
+    document.head.appendChild(style);
+  })();
+
   var STATE = {
     loaded: false,
     sending: false,
