@@ -7,8 +7,8 @@
  const txt=(ru,en,es)=>({ru,en,es})[lang()]||ru;
  const el=(tag,className,text)=>{const x=document.createElement(tag);if(className)x.className=className;if(text)x.textContent=text;return x};
  const icons={overview:'◉',evolution:'◇',tools:'✧',domunity:'◎',enroll:'⊕',monad:'✦',administration:'⚙',courses:'↳'};
- let sidebarOpen=true,nav=null,trigger=null,menu=null;
- try{sidebarOpen=localStorage.getItem('dom_cabinet_sidebar')!=='closed'}catch(_){}
+ let sidebarOpen=window.innerWidth>=860,nav=null,trigger=null;
+ try{sidebarOpen=(localStorage.getItem('dom_cabinet_sidebar')||(sidebarOpen?'open':'closed'))==='open'}catch(_){}
  function storeSide(){try{localStorage.setItem('dom_cabinet_sidebar',sidebarOpen?'open':'closed')}catch(_){}}
  function syncSide(){
    const dash=q('#client-dashboard');if(!dash)return;
@@ -21,8 +21,9 @@
    const dash=q('#client-dashboard'),original=q('#client-dashboard .dash-nav-primary');
    if(!dash||!original||original.dataset.domCabinetReady)return;
    original.dataset.domCabinetReady='1';
+   original.id=original.id||'dom-cabinet-navigation';
    nav=original;nav.classList.add('dom-cabinet-sidebar');nav.setAttribute('aria-label',txt('Навигация личного кабинета','Account navigation','Navegación de la cuenta'));nav.setAttribute('role','navigation');
-   trigger=el('button','dom-cabinet-toggle');trigger.type='button';trigger.textContent='☰';trigger.addEventListener('click',()=>{sidebarOpen=!sidebarOpen;syncSide()});dash.insertBefore(trigger,nav);
+   trigger=el('button','dom-cabinet-toggle');trigger.type='button';trigger.setAttribute('aria-controls',original.id);trigger.textContent='☰';trigger.addEventListener('click',()=>{sidebarOpen=!sidebarOpen;syncSide()});dash.insertBefore(trigger,nav);
    const brand=el('div','dom-cabinet-side-head',txt('Мой DOM','My DOM','Mi DOM'));
    original.prepend(brand);
    const links=[...original.querySelectorAll('a[data-tab]')];
@@ -42,49 +43,113 @@
    // Program/course progress remains in the original tab panel.
    original.querySelectorAll('a[data-tab]').forEach(a=>a.addEventListener('click',()=>requestAnimationFrame(syncSelection)));
    window.addEventListener('hashchange',syncSelection);
-   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sidebarOpen&&window.innerWidth<860){sidebarOpen=false;syncSide();}});
+   document.addEventListener('keydown',e=>{
+     if(!sidebarOpen||window.innerWidth>=860||!trigger.getClientRects().length||document.querySelector('.modal-overlay.open'))return;
+     if(e.key==='Escape'){sidebarOpen=false;syncSide();trigger.focus();return;}
+     if(e.key!=='Tab')return;
+     const items=[trigger,...nav.querySelectorAll('a,summary')].filter(x=>x.getClientRects().length);
+     const edge=e.shiftKey?items[0]:items[items.length-1];
+     if(document.activeElement===edge||!items.includes(document.activeElement)){
+       e.preventDefault();(e.shiftKey?items[items.length-1]:items[0]).focus();
+     }
+   });
+   window.addEventListener('resize',syncSide);
    syncSide();syncSelection();
  }
  function syncSelection(){
    if(!nav)return;
    const active=q('#client-dashboard>.tab-panel.active')||q('#client-dashboard .tab-panel.active');
    const activeTab=(active?.id||'').replace(/^tab-/,'')||'overview';
-   nav.querySelectorAll('a[data-tab]').forEach(a=>a.classList.toggle('dom-cabinet-current',a.dataset.tab===activeTab));
+   nav.querySelectorAll('a[data-tab]').forEach(a=>{
+     const current=a.dataset.tab===activeTab;
+     a.classList.toggle('dom-cabinet-current',current);
+     if(current)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+   });
    const group=q('.dom-cabinet-path-group',nav);
    if(group&&activeTab==='courses')group.open=true;
  }
  function buildQuick(){
-   const profile=q('#tab-overview');if(!profile||q('#dom-quick-record'))return;
+   const profile=q('#tab-overview'), actions=q('#nm-entry-actions');
+   if(!profile||!actions||q('#dom-quick-record'))return;
    const host=el('div','dom-quick-record');host.id='dom-quick-record';
-   const btn=el('button','dom-quick-trigger',txt('✚  Записать сейчас','✚  Record now','✚  Registrar ahora'));
-   btn.type='button';btn.setAttribute('aria-haspopup','true');btn.setAttribute('aria-expanded','false');host.append(btn);
-   const panel=el('div','dom-quick-popup');panel.hidden=true;panel.setAttribute('role','group');
-   const items=[
-     {label:txt('Эмоция / переживание','Emotion / experience','Emoción'),method:'openNmSurvey'},
-     {label:txt('Мысль','Thought','Pensamiento'),method:'openNmThought'},
-     {label:txt('Ощущение','Sensation','Sensación'),method:'nmOpenSensationOverlay'},
-     {label:txt('Событие','Event','Evento'),method:'nmOpenDiaryOverlay'}
-   ];
-   for(const item of items){const b=el('button','dom-quick-option',item.label);b.type='button';b.addEventListener('click',()=>{
-     panel.hidden=true;btn.setAttribute('aria-expanded','false');
-     // Invoke the canonical NeuroMap functionality; do not fork storage, session,
-     // journey links, events, or validations.
-     if(typeof window[item.method]==='function') {
-       try{window[item.method]();window.dispatchEvent(new CustomEvent('dom-neuromap-quick-open',{detail:{method:item.method}}));}
-       catch(err){notify(txt('Не удалось открыть инструмент. Попробуйте через NeuroMap.','Could not open the tool. Try the NeuroMap section.','No se pudo abrir la herramienta. Prueba NeuroMap.'));}
-     }else notify(txt('Инструмент ещё не загрузился. Попробуйте ещё раз.','Tool is still loading. Try again.','La herramienta todavía se está cargando.'));
-   });panel.append(b);}
-   host.append(panel);
-   btn.addEventListener('click',()=>{panel.hidden=!panel.hidden;btn.setAttribute('aria-expanded',String(!panel.hidden));});
-   document.addEventListener('click',e=>{if(!host.contains(e.target)){panel.hidden=true;btn.setAttribute('aria-expanded','false');}});
-   const hero=q('#rpg-hero');if(hero)hero.after(host);else {const dash=q('#rpg-dashboard');if(dash)dash.before(host);else profile.prepend(host)}
+   const button=el('button','dom-quick-trigger');
+   button.type='button';
+   button.setAttribute('aria-expanded','false');
+   button.setAttribute('aria-controls','dom-quick-popup');
+   const panel=el('div','dom-quick-popup');
+   panel.id='dom-quick-popup';
+   panel.hidden=true;
+   const heading=el('strong','dom-quick-heading','NeuroMap');
+   const expand=el('button','dom-quick-expand');
+   expand.type='button';
+   expand.setAttribute('aria-expanded','false');
+   expand.addEventListener('click',()=>{
+     setExpanded(!panel.classList.contains('dom-quick-expanded'));
+   });
+   const status=el('p','dom-quick-status');
+   status.setAttribute('role','status');
+   const placeholder=document.createComment('NeuroMap entry controls');
+   actions.before(placeholder);
+   const toolbar=el('div','dom-quick-toolbar');
+   toolbar.append(heading,expand);
+   panel.append(toolbar);
+   host.append(button,panel,status);
+   const hero=q('#rpg-hero');
+   if(hero)hero.before(host);else profile.prepend(host);
+   if(hero && !hero.closest('#rpg-dashboard'))hero.after(host);
+   const rpg=q('#rpg-dashboard');
+   if(rpg && rpg.contains(host))rpg.before(host);
+   function setExpanded(value){
+     panel.classList.toggle('dom-quick-expanded',value);
+     expand.setAttribute('aria-expanded',String(value));
+     expand.textContent=value?txt('Свернуть','Collapse','Contraer'):txt('Развернуть','Expand','Ampliar');
+   }
+   function toggle(open,focus=false){
+     if(open===!panel.hidden)return;
+     panel.hidden=!open;
+     button.setAttribute('aria-expanded',String(open));
+     if(open){
+       panel.append(actions);
+       if(focus)actions.querySelector('button')?.focus();
+     }else{
+       placeholder.after(actions);
+       setExpanded(false);
+       if(focus)button.focus();
+     }
+   }
+   button.addEventListener('click',()=>toggle(panel.hidden,true));
+   document.addEventListener('click',e=>{if(!host.contains(e.target))toggle(false);});
+   panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();toggle(false,true);}});
+   actions.addEventListener('click',e=>{
+     if(panel.contains(actions) && e.target.closest('button'))toggle(false);
+   });
+   document.addEventListener('neuromap:save',e=>{
+     if(!q('#tab-overview.active'))return;
+     status.replaceChildren();
+     if(!e.detail.ok){
+       status.textContent=txt('Сохранение в NeuroMap не подтверждено.','NeuroMap could not confirm the save.','NeuroMap no pudo confirmar el guardado.');
+       return;
+     }
+     const when=new Date().toLocaleTimeString(lang(),{hour:'2-digit',minute:'2-digit'});
+     status.append(txt('Запись сохранена','Entry saved','Registro guardado')+' · '+when+' ');
+     const open=el('button','dom-quick-secondary',txt('Открыть NeuroMap','Open NeuroMap','Abrir NeuroMap'));
+     const another=el('button','dom-quick-secondary',txt('Добавить ещё','Add another','Añadir otro'));
+     open.type=another.type='button';
+     open.onclick=()=>{window.switchTab('tools');window.setToolsMode('nm');};
+     another.onclick=()=>toggle(true,true);
+     status.append(open,another);
+   });
+   setExpanded(false);
+   refreshTranslations();
  }
- function notify(message){let box=q('#dom-cabinet-notice');if(!box){box=el('div','dom-cabinet-notice');box.id='dom-cabinet-notice';document.body.append(box)}box.textContent=message;box.hidden=false;setTimeout(()=>box.hidden=true,5000);}
  function refreshTranslations(){
-   const trigger=q('#dom-quick-record .dom-quick-trigger');if(trigger)trigger.textContent=txt('✚  Записать сейчас','✚  Record now','✚  Registrar ahora');
-   const labels=[[txt('Эмоция / переживание','Emotion / experience','Emoción')],[txt('Мысль','Thought','Pensamiento')],[txt('Ощущение','Sensation','Sensación')],[txt('Событие','Event','Evento')]];
-   document.querySelectorAll('.dom-quick-option').forEach((b,i)=>b.textContent=labels[i]?.[0]||b.textContent);
-   const group=q('.dom-cabinet-path-title');if(group)group.textContent=txt('Мои курсы','My courses','Mis cursos');
+   const trigger=q('#dom-quick-record .dom-quick-trigger');
+   if(trigger)trigger.textContent=txt('Записать сейчас','Record now','Registrar ahora');
+   const expand=q('.dom-quick-expand');
+   if(expand)expand.textContent=expand.getAttribute('aria-expanded')==='true'
+     ?txt('Свернуть','Collapse','Contraer'):txt('Развернуть','Expand','Ampliar');
+   const group=q('.dom-cabinet-path-title');if(group)group.textContent=txt('Курсы','Courses','Cursos');
+   if(nav)nav.querySelectorAll('a[data-tab]').forEach(a=>a.title=a.textContent.trim());
  }
  let lastLang=lang();
  function init(){buildNav();buildQuick();}

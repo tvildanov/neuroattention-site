@@ -4185,22 +4185,25 @@ async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso, source) {
   // `ids` already arrive in flow order (body→sensation→emotion…), so position is just
   // the running index appended to whatever the session already holds.
   try {
-    const ch = await sql`
-      INSERT INTO nm_chains (user_id, session_id, started_at, finished_at, source)
-      VALUES (${userId}, ${sid}, ${when}, ${when}, ${source || null})
-      ON CONFLICT (session_id) DO UPDATE SET
-        finished_at = GREATEST(nm_chains.finished_at, EXCLUDED.finished_at),
-        source = COALESCE(nm_chains.source, EXCLUDED.source)
-      RETURNING id`;
-    const chainId = ch[0].id;
-    const pr = await sql`SELECT COALESCE(MAX(position), -1) AS m FROM nm_chain_nodes WHERE chain_id = ${chainId}`;
-    let pos = (pr[0].m == null ? -1 : pr[0].m) + 1;
-    for (const nid of ids) {
-      await sql`INSERT INTO nm_chain_nodes (chain_id, node_id, position)
-                VALUES (${chainId}, ${nid}::uuid, ${pos})
-                ON CONFLICT DO NOTHING`;
-      pos++;
-    }
+    await sql.transaction([
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${sid}, 0))`,
+      sql`WITH chain AS (
+        INSERT INTO nm_chains (user_id, session_id, started_at, finished_at, source)
+        VALUES (${userId}, ${sid}, ${when}, ${when}, ${source || null})
+        ON CONFLICT (session_id) DO UPDATE SET
+          finished_at = GREATEST(nm_chains.finished_at, EXCLUDED.finished_at),
+          source = COALESCE(nm_chains.source, EXCLUDED.source)
+        WHERE nm_chains.user_id = EXCLUDED.user_id
+        RETURNING id
+      ), start_position AS (
+        SELECT chain.id, COALESCE(MAX(n.position), -1) AS last_position
+        FROM chain LEFT JOIN nm_chain_nodes n ON n.chain_id = chain.id GROUP BY chain.id
+      )
+      INSERT INTO nm_chain_nodes (chain_id, node_id, position)
+      SELECT chain.id, nodes.node_id, (chain.last_position + nodes.ordinality)::int
+      FROM start_position chain
+      CROSS JOIN unnest(${ids}::uuid[]) WITH ORDINALITY AS nodes(node_id, ordinality)`
+    ]);
   } catch (e) { console.error('nmBridgeSession chain upsert:', e.message); }
   return made;
 }
@@ -4292,7 +4295,7 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
     // Evolution Path timeline gets a real, time-accurate, clickable point for
     // every emotion / thought / sensation / event the user just added. Links
     // between consecutive nodes are mirrored into journey_links.
-    const _sid = req.body && req.body.session_id;
+    const _sid = String(req.body?.session_id || crypto.randomUUID()).slice(0, 80);
     const journeyIds = [];
     for (let i = 0; i < validItems.length; i++) {
       const it = validItems[i];
@@ -4340,7 +4343,7 @@ app.post('/api/neuromap/v2/append', requireAuth, async (req, res) => {
       (validItems.some(c => c && (c.type === 'thought' || c.type === 'concept')) && 'thought') ||
       (validItems.some(c => c && (c.type === 'sensation' || c.type === 'area')) && 'sensation') ||
       'diary';
-    const sessionLinked = await nmBridgeSession(userId, req.body && req.body.session_id, nodeIds, occurredAt, chainSource);
+    const sessionLinked = await nmBridgeSession(userId, _sid, nodeIds, occurredAt, chainSource);
 
     res.json({ ok: true, node_ids: nodeIds, journey_ids: journeyIds, links: linkResults, session_linked: sessionLinked });
   } catch (err) {
@@ -4473,13 +4476,20 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
       cnRows = await sql`SELECT chain_id, node_id, position FROM nm_chain_nodes
                          WHERE chain_id = ANY(${chainIds}::bigint[]) ORDER BY chain_id, position ASC`;
     }
-    const nodesByChain = {};
-    cnRows.forEach(r => { (nodesByChain[r.chain_id] = nodesByChain[r.chain_id] || []).push(String(r.node_id)); });
-    const chains = chainRows.map(c => ({
-      id: String(c.id), session_id: c.session_id,
-      started_at: c.started_at, finished_at: c.finished_at, source: c.source,
-      node_ids: nodesByChain[c.id] || []
-    }));
+    const nodesByChain = new Map();
+    for (const row of cnRows) {
+      if (!nodesByChain.has(row.chain_id)) nodesByChain.set(row.chain_id, []);
+      nodesByChain.get(row.chain_id).push(row);
+    }
+    const chains = chainRows.map(c => {
+      const members = nodesByChain.get(c.id) || [];
+      return {
+        id: String(c.id), session_id: c.session_id,
+        started_at: c.started_at, finished_at: c.finished_at, source: c.source,
+        node_ids: members.map(row => String(row.node_id)),
+        positions: members.map(row => row.position)
+      };
+    });
 
     // Visible node set: every node that appears in an in-range chain, plus orphan
     // nodes (legacy, no chain) whose last_seen falls in the window.
@@ -4546,7 +4556,18 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
     });
     const links = Object.keys(linkMap).map(k => linkMap[k]);
 
-    res.json({ ok: true, nodes, links, chains });
+    // Explicit context choices are recorded against the original Path events.
+    // Match their sessions as well as their reused concept IDs in the renderer.
+    const explicitLinks = await sql`
+      SELECT source.payload->>'nm_node_id' AS source, source.session_id AS source_session,
+             target.payload->>'nm_node_id' AS target, target.session_id AS target_session
+      FROM journey_links jl
+      JOIN journey_events source ON source.id = jl.event_a
+      JOIN journey_events target ON target.id = jl.event_b
+      WHERE source.user_id = ${userId} AND target.user_id = ${userId}
+        AND jl.kind = 'correlation' AND source.payload ? 'nm_node_id' AND target.payload ? 'nm_node_id'
+        AND source.payload->>'source' = 'sensation'`;
+    res.json({ ok: true, nodes, links, chains, explicit_links: explicitLinks });
   } catch (err) {
     console.error('GET /api/neuromap/v3/graph:', err);
     res.status(500).json({ error: 'Internal error' });
@@ -5860,7 +5881,7 @@ app.post('/api/rehab/apply', rehabRateLimit, optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid age' });
     }
     const conditionsArr = Array.isArray(rehab_conditions) ? rehab_conditions : [];
-    const userId = req.user ? req.user.id : null;
+    const userId = req.user?.sub || req.user?.id || null;
 
     const rows = await sql`
       INSERT INTO rehab_applications (user_id, city, phone, age, description, rehab_conditions, rehab_other_description)
@@ -7039,7 +7060,8 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
   try {
     const userId = req.user.sub || req.user.id;
     const { sensations = [], body_locations = [], comment, practice_block_id,
-            intensity, occurred_at, link_to, session_id } = req.body || {};
+            intensity, occurred_at, link_to, session_id: requestedSession } = req.body || {};
+    const session_id = String(requestedSession || crypto.randomUUID()).slice(0, 80);
     if (!Array.isArray(sensations) || !Array.isArray(body_locations)) {
       return res.status(400).json({ error: 'sensations and body_locations must be arrays' });
     }
@@ -10325,9 +10347,9 @@ app.get('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
     const rows = await sql`SELECT m.*, u.display_name AS sender_name FROM chat_room_messages m
                            LEFT JOIN users u ON u.id = m.sender_id
-                           WHERE m.room_id = ${rid} ORDER BY m.created_at ASC LIMIT 300`;
+                           WHERE m.room_id = ${rid} ORDER BY m.created_at DESC, m.id DESC LIMIT 300`;
     const aiReplies = await domMonadV07.roomReplies({sql,roomId:rid}).catch(err=>{console.warn('[room-agent-replies]',err.message);return []});
-    res.json({ messages: rows.concat(aiReplies).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)) });
+    res.json({ messages: rows.concat(aiReplies).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,300).reverse() });
   } catch (err) { console.error('GET room messages:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -13924,6 +13946,45 @@ app.get('/api/monad/agents/search', requireAuth, async (req, res) => {
 
 // POST /api/monad/message — plant_seed into Monad as the linked human
 // body: { text, title?, priority?, create_handoff?, to_agent?, chat_id?, attachments?, pinned_context? }
+const monadProgress = require('./services/monad-progress');
+async function monadHandoffStatus(id) {
+  if (!/^[0-9a-f-]{36}$/i.test(id || '')) return null;
+  const response = await fetch(monadSvc.MONAD_BASE + '/api/handoffs/' + encodeURIComponent(id), {
+    headers: { 'X-API-Key': process.env.MONAD_API_KEY || '' },
+    signal: AbortSignal.timeout(4500)
+  });
+  if (!response.ok) return null;
+  const { handoff } = await response.json();
+  return handoff?.handoff_id === id ? handoff : null;
+}
+
+app.get('/api/dom-monad/chats/:id/progress', requireAuth, async (req, res) => {
+  try {
+    const caller = await loadCallerForMonad(req, res); if (!caller) return;
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(404).json({error:'chat_not_found'});
+    const [chat] = await sql`SELECT id FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id} AND archived = false`;
+    if (!chat) return res.status(404).json({ error: 'chat_not_found' });
+    const messages = await sql`
+      SELECT id, role, meta, seed_id, created_at FROM monad_chat_messages
+      WHERE chat_id = ${chat.id} AND user_id = ${caller.id} AND role IN ('you','monad')
+      ORDER BY created_at DESC, id DESC LIMIT 100`;
+    const requests = messages.filter(m => m.role === 'you' && !m.meta?.from_poll).slice(0, 12);
+    const replies = messages.filter(m => m.role === 'monad');
+    const heads = new Map(replies.filter(m => m.seed_id).map(m => [String(m.seed_id),m]));
+    const keys = new Map(replies.filter(m => m.meta?.source_key).map(m => [m.meta.source_key,m]));
+    const statuses = await Promise.all(requests.map(async (m, index) => {
+      const reply = m.seed_id ? heads.get(String(m.seed_id)) : null;
+      const handoff = !reply && index < 4
+        ? await monadHandoffStatus(m.meta?.handoff_id).catch(() => null) : null;
+      return monadProgress.describe(m, handoff, reply || keys.get(handoff?.result?.reply_key));
+    }));
+    res.json({ ok: true, statuses });
+  } catch (err) {
+    console.warn('[monad/progress] read failed');
+    res.status(503).json({ error: 'progress_unavailable' });
+  }
+});
+
 app.post('/api/monad/message', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
@@ -13961,13 +14022,14 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
 
     // Persist the human message FIRST so the chat never looks empty if Monad is slow.
     let savedMsg = null;
+    const correlationId = crypto.randomUUID();
     if (chat) {
       const inserted = await sql`
         INSERT INTO monad_chat_messages (chat_id, user_id, role, text, attachments, seed_id, meta)
         VALUES (
           ${chat.id}, ${caller.id}, 'you', ${text},
           ${JSON.stringify(attachments)}::jsonb, ${null},
-          ${JSON.stringify({ human_id: humanId, persona: personaAgent })}::jsonb
+          ${JSON.stringify({ human_id: humanId, persona: personaAgent, correlation_id: correlationId })}::jsonb
         )
         RETURNING *`;
       savedMsg = inserted[0];
@@ -13985,7 +14047,6 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
         `Human ${humanId} wrote in NeuroAttention LK.`,
         chat ? `chat_id=${chat.id}` : (chatId ? `chat_id=${chatId}` : ''),
         `persona: ${personaAgent}`,
-        `site_user: ${caller.email}`,
         `at: ${new Date().toISOString()}`,
         '',
         'Reply in the human sender\'s language (' + replyLocale + '). Use natural wording. Explain errors and uncertainty plainly; avoid raw technical logs or code unless requested.',
@@ -14008,8 +14069,10 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
         tags,
         metadata: {
           channel: 'neuroattention_lk',
+          correlation_id: correlationId,
           requested_to_agent: toAgent || null,
           pinned_context: pinned,
+          attachments,
           reply_locale: replyLocale,
         },
       };
@@ -14018,19 +14081,20 @@ app.post('/api/monad/message', requireAuth, async (req, res) => {
       if (result && result.seed_id) seedId = result.seed_id;
       else if (result && result.id) seedId = result.id;
       if (result && result.handoff_id) handoffId = result.handoff_id;
-      if (savedMsg && seedId) {
-        await sql`UPDATE monad_chat_messages SET seed_id = ${seedId},
-          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ planted: true, to_agent: targetAgent, handoff_id: handoffId, awaiting_persona: true })}::jsonb
-          WHERE id = ${savedMsg.id}`;
+      if (!seedId) throw Error('Missing seed acknowledgement');
+      if (savedMsg) {
+        [savedMsg] = await sql`UPDATE monad_chat_messages SET seed_id = ${seedId},
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ planted: true, to_agent: targetAgent, handoff_id: handoffId, awaiting_persona: true, delivery_updated_at: new Date().toISOString() })}::jsonb
+          WHERE id = ${savedMsg.id} RETURNING *`;
       }
     } catch (plantErr) {
-      console.error('[monad/message] plant_seed', plantErr.message);
-      return res.status(502).json({
-        error: plantErr.message || 'plant_seed failed',
-        code: 'MONAD_PLANT_FAILED',
-        human_id: humanId,
-        persona: personaAgent,
-      });
+      const category = monadProgress.reason(plantErr);
+      console.warn('[monad/message] handoff not confirmed:', category, correlationId);
+      if (!savedMsg) return res.status(502).json({ error: 'handoff_unconfirmed', code: category });
+      [savedMsg] = await sql`UPDATE monad_chat_messages
+        SET meta = meta || ${JSON.stringify({ delivery_error: category, delivery_updated_at: new Date().toISOString() })}::jsonb
+        WHERE id = ${savedMsg.id} RETURNING *`;
+      return res.status(202).json({ ok: true, message: savedMsg, awaiting_persona: true, code: category });
     }
 
     res.json({
@@ -14187,9 +14251,10 @@ app.post('/api/monad/chats/:id/upload', requireAuth, uploadMonadChat.single('fil
 app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
   try {
     const caller = await loadCallerForMonad(req, res); if (!caller) return;
-    const [chat] = await sql`SELECT * FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id}`;
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return res.status(404).json({ error: 'chat_not_found' });
+    const [chat] = await sql`SELECT * FROM monad_chats WHERE id = ${req.params.id} AND user_id = ${caller.id} AND archived = false`;
     if (!chat) return res.status(404).json({ error: 'not found' });
-    if (!monadSvc.configured()) return res.json({ ok: true, imported: 0, note: 'MONAD_API_KEY missing' });
+    if (!monadSvc.configured()) return res.status(503).json({ error: 'monad_unavailable' });
 
     const humanId = monadSvc.resolveHumanId(caller);
     let imported = 0;
@@ -14216,8 +14281,8 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
         }
         via = 'human_chat_poll';
       }
-    } catch (ePoll) {
-      via = 'human_chat_poll_failed:' + (ePoll.message || 'err');
+    } catch (_) {
+      via = 'human_chat_poll_failed';
     }
 
     if (!pollSucceeded) {
@@ -14238,8 +14303,8 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
           if (candidate) candidates.push(candidate);
         }
         via = (via && String(via).startsWith('human_chat_poll_failed')) ? (via + '+read_context') : 'read_context';
-      } catch (eRead) {
-        return res.json({ ok: true, imported: 0, note: eRead.message, via });
+      } catch (_) {
+        if (!pollSucceeded) return res.status(503).json({ error: 'monad_poll_unavailable' });
       }
     }
 
@@ -14251,7 +14316,7 @@ app.post('/api/monad/chats/:id/poll', requireAuth, async (req, res) => {
     res.json({ ok: true, imported, via, messages: monadChat.visibleMessages(messages) });
   } catch (err) {
     console.error('POST /api/monad/chats/:id/poll:', err);
-    res.status(500).json({ error: err.message || 'Internal error' });
+    res.status(500).json({ error: 'chat_poll_failed' });
   }
 });
 

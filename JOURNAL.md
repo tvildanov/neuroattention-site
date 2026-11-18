@@ -2275,3 +2275,42 @@ User requested original drop restoration, a reusable export of the new renderer,
 - Railway 7a2bfdb0-a71e-468a-a5c1-b09fd801d037 reached SUCCESS. API startup, five canonical profiles and the read-only partner schema audit are healthy. No schema migration, role changes, provider changes or real user chats were performed.
 - Outstanding: Cursor weekly quota blocks model inference. Enabling the existing Anthropic transport only for LK requires an explicit provider/billing decision; key presence and a closed circuit do not prove paid inference. Russian/VPN failure still needs the exact failed URL and Chrome error.
 - Full report: docs/MONAD-CHAT-REPAIR-20261117.md. Keep the independent typology branch untouched.
+
+## 2026-11-17 — DOM account acceptance and Monad integration (PR #197)
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-18T04:36:00Z",
+  "did": [
+    "Resumed PR #197 on its existing branch and exercised the real account and NeuroMap entry points with isolated identities and database records",
+    "Moved the existing NeuroMap survey into the global modal layer and supported a single-thought save through the existing survey",
+    "Verified that separate chains can share concepts while keeping distinct graph occurrences and positions",
+    "Connected room participants, room context and agent cards to the existing DOMunity messages and Monad handoff flow",
+    "Added version-aware instruction writes, recorded agent activity, agent registration by architecture cell, chat progress, and partner queue regressions"
+  ],
+  "changed": [
+    "Account UI, existing NeuroMap and Evolution Path integration, and Monad account and room APIs",
+    "Isolated authenticated API and browser checks",
+    "Retired temporary CI workflows that generated follow-up commits"
+  ],
+  "files": [
+    "account.html",
+    "api/server.js",
+    "api/services/dom-monad-v07.js",
+    "assets/js/dom-room-agents.js",
+    "scripts/test-dom-account-api.cjs",
+    "scripts/test-dom-cabinet-v07.cjs"
+  ],
+  "decisions": [
+    "Keep production on the published release until the linked Monad PR and the site head pass the required acceptance checks",
+    "Use an isolated database and test inbox for integration checks, keeping customer records and working instructions out of fixtures"
+  ],
+  "followups": [
+    "Verify the live provider and an actual DOMunity room reply before release",
+    "Confirm production authorization for the owner-only registration and cross-owner writes, and real mail delivery"
+  ],
+  "next_session": "Continue PR #197 and tvildanov/monad#119, verify both head SHAs and complete the linked acceptance and release."
+}
+```

@@ -16,7 +16,7 @@ function pollCandidate(item, isChannelAckText) {
 async function importPollMessages(sql, chatId, userId, candidates, via) {
   const seen = new Set();
   const rows = candidates.filter(Boolean).filter(c => {
-    const identity = c.role !== 'you' ? JSON.stringify([c.role, c.text]) : (c.key || JSON.stringify([c.role, c.seed_id, c.text]));
+    const identity = c.key || JSON.stringify([c.role, c.seed_id, c.text]);
     if (seen.has(identity)) return false;
     seen.add(identity); return true;
   }).map(c => ({ role: c.role, text: c.text, seed_id: c.seed_id,
@@ -35,6 +35,8 @@ async function importPollMessages(sql, chatId, userId, candidates, via) {
           (c.meta->>'source_key' IS NOT NULL AND m.meta->>'source_key' = c.meta->>'source_key')
           OR (c.role = 'you' AND c.seed_id IS NOT NULL AND m.role = 'you' AND m.seed_id::text = c.seed_id)
           OR (c.role <> 'you' AND m.role = c.role AND m.text = c.text
+            AND (c.meta->>'source_key' IS NULL OR m.meta->>'source_key' IS NULL)
+            AND c.seed_id IS NOT DISTINCT FROM m.seed_id
             AND m.created_at > now() - interval '2 minutes')
         )
       ) RETURNING id`

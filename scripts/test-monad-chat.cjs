@@ -19,7 +19,7 @@ sql.transaction = async queries => {
 
 (async () => {
   await pool.query('CREATE SCHEMA monad_chat_test');
-  await pool.query('CREATE TABLE monad_chats(id uuid primary key, user_id uuid, updated_at timestamptz default now())');
+  await pool.query('CREATE TABLE monad_chats(id uuid primary key, user_id uuid, archived boolean not null default false, updated_at timestamptz default now())');
   await pool.query("CREATE TABLE monad_chat_messages(id uuid primary key default gen_random_uuid(), chat_id uuid, user_id uuid, role text, text text, seed_id text, meta jsonb default '{}'::jsonb, created_at timestamptz default now())");
   const userId = crypto.randomUUID(), chatId = crypto.randomUUID(), otherUser = crypto.randomUUID();
   await sql`INSERT INTO monad_chats(id,user_id) VALUES(${chatId},${userId})`;
