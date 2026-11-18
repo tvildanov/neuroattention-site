@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "id": "dom-baseline-13",
-  "version": "draft-2026-11-17.1",
+  "version": "draft-2026-11-17.2",
   "language": "ru",
   "status": "working-questionnaire-not-validated",
   "time_budget": {
@@ -39,12 +39,16 @@
       "label": "Устойчивость",
       "group_id": "body_core",
       "group_label": "BODY CORE",
-      "definition_ru": "Сохранение работоспособности при обычной нагрузке и восстановление после нарушения.",
-      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "definition_ru": "Способность сохранять опору, управляемость и значимые ресурсы при изменениях и давлении среды, выдерживая воздействие или соразмерно меняя способ действия.",
+      "definition_status": "new-operational-proposal-after-founder-clarification-not-final-definition",
       "sources": [
         {
           "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
           "locator": "STAT 1 --- STABILITY"
+        },
+        {
+          "path": "docs/typology/STABILITY-CLARIFICATION.md",
+          "locator": "Получено от основателя; рабочая формулировка — предложение агента"
         }
       ],
       "historical_descriptive_bands": [],
@@ -71,7 +75,13 @@
         "method_independent": true,
         "methods": []
       },
-      "source_excerpt": "STAT 1 --- STABILITY\nMeaning\nAbility of the system to retain functional capacity under load and recover after disturbance.\nNot \"never becoming stressed.\"\nThe central question is whether functionality collapses when load rises.\nBehavioral diagnostic concept\nBaseline cognitive task → physical load → same cognitive task immediately after.\nCandidate cognitive tasks:\nbackward counting;\nnumber-position memory;\nStroop-type task;\nmemory task.\nPhysical load:\n~30 squats;\nor ~60-second plank;\nexact safety protocol still needs standardization.\nMetric:\npercentage drop in cognitive performance under/after load.\nThis can be automated in Self-Guided mode if the cognitive test is digital.\nAdditional physiology\nPotential present/future signals:\nheart rate;\nHRV;\nheart-rate recovery;\nbreathing rate;\nrespiratory variability;\nfuture EEG attention stability.\nA low-tech version can ask the participant to count breaths for a defined interval, but reliability is limited.\nCourse evidence\nLong practices are important Stability evidence.\nThe existing NeuroAttention practice format may last about an hour and is often split into 3--5 parts with short micro-theory/state-mapping interruptions.\nImportant proxy:\nability to complete a long process with fewer large breaks.\nEarlier illustrative \"Consistency XP\" idea:\none uninterrupted session > two sessions > three sessions > five sessions.\nExact XP numbers previously mentioned were illustrative only and must not be treated as final.\nGrowth principle\nStability should grow slowly. A jump such as 30 → 80 in one month was explicitly rejected as unrealistic.\nReal development is expected across months, potentially a year or longer."
+      "source_excerpt": "STAT 1 --- STABILITY\nMeaning\nAbility of the system to retain functional capacity under load and recover after disturbance.\nNot \"never becoming stressed.\"\nThe central question is whether functionality collapses when load rises.\nBehavioral diagnostic concept\nBaseline cognitive task → physical load → same cognitive task immediately after.\nCandidate cognitive tasks:\nbackward counting;\nnumber-position memory;\nStroop-type task;\nmemory task.\nPhysical load:\n~30 squats;\nor ~60-second plank;\nexact safety protocol still needs standardization.\nMetric:\npercentage drop in cognitive performance under/after load.\nThis can be automated in Self-Guided mode if the cognitive test is digital.\nAdditional physiology\nPotential present/future signals:\nheart rate;\nHRV;\nheart-rate recovery;\nbreathing rate;\nrespiratory variability;\nfuture EEG attention stability.\nA low-tech version can ask the participant to count breaths for a defined interval, but reliability is limited.\nCourse evidence\nLong practices are important Stability evidence.\nThe existing NeuroAttention practice format may last about an hour and is often split into 3--5 parts with short micro-theory/state-mapping interruptions.\nImportant proxy:\nability to complete a long process with fewer large breaks.\nEarlier illustrative \"Consistency XP\" idea:\none uninterrupted session > two sessions > three sessions > five sessions.\nExact XP numbers previously mentioned were illustrative only and must not be treated as final.\nGrowth principle\nStability should grow slowly. A jump such as 30 → 80 in one month was explicitly rejected as unrealistic.\nReal development is expected across months, potentially a year or longer.",
+      "measurement_limits": [
+        "Выносливость и восстановление не исчерпывают устойчивость.",
+        "Пауза, сокращение объёма и работа без перерыва сами по себе не определяют уровень.",
+        "Новые вопросы собирают самоотчёт; объективная способность и числовая оценка не установлены.",
+        "Смысл сохранения позиции/опоры требует дополнительного уточнения."
+      ]
     },
     {
       "id": "energy_regulation",
@@ -716,23 +726,23 @@
       "id": "STA01",
       "stat_id": "stability",
       "format": "single-choice",
-      "stem": "За последние две недели, когда привычных дел становилось больше, что чаще происходило с вашей деятельностью?",
+      "stem": "Вспомните последнее неожиданное изменение, нарушившее ваши планы. Что происходило с важными для вас действиями?",
       "options": [
         {
           "id": "o1",
-          "text": "Сохранял примерно тот же объём и качество"
+          "text": "Продолжил их примерно прежним способом"
         },
         {
           "id": "o2",
-          "text": "Снижал темп или упрощал часть дел"
+          "text": "Изменил способ или объём, сохранив самое важное"
         },
         {
           "id": "o3",
-          "text": "Откладывал значительную часть начатого"
+          "text": "Временно остановил их, затем вернулся или выбрал другую цель"
         },
         {
           "id": "o4",
-          "text": "Ситуации были слишком разными для одного ответа"
+          "text": "Не удавалось выбрать, что делать дальше"
         }
       ],
       "allow_skip": true,
@@ -740,31 +750,31 @@
         "id": "not_applicable",
         "text": "Не было подходящего случая"
       },
-      "wording_status": "new-draft-from-handoff-domains",
-      "source_locator": "STAT 1",
+      "wording_status": "new-draft-after-founder-stability-clarification",
+      "source_locator": "docs/typology/STABILITY-CLARIFICATION.md",
       "response_numeric_weights": null
     },
     {
       "id": "STA02",
       "stat_id": "stability",
       "format": "single-choice",
-      "stem": "После напряжённого эпизода как вы обычно понимали, что можете вернуться к делу?",
+      "stem": "Когда в последний раз пришлось выбирать — продолжить усилие, снизить его или остановиться, на что вы главным образом опирались?",
       "options": [
         {
           "id": "o1",
-          "text": "По возвращению привычного состояния тела и внимания"
+          "text": "На сроки, обязательства и последствия для других"
         },
         {
           "id": "o2",
-          "text": "По срокам и внешним обстоятельствам"
+          "text": "На своё состояние и ожидаемые последствия продолжения"
         },
         {
           "id": "o3",
-          "text": "Пробовал продолжить и смотрел по выполнению"
+          "text": "На заранее выбранный план или правило"
         },
         {
           "id": "o4",
-          "text": "Делал заранее выбранную паузу"
+          "text": "Решение сложилось по ходу событий; отдельного выбора не помню"
         }
       ],
       "allow_skip": true,
@@ -772,31 +782,31 @@
         "id": "not_applicable",
         "text": "Не было подходящего случая"
       },
-      "wording_status": "new-draft-from-handoff-domains",
-      "source_locator": "STAT 1",
+      "wording_status": "new-draft-after-founder-stability-clarification",
+      "source_locator": "docs/typology/STABILITY-CLARIFICATION.md",
       "response_numeric_weights": null
     },
     {
       "id": "STA03",
       "stat_id": "stability",
       "format": "single-choice",
-      "stem": "При последнем длительном занятии как вы распределили его выполнение?",
+      "stem": "После последнего напряжённого периода как выбранный вами режим отразился на других значимых делах?",
       "options": [
         {
           "id": "o1",
-          "text": "Прошёл в один подход"
+          "text": "Они оставались выполнимыми без заметного изменения режима"
         },
         {
           "id": "o2",
-          "text": "Разделил на заранее выбранные части"
+          "text": "Часть перенёс или изменил, чтобы сохранить необходимое"
         },
         {
           "id": "o3",
-          "text": "Продолжал после незапланированных остановок"
+          "text": "Пришлось отменить больше, чем рассчитывал, из-за истощения"
         },
         {
           "id": "o4",
-          "text": "Остановился до конца"
+          "text": "Последствия ещё неясны или их трудно отделить от других обстоятельств"
         }
       ],
       "allow_skip": true,
@@ -804,8 +814,8 @@
         "id": "not_applicable",
         "text": "Не было подходящего случая"
       },
-      "wording_status": "new-draft-from-handoff-domains",
-      "source_locator": "STAT 1",
+      "wording_status": "new-draft-after-founder-stability-clarification",
+      "source_locator": "docs/typology/STABILITY-CLARIFICATION.md",
       "response_numeric_weights": null
     },
     {
