@@ -32,7 +32,7 @@ const srv=http.createServer((req,res)=>{
    assert(order,'programs ahead of specialist training');
    assert.equal(await page.locator('[data-i18n="p.research.title"]').isVisible(),false,'research section hidden');
    await open('xr','[data-i18n="xr_page.title"]');
-   assert.equal((await page.locator('[data-i18n="xr_page.title"]').innerText()).trim(),'DOM Platform');
+   assert.equal((await page.locator('[data-i18n="xr_page.title"]').innerText()).replace(/\s+/g,' ').trim(),'DOM Platform');
    assert.match(await page.locator('.glass-image-frame').getAttribute('src'),/assets\/images\//);
    await open('lab','.dom-v06-research-card');
    assert.equal(await page.locator('.dom-v06-research-card').count(),4);
