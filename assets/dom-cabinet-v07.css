@@ -73,3 +73,6 @@
 .dom-group-message {align-self:flex-start;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;padding:.55rem .75rem;border-radius:.75rem;background:var(--bg-card,#122520)}
 .dom-group-message-mine {align-self:flex-end;border:1px solid var(--accent-cyan,#5fd3c1)}
 .dom-group-message time,.monad-message-progress {display:block;font-size:.82rem}
+.monad-progress-active::before {content:'';display:inline-block;width:.45em;height:.45em;margin-inline-end:.5em;border-radius:50%;background:currentColor;animation:monad-progress-pulse 1.1s ease-in-out infinite alternate}
+@keyframes monad-progress-pulse {from{opacity:.3;transform:scale(.75)}to{opacity:1;transform:scale(1.15)}}
+@media(prefers-reduced-motion:reduce){.monad-progress-active::before{animation:none}}

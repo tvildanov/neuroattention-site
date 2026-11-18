@@ -110,6 +110,7 @@
         var host = document.getElementById('monad-cross-host');
         if (host) {
           window.MonadCross.mount(host, STATE.arch, {
+            onAgent: function (id) { window.DOMRoomAgents?.showAgent(id,host.parentElement); },
             onNavigate: function (nav) {
               if (!nav || !nav.target) return;
               setArchSub(nav.target);
@@ -541,7 +542,8 @@
     var button=info.status==='delivered' || terminalPoll() ? '' : '<button type="button" data-monad-check>'+esc(chatText('Проверить состояние','Check status','Comprobar estado'))+'</button>';
     var when=info.last_confirmed_at ? new Date(info.last_confirmed_at).toLocaleTimeString(document.documentElement.lang) : '';
     var detail=info.correlation_id ? '<details><summary>'+esc(chatText('Подробнее','Details','Detalles'))+'</summary><small>'+esc(info.correlation_id)+'</small></details>' : '';
-    return '<div class="monad-message-progress"><span role="status">'+esc(progressCopy(info))+'</span> '+esc(when)+' '+button+detail+'</div>';
+    var moving=['received','queued','processing','response_ready'].includes(info.status)?' monad-progress-active':'';
+    return '<div class="monad-message-progress"><span class="monad-progress-text'+moving+'" role="status">'+esc(progressCopy(info))+'</span> '+esc(when)+' '+button+detail+'</div>';
   }
   function requestFailure(e) {
     return ({401:'session',403:'forbidden',404:'not_found',429:'rate_limit',502:'upstream',503:'upstream'})[e?.status] || (e?.status?'unknown':'network');

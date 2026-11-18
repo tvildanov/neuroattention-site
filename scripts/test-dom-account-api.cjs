@@ -12,6 +12,8 @@ const registry=[
  {agent_id:'fixture_agent',owner:'nikita',name:'Fixture public agent',status:'active',domains:['domunity','domunity_public']},
 ];
 const prompts=new Map(registry.map(a=>[a.agent_id,'Starting prompt for '+a.agent_id]));
+const canon={artifact_id:'fixture_canon',title:'Fixture canon',summary:'Canon fixture',content:{text:'Fixture canon material'},
+ source_human_id:'nikita',version:'1.0.0',kind:'protocol',status:'approved',visibility:'all',tags:[]};
 const handoffs=new Map(),remoteReplies=new Map();
 let roomDispatches=0;
 const mcp=http.createServer(async(req,res)=>{
@@ -28,7 +30,25 @@ const mcp=http.createServer(async(req,res)=>{
  case 'get_architecture':out={people:[{entry_persona:'persona_nikita'},{entry_persona:'persona_takhir'}],horizontal:{contours:[{persona:'practice_contour',label:'Practice'}]}};break;
  case 'get_agent_prompt':out=prompts.get(a.agent_id);break;
  case 'list_canon':out=[{artifact_id:'fixture_canon',title:'Fixture canon'}];break;
- case 'get_canon':out={artifact_id:'fixture_canon',content:{text:'Fixture canon material'}};break;
+ case 'get_canon':out=a.artifact_id===canon.artifact_id?canon:{error:'not_found'};break;
+ case 'publish_canon':
+   assert.equal(a.expected_version,canon.version);
+   assert.equal(a.source_human_id,canon.source_human_id);
+   assert.equal(a.dom_account_key,'fixture-admin-only');
+   canon.content=a.content;canon.version=a.version;
+   out={ok:true,artifact_id:canon.artifact_id,version:canon.version};break;
+ case 'register_agent':
+   assert.equal(a.dom_account_key,'fixture-admin-only');
+   assert.equal(a.create_only,true);
+   if(registry.some(agent=>agent.agent_id===a.agent_id)){out={created:false};break;}
+   registry.push({agent_id:a.agent_id,name:a.name,owner:a.owner,status:'pending_onboarding',domains:a.domains});
+   prompts.set(a.agent_id,a.system_prompt);
+   out={created:true,placement_cell:a.placement_cell,api_key:'fixture-hidden'};break;
+ case 'onboard_agent':{
+   const agent=registry.find(agent=>agent.agent_id===a.agent_id);
+   assert.equal(agent.status,a.expected_status);
+   agent.status=a.next_status;out={agent_id:a.agent_id,status:agent.status};break;
+ }
  case 'update_agent_prompt':{
    const previous=crypto.createHash('sha256').update(prompts.get(a.agent_id)).digest('hex');
    assert.equal(a.expected_sha256,previous);
@@ -104,6 +124,22 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  }
  await get(403,'/api/dom-monad/admin/agent/persona_nikita/harness',member);
  await get(403,'/api/dom-monad/admin/agent/persona_nikita/harness',admin);
+ const canonRoute='/api/dom-monad/admin/canon/fixture_canon';
+ const publication={expected_version:'1.0.0',content:{text:'Updated canon fixture'}};
+ await expect(403,'PUT',canonRoute,member.token,publication);
+ assert.equal((await expect(200,'PUT',canonRoute,b.token,publication)).version,'1.0.1');
+ await expect(409,'PUT',canonRoute,a.token,publication);
+ assert.equal((await get(200,canonRoute,a)).canon.content.text,'Updated canon fixture');
+ const form={agent_id:'fixture_vertical',name:'Vertical fixture',system_prompt:'This instruction is a fixture.',
+   placement_cell:'L1xL4',room_description:'A participant for local fixture rooms.'};
+ const created=await post(201,'/api/dom-monad/admin/agents',a,form);
+ assert.equal(created.placement_cell,form.placement_cell);
+ assert.equal(created.api_key,undefined);
+ await post(409,'/api/dom-monad/admin/agents',a,form);
+ const onboard='/api/dom-monad/admin/agent/'+form.agent_id+'/onboarding';
+ await post(403,onboard,b,{status:'training'});
+ await post(409,onboard,a,{status:'active'});
+ for(const status of ['training','certifying','active'])await post(200,onboard,a,{status});
  console.log('ACCOUNT_API_PASS owner A and B harness, publication, stale version, restore and role denials');
  const otp=await post(202,'/api/partner/auth/request-code',null,{email:'qa-partner@example.invalid',display_name:'QA Partner',locale:'es'});
  const {text}=JSON.parse(fs.readFileSync(process.env.DOM_ACCOUNT_TEST_INBOX,'utf8'));

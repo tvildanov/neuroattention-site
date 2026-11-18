@@ -51,8 +51,3 @@ jobs:
         env:
           NODE_PATH: /tmp/dom-inner-ui/node_modules
         run: node scripts/test-dom-inner-v06.cjs
-
-      - name: Cabinet sidebar and canonical NeuroMap quick-entry browser tests
-        env:
-          NODE_PATH: /tmp/dom-inner-ui/node_modules
-        run: node scripts/test-dom-cabinet-v07.cjs

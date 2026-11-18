@@ -101,7 +101,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     await ready();const u=await identity(req,sql,monadSvc);
     if(!u)return res.status(401).json({error:'authentication_required'});
     const agents=await directory(monadSvc);
-    res.json({ok:true,can_edit_harness:u.founder,can_register:u.founder&&!!process.env.MONAD_ADMIN_MASTER_KEY,agents:agents.filter(a=>canInvite(a,u))});
+    res.json({ok:true,can_edit_harness:u.founder,can_register:u.founder&&!!process.env.DOM_ACCOUNT_ADMIN_KEY,agents:agents.filter(a=>canInvite(a,u))});
   }));
   app.get('/api/dom-monad/admin/agent/:agentId/harness',requireAuth,go(async(req,res)=>{
     const u=await found(req,res);if(!u)return;await ready();
@@ -112,13 +112,42 @@ function install(app,{requireAuth,sql,monadSvc}){
     const canon=arr(await monadSvc.mcpCall('list_canon',{source_human_id:agent.owner||u.human,include_drafts:true,limit:100}));
     res.json({ok:true,agent,system_prompt:prompt,etag:crypto.createHash('sha256').update(prompt).digest('hex'),canon,
       sources:{system_prompt:'agents',canon:'canon_artifacts',domains:'agent_domains',
-        memory:'restricted',runtime:'no_agent_snapshot'}, can_publish:agent.owner===u.human||!!process.env.MONAD_ADMIN_MASTER_KEY,
-      next_onboarding_status:agent.owner===u.human&&process.env.MONAD_ADMIN_MASTER_KEY ? nextOnboardingStatus[agent.status]||null : null});
+        memory:'restricted',runtime:'no_agent_snapshot'}, can_publish:agent.owner===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY,
+      next_onboarding_status:agent.owner===u.human&&process.env.DOM_ACCOUNT_ADMIN_KEY ? nextOnboardingStatus[agent.status]||null : null});
   }));
   app.get('/api/dom-monad/admin/canon/:artifactId',requireAuth,go(async(req,res)=>{
     const u=await found(req,res);if(!u)return;await ready();
     const canon=await monadSvc.mcpCall('get_canon',{artifact_id:String(req.params.artifactId).slice(0,160)});
-    res.json({ok:true,canon});
+    if(!canon?.artifact_id||canon.error)return res.status(404).json({error:'canon_not_found'});
+    res.json({ok:true,canon,can_publish:canon.source_human_id===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY});
+  }));
+  app.put('/api/dom-monad/admin/canon/:artifactId',requireAuth,go(async(req,res)=>{
+    const u=await found(req,res);if(!u)return;await ready();
+    const id=req.params.artifactId;
+    const {content,expected_version}=req.body||{};
+    if(!/^[a-z0-9][a-z0-9_.-]{0,159}$/.test(id)||!content||Array.isArray(content)||
+       typeof content!=='object'||Buffer.byteLength(JSON.stringify(content),'utf8')>80000)
+      return res.status(400).json({error:'invalid_canon'});
+    const current=await monadSvc.mcpCall('get_canon',{artifact_id:id});
+    if(current?.artifact_id!==id||current.error)return res.status(404).json({error:'canon_not_found'});
+    const accountKey=process.env.DOM_ACCOUNT_ADMIN_KEY;
+    if(current.source_human_id!==u.human&&!accountKey)return res.status(403).json({error:'canon_write_denied'});
+    const parts=/^(\d{1,8})\.(\d{1,8})\.(\d{1,8})$/.exec(current.version||'');
+    if(!parts||expected_version!==current.version)return res.status(409).json({error:'VERSION_CONFLICT'});
+    const version=parts[1]+'.'+parts[2]+'.'+(Number(parts[3])+1);
+    let result;
+    try{
+      result=await monadSvc.mcpCall('publish_canon',{artifact_id:id,content,version,expected_version,
+        kind:current.kind,title:current.title,summary:current.summary,source_human_id:current.source_human_id,
+        visibility:current.visibility,status:current.status,tags:current.tags,actor_agent:'persona_'+u.human,
+        dom_account_key:accountKey||undefined});
+    }catch(err){
+      if(/canon_version_conflict/.test(err.message))return res.status(409).json({error:'VERSION_CONFLICT'});
+      if(/canon_write_denied/.test(err.message))return res.status(403).json({error:'canon_write_denied'});
+      throw err;
+    }
+    if(!result?.ok||result.artifact_id!==id||result.version!==version)throw Error('Canon update was not confirmed');
+    res.json({ok:true,version});
   }));
   app.put('/api/dom-monad/admin/agent/:agentId/prompt',requireAuth,go(async(req,res)=>{
     const u=await found(req,res);if(!u)return;await ready();
@@ -129,7 +158,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     if(req.body?.expected_sha256!==etag)return res.status(409).json({error:'Инструкция изменилась с момента открытия. Обновите её перед публикацией.',code:'VERSION_CONFLICT'});
     if(current===prompt)return res.json({ok:true,unchanged:true});
     const args={agent_id:id,system_prompt:prompt,actor_agent:'persona_'+u.human,bump:'patch',
-      expected_sha256:etag,master_key:process.env.MONAD_ADMIN_MASTER_KEY||undefined};
+      expected_sha256:etag,dom_account_key:process.env.DOM_ACCOUNT_ADMIN_KEY||undefined};
     // Monad itself enforces owner/core permissions; server never bypasses denial.
     let result;
     try { result=await monadSvc.mcpCall('update_agent_prompt',args); }
@@ -167,7 +196,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     const before=await readPrompt(monadSvc,id);
     if(req.body?.expected_sha256!==crypto.createHash('sha256').update(before).digest('hex'))return res.status(409).json({error:'Текст был изменён другим редактором.'});
     let result;
-    try {result=await monadSvc.mcpCall('update_agent_prompt',{agent_id:id,system_prompt:rows[0].previous_prompt,actor_agent:'persona_'+u.human,bump:'patch',expected_sha256:req.body.expected_sha256,master_key:process.env.MONAD_ADMIN_MASTER_KEY||undefined});}
+    try {result=await monadSvc.mcpCall('update_agent_prompt',{agent_id:id,system_prompt:rows[0].previous_prompt,actor_agent:'persona_'+u.human,bump:'patch',expected_sha256:req.body.expected_sha256,dom_account_key:process.env.DOM_ACCOUNT_ADMIN_KEY||undefined});}
     catch(err){
       if (/version_conflict/.test(err.message)) return res.status(409).json({error:'VERSION_CONFLICT'});
       if (/denied/.test(err.message)) return res.status(403).json({error:'PROMPT_WRITE_DENIED'});
@@ -182,7 +211,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     const u=await found(req,res);if(!u)return;await ready();
     const id=req.params.agentId;if(!validId(id))return res.status(400).json({error:'Неверный идентификатор.'});
     const minutes=req.query.window==='7d'?10080:1440;
-    const actions=arr(await monadSvc.mcpCall('read_action_log',{agent_id:id,since_minutes:minutes,limit:500,include_heartbeat:false}));
+    const actions=arr(await monadSvc.mcpCall('read_action_log',{agent_id:id,since_minutes:minutes,limit:500,include_heartbeat:false,include_target:true}));
     const headers={'X-API-Key':process.env.MONAD_API_KEY||''};
     const sources=await Promise.allSettled(['to_agent','from_agent'].map(async key=>{
       const url=monadSvc.MONAD_BASE+'/api/handoffs?hours='+(minutes/60)+'&limit=200&'+key+'='+encodeURIComponent(id);
@@ -196,7 +225,7 @@ function install(app,{requireAuth,sql,monadSvc}){
         created_at:h.created_at,completed_at:h.completed_at
       }])).values()];
     const safeActions=actions.map(a=>({action_type:a.action_type,created_at:a.created_at,
-      success:a.success,duration_ms:a.duration_ms}));
+      success:a.success,duration_ms:a.duration_ms,agent_id:a.agent_id,target:a.target}));
     const times=[...safeActions.map(a=>a.created_at),...handoffs.map(h=>h.completed_at||h.created_at)].filter(Boolean);
     const last=times.reduce((max,t)=>!max||Date.parse(t)>Date.parse(max)?t:max,null);
     const statuses=Object.create(null);
@@ -265,29 +294,44 @@ function install(app,{requireAuth,sql,monadSvc}){
   }));
   app.post('/api/dom-monad/admin/agents',requireAuth,go(async(req,res)=>{
     const u=await found(req,res);if(!u)return;await ready();
-    if(!process.env.MONAD_ADMIN_MASTER_KEY)return res.status(503).json({error:'provisioning_unavailable'});
-    const {agent_id,name,system_prompt,placement_cell} = req.body || {};
+    if(!process.env.DOM_ACCOUNT_ADMIN_KEY)return res.status(503).json({error:'provisioning_unavailable'});
+    const {agent_id,name,system_prompt,placement_cell,room_description} = req.body || {};
     if(!validId(agent_id)||typeof name!=='string'||!name.trim()||name.length>120||
        typeof placement_cell!=='string'||!/^L[1-7]xL[1-7]$/.test(placement_cell)||
+       (room_description!=null&&(typeof room_description!=='string'||room_description.length>1500))||
        typeof system_prompt!=='string'||system_prompt.length<10||system_prompt.length>60000)
       return res.status(400).json({error:'invalid_agent'});
-    const result=await monadSvc.mcpCall('register_agent',{agent_id,name,system_prompt,platform:'dom',
-      owner:u.human,create_only:true,placement_cell,master_key:process.env.MONAD_ADMIN_MASTER_KEY});
+    const description=room_description?.trim()||'';
+    let result;
+    try{
+      result=await monadSvc.mcpCall('register_agent',{agent_id,name,system_prompt,platform:'dom',description,
+        domains:description?['domunity']:[],
+        owner:u.human,create_only:true,placement_cell,dom_account_key:process.env.DOM_ACCOUNT_ADMIN_KEY});
+    }catch(err){
+      if(/duplicate key.*agents_pkey|agent_exists/i.test(err.message))return res.status(409).json({error:'agent_exists'});
+      throw err;
+    }
     if(!result?.created)return res.status(409).json({error:'agent_exists'});
     if(result.placement_cell!==placement_cell)throw Error('Agent placement was not confirmed');
     res.status(201).json({ok:true,agent_id,placement_cell,status:'pending_onboarding'});
   }));
   app.post('/api/dom-monad/admin/agent/:agentId/onboarding',requireAuth,go(async(req,res)=>{
     const u=await found(req,res);if(!u)return;await ready();
-    const masterKey=process.env.MONAD_ADMIN_MASTER_KEY;
-    if(!masterKey)return res.status(503).json({error:'provisioning_unavailable'});
+    const accountKey=process.env.DOM_ACCOUNT_ADMIN_KEY;
+    if(!accountKey)return res.status(503).json({error:'provisioning_unavailable'});
     const id=req.params.agentId;
     if(!validId(id))return res.status(400).json({error:'invalid_agent'});
     const agent=arr(await monadSvc.mcpCall('list_agents',{})).find(a=>a.agent_id===id);
     if(!agent || agent.owner!==u.human)return res.status(403).json({error:'agent_owned_by_a_different_profile'});
     const next=nextOnboardingStatus[agent.status];
     if(!next || req.body?.status!==next)return res.status(409).json({error:'agent_status_changed'});
-    const result=await monadSvc.mcpCall('onboard_agent',{agent_id:id,next_status:next,expected_status:agent.status,master_key:masterKey});
+    let result;
+    try{
+      result=await monadSvc.mcpCall('onboard_agent',{agent_id:id,next_status:next,expected_status:agent.status,expected_owner:u.human,dom_account_key:accountKey});
+    }catch(err){
+      if(/agent_status_changed/.test(err.message))return res.status(409).json({error:'agent_status_changed'});
+      throw err;
+    }
     if(result?.agent_id!==id||result?.status!==next)throw Error('Agent status change was not confirmed');
     res.json({ok:true,agent_id:id,status:next});
   }));

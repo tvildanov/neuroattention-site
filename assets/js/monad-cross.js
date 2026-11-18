@@ -35,6 +35,10 @@
     if (!axis) return '';
     return axis['name_' + lang] || axis.name_ru || axis.name_en || axis.id || '';
   }
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
   function CrossScene(container, arch, opts) {
     this.container = container;
@@ -72,7 +76,7 @@
     this.scene.fog = new T.FogExp2(0x070b10, 0.045);
 
     this.camera = new T.PerspectiveCamera(42, w / h, 0.1, 120);
-    this.camera.position.set(6.5, 5.5, 8.5);
+    this.camera.position.set(6.5, 6.2, 9.7);
 
     this.renderer = new T.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -83,7 +87,7 @@
     this.controls = new T.OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
-    this.controls.target.set(0, 2.2, 0);
+    this.controls.target.set(0, 3.1, 0);
 
     var amb = new T.AmbientLight(0xa8f7ff, 0.35);
     this.scene.add(amb);
@@ -173,12 +177,18 @@
 
   CrossScene.prototype._applyFocus = function () {
     var mode = (this._focus && this._focus.mode) || 'full';
+    var vertical = mode === 'vertical' || mode === 'cell';
+    var layer = vertical ? (this._focus.layerId || null) : null;
     var keep = mode === 'full' ? null : mode;
     var self = this;
     // Never retain stale raycast targets from a previous expanded grid.
-    if (this._expandGroup) {
+    if (this._expandGroup && (!vertical || this._expandedLayer !== layer)) {
       var obsolete = new Set();
-      this._expandGroup.traverse(function (obj) { obsolete.add(obj); });
+      this._expandGroup.traverse(function (obj) {
+        obsolete.add(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
       this._pickables = this._pickables.filter(function (obj) { return !obsolete.has(obj); });
       this._groups.vertCells = [];
       this.scene.remove(this._expandGroup);
@@ -191,19 +201,21 @@
       });
     });
     // Selecting a cell must not collapse its parent grid.
-    if (mode === 'vertical' || mode === 'cell') this._expandVerticalDetail();
+    if (vertical && !this._expandGroup) this._expandVerticalDetail(layer);
     else if (mode === 'horizontal') this._expandHorizontalDetail();
     this._renderDetailPanel();
   };
 
-  CrossScene.prototype._expandVerticalDetail = function () {
+  CrossScene.prototype._expandVerticalDetail = function (layer) {
     var T = window.THREE;
     var g = new T.Group();
     this._expandGroup = g;
+    this._expandedLayer = layer;
     this.scene.add(g);
     if (!this._groups.vertCells) this._groups.vertCells = [];
     var layers = (this.arch.vertical || []).slice().sort(function (a, b) { return (a.layer || 0) - (b.layer || 0); });
     layers.forEach(function (L, li) {
+      if (layer && L.id !== layer) return;
       var y = 0.55 + li * 0.95;
       for (var j = 1; j <= 7; j++) {
         var cell = ((L.cells || []).filter(function (c) { return c.n === j; })[0]) || {};
@@ -240,10 +252,16 @@
 
   CrossScene.prototype._resetCamera = function () {
     if (!this.camera) return;
-    this.camera.position.set(6.5, 5.5, 8.5);
+    var damping = this.controls && this.controls.enableDamping;
     if (this.controls) {
-      this.controls.target.set(0, 2.2, 0);
+      this.controls.enableDamping = false;
       this.controls.update();
+    }
+    this.camera.position.set(6.5, 6.2, 9.7);
+    if (this.controls) {
+      this.controls.target.set(0, 3.1, 0);
+      this.controls.update();
+      this.controls.enableDamping = damping;
     }
   };
 
@@ -259,38 +277,39 @@
     if (f.mode === 'full') {
       html = '<p class="monad-muted">' + (lang === 'en'
         ? 'Click an axis or block to zoom in. Drag to orbit. Use Full cross to close an expanded layer.'
+        : lang === 'es' ? 'Selecciona un eje o bloque para abrirlo. Arrastra para girar. Vuelve con «Cruz completa».'
         : 'Кликни ось или блок — приблизим на месте. Вращай без потери раскрытия. Назад — кнопкой «Весь крест».') + '</p>';
     } else {
       html = '<button type="button" class="btn btn-ghost" id="monad-cross-back" style="font-size:12px;margin-bottom:0.4rem;">← ' +
-        (lang === 'en' ? 'Full cross' : 'Весь крест') + '</button>';
+        (lang === 'en' ? 'Full cross' : lang === 'es' ? 'Cruz completa' : 'Весь крест') + '</button>';
       if (f.mode === 'vertical') {
-        html += '<strong>' + (lang === 'en' ? 'Vertical L1–L7' : 'Вертикаль L1–L7') + '</strong>';
+        html += '<strong>' + (lang === 'en' ? 'Vertical ' : lang === 'es' ? 'Vertical ' : 'Вертикаль ') + esc(f.layerId || 'L1–L7') + '</strong>';
         html += '<p class="monad-muted">' + (lang === 'en'
-          ? '49 posts shown as a grid. Click a cube for agents.'
-          : '49 постов сеткой. Кликни кубик — агенты справа.') + '</p>';
+          ? 'Select a cell to see its agents.'
+          : lang === 'es' ? 'Selecciona una celda para ver sus agentes.' : 'Выбери ячейку, чтобы увидеть её агентов.') + '</p>';
       } else if (f.mode === 'horizontal') {
         html += '<strong>' + (lang === 'en' ? 'Horizontal 12+1' : 'Горизонталь 12+1') + '</strong>';
         html += '<p class="monad-muted">' + (lang === 'en'
           ? 'Top view of the circle. Click a person.'
           : 'Вид сверху на круг. Кликни человека.') + '</p>';
       } else if (f.mode === 'cell') {
-        html += '<strong>' + String(f.code || '').replace(/x/gi, '×') + '</strong>';
-        if (f.label) html += '<p>' + f.label + '</p>';
+        html += '<strong>' + esc(String(f.code || '').replace(/x/gi, '×')) + '</strong>';
+        if (f.label) html += '<p>' + esc(f.label) + '</p>';
         var agents = f.agents || [];
-        if (!agents.length) html += '<p class="monad-muted">' + (lang === 'en' ? 'No agents here' : 'В этой клетке нет агентов') + '</p>';
+        if (!agents.length) html += '<p class="monad-muted">' + (lang === 'en' ? 'No agents here' : lang === 'es' ? 'No hay agentes en esta celda' : 'В этой клетке нет агентов') + '</p>';
         else {
           html += '<ul class="monad-cross-agent-list">';
           agents.forEach(function (a) {
-            html += '<li><button type="button" class="monad-cross-agent" data-agent="' + a.agent_id + '">' +
-              (a.name || a.agent_id) + '</button></li>';
+            html += '<li><button type="button" class="monad-cross-agent" data-agent="' + esc(a.agent_id) + '">' +
+              esc(a.name || a.agent_id) + '</button></li>';
           });
           html += '</ul>';
         }
       } else if (f.mode === 'person') {
-        html += '<strong>' + (f.name || f.hour) + '</strong>';
+        html += '<strong>' + esc(f.name || f.hour) + '</strong>';
         html += '<p class="monad-muted">' + (lang === 'en' ? 'Open Horizontal tab for full tree' : 'Полное дерево — во вкладке Горизонталь') + '</p>';
         html += '<button type="button" class="btn btn-primary" id="monad-cross-open-tab" style="font-size:12px;margin-top:0.4rem;" data-tab="horizontal" data-hour="' +
-          (f.hour || '') + '">' + (lang === 'en' ? 'Open Horizontal' : 'Открыть Горизонталь') + '</button>';
+          esc(f.hour || '') + '">' + (lang === 'en' ? 'Open Horizontal' : 'Открыть Горизонталь') + '</button>';
       }
     }
     this._detailEl.innerHTML = html;
@@ -339,7 +358,8 @@
       // Large invisible axis hitboxes must not mask the visible small cells.
       var cellHit = (self._focus.mode === 'vertical' || self._focus.mode === 'cell') &&
         hits.find(function (h) { return h.object && h.object.userData && h.object.userData.monadNav && h.object.userData.monadNav.focus === 'cell'; });
-      var chosen = cellHit || hits.find(function (h) { return h.object && h.object.userData && h.object.userData.monadNav; });
+      var visibleHit = hits.find(function (h) { return h.object.userData.monadNav && h.object.material.visible !== false; });
+      var chosen = cellHit || visibleHit || hits.find(function (h) { return h.object.userData.monadNav; });
       var nav = chosen && chosen.object.userData.monadNav;
       if (!nav) return;
       if (nav.focus === 'cell') {

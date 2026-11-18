@@ -53,6 +53,9 @@
     agent_name:['Имя агента','Agent name','Nombre del agente'],
     agent_id:['Идентификатор (a–z, 0–9, _)','Identifier (a–z, 0–9, _)','Identificador (a–z, 0–9, _)'],
     instructions:['Инструкции агента','Agent instructions','Instrucciones del agente'],
+    public_role:['Публичная роль в DOMunity (необязательно)','Public role in DOMunity (optional)','Rol público en DOMunity (opcional)'],
+    canon_content:['Содержание канона','Canon content','Contenido del canon'],
+    canon_invalid:['Содержание должно быть объектом JSON.','Content must be a JSON object.','El contenido debe ser un objeto JSON.'],
     pending_onboarding:['Зарегистрирован · ожидает настройки','Registered · awaiting onboarding','Registrado · en espera de configuración'],
     training:['Начать обучение','Start training','Iniciar formación'],
     certifying:['Перейти к проверке','Start certification','Iniciar certificación'],
@@ -300,11 +303,37 @@
     }));
     for(const item of details.canon||[]) host.append(button(item.title,async()=>{
       try {
-        const data=await api('/api/dom-monad/admin/canon/'+encodeURIComponent(item.artifact_id));
-        output.replaceChildren(element('h4',item.title),element('p',item.summary),
-          element('pre',JSON.stringify(data.canon.content,null,2)));
+        await showCanon(output,item.artifact_id);
       }catch(err){status.textContent=failure(err);}
     }));
+  }
+  async function showCanon(host,id){
+    const endpoint='/api/dom-monad/admin/canon/'+encodeURIComponent(id);
+    const {canon,can_publish}=await api(endpoint);
+    host.replaceChildren(element('h4',canon.title+' · '+canon.version),element('p',canon.summary));
+    const current=JSON.stringify(canon.content,null,2);
+    if(!can_publish){host.append(element('pre',current));return;}
+    const editor=element('textarea');editor.value=current;editor.rows=10;
+    editor.setAttribute('aria-label',tr('canon_content'));
+    const status=element('p');status.setAttribute('role','status');
+    const preview=element('div');
+    host.append(editor,button('preview',()=>{
+      let content;
+      try{
+        content=JSON.parse(editor.value);
+        if(!content||typeof content!=='object'||Array.isArray(content))throw Error();
+      }catch(_){status.textContent=tr('canon_invalid');return;}
+      status.textContent='';
+      preview.replaceChildren(element('h5',tr('previous')),element('pre',current),
+        element('h5',tr('next')),element('pre',JSON.stringify(content,null,2)),
+        button('publish',async function(){
+          this.disabled=true;
+          try{
+            await api(endpoint,'PUT',{expected_version:canon.version,content});
+            await showCanon(host,id);
+          }catch(err){status.textContent=failure(err);this.disabled=false;}
+        }));
+    }),status,preview);
   }
   function renderActivity(host,id) {
     const view=element('div');
@@ -323,7 +352,10 @@
         );
         const list=element('ul');
         for(const task of data.handoffs)list.append(element('li',[tr(task.status),task.completed_at&&new Date(task.completed_at).toLocaleString()].filter(Boolean).join(' · ')));
-        for(const action of (data.actions||[]).slice(0,30))list.append(element('li',[action.action_type,action.created_at&&new Date(action.created_at).toLocaleString()].filter(Boolean).join(' · ')));
+        for(const action of (data.actions||[]).slice(0,30))list.append(element('li',[
+          action.action_type,action.agent_id!==id&&action.agent_id,
+          action.success===false&&tr('failed'),action.created_at&&new Date(action.created_at).toLocaleString()
+        ].filter(Boolean).join(' · ')));
         view.append(list);
       }catch(err){if(current===request)view.textContent=failure(err);}
     }
@@ -341,7 +373,8 @@
       const name=element('input');name.required=true;name.maxLength=120;
       const id=element('input');id.required=true;id.pattern='[a-z0-9_]{2,80}';id.autocomplete='off';
       const prompt=element('textarea');prompt.required=true;prompt.minLength=10;prompt.maxLength=60000;prompt.rows=6;
-      for(const [key,input] of [['agent_name',name],['agent_id',id],['instructions',prompt]]){
+      const role=element('textarea');role.maxLength=1500;role.rows=2;
+      for(const [key,input] of [['agent_name',name],['agent_id',id],['instructions',prompt],['public_role',role]]){
         const label=element('label',tr(key));label.append(input);form.append(label);
       }
       const save=element('button',tr('create'));save.type='submit';
@@ -350,7 +383,8 @@
       form.onsubmit=async event=>{
         event.preventDefault();save.disabled=true;
         try{
-          const data=await api('/api/dom-monad/admin/agents','POST',{agent_id:id.value,name:name.value,system_prompt:prompt.value,placement_cell:cell});
+          const data=await api('/api/dom-monad/admin/agents','POST',{agent_id:id.value,name:name.value,system_prompt:prompt.value,
+            placement_cell:cell,room_description:role.value});
           form.replaceChildren(element('p',tr(data.status)+' · '+data.agent_id+' · '+data.placement_cell),
             button('description',()=>showAgent(data.agent_id,host)));
         }catch(err){status.textContent=failure(err);save.disabled=false;}

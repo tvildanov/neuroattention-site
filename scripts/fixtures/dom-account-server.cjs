@@ -13,7 +13,7 @@ global.fetch = (input, options) => {
   if (url.hostname !== '127.0.0.1') return Promise.reject(Error('External fetch blocked by account fixture'));
   return originalFetch(input, options);
 };
-const config = { DATABASE_URL: 'postgres://fixture:fixture@127.0.0.1/fixture', JWT_SECRET: 'fixture-only', PORT: '4318', SMTP_USER:'subject@.invalid',SMTP_PASS:'fixture-only', MONAD_BASE_URL:'http://127.0.0.1:4319',MONAD_MCP_URL:'http://127.0.0.1:4319/mcp',MONAD_API_KEY:'fixture-only' };
+const config = { DATABASE_URL: 'postgres://fixture:fixture@127.0.0.1/fixture', JWT_SECRET: 'fixture-only', PORT: '4318', SMTP_USER:'subject@.invalid',SMTP_PASS:'fixture-only', MONAD_BASE_URL:'http://127.0.0.1:4319',MONAD_MCP_URL:'http://127.0.0.1:4319/mcp',MONAD_API_KEY:'fixture-only',DOM_ACCOUNT_ADMIN_KEY:'fixture-admin-only' };
 Object.assign(process.env,config);
 
 function tag(db) {
