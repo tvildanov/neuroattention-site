@@ -32,5 +32,7 @@ jobs:
           git add api/server.js
           if ! git diff --cached --quiet; then
             git commit -m 'Integrate real DOMunity room agents into existing API'
+            git fetch origin '${{ github.event.pull_request.head.ref }}'
+            git rebase 'origin/${{ github.event.pull_request.head.ref }}'
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
           fi
