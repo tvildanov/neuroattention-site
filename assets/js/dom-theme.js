@@ -24,3 +24,6 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
   var link=document.createElement('link');link.rel='stylesheet';link.href='assets/dom-inner-pages-v06.css?v=1';document.head.appendChild(link);
   var script=document.createElement('script');script.src='assets/js/dom-inner-pages-v06.js?v=1';script.defer=true;document.head.appendChild(script);
 })();
+
+/* Keep graph text legible in both cabinet themes without changing typology styles. */
+(function(){if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;var el=document.createElement('link');el.rel='stylesheet';el.href='assets/dom-account-graph-readability-v06.css?v=1';document.head.appendChild(el);})();
