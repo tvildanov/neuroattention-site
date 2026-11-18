@@ -5885,7 +5885,7 @@ app.get('/api/admin/rehab/applications', requireAuth, async (req, res) => {
     let rows;
     if (filterStatus && filterStatus !== 'all') {
       rows = await sql`
-        SELECT ra.*, u.name as user_name, u.email as user_email
+        SELECT ra.*, u.display_name as user_name, u.email as user_email
         FROM rehab_applications ra
         LEFT JOIN users u ON ra.user_id = u.id
         WHERE ra.status = ${filterStatus}
@@ -5894,7 +5894,7 @@ app.get('/api/admin/rehab/applications', requireAuth, async (req, res) => {
       `;
     } else {
       rows = await sql`
-        SELECT ra.*, u.name as user_name, u.email as user_email
+        SELECT ra.*, u.display_name as user_name, u.email as user_email
         FROM rehab_applications ra
         LEFT JOIN users u ON ra.user_id = u.id
         ORDER BY ra.created_at DESC
