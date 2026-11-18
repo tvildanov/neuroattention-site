@@ -18,7 +18,7 @@ const srv=http.createServer((req,res)=>{
    await context.addInitScript(l=>{localStorage.setItem('na_lang',l);localStorage.setItem('na_geo_done','1')},lang);
    const page=await context.newPage();
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
-   async function open(name,sel){await page.goto('http://127.0.0.1:'+port+'/'+name+'.html',{waitUntil:'domcontentloaded'});await page.locator(sel).waitFor({timeout:12000});}
+   async function open(name,sel){await page.goto('http://127.0.0.1:'+port+'/'+name+'.html',{waitUntil:'domcontentloaded'});await page.locator(sel).first().waitFor({timeout:12000});}
    await open('dom','.dom-v06-entities');
    assert.equal(await page.locator('#dom-unity .dom-v06-entities .dom-card').count(),6,'DOM card count');
    for(const name of ['DOM Institute','DOM Platform','DOM Space','DOM Tech','NeuroAttention Lab','Custom Group Agency'])assert.equal(await page.getByRole('heading',{name,exact:true}).count(),1,name);
