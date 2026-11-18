@@ -11,7 +11,7 @@ const srv=http.createServer((req,res)=>{
 (async()=>{
  await new Promise(resolve=>srv.listen(0,'127.0.0.1',resolve));
  const port=srv.address().port;
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,channel:'chrome'});
  try{
   for(const lang of ['ru','en','es']){
    const context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
