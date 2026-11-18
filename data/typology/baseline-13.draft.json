@@ -1,0 +1,2065 @@
+{
+  "schema_version": "0.1",
+  "id": "dom-baseline-13",
+  "version": "draft-2026-11-17.1",
+  "language": "ru",
+  "status": "working-questionnaire-not-validated",
+  "time_budget": {
+    "target_minutes": 20,
+    "status": "target-not-measured",
+    "includes": "Анкетирование; объективные задания ещё требуют отдельной интеграции и хронометража."
+  },
+  "scoring": {
+    "enabled": false,
+    "recovered_complete_13_stat_key": false,
+    "profile_assignment_enabled": false,
+    "wmc_enabled": false,
+    "xp_enabled": false,
+    "objective_evidence_fraction": null
+  },
+  "participant_intro": "Предварительная анкета о привычках, ощущениях и взаимодействии со средой. Можно пропускать вопросы. Черновик сохраняется только в этом браузере. Это ещё не валидированная диагностика.",
+  "groups": [
+    {
+      "id": "body_core",
+      "label": "BODY CORE"
+    },
+    {
+      "id": "mind_control",
+      "label": "MIND CONTROL"
+    },
+    {
+      "id": "world",
+      "label": "WORLD"
+    }
+  ],
+  "stats": [
+    {
+      "id": "stability",
+      "ordinal": 1,
+      "label": "Устойчивость",
+      "group_id": "body_core",
+      "group_label": "BODY CORE",
+      "definition_ru": "Сохранение работоспособности при обычной нагрузке и восстановление после нарушения.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 1 --- STABILITY"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "STA01",
+          "STA02",
+          "STA03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Сравнение выполнения задачи до/после нагрузки — требует безопасного протокола",
+        "Восстановление и выполнение длительных практик"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 1 --- STABILITY\nMeaning\nAbility of the system to retain functional capacity under load and recover after disturbance.\nNot \"never becoming stressed.\"\nThe central question is whether functionality collapses when load rises.\nBehavioral diagnostic concept\nBaseline cognitive task → physical load → same cognitive task immediately after.\nCandidate cognitive tasks:\nbackward counting;\nnumber-position memory;\nStroop-type task;\nmemory task.\nPhysical load:\n~30 squats;\nor ~60-second plank;\nexact safety protocol still needs standardization.\nMetric:\npercentage drop in cognitive performance under/after load.\nThis can be automated in Self-Guided mode if the cognitive test is digital.\nAdditional physiology\nPotential present/future signals:\nheart rate;\nHRV;\nheart-rate recovery;\nbreathing rate;\nrespiratory variability;\nfuture EEG attention stability.\nA low-tech version can ask the participant to count breaths for a defined interval, but reliability is limited.\nCourse evidence\nLong practices are important Stability evidence.\nThe existing NeuroAttention practice format may last about an hour and is often split into 3--5 parts with short micro-theory/state-mapping interruptions.\nImportant proxy:\nability to complete a long process with fewer large breaks.\nEarlier illustrative \"Consistency XP\" idea:\none uninterrupted session > two sessions > three sessions > five sessions.\nExact XP numbers previously mentioned were illustrative only and must not be treated as final.\nGrowth principle\nStability should grow slowly. A jump such as 30 → 80 in one month was explicitly rejected as unrealistic.\nReal development is expected across months, potentially a year or longer."
+    },
+    {
+      "id": "energy_regulation",
+      "ordinal": 2,
+      "label": "Регуляция ресурса",
+      "group_id": "body_core",
+      "group_label": "BODY CORE",
+      "definition_ru": "Замечание расхода/восстановления и намеренное изменение уровня активации.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 2 --- ENERGY REGULATION"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "ENE01",
+          "ENE02",
+          "ENE03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Наблюдение состояния до/после намеренной регуляции",
+        "Сопоставление прогноза ресурса и последующего состояния"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 2 --- ENERGY REGULATION\nMeaning\nNot \"energy\" in an esoteric sense.\nIt is the ability to manage bodily and neural resources:\nexpenditure;\nrestoration;\nactivation;\ndown-regulation;\navoiding unnecessary depletion;\nmoving between higher and lower arousal when context requires it.\nIt includes the capacity to:\nmobilize when underactivated;\nrelax when overactivated;\nnotice approaching depletion;\ndistribute load;\nrecover.\nCritical distinction from Interoception\nInteroception is broad internal sensing.\nEnergy Regulation is specifically resource regulation.\nWeak Interoception may constrain Energy Regulation because one cannot regulate signals one does not detect well, but they remain separate stats.\nDiagnostic challenge\nA proposed morning prediction vs evening reality test is useful for Layer C, but cannot serve as the sole Layer B test because it requires time.\nLayer B needs momentary regulation tasks.\nCandidate direction:\nestablish a baseline activation/tension state;\nask participant to intentionally down-regulate;\nmeasure change;\noptionally ask participant to intentionally mobilize afterward;\ncompare ability to shift state in both directions.\nPotential measurements:\nheart rate;\nbreathing rate;\nsubjective tension;\nrelaxation latency;\nfuture HRV;\nfuture respiration/camera sensing.\nThe exact standardized Self-Guided protocol remains unfinished."
+    },
+    {
+      "id": "interoception",
+      "ordinal": 3,
+      "label": "Интероцепция",
+      "group_id": "body_core",
+      "group_label": "BODY CORE",
+      "definition_ru": "Различение и локализация внутренних телесных сигналов.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 3 --- INTEROCEPTION"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "INT01",
+          "INT02",
+          "INT03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Карта ощущений: тип, локализация, изменение",
+        "Проверенные сенсорные/физиологические сравнения при наличии протокола"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 3 --- INTEROCEPTION\nMeaning\nSensitivity to, differentiation of and mapping of internal bodily signals.\nExamples:\nheartbeat;\nbreathing;\ngastrointestinal signals;\nhunger/satiety;\ntension;\nrelaxation;\ninternal temperature;\norgan sensations;\nmuscular states;\nother internal signals.\nIt is broader than resource regulation.\nDiagnostic direction\nBody scan:\nidentify strongest tension/discomfort;\nif no tension is reported, identify areas of greatest relaxation;\nmap location and type of sensation.\nAn important observed pattern: some visibly tense participants report \"nothing,\" indicating low access/differentiation.\nHeartbeat task\nA heartbeat estimation/detection task was proposed but needs careful redesign.\nThe phrase \"guess your heartbeats\" is insufficient. A valid implementation needs a clear protocol and a comparison against an actual pulse measurement or validated interoceptive task. Do not use a naive heartbeat-counting score as scientific truth without validation.\nLayer C\nEspecially valuable because NeuroAttention repeatedly asks:\nwhat do you feel?\nwhat type of sensation?\nwhere is it?\nhow did it change?\nGrowth can be observed as increasing:\ndifferentiation;\nspatial precision;\nvocabulary;\nconsistency;\nnumber of detectable internal categories.\nObjective markers\nDirect \"objective\" validation of a reported tension location is difficult without sensors. Future options may include physiological sensing, but this remains open."
+    },
+    {
+      "id": "proprioception",
+      "ordinal": 4,
+      "label": "Проприоцепция",
+      "group_id": "body_core",
+      "group_label": "BODY CORE",
+      "definition_ru": "Чувство положения и движения тела в пространстве и времени.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 4 --- PROPRIOCEPTION"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "PRO01",
+          "PRO02",
+          "PRO03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Согласованное задание на координацию, положение и ритм",
+        "Guided-наблюдение; нормы и безопасность ещё не завершены"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 4 --- PROPRIOCEPTION\nMeaning\nPerception and control of the body in space and time.\nIncludes:\ncoordination;\nmovement accuracy;\nbalance;\nbody-position sense;\nrhythm;\ntiming.\nGuided test concept\nParticipant stands at a known point, closes eyes and marches with high knees while maintaining a rhythm and attempting to stay in place.\nMeasure:\ndisplacement;\ndirection of drift;\nrhythm stability;\ncoordination.\nGuided mode is safer because the specialist can stop the person before collision.\nSelf-Guided alternatives\nSafer candidates:\nsingle-leg stance;\nsingle-leg stance with controlled head turns;\neye movements while balancing;\ntouch-count / foot contacts;\nfinger-to-nose test;\ncoordination sequences.\nExact scoring norms remain to be validated."
+    },
+    {
+      "id": "vital_engagement",
+      "ordinal": 5,
+      "label": "Вовлечённость в жизнь",
+      "group_id": "body_core",
+      "group_label": "BODY CORE",
+      "definition_ru": "Интерес, живость и включённость в процессы жизни.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 5 --- VITAL ENGAGEMENT"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "VIT01",
+          "VIT02",
+          "VIT03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Сценарий новизны/вовлечённости",
+        "Длительные сведения об интересе и включённости"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 5 --- VITAL ENGAGEMENT\nMeaning\nCapacity for interest, involvement, aliveness and contact with life as a process.\nNot identical to:\nhappiness;\npleasure;\nmotivation.\nCloser to:\n\"playing life\";\nfelt richness;\ngenuine interest;\nbeing drawn into processes.\nQuestionnaire direction\nFrequency of genuine interest/aliveness over the last week, with behaviorally anchored answer ranges.\nBehavioral challenge\nA novelty/engagement challenge was proposed:\nnew route;\nnew action;\nunfamiliar micro-practice;\nthen evaluate avoidance, engagement and absorption.\nProblem: difficult to measure reliably inside a one-session Self-Guided Layer B diagnostic.\nTherefore this stat is expected to rely more heavily on:\nquestionnaire;\nimmediate choice/engagement tasks;\nLayer C longitudinal data.\nLevels\nA full 0--100 banding was intended but the exact canonical wording is not recoverable here. It must be reconstructed and validated rather than invented.\n9. MIND CONTROL --- CONSOLIDATED SPECIFICATION"
+    },
+    {
+      "id": "attention_control",
+      "ordinal": 6,
+      "label": "Управление вниманием",
+      "group_id": "mind_control",
+      "group_label": "MIND CONTROL",
+      "definition_ru": "Направление, удержание, возврат и переключение внимания.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 6 --- ATTENTION CONTROL"
+        }
+      ],
+      "historical_descriptive_bands": [
+        {
+          "from": 0,
+          "to": 20,
+          "description": "Scattered: attention chaotic, frequent unrecognized drift."
+        },
+        {
+          "from": 20,
+          "to": 40,
+          "description": "Reactive: short retention; external stimuli easily capture attention."
+        },
+        {
+          "from": 40,
+          "to": 60,
+          "description": "Functional: can sustain task attention, periodically distracts and returns."
+        },
+        {
+          "from": 60,
+          "to": 80,
+          "description": "Directed: intentionally directs and switches attention with limited loss."
+        },
+        {
+          "from": 80,
+          "to": 100,
+          "description": "Mastered: high voluntary control; low dependence on random stimuli."
+        }
+      ],
+      "historical_band_status": "descriptions-only-no-recovered-response-key",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "ATT01",
+          "ATT02",
+          "ATT03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Поток целевых символов: пропуски, ошибки, время ответа",
+        "Одинаковая задача с отвлечениями и без"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 6 --- ATTENTION CONTROL\nMeaning\nAbility to voluntarily:\ndirect attention;\nsustain attention;\nnotice distraction;\nreturn attention;\nswitch attention intentionally.\nNot the same as Awareness.\nCore distinction\nAttention Control asks:\nWhere is my attention, and can I control where it goes?\nAwareness asks:\nWhat is happening in the moment/process?\nLevels\n0--20 --- Scattered: attention chaotic, frequent unrecognized drift.\n20--40 --- Reactive: short retention; external stimuli easily capture attention.\n40--60 --- Functional: can sustain task attention, periodically distracts and returns.\n60--80 --- Directed: intentionally directs and switches attention with limited loss.\n80--100 --- Mastered: high voluntary control; low dependence on random stimuli.\nDiagnostic questions\nThree areas were proposed:\nfrequency of distraction during important tasks;\nability/speed of return after noticing distraction;\nease of sustaining one object for ~5 minutes.\nFinal wording should avoid obvious \"good answer\" bias.\nFocus Retention Test\nDigital sustained-attention task.\nExample:\nstream of symbols;\nrespond only to a target symbol.\nMeasure:\nerrors;\nomissions;\nreaction time;\nperformance drift over time.\nAttention Disruption / Controlled Distraction Test\nThe earlier vague \"measure productivity drop\" was corrected.\nPreferred implementation:\nsame attention task across phases;\nphase 1: low distraction;\nphase 2: distractors introduced;\nphase 3: greater distraction;\ncompare accuracy/reaction metrics.\nDerived candidate metric:\nAttention Disruption Index.\nThis is automatable in Self-Guided mode.\nNeuroAttention-specific alternative\nShort breath-attention practice with controlled distractors and explicit markers for:\n\"noticed distraction\";\n\"returned.\"\nThis may better reflect the actual skill trained by NeuroAttention than generic cognitive testing.\nLayer C evidence\nuninterrupted practice duration;\npauses;\ncompletion;\nreturn after distraction;\ncontinuous work duration;\npotentially tab/context switching if technically and ethically available.\nHidden/candidate metric\nAttention Endurance --- how long quality attention can be sustained.\nXP source categories\nDo not lock numbers yet.\nPotential XP sources:\nsustained attention;\nsuccessful return after distraction;\ncompletion of practices;\nreduced distraction over time;\nlonger continuous concentration."
+    },
+    {
+      "id": "awareness",
+      "ordinal": 7,
+      "label": "Осознавание процессов",
+      "group_id": "mind_control",
+      "group_label": "MIND CONTROL",
+      "definition_ru": "Замечание и различение процессов по мере их возникновения.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 7 --- AWARENESS"
+        }
+      ],
+      "historical_descriptive_bands": [
+        {
+          "from": 0,
+          "to": 20,
+          "description": "Blind: most processes run automatically; causes rarely noticed."
+        },
+        {
+          "from": 20,
+          "to": 40,
+          "description": "Reactive Awareness: events mostly noticed after they occur."
+        },
+        {
+          "from": 40,
+          "to": 60,
+          "description": "Functional Awareness: notices some states/patterns and some causal relations."
+        },
+        {
+          "from": 60,
+          "to": 80,
+          "description": "Systemic Awareness: sees recurring relations among states, actions, environment and results; often notices processes during development."
+        },
+        {
+          "from": 80,
+          "to": 100,
+          "description": "Meta-Awareness: notices automatic reactions, attentional shifts, emotional processes and emerging intentions near the moment they begin, before they fully capture behavior."
+        }
+      ],
+      "historical_band_status": "descriptions-only-no-recovered-response-key",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "AWA01",
+          "AWA02",
+          "AWA03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Карта процессов после наблюдения",
+        "Временная последовательность замечания и длительные наблюдения"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 7 --- AWARENESS\nRevised meaning\nThis stat was significantly corrected during discussion.\nPreferred definition:\nAbility to notice, distinguish and become aware of processes occurring within oneself and around oneself as they arise and unfold in real time.\nAwareness is not merely intellectual understanding or retrospective analysis.\nKey distinction\nKnowledge: I know.\nUnderstanding: I can explain.\nAwareness: I notice the process while it is happening.\nExample:\nInteroception: \"I feel anxiety.\"\nAttention Control: \"I can keep attention on the anxiety.\"\nAwareness: \"I notice anxiety arising after this interaction, being amplified by these thoughts, and affecting my choices right now.\"\nSaying \"I procrastinate a lot\" is not automatically high Awareness. It may simply be retrospective knowledge.\nLevels\n0--20 --- Blind: most processes run automatically; causes rarely noticed.\n20--40 --- Reactive Awareness: events mostly noticed after they occur.\n40--60 --- Functional Awareness: notices some states/patterns and some causal relations.\n60--80 --- Systemic Awareness: sees recurring relations among states, actions, environment and results; often notices processes during development.\n80--100 --- Meta-Awareness: notices automatic reactions, attentional shifts, emotional processes and emerging intentions near the moment they begin, before they fully capture behavior.\nMeasurement problem\nAwareness is poorly measured by \"correct answers.\"\nThe diagnostic should measure:\nnumber of processes noticed;\ndiversity of processes;\ntemporal sequencing;\nability to notice causal relationships;\nreal-time vs retrospective noticing.\nPattern Detection Test\nShort life scenarios with multiple causal elements.\nUseful, but it mainly measures pattern detection / causal interpretation, not full personal Awareness.\nTherefore it should not dominate the stat.\nState Mapping Test --- preferred Self-Guided task\nAfter 3--5 minutes of breath observation, participant maps what occurred.\nCandidate categories:\nthoughts;\nemotions;\nbodily sensations;\nbreathing;\ntension;\ninternal dialogue;\nmovement impulses;\nexternal stimuli;\nsleepiness;\ninterest;\nanxiety;\nboredom.\nThen ask:\nwhat appeared first?\nwhat followed?\nwhat intensified something else?\nwhat reduced it?\nwhat seemed primary?\nCandidate indices:\nDiversity Index\nProcess Awareness Index\nPattern Awareness Index\nLayer C\nExpected to be the main measurement source.\nAnalyze longitudinal notes/maps for:\ndepth;\nnumber of factors;\ntemporal resolution;\ncausal links;\nprediction;\nconsistency.\nCandidate hidden metric\nPattern Resolution --- ability to notice, explain and predict patterns.\nThis may connect strongly to World Model Coherence.\nXP source categories\ninsight;\nstable pattern discovery;\nsuccessful prediction.\nAgain, exact XP amounts are not finalized."
+    },
+    {
+      "id": "adaptation_flexibility",
+      "ordinal": 8,
+      "label": "Адаптационная гибкость",
+      "group_id": "mind_control",
+      "group_label": "MIND CONTROL",
+      "definition_ru": "Перестройка поведения и стратегии при изменении условий.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 8 --- ADAPTATION FLEXIBILITY"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "ADA01",
+          "ADA02",
+          "ADA03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Смена правил и задержка адаптации",
+        "Изменение стратегии и поведения во времени"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 8 --- ADAPTATION FLEXIBILITY\nMeaning\nCapacity to change existing patterns of:\nbehavior;\nthinking;\nattention;\nreaction;\nstrategy;\nidentity/self-organization\nwhen conditions or evidence require it.\nA useful formulation from the discussion:\nability to let go of the previous self/pattern and allow a new one to emerge.\nIt is related to neuroplasticity, psychological flexibility and personality plasticity, but should not be casually equated with any single established construct without validation.\nRelationship to Awareness\nThey are strongly coupled but should remain separate.\nAwareness makes change possible by exposing a process in real time.\nAdaptation Flexibility is the capacity to actually reorganize the pattern.\nImportant nuance: high Awareness with very low Flexibility should probably be less common than the earlier simplistic examples implied. The dependency should be reflected in the dependency model rather than by collapsing the stats.\nQuestionnaire design correction\nEarly items were rejected as too transparent, e.g.:\n\"I keep doing the same thing\"\n\"I quickly adapt\"\nbecause users can see which answer sounds \"good.\"\nQuestions must use non-moralized, behaviorally plausible alternatives.\nExample direction:\n\"When facing a task you have already tried to solve...\"\ncontinue developing the current approach;\nstay with it for a while, then look for alternatives;\nbegin testing another approach relatively quickly;\ntest several approaches in parallel.\nNo answer should scream \"best person.\"\nRule Shift Test\nDigital task where response rules change.\nMeasures:\ncognitive flexibility;\nerrors after rule change;\nadaptation latency.\nImportant correction:\nThis measures only part of Adaptation Flexibility, not the full construct.\nAdaptation Scenario Test\nLife scenarios such as:\nnew habit disrupted after several days;\nfeedback contradicts existing plan;\nstrategy stops working;\nenvironmental change invalidates routine.\nMeasure response pattern without obvious moral hierarchy.\nBehavioral Micro-Adaptation Challenge\nWithin the diagnostic, participant follows one rule/strategy and then receives controlled changes.\nStill primarily a short-term proxy.\nLayer C\nExpected to be the strongest evidence:\nresponse to new practices;\nresponse to feedback;\nrecovery after lapses;\nchanging ineffective strategies;\nadoption and stabilization of new behavior.\nCandidate hidden metric\nAdaptation Latency --- time between \"I recognized the need for change\" and \"I actually changed behavior/strategy.\"\nXP source categories\nimplemented change;\nsustained new pattern;\nsuccessful return after disruption;\nchange under meaningful resistance.\nExact \"Resistance XP\" formula is unfinished."
+    },
+    {
+      "id": "execution",
+      "ordinal": 9,
+      "label": "Реализация намерений",
+      "group_id": "mind_control",
+      "group_label": "MIND CONTROL",
+      "definition_ru": "Переход от намерения к началу, продолжению и завершению действий.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 9 --- EXECUTION"
+        }
+      ],
+      "historical_descriptive_bands": [
+        {
+          "from": 0,
+          "to": 20,
+          "description": "Inactive: many intentions, few completions."
+        },
+        {
+          "from": 20,
+          "to": 40,
+          "description": "Starter: starts but has difficulty finishing."
+        },
+        {
+          "from": 40,
+          "to": 60,
+          "description": "Functional: completes a meaningful portion of tasks."
+        },
+        {
+          "from": 60,
+          "to": 80,
+          "description": "Reliable: regularly finishes what is started; high behavioral predictability."
+        },
+        {
+          "from": 80,
+          "to": 100,
+          "description": "Integrator: systematically converts intentions into complex long-term results."
+        }
+      ],
+      "historical_band_status": "descriptions-only-no-recovered-response-key",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "EXE01",
+          "EXE02",
+          "EXE03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Многошаговое задание и отложенное намерение",
+        "Начатые/завершённые реальные действия"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 9 --- EXECUTION\nMeaning\nAbility to turn intentions, decisions and plans into completed actions and real-world outcomes.\nNot identical to:\nmotivation;\ndiscipline;\nbusyness;\nproductivity.\nExecution includes:\ninitiation;\ncontinuation;\ncompletion;\noutcome production.\nDistinction within Mind Control\nAttention Control: I can hold/direct attention.\nAwareness: I notice what is happening.\nAdaptation Flexibility: I can reorganize/change.\nExecution: I actually do and complete.\nLevels\n0--20 --- Inactive: many intentions, few completions.\n20--40 --- Starter: starts but has difficulty finishing.\n40--60 --- Functional: completes a meaningful portion of tasks.\n60--80 --- Reliable: regularly finishes what is started; high behavioral predictability.\n80--100 --- Integrator: systematically converts intentions into complex long-term results.\nDiagnostic questions\nProposed domains:\ntransition from preparation to action;\npersistence across multi-week tasks;\nactual completion ratio over recent period.\nFinal wording still needs anti-social-desirability design.\nMulti-Step Completion Test\nParticipant receives a sequence of linked steps.\nMeasure:\ncompleted steps;\nerrors;\nabandonment;\ntotal time;\ncontinuity.\nDelayed Completion Test\nAn instruction/intention is planted early in the diagnostic and must be completed later.\nThis attempts to measure maintenance of an intended action across intervening tasks.\nCaution: it also loads prospective memory, so it should not be interpreted as pure Execution.\nLayer C\nOne of the strongest longitudinally measurable stats.\nPossible evidence:\ncompleted vs started practices;\nabandoned tasks;\nreturns;\nstreaks;\nlong-cycle completion;\nactual behavioral commitments.\nCandidate hidden metrics\nCompletion Ratio = completed processes / initiated processes.\nIntention-to-Action Gap = discrepancy between stated intention and actual behavior.\nXP principle\nExecution XP should emphasize completion, not mere initiation.\nExact values remain unfinished.\n10. WORLD LAYER --- CONSOLIDATED SPECIFICATION"
+    },
+    {
+      "id": "technoperception",
+      "ordinal": 10,
+      "label": "Взаимодействие с технологиями",
+      "group_id": "world",
+      "group_label": "WORLD",
+      "definition_ru": "Освоение, понимание и применение технологических инструментов.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 10 --- TECHNOPERCEPTION"
+        }
+      ],
+      "historical_descriptive_bands": [
+        {
+          "from": 0,
+          "to": 20,
+          "description": "Digitally Disconnected: significant difficulty learning/using technology."
+        },
+        {
+          "from": 20,
+          "to": 40,
+          "description": "Basic User: uses basic tools; learns new systems mostly when necessary."
+        },
+        {
+          "from": 40,
+          "to": 60,
+          "description": "Functional User: confidently uses common digital tools."
+        },
+        {
+          "from": 60,
+          "to": 80,
+          "description": "Advanced User: quickly learns new technologies and environments."
+        },
+        {
+          "from": 80,
+          "to": 100,
+          "description": "Technology Native: technological environments feel like a natural extension of activity; combines tools to solve complex problems."
+        }
+      ],
+      "historical_band_status": "descriptions-only-no-recovered-response-key",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "TEC01",
+          "TEC02",
+          "TEC03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Освоение нового мини-интерфейса",
+        "Выбор и применение инструментов"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 10 --- TECHNOPERCEPTION\nMajor conceptual correction\nAn earlier version defined Technoperception mainly as \"conscious control of digital environment.\" That was rejected.\nThat construct is closer to:\nTechnoperception × Awareness → Tech Awareness.\nTechnoperception itself includes technological competence.\nMeaning\nAbility to perceive, understand, learn and use technologies as a domain/environment of interaction.\nIncludes:\ndigital literacy;\ntechnological literacy;\nease of learning tools;\nability to use digital systems;\ntechnological problem-solving;\ncomfort with new interfaces;\nability to combine tools.\nA person may have high Technoperception and low Awareness, e.g. technically brilliant but poorly aware of how technology affects their attention/life.\nLevels\n0--20 --- Digitally Disconnected: significant difficulty learning/using technology.\n20--40 --- Basic User: uses basic tools; learns new systems mostly when necessary.\n40--60 --- Functional User: confidently uses common digital tools.\n60--80 --- Advanced User: quickly learns new technologies and environments.\n80--100 --- Technology Native: technological environments feel like a natural extension of activity; combines tools to solve complex problems.\nDiagnostic questions\nDomains:\nresponse to unfamiliar digital tools;\nsolving new tasks through technology;\ncomfort in unfamiliar apps/platforms/AI tools/operating systems.\nAgain, wording must avoid obvious \"high-tech = morally better\" bias.\nTool Discovery Test\nGive a participant a novel mini-interface.\nTasks:\nfind functions;\nexecute actions;\nnavigate without prior instruction.\nMeasure:\nlearning speed;\nerrors;\nhints required;\nexploration strategy.\nDigital Problem Solving Test\nProvide a task plus multiple tools/options.\nMeasure effectiveness in selecting and applying technology.\nLayer C\nPotential evidence:\nadoption of platform functions;\nspeed of learning new features;\nvariety of tools;\nsuccessful integration into workflows.\nCandidate hidden metric\nTechnology Adaptability --- speed/quality of learning a new technological environment.\nIntersection with Socioperception\nSocial media, online reputation, public digital presence etc. are hybrid zones:\nTechnoperception × Socioperception\nTechnoperception concerns use of the technological medium.\nSocioperception concerns the social body expressed through that medium."
+    },
+    {
+      "id": "socioperception",
+      "ordinal": 11,
+      "label": "Социальная реализация",
+      "group_id": "world",
+      "group_label": "WORLD",
+      "definition_ru": "Ориентация в своих ролях, деятельности, вкладе и социальных системах.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 11 --- SOCIOPERCEPTION"
+        }
+      ],
+      "historical_descriptive_bands": [
+        {
+          "from": 0,
+          "to": 20,
+          "description": "Socially Disconnected: weak understanding of role/place/contribution."
+        },
+        {
+          "from": 20,
+          "to": 40,
+          "description": "Searching: searching for social identity/direction."
+        },
+        {
+          "from": 40,
+          "to": 60,
+          "description": "Functional: understands core activity and roles."
+        },
+        {
+          "from": 60,
+          "to": 80,
+          "description": "Social Contributor: understands value and actively contributes to projects/communities."
+        },
+        {
+          "from": 80,
+          "to": 100,
+          "description": "Social Architect: creates projects, communities, organizations or new social structures."
+        }
+      ],
+      "historical_band_status": "descriptions-only-no-recovered-response-key",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "SOC01",
+          "SOC02",
+          "SOC03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Карта деятельности/ролей/получателей результата",
+        "Реальный вклад с согласованным источником сведений"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 11 --- SOCIOPERCEPTION\nMeaning\nAbility to perceive, understand and interact with one's social body.\nThe \"social body\" includes:\nactivity/work;\nprojects;\nbusiness;\nmission;\ncontribution;\nreputation;\nsocial role;\nplace in society;\nplace in team/community;\npublic manifestation;\nphysical and digital social presence.\nKey distinction\nSocioperception is not simply \"social skills.\"\nIt concerns:\nI ↔ social system\nQuestions such as:\nWhat do I create?\nWhat is my role?\nWho needs it?\nWhat value do I contribute?\nWhere do I stand in the social ecosystem?\nPhysical + digital social body\nSocial body exists in both:\nphysical space;\ndigital space.\nTherefore possible manifestations include:\nprofessional reputation;\ncommunities;\npublic presence;\ndigital identity;\nsocial networks;\ncontent;\npublic projects;\neducational/social activity.\nA person may have very high Socioperception without maintaining social-media accounts if their social body is strongly expressed physically/offline.\nLevels\n0--20 --- Socially Disconnected: weak understanding of role/place/contribution.\n20--40 --- Searching: searching for social identity/direction.\n40--60 --- Functional: understands core activity and roles.\n60--80 --- Social Contributor: understands value and actively contributes to projects/communities.\n80--100 --- Social Architect: creates projects, communities, organizations or new social structures.\nDiagnostic questions\nDomains:\nability to describe one's activity;\nunderstanding who benefits from it;\nrole in groups/teams/communities.\nSocial Mapping Test\nMap:\nprojects;\nwork;\nclients;\ncommunities;\nteams;\naudience;\npartners;\nsocial networks/public platforms.\nMeasure:\nSocial Structure Index --- clarity/completeness of one's social-body map.\nValue Flow Test\nQuestions:\nWhat do you create?\nFor whom?\nWhat do they receive?\nWhat do you receive?\nCandidate metric:\nSocial Value Awareness / Social Value Clarity\n(Name should be reviewed because \"Awareness\" is already a separate stat.)\nGuided version\nWith consent, specialist may inspect:\npublic profiles;\nsocial networks;\nprojects;\nprofessional activity;\ncommunities.\nThese are evidence, not mandatory indicators.\nLayer C\nPossible evidence:\ncontribution to community;\ninitiatives;\nprojects;\ncollaboration;\npublic/educational activity.\nCandidate hidden metric\nSocial Role Clarity --- clarity of role, function, contribution and value in social systems."
+    },
+    {
+      "id": "relational_awareness",
+      "ordinal": 12,
+      "label": "Осознанность в отношениях",
+      "group_id": "world",
+      "group_label": "WORLD",
+      "definition_ru": "Создание, поддержание, понимание и восстановление совместных отношений.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 12 --- RELATIONAL AWARENESS"
+        }
+      ],
+      "historical_descriptive_bands": [
+        {
+          "from": 0,
+          "to": 20,
+          "description": "Relationally Isolated: difficulty creating/sustaining stable relationships."
+        },
+        {
+          "from": 20,
+          "to": 40,
+          "description": "Transactional: relationships often remain functional/transactional."
+        },
+        {
+          "from": 40,
+          "to": 60,
+          "description": "Functional: maintains stable relationships and basic understanding of others."
+        },
+        {
+          "from": 60,
+          "to": 80,
+          "description": "Connected: creates deep, stable relationships and sees relational dynamics."
+        },
+        {
+          "from": 80,
+          "to": 100,
+          "description": "Relational Integrator: creates conditions of trust, cooperation and development across people/groups."
+        }
+      ],
+      "historical_band_status": "descriptions-only-no-recovered-response-key",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "REL01",
+          "REL02",
+          "REL03"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Неоднозначная ситуация и смена перспективы",
+        "Длительные сведения о сотрудничестве/восстановлении отношений"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 12 --- RELATIONAL AWARENESS\nMajor conceptual refinement\nEarlier description \"person ↔ person\" was expanded.\nPreferred core:\ntransition from \"I\" to \"We.\"\nRelational Awareness is the capacity to create and participate in a shared relational system.\n\"We\" can be:\ncouple;\nfamily;\nfriendship;\nteam;\ngroup;\nclose community.\nMeaning\nAbility to:\nnotice relational dynamics;\nunderstand others;\ncreate connection;\nmaintain connection;\ndeepen connection;\ncollaborate;\nbuild trust;\nrepair damaged relationships.\nCharisma / extraversion / sociability\nEarlier hard exclusion (\"not charisma, not sociability, not number of friends\") was corrected.\nPreferred formulation:\nRelational Awareness does not reduce to charisma, extraversion, sociability or number of friends, but these can be correlated indicators or contributing traits.\nExamples:\ncharisma can facilitate initial connection;\nsociability can facilitate contact formation;\nmany stable friendships may be evidence of relationship-maintenance capacity.\nBut none guarantees relational quality.\nDistinction from Socioperception\nSocioperception:\nI ↔ social system\nrole, contribution, mission, social manifestation.\nRelational Awareness:\nI ↔ We\ntrust, connection, closeness, cooperation, shared relational space.\nLevels --- earlier working version\n0--20 --- Relationally Isolated: difficulty creating/sustaining stable relationships.\n20--40 --- Transactional: relationships often remain functional/transactional.\n40--60 --- Functional: maintains stable relationships and basic understanding of others.\n60--80 --- Connected: creates deep, stable relationships and sees relational dynamics.\n80--100 --- Relational Integrator: creates conditions of trust, cooperation and development across people/groups.\nThese labels are provisional and should be reviewed.\nDiagnostic questions\nDomains:\nresponse to another person's difficult state;\nbehavior after conflict;\nmaintenance/development of important relationships.\nQuestions need anti-social-desirability rewriting.\nSocial Scenario Test\nInterpret ambiguous interpersonal situations.\nMeasure ability to hold multiple plausible interpretations rather than instantly projecting one story.\nCandidate metric:\nRelational Interpretation Index.\nPerspective Shift Test\nDescribe/interpret a situation from:\nown position;\nanother participant's position.\nCandidate metric:\nPerspective Flexibility.\nLayer C\nPotential evidence:\ncooperation;\npeer feedback;\nconflict repair;\ncontribution to group processes;\nrelationship maintenance.\nThis requires strong privacy/consent design.\nCandidate hidden metric\nInitial proposal: Trust Capacity.\nRefined proposal: Relationship Capacity --- ability to create, sustain, deepen and repair relationships."
+    },
+    {
+      "id": "space_awareness",
+      "ordinal": 13,
+      "label": "Взаимодействие с пространством",
+      "group_id": "world",
+      "group_label": "WORLD",
+      "definition_ru": "Контакт с пространством, его освоение и намеренное использование под свои задачи.",
+      "definition_status": "normalized-from-handoff-not-new-canonical-decision",
+      "sources": [
+        {
+          "path": "docs/typology/sources/2026-08-26-handoff-chat-transcription.md",
+          "locator": "STAT 13 --- SPACE AWARENESS"
+        }
+      ],
+      "historical_descriptive_bands": [],
+      "historical_band_status": "not-recovered",
+      "historical_question_wording_status": "domains-and-candidate-protocols-recovered-full-item-bank-not-recovered",
+      "baseline": {
+        "evidence_type": "self_report_and_scenario_intentions",
+        "item_ids": [
+          "SA01",
+          "SA02",
+          "SA03",
+          "SA04"
+        ],
+        "score": null,
+        "confidence": null,
+        "status": "draft-collection-only"
+      },
+      "deeper_candidate_methods": [
+        "Углублённая задача на взаимодействие со средой",
+        "Повторные наблюдения и проверка результата изменения среды"
+      ],
+      "method_status": "candidate-protocols-not-validated-by-this-package",
+      "intervention_mapping": {
+        "status": "not-yet-curated",
+        "method_independent": true,
+        "methods": []
+      },
+      "source_excerpt": "STAT 13 --- SPACE AWARENESS\nCurrent canonical scope\nContact with physical space: home, order, environment and organization of matter.\nThe intended logic is that the environment is another \"external body\" of the person.\nLikely domains include:\nability to perceive spatial state;\norganization of physical environment;\nrelation between environment and behavior/state;\nmaintenance;\norder/disorder;\nfunctional arrangement;\nadaptation of space to goals.\nIMPORTANT STATUS\nThe full specification was not completed in the recoverable conversation.\nDo not invent the final definition, levels, questions, tests, XP sources or growth curve as if already approved.\nThis should be the first stat completed when continuing the World Layer work."
+    }
+  ],
+  "items": [
+    {
+      "id": "STA01",
+      "stat_id": "stability",
+      "format": "single-choice",
+      "stem": "За последние две недели, когда привычных дел становилось больше, что чаще происходило с вашей деятельностью?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Сохранял примерно тот же объём и качество"
+        },
+        {
+          "id": "o2",
+          "text": "Снижал темп или упрощал часть дел"
+        },
+        {
+          "id": "o3",
+          "text": "Откладывал значительную часть начатого"
+        },
+        {
+          "id": "o4",
+          "text": "Ситуации были слишком разными для одного ответа"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 1",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "STA02",
+      "stat_id": "stability",
+      "format": "single-choice",
+      "stem": "После напряжённого эпизода как вы обычно понимали, что можете вернуться к делу?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "По возвращению привычного состояния тела и внимания"
+        },
+        {
+          "id": "o2",
+          "text": "По срокам и внешним обстоятельствам"
+        },
+        {
+          "id": "o3",
+          "text": "Пробовал продолжить и смотрел по выполнению"
+        },
+        {
+          "id": "o4",
+          "text": "Делал заранее выбранную паузу"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 1",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "STA03",
+      "stat_id": "stability",
+      "format": "single-choice",
+      "stem": "При последнем длительном занятии как вы распределили его выполнение?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Прошёл в один подход"
+        },
+        {
+          "id": "o2",
+          "text": "Разделил на заранее выбранные части"
+        },
+        {
+          "id": "o3",
+          "text": "Продолжал после незапланированных остановок"
+        },
+        {
+          "id": "o4",
+          "text": "Остановился до конца"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 1",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ENE01",
+      "stat_id": "energy_regulation",
+      "format": "single-choice",
+      "stem": "Когда за последние две недели вы замечали, что нагрузка становится чрезмерной?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "По ранним телесным изменениям"
+        },
+        {
+          "id": "o2",
+          "text": "Когда менялись темп и качество действий"
+        },
+        {
+          "id": "o3",
+          "text": "Когда уже требовалась остановка"
+        },
+        {
+          "id": "o4",
+          "text": "Чаще узнавал об этом после завершения дня"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 2",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ENE02",
+      "stat_id": "energy_regulation",
+      "format": "single-choice",
+      "stem": "Если перед важным делом вы чувствуете вялость, на что обычно опираетесь?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Меняю движение, темп или условия и наблюдаю результат"
+        },
+        {
+          "id": "o2",
+          "text": "Начинаю с простой части дела"
+        },
+        {
+          "id": "o3",
+          "text": "Жду более подходящего состояния"
+        },
+        {
+          "id": "o4",
+          "text": "Ориентируюсь на привычный распорядок"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 2",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ENE03",
+      "stat_id": "energy_regulation",
+      "format": "single-choice",
+      "stem": "При последней попытке снизить напряжение что помогло выбрать способ?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Знакомые телесные признаки и прошлый опыт"
+        },
+        {
+          "id": "o2",
+          "text": "Проба разных действий с наблюдением состояния"
+        },
+        {
+          "id": "o3",
+          "text": "Внешний совет или готовая инструкция"
+        },
+        {
+          "id": "o4",
+          "text": "Переключение на другие дела"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 2",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "INT01",
+      "stat_id": "interoception",
+      "format": "single-choice",
+      "stem": "Когда ваше состояние менялось за последние две недели, что вы обычно могли о нём сказать?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Где и какое телесное ощущение изменилось"
+        },
+        {
+          "id": "o2",
+          "text": "Общее название состояния или эмоции"
+        },
+        {
+          "id": "o3",
+          "text": "Что изменилось в мыслях или действиях"
+        },
+        {
+          "id": "o4",
+          "text": "Зависело от ситуации; трудно обобщить"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 3",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "INT02",
+      "stat_id": "interoception",
+      "format": "single-choice",
+      "stem": "Если появляется неясный телесный дискомфорт, что вы скорее сделаете сначала?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Попробую различить место и характер ощущения"
+        },
+        {
+          "id": "o2",
+          "text": "Изменю положение или деятельность"
+        },
+        {
+          "id": "o3",
+          "text": "Вспомню похожие случаи и возможные причины"
+        },
+        {
+          "id": "o4",
+          "text": "Продолжу дело и посмотрю, сохраняется ли он"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 3",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "INT03",
+      "stat_id": "interoception",
+      "format": "single-choice",
+      "stem": "Как вы обычно замечаете изменение состояния во время спокойной паузы?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Различаю изменения в нескольких участках тела"
+        },
+        {
+          "id": "o2",
+          "text": "Замечаю одно общее ощущение"
+        },
+        {
+          "id": "o3",
+          "text": "Скорее замечаю мысли и внешние звуки"
+        },
+        {
+          "id": "o4",
+          "text": "За короткую паузу обычно не замечаю изменений"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 3",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "PRO01",
+      "stat_id": "proprioception",
+      "format": "single-choice",
+      "stem": "В привычных движениях за последние две недели на что вы чаще опирались?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "На ощущение положения и усилия тела"
+        },
+        {
+          "id": "o2",
+          "text": "На зрительный контроль"
+        },
+        {
+          "id": "o3",
+          "text": "На знакомую последовательность движения"
+        },
+        {
+          "id": "o4",
+          "text": "Это заметно различалось по ситуации"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 4",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "PRO02",
+      "stat_id": "proprioception",
+      "format": "single-choice",
+      "stem": "Если новое простое движение с первого раза неудобно, как вы скорее будете его осваивать?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Пробовать небольшие изменения положения/темпа"
+        },
+        {
+          "id": "o2",
+          "text": "Наблюдать пример и повторять"
+        },
+        {
+          "id": "o3",
+          "text": "Разобрать последовательность по шагам"
+        },
+        {
+          "id": "o4",
+          "text": "Выбрать более привычный способ"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 4",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "PRO03",
+      "stat_id": "proprioception",
+      "format": "single-choice",
+      "stem": "Когда вы в последний раз действовали в заданном ритме, что помогало?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Ощущение движения и времени"
+        },
+        {
+          "id": "o2",
+          "text": "Внешний счёт или звук"
+        },
+        {
+          "id": "o3",
+          "text": "Зрительный пример"
+        },
+        {
+          "id": "o4",
+          "text": "Не могу выделить один способ"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 4",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "VIT01",
+      "stat_id": "vital_engagement",
+      "format": "single-choice",
+      "stem": "За последние две недели как интерес чаще появлялся в вашей деятельности?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Возникал по ходу обычных дел"
+        },
+        {
+          "id": "o2",
+          "text": "Появлялся главным образом в выбранных занятиях"
+        },
+        {
+          "id": "o3",
+          "text": "Зависел от новизны или компании"
+        },
+        {
+          "id": "o4",
+          "text": "Обычно было трудно почувствовать интерес"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 5",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "VIT02",
+      "stat_id": "vital_engagement",
+      "format": "single-choice",
+      "stem": "В свободный промежуток без срочных дел вы скорее…",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Продолжите то, что сейчас увлекает"
+        },
+        {
+          "id": "o2",
+          "text": "Попробуете что-то новое"
+        },
+        {
+          "id": "o3",
+          "text": "Выберете знакомый способ отдыха"
+        },
+        {
+          "id": "o4",
+          "text": "Используете время для незавершённых дел"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 5",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "VIT03",
+      "stat_id": "vital_engagement",
+      "format": "single-choice",
+      "stem": "При последнем занятии по собственному выбору что удерживало ваше участие?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Сам процесс"
+        },
+        {
+          "id": "o2",
+          "text": "Желаемый результат"
+        },
+        {
+          "id": "o3",
+          "text": "Совместность с другими"
+        },
+        {
+          "id": "o4",
+          "text": "Привычка или договорённость"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 5",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ATT01",
+      "stat_id": "attention_control",
+      "format": "single-choice",
+      "stem": "Когда вы замечали отвлечение при важном деле, как чаще возвращались?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Возвращал внимание к выбранному действию"
+        },
+        {
+          "id": "o2",
+          "text": "Менял условия и затем продолжал"
+        },
+        {
+          "id": "o3",
+          "text": "Сначала завершал то, что отвлекло"
+        },
+        {
+          "id": "o4",
+          "text": "Часто приходилось заново начинать работу"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 6",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ATT02",
+      "stat_id": "attention_control",
+      "format": "single-choice",
+      "stem": "Если во время занятия возникает несколько источников отвлечения, что вы скорее сделаете?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Уберу часть источников и продолжу"
+        },
+        {
+          "id": "o2",
+          "text": "Сменю место или способ работы"
+        },
+        {
+          "id": "o3",
+          "text": "Буду переключаться между доступными задачами"
+        },
+        {
+          "id": "o4",
+          "text": "Отложу занятие до других условий"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 6",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ATT03",
+      "stat_id": "attention_control",
+      "format": "single-choice",
+      "stem": "При последнем намеренном переключении между делами что происходило?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Быстро включался в следующее"
+        },
+        {
+          "id": "o2",
+          "text": "Ещё некоторое время возвращался к прежнему"
+        },
+        {
+          "id": "o3",
+          "text": "Нужна была небольшая пауза"
+        },
+        {
+          "id": "o4",
+          "text": "Обычно переключался по внешнему сигналу"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 6",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "AWA01",
+      "stat_id": "awareness",
+      "format": "single-choice",
+      "stem": "Когда сильная реакция влияла на ваши действия, в какой момент вы чаще это замечали?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "По первым изменениям до действия"
+        },
+        {
+          "id": "o2",
+          "text": "Во время реакции или действия"
+        },
+        {
+          "id": "o3",
+          "text": "После результата или разговора"
+        },
+        {
+          "id": "o4",
+          "text": "Не всегда удавалось заметить связь"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 7",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "AWA02",
+      "stat_id": "awareness",
+      "format": "single-choice",
+      "stem": "Когда меняется настроение, что вы обычно замечаете первым?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Изменения тела"
+        },
+        {
+          "id": "o2",
+          "text": "Мысли или внутренний диалог"
+        },
+        {
+          "id": "o3",
+          "text": "Изменения поведения"
+        },
+        {
+          "id": "o4",
+          "text": "Реакцию окружающих или итог события"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 7",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "AWA03",
+      "stat_id": "awareness",
+      "format": "single-choice",
+      "stem": "При последнем заметном изменении состояния насколько ясно помните его ход?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Могу различить, что появилось раньше и что затем"
+        },
+        {
+          "id": "o2",
+          "text": "Помню несколько элементов без ясного порядка"
+        },
+        {
+          "id": "o3",
+          "text": "Помню главным образом итоговое состояние"
+        },
+        {
+          "id": "o4",
+          "text": "Позднее скорее составил объяснение происходившего"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 7",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ADA01",
+      "stat_id": "adaptation_flexibility",
+      "format": "single-choice",
+      "stem": "Когда прежний подход переставал работать, что вы чаще делали за последние две недели?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Уточнял и продолжал текущий подход"
+        },
+        {
+          "id": "o2",
+          "text": "Пробовал одну альтернативу"
+        },
+        {
+          "id": "o3",
+          "text": "Сравнивал несколько вариантов"
+        },
+        {
+          "id": "o4",
+          "text": "Откладывал решение до новых сведений"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 8",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ADA02",
+      "stat_id": "adaptation_flexibility",
+      "format": "single-choice",
+      "stem": "Если новые сведения противоречат вашему плану, какой первый шаг наиболее вероятен?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Проверю надёжность новых сведений"
+        },
+        {
+          "id": "o2",
+          "text": "Изменю часть плана"
+        },
+        {
+          "id": "o3",
+          "text": "Попробую небольшой новый шаг"
+        },
+        {
+          "id": "o4",
+          "text": "Продолжу план до ближайшей контрольной точки"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 8",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "ADA03",
+      "stat_id": "adaptation_flexibility",
+      "format": "single-choice",
+      "stem": "После перерыва в новой привычке как вы в последний раз продолжили?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Вернулся к прежнему формату"
+        },
+        {
+          "id": "o2",
+          "text": "Изменил объём или условия"
+        },
+        {
+          "id": "o3",
+          "text": "Выбрал другой способ достичь той же цели"
+        },
+        {
+          "id": "o4",
+          "text": "Пока не вернулся"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 8",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "EXE01",
+      "stat_id": "execution",
+      "format": "single-choice",
+      "stem": "Вспомните три небольших намерения за последние две недели. Сколько удалось довести до выбранного результата?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Все три"
+        },
+        {
+          "id": "o2",
+          "text": "Два"
+        },
+        {
+          "id": "o3",
+          "text": "Одно или ни одного"
+        },
+        {
+          "id": "o4",
+          "text": "Не было трёх сопоставимых намерений"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 9",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "EXE02",
+      "stat_id": "execution",
+      "format": "single-choice",
+      "stem": "Если задача понятна, но ещё не начата, с чего вы скорее начнёте?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "С первого доступного действия"
+        },
+        {
+          "id": "o2",
+          "text": "С уточнения плана или информации"
+        },
+        {
+          "id": "o3",
+          "text": "С подготовки условий и времени"
+        },
+        {
+          "id": "o4",
+          "text": "С согласования с другими"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 9",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "EXE03",
+      "stat_id": "execution",
+      "format": "single-choice",
+      "stem": "Когда важное начатое дело прерывалось, как вы обычно к нему возвращались?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "По заранее оставленному следующему шагу"
+        },
+        {
+          "id": "o2",
+          "text": "По напоминанию или сроку"
+        },
+        {
+          "id": "o3",
+          "text": "Когда снова возникала возможность/интерес"
+        },
+        {
+          "id": "o4",
+          "text": "Часто оно оставалось незавершённым"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 9",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "TEC01",
+      "stat_id": "technoperception",
+      "format": "single-choice",
+      "stem": "При последнем освоении незнакомого цифрового инструмента что вы сделали сначала?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Попробовал выполнить свою задачу в интерфейсе"
+        },
+        {
+          "id": "o2",
+          "text": "Посмотрел инструкцию или пример"
+        },
+        {
+          "id": "o3",
+          "text": "Попросил показать нужные действия"
+        },
+        {
+          "id": "o4",
+          "text": "Выбрал знакомый инструмент с похожими возможностями"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 10",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "TEC02",
+      "stat_id": "technoperception",
+      "format": "single-choice",
+      "stem": "Когда в привычной программе не получается выполнить задачу, что вы скорее сделаете?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Исследую доступные функции"
+        },
+        {
+          "id": "o2",
+          "text": "Найду описание решения"
+        },
+        {
+          "id": "o3",
+          "text": "Подключу другой инструмент или человека"
+        },
+        {
+          "id": "o4",
+          "text": "Изменю способ выполнения задачи"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 10",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "TEC03",
+      "stat_id": "technoperception",
+      "format": "single-choice",
+      "stem": "Какой результат лучше описывает ваше последнее освоение нового цифрового инструмента?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Самостоятельно использую его под свою задачу"
+        },
+        {
+          "id": "o2",
+          "text": "Использую несколько освоенных действий"
+        },
+        {
+          "id": "o3",
+          "text": "Пока требуется инструкция или помощь"
+        },
+        {
+          "id": "o4",
+          "text": "Решил, что он не подходит, и выбрал другой способ"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 10",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SOC01",
+      "stat_id": "socioperception",
+      "format": "single-choice",
+      "stem": "Когда вас спрашивают, чем вы сейчас занимаетесь, что вам обычно легче описать?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Конкретные действия и задачи"
+        },
+        {
+          "id": "o2",
+          "text": "Для кого нужен результат"
+        },
+        {
+          "id": "o3",
+          "text": "Свою роль и связи с другими"
+        },
+        {
+          "id": "o4",
+          "text": "Сейчас трудно выделить устойчивую деятельность"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 11",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SOC02",
+      "stat_id": "socioperception",
+      "format": "single-choice",
+      "stem": "Если вы входите в новый совместный проект, что вы скорее уточните сначала?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Какой результат нужен и кому"
+        },
+        {
+          "id": "o2",
+          "text": "Какие задачи и ресурсы доступны"
+        },
+        {
+          "id": "o3",
+          "text": "Кто за что отвечает"
+        },
+        {
+          "id": "o4",
+          "text": "Как это связано с моими целями"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 11",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SOC03",
+      "stat_id": "socioperception",
+      "format": "single-choice",
+      "stem": "По последнему вашему вкладу в дело или сообщество как вы узнавали его значение?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "По тому, что изменилось для получателя"
+        },
+        {
+          "id": "o2",
+          "text": "По прямой обратной связи"
+        },
+        {
+          "id": "o3",
+          "text": "По завершению согласованных действий"
+        },
+        {
+          "id": "o4",
+          "text": "Пока не было возможности это выяснить"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 11",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "REL01",
+      "stat_id": "relational_awareness",
+      "format": "single-choice",
+      "stem": "При непонятной реакции близкого или коллеги что вы скорее сделаете сначала?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Уточню, что он имеет в виду"
+        },
+        {
+          "id": "o2",
+          "text": "Проверю несколько возможных объяснений"
+        },
+        {
+          "id": "o3",
+          "text": "Объясню свою позицию"
+        },
+        {
+          "id": "o4",
+          "text": "Сделаю паузу и вернусь к разговору позже"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 12",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "REL02",
+      "stat_id": "relational_awareness",
+      "format": "single-choice",
+      "stem": "После последнего значимого разногласия как развивалось взаимодействие?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Обсудили переживания и договорились о следующем шаге"
+        },
+        {
+          "id": "o2",
+          "text": "Решили практический вопрос"
+        },
+        {
+          "id": "o3",
+          "text": "Вернулись к обычному общению без отдельного обсуждения"
+        },
+        {
+          "id": "o4",
+          "text": "Пока сохраняется дистанция"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 12",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "REL03",
+      "stat_id": "relational_awareness",
+      "format": "single-choice",
+      "stem": "Как в последние две недели вы поддерживали важные для вас отношения?",
+      "options": [
+        {
+          "id": "o1",
+          "text": "Через внимание к текущему состоянию другого"
+        },
+        {
+          "id": "o2",
+          "text": "Через совместные дела/время"
+        },
+        {
+          "id": "o3",
+          "text": "Через помощь и выполнение договорённостей"
+        },
+        {
+          "id": "o4",
+          "text": "Взаимодействие было ограничено обстоятельствами"
+        }
+      ],
+      "allow_skip": true,
+      "not_applicable": {
+        "id": "not_applicable",
+        "text": "Не было подходящего случая"
+      },
+      "wording_status": "new-draft-from-handoff-domains",
+      "source_locator": "STAT 12",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SA01",
+      "role": "core",
+      "format": "select-up-to-two",
+      "stem": "Оказавшись в незнакомом помещении без срочных дел, на что вы обычно обращаете внимание в первую очередь?",
+      "options": [
+        {
+          "id": "layout",
+          "text": "Где что находится и как здесь перемещаться"
+        },
+        {
+          "id": "bodily_contact",
+          "text": "Как меняются мои ощущения и состояние"
+        },
+        {
+          "id": "affordances",
+          "text": "Что здесь удобно делать"
+        },
+        {
+          "id": "social_context",
+          "text": "Кто здесь находится и какие порядки приняты"
+        }
+      ],
+      "construct_targets": [
+        "reported_attention_to_environment",
+        "reported_bodily_contact"
+      ],
+      "secondary_constructs": [
+        "awareness",
+        "interoception",
+        "socioperception"
+      ],
+      "interpretation_limits": [
+        "Выбор телесных ощущений не равен автоматически более высокой способности.",
+        "Важность выбранного внимания зависит от ситуации."
+      ],
+      "stat_id": "space_awareness",
+      "allow_skip": true,
+      "wording_status": "existing-space-draft",
+      "source_locator": "SPACE-AWARENESS-ITEMS.draft.json",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SA02",
+      "role": "core",
+      "format": "rank-top-two",
+      "stem": "После переезда вещи разобраны, срочные вопросы решены. Есть свободные полчаса. Что вы скорее сделаете первым и вторым?",
+      "options": [
+        {
+          "id": "access",
+          "text": "Устрою нужные вещи так, чтобы ими было удобно пользоваться"
+        },
+        {
+          "id": "routine",
+          "text": "Вернусь к привычным делам"
+        },
+        {
+          "id": "sensing",
+          "text": "Побуду в разных местах, замечая своё состояние"
+        },
+        {
+          "id": "try_use",
+          "text": "Попробую, где удобнее работать, есть или отдыхать"
+        }
+      ],
+      "construct_targets": [
+        "reported_spatial_exploration",
+        "priority_of_bodily_contact",
+        "intentional_environment_use"
+      ],
+      "interpretation_limits": [
+        "Нет единственного правильного порядка.",
+        "Одна последовательность намерений не доказывает реальное поведение."
+      ],
+      "stat_id": "space_awareness",
+      "allow_skip": true,
+      "wording_status": "existing-space-draft",
+      "source_locator": "SPACE-AWARENESS-ITEMS.draft.json",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SA03",
+      "role": "core",
+      "format": "rank-top-two",
+      "stem": "Новое помещение вам нравится, но близкому человеку здесь некомфортно. Явной причины вы пока не знаете. Какие два действия для вас наиболее вероятны?",
+      "options": [
+        {
+          "id": "ask",
+          "text": "Расспрошу, что именно он замечает"
+        },
+        {
+          "id": "inspect",
+          "text": "Проверю условия: место, звук, свет, воздух"
+        },
+        {
+          "id": "own_sensing",
+          "text": "Побуду здесь и замечу собственные ощущения"
+        },
+        {
+          "id": "try_alternative",
+          "text": "Предложу другое место и посмотрю, что изменится"
+        }
+      ],
+      "construct_targets": [
+        "environment_inquiry",
+        "bodily_contact",
+        "feedback_response"
+      ],
+      "secondary_constructs": [
+        "relational_awareness",
+        "awareness"
+      ],
+      "interpretation_limits": [
+        "Не объявлять собственные ощущения важнее сообщения другого человека.",
+        "Ответ также зависит от отношений и привычного способа решать проблемы."
+      ],
+      "stat_id": "space_awareness",
+      "allow_skip": true,
+      "wording_status": "existing-space-draft",
+      "source_locator": "SPACE-AWARENESS-ITEMS.draft.json",
+      "response_numeric_weights": null
+    },
+    {
+      "id": "SA04",
+      "role": "core",
+      "format": "single-choice-with-not-applicable",
+      "stem": "Вспомните последнее изменение в своём пространстве за две недели. Как вы решали, что оставить?",
+      "options": [
+        {
+          "id": "practical",
+          "text": "По удобству вещей и выполнения дел"
+        },
+        {
+          "id": "felt",
+          "text": "По тому, как я себя там ощущал"
+        },
+        {
+          "id": "compared",
+          "text": "По сравнению ожидаемого и полученного эффекта"
+        },
+        {
+          "id": "external",
+          "text": "По внешнему виду или совету другого человека"
+        }
+      ],
+      "not_applicable": {
+        "id": "no_example",
+        "text": "Подходящего случая не было или не могу вспомнить"
+      },
+      "construct_targets": [
+        "reported_decision_basis",
+        "reported_effect_checking"
+      ],
+      "interpretation_limits": [
+        "Отсутствие изменений не означает отсутствие способности.",
+        "Сравнение ожидаемого и фактического эффекта требует дальнейшего уточнения; этот ответ не становится проверенной объективной записью."
+      ],
+      "stat_id": "space_awareness",
+      "allow_skip": true,
+      "wording_status": "existing-space-draft",
+      "source_locator": "SPACE-AWARENESS-ITEMS.draft.json",
+      "response_numeric_weights": null
+    }
+  ],
+  "context_items": [
+    {
+      "id": "SA00",
+      "role": "context-unscored",
+      "format": "single-choice",
+      "stem": "Есть ли сейчас место, где вы ощущаете себя дома, даже если оно вам не принадлежит?",
+      "options": [
+        {
+          "id": "yes",
+          "text": "Да"
+        },
+        {
+          "id": "partly",
+          "text": "Иногда или отчасти"
+        },
+        {
+          "id": "no",
+          "text": "Сейчас нет"
+        },
+        {
+          "id": "uncertain",
+          "text": "Трудно ответить"
+        }
+      ],
+      "construct_targets": [
+        "felt_home_context"
+      ],
+      "interpretation_limits": [
+        "Не оценивать отсутствие дома как низкую способность.",
+        "Не смешивать собственность, безопасность, переезд и переживание освоенности."
+      ],
+      "stat_id": "space_awareness"
+    }
+  ]
+}
