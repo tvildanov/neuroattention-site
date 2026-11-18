@@ -14,7 +14,7 @@
    const dash=q('#client-dashboard');if(!dash)return;
    dash.classList.toggle('dom-cabinet-closed',!sidebarOpen);
    if(trigger){trigger.setAttribute('aria-expanded',String(sidebarOpen));trigger.setAttribute('aria-label',sidebarOpen?txt('Свернуть меню','Collapse navigation','Contraer navegación'):txt('Открыть меню','Open navigation','Abrir navegación'));}
-   if(nav){nav.setAttribute('aria-hidden',String(!sidebarOpen));nav.inert=!sidebarOpen;}
+   if(nav){const mobile=window.innerWidth<860;nav.setAttribute('aria-hidden',String(!sidebarOpen&&mobile));nav.inert=!sidebarOpen&&mobile;}
    storeSide();
  }
  function buildNav(){
@@ -26,7 +26,7 @@
    const brand=el('div','dom-cabinet-side-head',txt('Мой DOM','My DOM','Mi DOM'));
    original.prepend(brand);
    const links=[...original.querySelectorAll('a[data-tab]')];
-   links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.dataset.domIcon=icons[id]||'•';});
+   links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.dataset.domIcon=icons[id]||'•';a.setAttribute('title',a.textContent.trim());});
    // This is the same original tab navigation, moved and reordered, not cloned.
    const byTab=Object.fromEntries(links.map(a=>[a.dataset.tab,a]));
    const courseItem=byTab.courses;
