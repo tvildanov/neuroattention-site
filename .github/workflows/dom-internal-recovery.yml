@@ -1,0 +1,48 @@
+name: DOM internal pages and Monad recovery checks
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'assets/js/dom-inner-pages-v06.js'
+      - 'assets/dom-inner-pages-v06.css'
+      - 'assets/js/dom-theme.js'
+      - 'assets/js/monad-cross.js'
+      - 'assets/js/monad-lk.js'
+      - 'scripts/test-dom-inner-v06.cjs'
+      - 'api/server.js'
+      - '.github/workflows/dom-internal-recovery.yml'
+permissions:
+  contents: read
+jobs:
+  source-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and scope
+        run: |
+          node --check assets/js/dom-inner-pages-v06.js
+          node --check assets/js/dom-theme.js
+          node --check assets/js/monad-cross.js
+          node --check assets/js/monad-lk.js
+          node --check api/server.js
+          node --check scripts/test-dom-inner-v06.cjs
+  inner-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser dependencies
+        run: npm install --prefix /tmp/dom-inner-ui --no-save playwright@1.56.1
+      - name: Install Chromium
+        run: /tmp/dom-inner-ui/node_modules/.bin/playwright install --with-deps chromium
+      - name: Browser smoke tests RU/EN/ES and mobile
+        env:
+          NODE_PATH: /tmp/dom-inner-ui/node_modules
+        run: node scripts/test-dom-inner-v06.cjs
