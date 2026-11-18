@@ -20,6 +20,10 @@ html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
  font-family:'Libre Baskerville',Georgia,serif!important;
  font-weight:400;
  letter-spacing:-.025em;
+}
+html[data-dom-theme='light'] body.dom-site[data-dom-editorial]
+ :where(body > section ~ section, body > main > section ~ section)
+ :is(h3,h4,.dom-v06-summary strong):not(.section-title) {
  color:var(--text-primary);
 }
 html[data-dom-theme='light'] body.dom-site[data-dom-editorial]

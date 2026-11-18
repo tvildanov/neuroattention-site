@@ -839,6 +839,7 @@
       fieldTop: fieldTop, fieldBot: fieldBot, cy: cy, half: half, isMobile: isMobile,
       lang: lang, data: data, events: events, container: container, overlay: ovZone,
       components: buildTunnelComponents(events, half) };
+    cv.repaintEvolution = function () { drawTunnel(st); };
     drawTunnel(st);
     wireCanvasPanZoom(container, st, lang);
   }
@@ -2993,6 +2994,11 @@
   }
 
   window.mountEvolutionPath = mountEvolutionPath;
+  document.addEventListener('domthemechange', function () {
+    document.querySelectorAll('canvas.evo-2d').forEach(function (canvas) {
+      if (canvas.repaintEvolution) canvas.repaintEvolution();
+    });
+  });
   // Part B — re-render the personal Path after a schedule create/toggle/delete so
   // the on-the-fly scheduled events refresh (only if it is currently mounted).
   var _lastPersonalPath = null;

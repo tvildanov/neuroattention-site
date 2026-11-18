@@ -80,10 +80,15 @@ async function request(route,token,body){
      await quick.click();
      await entry.locator('button').first().click();
      const emotionPanel=page.locator('#nm-step-content');
-     for(const emotion of ['спокойствие','любовь','забота','радость','тревога','раздражение']){
+     for(const emotion of ['спокойствие','любовь','забота','радость','тревога','раздражение','ощущение пустоты']){
        const option=emotionPanel.getByRole('button',{name:new RegExp('^'+emotion+'$','i')});
-       await option.click();
-       assert.equal(await option.getAttribute('aria-pressed'),'true');
+       if(['забота','ощущение пустоты'].includes(emotion)){
+         // Exercise the same renderer with names outside the default chip set.
+         await page.evaluate(value=>{nmSurveyState.emotions[nmSurveyState._chainIdx||0]=value},emotion);
+       }else{
+         await option.click();
+         assert.equal(await option.getAttribute('aria-pressed'),'true');
+       }
        await page.locator('#nm-next').click();
        assert.match(await emotionPanel.locator('h3').innerText(),/С какой сферой жизни связано это переживание/);
        assert.match(await emotionPanel.locator('.nm-selected-emotion').innerText(),new RegExp(emotion,'i'));
