@@ -1,0 +1,273 @@
+{
+  "schema_version": "0.1",
+  "instrument_id": "dom-space-awareness-short",
+  "status": "draft-not-validated",
+  "language": "ru",
+  "purpose": "Предварительные сведения о заявленном контакте со средой и способах взаимодействия; не окончательный уровень Space Awareness.",
+  "assessment_context": {
+    "baseline_total_target_minutes": 20,
+    "block_target_seconds": [
+      90,
+      120
+    ],
+    "timing_status": "design-target-not-tested",
+    "selected_core_items": [
+      "SA01",
+      "SA02",
+      "SA03",
+      "SA04"
+    ],
+    "context_items": [
+      "SA00"
+    ],
+    "reserve_items": [
+      "SA05"
+    ]
+  },
+  "participant_information": "Вопросы о привычках, ощущениях и взаимодействии с окружением. Отвечайте так, как обычно бывает у вас; можно пропустить вопрос.",
+  "administration": {
+    "reveal_numeric_scoring_key": false,
+    "explain_general_purpose": true,
+    "offer_skip": true,
+    "shuffle_visual_option_order": true,
+    "preserve_stable_option_ids": true,
+    "do_not_claim_bias_eliminated": true
+  },
+  "scoring": {
+    "enabled": false,
+    "reason": "Нет согласованной и проверенной модели; сохранять ответы и их происхождение без произвольного балла 0–100.",
+    "objective_evidence_share": null,
+    "all_items_are_self_report_or_scenario_intentions": true,
+    "no_correct_option_key": true
+  },
+  "items": [
+    {
+      "id": "SA00",
+      "role": "context-unscored",
+      "format": "single-choice",
+      "stem": "Есть ли сейчас место, где вы ощущаете себя дома, даже если оно вам не принадлежит?",
+      "options": [
+        {
+          "id": "yes",
+          "text": "Да"
+        },
+        {
+          "id": "partly",
+          "text": "Иногда или отчасти"
+        },
+        {
+          "id": "no",
+          "text": "Сейчас нет"
+        },
+        {
+          "id": "uncertain",
+          "text": "Трудно ответить"
+        }
+      ],
+      "construct_targets": [
+        "felt_home_context"
+      ],
+      "interpretation_limits": [
+        "Не оценивать отсутствие дома как низкую способность.",
+        "Не смешивать собственность, безопасность, переезд и переживание освоенности."
+      ]
+    },
+    {
+      "id": "SA01",
+      "role": "core",
+      "format": "select-up-to-two",
+      "stem": "Оказавшись в незнакомом помещении без срочных дел, на что вы обычно обращаете внимание в первую очередь?",
+      "options": [
+        {
+          "id": "layout",
+          "text": "Где что находится и как здесь перемещаться"
+        },
+        {
+          "id": "bodily_contact",
+          "text": "Как меняются мои ощущения и состояние"
+        },
+        {
+          "id": "affordances",
+          "text": "Что здесь удобно делать"
+        },
+        {
+          "id": "social_context",
+          "text": "Кто здесь находится и какие порядки приняты"
+        }
+      ],
+      "construct_targets": [
+        "reported_attention_to_environment",
+        "reported_bodily_contact"
+      ],
+      "secondary_constructs": [
+        "awareness",
+        "interoception",
+        "socioperception"
+      ],
+      "interpretation_limits": [
+        "Выбор телесных ощущений не равен автоматически более высокой способности.",
+        "Важность выбранного внимания зависит от ситуации."
+      ]
+    },
+    {
+      "id": "SA02",
+      "role": "core",
+      "format": "rank-top-two",
+      "stem": "После переезда вещи разобраны, срочные вопросы решены. Есть свободные полчаса. Что вы скорее сделаете первым и вторым?",
+      "options": [
+        {
+          "id": "access",
+          "text": "Устрою нужные вещи так, чтобы ими было удобно пользоваться"
+        },
+        {
+          "id": "routine",
+          "text": "Вернусь к привычным делам"
+        },
+        {
+          "id": "sensing",
+          "text": "Побуду в разных местах, замечая своё состояние"
+        },
+        {
+          "id": "try_use",
+          "text": "Попробую, где удобнее работать, есть или отдыхать"
+        }
+      ],
+      "construct_targets": [
+        "reported_spatial_exploration",
+        "priority_of_bodily_contact",
+        "intentional_environment_use"
+      ],
+      "interpretation_limits": [
+        "Нет единственного правильного порядка.",
+        "Одна последовательность намерений не доказывает реальное поведение."
+      ]
+    },
+    {
+      "id": "SA03",
+      "role": "core",
+      "format": "rank-top-two",
+      "stem": "Новое помещение вам нравится, но близкому человеку здесь некомфортно. Явной причины вы пока не знаете. Какие два действия для вас наиболее вероятны?",
+      "options": [
+        {
+          "id": "ask",
+          "text": "Расспрошу, что именно он замечает"
+        },
+        {
+          "id": "inspect",
+          "text": "Проверю условия: место, звук, свет, воздух"
+        },
+        {
+          "id": "own_sensing",
+          "text": "Побуду здесь и замечу собственные ощущения"
+        },
+        {
+          "id": "try_alternative",
+          "text": "Предложу другое место и посмотрю, что изменится"
+        }
+      ],
+      "construct_targets": [
+        "environment_inquiry",
+        "bodily_contact",
+        "feedback_response"
+      ],
+      "secondary_constructs": [
+        "relational_awareness",
+        "awareness"
+      ],
+      "interpretation_limits": [
+        "Не объявлять собственные ощущения важнее сообщения другого человека.",
+        "Ответ также зависит от отношений и привычного способа решать проблемы."
+      ]
+    },
+    {
+      "id": "SA04",
+      "role": "core",
+      "format": "single-choice-with-not-applicable",
+      "stem": "Вспомните последнее изменение в своём пространстве за две недели. Как вы решали, что оставить?",
+      "options": [
+        {
+          "id": "practical",
+          "text": "По удобству вещей и выполнения дел"
+        },
+        {
+          "id": "felt",
+          "text": "По тому, как я себя там ощущал"
+        },
+        {
+          "id": "compared",
+          "text": "По сравнению ожидаемого и полученного эффекта"
+        },
+        {
+          "id": "external",
+          "text": "По внешнему виду или совету другого человека"
+        }
+      ],
+      "not_applicable": {
+        "id": "no_example",
+        "text": "Подходящего случая не было или не могу вспомнить"
+      },
+      "construct_targets": [
+        "reported_decision_basis",
+        "reported_effect_checking"
+      ],
+      "interpretation_limits": [
+        "Отсутствие изменений не означает отсутствие способности.",
+        "Сравнение ожидаемого и фактического эффекта требует дальнейшего уточнения; этот ответ не становится проверенной объективной записью."
+      ]
+    },
+    {
+      "id": "SA05",
+      "role": "reserve",
+      "format": "single-choice",
+      "stem": "Вы привезли памятную вещь из поездки. Как обычно выбираете ей место?",
+      "options": [
+        {
+          "id": "visible_memory",
+          "text": "Там, где она будет напоминать о поездке"
+        },
+        {
+          "id": "available",
+          "text": "На свободном подходящем месте"
+        },
+        {
+          "id": "felt_fit",
+          "text": "Пробую разные места и замечаю, как она там ощущается"
+        },
+        {
+          "id": "functional_fit",
+          "text": "По сочетаемости с использованием и устройством комнаты"
+        }
+      ],
+      "not_applicable": {
+        "id": "no_example",
+        "text": "Не привожу такие вещи или нет примера"
+      },
+      "construct_targets": [
+        "placement_decision_basis",
+        "reported_felt_fit"
+      ],
+      "interpretation_limits": [
+        "Не оценивать мытьё/очищение вещи как показатель способности.",
+        "Не вознаграждать ритуалы, коллекционирование или определённую эстетическую норму."
+      ]
+    }
+  ],
+  "validation_backlog": [
+    "Проверить смысл и полноту с основателем и специалистом по пространственной практике.",
+    "Попросить участников объяснить понимание вопросов и вариантов своими словами.",
+    "Измерить реальное время на телефоне, включая ранжирование.",
+    "Пересмотреть неоднозначные формулировки и социальную желательность.",
+    "Проверить надёжность/различимость и связь с реальным поведением до нормативной интерпретации.",
+    "Проверять ограничения жилья, ресурсов, культуры, доступа и возможность не отвечать."
+  ],
+  "objective_routes_later": [
+    "Углублённая интерактивная задача при наличии проверенной рубрики.",
+    "Наблюдение специалиста по согласованному протоколу.",
+    "Повторные сведения о реальном взаимодействии со средой с независимой проверкой доступных фактов."
+  ],
+  "methodology_reference": {
+    "url": "https://www.cosmin.nl/wp-content/uploads/EE-document_final-version-website.pdf",
+    "sections": "Content Validity: relevance, comprehensiveness, comprehensibility",
+    "scope": "Общие критерии проверки содержания самоотчётного инструмента; не валидация DOM."
+  }
+}
