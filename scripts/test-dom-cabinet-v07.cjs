@@ -41,6 +41,7 @@ async function request(route,token,body){
      await route.abort();
    });
    await page.goto(local+'/account.html',{waitUntil:'domcontentloaded'});
+   assert.equal(await page.locator('.navbar .nav-logo-dom .dom-brand-name').count(),1);
    await page.locator('#login-id').fill('qa-'+role+'@example.invalid');
    await page.locator('#login-pass').fill('local-scenario-password');
    await page.locator('form').filter({has:page.locator('#login-id')}).locator('button[type="submit"]').click();
