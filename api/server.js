@@ -10086,12 +10086,12 @@ app.get('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
     const tid = parseInt(req.params.id, 10);
     const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
     if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
-    const msgs = await sql`SELECT * FROM dm_messages WHERE thread_id = ${tid} ORDER BY created_at ASC LIMIT 200`;
+    const msgs = await sql`SELECT * FROM dm_messages WHERE thread_id = ${tid} ORDER BY created_at DESC, id DESC LIMIT 200`;
     // Mark incoming as read
     await sql`UPDATE dm_messages SET read_at = now() WHERE thread_id = ${tid} AND sender_id <> ${me} AND read_at IS NULL`;
     const [room]=await sql`SELECT id FROM chat_rooms WHERE dm_thread_id=${tid}`;
     const agentReplies=room?await domMonadV07.roomReplies({sql,roomId:room.id}).catch(()=>[]):[];
-    res.json({thread:t,agent_room_id:room?.id||null,messages:msgs.concat(agentReplies).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))});
+    res.json({thread:t,agent_room_id:room?.id||null,messages:msgs.concat(agentReplies).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).slice(-200)});
   } catch (err) { console.error('GET dm messages:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -14611,6 +14611,11 @@ function startServer() {
 }
 function onServerListening() {
   console.log(`NeuroAttention API running on port ${PORT}`);
+  if (r2Configured || r2MedicalConfigured) {
+    getStorageStatus().then(({ buckets })=>{
+      console.info('[media storage checks]', JSON.stringify(buckets));
+    }).catch(()=>console.warn('[media storage checks] unavailable'));
+  }
   try { startExternalPoller(); } catch (e) { console.warn('[ext] poller start failed:', e.message); }
   try { startSoftDeleteCron(); } catch (e) { console.warn('[soft-delete] cron start failed:', e.message); }
   try { wearablesSvc.startCron(); } catch (e) { console.warn('[wearables] cron start failed:', e.message); }

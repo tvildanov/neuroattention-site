@@ -2399,3 +2399,7 @@ User requested original drop restoration, a reusable export of the new renderer,
 - Added agent invitations to direct conversations, read-only agent inspection for administrators and evidence-backed activity.
 - Updated the program catalog, hid unfinished Sketch entry points and added required contact fields and a full, protected application detail view.
 - Added read-only object storage checks. Historical applications retain their original fields, with account contact details used when present.
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-18T14:43:00Z","did":["Ran Chromium public and signed-in account scenarios in RU, EN and ES","Validated NeuroMap on the page and in fullscreen, separate body and sensation nodes, sidebar clearance and direct agent delivery on an isolated database","Verified independent expansion of the Monad cross in Chromium"],"changed":["Production review follow-up in PR #201"],"files":["account.html","assets/dom-interface.css","assets/js/evolution-path.js","assets/js/dom-room-agents.js","api/server.js","scripts/test-dom-account-api.cjs","scripts/test-dom-cabinet-v07.cjs","scripts/test-dom-inner-v06.cjs"],"decisions":["Use published descriptions for the specialist levels pending detailed curricula","Show owner canon materials with their provenance, report tasks from the execution sources, and route explicit direct mentions only"],"followups":["Verify the exact production revision on Pages and Railway, including bucket checks"],"next_session":"Review deployment and update specialist curriculum when approved."}
+```

@@ -56,7 +56,12 @@ async function ddl(name) {
  await db.exec('ALTER TABLE chat_rooms ADD COLUMN dm_thread_id INTEGER UNIQUE REFERENCES dm_threads(id) ON DELETE CASCADE');
  await db.exec(fs.readFileSync(path.join(migrations,'022_family_dependents.sql'),'utf8'));
  require(path.join(root,'api/server.js'));
- const response=await fetch('http://127.0.0.1:'+config.PORT+'/api/run-migrations',{method:'POST'});
+ const base='http://127.0.0.1:'+config.PORT;
+ for(let attempt=0;attempt<50;attempt++){
+   if(await fetch(base+'/health').then(r=>r.ok).catch(()=>false))break;
+   await new Promise(resolve=>setTimeout(resolve,100));
+ }
+ const response=await fetch(base+'/api/run-migrations',{method:'POST'});
  console.log('FIXTURE_SCHEMA',response.status, (await response.text()).slice(0,250));
  const bcrypt=require(path.join(root,'api/node_modules/bcryptjs'));
  const password=await bcrypt.hash('local-scenario-password',10);

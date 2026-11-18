@@ -15,10 +15,18 @@ const srv=http.createServer((req,res)=>{
  try{
   for(const lang of ['ru','en','es']){
    const context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
-   await context.addInitScript(l=>{localStorage.setItem('na_lang',l);localStorage.setItem('na_geo_done','1')},lang);
+   await context.addInitScript(l=>{localStorage.setItem('na_lang',l);localStorage.setItem('na_geo_done','1');localStorage.setItem('dom_theme','light')},lang);
    const page=await context.newPage();
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    async function open(name,sel){await page.goto('http://127.0.0.1:'+port+'/'+name+'.html',{waitUntil:'domcontentloaded'});await page.locator(sel).first().waitFor({timeout:12000});}
+   const wordmark=()=>page.locator('.navbar .dom-brand-name').evaluate(element=>{
+     const brand=getComputedStyle(element);
+     const logo=element.closest('a').querySelector('.nav-logo-icon');
+     return [brand.fontFamily,brand.fontSize,brand.fontWeight,logo.getAttribute('src')];
+   });
+   await open('index','#home-hero h1');
+   assert.equal(await page.locator('#home-hero h1').evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
+   const homepageBrand=await wordmark();
    await open('dom','.dom-v06-entities');
    assert.equal(await page.locator('#dom-unity .dom-v06-entities .dom-card').count(),6,'DOM card count');
    for(const name of ['DOM Institute','DOM Platform','DOM Space','DOM Tech','NeuroAttention Lab','Custom Group Agency'])assert.equal(await page.getByRole('heading',{name,exact:true}).count(),1,name);
@@ -28,7 +36,7 @@ const srv=http.createServer((req,res)=>{
    assert.equal(await heading.evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
    assert.match(await heading.evaluate(e=>getComputedStyle(e).fontFamily),/Libre Baskerville/);
    assert.equal(await page.locator('.dom-hero h1').evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
-   assert.equal(await page.locator('.navbar .dom-brand-name').evaluate(e=>getComputedStyle(e).fontSize),'21.6px');
+   assert.deepEqual(await wordmark(),homepageBrand);
 
    await open('programs','.dom-v06-programs');
    assert.equal(await page.locator('#programs-main .dom-v06-program-card').count(),6);
@@ -38,7 +46,7 @@ const srv=http.createServer((req,res)=>{
    assert.equal(await summary.evaluate(e=>e.parentElement.classList.contains('dom-card-lit')),true);
    const level=page.locator('.level-card summary').first();
    await level.hover({position:{x:12,y:12}});
-   assert.notEqual(await level.evaluate(e=>e.parentElement.style.getPropertyValue('--dom-pointer-x')),'0px');
+   assert.ok(await level.evaluate(e=>Math.abs(parseFloat(e.parentElement.style.getPropertyValue('--dom-pointer-x')))>0));
    await level.click();
    assert.equal(await level.evaluate(e=>e.parentElement.open),true);
 
@@ -57,6 +65,8 @@ const srv=http.createServer((req,res)=>{
    await open('lab','.dom-v06-research-card');
    assert.equal(await page.locator('.dom-v06-research-card').count(),4);
    assert.match(await page.locator('[data-dom-v06="lab-title"]').innerText(),/адаптац|adaptation|adaptaci/i);
+   assert.equal(await page.locator('[data-dom-v06="lab-title"]').evaluate(e=>getComputedStyle(e).color),'rgb(32, 76, 142)');
+   assert.deepEqual(await wordmark(),homepageBrand);
    await open('method','.method-final-layout');
    await page.locator('[data-i18n="m.practice.tools"]').waitFor();
    assert.equal(await page.locator('[data-i18n="m.modules.title"]').count(),0);

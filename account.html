@@ -7831,6 +7831,7 @@ function nmGetNodeColor(node){
   var layer = node._layer || nmNodeLayer(node);
   var theme = document.documentElement.dataset.domTheme === 'light' ? 'light' : 'dark';
   var rgb = NM_NODE_PALETTES[theme][layer] || NM_NODE_PALETTES[theme][0];
+  if(node.type==='area' && nmAreaKind(node)==='body') rgb=theme==='light'?[22,111,101]:[125,222,201];
   if(node.type==='emotion'){
     var strength=NM_POLARITY_MAP[node.label];
     if(typeof strength!=='number') strength=Number(node.valence)||0;
@@ -7866,9 +7867,24 @@ function nmTraceNode(ctx,node,x,y,radius){
   }
   ctx.closePath();
 }
+function nmBodyBond(source,target){
+  return (source.type==='sensation' && target.type==='area' && nmAreaKind(target)==='body')
+    || (target.type==='sensation' && source.type==='area' && nmAreaKind(source)==='body');
+}
+function nmThreeRadius(node){
+  return Math.cbrt(Math.max(1,node.val||1))*4;
+}
+function nmThreeLinkConfig(graph){
+  graph.linkVisibility(function(link){return !link.bodyBond;});
+  graph.linkDirectionalArrowLength(function(link){return link.bodyBond?0:5;});
+  graph.d3Force('charge').strength(-70);
+  graph.d3Force('link')
+    .distance(function(link){return link.bodyBond?nmThreeRadius(link.source)+nmThreeRadius(link.target)-2:60;})
+    .strength(function(link){return link.bodyBond ? .95 : .55;});
+}
 function nmThreeNode(node,label){
   if(!THREE)return false;
-  var sides=nmNodeSides(node), radius=Math.cbrt(Math.max(1,node.val||1))*4;
+  var sides=nmNodeSides(node), radius=nmThreeRadius(node);
   var geometry=sides
     ? new THREE.CylinderGeometry(radius,radius,radius*.5,sides).rotateX(Math.PI/2)
     : new THREE.SphereGeometry(radius,12,8);
@@ -10279,7 +10295,7 @@ function nmBuildFs3DGraph(container){
       var tn = nmNodes[nodeIdx[l.target]];
       var ec = nmGetEdgeColor(sn, tn);
       var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
-      gLinks.push({ source: l.source, target: l.target, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
+      gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn), count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
     }
   });
   if(!THREE)nmEnsureThree(function(){
@@ -10312,7 +10328,6 @@ function nmBuildFs3DGraph(container){
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
-    .linkDirectionalArrowLength(5)
     .linkDirectionalArrowRelPos(1)
     .linkDirectionalArrowColor(function(l){ return l.color; })
     .backgroundColor('rgba(0,0,0,0)')
@@ -10323,8 +10338,7 @@ function nmBuildFs3DGraph(container){
       if(origNode) openFsDrilldown(origNode);
     })
     .showNavInfo(false);
-  nmFs3DGraph.d3Force('charge').strength(-120);
-  nmFs3DGraph.d3Force('link').distance(60);
+  nmThreeLinkConfig(nmFs3DGraph);
 }
 
 function nmToggleLabels(){
@@ -10532,6 +10546,7 @@ function nmBuild3DGraph(){
       gLinks.push({
         source: l.source,
         target: l.target,
+        bodyBond:nmBodyBond(sn,tn),
         color: hex,
         width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2))
       });
@@ -10573,7 +10588,6 @@ function nmBuild3DGraph(){
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
-    .linkDirectionalArrowLength(5)
     .linkDirectionalArrowRelPos(1)
     .linkDirectionalArrowColor(function(l){ return l.color; })
     .onNodeClick(function(node){
@@ -10583,9 +10597,7 @@ function nmBuild3DGraph(){
     })
     .showNavInfo(false);
 
-  // Spread nodes in 3D space based on layer
-  nm3DGraph.d3Force('charge').strength(-120);
-  nm3DGraph.d3Force('link').distance(60);
+  nmThreeLinkConfig(nm3DGraph);
 }
 
 
@@ -11220,10 +11232,9 @@ function nmSimulate(canvas, initAlpha){
     l._sticky=false; l._sensBody=false;
     var s=_nmById[l.source], t=_nmById[l.target];
     if(!s||!t) return;
-    var sIsSens=(s.type==='sensation'), tIsSens=(t.type==='sensation');
-    if(sIsSens===tIsSens) return;          // need exactly one sensation endpoint
+    var sIsSens=(s.type==='sensation');
+    if(!nmBodyBond(s,t)) return;
     var sens=sIsSens?s:t, other=sIsSens?t:s;
-    if(other.type!=='area' || nmAreaKind(other)!=='body') return; // body parts only
     l._sensBody=true;                      // never draw an arrow for a body bond
     (_bodyLinksBySens[sens.id]=_bodyLinksBySens[sens.id]||[]).push({ l:l, anchor:other });
   });
@@ -17635,7 +17646,7 @@ function loadStorageStatus(){
   var body = document.getElementById('storage-status-body');
   if (!body) return;
   domApi('/api/admin/storage-status').then(function(d){
-    var names={verified:'Доступ подтверждён · используется для загрузок',unconfigured:'Не настроен',unverified:'Настройки есть · доступ не подтверждён',permission_denied:'Настройки есть · проверка прав отклонена'};
+    var names={verified:'Бакет доступен · выбран для загрузок',unconfigured:'Не настроен',unverified:'Настройки есть · доступ не подтверждён',permission_denied:'Настройки есть · проверка прав отклонена'};
     var rows=[
       ['Медиа · Cloudflare R2',names[d.buckets?.public]||names.unverified],
       ['Закрытые медицинские файлы · R2',names[d.buckets?.medical]||names.unverified],

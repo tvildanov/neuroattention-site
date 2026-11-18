@@ -114,7 +114,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     const agents=arr(await monadSvc.mcpCall('list_agents',{}));
     const agent=agents.find(a=>a.agent_id===id);if(!agent)return res.status(404).json({error:'Агент не найден.'});
     const prompt=await readPrompt(monadSvc,id);
-    const canon=arr(await monadSvc.mcpCall('list_canon',{source_human_id:agent.owner||u.human||undefined,include_drafts:u.founder,limit:100}));
+    const canon=agent.owner ? arr(await monadSvc.mcpCall('list_canon',{source_human_id:agent.owner,include_drafts:u.founder,limit:100})) : [];
     res.json({ok:true,agent,system_prompt:prompt,etag:crypto.createHash('sha256').update(prompt).digest('hex'),canon,
       sources:{system_prompt:'agents',canon:'canon_artifacts',domains:'agent_domains',
         memory:'restricted',runtime:'no_agent_snapshot'}, can_publish:u.founder&&(agent.owner===u.human||!!process.env.DOM_ACCOUNT_ADMIN_KEY),

@@ -224,4 +224,18 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  assert.equal(replies[0].agent_id,'fixture_agent');
  await get(403,at+'/messages',b);
  console.log('ACCOUNT_API_PASS two room participants, scoped harness, silent observe and same-room reply');
+ await post(201,dmPath+'/messages',member,{body:'Private person-to-person text'});
+ await post(201,dmPath+'/messages',member,{body:'Hello @fixture_agent'});
+ const directDeadline=Date.now()+26000;
+ let directMessages=[];
+ do{
+   directMessages=(await get(200,dmPath+'/messages',a)).messages;
+   if(directMessages.some(m=>m.is_agent))break;
+   await new Promise(r=>setTimeout(r,1000));
+ }while(Date.now()<directDeadline);
+ assert.equal(roomDispatches,3,'only the explicit mention was dispatched');
+ assert.equal(directMessages.filter(m=>m.is_agent&&m.agent_id==='fixture_agent').length,1);
+ assert.ok(directMessages.some(m=>m.body==='Private person-to-person text'));
+ await get(404,dmPath+'/messages',b);
+ console.log('ACCOUNT_API_PASS private direct invitation, scoped delivery and thread isolation');
 })().catch(err=>{console.error(err);process.exitCode=1}).finally(()=>mcp.close());

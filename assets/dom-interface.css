@@ -8,7 +8,11 @@ body .navbar .dom-brand-group .nav-logo-dom .nav-logo-icon {
   height: 1.4em;
   object-fit: contain;
   content: url('dom-logo-matrix.svg');
-  animation: domMatrixLogoPulse 2.8s ease-in-out infinite alternate;
+  animation: domSharedLogoPulse 2.8s ease-in-out infinite alternate;
+}
+@keyframes domSharedLogoPulse {
+  from {transform:scale(1);filter:drop-shadow(0 0 3px rgba(89,207,131,.35)) drop-shadow(0 0 7px rgba(89,207,131,.14))}
+  to {transform:scale(1.025);filter:drop-shadow(0 0 7px rgba(124,239,164,.8)) drop-shadow(0 0 14px rgba(89,207,131,.45))}
 }
 html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name {
   color: #142434;
@@ -30,11 +34,11 @@ html[data-dom-theme="light"] body .navbar .nav-logo-dom .text-gradient-cyan {
   body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name {font-size:13px}
   body .navbar .nav-logo-dom {gap:5px}
 }
-html[data-dom-theme="light"] :is(.dom-site,.dom-account-matrix)
+html[data-dom-theme="light"] body:is(.dom-site,.dom-account-matrix)[data-dom-page]
   :is(main,section) :is(h1,h2,.hero-title,.dom-hero-h2,.lab-hero-h2,.section-title) {
   color: var(--dom-heading-blue,#204c8e) !important;
 }
-html[data-dom-theme="light"] :is(.dom-site,.dom-account-matrix)
+html[data-dom-theme="light"] body:is(.dom-site,.dom-account-matrix)[data-dom-page]
   :is(main,section) :is(h1,h2,.hero-title,.section-title) :is(.text-gradient-cyan,.text-gradient-blue) {
   color: inherit !important;
   -webkit-text-fill-color: currentColor !important;
@@ -50,8 +54,13 @@ body :is(.btn-solid,.dom-quick-trigger,.auth-submit) {
   border-color: color-mix(in srgb,var(--accent-cyan,#a3d2b3) 78%,transparent) !important;
   backdrop-filter: blur(13px) saturate(1.12);
 }
-html[data-dom-theme="light"] body :is(.btn-solid,.dom-quick-trigger,.auth-submit) {
+html[data-dom-theme="light"] body:is(.dom-site,.dom-account-matrix)[data-dom-page]
+  :is(.btn-solid,.dom-quick-trigger,.auth-submit,.rehab-submit,.dom-insight-action .btn-primary):is(:hover,:not(:hover)) {
   --dom-glass-fill: color-mix(in srgb,#173e79 86%,transparent);
+  color:#fffdf8 !important;
+  background:var(--dom-glass-fill) !important;
+  border-color:#204c8e55 !important;
+  backdrop-filter:blur(13px) saturate(1.12);
 }
 body.dom-account-matrix button:is(.btn-primary,.btn-ghost,.dash-tab,.dom-cabinet-toggle,.dom-quick-expand,.dom-quick-secondary):not(.dom-quick-trigger) {
   background-color: color-mix(in srgb,var(--bg-surface,#102519) 72%,transparent) !important;
@@ -81,6 +90,7 @@ body.dom-account-matrix button:is(.btn-primary,.btn-ghost,.dash-tab,.dom-cabinet
 .dom-rehab-detail::backdrop {background:#07121999}
 .dom-rehab-detail dt {font-weight:700;margin-top:.85rem}
 .dom-rehab-detail dd {margin:.3rem 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#nm-step-content h3 {text-transform:none}
 /* The shape is the selection indicator: retain the native checkbox in the tab order. */
 .nm-layer-chk:has(.nm-layer-symbol) {position:relative;gap:.3rem}
 .nm-layer-chk:has(.nm-layer-symbol) > input[data-layer]:not([data-layer="repeat"]) {
@@ -93,17 +103,17 @@ html[data-dom-theme="light"] .nm-layer-symbol {background:var(--nm-symbol-light)
 .nm-layer-chk:has(input:not(:checked)) .nm-layer-symbol {opacity:.32}
 #nm-3d-notice {font-size:.78rem;color:var(--text-primary);margin-inline:.6rem}
 #client-dashboard #tab-evolution {margin-inline:0;min-width:0;width:100%}
+#client-dashboard #evo-path {width:100%;margin-inline:0;padding-inline:0}
 #client-dashboard #tab-evolution .myc-evo-canvas {min-width:0}
 @media(min-width:860px) {
-  #client-dashboard:has(#tab-evolution.active,.dom-cabinet-sidebar) #tab-evolution.active {
+  #client-dashboard #tab-evolution.active {
     max-width:100%;
     padding-inline:0;
   }
 }
-@media(max-width:1200px) {
-  #client-dashboard #tab-evolution .myc-evo-canvas {flex-wrap:wrap}
-  #client-dashboard #tab-evolution .evo-stage {flex-basis:100%;order:2}
-  #client-dashboard #tab-evolution .evo-rail {max-width:100%}
+@media(max-width:1100px) {
+  #client-dashboard #tab-evolution .myc-evo-canvas {flex-direction:column;align-items:stretch}
+  #client-dashboard #tab-evolution .evo-rail {width:auto}
 }
 html[data-dom-theme="light"] #tab-evolution .myc-root,
 html[data-dom-theme="light"] .na-fs-body .myc-root {

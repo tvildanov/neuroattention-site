@@ -57,6 +57,8 @@
     instructions:['Инструкции агента','Agent instructions','Instrucciones del agente'],
     public_role:['Публичная роль в DOMunity (необязательно)','Public role in DOMunity (optional)','Rol público en DOMunity (opcional)'],
     canon_content:['Содержание канона','Canon content','Contenido del canon'],
+    canon_sources:['Материалы канона владельца','Owner canon materials','Materiales del canon del propietario'],
+    canon_scope:['Здесь видны доступные материалы владельца. Журнал не подтверждает, какие из них загрузил этот агент.','These are available owner materials. The activity log does not establish which materials the agent loaded.','Estos son materiales disponibles del propietario. El registro no indica cuáles cargó el agente.'],
     canon_invalid:['Содержание должно быть объектом JSON.','Content must be a JSON object.','El contenido debe ser un objeto JSON.'],
     pending_onboarding:['Зарегистрирован · ожидает настройки','Registered · awaiting onboarding','Registrado · en espera de configuración'],
     training:['Начать обучение','Start training','Iniciar formación'],
@@ -294,7 +296,7 @@
       }));
     }
     if(details.can_publish)host.append(button('preview',preview));
-    host.append(button('versions',async()=>{
+    if(details.can_publish)host.append(button('versions',async()=>{
       try{
         const data=await api(endpoint+'/versions');
         output.replaceChildren();
@@ -307,6 +309,7 @@
         }));
       }catch(err){status.textContent=failure(err);}
     }));
+    if(details.canon?.length)host.append(element('h4',tr('canon_sources')),element('p',tr('canon_scope')));
     for(const item of details.canon||[]) host.append(button(item.title,async()=>{
       try {
         await showCanon(output,item.artifact_id);
@@ -421,11 +424,15 @@
     async open(id, head, invite=false){
       room=id;roomHead=head;members=null;updateToken++;roomPanel?.remove();inspector?.remove();
       head.append(button('participants',showParticipants));
-      if(!invite&&!head.id.includes('dm'))head.append(button('invite',async()=>{await showParticipants();if(members?.can_manage)await showInvite();}));
+      async function openInvite(){
+        await showParticipants();
+        if(room===id&&members?.can_manage)await showInvite();
+      }
+      head.append(button('invite',openInvite));
       indicator=element('small');indicator.className='dom-agent-notice';indicator.setAttribute('role','status');
       head.append(indicator);
       refreshStatus();
-      if(invite)await showParticipants();
+      if(invite)await openInvite();
     },
     showAgent,mountProvision,notice
   };
