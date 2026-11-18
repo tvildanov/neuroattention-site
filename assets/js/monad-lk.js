@@ -972,6 +972,10 @@
       if (a.live) html += ' · <span class="monad-ok">live</span>';
       html += '</dd>';
     }
+    if (a.actions_per_min == null && !a.last_seen) {
+      html += '<dt>' + esc(t('a.monad.confirmed_activity', 'Подтверждённая работа')) + '</dt><dd>' +
+        esc(({ru:'События выполнения не получены. Статус «активен» сам по себе не доказывает, что агент выполняет задачу.',en:'No execution events available. An “active” label alone does not prove the agent is performing work.',es:'No hay eventos de ejecución verificados. «Activo» por sí solo no demuestra que el agente esté trabajando.'})[locLang()] || 'Execution not verified') + '</dd>';
+    }
     html += '</dl></div>';
     return html;
   }
@@ -1259,6 +1263,7 @@
       html += '<span class="monad-badge status-' + esc(rhythm.system.status || '') + '">' + esc(rhythm.system.status || '—') + '</span>';
     }
     html += '<p class="monad-muted" style="margin:0.35rem 0 0;">' + esc(t('a.monad.rhythm_help_short', 'Активность слоёв L1–L7 и агентов. «Живой ритм» обновляет данные каждые ~1.2 с.')) + '</p></div>';
+    html += '<p class="monad-muted" style="margin:0.3rem 0 0;">' + esc(({ru:'«Активен» означает статус системы, а не подтверждённую работу. Для подтверждения нужны последние действия и время выполнения.',en:'“Active” reflects system status, not proof of work. Verify recent actions and execution timestamps.',es:'«Activo» indica estado del sistema, no trabajo confirmado. Verifica acciones y fechas de ejecución.'})[locLang()]||'Active does not imply executing work') + '</p>';
     if (showLiveBtn !== false) {
       html += '<button type="button" id="monad-rhythm-live" class="btn ' + (STATE.liveRhythm ? 'btn-primary' : 'btn-ghost') + '" style="font-size:12px;">' +
         esc(STATE.liveRhythm ? t('a.monad.live_off', 'Выключить живой ритм') : t('a.monad.live_on', 'Живой ритм')) + '</button>';
