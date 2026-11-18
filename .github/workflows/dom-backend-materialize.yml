@@ -1,0 +1,29 @@
+name: DOM account backend materializer
+on:
+  push:
+    branches: ['codex/dom-account-monad-completion-20261118']
+    paths: ['scripts/dom-monad-completion.js.gz.b64']
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode authored module and validate syntax
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          data=base64.b64decode(pathlib.Path('scripts/dom-monad-completion.js.gz.b64').read_text().strip())
+          out=gzip.decompress(data)
+          assert out.startswith(b"'use strict'"), 'invalid source header'
+          pathlib.Path('api/services/dom-monad-completion.js').write_bytes(out)
+          print('Materialized',len(out),'bytes')
+          PY
+          node --check api/services/dom-monad-completion.js
+      - name: Commit into this feature branch
+        run: |
+          git config user.name 'dom-recovery-bot'
+          git config user.email 'dom-recovery-bot@users.noreply.github.com'
+          git add api/services/dom-monad-completion.js
+          git diff --cached --quiet || { git commit -m 'Add DOM account Monad API server'; git push origin HEAD:${{ github.ref_name }}; }
