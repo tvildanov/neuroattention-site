@@ -10326,7 +10326,8 @@ app.get('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     const rows = await sql`SELECT m.*, u.display_name AS sender_name FROM chat_room_messages m
                            LEFT JOIN users u ON u.id = m.sender_id
                            WHERE m.room_id = ${rid} ORDER BY m.created_at ASC LIMIT 300`;
-    res.json({ messages: rows });
+    const aiReplies = await domMonadV07.roomReplies({sql,roomId:rid}).catch(err=>{console.warn('[room-agent-replies]',err.message);return []});
+    res.json({ messages: rows.concat(aiReplies).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)) });
   } catch (err) { console.error('GET room messages:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -10350,6 +10351,8 @@ app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     const ann = !!is_announcement && isRoomAdmin;
     const [row] = await sql`INSERT INTO chat_room_messages (room_id, sender_id, body, is_announcement)
                             VALUES (${rid}, ${me}, ${body}, ${ann}) RETURNING *`;
+    // One delivery record per opted-in agent; canonical room message is persisted first.
+    await domMonadV07.recordRoomMessage({sql,roomId:rid,messageId:row.id,body:String(body)}).catch(err=>console.warn('[room-agent-record]',err.message));
     res.status(201).json({ message: row });
   } catch (err) { console.error('POST room message:', err); res.status(500).json({ error: err.message }); }
 });
@@ -14465,6 +14468,10 @@ app.post('/api/monad/deliver-tahir-handoff', requireAuth, async (req, res) => {
     res.status(err.code === 'MONAD_NOT_CONFIGURED' ? 503 : 502).json({ error: err.message, code: err.code || 'MONAD_ERROR' });
   }
 });
+
+// DOM v0.7 server-authoritative Monad access, founder harness and DOMunity delivery.
+const domMonadV07=require('./services/dom-monad-v07');
+domMonadV07.install(app,{requireAuth,sql,monadSvc});
 
 app.listen(PORT, () => {
   console.log(`NeuroAttention API running on port ${PORT}`);
