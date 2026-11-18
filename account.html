@@ -3526,6 +3526,10 @@ function toggleAuthMode(mode){
 // Show/hide sections
 function showSection(which){
   document.body.dataset.accountSection = which;
+  // The hash router restores deep-linked tabs after the dashboard becomes visible.
+  if (which === 'client' && !document.body.dataset.accountTab) {
+    document.body.dataset.accountTab = location.hash.slice(1).split('/')[0] || 'overview';
+  }
   var loader = document.getElementById('auth-loading');
   if(loader) loader.style.display = 'none';
   document.getElementById('auth-screen').style.display = which==='auth' ? 'block' : 'none';
@@ -5694,6 +5698,7 @@ function switchTab(id){
   }
   document.querySelectorAll('#client-dashboard > .dash-tabs > .dash-tab[data-tab]').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===id); });
   document.querySelectorAll('#client-dashboard > .tab-panel').forEach(function(p){ p.classList.toggle('active', p.id==='tab-'+id); });
+  document.body.dataset.accountTab = id;
   // Re-render NeuroMap graph when tab becomes visible (canvas needs dimensions)
   if(id==='neuromap' || (id==='tools' && document.getElementById('tools-mode-nm') && document.getElementById('tools-mode-nm').classList.contains('active'))){
     setTimeout(function(){ try { buildNmGraph(); } catch(e){} }, 50);

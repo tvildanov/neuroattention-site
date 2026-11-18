@@ -44,9 +44,10 @@ jobs:
           NODE_PATH: /tmp/dom-profile-qa/node_modules
         run: |
           node scripts/check-dom-profile-texture.cjs . main
+          git fetch --depth=1 --filter=blob:none origin a0eaba7f3872cb306915108a05b5c2dca36fd1ca
           git fetch --depth=1 --filter=blob:none origin refs/pull/197/head
           git worktree add --detach /tmp/dom-pr197 FETCH_HEAD
-          git diff HEAD^ HEAD -- account.html | git -C /tmp/dom-pr197 apply
+          git diff a0eaba7f3872cb306915108a05b5c2dca36fd1ca HEAD -- account.html | git -C /tmp/dom-pr197 apply
           mkdir -p /tmp/dom-pr197/assets/images
           cp assets/dom-account-profile.css /tmp/dom-pr197/assets/
           cp assets/images/dom-profile-neural-light.webp /tmp/dom-pr197/assets/images/
