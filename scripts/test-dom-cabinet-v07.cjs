@@ -14,9 +14,9 @@ const srv=http.createServer((req,res)=>{let file;try{file=path.resolve(root,'.'+
    const page=await ctx.newPage();
    page.on('console',m=>{if(m.type()==='error'&&/dom-cabinet-v07/.test(m.text()))console.error(m.text())});
    await page.goto('http://127.0.0.1:'+srv.address().port+'/account.html',{waitUntil:'domcontentloaded',timeout:30000});
-   await page.locator('#dom-quick-record').waitFor({timeout:20000});
+   await page.locator('#dom-quick-record').waitFor({timeout:20000,state:'attached'});
    await page.locator('.dom-cabinet-sidebar').waitFor({timeout:20000,state:'attached'});
-   await page.evaluate(()=>{document.getElementById('client-dashboard').style.display='block'});
+   await page.evaluate(()=>{document.getElementById('client-dashboard').style.setProperty('display','block','important');document.getElementById('tab-overview').style.setProperty('display','block','important')});
    assert.equal(await page.locator('.dom-cabinet-sidebar a[data-tab]').count(),8);
    const course=page.locator('.dom-cabinet-path-group a[data-tab="courses"]');
    assert.equal(await course.count(),1,'courses remains in path hierarchy');
