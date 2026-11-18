@@ -107,6 +107,18 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  assert.deepEqual(updated.chains.find(c=>c.session_id===session_id).positions,[0,1]);
  const journey=await get(200,'/api/users/me/evolution',member);
  assert.ok(JSON.stringify(journey).includes('First chain'));
+ const chosen=common.find(c=>c.node_ids.includes(first.node_ids[1]));
+ const linked=await post(200,'/api/neuromap/sensation',member,{
+   body_locations:['fixture_forearm'],loc_labels:{fixture_forearm:'Fixture forearm'},
+   link_to:[first.journey_ids[0]],
+ });
+ assert.equal(linked.linked,1);
+ const afterLink=await get(200,'/api/neuromap/v3/graph?range=all',member);
+ const graphLink=afterLink.explicit_links.find(l=>l.target===first.node_ids[0]);
+ assert.equal(graphLink.target_session,chosen.session_id,'binding selects the recorded occurrence');
+ const mapped=occurrenceGraph(afterLink,()=>true);
+ const explicit=mapped.links.find(link=>link.kind==='correlation');
+ assert.equal(mapped.nodes.find(node=>node.id===explicit.target).session_id,chosen.session_id);
  console.log('ACCOUNT_API_PASS signed-in profiles, graph occurrences, concurrent appends, Path, record isolation');
  for(const [who,id] of [[a,'persona_nikita'],[b,'persona_takhir']]){
    const route='/api/dom-monad/admin/agent/'+id;

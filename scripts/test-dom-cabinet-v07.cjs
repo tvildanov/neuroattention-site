@@ -49,6 +49,18 @@ async function request(route,token,body){
    assert.ok(token);
    const profile=await request('/api/auth/me',token);
    assert.equal(profile.status,200,JSON.stringify(profile));
+   assert.equal(await page.locator('html').getAttribute('lang'),lang);
+   const sidebar=page.locator('.dom-cabinet-toggle');
+   if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+   const courses=page.locator('.dom-cabinet-path-group a[data-tab="courses"]');
+   assert.equal(await courses.count(),1);
+   await page.locator('.dom-cabinet-path-group summary').click();
+   await courses.click();
+   await page.locator('#tab-courses.active').waitFor();
+   if(width<860)assert.equal(await sidebar.getAttribute('aria-expanded'),'false');
+   if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+   await page.locator('.dom-cabinet-sidebar a[data-tab="overview"]').click();
+   await page.locator('#tab-overview.active').waitFor();
    const quick=page.locator('#dom-quick-record .dom-quick-trigger');
    await quick.click();
    const entry=page.locator('#dom-quick-popup #nm-entry-actions');
