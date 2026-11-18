@@ -199,4 +199,16 @@ function install(app,{requireAuth,sql,monadSvc}){
   };
   const timer=setInterval(dispatch,12000);if(timer.unref)timer.unref();
 }
-module.exports={install,recordRoomMessage,explain};
+async function roomReplies({sql,roomId}){
+  await ensureSchema(sql);
+  const rows=await sql`SELECT id,agent_id,reply,updated_at FROM dom_room_agent_events
+    WHERE room_id=${roomId} AND status='completed' AND reply IS NOT NULL AND LENGTH(reply)>0
+    ORDER BY updated_at ASC LIMIT 200`;
+  return rows.map(x=>({
+    id:'agent-'+x.id,room_id:roomId,sender_id:null,agent_id:x.agent_id,
+    sender_name:x.agent_id,role:'agent',is_agent:true,body:x.reply,
+    is_announcement:false,created_at:x.updated_at
+  }));
+}
+
+module.exports={install,recordRoomMessage,roomReplies,explain};
