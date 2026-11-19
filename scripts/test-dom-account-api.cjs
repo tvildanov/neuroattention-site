@@ -68,6 +68,11 @@ const mcp=http.createServer(async(req,res)=>{
    if(a.domain!=='domunity'){out={handoff_id:crypto.randomUUID()};break;}
    const handoff_id=crypto.randomUUID();
    assert.match(a.dedupe_key,/^domunity:\d+:\d+$/);
+   if(a.payload.mode==='analyze'){
+     assert.ok(a.payload.recent_messages.some(message=>message.body==='Hello @fixture_agent'));
+     assert.ok(a.payload.recent_messages.length<=12);
+     assert.ok(!a.payload.recent_messages.some(message=>message.body.includes('Private person-to-person text')));
+   }
    handoffs.set(handoff_id,{handoff_id,to_agent:a.to_agent,status:'completed',result:a.payload.mode==='observe'?{observed:true}:{reply:'Room response from '+a.to_agent}});
    roomDispatches++;out={handoff_id};break;
  }
@@ -270,5 +275,8 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  await post(403,at+'/analyze',member,{agent_id:'fixture_agent'});
  await post(404,at+'/analyze',a,{agent_id:'absent_agent'});
  await post(202,at+'/analyze',a,{agent_id:'fixture_agent'});
+ const analysisDeadline=Date.now()+26000;
+ while (roomDispatches<4 && Date.now()<analysisDeadline) await new Promise(resolve=>setTimeout(resolve,500));
+ assert.equal(roomDispatches,4);
  console.log('ACCOUNT_API_PASS folder ownership, edit/delete, attachments and scoped analysis');
 })().catch(err=>{console.error(err);process.exitCode=1}).finally(()=>mcp.close());

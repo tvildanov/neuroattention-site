@@ -445,8 +445,7 @@
     card.setAttribute('role', 'dialog');
 
     var p = ev.payload || {};
-    var typeKey = ev.kind || ev.layer;
-    var typeLabel = humanLabel(typeKey, lang) || L(LAYER_LABEL[ev.layer] || { ru: ev.layer }, lang);
+    var typeLabel = eventLabel(ev, lang) || L(LAYER_LABEL[ev.layer] || { ru: ev.layer }, lang);
     var srcLabel = humanLabel(ev.source || (p && p.source), lang);
     var rows = [];
     rows.push('<div class="evo-card-head"><span class="evo-card-dot" style="background:' + valStyle(ev.valence).c + '"></span>' +
@@ -675,8 +674,27 @@
   // (at 7200 px/day one hour ≈ 300px and a 30-min slot ≈ 150px). — 2.2
   var MIN_PXPD = 0.4, MAX_PXPD = 7200;
 
-  function nodeShape(layer, cx, cy, r) {
-    // PR#109 (#4): always a circle — no practice squares / insight stars on the path.
+  function graphNode(event) {
+    var payload = event.payload || {};
+    var area = event.area_kind || payload.area_kind;
+    var raw = event.nm_type || payload.nm_type || event.kind || event.layer;
+    var type = area || raw === 'body' || raw === 'life_area' ? 'area' : raw;
+    return { type: type, label: event.label, metadata: { area_kind: raw === 'body' ? 'body' : area },
+      valence: event.valence === 'positive' ? 1 : event.valence === 'negative' ? -1 : 0 };
+  }
+  function eventLabel(event, lang) {
+    var node = graphNode(event);
+    if (node.metadata.area_kind === 'body') return L(CARD_STR.where, lang);
+    return humanLabel(event.kind || event.layer, lang);
+  }
+  function nodeShape(event, cx, cy, r) {
+    var sides = typeof window.nmNodeSides === 'function' ? window.nmNodeSides(graphNode(event)) : 0;
+    var points = [];
+    for (var index = 0; index < sides; index++) {
+      var angle = index * 2 * Math.PI / sides - Math.PI / 2;
+      points.push((cx + r * Math.cos(angle)).toFixed(1) + ',' + (cy + r * Math.sin(angle)).toFixed(1));
+    }
+    if (points.length) return el('polygon', { points: points.join(' ') });
     return el('circle', { cx: cx.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1) });
   }
   // aura colour by mean emotional valence in a time slice: calm cyan at 0,
@@ -779,6 +797,10 @@
     var nt = (e && e.nm_type) || p.nm_type || '';
     var ak = (e && e.area_kind) || p.area_kind || '';
     var k  = (e && (e.kind || e.layer)) || '';
+    var node = graphNode(e || {});
+    if (typeof window.nmNodeLayer === 'function' && typeof window.nmGetNodeColor === 'function' && window.nmNodeLayer(node)) {
+      return window.nmGetNodeColor(node).replace('rgba(', 'rgb(').replace(/,$/, ')');
+    }
     // PR#111 (#3): resolve the UNAMBIGUOUS body/sensation types FIRST. A body
     // location (area_kind:'body') must always be BLUE — Tahir saw «верхняя часть
     // спины» render violet because a stray kind/layer hit the thought branch above
@@ -1129,7 +1151,7 @@
         var fillN = nmPathColor(e); // PR#109 (#4): NeuroMap colour by node type
         var glow = !gesturing && (e.layer === 'insight' || e.layer === 'practice' || e.valence === 'positive');
         if (e.payload && e.payload.sched) drawSchedNodeCv(ctx, e, nx, ny, ndr, fillN);
-        else drawNodeCv(ctx, e.layer, nx, ny, ndr, fillN, glow);
+        else drawNodeCv(ctx, e, nx, ny, ndr, fillN, glow);
         st._nodes.push({ x: nx, y: ny, r: ndr, e: e });
         // PR FIX #8: labels are hidden by default (they overlapped on zoom-in).
         // Only the hovered/tapped node shows its label, and it's highlighted.
@@ -1327,13 +1349,15 @@
     ctx.strokeStyle = color; ctx.lineWidth = w; ctx.globalAlpha = alpha; ctx.stroke(); ctx.globalAlpha = 1;
   }
 
-  function drawNodeCv(ctx, layer, cx, cy, r, fill, glow) {
+  function drawNodeCv(ctx, event, cx, cy, r, fill, glow) {
     r = Math.max(0.1, r);   // PR94: guard the pre-existing "arc radius negative" console error
     if (glow) { ctx.save(); ctx.shadowColor = fill; ctx.shadowBlur = 8; }
-    // PR#109 (#4): every node is a circle filled with its NeuroMap colour (no more
-    // practice squares / insight stars) — Tahir: «везде кружочки», как в NeuroMap.
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    var node = graphNode(event);
+    if (typeof window.nmTraceNode === 'function') window.nmTraceNode(ctx, node, cx, cy, r);
+    else {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    }
     ctx.fillStyle = rgbaFromRgb(fill, 0.82); ctx.fill();
     ctx.lineWidth = 1.4; ctx.strokeStyle = fill; ctx.stroke();
     if (glow) ctx.restore();
@@ -1937,7 +1961,7 @@
       var hubTxt = prettyTitle(center, lang);
       ttlEl.textContent = hubTxt;
       ttlEl.setAttribute('title', hubTxt);
-      meta.textContent = [humanLabel(center.kind || center.layer, lang),
+      meta.textContent = [eventLabel(center, lang),
         center.t ? new Date(center.t).toLocaleString(lang) : ''].filter(Boolean).join(' · ');
       showChain.hidden = fullChain().length < 2;
       box.querySelector('.evo-mini-open').hidden = !center.payload?.nm_node_id;
@@ -2002,7 +2026,7 @@
         var p = positions[k], e = p.e;
         var r = p.center ? 17 : 12;
         var g = el('g', { 'class': 'evo-mini-node' + (p.center ? ' is-hub' : ''), tabindex: '0' });
-        var node = nodeShape(e.layer, p.x, p.y, r);
+        var node = nodeShape(e, p.x, p.y, r);
         node.setAttribute('fill', nmTypeColor(e));
         node.setAttribute('filter', 'url(#evoGlow)');
         node.setAttribute('opacity', '0.97');
@@ -2016,11 +2040,11 @@
         // generic "completed" meta-label; otherwise the type name (Эмоция / Мысль …).
         var ectx = (e.payload || {}).course_ctx;
         var typ = el('text', { x: p.x.toFixed(1), y: (p.y + r + 24).toFixed(1), 'text-anchor': 'middle', 'class': 'evo-mini-typecap' });
-        typ.textContent = (ectx && ectx.course) ? ('📚 ' + truncate(ectx.course, 22)) : humanLabel(e.kind || e.layer, lang);
+        typ.textContent = (ectx && ectx.course) ? ('📚 ' + truncate(ectx.course, 22)) : eventLabel(e, lang);
         g.appendChild(typ);
         // native tooltip with full content + course + time
         var tt = el('title');
-        tt.textContent = prettyTitle(e, lang) + ' · ' + humanLabel(e.kind || e.layer, lang) +
+        tt.textContent = prettyTitle(e, lang) + ' · ' + eventLabel(e, lang) +
           (ectx && ectx.course ? ' · 📚 ' + ectx.course : '') + (e.t ? ' · ' + fmtAxis(e.t, lang) : '');
         g.appendChild(tt);
         if (!p.center) {
@@ -2180,7 +2204,10 @@
               fill: rgbaFromRgb(scol, miss ? 0.08 : 0.2), stroke: scol,
               'stroke-width': '1.4', 'stroke-dasharray': '3,2', opacity: miss ? '0.5' : '0.96' });
           } else {
-            vis = el('circle', { cx: px.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: fill, opacity: '0.96', filter: 'url(#evoGlow)' });
+            vis = nodeShape(ev, px, cy, r);
+            vis.setAttribute('fill', fill);
+            vis.setAttribute('opacity', '0.96');
+            vis.setAttribute('filter','url(#evoGlow)');
           }
           vis.appendChild(titleNode(ev, lang));
           registerNode(e.id, px, parseFloat(cy.toFixed(1)));
@@ -3083,7 +3110,7 @@
         for (var ni = 0; ni < comp.nodes.length; ni++) {
           var nd = comp.nodes[ni], e = nd.e; if (e.layer && hidden[e.layer]) continue;
           var nx = ax + nd.lx * hZ, ny = cy + nd.ly * vS, ndr = nd.r * rZ;
-          ctx.globalAlpha = dim; drawNodeCv(ctx, e.layer, nx, ny, ndr, cvLayerFill(e.layer, e.valence), false); ctx.globalAlpha = 1;
+          ctx.globalAlpha = dim; drawNodeCv(ctx, e, nx, ny, ndr, nmPathColor(e), false); ctx.globalAlpha = 1;
           if (o.nodesOut) o.nodesOut.push({ x: nx, y: ny, r: ndr, e: e, row: o.row });
         }
       }
