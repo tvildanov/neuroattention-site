@@ -1,0 +1,9 @@
+Профили персонажей
+HIGH-LOAD ADAPTER
+Держит темп, но платит ресурсом
+NERVOUS SYSTEM SENSITIVE
+Тонко чувствует, но легко перегружается
+DISTRACTED EXPLORER
+Исследует, но теряет фокус
+FUTURE SPECIALIST
+Выходит за рамки работы только с собой
