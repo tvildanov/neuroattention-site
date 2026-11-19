@@ -181,6 +181,39 @@ async function request(route,token,body){
        return body&&sensation&&sensation._anchorIds?.includes(body.id)&&nmGetNodeColor(body)!==nmGetNodeColor(sensation);
      }),true);
      const focus=String(repeated[0].id);
+     // Drive actual canvas hit testing on the recorded occurrence, including touch-style taps.
+     async function tapNode(label,twice=false,fullscreen=false){
+       await page.evaluate(({label,twice,fullscreen})=>{
+         const normal=document.getElementById('nm-canvas');
+         const canvas=fullscreen?document.getElementById('nm-fs-canvas'):normal;
+         const r=canvas.getBoundingClientRect(),n=nmNodes.find(node=>node.label===label);
+         const options={bubbles:true,pointerId:9,isPrimary:true,pointerType:'touch',
+           clientX:r.left+n.x*r.width/normal.width,clientY:r.top+n.y*r.height/normal.height};
+         for(let i=0;i<(twice?2:1);i++){
+           canvas.dispatchEvent(new PointerEvent('pointerdown',options));
+           canvas.dispatchEvent(new PointerEvent('pointerup',options));
+         }
+       },{label,twice,fullscreen});
+     }
+     const edges=()=>page.evaluate(()=>nmLinks.map(l=>[l.source,l.target]).sort());
+     const initialEdges=await edges();
+     await tapNode('first');
+     await page.locator('#nm-ni-chain-list [id^="nm-ch-row"]').first().waitFor();
+     await tapNode('first',true);
+     await page.waitForFunction(()=>nmChainFilterId&&nmNodes.filter(n=>n._hl).length===2);
+     await tapNode('first',true);
+     assert.equal(await page.evaluate(()=>nmChainFilterId),'');
+     await tapNode('first',true);
+     await tapNode('second');
+     await page.waitForFunction(()=>!nmChainFilterId&&nmNiNode?.label==='second'&&nmNiChains?.length===1);
+     await page.locator('#nm-ni-chain-list [id^="nm-ch-row"]').first().click();
+     await page.locator('[data-nm-reset]:visible').click();
+     assert.equal(await page.evaluate(()=>nmNodes.some(n=>n._hl)),false);
+     const repeatFilter=page.locator('#nm-filters input[data-layer="repeat"]');
+     await repeatFilter.check({force:true});
+     assert.equal(await page.evaluate(()=>nmNodes.filter(n=>n.label==='repeat').length),2);
+     await repeatFilter.uncheck({force:true});
+     assert.deepEqual(await edges(),initialEdges);
      await page.locator('#nm-chain-filter').selectOption(focus);
      assert.equal(await page.evaluate(()=>nmNodes.filter(n=>n.label==='repeat').length),2);
      assert.equal(await page.evaluate(()=>nmNodes.filter(n=>n._hl).length),2);
@@ -190,8 +223,8 @@ async function request(route,token,body){
      const release=await page.evaluate(()=>{
        const canvas=document.getElementById('nm-canvas'), rect=canvas.getBoundingClientRect();
        const [a,b]=nmNodes;
-       const send=(type,x,y)=>canvas.dispatchEvent(new MouseEvent(type,{bubbles:true,clientX:rect.left+x*rect.width/canvas.width,clientY:rect.top+y*rect.height/canvas.height}));
-       send('mousedown',a.x,a.y);send('mousemove',a.x+140,a.y+50);send('mouseup',a.x,a.y);
+       const send=(type,x,y)=>canvas.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerId:7,isPrimary:true,clientX:rect.left+x*rect.width/canvas.width,clientY:rect.top+y*rect.height/canvas.height}));
+       send('pointerdown',a.x,a.y);send('pointermove',a.x+140,a.y+50);send('pointerup',a.x,a.y);
        return {pinned:a.fx!==undefined||a.fy!==undefined,moving:Math.hypot(b.vx,b.vy)>0};
      });
      assert.deepEqual(release,{pinned:false,moving:true});
@@ -201,6 +234,10 @@ async function request(route,token,body){
      await page.waitForFunction(()=>nm3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
      await page.locator('#nm-3d-container canvas').first().waitFor();
      await page.waitForFunction(()=>nm3DGraph.graphData().nodes.some(n=>n.label==='QA joy'&&n.__threeObj?.geometry.userData.domSides===5));
+     await page.evaluate(()=>{const n=nm3DGraph.graphData().nodes.find(v=>v.label==='QA joy');nm3DGraph.onNodeClick()(n);nm3DGraph.onNodeClick()(n);});
+     assert.ok(await page.evaluate(()=>nmChainFilterId));
+     await page.locator('[data-nm-reset]:visible').click();
+     assert.deepEqual(await edges(),initialEdges);
      await page.locator('#nm-labels-toggle').click();
      await page.waitForFunction(()=>nmLabelsMode==='all'&&document.querySelectorAll('#nm-3d-container .nm-projected-labels span:not([hidden])').length>0);
      await page.locator('#nm-labels-toggle').click();
@@ -214,10 +251,38 @@ async function request(route,token,body){
      await page.locator('#nm-fs-toggle').click();
      await page.locator('#nm-fs-chain-filter').selectOption(focus);
      assert.equal(await page.locator('#nm-chain-filter').inputValue(),focus);
+     await tapNode(repeated[0].node_ids.includes(paths[0].node_ids[1])?'first':'second',true,true);
+     assert.equal(await page.locator('#nm-fs-chain-filter').inputValue(),'');
      await page.locator('#nm-fs-3d-toggle').click();
      await page.waitForFunction(()=>nmFs3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
      await page.locator('#nm-fs-3d-toggle').click();
      await page.evaluate(()=>nmToggleFullscreen());
+     // Advance the real 2D solver on a dense fixture without writing diary records.
+     const dense=await page.evaluate(()=>{
+       const snapshot=nmV2Graph,previous=nmPrevPositions,raf=window.requestAnimationFrame;
+       const now=new Date().toISOString(),nodes=[],chains=[];
+       for(let i=0;i<32;i++){
+         const node_ids=[];
+         for(let j=0;j<3;j++){
+           const id=i+'-'+j;node_ids.push(id);
+           nodes.push({id,type:'thought',label:id,created_at:now,last_seen_at:now,count:1});
+         }
+         chains.push({id:String(i+1),node_ids,session_id:'s'+i,started_at:now});
+       }
+       let frame;
+       window.requestAnimationFrame=cb=>{frame=cb;return -1;};
+       try{
+         nmV2Graph={nodes,chains,links:[]};nmPrevPositions={};buildNmGraph();
+         for(let i=0;i<249;i++)frame();
+         const {width:w,height:h}=document.getElementById('nm-canvas');
+         const center=nmNodes.filter(n=>n.x>w*.2&&n.x<w*.8&&n.y>h*.2&&n.y<h*.8).length;
+         const border=nmNodes.filter(n=>n.x<=41||n.x>=w-41||n.y<=41||n.y>=h-41).length;
+         return {center,border,total:nmNodes.length};
+       }finally{window.requestAnimationFrame=raf;nmV2Graph=snapshot;nmPrevPositions=previous;buildNmGraph();}
+     });
+     assert.equal(dense.total,96);
+     assert.ok(dense.center>20&&dense.border<10,JSON.stringify(dense));
+     console.log('NEUROMAP_LAYOUT_PASS',JSON.stringify(dense));
      await page.evaluate(()=>window.switchTab('evolution'));
      const stage=page.locator('#evo-path .evo-stage').first();
      await stage.waitFor();

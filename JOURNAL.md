@@ -2421,3 +2421,9 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced the sidebar to its live account routes and NeuroMap to recorded chain membership"],"changed":["Expandable account sections and nested destinations","Independent recording occurrences with chain selection and isolation","Elastic node release, volumetric layer shapes and projected labels"],"files":["account.html","assets/js/neuromap-chains.js","assets/js/dom-cabinet-v07.js","assets/dom-cabinet-v07.css","assets/js/dom-theme.js","scripts/test-dom-cabinet-v07.cjs","sw.js"],"decisions":["Keep role-gated navigation bound to the original controls","Join equivalent concepts only in the repeats view"],"followups":["Verify signed-in fixture, WebGL and production release"],"next_session":"Compare the released interactions with personal records."}
 ```
+
+## 2026-11-19 — NeuroMap inspection and layout
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced center evacuation, competing node interaction handlers and graph replacement during inspection"],"changed":["Local collision and recording anchors","Single and double tap handling in 2D and 3D","Visible focus reset and recording-backed node cards"],"files":["account.html","sw.js","scripts/test-dom-cabinet-v07.cjs"],"decisions":["Preserve recording occurrences in the repeats filter and derive membership from the same snapshot as the graph"],"followups":["Verify the browser regression scenarios and Pages publication"],"next_session":"Compare the published layout against personal records."}
+```
