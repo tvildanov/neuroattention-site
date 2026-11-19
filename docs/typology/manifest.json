@@ -1,5 +1,5 @@
 {
-  "version": "0.12",
+  "version": "0.13",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-18",
   "complete_method_archive": false,
@@ -174,16 +174,22 @@
       "size_bytes": 39531
     },
     {
-      "path": "CONTINUE.md",
-      "git_blob_sha": "a971d04ac5f7857995c7fea277220ab81e53da0a",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 28149
-    },
-    {
       "path": "DECISIONS.md",
       "git_blob_sha": "10f72fbd90470b3eb9bf686826b8f9a31b7837a8",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 24546
+    },
+    {
+      "path": "BODY-CORE-REVIEW.md",
+      "git_blob_sha": "00c2fe5bc000ecbfee79a93b29819c9f98c5ae29",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 28787
+    },
+    {
+      "path": "CONTINUE.md",
+      "git_blob_sha": "ad4a07ff76ab4364a15985362f90dd769ca6dfa0",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 29996
     }
   ],
   "full_handoff_text_included": true,
@@ -202,5 +208,6 @@
     "account_integrated": false,
     "unit_checks_passed": 7,
     "browser_check_status": "blocked-by-environment"
-  }
+  },
+  "active_review": "BODY-CORE-REVIEW.md"
 }
