@@ -1,11 +1,11 @@
 {
-  "schema_version": "0.1",
-  "status": "draft-not-canonical-numeric-matrix",
-  "date": "2026-11-17",
-  "source": "sources/2026-08-26-handoff-chat-transcription.md",
+  "schema_version": "0.2",
+  "status": "recovered-historical-numeric-draft-needs-semantic-review",
+  "date": "2026-11-19",
+  "source": "sources/recovered-notes-2026-11-19/id374_note.txt",
   "canonical_numeric_values_recovered": false,
   "enabled_for_scoring": false,
-  "interpretation": "Концептуальные связи из текста, не доказанная причинная модель. Unreviewed не означает нулевой связи. Не изменять измеренные оценки по этой матрице.",
+  "interpretation": "Точно извлечённая историческая модель F/A/C и силы 1–10. Числа не эмпирические коэффициенты и не подтверждённый текущий канон. Включает старое определение Technoperception; до согласования смыслов не применять к оценкам, потолкам или темпам роста. 0 означает утверждение источника об отсутствии прямой зависимости, а не доказанное отсутствие связи.",
   "stat_order": [
     "stability",
     "energy_regulation",
@@ -25,1490 +25,2618 @@
     13,
     13
   ],
-  "candidate_edge_count": 27,
+  "candidate_edge_count": 153,
   "rows": [
     {
       "source_stat": "stability",
+      "source_header_line": 51,
       "cells": [
         {
           "target_stat": "stability",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 52,
+              "value_line": 53
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.5",
-            "handoff§12.8"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 54,
+              "value_line": 55
+            }
           ]
         },
         {
           "target_stat": "interoception",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.1"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 56,
+              "value_line": 57
+            }
           ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 58,
+              "value_line": 59
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 60,
+              "value_line": 61
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 62,
+              "value_line": 63
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 64,
+              "value_line": 65
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 66,
+              "value_line": 67
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 68,
+              "value_line": 69
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 70,
+              "value_line": 71
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 72,
+              "value_line": 73
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 74,
+              "value_line": 75
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 76,
+              "value_line": 77
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "energy_regulation",
+      "source_header_line": 84,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 85,
+              "value_line": 86
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 87,
+              "value_line": 88
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 89,
+              "value_line": 90
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 91,
+              "value_line": 92
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.5"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 93,
+              "value_line": 94
+            }
           ]
         },
         {
           "target_stat": "attention_control",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.1",
-            "handoff§12.4",
-            "handoff§12.8"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 95,
+              "value_line": 96
+            }
           ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 97,
+              "value_line": 98
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 99,
+              "value_line": 100
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 101,
+              "value_line": 102
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 103,
+              "value_line": 104
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 105,
+              "value_line": 106
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 107,
+              "value_line": 108
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 109,
+              "value_line": 110
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "interoception",
+      "source_header_line": 117,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 118,
+              "value_line": 119
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F10",
+          "status": "recovered-historical-model-claim",
+          "strength": 10,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.1",
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 120,
+              "value_line": 121
+            }
           ]
         },
         {
           "target_stat": "interoception",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 122,
+              "value_line": 123
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 124,
+              "value_line": 125
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.3"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 126,
+              "value_line": 127
+            }
           ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 128,
+              "value_line": 129
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 130,
+              "value_line": 131
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 132,
+              "value_line": 133
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 134,
+              "value_line": 135
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "0",
+          "status": "recovered-historical-model-claim",
+          "strength": 0,
+          "relationship_type": "no-direct-dependency-asserted",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 136,
+              "value_line": 137
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 138,
+              "value_line": 139
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 140,
+              "value_line": 141
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "0",
+          "status": "recovered-historical-model-claim",
+          "strength": 0,
+          "relationship_type": "no-direct-dependency-asserted",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 142,
+              "value_line": 143
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "proprioception",
+      "source_header_line": 151,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 152,
+              "value_line": 153
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 154,
+              "value_line": 155
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 156,
+              "value_line": 157
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 158,
+              "value_line": 159
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 160,
+              "value_line": 161
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 162,
+              "value_line": 163
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 164,
+              "value_line": 165
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 166,
+              "value_line": 167
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 168,
+              "value_line": 169
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "0",
+          "status": "recovered-historical-model-claim",
+          "strength": 0,
+          "relationship_type": "no-direct-dependency-asserted",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 170,
+              "value_line": 171
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A3",
+          "status": "recovered-historical-model-claim",
+          "strength": 3,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 172,
+              "value_line": 173
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 174,
+              "value_line": 175
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 176,
+              "value_line": 177
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "vital_engagement",
+      "source_header_line": 185,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 186,
+              "value_line": 187
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 188,
+              "value_line": 189
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 190,
+              "value_line": 191
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 192,
+              "value_line": 193
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 194,
+              "value_line": 195
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.3"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 196,
+              "value_line": 197
+            }
           ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 198,
+              "value_line": 199
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 200,
+              "value_line": 201
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.6"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 202,
+              "value_line": 203
+            }
           ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 204,
+              "value_line": 205
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 206,
+              "value_line": 207
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.5"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 208,
+              "value_line": 209
+            }
           ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 210,
+              "value_line": 211
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "attention_control",
+      "source_header_line": 262,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 263,
+              "value_line": 264
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 265,
+              "value_line": 266
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 267,
+              "value_line": 268
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 269,
+              "value_line": 270
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 271,
+              "value_line": 272
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 273,
+              "value_line": 274
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F10",
+          "status": "recovered-historical-model-claim",
+          "strength": 10,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.2",
-            "handoff§12.8"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 275,
+              "value_line": 276
+            }
           ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 277,
+              "value_line": 278
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.1",
-            "handoff§12.3",
-            "handoff§12.4",
-            "handoff§12.7"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 279,
+              "value_line": 280
+            }
           ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 281,
+              "value_line": 282
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 283,
+              "value_line": 284
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 285,
+              "value_line": 286
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 287,
+              "value_line": 288
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "awareness",
+      "source_header_line": 300,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 301,
+              "value_line": 302
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 303,
+              "value_line": 304
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 305,
+              "value_line": 306
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 307,
+              "value_line": 308
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 309,
+              "value_line": 310
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 311,
+              "value_line": 312
+            }
+          ]
         },
         {
           "target_stat": "awareness",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 313,
+              "value_line": 314
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.2",
-            "handoff§12.8",
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 315,
+              "value_line": 316
+            }
           ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 317,
+              "value_line": 318
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 319,
+              "value_line": 320
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 321,
+              "value_line": 322
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 323,
+              "value_line": 324
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 325,
+              "value_line": 326
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "adaptation_flexibility",
+      "source_header_line": 349,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 350,
+              "value_line": 351
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 352,
+              "value_line": 353
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 354,
+              "value_line": 355
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 356,
+              "value_line": 357
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 358,
+              "value_line": 359
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 360,
+              "value_line": 361
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 362,
+              "value_line": 363
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 364,
+              "value_line": 365
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.2",
-            "handoff§12.8"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 366,
+              "value_line": 367
+            }
           ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 368,
+              "value_line": 369
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 370,
+              "value_line": 371
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 372,
+              "value_line": 373
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 374,
+              "value_line": 375
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "execution",
+      "source_header_line": 396,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.1",
-            "handoff§12.8"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 397,
+              "value_line": 398
+            }
           ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 399,
+              "value_line": 400
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A3",
+          "status": "recovered-historical-model-claim",
+          "strength": 3,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 401,
+              "value_line": 402
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 403,
+              "value_line": 404
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.3"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 405,
+              "value_line": 406
+            }
           ]
         },
         {
           "target_stat": "attention_control",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.2"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 407,
+              "value_line": 408
+            }
           ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 409,
+              "value_line": 410
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 411,
+              "value_line": 412
+            }
+          ]
         },
         {
           "target_stat": "execution",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 413,
+              "value_line": 414
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.7"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 415,
+              "value_line": 416
+            }
           ]
         },
         {
           "target_stat": "socioperception",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.6"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 417,
+              "value_line": 418
+            }
           ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 419,
+              "value_line": 420
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.4"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 421,
+              "value_line": 422
+            }
           ]
         }
       ]
     },
     {
       "source_stat": "technoperception",
+      "source_header_line": 455,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 456,
+              "value_line": 457
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 458,
+              "value_line": 459
+            }
           ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 460,
+              "value_line": 461
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C3",
+          "status": "recovered-historical-model-claim",
+          "strength": 3,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 462,
+              "value_line": 463
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 464,
+              "value_line": 465
+            }
           ]
         },
         {
           "target_stat": "attention_control",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F9",
+          "status": "recovered-historical-model-claim",
+          "strength": 9,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.7",
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 466,
+              "value_line": 467
+            }
           ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 468,
+              "value_line": 469
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 470,
+              "value_line": 471
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 472,
+              "value_line": 473
+            }
           ]
         },
         {
           "target_stat": "technoperception",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 474,
+              "value_line": 475
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 476,
+              "value_line": 477
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "C5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Constraint",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 478,
+              "value_line": 479
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 480,
+              "value_line": 481
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "socioperception",
+      "source_header_line": 513,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 514,
+              "value_line": 515
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 516,
+              "value_line": 517
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A3",
+          "status": "recovered-historical-model-claim",
+          "strength": 3,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 518,
+              "value_line": 519
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A2",
+          "status": "recovered-historical-model-claim",
+          "strength": 2,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 520,
+              "value_line": 521
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.6"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 522,
+              "value_line": 523
+            }
           ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 524,
+              "value_line": 525
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 526,
+              "value_line": 527
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 528,
+              "value_line": 529
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 530,
+              "value_line": 531
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 532,
+              "value_line": 533
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 534,
+              "value_line": 535
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 536,
+              "value_line": 537
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 538,
+              "value_line": 539
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "relational_awareness",
+      "source_header_line": 562,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.5"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 563,
+              "value_line": 564
+            }
           ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 565,
+              "value_line": 566
+            }
+          ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 567,
+              "value_line": 568
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A2",
+          "status": "recovered-historical-model-claim",
+          "strength": 2,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 569,
+              "value_line": 570
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 571,
+              "value_line": 572
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 573,
+              "value_line": 574
+            }
+          ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 575,
+              "value_line": 576
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 577,
+              "value_line": 578
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 579,
+              "value_line": 580
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A3",
+          "status": "recovered-historical-model-claim",
+          "strength": 3,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 581,
+              "value_line": 582
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 583,
+              "value_line": 584
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 585,
+              "value_line": 586
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 587,
+              "value_line": 588
+            }
+          ]
         }
       ]
     },
     {
       "source_stat": "space_awareness",
+      "source_header_line": 613,
       "cells": [
         {
           "target_stat": "stability",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 614,
+              "value_line": 615
+            }
+          ]
         },
         {
           "target_stat": "energy_regulation",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§12.4",
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 616,
+              "value_line": 617
+            }
           ]
         },
         {
           "target_stat": "interoception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 618,
+              "value_line": 619
+            }
+          ]
         },
         {
           "target_stat": "proprioception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 620,
+              "value_line": 621
+            }
+          ]
         },
         {
           "target_stat": "vital_engagement",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 622,
+              "value_line": 623
+            }
+          ]
         },
         {
           "target_stat": "attention_control",
-          "status": "recovered-conceptual-candidate",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A7",
+          "status": "recovered-historical-model-claim",
+          "strength": 7,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
           "evidence_sources": [
-            "handoff§11-explicit-example"
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 624,
+              "value_line": 625
+            }
           ]
         },
         {
           "target_stat": "awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 626,
+              "value_line": 627
+            }
+          ]
         },
         {
           "target_stat": "adaptation_flexibility",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A6",
+          "status": "recovered-historical-model-claim",
+          "strength": 6,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 628,
+              "value_line": 629
+            }
+          ]
         },
         {
           "target_stat": "execution",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "F8",
+          "status": "recovered-historical-model-claim",
+          "strength": 8,
+          "relationship_type": "Foundation",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 630,
+              "value_line": 631
+            }
+          ]
         },
         {
           "target_stat": "technoperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 632,
+              "value_line": 633
+            }
+          ]
         },
         {
           "target_stat": "socioperception",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A5",
+          "status": "recovered-historical-model-claim",
+          "strength": 5,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 634,
+              "value_line": 635
+            }
+          ]
         },
         {
           "target_stat": "relational_awareness",
-          "status": "unreviewed",
-          "strength": null,
-          "relationship_type": null,
+          "source_code": "A4",
+          "status": "recovered-historical-model-claim",
+          "strength": 4,
+          "relationship_type": "Amplifier",
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 636,
+              "value_line": 637
+            }
+          ]
         },
         {
           "target_stat": "space_awareness",
+          "source_code": "—",
           "status": "self-not-modelled",
           "strength": null,
           "relationship_type": null,
           "use_for_scoring": false,
-          "evidence_sources": []
+          "evidence_sources": [
+            {
+              "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+              "target_line": 638,
+              "value_line": 639
+            }
+          ]
         }
       ]
     }
@@ -1605,10 +2733,24 @@
     }
   ],
   "open_work": [
-    "Проверить смысл/направление каждой связи, не предполагая независимость или причинность.",
-    "Согласовать тип Foundation/Amplifier/Constraint/другое; пока null.",
-    "Определить необходимость и основания численных сил; пока null.",
-    "Отделить влияние состояния/контекста от влияния способности.",
-    "Сопоставить с будущими наблюдениями; не исправлять измеренный балл по предположенной зависимости."
-  ]
+    "Сверить значения после исправления Technoperception: связь через цифровую гигиену не эквивалентна технологической компетентности.",
+    "Сверить Awareness и Relational Awareness с уточнёнными определениями.",
+    "Сверить Stability с последними прямыми уточнениями основателя.",
+    "Отдельно проверить отличия прочих направлений от восьми контуров; не объявлять их коэффициентами причинности.",
+    "Определить допустимое использование зависимостей без автоматического изменения прямых наблюдений."
+  ],
+  "historical_numeric_values_recovered": true,
+  "previous_scaffold": {
+    "source": "sources/2026-08-26-handoff-chat-transcription.md",
+    "conceptual_candidates": 27,
+    "retained_in_git_history": true
+  },
+  "counts": {
+    "rows": 13,
+    "cells": 169,
+    "diagonal": 13,
+    "off_diagonal": 156,
+    "asserted_no_direct_dependency": 3,
+    "typed_nonzero": 153
+  }
 }
