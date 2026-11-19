@@ -1,7 +1,7 @@
 {
-  "version": "0.11",
+  "version": "0.12",
   "status": "working-specification-not-installed-skill",
-  "date": "2026-11-17",
+  "date": "2026-11-18",
   "complete_method_archive": false,
   "monad_connected": false,
   "files": [
@@ -157,9 +157,9 @@
     },
     {
       "path": "STABILITY-CLARIFICATION.md",
-      "git_blob_sha": "e04a3283bb2ddaef1c45ea2b85669df4601c5159",
+      "git_blob_sha": "018f8f861d8538dc7a8de4dc356a16cf0972ef7c",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 6487
+      "size_bytes": 9419
     },
     {
       "path": "../../data/typology/baseline-13.draft.json",
@@ -175,9 +175,9 @@
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "bc99f599c6214aae6ef216be87e9e4d40c116397",
+      "git_blob_sha": "a971d04ac5f7857995c7fea277220ab81e53da0a",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 26237
+      "size_bytes": 28149
     },
     {
       "path": "DECISIONS.md",
