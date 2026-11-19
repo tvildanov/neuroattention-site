@@ -10037,11 +10037,13 @@ app.get('/api/dm/threads', requireAuth, async (req, res) => {
     const rows = await sql`
       SELECT t.*,
         ua.display_name AS user_a_name, ub.display_name AS user_b_name,
-        (SELECT body FROM dm_messages WHERE thread_id = t.id ORDER BY created_at DESC LIMIT 1) AS last_body,
-        (SELECT COUNT(*) FROM dm_messages WHERE thread_id = t.id AND sender_id <> ${me} AND read_at IS NULL) AS unread
+        settings.folder_id, COALESCE(settings.hidden,false) AS hidden,
+        (SELECT body FROM dm_messages WHERE thread_id = t.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) AS last_body,
+        (SELECT COUNT(*) FROM dm_messages WHERE thread_id = t.id AND sender_id <> ${me} AND read_at IS NULL AND deleted_at IS NULL) AS unread
       FROM dm_threads t
       JOIN users ua ON ua.id = t.user_a
       JOIN users ub ON ub.id = t.user_b
+      LEFT JOIN dom_conversation_settings settings ON settings.kind='dm' AND settings.conversation_id=t.id AND settings.user_id=${me}
       WHERE t.user_a = ${me} OR t.user_b = ${me}
       ORDER BY t.last_message_at DESC
     `;
@@ -10086,7 +10088,8 @@ app.get('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
     const tid = parseInt(req.params.id, 10);
     const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
     if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
-    const msgs = await sql`SELECT * FROM dm_messages WHERE thread_id = ${tid} ORDER BY created_at DESC, id DESC LIMIT 200`;
+    const msgs = await sql`SELECT id,thread_id,sender_id,body,attachments,read_at,created_at,edited_at
+      FROM dm_messages WHERE thread_id = ${tid} AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 200`;
     // Mark incoming as read
     await sql`UPDATE dm_messages SET read_at = now() WHERE thread_id = ${tid} AND sender_id <> ${me} AND read_at IS NULL`;
     const [room]=await sql`SELECT id FROM chat_rooms WHERE dm_thread_id=${tid}`;
@@ -10099,11 +10102,17 @@ app.post('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const tid = parseInt(req.params.id, 10);
-    const { body } = req.body || {};
-    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+    let attachment;
+    try { attachment=domChatControls.parseAttachment(req.body?.attachment); }
+    catch (error) { return res.status(400).json({error:error.message}); }
+    if ((!body && !attachment) || body.length>8000) return res.status(400).json({error:'Invalid message'});
+    const attachments=attachment ? [{name:attachment.name,size:attachment.size}] : [];
     const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
     if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
-    const [row] = await sql`INSERT INTO dm_messages (thread_id, sender_id, body) VALUES (${tid}, ${me}, ${String(body)}) RETURNING *`;
+    const [row] = await sql`INSERT INTO dm_messages (thread_id,sender_id,body,attachments,attachment_data)
+      VALUES (${tid},${me},${body},${JSON.stringify(attachments)}::jsonb,${attachment?.base64||null})
+      RETURNING id,thread_id,sender_id,body,attachments,read_at,created_at,edited_at`;
     await sql`UPDATE dm_threads SET last_message_at = now() WHERE id = ${tid}`;
     // Only explicit mentions typed after the invitation enter the agent transport.
     if(/(?:^|\s)@[a-z0-9_]+/i.test(String(body))){
@@ -10118,7 +10127,7 @@ app.post('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
     }
     // Notification for recipient
     const recipient = t.user_a === me ? t.user_b : t.user_a;
-    await notifyUser(recipient, 'dm', { thread_id: tid, from: me, preview: String(body).slice(0, 80) });
+    await notifyUser(recipient, 'dm', { thread_id: tid, from: me, preview: (body || attachment?.name || '').slice(0,80) });
     res.status(201).json({ message: row });
   } catch (err) { console.error('POST dm message:', err); res.status(500).json({ error: err.message }); }
 });
@@ -10355,11 +10364,14 @@ app.get('/api/chat/rooms', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
     const rows = await sql`
-      SELECT r.*, (SELECT COUNT(*) FROM chat_room_members WHERE room_id = r.id) AS member_count,
-             (SELECT body FROM chat_room_messages WHERE room_id = r.id ORDER BY created_at DESC LIMIT 1) AS last_body
+      SELECT r.*, settings.folder_id, COALESCE(settings.hidden,false) AS hidden,
+             (SELECT COUNT(*) FROM chat_room_members WHERE room_id = r.id) AS member_count,
+             (SELECT body FROM chat_room_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) AS last_body
       FROM chat_rooms r
-      WHERE EXISTS (SELECT 1 FROM chat_room_members m WHERE m.room_id = r.id AND m.user_id = ${me})
-         OR ${(['superadmin','founder','admin'].includes(req.user.role||''))}
+      LEFT JOIN dom_conversation_settings settings ON settings.kind='group' AND settings.conversation_id=r.id AND settings.user_id=${me}
+      WHERE r.dm_thread_id IS NULL AND
+        (EXISTS (SELECT 1 FROM chat_room_members m WHERE m.room_id = r.id AND m.user_id = ${me})
+         OR ${(['superadmin','founder','admin'].includes(req.user.role||''))})
       ORDER BY r.created_at DESC
     `;
     res.json({ rooms: rows });
@@ -10397,9 +10409,10 @@ app.get('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     const [member] = await sql`SELECT 1 FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
     const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
     if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
-    const rows = await sql`SELECT m.*, u.display_name AS sender_name FROM chat_room_messages m
+    const rows = await sql`SELECT m.id,m.room_id,m.sender_id,m.body,m.attachments,m.is_announcement,m.created_at,m.edited_at,
+                           u.display_name AS sender_name FROM chat_room_messages m
                            LEFT JOIN users u ON u.id = m.sender_id
-                           WHERE m.room_id = ${rid} ORDER BY m.created_at DESC, m.id DESC LIMIT 300`;
+                           WHERE m.room_id = ${rid} AND m.deleted_at IS NULL ORDER BY m.created_at DESC, m.id DESC LIMIT 300`;
     const aiReplies = await domMonadV07.roomReplies({sql,roomId:rid}).catch(err=>{console.warn('[room-agent-replies]',err.message);return []});
     res.json({ messages: rows.concat(aiReplies).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,300).reverse() });
   } catch (err) { console.error('GET room messages:', err); res.status(500).json({ error: err.message }); }
@@ -10411,8 +10424,13 @@ app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     const rid = parseInt(req.params.id, 10);
     const [directRoom]=await sql`SELECT dm_thread_id FROM chat_rooms WHERE id=${rid}`;
     if(directRoom?.dm_thread_id)return res.status(404).json({error:'Room not found'});
-    const { body, is_announcement } = req.body || {};
-    if (!body || !String(body).trim()) return res.status(400).json({ error: 'body required' });
+    const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+    let attachment;
+    try { attachment=domChatControls.parseAttachment(req.body?.attachment); }
+    catch (error) { return res.status(400).json({error:error.message}); }
+    if ((!body && !attachment) || body.length>8000) return res.status(400).json({error:'Invalid message'});
+    const attachments=attachment ? [{name:attachment.name,size:attachment.size}] : [];
+    const is_announcement=req.body?.is_announcement;
     const [member] = await sql`SELECT role FROM chat_room_members WHERE room_id = ${rid} AND user_id = ${me}`;
     const isAdmin = ['superadmin','founder','admin'].includes(req.user.role || '');
     if (!member && !isAdmin) return res.status(403).json({ error: 'Not a member' });
@@ -10421,12 +10439,14 @@ app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     // chat where the host broadcasts and audience replies in short bursts.
     const [room] = await sql`SELECT is_live FROM chat_rooms WHERE id = ${rid}`;
     const isRoomAdmin = isAdmin || (member && member.role === 'admin');
-    if (room?.is_live && !isRoomAdmin && String(body).length > 80) {
+    if (attachment && !member) return res.status(403).json({error:'Not a member'});
+    if (room?.is_live && !isRoomAdmin && (body.length > 80 || attachment)) {
       return res.status(403).json({ error: 'Live mode: только реакции и короткие комменты (≤ 80 знаков). Лектор говорит.' });
     }
     const ann = !!is_announcement && isRoomAdmin;
-    const [row] = await sql`INSERT INTO chat_room_messages (room_id, sender_id, body, is_announcement)
-                            VALUES (${rid}, ${me}, ${body}, ${ann}) RETURNING *`;
+    const [row] = await sql`INSERT INTO chat_room_messages (room_id,sender_id,body,is_announcement,attachments,attachment_data)
+      VALUES (${rid},${me},${body},${ann},${JSON.stringify(attachments)}::jsonb,${attachment?.base64||null})
+      RETURNING id,room_id,sender_id,body,is_announcement,attachments,created_at,edited_at`;
     // One delivery record per opted-in agent; canonical room message is persisted first.
     await domMonadV07.recordRoomMessage({sql,roomId:rid,messageId:row.id,body:String(body)}).catch(err=>console.warn('[room-agent-record]',err.message));
     res.status(201).json({ message: row });
@@ -14598,8 +14618,11 @@ app.post('/api/monad/deliver-tahir-handoff', requireAuth, async (req, res) => {
 // DOM v0.7 server-authoritative Monad access, founder harness and DOMunity delivery.
 const domMonadV07=require('./services/dom-monad-v07');
 domMonadV07.install(app,{requireAuth,sql,monadSvc});
+const domChatControls=require('./services/dom-chat-controls');
+domChatControls.install(app,{requireAuth,sql});
 
 async function applyDomReviewSchema() {
+  await domChatControls.ensureSchema(sql);
   await sql`ALTER TABLE IF EXISTS rehab_applications ADD COLUMN IF NOT EXISTS contact_name TEXT, ADD COLUMN IF NOT EXISTS contact_email TEXT`;
   await sql`ALTER TABLE IF EXISTS chat_rooms ADD COLUMN IF NOT EXISTS dm_thread_id INTEGER REFERENCES dm_threads(id) ON DELETE CASCADE`;
   if (await sql`SELECT to_regclass('chat_rooms') AS available`.then(rows=>rows[0]?.available)) {

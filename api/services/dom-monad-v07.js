@@ -350,6 +350,22 @@ function install(app,{requireAuth,sql,monadSvc}){
     if(result?.agent_id!==id||result?.status!==next)throw Error('Agent status change was not confirmed');
     res.json({ok:true,agent_id:id,status:next});
   }));
+  app.post('/api/chat/rooms/:id/analyze',requireAuth,go(async(req,res)=>{
+    const g=await gate(req,res);if(!g)return;
+    if(!g.canManage)return res.status(403).json({error:'room_manage_required'});
+    await ready();
+    const id=req.body?.agent_id;
+    if(!validId(id))return res.status(400).json({error:'invalid_participant'});
+    const [member]=await sql`SELECT 1 FROM dom_room_agent_members WHERE room_id=${g.roomId} AND agent_id=${id}`;
+    if(!member)return res.status(404).json({error:'agent_not_connected'});
+    const [event]=await sql`WITH request AS (
+      INSERT INTO chat_room_messages(room_id,sender_id,body) VALUES(${g.roomId},${g.u.id},${'@'+id+' · Analyse recent conversation'}) RETURNING id
+    )
+    INSERT INTO dom_room_agent_events(room_id,message_id,agent_id,instruction)
+    SELECT ${g.roomId},request.id,${id},'analyze' FROM request
+    RETURNING id`;
+    res.status(202).json({ok:true,event_id:event.id});
+  }));
   app.get('/api/chat/rooms/:id/agent-events',requireAuth,go(async(req,res)=>{
     const g=await gate(req,res);if(!g)return;await ready();
     const events=await sql`SELECT id,room_id,message_id,agent_id,instruction,status,error_code,created_at,updated_at
@@ -364,12 +380,13 @@ function install(app,{requireAuth,sql,monadSvc}){
     try {
       await ensureSchema(sql);
       const jobs=await sql`SELECT e.id,e.room_id,e.message_id,e.agent_id,e.instruction,e.attempts,m.body,
-               member.kind,u.monad_human_id,member.added_by
+               member.kind,u.monad_human_id,member.added_by,r.dm_thread_id,m.created_at AS message_at
         FROM dom_room_agent_events e JOIN chat_room_messages m ON m.id=e.message_id AND m.room_id=e.room_id
+        JOIN chat_rooms r ON r.id=e.room_id
         JOIN dom_room_agent_members member ON member.room_id=e.room_id AND member.agent_id=e.agent_id
         JOIN users u ON u.id::text=member.added_by
         WHERE (e.status='pending' OR (e.status='sending' AND e.updated_at<now()-interval '1 minute'))
-          AND e.attempts<3 ORDER BY e.id LIMIT 8`;
+          AND m.deleted_at IS NULL AND e.attempts<3 ORDER BY e.id LIMIT 8`;
       for(const item of jobs){
         const claimed=await sql`UPDATE dom_room_agent_events SET status='sending',attempts=attempts+1,updated_at=now()
           WHERE id=${item.id} AND (status='pending' OR (status='sending' AND updated_at<now()-interval '1 minute'))
@@ -383,12 +400,22 @@ function install(app,{requireAuth,sql,monadSvc}){
           }
           const context=(await latestHarness(sql,item.room_id)).context;
           const message=String(item.body||'').slice(0,5000);
+          let recent;
+          if(item.instruction==='analyze'){
+            const rows=item.dm_thread_id
+              ? await sql`SELECT left(body,650) AS body,created_at FROM dm_messages WHERE thread_id=${item.dm_thread_id}
+                  AND deleted_at IS NULL AND created_at<=${item.message_at} ORDER BY created_at DESC,id DESC LIMIT 12`
+              : await sql`SELECT left(body,650) AS body,created_at FROM chat_room_messages WHERE room_id=${item.room_id}
+                  AND deleted_at IS NULL AND id<${item.message_id} ORDER BY created_at DESC,id DESC LIMIT 12`;
+            recent=rows.reverse();
+          }
           const receipt=await monadSvc.mcpCall('handoff_task',{
             from_agent:'neuro_agent',to_agent:item.agent_id,domain:'domunity',
             dedupe_key:'domunity:'+item.room_id+':'+item.id,
-            task_description:item.instruction==='observe'?'Observe the selected DOMunity message':'Reply to the selected DOMunity message',
+            task_description:item.instruction==='analyze'?'Summarize and explain the recent conversation supplied as quoted context':
+              item.instruction==='observe'?'Observe the selected DOMunity message':'Reply to the selected DOMunity message',
             payload:{channel:'domunity',room_id:item.room_id,message_id:item.message_id,event_id:item.id,
-              mode:item.instruction,participant_kind:item.kind,room_context:context,message},
+              mode:item.instruction,participant_kind:item.kind,room_context:context,message,recent_messages:recent},
             priority:5,deadline_hours:1
           });
           if(!receipt?.handoff_id)throw Error('Handoff receipt missing');

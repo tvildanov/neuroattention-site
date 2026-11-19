@@ -681,12 +681,23 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=dom-review-1" defer></script>
+<script src="assets/js/dom-theme.js?v=dom-review-2" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=1">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
 <style>
   #rpg-avatar-img { border-radius:0 !important; clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%); }
   .monad-inspect-button { margin:0.65rem 0; }
+  .dom-chat-controls, .dom-chat-list-item { display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center; }
+  .dom-chat-list-item { margin-block:0.3rem;padding:.4rem;border:1px solid var(--line-soft,#586d85);border-radius:.65rem; }
+  .dom-chat-controls .btn, .dom-chat-list-item .btn { font-size:.8rem; }
+  .dom-chat-controls select, .dom-chat-list-item select { max-width:100%; min-height:2rem; }
+  .dom-chat-list-item small { flex-basis:100%;overflow-wrap:anywhere; }
+  html[data-dom-theme="light"] :where(#dom-dm-input,#dom-group-input,.dom-group-message,.dom-chat-list-item) {
+    color:#172d47!important; background:#f8f5ee!important;border-color:#b9c6d5!important;
+  }
+  html[data-dom-theme="light"] .dom-group-message.dom-group-message-mine { background:#dcecf7!important; }
+  html[data-dom-theme="light"] .dom-group-message:is(.dom-direct-agent,.dom-group-message-agent,[data-reply-to]) { background:#e8e5f7!important; }
+  html[data-dom-theme="light"] .dom-group-message :is(time,small,button) { color:#2a4561!important; }
   html[data-dom-theme="light"] body.dom-account-matrix .evo-mini-nm .evo-mini-label {
     font-size:12px !important; font-weight:500 !important; fill:#162e47 !important;
     stroke:#faf5e9 !important; stroke-width:2px !important; paint-order:stroke fill;
@@ -17729,16 +17740,17 @@ function domLoadThreads(){
     var badge = document.getElementById('dom-dms-count'); if (badge) badge.textContent = totalUnread ? '('+totalUnread+')' : '';
     var box = document.getElementById('dom-dm-threads');
     if (!box) return;
-    box.innerHTML = dom.threads.map(function(t){
-      var peerName = (t.user_a === me) ? (t.user_b_name||'?') : (t.user_a_name||'?');
-      var preview = t.last_body ? ('<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+t.last_body.slice(0,60)+'</div>') : '';
-      var unread = parseInt(t.unread,10)>0 ? '<span style="background:var(--accent-cyan);color:white;border-radius:10px;padding:1px 7px;font-size:9px;float:right;">'+t.unread+'</span>' : '';
-      return '<div onclick="domOpenThread(' + t.id + ',\''+(peerName.replace(/'/g,"\\'"))+'\')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);">'
-           + unread
-           + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">'+peerName+'</div>'
-           + preview
-           + '</div>';
-    }).join('');
+    window.DOMChatControls?.renderList(box,dom.threads.map(function(thread){
+      return {...thread,label:(thread.user_a===me?thread.user_b_name:thread.user_a_name)||'—',
+        preview:(thread.last_body||'').slice(0,70)};
+    }),'dm',domOpenThread,function(hidden){
+      if (hidden!=null && String(dom.activeThread)===String(hidden)) {
+        dom.activeThread=null;
+        document.getElementById('dom-dm-thread').style.display='none';
+        document.getElementById('dom-dm-empty').style.display='';
+      }
+      domLoadThreads();
+    });
   }).catch(function(e){ console.warn('threads:', e); });
 }
 function domSearchUsers(q){
@@ -17768,6 +17780,7 @@ function domOpenThread(threadId, peerName){
   document.getElementById('dom-dm-thread-head').textContent = peerName || '—';
   var head=document.getElementById('dom-dm-thread-head');
   delete head.dataset.agentRoom;
+  window.DOMChatControls?.mountComposer(document.getElementById('dom-dm-input'));
   var invite=document.createElement('button');
   invite.type='button';invite.className='btn btn-ghost';
   invite.textContent=window.DOMRoomAgents?.label('invite') || t('a.domunity.add_agent','Подключить Монаду');
@@ -17800,7 +17813,7 @@ function domLoadThreadMessages(forceRender){
       window.DOMRoomAgents?.open(d.agent_room_id,head);
     }
     var messages=d.messages||[];
-    var signature=messages.map(function(m){return m.id;}).join(',');
+    var signature=messages.map(function(m){return m.id+':'+(m.edited_at||'');}).join(',');
     if(!forceRender&&box.dataset.signature===signature)return;
     box.dataset.signature=signature;
     var follow=forceRender||box.scrollHeight-box.scrollTop-box.clientHeight<80;
@@ -17816,24 +17829,33 @@ function domLoadThreadMessages(forceRender){
       }
       var text=document.createElement('div');text.textContent=m.body;
       var time=document.createElement('time');time.textContent=new Date(m.created_at).toLocaleString();
-      row.append(text,time);return row;
+      row.append(text,time);
+      window.DOMChatControls?.messageActions(row,m,'dm',id,function(){domLoadThreadMessages(true);domLoadThreads();});
+      return row;
     }));
     if(follow)box.scrollTop=box.scrollHeight;
     if(typeof window.domPollBadges==='function')window.domPollBadges();
   }).catch(function(){});
 }
-function domSendDM(){
-  var inp = document.getElementById('dom-dm-input');
-  if (!inp || !inp.value.trim() || !dom.activeThread) return;
-  var text = inp.value;
-  // Optimistic — clear immediately so user feels snap, then sync on response
-  inp.value = '';
-  domApi('/api/dm/threads/' + dom.activeThread + '/messages', { method:'POST', body: { body: text } })
-    .then(function(){
-      domLoadThreadMessages();
-      domLoadThreads();
-    })
-    .catch(function(e){ inp.value = text; alert(e.message); });
+async function domSendDM(){
+  var input=document.getElementById('dom-dm-input'),id=dom.activeThread;
+  if(!input||!id||input.dataset.sending)return;
+  var body=input.value;
+  if(!body.trim()&&!window.DOMChatControls?.hasAttachment(input))return;
+  input.dataset.sending='1';
+  try{
+    var attachment=await window.DOMChatControls?.attachment(input);
+    if(dom.activeThread!==id)return;
+    await domApi('/api/dm/threads/'+id+'/messages',{method:'POST',body:{body,attachment}});
+    if(dom.activeThread===id){
+      if(input.value===body)input.value='';
+      window.DOMChatControls?.clearAttachment(input);
+      domLoadThreadMessages(true);
+      window.DOMRoomAgents?.refreshStatus();
+    }
+    domLoadThreads();
+  }catch(error){alert(error.message);}
+  finally{delete input.dataset.sending;}
 }
 window.domSearchUsers = domSearchUsers;
 window.domStartThread = domStartThread;
@@ -17988,13 +18010,16 @@ function domLoadGroups(){
         (isAdmin ? ' '+window.t('a.domunity.groups_empty_create','Создайте первую кнопкой «+ Создать комнату» выше.') : ' '+window.t('a.domunity.groups_empty_admin','Админ может создать группу первым.')) + '</p>';
       return;
     }
-    box.innerHTML = domGroups.rooms.map(function(r){
-      var active = (domGroups.activeId === r.id) ? 'background:rgba(0,229,255,0.08);border-color:var(--accent-cyan);' : '';
-      return '<div onclick="domGroupOpen(' + r.id + ',\''+r.name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;padding:0.5rem 0.7rem;border:1px solid rgba(255,255,255,0.06);border-radius:8px;background:rgba(0,0,0,0.18);' + active + '">'
-           + '<div style="font-size:12px;font-weight:600;color:var(--text-primary);">'+r.name+'</div>'
-           + '<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+(r.member_count||0)+' '+window.t('a.domunity.member_count_suffix','участников')+'</div>'
-           + '</div>';
-    }).join('');
+    window.DOMChatControls?.renderList(box,domGroups.rooms.map(function(room){
+      return {...room,label:room.name||'—',preview:String(room.member_count||0)+' '+window.t('a.domunity.member_count_suffix','участников')};
+    }),'group',domGroupOpen,function(hidden){
+      if (hidden!=null && String(domGroups.activeId)===String(hidden)) {
+        domGroups.activeId=null;
+        document.getElementById('dom-group-active').style.display='none';
+        document.getElementById('dom-group-empty').style.display='';
+      }
+      domLoadGroups();
+    });
   }).catch(function(e){ console.warn('groups:', e); });
 }
 function domGroupCreate(){
@@ -18072,6 +18097,7 @@ function domGroupOpen(roomId, roomName){
   head.textContent=room.name || roomName || '—';
   head.insertAdjacentHTML('beforeend', liveBadge + liveToggle);
   window.DOMRoomAgents?.open(roomId,head);
+  window.DOMChatControls?.mountComposer(document.getElementById('dom-group-input'));
   var annBtn = document.getElementById('dom-group-announce-btn');
   if (annBtn && isAdmin) annBtn.style.display = '';
   domGroupLoadMessages();
@@ -18113,7 +18139,7 @@ function domGroupLoadMessages(){
     var box=document.getElementById('dom-group-messages');
     if(!box)return;
     var next=data.messages||[];
-    var signature=next.map(function(message){return message.id;}).join(',');
+    var signature=next.map(function(message){return message.id+':'+(message.edited_at||'');}).join(',');
     if(box.dataset.room===String(id)&&box.dataset.signature===signature)return;
     var follow=box.dataset.room!==String(id)||box.scrollHeight-box.scrollTop-box.clientHeight<80;
     box.dataset.room=String(id);
@@ -18123,6 +18149,7 @@ function domGroupLoadMessages(){
       var row=document.createElement('article');
       row.className='dom-group-message'+(mine?' dom-group-message-mine':'');
       row.dataset.messageId=m.id;
+      if(m.is_agent)row.classList.add('dom-group-message-agent');
       if(m.in_reply_to)row.dataset.replyTo=m.in_reply_to;
       var sender=document.createElement(m.is_agent||m.sender_id?'button':'span');
       sender.type='button';
@@ -18135,24 +18162,31 @@ function domGroupLoadMessages(){
       time.dateTime=m.created_at;
       time.textContent=new Date(m.created_at).toLocaleString();
       row.append(sender,body,time);
+      window.DOMChatControls?.messageActions(row,m,'group',id,function(){domGroupLoadMessages();domLoadGroups();});
       return row;
     });
     box.replaceChildren.apply(box,items);
     if(follow)box.scrollTop=box.scrollHeight;
   }).catch(function(){});
 }
-function domGroupSend(isAnnouncement){
-  var inp=document.getElementById('dom-group-input'),id=domGroups.activeId;
-  if(!inp||!inp.value.trim()||!id||inp.dataset.sending)return;
-  var text=inp.value;
-  inp.dataset.sending='true';
-  domApi('/api/chat/rooms/'+id+'/messages',{method:'POST',body:{body:text,is_announcement:!!isAnnouncement}})
-    .then(function(){
-      if(domGroups.activeId===id&&inp.value===text)inp.value='';
+async function domGroupSend(isAnnouncement){
+  var input=document.getElementById('dom-group-input'),id=domGroups.activeId;
+  if(!input||!id||input.dataset.sending)return;
+  var body=input.value;
+  if(!body.trim()&&!window.DOMChatControls?.hasAttachment(input))return;
+  input.dataset.sending='1';
+  try{
+    var attachment=await window.DOMChatControls?.attachment(input);
+    if(domGroups.activeId!==id)return;
+    await domApi('/api/chat/rooms/'+id+'/messages',{method:'POST',body:{body,attachment,is_announcement:!!isAnnouncement}});
+    if(domGroups.activeId===id){
+      if(input.value===body)input.value='';
+      window.DOMChatControls?.clearAttachment(input);
       domGroupLoadMessages();
-    }).catch(function(){
-      window.DOMRoomAgents?.notice('send_failed');
-    }).finally(function(){delete inp.dataset.sending;});
+      window.DOMRoomAgents?.refreshStatus();
+    }
+  }catch(_){window.DOMRoomAgents?.notice('send_failed');}
+  finally{delete input.dataset.sending;}
 }
 window.domLoadGroups = domLoadGroups;
 window.domGroupCreate = domGroupCreate;
@@ -18939,7 +18973,7 @@ window.pbMove = pbMove;
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
 <script src="assets/js/neuromap-chains.js?v=grouped-1"></script>
-<script src="assets/js/evolution-path.js?v=review-1"></script>
+<script src="assets/js/evolution-path.js?v=graph-shapes-1"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
 <script src="assets/js/na-icons.js?v=2"></script>
@@ -18966,7 +19000,8 @@ window.pbMove = pbMove;
 <script src="assets/js/body-atlas.js?v=42"></script>
 <script src="assets/js/monad-cross.js?v=touch-1"></script>
 <script src="assets/js/monad-office.js?v=2"></script>
-<script src="assets/js/dom-room-agents.js?v=directory-1" defer></script>
+<script src="assets/js/dom-room-agents.js?v=directory-2" defer></script>
+<script src="assets/js/dom-chat-controls.js?v=1" defer></script>
 <script src="assets/js/monad-lk.js?v=directory-1"></script>
 <script src="assets/js/sketch-tool.js?v=7"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->

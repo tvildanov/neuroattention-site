@@ -6,7 +6,24 @@
  const lang=()=>['ru','en','es'].includes(document.documentElement.lang)?document.documentElement.lang:'ru';
  const txt=(ru,en,es)=>({ru,en,es})[lang()]||ru;
  const el=(tag,className,text)=>{const x=document.createElement(tag);if(className)x.className=className;if(text)x.textContent=text;return x};
- const icons={overview:'◉',evolution:'◇',tools:'✧',domunity:'◎',enroll:'⊕',monad:'✦',administration:'⚙',courses:'↳'};
+ const icons={
+   overview:'M8 2h8l6 6v8l-6 6H8l-6-6V8Z M8 4.8h8l3.2 3.2',
+   evolution:'M3 12h6l5-6h7 M9 12l5 6h7 M14 12h7 M3 10v4 M21 4v4 M21 10v4 M21 16v4',
+   tools:'M5 21 17 7 M7 3c6 0 12 3 15 9-4-2-6-4-8-6-2-1-4-2-7-3Z',
+   domunity:'M9 8a3 3 0 1 0 6 0 3 3 0 1 0-6 0 M5 20v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2Z M5 6a2 2 0 1 0 0 4 M19 6a2 2 0 1 1 0 4 M4 13a4 4 0 0 0-3 4v1 M20 13a4 4 0 0 1 3 4v1',
+   enroll:'M5 3h13v18H5z M8 8h7 M8 12l2 2 5-5 M8 17h7',
+   monad:'M12 2c0 6 4 10 10 10-6 0-10 4-10 10 0-6-4-10-10-10 6 0 10-4 10-10Z',
+   administration:'M9 2h6l1 3 3 1 2 4-2 2 1 3-2 4-3-1-2 3H9l-1-3-3-1-2-4 2-2-1-3 2-4 3 1Z M9 11a3 3 0 1 0 6 0 3 3 0 1 0-6 0',
+   courses:'M5 3h13v18H5z M9 8h5 M9 12h5 M9 16h5'
+ };
+ function navIcon(id){
+   const ns='http://www.w3.org/2000/svg';
+   const icon=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
+   icon.classList.add('dom-cabinet-icon');icon.setAttribute('viewBox','0 0 24 24');
+   icon.setAttribute('aria-hidden','true');icon.setAttribute('focusable','false');
+   path.setAttribute('d',icons[id]||icons.courses);
+   icon.append(path);return icon;
+ }
  let sidebarOpen=window.innerWidth>=860,nav=null,trigger=null;
  try{sidebarOpen=(localStorage.getItem('dom_cabinet_sidebar')||(sidebarOpen?'open':'closed'))==='open'}catch(_){}
  function storeSide(){try{localStorage.setItem('dom_cabinet_sidebar',sidebarOpen?'open':'closed')}catch(_){}}
@@ -27,7 +44,7 @@
    const brand=el('div','dom-cabinet-side-head',txt('Мой DOM','My DOM','Mi DOM'));
    original.prepend(brand);
    const links=[...original.querySelectorAll('a[data-tab]')];
-   links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.dataset.domIcon=icons[id]||'•';a.setAttribute('title',a.textContent.trim());});
+   links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.setAttribute('title',a.textContent.trim());a.prepend(navIcon(id));});
    // This is the same original tab navigation, moved and reordered, not cloned.
    const byTab=Object.fromEntries(links.map(a=>[a.dataset.tab,a]));
    const courseItem=byTab.courses;
