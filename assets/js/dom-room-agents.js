@@ -8,6 +8,10 @@
     order:['Порядок списка','List order','Orden de la lista'],
     by_name:['По имени','By name','Por nombre'],
     by_location:['По расположению','By placement','Por ubicación'],
+    all_levels:['Все уровни','All levels','Todos los niveles'],
+    no_cell:['Без ячейки','Unplaced','Sin celda'],
+    invite_unavailable:['Подключение недоступно','Invitation unavailable','Invitación no disponible'],
+    inbox_only:['Показаны доступные задачи. История может быть неполной.','Available tasks are shown. History may be incomplete.','Se muestran las tareas disponibles. El historial puede estar incompleto.'],
     analyze:['Проанализировать переписку','Analyze recent conversation','Analizar conversación reciente'],
     analyze_confirm:['Передать выбранному агенту до 12 последних текстовых сообщений?','Share up to 12 recent text messages with this agent?','¿Compartir hasta 12 mensajes de texto recientes con este agente?'],
     human:['Человек','Person','Persona'],
@@ -213,22 +217,38 @@
       const option=element('option',tr(key));option.value=key;order.append(option);
     }
     order.hidden=humans;
+    const levels=element('select');
+    levels.setAttribute('aria-label',tr('by_location'));
+    for(const value of ['',...Array.from({length:7},(_,i)=>'L'+(i+1)),'none']){
+      const option=element('option',value==='none'?tr('no_cell'):value||tr('all_levels'));
+      option.value=value;levels.append(option);
+    }
     const mode=element('select');mode.setAttribute('aria-label',tr('parameters'));
     for(const key of ['mention','listen','active']){
       const option=element('option',tr(key));option.value=key;mode.append(option);
     }
     const results=element('ul'),status=element('p');status.setAttribute('role','status');
     if(!humans)body.append(element('p',tr('privacy')));
-    body.append(type,order,mode,search,results,status);
+    body.append(type,order,levels,mode,search,results,status);
     let query=0;
     const refresh=async()=>{
       const request=++query;
       const term=search.value.trim().toLowerCase();
       mode.hidden=members?.direct||type.value==='human';
+      levels.hidden=humans||order.value!=='by_location';
+      const level=levels.hidden?'':levels.value;
+      const normalize=s=>String(s||'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
       try {
         const entries=type.value==='human'
           ? (term.length>=2 ? (await api('/api/users/search?q='+encodeURIComponent(term))).users || [] : [])
-          : directory.filter(a=>a.kind===type.value&&[a.name,a.agent_id,a.orchestrator,a.placement,...(a.domains||[])].join(' ').toLowerCase().includes(term))
+          : directory.filter(a=>{
+              if(a.kind!==type.value)return false;
+              const cells=a.cells||[];
+              if(level==='none'&&cells.length)return false;
+              if(level&&level!=='none'&&!cells.some(cell=>cell.split(/[x×]/i)[0]===level))return false;
+              const corpus=normalize([a.name,a.agent_id,a.orchestrator,...(a.aliases||[]),...cells,...(a.domains||[])].join(' '));
+              return normalize(term).split(' ').every(word=>corpus.includes(word));
+            })
             .sort((a,b)=>{
               const byName=(a.name||a.agent_id).localeCompare(b.name||b.agent_id);
               if(order.value!=='by_location')return byName;
@@ -243,15 +263,18 @@
         for(const agent of entries){
           const item=element('li');
           const name=agent.name||agent.display_name||agent.agent_id;
-          item.append(button(name,async()=>{
+          const invite=button(name,async()=>{
             const human=type.value==='human';
             try {
               await api(roomPath(id)+(human?'/members':'/agents'),'POST',
                 human?{user_id:agent.id}:{agent_id:agent.agent_id,mode:mode.value});
               if(room===id)await showParticipants();
             }catch(err){status.textContent=failure(err);}
-          }));
-          const location=[agent.placement,agent.orchestrator].filter(Boolean).join(' · ');
+          });
+          invite.disabled=agent.can_invite===false;
+          if(invite.disabled)invite.title=tr('invite_unavailable');
+          item.append(invite);
+          const location=[...(agent.cells||[]),agent.orchestrator,invite.disabled&&tr('invite_unavailable')].filter(Boolean).join(' · ');
           if(location)item.append(element('small',' · '+location));
           results.append(item);
         }
@@ -259,6 +282,7 @@
     };
     type.onchange=refresh;
     order.onchange=refresh;
+    levels.onchange=refresh;
     let timer;
     search.oninput=()=>{clearTimeout(timer);timer=setTimeout(refresh,180);};
     try {
@@ -394,6 +418,7 @@
           element('p',tr('interactions')+' · '+(data.interactions||[]).join(', '))
         );
         const list=element('ul');
+        if(data.handoffs_partial&&data.handoffs_available)view.append(element('p',tr('inbox_only')));
         const ongoing=data.handoffs.filter(task=>['accepted','in_progress'].includes(task.status));
         view.append(element('p',tr('active_tasks')+' · '+(data.handoffs_available?ongoing.length:tr('unavailable'))));
         if(!data.handoffs.length&&data.handoffs_available)view.append(element('p',tr('none_recorded')));

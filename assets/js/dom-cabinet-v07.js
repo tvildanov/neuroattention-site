@@ -16,13 +16,9 @@
    administration:'M9 2h6l1 3 3 1 2 4-2 2 1 3-2 4-3-1-2 3H9l-1-3-3-1-2-4 2-2-1-3 2-4 3 1Z M9 11a3 3 0 1 0 6 0 3 3 0 1 0-6 0',
    courses:'M5 3h13v18H5z M9 8h5 M9 12h5 M9 16h5'
  };
- function navIcon(id){
-   const ns='http://www.w3.org/2000/svg';
-   const icon=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
-   icon.classList.add('dom-cabinet-icon');icon.setAttribute('viewBox','0 0 24 24');
-   icon.setAttribute('aria-hidden','true');icon.setAttribute('focusable','false');
-   path.setAttribute('d',icons[id]||icons.courses);
-   icon.append(path);return icon;
+ function setNavIcon(link,id){
+   const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="'+(icons[id]||icons.courses)+'" fill="none" stroke="black" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+   link.style.setProperty('--cabinet-nav-icon','url("data:image/svg+xml,'+encodeURIComponent(svg)+'")');
  }
  let sidebarOpen=window.innerWidth>=860,nav=null,trigger=null;
  try{sidebarOpen=(localStorage.getItem('dom_cabinet_sidebar')||(sidebarOpen?'open':'closed'))==='open'}catch(_){}
@@ -44,7 +40,7 @@
    const brand=el('div','dom-cabinet-side-head',txt('Мой DOM','My DOM','Mi DOM'));
    original.prepend(brand);
    const links=[...original.querySelectorAll('a[data-tab]')];
-   links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.setAttribute('title',a.textContent.trim());a.prepend(navIcon(id));});
+   links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.setAttribute('title',a.textContent.trim());setNavIcon(a,id);});
    // This is the same original tab navigation, moved and reordered, not cloned.
    const byTab=Object.fromEntries(links.map(a=>[a.dataset.tab,a]));
    const courseItem=byTab.courses;
