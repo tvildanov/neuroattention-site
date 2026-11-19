@@ -11,7 +11,7 @@ const threeDir=path.dirname(require.resolve('three/package.json'));
    ? {executablePath,args:['--single-process','--no-zygote',...graphics]}
    : {channel:'chrome',args:graphics});
  try{
-  const page=await browser.newPage({viewport:{width:1050,height:900}});
+  const page=await browser.newPage({viewport:{width:1050,height:900},hasTouch:true});
   await page.setContent('<div id="cross" style="width:900px;height:650px"></div>');
   await page.addScriptTag({path:path.join(threeDir,'build/three.min.js')});
   await page.addScriptTag({path:path.join(threeDir,'examples/js/controls/OrbitControls.js')});
@@ -88,6 +88,13 @@ const threeDir=path.dirname(require.resolve('three/package.json'));
   await page.mouse.click(second.x,second.y);
   assert.equal(await count(null),14,'only the selected row closes');
   assert.equal(await count('L7'),7);
+  await page.locator('#monad-cross-back').click();
+  const touchRow=await coords('L7',null);
+  await page.touchscreen.tap(touchRow.x,touchRow.y);
+  assert.equal(await count('L7'),7,'touch expands a layer');
+  const touchCell=await coords('L7',1);
+  await page.touchscreen.tap(touchCell.x,touchCell.y);
+  assert.equal(await page.locator('.monad-cross-detail strong').textContent(),'L7×L1','touch selects a cell');
   await page.evaluate(()=>window.MonadCross.destroy());
   assert.equal(await canvas.count(),0);
   console.log('MONAD_CROSS_BROWSER_PASS: 7 layers, 49 real canvas picks, orbit and agent card');
