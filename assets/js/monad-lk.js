@@ -963,8 +963,8 @@
       html += '<dt>' + esc(t('a.monad.confirmed_activity', 'Подтверждённая работа')) + '</dt><dd>' +
         esc(({ru:'События выполнения не получены. Статус «активен» сам по себе не доказывает, что агент выполняет задачу.',en:'No execution events available. An “active” label alone does not prove the agent is performing work.',es:'No hay eventos de ejecución verificados. «Activo» por sí solo no demuestra que el agente esté trabajando.'})[locLang()] || 'Execution not verified') + '</dd>';
     }
-    html += '</dl><button type="button" data-monad-inspect="' + esc(a.agent_id) + '">' +
-      esc(chatText('Карточка агента','Agent card','Ficha del agente')) + '</button></div>';
+    html += '</dl><button type="button" class="btn btn-ghost monad-inspect-button" data-monad-inspect="' + esc(a.agent_id) + '">' +
+      esc(chatText('Канон, инструкции и активность','Canon, instructions and activity','Canon, instrucciones y actividad')) + '</button></div>';
     return html;
   }
   function walkAgents(fn) {

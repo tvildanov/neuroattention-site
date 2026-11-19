@@ -13,6 +13,13 @@
 
   function kick(v) {
     if (!v || v.dataset.naNoAutoplay === '1') return;
+    var lazySource = v.querySelector('source[data-src]:not([src])');
+    if (lazySource) {
+      if (v.dataset.naDeferred !== '1') return;
+      lazySource.src = lazySource.dataset.src;
+      v.load();
+    }
+    if (!v.currentSrc && !v.getAttribute('src') && !v.querySelector('source[src]')) return;
     // Ensure the attributes the autoplay policy needs are really set.
     v.muted = true;
     v.setAttribute('muted', '');
@@ -25,7 +32,14 @@
 
   function kickAll() {
     var vids = document.querySelectorAll('video[autoplay]');
-    for (var i = 0; i < vids.length; i++) kick(vids[i]);
+    for (var i = 0; i < vids.length; i++) {
+      var video = vids[i];
+      if (video.dataset.naDeferred === '1') {
+        var box = video.getBoundingClientRect();
+        if (box.top >= window.innerHeight || box.bottom <= 0) continue;
+      }
+      kick(video);
+    }
   }
 
   function init() {

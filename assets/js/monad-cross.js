@@ -340,11 +340,22 @@
     this._raycaster = new T.Raycaster();
     this._mouse = new T.Vector2();
     var pointerStart = null;
-    this._onPointerDownBound = function (e) { pointerStart = { x: e.clientX, y: e.clientY }; };
+    this._onPointerDownBound = function (e) {
+      pointerStart = e.isPrimary && e.button === 0
+        ? { id: e.pointerId, x: e.clientX, y: e.clientY }
+        : null;
+    };
+    this._onPointerCancelBound = function () { pointerStart = null; };
+    this._onPointerMoveBound = function (e) {
+      if (pointerStart && e.pointerId === pointerStart.id &&
+          Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y) > 8) pointerStart = null;
+    };
     this._onClickBound = function (e) {
+      if (!pointerStart || e.pointerId !== pointerStart.id) return;
+      self._onPointerMoveBound(e);
+      if (!pointerStart) return;
+      pointerStart = null;
       if (!self._pickables.length) return;
-      // OrbitControls emits a click after pointer drag on some browsers.
-      if (pointerStart && Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y) > 6) return;
       var rect = self.renderer.domElement.getBoundingClientRect();
       self._mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       self._mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -405,7 +416,9 @@
       }
     };
     this.renderer.domElement.addEventListener('pointerdown', this._onPointerDownBound);
-    this.renderer.domElement.addEventListener('click', this._onClickBound);
+    this.renderer.domElement.addEventListener('pointermove', this._onPointerMoveBound);
+    this.renderer.domElement.addEventListener('pointercancel', this._onPointerCancelBound);
+    this.renderer.domElement.addEventListener('pointerup', this._onClickBound);
     this.renderer.domElement.style.cursor = 'pointer';
     this._renderDetailPanel();
   };
@@ -560,7 +573,9 @@
     if (this._resizeObs) this._resizeObs.disconnect();
     if (this._onResizeBound) window.removeEventListener('resize', this._onResizeBound);
     if (this.renderer && this._onClickBound) {
-      this.renderer.domElement.removeEventListener('click', this._onClickBound);
+      this.renderer.domElement.removeEventListener('pointerup', this._onClickBound);
+      this.renderer.domElement.removeEventListener('pointermove', this._onPointerMoveBound);
+      this.renderer.domElement.removeEventListener('pointercancel', this._onPointerCancelBound);
       if (this._onPointerDownBound) this.renderer.domElement.removeEventListener('pointerdown', this._onPointerDownBound);
     }
     if (this.controls) this.controls.dispose();
