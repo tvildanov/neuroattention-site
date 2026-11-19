@@ -70,8 +70,9 @@
    for(const [key,branch] of branches){
      const {owner,arrow,list,entries}=branch;
      arrow.hidden=owner.hidden||owner.style.display==='none';
-     arrow.setAttribute('aria-label',owner.textContent.trim());
-     if(arrow.hidden)openBranch(key,false);
+     arrow.setAttribute('aria-label',txt('Подразделы','Subsections','Subsecciones')+' · '+owner.textContent.trim());
+     arrow.disabled=owner.style.pointerEvents==='none'||owner.disabled===true;
+     if(arrow.hidden||arrow.disabled)openBranch(key,false);
      const sources=[...document.querySelectorAll(routes[key])];
      for(const [source,item] of entries){
        if(!sources.includes(source)){item.remove();entries.delete(source);}
@@ -89,7 +90,9 @@
            if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
            event.preventDefault();
            const top=key==='architecture'?'monad':key==='people'?'administration':key;
-           if(!q('#tab-'+top)?.classList.contains('active'))branches.get(top).owner.click();
+           const topLink=branches.get(top).owner;
+           if(topLink.hidden||topLink.style.display==='none'||topLink.style.pointerEvents==='none')return;
+           if(!q('#tab-'+top)?.classList.contains('active'))topLink.click();
            if(key==='architecture'&&!q('[data-monad-sub="architecture"]').classList.contains('active'))q('[data-monad-sub="architecture"]').click();
            if(key==='enroll'){
              source.parentElement.open=true;
@@ -140,6 +143,10 @@
        syncBranches();
      });
    }
+   original.addEventListener('click',event=>{
+     const link=event.target.closest('a[data-tab]');
+     if(link?.style.pointerEvents==='none'){event.preventDefault();event.stopImmediatePropagation();}
+   },true);
    syncBranches();
    // Program/course progress remains in the original tab panel.
    original.querySelectorAll('a[data-tab]').forEach(a=>a.addEventListener('click',()=>requestAnimationFrame(syncSelection)));

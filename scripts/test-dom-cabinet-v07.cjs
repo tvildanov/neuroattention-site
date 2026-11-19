@@ -54,10 +54,24 @@ async function request(route,token,body){
    const sidebar=page.locator('.dom-cabinet-toggle');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    const nav=page.locator('.dom-cabinet-sidebar');
-   await nav.locator('a[data-tab="tools"]').click();
-   await nav.locator('[data-nav-target="tools-mode-pointab"]').click();
-   await page.locator('#tools-pointab-content').waitFor();
-   assert.equal(await page.locator('#tools-mode-nm').isVisible(),false);
+   if(role==='user'){
+     await page.waitForFunction(()=>document.querySelector('[aria-controls="dom-nav-tools"]').disabled);
+     assert.equal(await nav.locator('[aria-controls="dom-nav-administration"]').isVisible(),false);
+   }else{
+     await nav.locator('a[data-tab="tools"]').click();
+     await nav.locator('[data-nav-target="tools-mode-pointab"]').click();
+     await page.locator('#tools-pointab-content').waitFor();
+     assert.equal(await page.locator('#tools-mode-nm').isVisible(),false);
+     if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+     await nav.locator('a[data-tab="administration"]').click();
+     await nav.locator('[aria-controls="dom-nav-people"]').click();
+     await nav.locator('[data-nav-target="admin-stats"]').click();
+     await page.locator('#tab-admin-stats.active').waitFor();
+     if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+     await nav.locator('a[data-tab="monad"]').click();
+     await nav.locator('[data-nav-target="architecture"]').click();
+     assert.equal(await nav.locator('#dom-nav-architecture .dom-nav-item').count(),4);
+   }
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    await nav.locator('a[data-tab="enroll"]').click();
    await page.waitForFunction(()=>document.querySelectorAll('#dom-nav-enroll .dom-nav-item').length===6);
