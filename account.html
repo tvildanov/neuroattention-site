@@ -8029,6 +8029,21 @@ function nmThreeLinkConfig(graph){
   graph.d3Force('link')
     .distance(function(link){return link.bodyBond?nmThreeRadius(link.source)+nmThreeRadius(link.target)-2:nmThreeRadius(link.source)+nmThreeRadius(link.target)+36/Math.sqrt(link.count||1);})
     .strength(function(link){return link.kind==='correlation' ? 0 : (link.bodyBond ? .85 : .42);});
+  // Keep the two surfaces in contact even after the force simulation cools.
+  const bonds=graph.graphData().links.filter(link=>link.bodyBond);
+  graph.d3Force('body-contact',()=>{
+    for(const {source:a,target:b} of bonds){
+      if(typeof a!=='object'||typeof b!=='object')continue;
+      const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;
+      const distance=Math.hypot(dx,dy,dz);
+      if(distance<.001)continue;
+      const contact=nmThreeRadius(a)+nmThreeRadius(b)-2;
+      const correction=(distance-contact)/distance*.7;
+      const share=a.fx!=null?0:b.fx!=null?1:.5;
+      if(a.fx==null){a.x+=dx*correction*share;a.y+=dy*correction*share;a.z+=dz*correction*share;}
+      if(b.fx==null){b.x-=dx*correction*(1-share);b.y-=dy*correction*(1-share);b.z-=dz*correction*(1-share);}
+    }
+  });
 }
 function nmThreeNode(node,label){
   if(!THREE)return false;
@@ -10089,10 +10104,15 @@ function closeFsDrilldown(){
   if(p) p.style.display='none';
   closeFsMobileBottomSheet();
 }
+function nmIntensityText(node){
+  if(!Number.isFinite(node.recordedIntensity))return '';
+  return _pr95t('a.tools.sensation_intensity','Интенсивность')+' '+node.recordedIntensity+'/10';
+}
 function nmFsMembership(host,node){
   host.querySelector('[data-nm-membership]')?.remove();
   const list=document.createElement('div');
   list.dataset.nmMembership='';
+  if(nmIntensityText(node)){const detail=document.createElement('div');detail.textContent=nmIntensityText(node);list.append(detail);}
   for(const chain of nmRecordingsFor(node)){
     const button=document.createElement('button');button.type='button';button.className='nm-view-btn';
     button.textContent=nmFmtChainTime(chain.started_at)+' · '+chain.nodes.map(n=>nmTranslate(n.label)).join(' → ');
@@ -10773,7 +10793,7 @@ function nmShowNodeInfo(node){
   var dot='<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+col+';margin-right:8px;vertical-align:middle;box-shadow:0 0 8px '+col+';"></span>';
   document.getElementById('nm-ni-header').innerHTML=
     '<div style="font-size:15px;font-weight:600;color:#fff;padding-right:24px;">'+dot+_nmEscHtml(nmTranslate(node.label))+'</div>'+
-    '<div style="color:var(--text-dim,#8a93a6);font-size:12px;margin-top:0.35rem;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · '+occursHtml+'</div>';
+    '<div style="color:var(--text-dim,#8a93a6);font-size:12px;margin-top:0.35rem;">'+(rpgT('hover_layer')||'Слой')+' '+layerNum+': '+nmTranslateLayer(layerNum)+' · '+valLabel+' · '+occursHtml+(nmIntensityText(node)?' · '+_nmEscHtml(nmIntensityText(node)):'')+'</div>';
   var admin=document.getElementById('nm-ni-admin'); admin.innerHTML='';
   if(nmIsSuperadmin() && node.dbId){
     admin.innerHTML='<button onclick="nmDeleteNode(\''+_nmEscHtml(node.dbId)+'\')" style="width:100%;padding:7px 0;border:1px solid rgba(240,90,90,0.5);background:rgba(240,90,90,0.12);color:#ff8a8a;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">🗑 '+(rpgT('node_delete_btn')||'Удалить узел')+'</button>';
@@ -11132,7 +11152,7 @@ function buildNmGraph(){
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      nodeMap[n.id]={id:n.id,_hl:member,conceptId:n.concept_id||n.id,dbId:hasV2?(n.concept_id||n.id):null,sessionId:n.session_id,position:n.position,chainIds:(n.chain_ids||[]).map(String),repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      nodeMap[n.id]={id:n.id,_hl:member,conceptId:n.concept_id||n.id,dbId:hasV2?(n.concept_id||n.id):null,sessionId:n.session_id,position:n.position,chainIds:(n.chain_ids||[]).map(String),repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,recordedIntensity:n.recorded_intensity,intensity:n.recorded_intensity??5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
     graph.links.forEach(function(l){
       var f=l.source, t=l.target;
@@ -13317,7 +13337,7 @@ function loadSmRecent(){
 }
 function submitSensationMap(onSaved){
   var sensSel = Array.from(document.querySelectorAll('#sm-sens-chips .sm-chip.active')).map(function(c){return c.dataset.slug;});
-  var locSel = Array.from(document.querySelectorAll('#sm-loc-chips .sm-chip.active')).map(function(c){return c.dataset.slug;});
+  var locSel = [...new Set([...Object.keys(window.SM_BODY_SEL||{}), ...Array.from(document.querySelectorAll('#sm-loc-chips .sm-chip.active[data-slug]'), c=>c.dataset.slug)])];
   var comment = document.getElementById('sm-comment').value.trim();
   if (sensSel.length === 0 && locSel.length === 0 && !comment) {
     document.getElementById('sm-status').textContent = (typeof t==='function'?t('a.tools.sensation_empty','Выбери хотя бы одно ощущение или локацию'):'Выбери хотя бы одно ощущение или локацию');
@@ -13372,6 +13392,9 @@ function submitSensationMap(onSaved){
         c.style.borderColor='rgba(255,255,255,0.12)';
         c.style.color='#cdcdd6';
       });
+      window.SM_BODY_SEL={};
+      renderSmBodySelected();
+      mountSmBodyPicker();
       document.getElementById('sm-comment').value = '';
       loadSmRecent();
       setTimeout(function(){ document.getElementById('sm-status').textContent = ''; }, 3000);
@@ -13384,7 +13407,7 @@ function submitSensationMap(onSaved){
   })
   .catch(function(err){
     document.getElementById('sm-status').style.color = '#ff8a8a';
-    document.getElementById('sm-status').textContent = 'Ошибка сети: ' + err.message;
+    document.getElementById('sm-status').textContent = err.message;
   });
 }
 window.loadSensationMap = loadSensationMap;

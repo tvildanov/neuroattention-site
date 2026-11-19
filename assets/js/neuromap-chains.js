@@ -65,11 +65,13 @@
       // The sensation form writes all picked locations followed by the felt sensations.
       // Bind each sensation to the locations in its own saved step. For older sessions
       // without payload labels, the adjacent location block is the evidence available.
+      const recordedArea = (item, index) => isBody(item) ||
+        (item?.type === 'area' && chain.body_locations?.[index]?.includes(item.label));
       let areas = [], wasSensation = false;
       for (const [i, id] of chain.node_ids.entries()) {
         const item = concepts.get(String(id));
         if (chain.positions && i && chain.positions[i] !== chain.positions[i - 1] + 1) areas = [];
-        if (isBody(item)) {
+        if (recordedArea(item, i)) {
           if (wasSensation) areas = [];
           wasSensation = false;
           areas.push(i);
@@ -96,11 +98,13 @@
         }
         const id = chain.id + ':' + index;
         const node = { ...concept, id, concept_id: key, session_id: chain.session_id,
+          recorded_intensity: chain.intensities?.[index],
+          metadata: recordedArea(concept, index) ? { ...concept.metadata, area_kind: 'body' } : concept.metadata,
           position: chain.positions?.[index] ?? index, chain_id: chain.id,
           last_seen_at: chain.started_at, created_at: chain.started_at };
         nodes.push(node);
         const occurrenceKey = JSON.stringify([chain.session_id, key]);
-        if (!occurrences.has(occurrenceKey)) occurrences.set(occurrenceKey, id);
+        if (chain.session_id && !occurrences.has(occurrenceKey)) occurrences.set(occurrenceKey, id);
         visibleAt.set(index, id);
         if (chain.positions && index && chain.positions[index] !== chain.positions[index - 1] + 1) previous = null;
         if (!bodyAt.has(index)) {

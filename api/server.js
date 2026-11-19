@@ -4494,7 +4494,8 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
     // Earlier writers could save the journey and swallow an error writing chain membership.
     // Event IDs retain insertion order even when all steps share a timestamp or were backdated.
     const journeyRows = await sql`SELECT j.id, j.session_id, j.occurred_at, n.id AS node_id,
-             j.payload->>'source' AS source, j.payload->'body_locations' AS body_locations
+             j.payload->>'source' AS source, j.payload->'body_locations' AS body_locations,
+             j.payload->'intensity' AS intensity
       FROM journey_events j JOIN nm_nodes n ON n.user_id = j.user_id
         AND n.id::text = j.payload->>'nm_node_id'
       WHERE j.user_id = ${userId} AND j.dependent_id IS NULL AND j.session_id IS NOT NULL
@@ -4527,11 +4528,13 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
       // A sensation entry records its selected body locations. Match by occurrence,
       // including a second visit to the same concept during the same recording.
       chain.body_locations = {};
+      chain.intensities = {};
       let after = 0;
       for (const row of steps) {
         const pos = chain.node_ids.indexOf(String(row.node_id), after);
         if (pos < 0) continue;
         after = pos + 1;
+        if (Number.isFinite(row.intensity)) chain.intensities[pos] = row.intensity;
         if (Array.isArray(row.body_locations)) chain.body_locations[pos] = row.body_locations;
       }
     }

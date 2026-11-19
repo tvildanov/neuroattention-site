@@ -156,6 +156,7 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
    assert.ok(chain);
    return scene.links.filter(l=>l.chain_ids?.includes(chain.id)).map(l=>[nodes.get(l.source),nodes.get(l.target)].join('/')).sort();
  }
+ assert.equal(scene.nodes.find(n=>n.session_id===standalone&&n.type==='sensation').recorded_intensity,7);
  assert.deepEqual(edgesIn(standalone),['Arm/тепло','Hand/тепло']);
  assert.deepEqual(edgesIn(handoff),['Arm/тепло','Hand/тепло','Relief/Easier now','Walking/тепло','тепло/Relief'].sort());
  const recovered=await get(200,'/api/neuromap/v3/graph',admin);
