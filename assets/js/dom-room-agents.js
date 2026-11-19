@@ -8,6 +8,8 @@
     order:['Порядок списка','List order','Orden de la lista'],
     by_name:['По имени','By name','Por nombre'],
     by_location:['По расположению','By placement','Por ubicación'],
+    analyze:['Проанализировать переписку','Analyze recent conversation','Analizar conversación reciente'],
+    analyze_confirm:['Передать выбранному агенту до 12 последних текстовых сообщений?','Share up to 12 recent text messages with this agent?','¿Compartir hasta 12 mensajes de texto recientes con este agente?'],
     human:['Человек','Person','Persona'],
     persona:['Персона Монады','Monad persona','Persona de Monad'],
     agent:['Агент Монады','Monad agent','Agente de Monad'],
@@ -142,6 +144,13 @@
         item.append(button(agent.name||agent.agent_id,()=>showAgent(agent.agent_id)),
           element('span',' · '+tr(agent.kind)+' · '+tr(agent.mode)));
         if(info.can_manage) {
+          if(agent.mode!=='listen')item.append(button('analyze',async()=>{
+            if(!window.confirm(tr('analyze_confirm')))return;
+            try{
+              await api(roomPath(id)+'/analyze','POST',{agent_id:agent.agent_id});
+              await refreshStatus();
+            }catch(error){notice(failure(error));}
+          }));
           item.append(button('remove',async()=>{
             try{await api(roomPath(id)+'/agents/'+encodeURIComponent(agent.agent_id),'DELETE');await showParticipants();}
             catch(err){notice(failure(err));}
@@ -460,6 +469,6 @@
       refreshStatus();
       if(invite)await openInvite();
     },
-    showAgent,mountProvision,notice
+    showAgent,mountProvision,notice,refreshStatus
   };
 })();
