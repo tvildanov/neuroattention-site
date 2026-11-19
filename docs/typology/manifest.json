@@ -1,5 +1,5 @@
 {
-  "version": "0.14",
+  "version": "0.15",
   "status": "working-specification-not-installed-skill",
   "date": "2026-11-19",
   "complete_method_archive": false,
@@ -210,12 +210,6 @@
       "size_bytes": 85100
     },
     {
-      "path": "CONTINUE.md",
-      "git_blob_sha": "f21cc5e056d750bc53667a8cd05e7f04ce2746ea",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 33031
-    },
-    {
       "path": "DECISIONS.md",
       "git_blob_sha": "cb814b3495d0ba9d5b293fcd2c5bfbfe49469a68",
       "digest_kind": "git-blob-sha1",
@@ -244,6 +238,18 @@
       "git_blob_sha": "ac724e522db3ca0c68e51877c8f1510a95f501a1",
       "digest_kind": "git-blob-sha1",
       "size_bytes": 40552
+    },
+    {
+      "path": "BASELINE-RECONCILIATION.md",
+      "git_blob_sha": "569971f646e24cf03f916524643d3248b152a248",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 28822
+    },
+    {
+      "path": "CONTINUE.md",
+      "git_blob_sha": "45aa0af3d307c09858f158c298a7caaa339b3c33",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 35105
     }
   ],
   "full_handoff_text_included": true,
@@ -263,7 +269,7 @@
     "unit_checks_passed": 7,
     "browser_check_status": "blocked-by-environment"
   },
-  "active_review": "NOTES-RECOVERY-20261119.md",
+  "active_review": "BASELINE-RECONCILIATION.md",
   "recovered_notes": {
     "source_count": 7,
     "fully_read": true,
