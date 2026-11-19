@@ -100,7 +100,7 @@
          };
          entries.set(source,item);
        }
-       const label=(source.querySelector('.dom-v06-summary strong')||source).textContent.trim();
+       const label=source.dataset.tab==='admin-tools'?txt('Хранилище','Storage','Almacenamiento'):(source.querySelector('.dom-v06-summary strong')||source).textContent.trim();
        if(item.textContent!==label)item.textContent=label;
        item.hidden=source.hidden||source.style.display==='none';
        item.classList.toggle('selected',key==='enroll'?source.parentElement.open:source.classList.contains('active'));

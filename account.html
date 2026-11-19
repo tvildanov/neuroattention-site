@@ -6018,7 +6018,7 @@ function savePracticeReflection(btn){
       { type:'practice', label: pTitle ? pTitle.textContent.trim() : 'Практика', valence:'positive', metadata:{ source:'reflection', emoji:'🧠' } },
       { type:'thought', label: note.substring(0,80), valence:'positive', metadata:{ source:'practice-reflection' } }
     ];
-    nmAppendV2(chain);
+    nmAppendV2(chain,null,null);
   }
   // Show confirmation
   panel.innerHTML = '<p style="font-size:13px;color:var(--accent-cyan);margin:0;"><span style="font-size:18px;">✅</span> Рефлексия сохранена</p>';
@@ -7608,6 +7608,8 @@ function saveDiaryEvent(){
 
 function saveAndNext(){
   if(saveDiaryEvent()){
+    // “Add another event” starts an independent recording in the same overlay.
+    nmClearSession();nmEnsureSession();
     resetDiaryForm();
     document.getElementById('diary-event-text').focus();
     if(navigator.vibrate) navigator.vibrate([15,50,15]);
@@ -7646,7 +7648,7 @@ function diaryToGraph(entry, occurredAt){
 function practiceToGraph(practiceId, practiceTitle){
   if(typeof nmAppendV2 !== 'function') return;
   var chain = [{ type:'practice', label: practiceTitle, valence:'positive', metadata:{ source:'practice', practiceId: practiceId, emoji:'🧠' } }];
-  nmAppendV2(chain);
+  nmAppendV2(chain,null,null);
 }
 
 // Diary analysis
@@ -7788,13 +7790,14 @@ var nmRepeatFilter = false;
 var nmChainFilterId = '';
 var nmChainIsolate=false;
 function nmSelectChain(value,isolate){
+  if(nmChainIsolate||isolate)nmPrevPositions={};
   nmChainFilterId=String(value||'');
   nmChainIsolate=!!nmChainFilterId&&!!isolate;
   buildNmGraph();
 }
-function nmChainOptions(chains){
+function nmChainOptions(chains,concepts){
   if(!chains.some(chain=>String(chain.id)===nmChainFilterId)){nmChainFilterId='';nmChainIsolate=false;}
-  var labels=new Map((nmV2Graph?.nodes||[]).map(node=>[String(node.id),nmTranslate(node.label)]));
+  var labels=new Map((concepts||[]).map(node=>[String(node.id),nmTranslate(node.label)]));
   document.querySelectorAll('[data-nm-chain-controls]').forEach(function(bar){
     var select=bar.querySelector('select'), isolate=bar.querySelector('input');
     select.onchange=()=>nmSelectChain(select.value,nmChainIsolate);
@@ -9292,7 +9295,7 @@ async function nmLoadV2Graph(){
 // PR#129 (Bug B): optional occurredAt (ISO) backdates the whole chain — the server
 // applies it to every node's journey_event AND the chain's started_at, so a diary
 // event logged for a past date lands its whole branch on that date on the Path.
-function nmAppendV2(chainItems, occurredAt){
+function nmAppendV2(chainItems, occurredAt, sessionId=nmSessionId){
   var token=naGetToken();
   if(!token) return;
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
@@ -9300,7 +9303,7 @@ function nmAppendV2(chainItems, occurredAt){
   // these nodes to the rest of the chained flow.
   var _nmBody = { chain: chainItems };
   if (occurredAt) _nmBody.occurred_at = occurredAt;
-  if (nmSessionId) _nmBody.session_id = nmSessionId;
+  if (sessionId) _nmBody.session_id = sessionId;
   // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
   var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
   if (_depTargeted) _nmBody.dependent_id = nmTargetDep.id;
@@ -9645,7 +9648,7 @@ function nmToggleFullscreen(){
     // Close fullscreen drill-down
     closeFsDrilldown();
     document.getElementById('nm-canvas').style.display=nm3DMode?'none':'';
-    document.getElementById('nm-3d-container').style.display=nm3DMode?'block':'none';
+    document.getElementById('nm-3d-container').classList.toggle('active',nm3DMode);
     if(!nm3DMode)nm3DGraph=nmDisposeGraph(nm3DGraph);
     // Rebuild normal graph to refresh positions
     buildNmGraph();
@@ -10299,6 +10302,7 @@ function nmStyle3D(graph,container,mini){
   const nodes=graph.graphData().nodes;
   const top=nmGetTopNIds();
   const labels=new Map();
+  const defaultGeometries=new Set();
   function update(){
     const camera=graph.camera(),width=graph.width(),height=graph.height();
     for(const node of nodes){
@@ -10306,6 +10310,7 @@ function nmStyle3D(graph,container,mini){
       if(!mesh?.isMesh)continue;
       const sides=nmNodeSides(node);
       if(sides&&mesh.geometry.userData.domSides!==sides){
+        defaultGeometries.add(mesh.geometry);
         mesh.geometry=nmPrismGeometry(mesh.geometry,sides,nmThreeRadius(node));
         mesh.rotation.set(.27,-.24,0);
       }
@@ -10323,12 +10328,27 @@ function nmStyle3D(graph,container,mini){
       label.style.left=((1+p.x)*width/2)+'px';label.style.top=((1-p.y)*height/2)+'px';
     }
   }
-  graph.onEngineTick(update);
+  let framed=false;
+  graph.onEngineTick(()=>{
+    update();
+    if(!mini&&!framed&&nodes.length&&nodes.every(node=>node.__threeObj)){
+      framed=true;requestAnimationFrame(()=>{if(overlay.isConnected)graph.zoomToFit(0,36);});
+    }
+  });
   const controls=graph.controls();
   controls?.addEventListener('change',update);
   graph._nmLabels=update;
-  graph._nmClean=()=>{controls?.removeEventListener('change',update);overlay.remove();};
+  graph._nmClean=()=>{
+    controls?.removeEventListener('change',update);overlay.remove();
+    for(const geometry of defaultGeometries)geometry.dispose();
+  };
   requestAnimationFrame(()=>{if(overlay.isConnected)update();});
+}
+function nmDepth(node){
+  // Keep each recorded branch legible when orbiting the map.
+  let hash=0;
+  for(const char of String(node.chainIds?.[0]||node.id))hash=(hash*31+char.charCodeAt(0))|0;
+  return ((Math.abs(hash)*.61803398875)%1-.5)*85+12*Math.sin((node.position||0)*.7);
 }
 function nmWatch3D(graph,fullscreen){
   nmStyle3D(graph,document.getElementById(fullscreen?'nm-fs-3d-container':'nm-3d-container'),false);
@@ -10453,7 +10473,7 @@ function nmBuildFs3DGraph(container){
     var hex = '#8899aa';
     if(match) hex = '#' + ((1<<24)+(parseInt(match[1])<<16)+(parseInt(match[2])<<8)+parseInt(match[3])).toString(16).slice(1);
     var r = nmNodeR(n);
-    gNodes.push({ id: n.id, label: n.label, color: nmChainFilterId&&!n._hl?'#586872':hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:0,_origNode: n });
+    gNodes.push({ id: n.id, label: n.label, color: nmChainFilterId&&!n._hl?'#586872':hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:nmDepth(n),_origNode: n });
   });
   nmLinks.forEach(function(l){
     if(nodeIdx[l.source]!==undefined && nodeIdx[l.target]!==undefined){
@@ -10678,7 +10698,7 @@ function nmBuild3DGraph(){
       type: n.type,
       valence: n.valence,
       _layer: n._layer,
-      chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:0,_origNode: n
+      chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:nmDepth(n),_origNode: n
     });
   });
 
@@ -11081,6 +11101,31 @@ function nmDeleteNode(dbId){
     }).catch(function(e){ nmCloseNodeInfo(); alert(rpgT('node_delete_fail')||'Не удалось удалить узел'); console.warn('[NM] delete node failed:',e); });
 }
 
+function nmLegacyRecordings(entries){
+  const nodes=new Map(),chains=[],dailyIndex=new Map();
+  for(const entry of entries){
+    const day=entry.dateKey;
+    const index=dailyIndex.get(day)||0;
+    dailyIndex.set(day,index+1);
+    const started=day+'T'+String(entry.time||'12:00').padStart(5,'0');
+    for(const [row,recording] of (entry.chains||[]).entries()){
+      const id='local:'+day+':'+index+':'+row;
+      const node_ids=[];
+      const emotion=recording.emotion?(isNegEmotion(recording.emotion)?'negative':'positive'):'neutral';
+      for(const type of ['emotion','area','cause','thought']){
+        const label=recording[type];if(!label)continue;
+        const key=JSON.stringify([type,label]);
+        if(!nodes.has(key)){
+          const valence=type==='area'?'neutral':type==='thought'?(NM_THOUGHTS.indexOf(label)<15?'negative':'positive'):emotion;
+          nodes.set(key,{id:'local-node:'+nodes.size,label,type,valence,created_at:started,last_seen_at:started});
+        }
+        node_ids.push(nodes.get(key).id);
+      }
+      if(node_ids.length)chains.push({id,session_id:id,started_at:started,node_ids});
+    }
+  }
+  return {nodes:[...nodes.values()],links:[],chains};
+}
 function buildNmGraph(){
   var entries=getEntriesForView();
   var empty=document.getElementById('nm-empty');
@@ -11096,6 +11141,7 @@ function buildNmGraph(){
     filters.style.display='none';
     analysis.style.display='none';
     var abw=document.getElementById('nm-analyze-btn-wrap');if(abw)abw.style.display='none';
+    nmChainOptions([],[]);
     if(nmAnimFrame){cancelAnimationFrame(nmAnimFrame);nmAnimFrame=null;}
     var c=document.getElementById('nm-canvas');
     var ctx=c.getContext('2d');
@@ -11119,18 +11165,20 @@ function buildNmGraph(){
   // Build node/link data — prefer v2 graph (server-deduplicated) if available
   var nodeMap={};
   var linkMap={};
-  var visibleChains=(nmV2Graph?.chains||[]).filter(function(chain){return nmTsInRange(Date.parse(chain.started_at));});
+  var sourceGraph=hasV2?nmV2Graph:nmLegacyRecordings(entries);
+  var inRange=hasV2?nmTsInRange:()=>true; // cached diary entries were filtered by their recorded day
+  var visibleChains=(sourceGraph.chains||[]).filter(chain=>inRange(Date.parse(chain.started_at)));
   if(window.__nmDeepLink?.session){
     var linked=visibleChains.find(function(chain){return String(chain.session_id)===String(window.__nmDeepLink.session);});
     if(linked)nmChainFilterId=String(linked.id);
   }
-  nmChainOptions(visibleChains);
+  nmChainOptions(visibleChains,sourceGraph.nodes);
   var focusedChains=nmChainIsolate?visibleChains.filter(function(chain){return String(chain.id)===nmChainFilterId;}):visibleChains;
-  if(nmV2Graph && nmV2Graph.nodes.length>0){
+  {
     var now=Date.now();
-    var occurrences=nmV2Graph.chains && nmV2Graph.chains.length && typeof window.nmOccurrenceGraph==='function';
+    var occurrences=sourceGraph.chains && sourceGraph.chains.length && typeof window.nmOccurrenceGraph==='function';
     var merged=occurrences && nmRepeatFilter && !nmChainIsolate;
-    var graph=occurrences ? (merged?window.nmGroupedGraph:window.nmOccurrenceGraph)(nmV2Graph,nmTsInRange) : nmV2Graph;
+    var graph=occurrences ? (merged?window.nmGroupedGraph:window.nmOccurrenceGraph)(sourceGraph,inRange) : sourceGraph;
     var repeatedIds=new Set(graph.nodes.filter(n=>n.count>1).map(n=>String(n.concept_id||n.id)));
     var repeatChains=new Set(visibleChains.filter(chain=>chain.node_ids.some(id=>repeatedIds.has(String(id)))).map(chain=>String(chain.id)));
     graph.nodes.forEach(function(n){
@@ -11141,7 +11189,7 @@ function buildNmGraph(){
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      nodeMap[n.id]={id:n.id,_hl:member,dbId:n.concept_id||n.id,sessionId:n.session_id,position:n.position,chainIds:n.chain_ids||[],repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      nodeMap[n.id]={id:n.id,_hl:member,dbId:hasV2?(n.concept_id||n.id):null,sessionId:n.session_id,position:n.position,chainIds:n.chain_ids||[],repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
     graph.links.forEach(function(l){
       var f=l.source, t=l.target;
@@ -11150,37 +11198,6 @@ function buildNmGraph(){
       if(!nodeMap[f]||!nodeMap[t]) return;   // an endpoint fell outside the date window
       var key=f+'||'+t;
       if(!linkMap[key]) linkMap[key]={source:f,target:t,_hl:member,count:l.count||1,kind:l.kind,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
-    });
-  } else {
-    // Fallback: build from old nmData entries
-    function addNode(id,type,label,intensity,valence,dateKey){
-      if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,valence:valence||0,freshness:1,first_seen:dateKey||'',last_seen:dateKey||'',x:0,y:0,vx:0,vy:0};
-      nodeMap[id].count++;
-      nodeMap[id].intensity=Math.max(nodeMap[id].intensity,intensity||5);
-      if(dateKey && dateKey>nodeMap[id].last_seen) nodeMap[id].last_seen=dateKey;
-      if(dateKey && (!nodeMap[id].first_seen || dateKey<nodeMap[id].first_seen)) nodeMap[id].first_seen=dateKey;
-    }
-    function addLink(a,b){
-      var key=a+'||'+b;
-      if(!linkMap[key]) linkMap[key]={source:a,target:b,count:0};
-      linkMap[key].count++;
-    }
-    entries.forEach(function(e){
-      var dateKey=e.dateKey||'';
-      e.chains.forEach(function(c){
-        var emValence=c.emotion?(isNegEmotion(c.emotion)?-1:1):0;
-        if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity,emValence,dateKey);
-        if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity,0,dateKey);
-        if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity,emValence,dateKey);
-        if(c.thought){
-          var thIdx=NM_THOUGHTS.indexOf(c.thought);
-          var thValence=thIdx<15?-1:1;
-          addNode('t:'+c.thought,'thought',c.thought,e.intensity,thValence,dateKey);
-        }
-        if(c.emotion&&c.area) addLink('e:'+c.emotion,'a:'+c.area);
-        if(c.area&&c.cause) addLink('a:'+c.area,'c:'+c.cause);
-        if(c.cause&&c.thought) addLink('c:'+c.cause,'t:'+c.thought);
-      });
     });
   }
 
@@ -21726,7 +21743,7 @@ window.pbMove = pbMove;
             var chain=[];
             if(emo) chain.push({type:'emotion',label:emo,valence:'neutral',metadata:{source:'library_note'}});
             chain.push({type:'thought',label:note.slice(0,120),valence:'neutral',metadata:{source:'library_note',lib_kind:kind,article_slug:it.slug}});
-            window.nmAppendV2(chain);
+            window.nmAppendV2(chain,null,null);
           }
         }catch(e){}
         host.innerHTML=''; reload();
