@@ -224,9 +224,14 @@ function install(app,{requireAuth,sql,monadSvc}){
     const u=await admin(req,res);if(!u)return;await ready();
     const id=req.params.agentId;if(!validId(id))return res.status(400).json({error:'Неверный идентификатор.'});
     const minutes=req.query.window==='7d'?10080:1440;
-    const log=await monadSvc.mcpCall('read_action_log',{agent_id:id,since_minutes:minutes,limit:500,include_heartbeat:false,include_target:true}).then(value=>({ok:true,items:arr(value)}),()=>({ok:false,items:[]}));
+    const [log,activity]=await Promise.all([
+      monadSvc.mcpCall('read_action_log',{agent_id:id,since_minutes:minutes,limit:500,include_heartbeat:false,include_target:true})
+        .then(value=>({ok:true,items:arr(value)}),()=>({ok:false,items:[]})),
+      monadSvc.mcpCall('read_agent_task_activity',{agent_id:id,since_minutes:minutes,limit:200})
+        .then(value=>Array.isArray(value?.handoffs)?value.handoffs:null).catch(()=>null)
+    ]);
     const headers={'X-API-Key':process.env.MONAD_API_KEY||''};
-    const sources=await Promise.allSettled(['to_agent','from_agent'].map(async key=>{
+    const sources=activity!==null?[{status:'fulfilled',value:activity}]:await Promise.allSettled(['to_agent','from_agent'].map(async key=>{
       const url=monadSvc.MONAD_BASE+'/api/handoffs?hours='+(minutes/60)+'&limit=200&'+key+'='+encodeURIComponent(id);
       const result=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});
       if(!result.ok)throw Error('handoff_source_'+result.status);
