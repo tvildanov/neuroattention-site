@@ -1,7 +1,7 @@
 {
-  "version": "0.13",
+  "version": "0.14",
   "status": "working-specification-not-installed-skill",
-  "date": "2026-11-18",
+  "date": "2026-11-19",
   "complete_method_archive": false,
   "monad_connected": false,
   "files": [
@@ -15,18 +15,6 @@
       "path": "INTEGRATION.md",
       "sha256": "3c828c7c09cf05d5471abb858fce7cb567d0ab38574e7084c44c1f0dff5e7d3d",
       "size_bytes": 5223
-    },
-    {
-      "path": "README.md",
-      "git_blob_sha": "c0f7e093f08d59cc51a17d505615b794b91f6646",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 4952
-    },
-    {
-      "path": "SOURCES.md",
-      "git_blob_sha": "82bc4e4978b26d890284f829a9415aae64262f27",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 11961
     },
     {
       "path": "sources/2026-11-16-homo-conscius-notes.md",
@@ -114,12 +102,6 @@
       "size_bytes": 11781
     },
     {
-      "path": "DEPENDENCY-MATRIX.draft.json",
-      "git_blob_sha": "416af555d6ddff394353842b92f5081e14f43dec",
-      "digest_kind": "git-blob-sha1",
-      "size_bytes": 46077
-    },
-    {
       "path": "../../assets/js/dom-typology-core.js",
       "git_blob_sha": "ac4890a1736602757b1d8131a4c3310a9fa37dc3",
       "digest_kind": "git-blob-sha1",
@@ -168,28 +150,100 @@
       "size_bytes": 100441
     },
     {
-      "path": "BASELINE-13-REVIEW.md",
-      "git_blob_sha": "2e73237e2358b5818de223e5eab38852085118e1",
+      "path": "sources/recovered-notes-2026-11-19/id376_note.txt",
+      "git_blob_sha": "97907666d605ed650c65a81efc59c76fa3ad9710",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 39531
+      "size_bytes": 3435
     },
     {
-      "path": "DECISIONS.md",
-      "git_blob_sha": "10f72fbd90470b3eb9bf686826b8f9a31b7837a8",
+      "path": "sources/recovered-notes-2026-11-19/id374_note.txt",
+      "git_blob_sha": "c2d10206ed1a4ae3f577a160d1fdd7191a023ee4",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 24546
+      "size_bytes": 17731
     },
     {
-      "path": "BODY-CORE-REVIEW.md",
-      "git_blob_sha": "00c2fe5bc000ecbfee79a93b29819c9f98c5ae29",
+      "path": "sources/recovered-notes-2026-11-19/id379_note.txt",
+      "git_blob_sha": "6a6e30c41b681293d8bbca25b78f0f8b5890e1e6",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 28787
+      "size_bytes": 37597
+    },
+    {
+      "path": "sources/recovered-notes-2026-11-19/id328_note.txt",
+      "git_blob_sha": "35f4beff5c596290c5ce9a2a0bf52b8cd66d69bf",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 368
+    },
+    {
+      "path": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "git_blob_sha": "855d963fd87aa0f880fea0147d36f1e109d13826",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 20198
+    },
+    {
+      "path": "sources/recovered-notes-2026-11-19/id329_note.txt",
+      "git_blob_sha": "eb5be723ad6f80ff2d4b0bd4e05758459e81b25b",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 19282
+    },
+    {
+      "path": "sources/recovered-notes-2026-11-19/id377_note.txt",
+      "git_blob_sha": "05aa1d1d973577e6c75bbc740d2d3d95c499b733",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 36528
+    },
+    {
+      "path": "RECOVERED-NOTES-20261119.json",
+      "git_blob_sha": "54b22740ea4a4df44714201b319eaa561e8f5aee",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 35361
+    },
+    {
+      "path": "NOTES-RECOVERY-20261119.md",
+      "git_blob_sha": "34daa5dacbbaa54498c3b7a65ce2d0e4d5705372",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 17908
+    },
+    {
+      "path": "DEPENDENCY-MATRIX.draft.json",
+      "git_blob_sha": "89d6b4574402638111dc606054024215e87c9f1e",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 85100
     },
     {
       "path": "CONTINUE.md",
-      "git_blob_sha": "ad4a07ff76ab4364a15985362f90dd769ca6dfa0",
+      "git_blob_sha": "f21cc5e056d750bc53667a8cd05e7f04ce2746ea",
       "digest_kind": "git-blob-sha1",
-      "size_bytes": 29996
+      "size_bytes": 33031
+    },
+    {
+      "path": "DECISIONS.md",
+      "git_blob_sha": "cb814b3495d0ba9d5b293fcd2c5bfbfe49469a68",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 25963
+    },
+    {
+      "path": "SOURCES.md",
+      "git_blob_sha": "a57a4fb1f4a684fa4490c15a60db2cce27043df0",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 13936
+    },
+    {
+      "path": "README.md",
+      "git_blob_sha": "6ef105ccce3cff8d35cba20ba3f2d5b431ec4354",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 6025
+    },
+    {
+      "path": "BODY-CORE-REVIEW.md",
+      "git_blob_sha": "c5353172e6f5cf3fb562a24f8fb9d47c6ea576fe",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 29810
+    },
+    {
+      "path": "BASELINE-13-REVIEW.md",
+      "git_blob_sha": "ac724e522db3ca0c68e51877c8f1510a95f501a1",
+      "digest_kind": "git-blob-sha1",
+      "size_bytes": 40552
     }
   ],
   "full_handoff_text_included": true,
@@ -209,5 +263,17 @@
     "unit_checks_passed": 7,
     "browser_check_status": "blocked-by-environment"
   },
-  "active_review": "BODY-CORE-REVIEW.md"
+  "active_review": "NOTES-RECOVERY-20261119.md",
+  "recovered_notes": {
+    "source_count": 7,
+    "fully_read": true,
+    "byte_identical_public_copies": 6,
+    "explicitly_redacted_public_copies": 1,
+    "historical_matrix_cells": 169,
+    "distinct_stats_with_levels": 12,
+    "descriptive_bands": 60,
+    "complete_answer_scoring_key": false,
+    "complete_profile_engine": false,
+    "scoring_enabled": false
+  }
 }
