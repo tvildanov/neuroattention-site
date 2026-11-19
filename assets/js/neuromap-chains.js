@@ -27,7 +27,7 @@
         nodes.push(node);
         const occurrenceKey = JSON.stringify([chain.session_id, key]);
         if (!occurrences.has(occurrenceKey)) occurrences.set(occurrenceKey, id);
-        if (previous) links.push({ source: previous, target: id, count: 1, chain_ids: [chain.id] });
+        if (previous && (chain.positions == null || chain.positions[index] === chain.positions[index-1]+1)) links.push({ source: previous, target: id, count: 1, chain_ids: [chain.id] });
         previous = id;
       }
     }
@@ -48,6 +48,13 @@
       const source = locate(link.source_session, link.source);
       const target = locate(link.target_session, link.target);
       if (source && target && source !== target) links.push({ source, target, count: 1, kind: 'correlation' });
+    }
+    const frequency=new Map();
+    for(const node of nodes){
+      if(node.concept_id)frequency.set(node.concept_id,(frequency.get(node.concept_id)||0)+1);
+    }
+    for(const node of nodes){
+      if(node.concept_id){node.count=frequency.get(node.concept_id);node.chain_ids=[node.chain_id];}
     }
     return { nodes, links };
   }
@@ -95,16 +102,20 @@
     const positions=new Map();
     const byId=new Map(nodes.map(node=>[String(node.id),node]));
     const visible=chains.map(chain=>chain.node_ids.map(String).filter(id=>byId.has(id))).filter(ids=>ids.length);
-    const slot=Math.max(2,Math.ceil(Math.sqrt(visible.length)));
-    const stride=Math.min(116,width/Math.max(slot,4));
+    const columns=Math.max(1,Math.min(visible.length,Math.ceil(Math.sqrt(visible.length*width/height))));
+    const rows=Math.max(1,Math.ceil(visible.length/columns));
+    const cellW=(width-80)/columns, cellH=(height-80)/rows;
     visible.forEach((ids,index)=>{
       const known=ids.findIndex(id=>positions.has(id));
-      const origin=known<0 ? {x:width*(.2+.58*((index%slot+.5)/slot)),y:height*(.15+.7*((Math.floor(index/slot)+.5)/Math.ceil(visible.length/slot)))} : positions.get(ids[known]);
-      const angle=index*2.399963229728653;
-      ids.forEach((id,step)=>{
+      const anchor=positions.get(ids[known]);
+      const cx=40+(index%columns+.5)*cellW, cy=40+(Math.floor(index/columns)+.5)*cellH;
+      const angle=anchor?index*2.399963:(index%2===0 ? .2 : -.2);
+      const step=Math.min(116,cellW*.84/Math.max(1,ids.length-1));
+      ids.forEach((id,i)=>{
         if(positions.has(id))return;
-        const d=(step-Math.max(0,known))*stride;
-        positions.set(id,{x:Math.max(45,Math.min(width-45,origin.x+Math.cos(angle)*d)),y:Math.max(45,Math.min(height-45,origin.y+Math.sin(angle)*d))});
+        const offset=(anchor?i-known:i-(ids.length-1)/2)*step;
+        positions.set(id,{x:Math.max(40,Math.min(width-40,(anchor?.x??cx)+Math.cos(angle)*offset)),
+          y:Math.max(40,Math.min(height-40,(anchor?.y??cy)+Math.sin(angle)*offset))});
       });
     });
     return positions;

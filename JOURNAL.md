@@ -2415,3 +2415,9 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-19","did":["Investigated reported production regressions and handoff authentication failures"],"changed":["Cabinet navigation, DOMunity context menus and forwarding, canonical Monad placements, NeuroMap branch rendering"],"files":["assets/js/dom-cabinet-v07.js","assets/dom-cabinet-v07.css","assets/js/dom-theme.js","account.html","assets/js/dom-chat-controls.js","api/services/dom-chat-controls.js","api/server.js","api/services/dom-monad-v07.js","assets/js/dom-room-agents.js","assets/js/neuromap-chains.js","scripts/test-dom-account-api.cjs","scripts/test-dom-cabinet-v07.cjs","sw.js"],"decisions":["Keep incoming-message deletion personal and preserve invitation permissions","Show a partial activity notice if only the canonical inbox can be read"],"followups":["Verify browser and API checks, Railway, and Pages"],"next_session":"Validate with production account and devices."}
 ```
+
+## 2026-11-19 — Sidebar hierarchy and recorded NeuroMap chains
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced the sidebar to its live account routes and NeuroMap to recorded chain membership"],"changed":["Expandable account sections and nested destinations","Independent recording occurrences with chain selection and isolation","Elastic node release, volumetric layer shapes and projected labels"],"files":["account.html","assets/js/neuromap-chains.js","assets/js/dom-cabinet-v07.js","assets/dom-cabinet-v07.css","assets/js/dom-theme.js","scripts/test-dom-cabinet-v07.cjs","sw.js"],"decisions":["Keep role-gated navigation bound to the original controls","Join equivalent concepts only in the repeats view"],"followups":["Verify signed-in fixture, WebGL and production release"],"next_session":"Compare the released interactions with personal records."}
+```
