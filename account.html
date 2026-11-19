@@ -684,6 +684,18 @@ a.dash-tab:hover { text-decoration:none; }
 <script src="assets/js/dom-theme.js?v=dom-review-1" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=1">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
+<style>
+  #rpg-avatar-img { border-radius:0 !important; clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%); }
+  .monad-inspect-button { margin:0.65rem 0; }
+  html[data-dom-theme="light"] body.dom-account-matrix .evo-mini-nm .evo-mini-label {
+    font-size:12px !important; font-weight:500 !important; fill:#162e47 !important;
+    stroke:#faf5e9 !important; stroke-width:2px !important; paint-order:stroke fill;
+  }
+  html[data-dom-theme="light"] body.dom-account-matrix .evo-mini-nm .evo-mini-typecap {
+    font-size:10px !important; font-weight:500 !important; fill:#3e5367 !important;
+    stroke:#faf5e9 !important; stroke-width:1.8px !important; paint-order:stroke fill;
+  }
+</style>
 </head>
 <body class="dom-account-matrix dom-site" data-dom-page="account">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -10200,7 +10212,15 @@ function nm3DError(fullscreen){
   notice.textContent=_pr95t('a.tools.nm_3d_unavailable','3D не удалось запустить. Карта открыта в 2D.');
   btn.after(notice);
 }
+function nmDisposeGraph(graph){
+  if (!graph) return null;
+  var renderer = graph.renderer?.();
+  graph._destructor?.();
+  renderer?.forceContextLoss?.();
+  return null;
+}
 function nmStart3D(fullscreen,container){
+  if(!nm3DMode || (fullscreen && (!nmFullscreen || !container?.isConnected))) return;
   document.getElementById('nm-3d-notice')?.remove();
   try{if(fullscreen)nmBuildFs3DGraph(container);else nmBuild3DGraph();}
   catch(error){nm3DError(fullscreen);}
@@ -10258,7 +10278,7 @@ function nmFsToggle3D(){
     if(mainBtn){ mainBtn.classList.remove('active'); mainBtn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D'; }
     fs3d.style.display = 'none';
     fsCanvas.style.display = '';
-    if(nmFs3DGraph){ nmFs3DGraph._destructor && nmFs3DGraph._destructor(); nmFs3DGraph = null; }
+    nmFs3DGraph = nmDisposeGraph(nmFs3DGraph);
     fs3d.innerHTML = '';
     nmFsStartRender();
   }
@@ -10266,16 +10286,17 @@ function nmFsToggle3D(){
 
 var nmFs3DGraph = null;
 function nmBuildFs3DGraph(container){
-  if(!container) return;
+  if(!nm3DMode || !nmFullscreen || !container?.isConnected) return;
   if(typeof ForceGraph3D==='undefined'){
     nmWithForceGraph(container, function(){ return nm3DMode; }, function(){ nmBuildFs3DGraph(container); },function(){nm3DError(true);});
     return;
   }
   // Guard against 0-dimension container (layout not ready)
   if(container.clientWidth < 10 || container.clientHeight < 10){
-    requestAnimationFrame(function(){ nmBuildFs3DGraph(container); });
+    requestAnimationFrame(function(){ nmStart3D(true,container); });
     return;
   }
+  nmFs3DGraph = nmDisposeGraph(nmFs3DGraph);
   container.innerHTML = '';
   var gNodes = [];
   var gLinks = [];
@@ -10295,12 +10316,12 @@ function nmBuildFs3DGraph(container){
       var tn = nmNodes[nodeIdx[l.target]];
       var ec = nmGetEdgeColor(sn, tn);
       var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
-      gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn), count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2)) });
+      gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn), count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2)) });
     }
   });
   if(!THREE)nmEnsureThree(function(){
     if(THREE && nmFs3DGraph && document.getElementById('nm-fs-3d-container')===container)
-      nmFs3DGraph.nodeThreeObject(nmFs3DGraph.nodeThreeObject());
+      nmFs3DGraph.nodeThreeObjectExtend(false).nodeThreeObject(nmFs3DGraph.nodeThreeObject());
   });
   var _fsTopNIds = nmGetTopNIds();
   nmFs3DGraph = ForceGraph3D()(container)
@@ -10309,7 +10330,7 @@ function nmBuildFs3DGraph(container){
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
-    .nodeThreeObjectExtend(function(){return !THREE;})
+    .nodeThreeObjectExtend(!THREE)
     .nodeThreeObject(function(node){
       if(!THREE) return false;
       // Persistent labels: show for top-N always, all when mode='all', none when mode='off'
@@ -10389,7 +10410,7 @@ function nmToggle3D(){
     btn.innerHTML = '<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D';
     container3d.classList.remove('active');
     canvas2d.style.display = '';
-    if(nm3DGraph){ nm3DGraph._destructor && nm3DGraph._destructor(); nm3DGraph = null; }
+    nm3DGraph = nmDisposeGraph(nm3DGraph);
     container3d.innerHTML = '';
     buildNmGraph();
   }
@@ -10510,6 +10531,7 @@ function nmBuild3DGraph(){
     nmWithForceGraph(container, function(){ return nm3DMode; }, function(){ nmBuild3DGraph(); },function(){nm3DError(false);});
     return;
   }
+  nm3DGraph = nmDisposeGraph(nm3DGraph);
   container.innerHTML = '';
 
   // Build graph data from nmNodes/nmLinks
@@ -10548,7 +10570,7 @@ function nmBuild3DGraph(){
         target: l.target,
         bodyBond:nmBodyBond(sn,tn),
         color: hex,
-        width: Math.max(1, Math.min(4, Math.log(l.count+1)*1.2))
+        width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2))
       });
     }
   });
@@ -10558,7 +10580,7 @@ function nmBuild3DGraph(){
   var H = wrap.clientHeight;
 
   if(!THREE)nmEnsureThree(function(){
-    if(THREE && nm3DGraph && container.isConnected)nm3DGraph.nodeThreeObject(nm3DGraph.nodeThreeObject());
+    if(THREE && nm3DGraph && container.isConnected)nm3DGraph.nodeThreeObjectExtend(false).nodeThreeObject(nm3DGraph.nodeThreeObject());
   });
   var _miniTopNIds = nmGetTopNIds();
   nm3DGraph = ForceGraph3D()(container)
@@ -10570,7 +10592,7 @@ function nmBuild3DGraph(){
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
-    .nodeThreeObjectExtend(function(){return !THREE;})
+    .nodeThreeObjectExtend(!THREE)
     .nodeThreeObject(function(node){
       if(!THREE) return false;
       var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _miniTopNIds[node.id]);
@@ -10996,7 +11018,7 @@ function buildNmGraph(){
   if(nmV2Graph && nmV2Graph.nodes.length>0){
     var now=Date.now();
     var occurrences=nmV2Graph.chains && nmV2Graph.chains.length && typeof window.nmOccurrenceGraph==='function';
-    var graph=occurrences ? window.nmOccurrenceGraph(nmV2Graph,nmTsInRange) : nmV2Graph;
+    var graph=occurrences && typeof window.nmGroupedGraph==='function' ? window.nmGroupedGraph(nmV2Graph,nmTsInRange) : nmV2Graph;
     graph.nodes.forEach(function(n){
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
       if(!occurrences && !nmTsInRange(lastSeen)) return;
@@ -11060,7 +11082,7 @@ function buildNmGraph(){
   });
   Object.keys(linkMap).forEach(function(k){
     var l=linkMap[k];
-    if(nmRepeatFilter && l.count<2 && !l.chain_ids?.length) return;
+    if(nmRepeatFilter && l.count<2) return;
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
 
@@ -11167,12 +11189,18 @@ function applyNmDeepLink(canvas){
   var focusN = null, any = false;
   nmNodes.forEach(function(n){ n._hl = false; n._hlFocus = false; });
   nmNodes.forEach(function(n){
-    if(dl.session && n.sessionId !== dl.session) return;
+    if(dl.session && n.sessionId != null && String(n.sessionId) !== String(dl.session)) return;
     var match = set[String(n.id)] || (n.dbId != null && set[String(n.dbId)]) ||
                 set[norm(n.label)] || (n.label && set[norm(n.label)]);
-    if(match){ n._hl = true; any = true; if((dl.position == null || n.position === dl.position) && norm(dl.focus) && (String(n.id)===String(dl.focus) || String(n.dbId)===String(dl.focus) || norm(n.label)===norm(dl.focus))){ n._hlFocus = true; focusN = n; } }
+    if(match){ n._hl = true; any = true; if((dl.position == null || n.position == null || Number(n.position) === dl.position) && norm(dl.focus) && (String(n.id)===String(dl.focus) || String(n.dbId)===String(dl.focus) || norm(n.label)===norm(dl.focus))){ n._hlFocus = true; focusN = n; } }
   });
   if(any){
+    var selectedChains = new Set((nmV2Graph?.chains || [])
+      .filter(function(chain){ return dl.session && String(chain.session_id) === String(dl.session); })
+      .map(function(chain){ return String(chain.id); }));
+    nmLinks.forEach(function(link){
+      link._hl = (link.chain_ids || []).some(function(id){ return selectedChains.has(String(id)); });
+    });
     var f = focusN || nmNodes.find(function(n){ return n._hl; });
     if(f && canvas){ f.fx = canvas.width/2; f.fy = canvas.height/2; f.x = f.fx; f.y = f.fy; if(!f._hlFocus){ f._hlFocus = true; } }
   }
@@ -11416,7 +11444,7 @@ function nmSimulate(canvas, initAlpha){
       // PR#120: when a chain is hovered in the info-panel list, brighten every edge it
       // carries (chain_ids ride on the v3 links) so the user sees that one flow lit up
       // on the full NeuroMap.
-      var hlChain=(nmHoverChainId && l.chain_ids && l.chain_ids.map(String).indexOf(nmHoverChainId)>=0);
+      var hlChain=l._hl||(nmHoverChainId && l.chain_ids && l.chain_ids.map(String).indexOf(nmHoverChainId)>=0);
       ctx.beginPath();
       ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
       ctx.strokeStyle=hlChain?'rgba(92,200,255,0.95)':('rgba('+ec.r+','+ec.g+','+ec.b+','+edgeAlpha+')');
@@ -17742,7 +17770,7 @@ function domOpenThread(threadId, peerName){
   delete head.dataset.agentRoom;
   var invite=document.createElement('button');
   invite.type='button';invite.className='btn btn-ghost';
-  invite.textContent=t('a.domunity.add_agent','Добавить агента');
+  invite.textContent=window.DOMRoomAgents?.label('invite') || t('a.domunity.add_agent','Подключить Монаду');
   invite.onclick=async function(){
     invite.disabled=true;
     try{
@@ -18910,7 +18938,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/neuromap-chains.js?v=1"></script>
+<script src="assets/js/neuromap-chains.js?v=grouped-1"></script>
 <script src="assets/js/evolution-path.js?v=review-1"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
@@ -18936,10 +18964,10 @@ window.pbMove = pbMove;
 
 <script src="assets/js/external-field.js?v=13"></script>
 <script src="assets/js/body-atlas.js?v=42"></script>
-<script src="assets/js/monad-cross.js?v=review-5"></script>
+<script src="assets/js/monad-cross.js?v=touch-1"></script>
 <script src="assets/js/monad-office.js?v=2"></script>
-<script src="assets/js/dom-room-agents.js?v=review-1" defer></script>
-<script src="assets/js/monad-lk.js?v=review-1"></script>
+<script src="assets/js/dom-room-agents.js?v=directory-1" defer></script>
+<script src="assets/js/monad-lk.js?v=directory-1"></script>
 <script src="assets/js/sketch-tool.js?v=7"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->
 <script src="assets/js/exercises/engine.js?v=3"></script>

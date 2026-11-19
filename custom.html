@@ -284,6 +284,7 @@
 <script src="assets/js/dom-theme.js?v=dom-review-1" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=1">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
+<link rel="preload" as="image" href="assets/media/custom-spiral-poster.webp" fetchpriority="high">
 </head>
 <body class="dom-matrix dom-site" data-dom-page="custom" data-dom-editorial>
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -352,7 +353,7 @@
       </div>
       <div class="fade-right delay-1">
         <div class="media-box aspect-sq" style="max-width:600px;margin-left:auto;">
-          <video autoplay loop muted playsinline preload="auto">
+          <video autoplay loop muted playsinline preload="auto" poster="assets/media/custom-spiral-poster.webp">
             <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
           </video>
         </div>
@@ -396,8 +397,8 @@
         <!-- Лот 01 -->
         <div class="lot-card">
           <div class="lot-media">
-            <video autoplay loop muted playsinline>
-              <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+            <video autoplay loop muted playsinline preload="none" data-na-deferred="1">
+              <source data-src="assets/media/custom-spiral.mp4" type="video/mp4" />
             </video>
             <span class="lot-num">ЛОТ 01</span>
             <span class="lot-badge">Preview</span>
@@ -418,8 +419,8 @@
         <!-- Лот 02 -->
         <div class="lot-card">
           <div class="lot-media">
-            <video autoplay loop muted playsinline>
-              <source src="assets/media/field-2.mp4" type="video/mp4" />
+            <video autoplay loop muted playsinline preload="none" data-na-deferred="1">
+              <source data-src="assets/media/field-2.mp4" type="video/mp4" />
             </video>
             <span class="lot-num">ЛОТ 02</span>
             <span class="lot-badge">Preview</span>
@@ -440,8 +441,8 @@
         <!-- Лот 03 -->
         <div class="lot-card">
           <div class="lot-media">
-            <video autoplay loop muted playsinline>
-              <source src="assets/media/drop-ripple.mp4" type="video/mp4" />
+            <video autoplay loop muted playsinline preload="none" data-na-deferred="1">
+              <source data-src="assets/media/drop-ripple.mp4" type="video/mp4" />
             </video>
             <span class="lot-num">ЛОТ 03</span>
             <span class="lot-badge">Coming soon</span>
@@ -621,8 +622,8 @@
         </div>
         <div>
           <div class="media-box aspect-sq" style="max-width:340px;margin-left:auto;">
-            <video autoplay loop muted playsinline>
-              <source src="assets/media/custom-spiral.mp4" type="video/mp4" />
+            <video autoplay loop muted playsinline preload="none" data-na-deferred="1">
+              <source data-src="assets/media/custom-spiral.mp4" type="video/mp4" />
             </video>
           </div>
         </div>
@@ -739,7 +740,7 @@ document.querySelectorAll('.filter-tag').forEach(tag => {
   });
 });
 </script>
-<script src="assets/js/media.js" defer></script>
+<script src="assets/js/media.js?v=viewport-1" defer></script>
 <script src="assets/js/i18n.js?v=seo-20261116"></script>
 <script src="assets/js/typography.js" defer></script>
 <script src="assets/js/dom-editorial.js?v=1"></script>

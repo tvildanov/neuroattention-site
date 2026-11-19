@@ -3,7 +3,11 @@
   'use strict';
   const labels = {
     participants:['Участники','Participants','Participantes'],
-    invite:['Добавить участника','Add participant','Añadir participante'],
+    invite:['Подключить Монаду','Connect Monad','Conectar Mónada'],
+    invite_human:['Добавить человека','Add a person','Añadir una persona'],
+    order:['Порядок списка','List order','Orden de la lista'],
+    by_name:['По имени','By name','Por nombre'],
+    by_location:['По расположению','By placement','Por ubicación'],
     human:['Человек','Person','Persona'],
     persona:['Персона Монады','Monad persona','Persona de Monad'],
     agent:['Агент Монады','Monad agent','Agente de Monad'],
@@ -147,7 +151,10 @@
       }
       body.append(list);
       body.append(button('room_context',showContext));
-      if(info.can_manage)body.append(button('invite',showInvite));
+      if(info.can_manage){
+        body.append(button('invite',()=>showInvite()));
+        if(!info.direct)body.append(button('invite_human',()=>showInvite(true)));
+      }
     } catch(err){body.textContent=failure(err);}
   }
   function showContext() {
@@ -180,22 +187,30 @@
       }catch(err){result.textContent=failure(err);}
     }));
   }
-  async function showInvite() {
+  async function showInvite(humans=false) {
     const id=room;
-    const {aside,body}=showRoomPanel('invite');
+    const {aside,body}=showRoomPanel(humans?'invite_human':'invite');
     const search=element('input');
     search.placeholder=tr('search');search.type='search';search.setAttribute('aria-label',tr('search'));
     const type=element('select');type.setAttribute('aria-label',tr('invite'));
-    for(const key of (members?.direct?['persona','agent','contour']:['human','persona','agent','contour'])){
+    for(const key of (humans?['human']:['persona','agent','contour'])){
       const option=element('option',tr(key));option.value=key;type.append(option);
     }
-    type.value='persona';
+    type.value=humans?'human':'persona';
+    type.hidden=humans;
+    const order=element('select');
+    order.setAttribute('aria-label',tr('order'));
+    for(const key of ['by_name','by_location']){
+      const option=element('option',tr(key));option.value=key;order.append(option);
+    }
+    order.hidden=humans;
     const mode=element('select');mode.setAttribute('aria-label',tr('parameters'));
     for(const key of ['mention','listen','active']){
       const option=element('option',tr(key));option.value=key;mode.append(option);
     }
     const results=element('ul'),status=element('p');status.setAttribute('role','status');
-    body.append(element('p',tr('privacy')),type,mode,search,results,status);
+    if(!humans)body.append(element('p',tr('privacy')));
+    body.append(type,order,mode,search,results,status);
     let query=0;
     const refresh=async()=>{
       const request=++query;
@@ -204,7 +219,15 @@
       try {
         const entries=type.value==='human'
           ? (term.length>=2 ? (await api('/api/users/search?q='+encodeURIComponent(term))).users || [] : [])
-          : directory.filter(a=>a.kind===type.value&&[a.name,a.agent_id,a.orchestrator,...(a.domains||[])].join(' ').toLowerCase().includes(term));
+          : directory.filter(a=>a.kind===type.value&&[a.name,a.agent_id,a.orchestrator,a.placement,...(a.domains||[])].join(' ').toLowerCase().includes(term))
+            .sort((a,b)=>{
+              const byName=(a.name||a.agent_id).localeCompare(b.name||b.agent_id);
+              if(order.value!=='by_location')return byName;
+              const left=a.placement||a.orchestrator;
+              const right=b.placement||b.orchestrator;
+              if(!left||!right)return Number(!left)-Number(!right)||byName;
+              return left.localeCompare(right,undefined,{numeric:true})||byName;
+            });
         if(request!==query||!aside.isConnected)return;
         results.replaceChildren();
         if(!entries.length)results.append(element('li',tr('empty')));
@@ -219,16 +242,18 @@
               if(room===id)await showParticipants();
             }catch(err){status.textContent=failure(err);}
           }));
-          if(agent.orchestrator)item.append(element('small',' · '+agent.orchestrator));
+          const location=[agent.placement,agent.orchestrator].filter(Boolean).join(' · ');
+          if(location)item.append(element('small',' · '+location));
           results.append(item);
         }
       }catch(err){status.textContent=failure(err);}
     };
     type.onchange=refresh;
+    order.onchange=refresh;
     let timer;
     search.oninput=()=>{clearTimeout(timer);timer=setTimeout(refresh,180);};
     try {
-      directory=(await api('/api/dom-monad/agents')).agents;
+      if(!humans)directory=(await api('/api/dom-monad/agents')).agents;
     }catch(err){status.textContent=failure(err);}
     refresh();
     search.focus();
@@ -421,6 +446,7 @@
   };
   setInterval(refreshStatus,10000);
   window.DOMRoomAgents={
+    label:tr,
     async open(id, head, invite=false){
       room=id;roomHead=head;members=null;updateToken++;roomPanel?.remove();inspector?.remove();
       head.append(button('participants',showParticipants));

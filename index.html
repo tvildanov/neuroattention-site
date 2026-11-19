@@ -121,6 +121,14 @@
 <script src="assets/js/dom-v041-usability.js?v=20261117-1" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=1">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
+<style>
+  /* The attention section keeps its navy canvas in both themes. */
+  html[data-dom-theme="light"] body.dom-site #screen-4 #dom-insight-title,
+  html[data-dom-theme="light"] body.dom-site #screen-4 #dom-insight-title .dom-insight-title-start,
+  html[data-dom-theme="light"] body.dom-site #screen-4 #dom-insight-title .dom-insight-title-start * {
+    color: #fff !important;
+  }
+</style>
 </head>
 <body class="home-matrix dom-matrix dom-site" data-dom-page="index">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -276,7 +284,7 @@
     <div class="grid grid-2 max-w-5xl">
       <div class="fade-left glass-card card-base card-hover">
         <div class="media-box aspect-wide" style="border-radius:12px;">
-          <img src="assets/images/crowd-phones.jpg" alt="Люди в телефонах" data-i18n-alt="home.v2.attr.0f41a28843" loading="lazy" />
+          <img src="assets/images/crowd-phones.jpg" srcset="assets/images/crowd-phones-480.webp 480w, assets/images/crowd-phones-800.webp 800w, assets/images/crowd-phones.jpg 1440w" sizes="(max-width: 620px) calc(100vw - 48px), (max-width: 1024px) 46vw, 460px" decoding="async" alt="Люди в телефонах" data-i18n-alt="home.v2.attr.0f41a28843" loading="lazy" />
         </div>
         <div class="card-row">
           <div class="icon-box glass-icon">
@@ -299,7 +307,7 @@
 
       <div class="fade-right glass-card card-base card-hover delay-1">
         <div class="media-box aspect-wide" style="border-radius:12px;">
-          <img src="assets/images/world-map.jpg" alt="Глобальные миграции" data-i18n-alt="home.v2.attr.7c60372904" loading="lazy" />
+          <img src="assets/images/world-map.jpg" srcset="assets/images/world-map-480.webp 480w, assets/images/world-map-800.webp 800w, assets/images/world-map.jpg 864w" sizes="(max-width: 620px) calc(100vw - 48px), (max-width: 1024px) 46vw, 460px" decoding="async" alt="Глобальные миграции" data-i18n-alt="home.v2.attr.7c60372904" loading="lazy" />
         </div>
         <div class="card-row">
           <div class="icon-box glass-icon">

@@ -72,13 +72,22 @@ async function directory(monad) {
     monad.mcpCall('get_architecture', {})
   ]);
   const arch = architecture?.architecture || architecture || {};
+  const locations = new Map();
+  for (const level of Array.isArray(arch.vertical) ? arch.vertical : []) {
+    for (const cell of level.cells || []) {
+      for (const agent of cell.agents || []) {
+        if (agent.agent_id && agent.cell) locations.set(agent.agent_id, agent.cell);
+      }
+    }
+  }
   const personas = new Set((arch.people || []).map(person => person.entry_persona));
   const contours = new Map((arch.horizontal?.contours || []).map(contour => [contour.persona, contour]));
   return arr(raw).map(agent => {
     const contour = contours.get(agent.agent_id);
     const kind = contour ? 'contour' : personas.has(agent.agent_id) ? 'persona' : 'agent';
     return { agent_id:agent.agent_id, name:contour?.label || agent.name,
-      orchestrator:contour?.persona || null, owner:agent.owner, status:agent.status,
+      orchestrator:contour?.persona || null, placement:locations.get(agent.agent_id) || null,
+      owner:agent.owner, status:agent.status,
       platform:agent.platform, version:agent.version, domains:agent.domains,
       kind, chat_capable:kind !== 'agent' || (agent.domains || []).includes('domunity') };
   });

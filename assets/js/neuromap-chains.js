@@ -51,6 +51,50 @@
     }
     return { nodes, links };
   }
-  if (typeof module !== 'undefined') module.exports = occurrenceGraph;
-  else root.nmOccurrenceGraph = occurrenceGraph;
+  function groupedGraph(graph, inRange) {
+    const occurrences = occurrenceGraph(graph, inRange);
+    const ids = new Map();
+    const nodes = new Map();
+    const links = new Map();
+    for (const node of occurrences.nodes) {
+      const id = String(node.concept_id || node.id);
+      ids.set(String(node.id), id);
+      let group = nodes.get(id);
+      if (!group) {
+        group = {
+          ...node, id, concept_id: id, session_id: undefined, position: undefined,
+          count: 0
+        };
+        nodes.set(id, group);
+      }
+      group.count += node.concept_id ? 1 : (node.count || 1);
+      if (node.last_seen_at > group.last_seen_at) group.last_seen_at = node.last_seen_at;
+      if (node.created_at < group.created_at) group.created_at = node.created_at;
+    }
+    for (const edge of occurrences.links) {
+      const source = ids.get(String(edge.source));
+      const target = ids.get(String(edge.target));
+      if (!source || !target || source === target) continue;
+      const correlation = edge.kind === 'correlation';
+      const key = JSON.stringify([source, target, correlation]);
+      let group = links.get(key);
+      if (!group) {
+        group = { ...edge, source, target, count: 0, chain_ids: new Set() };
+        links.set(key, group);
+      }
+      group.count += edge.count || 1;
+      for (const chain of edge.chain_ids || []) group.chain_ids.add(chain);
+    }
+    return {
+      nodes: [...nodes.values()],
+      links: [...links.values()].map(edge => ({ ...edge, chain_ids: [...edge.chain_ids] }))
+    };
+  }
+  if (typeof module !== 'undefined') {
+    module.exports = occurrenceGraph;
+    module.exports.groupedGraph = groupedGraph;
+  } else {
+    root.nmOccurrenceGraph = occurrenceGraph;
+    root.nmGroupedGraph = groupedGraph;
+  }
 })(typeof window === 'undefined' ? null : window);
