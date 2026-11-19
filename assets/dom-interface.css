@@ -14,12 +14,22 @@ body .navbar .dom-brand-group .nav-logo-dom .nav-logo-icon {
   from {transform:scale(1);filter:drop-shadow(0 0 3px rgba(89,207,131,.35)) drop-shadow(0 0 7px rgba(89,207,131,.14))}
   to {transform:scale(1.025);filter:drop-shadow(0 0 7px rgba(124,239,164,.8)) drop-shadow(0 0 14px rgba(89,207,131,.45))}
 }
-html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name {
-  color: #142434;
-}
-html[data-dom-theme="light"] body .navbar .nav-logo-dom .text-gradient-cyan {
-  color: #204c8e !important;
+html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name,
+html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name .text-gradient-cyan {
+  background: none !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  filter: none !important;
   -webkit-text-fill-color: currentColor !important;
+}
+html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name {
+  color: #142434 !important;
+}
+html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name .text-gradient-cyan {
+  color: #204c8e !important;
+}
+html[data-dom-theme="light"] body .navbar .dom-brand-group .nav-logo-dom .nav-logo-icon {
+  filter: grayscale(1) brightness(0) invert(27%) sepia(48%) saturate(1668%) hue-rotate(181deg) brightness(89%) contrast(85%) !important;
 }
 @media(max-width:768px) {
   body .navbar .dom-brand-group .nav-logo-dom .dom-brand-name {font-size:17px}

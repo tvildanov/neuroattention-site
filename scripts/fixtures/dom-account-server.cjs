@@ -68,5 +68,14 @@ async function ddl(name) {
  for(const [email,role,human] of [['qa-owner-a@example.invalid','superadmin','nikita'],['qa-owner-b@example.invalid','superadmin','takhir'],['qa-user@example.invalid','user',null],['qa-admin@example.invalid','admin',null]]){
    await db.query('INSERT INTO users(email,password_hash,display_name,role,monad_human_id,monad_access) VALUES ($1,$2,$3,$4,$5,$6)',[email,password,email.split('@')[0],role,human,!!human]);
  }
+ // Historical production shape: the journey survived but no nm_chains row was saved.
+ for (const [type,label] of [['event','Old event'],['emotion','Old emotion']]) {
+   await db.query(`WITH n AS (
+     INSERT INTO nm_nodes(user_id,type,label,normalized_label,valence)
+     SELECT id,$1,$2,lower($2),'neutral' FROM users WHERE email='qa-admin@example.invalid'
+     RETURNING id,user_id)
+     INSERT INTO journey_events(user_id,kind,layer,session_id,payload)
+     SELECT user_id,'neuromap_node','emotion','fixture-old-recording',jsonb_build_object('nm_node_id',id,'source','neuromap') FROM n`,[type,label]);
+ }
  console.log('ACCOUNT_FIXTURE_READY');
 })().catch(err=>{console.error(err);process.exit(1)});

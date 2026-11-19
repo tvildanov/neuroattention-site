@@ -2427,3 +2427,9 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced center evacuation, competing node interaction handlers and graph replacement during inspection"],"changed":["Local collision and recording anchors","Single and double tap handling in 2D and 3D","Visible focus reset and recording-backed node cards"],"files":["account.html","sw.js","scripts/test-dom-cabinet-v07.cjs"],"decisions":["Preserve recording occurrences in the repeats filter and derive membership from the same snapshot as the graph"],"followups":["Verify the browser regression scenarios and Pages publication"],"next_session":"Compare the published layout against personal records."}
 ```
+
+## 2026-11-19 — Recover recorded NeuroMap paths and align the daylight header
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced actual diary, sensation and emotion writes and the legacy graph fallback"],"changed":["Recover missing membership from ordered personal journey events","Keep archival facts separate and bind recorded body locations to the felt sensations","Unify light navigation wordmark across homepage, method and cabinet"],"files":["api/server.js","account.html","assets/js/neuromap-chains.js","assets/dom-interface.css","scripts/test-dom-account-api.cjs","scripts/test-dom-cabinet-v07.cjs","scripts/fixtures/dom-account-server.cjs","index.html","method.html","sw.js"],"decisions":["Preserve existing records and distinguish archived information with unknown recording order"],"followups":["Check Railway revision and Pages deployment"],"next_session":"Verify the release against the owner's historical recordings if available."}
+```

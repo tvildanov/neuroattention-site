@@ -682,7 +682,7 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
 <script src="assets/js/dom-theme.js?v=dom-nav-chains-1" defer></script>
-<link rel="stylesheet" href="assets/dom-interface.css?v=1">
+<link rel="stylesheet" href="assets/dom-interface.css?v=2">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
 <style>
   #rpg-avatar-wrap { clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%); }
@@ -720,6 +720,7 @@ a.dash-tab:hover { text-decoration:none; }
     stroke:#faf5e9 !important; stroke-width:1.8px !important; paint-order:stroke fill;
   }
 </style>
+<script src="assets/js/neuromap-chains.js?v=recordings-4"></script>
 </head>
 <body class="dom-account-matrix dom-site" data-dom-page="account">
 <div class="deep-atmosphere" aria-hidden="true"></div>
@@ -9169,20 +9170,20 @@ function nmSaveSurvey(){
   // BUG-20: keep parallel images (past/future) as forks off ONE emotion node —
   // do not re-emit the emotion for every cartesian row (Path dedupe then stuck the
   // second image at the chain end).
-  var _emoSeen={};
-  chains.forEach(function(c){
-    var emValence=c.emotion?(isNegEmotion(c.emotion)?'negative':'positive'):'neutral';
-    if(c.emotion && !_emoSeen[c.emotion]){
-      _emoSeen[c.emotion]=1;
-      v2Chain.push({type:'emotion',label:c.emotion,valence:emValence,metadata:{emoji:EMOJI_EMOTIONS[c.emotion]||''}});
-    }
-    // PR#104 (#2): area from the emotion walkthrough = a LIFE SPHERE (семья/работа/…),
-    // tag area_kind:'sphere' so it lands in layer 3 ("Образы"), not layer 1 sensations.
-    if(c.area) v2Chain.push({type:'area',label:c.area,valence:_uaVal(c.area,'neutral'),metadata:_uaMeta(c.area,{emoji:EMOJI_AREAS[c.area]||'',area_kind:'sphere',parallel_fork:true})});
-    if(c.cause) v2Chain.push({type:'cause',label:c.cause,valence:_uaVal(c.cause,emValence),metadata:_uaMeta(c.cause,{})});
-    if(c.thought){
-      var thNeg=NM_THOUGHTS.indexOf(c.thought)<15;
-      v2Chain.push({type:'thought',label:c.thought,valence:_uaVal(c.thought,thNeg?'negative':'positive'),metadata:_uaMeta(c.thought,{emoji:EMOJI_THOUGHTS[c.thought]||''})});
+  nmSurveyState.emotions.forEach(function(emotion,index){
+    if(!emotion)return;
+    const steps=nmSurveyState.emotionChains[index]||{};
+    const polarity=isNegEmotion(emotion)?'negative':'positive';
+    v2Chain.push({type:'emotion',label:emotion,valence:polarity,metadata:{emoji:EMOJI_EMOTIONS[emotion]||''}});
+    for(const [field,type] of [['areas','area'],['causes','cause'],['thoughts','thought']]){
+      for(let label of steps[field]||[]){
+        if(label==='другое')label=(type==='area'?steps.customArea:steps.customCause)||label;
+        if(!label)continue;
+        const meta=type==='area'?{area_kind:'sphere',parallel_fork:true,emoji:EMOJI_AREAS[label]||''}:
+          type==='thought'?{emoji:EMOJI_THOUGHTS[label]||''}:{};
+        const val=type==='area'?'neutral':type==='cause'?polarity:NM_THOUGHTS.indexOf(label)<15?'negative':'positive';
+        v2Chain.push({type,label,valence:_uaVal(label,val),metadata:_uaMeta(label,meta)});
+      }
     }
   });
   if(v2Chain.length) nmAppendV2(v2Chain);
@@ -9380,6 +9381,16 @@ async function nmLoadV2Graph(){
 // PR#129 (Bug B): optional occurredAt (ISO) backdates the whole chain — the server
 // applies it to every node's journey_event AND the chain's started_at, so a diary
 // event logged for a past date lands its whole branch on that date on the Path.
+const nmPendingWrites=new Map();
+function nmWriteInOrder(session,submit){
+  if(!session)return submit();
+  const previous=nmPendingWrites.get(session);
+  const pending=previous?previous.then(submit):submit();
+  nmPendingWrites.set(session,pending);
+  const release=()=>{if(nmPendingWrites.get(session)===pending)nmPendingWrites.delete(session);};
+  pending.then(release,release);
+  return pending;
+}
 function nmAppendV2(chainItems, occurredAt, sessionId=nmSessionId){
   var token=naGetToken();
   if(!token) return;
@@ -9392,7 +9403,7 @@ function nmAppendV2(chainItems, occurredAt, sessionId=nmSessionId){
   // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
   var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
   if (_depTargeted) _nmBody.dependent_id = nmTargetDep.id;
-  return fetch(base+'/api/neuromap/v2/append',{
+  return nmWriteInOrder(sessionId,()=>fetch(base+'/api/neuromap/v2/append',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify(_nmBody)
@@ -9404,7 +9415,7 @@ function nmAppendV2(chainItems, occurredAt, sessionId=nmSessionId){
     if(!_depTargeted) nmLoadV2Graph();
     document.dispatchEvent(new CustomEvent('neuromap:save',{detail:{ok:true}}));
     return json;
-  }).catch(function(err){
+  })).catch(function(err){
     console.warn('[NM] v2/append FAILED:',err);
     document.dispatchEvent(new CustomEvent('neuromap:save',{detail:{ok:false}}));
     return null;
@@ -10804,7 +10815,8 @@ function nmRenderChainList(){
   var html='';
   nmNiChains.forEach(function(c){
     var preview=(c.nodes||[]).map(function(x){ return _nmEscHtml(nmTranslate(x.label)); }).join(' → ');
-    var srcTag=c.source?('<span style="opacity:0.55;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">'+_nmEscHtml(c.source)+'</span>'):'';
+    var archiveText=c.archive_kind==='pair'?({en:'Archived body–sensation link',es:'Vínculo corporal archivado'})[document.documentElement.lang]||'Архивная связь места и ощущения':c.archive_kind==='item'?({en:'Earlier steps unknown',es:'Pasos anteriores desconocidos'})[document.documentElement.lang]||'Порядок шагов не сохранился':'';
+    var srcTag=archiveText?('<span class="nm-archive-note">'+archiveText+'</span>'):c.source?('<span style="opacity:0.55;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">'+_nmEscHtml(c.source)+'</span>'):'';
     html+='<div id="nm-ch-row-'+c.id+'" onclick="nmOpenChainMini(\''+c.id+'\')" onmouseenter="nmHoverChain(\''+c.id+'\')" onmouseleave="nmHoverChain(null)" style="cursor:pointer;padding:0.45rem 0.6rem;border:1px solid rgba(255,255,255,0.06);border-radius:9px;background:rgba(255,255,255,0.02);font-size:12px;line-height:1.45;display:flex;gap:0.55rem;align-items:baseline;transition:background 0.12s,border-color 0.12s;">'+
       '<span style="color:var(--accent-cyan,#5cc8ff);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600;">'+_nmEscHtml(nmFmtChainTime(c.started_at))+'</span>'+
       '<span style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;flex:1;">'+preview+'</span>'+srcTag+'</div>';
@@ -11097,7 +11109,7 @@ function buildNmGraph(){
   // Build node/link data — prefer v2 graph (server-deduplicated) if available
   var nodeMap={};
   var linkMap={};
-  var sourceGraph=hasV2?nmV2Graph:nmLegacyRecordings(entries);
+  var sourceGraph=hasV2?nmWithArchive(nmV2Graph, nmLegacyRecordings(entries)):nmLegacyRecordings(entries);
   var inRange=hasV2?nmTsInRange:()=>true; // cached diary entries were filtered by their recorded day
   var visibleChains=(sourceGraph.chains||[]).filter(chain=>inRange(Date.parse(chain.started_at)));
   if(window.__nmDeepLink?.session){
@@ -13336,16 +13348,17 @@ function submitSensationMap(onSaved){
   });
   document.getElementById('sm-status').style.color = 'var(--text-muted)';
   document.getElementById('sm-status').textContent = '...';
-  fetch(AUTH_API + '/api/neuromap/sensation', {
+  const session=nmSessionId, dependent=nmTargetDep?.id;
+  nmWriteInOrder(session,()=>fetch(AUTH_API + '/api/neuromap/sensation', {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ sensations: sensSel, body_locations: locSel, comment: comment,
                            intensity: intensity, occurred_at: occurredAt, link_to: linkTo,
                            custom_context: customContext, loc_labels: locLabels,
-                           session_id: (nmSessionId || undefined),
-                           dependent_id: (nmTargetDep ? nmTargetDep.id : undefined) })
+                           session_id: (session || undefined),
+                           dependent_id: dependent })
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){ return r.json().then(d=>{if(!r.ok||!d.ok)throw Error(d.message||d.error||r.status);return d;}); }))
   .then(function(d){
     if (d && d.ok) {
       document.getElementById('sm-status').style.color = '#0e9';
@@ -18974,7 +18987,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/neuromap-chains.js?v=recordings-3"></script>
+
 <script src="assets/js/evolution-path.js?v=graph-shapes-1"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
