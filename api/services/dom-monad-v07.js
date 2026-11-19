@@ -67,29 +67,28 @@ async function recordRoomMessage({sql,roomId,messageId,body}){
   }
 }
 async function directory(monad) {
-  const [raw, architecture] = await Promise.all([
+  const [raw,architecture,placements] = await Promise.all([
     monad.mcpCall('list_agents', {}),
-    monad.mcpCall('get_architecture', {})
+    monad.mcpCall('get_architecture', {}).catch(()=>null),
+    monad.loadPlacements().catch(()=>({}))
   ]);
-  const arch = architecture?.architecture || architecture || {};
-  const locations = new Map();
-  for (const level of Array.isArray(arch.vertical) ? arch.vertical : []) {
-    for (const cell of level.cells || []) {
-      for (const agent of cell.agents || []) {
-        if (agent.agent_id && agent.cell) locations.set(agent.agent_id, agent.cell);
-      }
-    }
-  }
-  const personas = new Set((arch.people || []).map(person => person.entry_persona));
-  const contours = new Map((arch.horizontal?.contours || []).map(contour => [contour.persona, contour]));
-  return arr(raw).map(agent => {
-    const contour = contours.get(agent.agent_id);
-    const kind = contour ? 'contour' : personas.has(agent.agent_id) ? 'persona' : 'agent';
-    return { agent_id:agent.agent_id, name:contour?.label || agent.name,
-      orchestrator:contour?.persona || null, placement:locations.get(agent.agent_id) || null,
-      owner:agent.owner, status:agent.status,
-      platform:agent.platform, version:agent.version, domains:agent.domains,
-      kind, chat_capable:kind !== 'agent' || (agent.domains || []).includes('domunity') };
+  const registry=arr(raw);
+  const arch=architecture?.architecture||architecture||{};
+  const canon=monad.applyCanonThroughlines(placements,registry);
+  const personas=new Set((arch.people||[]).map(person=>person.entry_persona));
+  const contours=new Map((arch.horizontal?.contours||[]).map(contour=>[contour.persona,contour]));
+  return registry.map(agent=>{
+    const id=agent.agent_id;
+    const contour=contours.get(id);
+    const place=monad.placementOf(id,canon);
+    const meta=monad.kindOfPlacement(place,canon);
+    const kind=meta.type==='human_persona'||personas.has(id)?'persona':
+      meta.type==='contour_persona'||contour&&!['project_persona','skill','agent'].includes(meta.type)?'contour':'agent';
+    const cells=monad.cellsOfPlacement(place);
+    return {agent_id:id,name:agent.name||contour?.label||id,aliases:[contour?.label,place?.name,meta.contour].filter(Boolean),
+      orchestrator:place?.parent||null,placement:cells[0]||null,cells,
+      owner:agent.owner,status:agent.status,platform:agent.platform,version:agent.version,domains:agent.domains,
+      chat_capable:kind!=='agent'||(agent.domains||[]).includes('domunity'),kind};
   });
 }
 function canInvite(agent, caller) {
@@ -115,7 +114,7 @@ function install(app,{requireAuth,sql,monadSvc}){
     await ready();const u=await identity(req,sql,monadSvc);
     if(!u)return res.status(401).json({error:'authentication_required'});
     const agents=await directory(monadSvc);
-    res.json({ok:true,can_edit_harness:u.founder,can_register:u.founder&&!!process.env.DOM_ACCOUNT_ADMIN_KEY,agents:agents.filter(a=>canInvite(a,u))});
+    res.json({ok:true,can_edit_harness:u.founder,can_register:u.founder&&!!process.env.DOM_ACCOUNT_ADMIN_KEY,agents:agents.filter(a=>u.admin||canInvite(a,u)).map(a=>({...a,can_invite:canInvite(a,u)}))});
   }));
   app.get('/api/dom-monad/admin/agent/:agentId/harness',requireAuth,go(async(req,res)=>{
     const u=await admin(req,res);if(!u)return;await ready();
@@ -230,14 +229,26 @@ function install(app,{requireAuth,sql,monadSvc}){
     const sources=await Promise.allSettled(['to_agent','from_agent'].map(async key=>{
       const url=monadSvc.MONAD_BASE+'/api/handoffs?hours='+(minutes/60)+'&limit=200&'+key+'='+encodeURIComponent(id);
       const result=await fetch(url,{headers,signal:AbortSignal.timeout(10000)});
-      if(!result.ok)throw Error('handoff_source_unavailable');
-      return (await result.json()).handoffs||[];
+      if(!result.ok)throw Error('handoff_source_'+result.status);
+      const data=await result.json();
+      if(!Array.isArray(data.handoffs))throw Error('handoff_source_response');
+      return data.handoffs;
     }));
-    const handoffs=[...new Map(sources.flatMap(source=>source.status==='fulfilled'?source.value:[])
+    const full=sources.every(source=>source.status==='fulfilled');
+    let inbox=null;
+    if(!full) {
+      inbox=await monadSvc.mcpCall('get_inbox',{agent_id:id,limit:200,mark_read:false,ack_handoffs:false})
+        .then(value=>Array.isArray(value)?value:null).catch(()=>null);
+    }
+    const cutoff=Date.now()-minutes*60000;
+    const fallback=(inbox||[]).filter(row=>row.kind==='handoff'&&row.agent_id===id&&row.item_id&&Date.parse(row.created_at)>=cutoff)
+      .map(row=>({handoff_id:row.item_id,to_agent:id,from_agent:row.from_agent,status:row.metadata?.status||row.message_type,created_at:row.created_at}));
+    const known=[...fallback,...sources.flatMap(source=>source.status==='fulfilled'?source.value:[])];
+    const handoffs=[...new Map(known
       .filter(h=>h.to_agent===id||h.from_agent===id).map(h=>[h.handoff_id,{
         handoff_id:h.handoff_id,status:h.status,from_agent:h.from_agent,to_agent:h.to_agent,
         created_at:h.created_at,completed_at:h.completed_at,
-        description:u.founder&&h.domain!=='domunity'?String(h.task_description||'').slice(0,240):undefined,domain:h.domain
+        description:u.founder&&h.domain&&h.domain!=='domunity'?String(h.task_description||'').slice(0,240):undefined,domain:h.domain
       }])).values()];
     const safeActions=log.items.map(a=>({action_type:a.action_type,created_at:a.created_at,
       success:a.success,duration_ms:a.duration_ms,agent_id:a.agent_id,target:a.target}));
@@ -246,7 +257,8 @@ function install(app,{requireAuth,sql,monadSvc}){
     const statuses=Object.create(null);
     for(const h of handoffs)statuses[h.status]=(statuses[h.status]||0)+1;
     res.json({ok:true,actions:safeActions,handoffs,statuses,last_event_at:last,
-      actions_available:log.ok,handoffs_available:sources.every(source=>source.status==='fulfilled'),
+      actions_available:log.ok,handoffs_available:full||inbox!==null||sources.some(source=>source.status==='fulfilled'),
+      handoffs_partial:!full,
       interactions:[...new Set(handoffs.map(h=>h.from_agent===id?h.to_agent:h.from_agent).filter(Boolean))]});
   }));
   app.get('/api/chat/rooms/:id/agents',requireAuth,go(async(req,res)=>{

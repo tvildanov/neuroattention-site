@@ -22,7 +22,7 @@
         }
         const id = chain.id + ':' + index;
         const node = { ...concept, id, concept_id: key, session_id: chain.session_id,
-          position: chain.positions?.[index] ?? index,
+          position: chain.positions?.[index] ?? index, chain_id: chain.id,
           last_seen_at: chain.started_at, created_at: chain.started_at };
         nodes.push(node);
         const occurrenceKey = JSON.stringify([chain.session_id, key]);
@@ -63,11 +63,12 @@
       if (!group) {
         group = {
           ...node, id, concept_id: id, session_id: undefined, position: undefined,
-          count: 0
+          count: 0, chain_ids: []
         };
         nodes.set(id, group);
       }
       group.count += node.concept_id ? 1 : (node.count || 1);
+      if (node.chain_id!=null && !group.chain_ids.includes(node.chain_id)) group.chain_ids.push(node.chain_id);
       if (node.last_seen_at > group.last_seen_at) group.last_seen_at = node.last_seen_at;
       if (node.created_at < group.created_at) group.created_at = node.created_at;
     }
@@ -90,11 +91,38 @@
       links: [...links.values()].map(edge => ({ ...edge, chain_ids: [...edge.chain_ids] }))
     };
   }
+  function branchPositions(chains,nodes,width,height) {
+    const positions=new Map();
+    const byId=new Map(nodes.map(node=>[String(node.id),node]));
+    const visible=chains.map(chain=>chain.node_ids.map(String).filter(id=>byId.has(id))).filter(ids=>ids.length);
+    const slot=Math.max(2,Math.ceil(Math.sqrt(visible.length)));
+    const stride=Math.min(116,width/Math.max(slot,4));
+    visible.forEach((ids,index)=>{
+      const known=ids.findIndex(id=>positions.has(id));
+      const origin=known<0 ? {x:width*(.2+.58*((index%slot+.5)/slot)),y:height*(.15+.7*((Math.floor(index/slot)+.5)/Math.ceil(visible.length/slot)))} : positions.get(ids[known]);
+      const angle=index*2.399963229728653;
+      ids.forEach((id,step)=>{
+        if(positions.has(id))return;
+        const d=(step-Math.max(0,known))*stride;
+        positions.set(id,{x:Math.max(45,Math.min(width-45,origin.x+Math.cos(angle)*d)),y:Math.max(45,Math.min(height-45,origin.y+Math.sin(angle)*d))});
+      });
+    });
+    return positions;
+  }
+  function dragBranch(node,nodes,preferred) {
+    const ids=node.chainIds||[];
+    const chain=ids.find(id=>String(id)===String(preferred)) ?? (ids.length===1?ids[0]:null);
+    return chain==null?[]:nodes.filter(other=>other!==node&&(other.chainIds||[]).length===1&&other.chainIds.includes(chain));
+  }
   if (typeof module !== 'undefined') {
     module.exports = occurrenceGraph;
     module.exports.groupedGraph = groupedGraph;
+    module.exports.branchPositions = branchPositions;
+    module.exports.dragBranch = dragBranch;
   } else {
     root.nmOccurrenceGraph = occurrenceGraph;
     root.nmGroupedGraph = groupedGraph;
+    root.nmBranchPositions = branchPositions;
+    root.nmDragBranch = dragBranch;
   }
 })(typeof window === 'undefined' ? null : window);

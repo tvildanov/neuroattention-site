@@ -10038,7 +10038,9 @@ app.get('/api/dm/threads', requireAuth, async (req, res) => {
       SELECT t.*,
         ua.display_name AS user_a_name, ub.display_name AS user_b_name,
         settings.folder_id, COALESCE(settings.hidden,false) AS hidden,
-        (SELECT body FROM dm_messages WHERE thread_id = t.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) AS last_body,
+        (SELECT body FROM dm_messages m WHERE thread_id = t.id AND deleted_at IS NULL
+          AND NOT EXISTS(SELECT 1 FROM dom_hidden_messages h WHERE h.user_id=${me} AND h.kind='dm'
+            AND h.conversation_id=t.id AND h.message_id=m.id::text) ORDER BY created_at DESC LIMIT 1) AS last_body,
         (SELECT COUNT(*) FROM dm_messages WHERE thread_id = t.id AND sender_id <> ${me} AND read_at IS NULL AND deleted_at IS NULL) AS unread
       FROM dm_threads t
       JOIN users ua ON ua.id = t.user_a
@@ -10089,12 +10091,14 @@ app.get('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
     const [t] = await sql`SELECT * FROM dm_threads WHERE id = ${tid} AND (user_a = ${me} OR user_b = ${me})`;
     if (!t) return res.status(404).json({ error: 'Thread not found or no access' });
     const msgs = await sql`SELECT id,thread_id,sender_id,body,attachments,read_at,created_at,edited_at
-      FROM dm_messages WHERE thread_id = ${tid} AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 200`;
+      FROM dm_messages m WHERE thread_id = ${tid} AND deleted_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM dom_hidden_messages h WHERE h.user_id=${me} AND h.kind='dm'
+          AND h.conversation_id=${tid} AND h.message_id=m.id::text) ORDER BY created_at DESC, id DESC LIMIT 200`;
     // Mark incoming as read
     await sql`UPDATE dm_messages SET read_at = now() WHERE thread_id = ${tid} AND sender_id <> ${me} AND read_at IS NULL`;
     const [room]=await sql`SELECT id FROM chat_rooms WHERE dm_thread_id=${tid}`;
     const agentReplies=room?await domMonadV07.roomReplies({sql,roomId:room.id}).catch(()=>[]):[];
-    res.json({thread:t,agent_room_id:room?.id||null,messages:msgs.concat(agentReplies).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).slice(-200)});
+    res.json({thread:t,agent_room_id:room?.id||null,messages:msgs.concat(await domChatControls.hidePersonalMessages(sql,me,'dm',tid,agentReplies)).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).slice(-200)});
   } catch (err) { console.error('GET dm messages:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -10115,7 +10119,7 @@ app.post('/api/dm/threads/:id/messages', requireAuth, async (req, res) => {
       RETURNING id,thread_id,sender_id,body,attachments,read_at,created_at,edited_at`;
     await sql`UPDATE dm_threads SET last_message_at = now() WHERE id = ${tid}`;
     // Only explicit mentions typed after the invitation enter the agent transport.
-    if(/(?:^|\s)@[a-z0-9_]+/i.test(String(body))){
+    if(req.body?.forwarded!==true && /(?:^|\s)@[a-z0-9_]+/i.test(String(body))){
       try{
         const [room]=await sql`SELECT id FROM chat_rooms WHERE dm_thread_id=${tid}`;
         if(room){
@@ -10366,7 +10370,9 @@ app.get('/api/chat/rooms', requireAuth, async (req, res) => {
     const rows = await sql`
       SELECT r.*, settings.folder_id, COALESCE(settings.hidden,false) AS hidden,
              (SELECT COUNT(*) FROM chat_room_members WHERE room_id = r.id) AS member_count,
-             (SELECT body FROM chat_room_messages WHERE room_id = r.id AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1) AS last_body
+             (SELECT body FROM chat_room_messages m WHERE room_id = r.id AND deleted_at IS NULL
+               AND NOT EXISTS(SELECT 1 FROM dom_hidden_messages h WHERE h.user_id=${me} AND h.kind='group'
+                 AND h.conversation_id=r.id AND h.message_id=m.id::text) ORDER BY created_at DESC LIMIT 1) AS last_body
       FROM chat_rooms r
       LEFT JOIN dom_conversation_settings settings ON settings.kind='group' AND settings.conversation_id=r.id AND settings.user_id=${me}
       WHERE r.dm_thread_id IS NULL AND
@@ -10412,9 +10418,11 @@ app.get('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
     const rows = await sql`SELECT m.id,m.room_id,m.sender_id,m.body,m.attachments,m.is_announcement,m.created_at,m.edited_at,
                            u.display_name AS sender_name FROM chat_room_messages m
                            LEFT JOIN users u ON u.id = m.sender_id
-                           WHERE m.room_id = ${rid} AND m.deleted_at IS NULL ORDER BY m.created_at DESC, m.id DESC LIMIT 300`;
+                           WHERE m.room_id = ${rid} AND m.deleted_at IS NULL
+                             AND NOT EXISTS (SELECT 1 FROM dom_hidden_messages h WHERE h.user_id=${me} AND h.kind='group'
+                               AND h.conversation_id=${rid} AND h.message_id=m.id::text) ORDER BY m.created_at DESC, m.id DESC LIMIT 300`;
     const aiReplies = await domMonadV07.roomReplies({sql,roomId:rid}).catch(err=>{console.warn('[room-agent-replies]',err.message);return []});
-    res.json({ messages: rows.concat(aiReplies).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,300).reverse() });
+    res.json({ messages: rows.concat(await domChatControls.hidePersonalMessages(sql,me,'group',rid,aiReplies)).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,300).reverse() });
   } catch (err) { console.error('GET room messages:', err); res.status(500).json({ error: err.message }); }
 });
 
@@ -10448,7 +10456,7 @@ app.post('/api/chat/rooms/:id/messages', requireAuth, async (req, res) => {
       VALUES (${rid},${me},${body},${ann},${JSON.stringify(attachments)}::jsonb,${attachment?.base64||null})
       RETURNING id,room_id,sender_id,body,is_announcement,attachments,created_at,edited_at`;
     // One delivery record per opted-in agent; canonical room message is persisted first.
-    await domMonadV07.recordRoomMessage({sql,roomId:rid,messageId:row.id,body:String(body)}).catch(err=>console.warn('[room-agent-record]',err.message));
+    if(req.body?.forwarded!==true)await domMonadV07.recordRoomMessage({sql,roomId:rid,messageId:row.id,body:String(body)}).catch(err=>console.warn('[room-agent-record]',err.message));
     res.status(201).json({ message: row });
   } catch (err) { console.error('POST room message:', err); res.status(500).json({ error: err.message }); }
 });

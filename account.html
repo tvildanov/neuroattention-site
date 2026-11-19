@@ -681,17 +681,28 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=dom-review-2" defer></script>
+<script src="assets/js/dom-theme.js?v=dom-review-3" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=1">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
 <style>
-  #rpg-avatar-img { border-radius:0 !important; clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%); }
+  #rpg-avatar-wrap { clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%); }
+  #rpg-avatar-wrap,#rpg-avatar-img,#rpg-avatar-hover { border-radius:0!important; border:0!important; box-shadow:none!important; outline:0!important; }
+  #nm-chain-filter { max-width:min(250px,52vw);color:var(--text-primary);background:var(--bg-secondary,#243743);border:1px solid var(--line-soft,#536777);border-radius:6px; }
+  html[data-dom-theme="light"] #nm-chain-filter { background:#faf7ef;color:#172d47; }
   .monad-inspect-button { margin:0.65rem 0; }
   .dom-chat-controls, .dom-chat-list-item { display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center; }
   .dom-chat-list-item { margin-block:0.3rem;padding:.4rem;border:1px solid var(--line-soft,#586d85);border-radius:.65rem; }
   .dom-chat-controls .btn, .dom-chat-list-item .btn { font-size:.8rem; }
   .dom-chat-controls select, .dom-chat-list-item select { max-width:100%; min-height:2rem; }
-  .dom-chat-list-item small { flex-basis:100%;overflow-wrap:anywhere; }
+  .dom-chat-list-item { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px;padding:2px 4px;margin-block:2px; }
+  .dom-chat-list-item .dom-chat-open { min-width:0;display:grid;text-align:left;line-height:1.28;padding:4px 6px; }
+  .dom-chat-open small { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted); }
+  .dom-chat-list-item .dom-chat-more { padding:3px 8px;line-height:1; }
+  .dom-chat-menu { position:fixed;z-index:9500;display:grid;gap:3px;min-width:160px;max-width:min(280px,calc(100vw - 16px));max-height:60vh;overflow:auto;padding:6px;border:1px solid var(--line-soft,#586d85);border-radius:9px;background:#132722;color:#edf9f3;box-shadow:0 8px 28px #0005; }
+  .dom-chat-menu .btn { text-align:left;color:inherit!important; }
+  .dom-chat-message-target { cursor:pointer; }
+  html[data-dom-theme="light"] :is(.dom-chat-menu,.dom-agent-panel) { background:#faf7ef!important;color:#172d47!important;border-color:#b9c6d5!important; }
+  html[data-dom-theme="light"] .dom-agent-panel :is(button,input,select,textarea,option,h2,h3,p,small,li,label) { color:#172d47!important;background-color:#faf7ef!important; }
   html[data-dom-theme="light"] :where(#dom-dm-input,#dom-group-input,.dom-group-message,.dom-chat-list-item) {
     color:#172d47!important; background:#f8f5ee!important;border-color:#b9c6d5!important;
   }
@@ -7773,6 +7784,32 @@ window.nmCoOccurInView = nmCoOccurInView;
 var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
+var nmChainFilterId = '';
+function nmChainOptions(chains){
+  var select=document.getElementById('nm-chain-filter');
+  if(!select){
+    var toolbar=document.getElementById('nm-3d-toggle')?.parentElement;
+    if (!toolbar) return;
+    select=document.createElement('select');select.id='nm-chain-filter';
+    select.addEventListener('change',function(){
+      nmChainFilterId=select.value;
+      nmPrevPositions={};
+      buildNmGraph();
+    });
+    toolbar.append(select);
+  }
+  var label=_pr95t('a.tools.nm_chain_select','Цепочки');
+  select.setAttribute('aria-label',label);
+  select.replaceChildren(new Option(_pr95t('a.tools.nm_all_chains','Все цепочки'), ''));
+  var labels=new Map((nmV2Graph?.nodes||[]).map(function(node){return [String(node.id),nmTranslate(node.label)];}));
+  chains.forEach(function(chain){
+    var title=chain.node_ids.slice(0,3).map(function(id){return labels.get(String(id));}).filter(Boolean).join(' → ');
+    select.add(new Option(new Date(chain.started_at).toLocaleString()+' · '+title,String(chain.id)));
+  });
+  select.value=nmChainFilterId;
+  if(!select.value)nmChainFilterId='';
+  select.hidden=!chains.length;
+}
 var nmLabelsAlways = (function(){ try{ return localStorage.getItem('nm_labels_always')==='true'; }catch(e){ return true; } })();
 var nmLabelsMode = (function(){ try{ var v=localStorage.getItem('nm_labels_mode'); return (v==='all'||v==='top'||v==='off') ? v : 'top'; }catch(e){ return 'top'; } })();
 // top-N persistent labels: always show sprites for top nodes by count
@@ -7900,10 +7937,11 @@ function nmThreeRadius(node){
 function nmThreeLinkConfig(graph){
   graph.linkVisibility(function(link){return !link.bodyBond;});
   graph.linkDirectionalArrowLength(function(link){return link.bodyBond?0:5;});
-  graph.d3Force('charge').strength(-70);
+  graph.d3Force('charge').strength(-28);
+  graph.d3Force('center',null);
   graph.d3Force('link')
     .distance(function(link){return link.bodyBond?nmThreeRadius(link.source)+nmThreeRadius(link.target)-2:60;})
-    .strength(function(link){return link.bodyBond ? .95 : .55;});
+    .strength(function(link){return link.kind==='correlation' ? 0 : (link.bodyBond ? .85 : .42);});
 }
 function nmThreeNode(node,label){
   if(!THREE)return false;
@@ -9604,7 +9642,7 @@ function nmToggleFullscreen(){
     if(fsCur) fsCur.style.display='none';
     if(nmFsAnimFrame){ cancelAnimationFrame(nmFsAnimFrame); nmFsAnimFrame=null; }
     // Clean up FS 3D if active
-    if(nmFs3DGraph){ nmFs3DGraph._destructor && nmFs3DGraph._destructor(); nmFs3DGraph=null; }
+    nmFs3DGraph=nmDisposeGraph(nmFs3DGraph);
     var fs3d = document.getElementById('nm-fs-3d-container');
     if(fs3d){ fs3d.style.display='none'; fs3d.innerHTML=''; }
     // Close fullscreen drill-down
@@ -9913,6 +9951,7 @@ function nmFsInitEvents(){
     if(!fsDragNode) return;
     ev.preventDefault();
     var pt=getFsXY(ev);
+    nmMove2DBranch(fsDragNode,pt.x,pt.y);
     fsDragNode.fx=pt.x; fsDragNode.fy=pt.y;
     fsDragNode.x=pt.x; fsDragNode.y=pt.y;
     fsDragNode.vx=0; fsDragNode.vy=0;
@@ -9986,6 +10025,7 @@ function nmFsInitEvents(){
     var scaleX=(rect.width*dpr)/(normCanvas.width||1);
     var scaleY=(rect.height*dpr)/(normCanvas.height||1);
     var pt={x:(touch.clientX-rect.left)*dpr/scaleX, y:(touch.clientY-rect.top)*dpr/scaleY};
+    nmMove2DBranch(fsDragNode,pt.x,pt.y);
     fsDragNode.fx=pt.x; fsDragNode.fy=pt.y;
     fsDragNode.x=pt.x; fsDragNode.y=pt.y;
     fsDragNode.vx=0; fsDragNode.vy=0;
@@ -10225,10 +10265,34 @@ function nm3DError(fullscreen){
 }
 function nmDisposeGraph(graph){
   if (!graph) return null;
-  var renderer = graph.renderer?.();
-  graph._destructor?.();
-  renderer?.forceContextLoss?.();
+  try { graph.pauseAnimation?.(); graph._destructor?.(); }
+  catch(error){ console.warn('NeuroMap 3D cleanup',error.message); }
   return null;
+}
+function nmWatch3D(graph,fullscreen){
+  graph.renderer?.()?.domElement?.addEventListener('webglcontextlost',function(){
+    if((fullscreen?nmFs3DGraph:nm3DGraph)===graph)nm3DError(fullscreen);
+  },{once:true});
+  graph.onNodeDrag(function(node,delta){
+    var peers=window.nmDragBranch?.(node,graph.graphData().nodes,nmChainFilterId)||[];
+    peers.forEach(function(peer){
+      peer.fx=(peer.fx??peer.x)+delta.x;
+      peer.fy=(peer.fy??peer.y)+delta.y;
+      peer.fz=(peer.fz??peer.z)+delta.z;
+    });
+  }).onNodeDragEnd(function(node){
+    (window.nmDragBranch?.(node,graph.graphData().nodes,nmChainFilterId)||[]).forEach(function(peer){
+      delete peer.fx;delete peer.fy;delete peer.fz;
+    });
+  });
+}
+function nmMove2DBranch(node,x,y){
+  var dx=x-node.x,dy=y-node.y;
+  (window.nmDragBranch?.(node,nmNodes,nmChainFilterId)||[]).forEach(function(peer){
+    peer.x+=dx;peer.y+=dy;peer.vx=0;peer.vy=0;
+    if(peer.fx!==undefined){peer.fx=peer.x;peer.fy=peer.y;}
+    nmPrevPositions[peer.id]={x:peer.x,y:peer.y};
+  });
 }
 function nmStart3D(fullscreen,container){
   if(!nm3DMode || (fullscreen && (!nmFullscreen || !container?.isConnected))) return;
@@ -10319,7 +10383,7 @@ function nmBuildFs3DGraph(container){
     var hex = '#8899aa';
     if(match) hex = '#' + ((1<<24)+(parseInt(match[1])<<16)+(parseInt(match[2])<<8)+parseInt(match[3])).toString(16).slice(1);
     var r = nmNodeR(n);
-    gNodes.push({ id: n.id, label: n.label, color: hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, _origNode: n });
+    gNodes.push({ id: n.id, label: n.label, color: hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:0,_origNode: n });
   });
   nmLinks.forEach(function(l){
     if(nodeIdx[l.source]!==undefined && nodeIdx[l.target]!==undefined){
@@ -10327,36 +10391,17 @@ function nmBuildFs3DGraph(container){
       var tn = nmNodes[nodeIdx[l.target]];
       var ec = nmGetEdgeColor(sn, tn);
       var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
-      gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn), count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2)) });
+      gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn),kind:l.kind, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2)) });
     }
   });
-  if(!THREE)nmEnsureThree(function(){
-    if(THREE && nmFs3DGraph && document.getElementById('nm-fs-3d-container')===container)
-      nmFs3DGraph.nodeThreeObjectExtend(false).nodeThreeObject(nmFs3DGraph.nodeThreeObject());
-  });
-  var _fsTopNIds = nmGetTopNIds();
   nmFs3DGraph = ForceGraph3D()(container)
     .graphData({ nodes: gNodes, links: gLinks })
     .nodeLabel(function(n){ return nmTranslate(n.label) + (n._layer ? ' ('+nmTranslateLayer(n._layer)+')' : ''); })
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
-    .nodeThreeObjectExtend(!THREE)
-    .nodeThreeObject(function(node){
-      if(!THREE) return false;
-      // Persistent labels: show for top-N always, all when mode='all', none when mode='off'
-      var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _fsTopNIds[node.id]);
-      if(!show) return nmThreeNode(node);
-      var sprite = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: nmMake3DLabel(nmTranslate(node.label)),
-          transparent: true, depthWrite: false
-        })
-      );
-      sprite.scale.set(40, 10, 1);
-      sprite.position.set(0, -8, 0);
-      return nmThreeNode(node,sprite);
-    })
+    .nodeRelSize(4.5)
+    .nodeResolution(12)
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
@@ -10371,6 +10416,7 @@ function nmBuildFs3DGraph(container){
     })
     .showNavInfo(false);
   nmThreeLinkConfig(nmFs3DGraph);
+  nmWatch3D(nmFs3DGraph,true);
 }
 
 function nmToggleLabels(){
@@ -10566,7 +10612,7 @@ function nmBuild3DGraph(){
       type: n.type,
       valence: n.valence,
       _layer: n._layer,
-      _origNode: n
+      chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:0,_origNode: n
     });
   });
 
@@ -10579,7 +10625,7 @@ function nmBuild3DGraph(){
       gLinks.push({
         source: l.source,
         target: l.target,
-        bodyBond:nmBodyBond(sn,tn),
+        bodyBond:nmBodyBond(sn,tn),kind:l.kind,
         color: hex,
         width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2))
       });
@@ -10589,11 +10635,8 @@ function nmBuild3DGraph(){
   var wrap = document.getElementById('nm-graph-wrap');
   var W = wrap.clientWidth;
   var H = wrap.clientHeight;
+  if(W<10||H<10){ nm3DError(false);return; }
 
-  if(!THREE)nmEnsureThree(function(){
-    if(THREE && nm3DGraph && container.isConnected)nm3DGraph.nodeThreeObjectExtend(false).nodeThreeObject(nm3DGraph.nodeThreeObject());
-  });
-  var _miniTopNIds = nmGetTopNIds();
   nm3DGraph = ForceGraph3D()(container)
     .width(W)
     .height(H)
@@ -10603,21 +10646,8 @@ function nmBuild3DGraph(){
     .nodeColor(function(n){ return n.color; })
     .nodeVal(function(n){ return n.val; })
     .nodeOpacity(0.9)
-    .nodeThreeObjectExtend(!THREE)
-    .nodeThreeObject(function(node){
-      if(!THREE) return false;
-      var show = (nmLabelsMode==='all') || (nmLabelsMode==='top' && _miniTopNIds[node.id]);
-      if(!show) return nmThreeNode(node);
-      var sprite = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: nmMake3DLabel(nmTranslate(node.label)),
-          transparent: true, depthWrite: false
-        })
-      );
-      sprite.scale.set(40, 10, 1);
-      sprite.position.set(0, -8, 0);
-      return nmThreeNode(node,sprite);
-    })
+    .nodeRelSize(4.5)
+    .nodeResolution(12)
     .linkColor(function(l){ return l.color; })
     .linkWidth(function(l){ return l.width; })
     .linkOpacity(0.5)
@@ -10631,6 +10661,7 @@ function nmBuild3DGraph(){
     .showNavInfo(false);
 
   nmThreeLinkConfig(nm3DGraph);
+  nmWatch3D(nm3DGraph,false);
 }
 
 
@@ -11025,21 +11056,32 @@ function buildNmGraph(){
   // Build node/link data — prefer v2 graph (server-deduplicated) if available
   var nodeMap={};
   var linkMap={};
-
+  var visibleChains=(nmV2Graph?.chains||[]).filter(function(chain){return nmTsInRange(Date.parse(chain.started_at));});
+  if(window.__nmDeepLink?.session){
+    var linked=visibleChains.find(function(chain){return String(chain.session_id)===String(window.__nmDeepLink.session);});
+    if(linked)nmChainFilterId=String(linked.id);
+  }
+  nmChainOptions(visibleChains);
+  var focusedChains=nmChainFilterId?visibleChains.filter(function(chain){return String(chain.id)===nmChainFilterId;}):visibleChains;
   if(nmV2Graph && nmV2Graph.nodes.length>0){
     var now=Date.now();
     var occurrences=nmV2Graph.chains && nmV2Graph.chains.length && typeof window.nmOccurrenceGraph==='function';
     var graph=occurrences && typeof window.nmGroupedGraph==='function' ? window.nmGroupedGraph(nmV2Graph,nmTsInRange) : nmV2Graph;
+    var focusedIds=nmChainFilterId?new Set(focusedChains.flatMap(function(chain){return chain.node_ids.map(String);})):null;
+    var repeatedIds=new Set(graph.nodes.filter(function(node){return node.count>1;}).map(function(node){return String(node.id);}));
+    var repeatChains=new Set(visibleChains.filter(function(chain){return chain.node_ids.some(function(id){return repeatedIds.has(String(id));});}).map(function(chain){return String(chain.id);}));
     graph.nodes.forEach(function(n){
+      if(focusedIds&&!focusedIds.has(String(n.id)))return;
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
       if(!occurrences && !nmTsInRange(lastSeen)) return;
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      nodeMap[n.id]={id:n.id,dbId:n.concept_id||n.id,sessionId:n.session_id,position:n.position,type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      nodeMap[n.id]={id:n.id,dbId:n.concept_id||n.id,sessionId:n.session_id,position:n.position,chainIds:n.chain_ids||[],repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
     graph.links.forEach(function(l){
       var f=l.source, t=l.target;
+      if(nmChainFilterId&&!(l.chain_ids||[]).some(function(id){return String(id)===nmChainFilterId;}))return;
       if(!nodeMap[f]||!nodeMap[t]) return;   // an endpoint fell outside the date window
       var key=f+'||'+t;
       if(!linkMap[key]) linkMap[key]={source:f,target:t,count:l.count||1,kind:l.kind,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
@@ -11087,13 +11129,13 @@ function buildNmGraph(){
     // Check if this node's layer is active
     if(!nmActiveLayers[n._layer]) return;
     // Repeat filter (AND with layer filter)
-    if(nmRepeatFilter && n.count<2) return;
+    if(nmRepeatFilter && !nmChainFilterId && n.count<2 && !n.repeatContext) return;
     validIds[id]=true;
     nmNodes.push(n);
   });
   Object.keys(linkMap).forEach(function(k){
     var l=linkMap[k];
-    if(nmRepeatFilter && l.count<2) return;
+    if(nmRepeatFilter && !nmChainFilterId && l.count<2 && !l.chain_ids.length) return;
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
 
@@ -11145,7 +11187,9 @@ function buildNmGraph(){
     }
     if(allSame || px<5 || py<5) nmPrevPositions={};
   }
+  var branchSeeds=window.nmBranchPositions?.(focusedChains,nmNodes,canvas.width,canvas.height);
   nmNodes.forEach(function(n,i){
+    var seed=branchSeeds?.get(String(n.id));
     if(nmPrevPositions[n.id]){
       // Existing node — keep position, zero velocity
       n.x=Math.max(canvas.width*.13,Math.min(canvas.width*.87,nmPrevPositions[n.id].x));
@@ -11154,7 +11198,8 @@ function buildNmGraph(){
       n._fade=1;
     } else {
       // New node — place near a connected neighbor or in a ring
-      var placed=false;
+      var placed=!!seed;
+      if(seed){n.x=seed.x;n.y=seed.y;}
       nmLinks.forEach(function(l){
         if(placed) return;
         var neighborId=(l.source===n.id)?l.target:(l.target===n.id)?l.source:null;
@@ -11184,6 +11229,7 @@ function buildNmGraph(){
   // Run simulation with lower alpha if we have preserved positions
   var hasOld=Object.keys(nmPrevPositions).length>0;
   nmSimulate(canvas, hasOld ? 0.15 : 0.3);
+  if(nm3DMode)nmStart3D(nmFullscreen,nmFullscreen?document.getElementById('nm-fs-3d-container'):null);
 }
 
 // 5.3: NeuroMap deep-link — when opened via ?focus=&chain= (a new tab from the
@@ -11356,7 +11402,7 @@ function nmSimulate(canvas, initAlpha){
       var s=nmNodes[si],t=nmNodes[ti];
       // PR#102/#105: the CHOSEN anchor bond is positioned by the ring-slot force below,
       // not the generic spring — skip it so the two don't fight.
-      if(l._sticky) return;
+      if(l._sticky||l.kind==='correlation') return;
       var dx=t.x-s.x, dy=t.y-s.y;
       var d=Math.sqrt(dx*dx+dy*dy)+0.1;
       var f;
@@ -11655,6 +11701,7 @@ function nmSimulate(canvas, initAlpha){
     if(!dragNode) return;
     ev.preventDefault();
     var p=getCanvasXY(ev);
+    nmMove2DBranch(dragNode,p.x,p.y);
     dragNode.fx=p.x; dragNode.fy=p.y;
     dragNode.x=p.x; dragNode.y=p.y;
     dragNode.vx=0; dragNode.vy=0;
@@ -18011,7 +18058,7 @@ function domLoadGroups(){
       return;
     }
     window.DOMChatControls?.renderList(box,domGroups.rooms.map(function(room){
-      return {...room,label:room.name||'—',preview:String(room.member_count||0)+' '+window.t('a.domunity.member_count_suffix','участников')};
+      return {...room,label:room.name||'—',preview:(room.last_body||'').slice(0,70)};
     }),'group',domGroupOpen,function(hidden){
       if (hidden!=null && String(domGroups.activeId)===String(hidden)) {
         domGroups.activeId=null;
@@ -18972,7 +19019,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/neuromap-chains.js?v=grouped-1"></script>
+<script src="assets/js/neuromap-chains.js?v=branches-2"></script>
 <script src="assets/js/evolution-path.js?v=graph-shapes-1"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
@@ -19000,8 +19047,8 @@ window.pbMove = pbMove;
 <script src="assets/js/body-atlas.js?v=42"></script>
 <script src="assets/js/monad-cross.js?v=touch-1"></script>
 <script src="assets/js/monad-office.js?v=2"></script>
-<script src="assets/js/dom-room-agents.js?v=directory-2" defer></script>
-<script src="assets/js/dom-chat-controls.js?v=1" defer></script>
+<script src="assets/js/dom-room-agents.js?v=directory-3" defer></script>
+<script src="assets/js/dom-chat-controls.js?v=2" defer></script>
 <script src="assets/js/monad-lk.js?v=directory-1"></script>
 <script src="assets/js/sketch-tool.js?v=7"></script>
 <!-- Exercises & Tests — engine + 10 canvas modules (migration 066) -->

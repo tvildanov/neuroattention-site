@@ -13,6 +13,9 @@ function parseAttachment(value) {
 }
 
 async function ensureSchema(sql) {
+  await sql`CREATE TABLE IF NOT EXISTS dom_hidden_messages (
+    user_id UUID NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('dm','group')), conversation_id INTEGER NOT NULL,
+    message_id TEXT NOT NULL, PRIMARY KEY(user_id,kind,conversation_id,message_id))`;
   await sql`ALTER TABLE IF EXISTS dm_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS attachment_data TEXT`;
   await sql`ALTER TABLE IF EXISTS chat_room_messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ,
@@ -99,6 +102,26 @@ function install(app,{requireAuth,sql}) {
     res.json({ok:true});
   });
   app.patch(messagePath,requireAuth,change(false));
+  app.post(messagePath+'/hide',requireAuth,withConversation(async (req,res,me,id,kind) => {
+    const raw = String(req.params.messageId || '');
+    const agent = /^agent-[1-9]\d{0,17}$/.test(raw);
+    const message = idOf(raw);
+    if (!agent && !message) return res.status(400).json({error:'Invalid message'});
+    let existing;
+    if (agent) {
+      [existing] = await sql`SELECT e.id FROM dom_room_agent_events e JOIN chat_rooms r ON r.id=e.room_id
+        WHERE e.id=${raw.slice(6)} AND e.status='completed' AND e.reply IS NOT NULL
+          AND ((${kind}='dm' AND r.dm_thread_id=${id}) OR (${kind}='group' AND r.id=${id}))`;
+    } else {
+      [existing] = kind==='dm'
+        ? await sql`SELECT id FROM dm_messages WHERE id=${message} AND thread_id=${id} AND deleted_at IS NULL`
+        : await sql`SELECT id FROM chat_room_messages WHERE id=${message} AND room_id=${id} AND deleted_at IS NULL`;
+    }
+    if (!existing) return res.status(404).json({error:'Message not found'});
+    await sql`INSERT INTO dom_hidden_messages(user_id,kind,conversation_id,message_id)
+      VALUES(${me},${kind},${id},${agent?raw:String(message)}) ON CONFLICT DO NOTHING`;
+    res.json({ok:true});
+  }));
   app.delete(messagePath,requireAuth,change(true));
   app.get(messagePath+'/attachment',requireAuth,withConversation(async (req,res,me,id,kind) => {
     const message = idOf(req.params.messageId);
@@ -112,4 +135,10 @@ function install(app,{requireAuth,sql}) {
   }));
 }
 
-module.exports = {ensureSchema, install, parseAttachment};
+async function hidePersonalMessages(sql,userId,kind,id,messages) {
+  const hidden = await sql`SELECT message_id FROM dom_hidden_messages
+    WHERE user_id=${userId} AND kind=${kind} AND conversation_id=${id}`;
+  const excluded=new Set(hidden.map(row=>row.message_id));
+  return messages.filter(message=>!excluded.has(String(message.id)));
+}
+module.exports = {ensureSchema, install, parseAttachment, hidePersonalMessages};

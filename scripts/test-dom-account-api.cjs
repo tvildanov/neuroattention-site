@@ -55,6 +55,12 @@ const mcp=http.createServer(async(req,res)=>{
    assert.equal(a.actor_agent,'persona_'+registry.find(x=>x.agent_id===a.agent_id).owner);
    prompts.set(a.agent_id,a.system_prompt);out={agent_id:a.agent_id,version:'0.1.1'};break;
  }
+ case 'get_inbox':{
+   assert.equal(a.mark_read,false);assert.equal(a.ack_handoffs,false);
+   out=[{kind:'handoff',item_id:'fixture-pending',agent_id:a.agent_id,from_agent:'fixture_source',
+     message_type:'pending',created_at:new Date().toISOString(),metadata:{status:'pending'}}];break;
+ }
+ case 'read_context':out=a.key_prefix==='monad.placement.'?[{value:{agent_id:'fixture_agent',cell:'L4xL2',secondary_cells:['L5xL2'],type:'skill'}}]:[];break;
  case 'read_action_log':out=[{action_type:'update_agent_prompt',created_at:new Date().toISOString(),success:true}];break;
  case 'plant_seed':{
    const handoff_id=crypto.randomUUID(), seed_id=crypto.randomUUID();
@@ -213,6 +219,10 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  await get(403,at+'/agents',b);
  await post(403,at+'/agents',member,{agent_id:'fixture_agent',mode:'active'});
  const agents=await get(200,'/api/dom-monad/agents',a);assert.ok(agents.agents.some(x=>x.kind==='contour'));
+ assert.deepEqual(agents.agents.find(x=>x.agent_id==='fixture_agent').cells,['L4xL2','L5xL2']);
+ const activity=await get(200,'/api/dom-monad/admin/agent/fixture_agent/activity',a);
+ assert.equal(activity.handoffs_partial,true);assert.equal(activity.handoffs_available,true);
+ assert.ok(activity.handoffs.some(x=>x.handoff_id==='fixture-pending'&&x.status==='pending'));
  await post(200,at+'/agents',a,{agent_id:'fixture_agent',mode:'mention'});
  await post(200,at+'/agents',a,{agent_id:'practice_contour',mode:'listen'});
  await expect(200,'PUT',at+'/harness',a.token,{version:0,context:'Fixture room context'});
@@ -267,6 +277,10 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  assert.equal((await fetch(attachmentUrl,{headers:{Authorization:'Bearer '+b.token}})).status,404);
  const editedMessage=(await get(200,dmPath+'/messages',a)).messages.find(m=>m.id===uploadedMessage.id);
  assert.equal(editedMessage.body,'After edit');assert.ok(editedMessage.edited_at);
+ await post(404,messageAction+'/hide',b,{});
+ await post(200,messageAction+'/hide',a,{});
+ assert.ok(!(await get(200,dmPath+'/messages',a)).messages.some(m=>m.id===uploadedMessage.id));
+ assert.ok((await get(200,dmPath+'/messages',member)).messages.some(m=>m.id===uploadedMessage.id));
  await expect(404,'DELETE',messageAction,a.token);
  await expect(200,'DELETE',messageAction,member.token);
  assert.ok(!(await get(200,dmPath+'/messages',a)).messages.some(m=>m.id===uploadedMessage.id));

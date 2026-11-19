@@ -62,6 +62,15 @@ async function request(route,token,body){
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    await page.locator('.dom-cabinet-sidebar a[data-tab="overview"]').click();
    await page.locator('#tab-overview.active').waitFor();
+   const avatar=page.locator('#rpg-avatar-wrap');
+   assert.match(await avatar.evaluate(el=>getComputedStyle(el).clipPath),/^polygon\(/);
+   const navItem=page.locator('.dom-cabinet-sidebar a[data-tab="overview"]');
+   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.dom-cabinet-sidebar a[data-tab="overview"]'),'::before').maskImage.includes('data:image/svg+xml'));
+   if(width>=860){
+     if(await sidebar.getAttribute('aria-expanded')==='true')await sidebar.click();
+     assert.match(await navItem.evaluate(el=>getComputedStyle(el,'::before').maskImage),/data:image\/svg\+xml/);
+     await sidebar.click();
+   }
    const quick=page.locator('#dom-quick-record .dom-quick-trigger');
    assert.equal(await quick.getAttribute('aria-describedby'),'dom-quick-hint');
    assert.match(await page.locator('#dom-quick-hint').innerText(),{ru:/мысль, эмоция/i,en:/thought, emotion/i,es:/pensamiento, una emoción/i}[lang]);
@@ -151,6 +160,9 @@ async function request(route,token,body){
      assert.equal(await page.evaluate(()=>nm3DGraph.graphData().links.some(link=>link.bodyBond&&!nm3DGraph.linkVisibility()(link))),true);
      await page.locator('#nm-3d-toggle').click();
      await page.locator('#nm-canvas').waitFor();
+     await page.locator('#nm-3d-toggle').click();
+     await page.waitForFunction(()=>nm3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
+     await page.locator('#nm-3d-toggle').click();
      await page.locator('#nm-fs-toggle').click();
      await page.locator('#nm-fs-3d-toggle').click();
      await page.waitForFunction(()=>nmFs3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
@@ -192,7 +204,16 @@ async function request(route,token,body){
        const colors=await room.locator('.dom-group-message').evaluateAll(rows=>rows.map(row=>getComputedStyle(row).backgroundColor));
        assert.equal(new Set(colors).size,3,`${theme} message backgrounds: ${colors.join(', ')}`);
      }
-     console.log('DOMUNITY_BROWSER_PASS: three message colors in both themes');
+     const peer=room.getByText('Their message',{exact:true});
+     const menu=page.locator('.dom-chat-menu');
+     assert.equal(await menu.count(),0);
+     await peer.click();
+     assert.equal(await menu.getByRole('button').count(),2);
+     await page.keyboard.press('Escape');
+     await room.getByText('My message',{exact:true}).click();
+     assert.equal(await menu.getByRole('button').count(),3);
+     await page.keyboard.press('Escape');
+     console.log('DOMUNITY_BROWSER_PASS: three message colors and contextual actions');
    }
    console.log('ACCOUNT_BROWSER_PASS',lang,width,role);
    } finally {await browser.close();}
