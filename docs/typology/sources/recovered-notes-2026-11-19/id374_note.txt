@@ -1,0 +1,763 @@
+Карта влияний между статами NeuroAttention Dependency Matrix
+3 типа связей между статами.
+
+
+Тип 1. Foundation (фундамент)
+Стат А является фундаментом для роста стата Б.
+Если А низкий, Б расти почти не может.
+Пример:
+Interoception → Energy Regulation
+Если не чувствуешь сигналы организма, сложно управлять ресурсом.
+
+Тип 2. Amplifier (усилитель)
+Стат А не обязателен для роста Б, но сильно ускоряет его развитие.
+Пример:
+Vital Engagement → Attention Control
+Если человеку интересно, внимание удерживается легче.
+
+Тип 3. Constraint (ограничитель)
+Низкий стат создаёт потолок для другого.
+Пример:
+Stability → Execution
+Если Stability очень низкий, Execution выше определённого уровня становится нестабильным.
+
+
+
+
+Полная матрица влияния Body Core на все 13 статов
+Сейчас делаем не всю 13×13 сразу, а первый блок:
+5 Body Core статов → все 13 статов.
+Это уже нормальная часть большой матрицы.
+
+Обозначения:
+F9 = Foundation сила 9/10
+A6 = Amplifier сила 6/10
+C8 = Constraint сила 8/10
+0 = не считаем как прямую зависимость
+
+
+
+Начнём с Body Core
+
+Body Core отвечает на вопрос:
+"Есть ли у системы ресурс и устойчивость?"
+
+STABILITY
+Самый фундаментальный стат.
+Я бы назвал его:
+Global Foundation Stat
+Он влияет практически на всё.
+
+Stability влияет на:
+Stability
+—
+Energy Regulation
+F7
+Interoception
+A4
+Proprioception
+A4
+Vital Engagement
+A6
+Attention Control
+F9
+Awareness
+A6
+Adaptation Flexibility
+F8
+Execution
+F9
+Technoperception
+C5
+Socioperception
+C6
+Relational Awareness
+A6
+Space Awareness
+A5
+Смысл: Stability — это способность не разваливаться под нагрузкой. Поэтому она особенно сильно держит внимание, реализацию и адаптацию.
+
+
+
+
+
+Energy Regulation влияет на:
+Stability
+F7
+Energy Regulation
+—
+Interoception
+A4
+Proprioception
+A4
+Vital Engagement
+F8
+Attention Control
+F9
+Awareness
+A6
+Adaptation Flexibility
+A7
+Execution
+F9
+Technoperception
+C6
+Socioperception
+C7
+Relational Awareness
+A6
+Space Awareness
+A5
+Смысл: если ресурс плохо управляется, человек может знать, понимать и хотеть, но не сможет стабильно делать.
+
+
+
+
+
+Interoception влияет на:
+Stability
+A6
+Energy Regulation
+F10
+Interoception
+—
+Proprioception
+A5
+Vital Engagement
+A7
+Attention Control
+A5
+Awareness
+F8
+Adaptation Flexibility
+A6
+Execution
+A4
+Technoperception
+0
+Socioperception
+A4
+Relational Awareness
+A5
+Space Awareness
+0
+Смысл: Interoception — сенсорная основа внутренней карты. Она особенно важна для Energy Regulation и Awareness.
+
+
+
+
+
+
+Proprioception влияет на:
+Stability
+A5
+Energy Regulation
+A4
+Interoception
+A5
+Proprioception
+—
+Vital Engagement
+A5
+Attention Control
+A7
+Awareness
+A5
+Adaptation Flexibility
+A5
+Execution
+A4
+Technoperception
+0
+Socioperception
+A3
+Relational Awareness
+A4
+Space Awareness
+F9
+Смысл: Proprioception — мост между телом, движением, вниманием и физическим пространством.
+
+
+
+
+
+
+Vital Engagement влияет на:
+Stability
+A5
+Energy Regulation
+A5
+Interoception
+A4
+Proprioception
+A4
+Vital Engagement
+—
+Attention Control
+A8
+Awareness
+A6
+Adaptation Flexibility
+A8
+Execution
+A8
+Technoperception
+A5
+Socioperception
+A7
+Relational Awareness
+A7
+Space Awareness
+A5
+Смысл: Vital Engagement не столько фундамент, сколько топливо вовлечения. Он усиливает обучение, действие, отношения, исследование и изменение.
+
+
+
+
+
+Важный вывод
+Теперь у нас уже видно:
+Body Core не просто “нижний слой”
+Он влияет на все остальные слои.
+Особенно:
+Stability + Energy Regulation
+держат способность действовать.
+Interoception
+держит внутреннее осознавание и ресурсную регуляцию.
+Proprioception
+держит тело-пространство-внимание.
+Vital Engagement
+держит мотивационную живость и вовлечение.
+
+
+
+
+
+
+
+
+
+
+Body Core отвечает на вопрос:
+"Есть ли у системы ресурс и устойчивость?"
+Mind Control отвечает:
+"Умеет ли система использовать этот ресурс?"
+Поэтому влияние Mind Control на другие статы во многих местах будет даже сильнее, чем у Body Core.
+
+
+
+
+
+MIND CONTROL 
+
+
+
+ATTENTION CONTROL(способность произвольно направлять, удерживать и переключать внимание.
+Не концентрация.
+Не усидчивость.
+Не интеллект.
+А именно управление лучом внимания.)
+
+
+влияет на:
+Stability
+A6
+Energy Regulation
+A6
+Interoception
+A7
+Proprioception
+A7
+Vital Engagement
+A5
+Attention Control
+—
+Awareness
+F10
+Adaptation Flexibility
+F8
+Execution
+F9
+Technoperception
+F7
+Socioperception
+A6
+Relational Awareness
+A5
+Space Awareness
+A5
+
+
+
+
+AWARENESS
+(Осознанность)
+Определение:
+способность замечать и понимать происходящее внутри и вокруг себя.
+Не внимание.
+А понимание того, на что внимание направлено.)
+
+влияет на:
+Stability
+A6
+Energy Regulation
+F8
+Interoception
+A7
+Proprioception
+A5
+Vital Engagement
+A6
+Attention Control
+A5
+Awareness
+—
+Adaptation Flexibility
+F9
+Execution
+A7
+Technoperception
+A6
+Socioperception
+F8
+Relational Awareness
+F9
+Space Awareness
+F8
+
+Очень важное наблюдение
+Awareness становится центральным узлом между внутренним миром и внешним.
+По сути:
+Interoception → Awareness → World Layer
+
+
+
+
+
+
+
+ADAPTATION FLEXIBILITY
+(Пластичность)
+(способность перестраивать модели поведения и мышления.
+Здесь есть важное отличие.
+Можно всё понимать.
+Можно всё чувствовать.
+Можно всё замечать.
+Но ничего не менять.
+Adaptation Flexibility отвечает именно за изменение.)
+
+влияет на:
+Stability
+A7
+Energy Regulation
+A6
+Interoception
+A4
+Proprioception
+A4
+Vital Engagement
+A6
+Attention Control
+A5
+Awareness
+A5
+Adaptation Flexibility
+—
+Execution
+F8
+Technoperception
+A6
+Socioperception
+A6
+Relational Awareness
+A5
+Space Awareness
+A5
+
+
+
+
+
+
+
+
+
+
+EXECUTION
+(Реализация)
+(способность превращать намерения в завершённые действия.
+Не мотивация.
+Не цели.
+Не планы.
+А завершение.
+Это фактически:
+"Могу ли я материализовать намерение?")
+
+влияет на:
+Stability
+A8
+Energy Regulation
+A8
+Interoception
+A3
+Proprioception
+A4
+Vital Engagement
+A5
+Attention Control
+A6
+Awareness
+A4
+Adaptation Flexibility
+A6
+Execution
+—
+Technoperception
+A7
+Socioperception
+F8
+Relational Awareness
+A5
+Space Awareness
+A7
+
+Здесь появляется неожиданная штука
+Execution влияет на Space Awareness.
+Почему?
+Потому что человек с высоким Execution начинает:
+организовывать пространство;
+завершать незавершённое;
+создавать порядок.
+
+
+
+
+
+
+
+WORLD LAYER
+Technoperception, Socioperception, Relational Awareness, Space Awareness.
+
+
+
+
+
+
+TECHNOPERCEPTION
+(способность осознавать, организовывать и управлять взаимодействием с технологиями.
+Не навыки пользования телефоном.
+Не IT-грамотность.
+А способность:
+использовать технологии как инструмент;
+не тонуть в информационном шуме;
+управлять цифровой средой.)
+
+влияет на:
+Stability
+C6
+Energy Regulation
+C8
+Interoception
+C5
+Proprioception
+C3
+Vital Engagement
+C7
+Attention Control
+F9
+Awareness
+A5
+Adaptation Flexibility
+A6
+Execution
+A7
+Technoperception
+—
+Socioperception
+A5
+Relational Awareness
+C5
+Space Awareness
+A5
+
+Technoperception — первый стат, который чаще работает через ограничения.
+То есть:
+низкий Technoperception может разрушать:
+внимание;
+ресурс;
+живость.
+Через:
+скроллинг;
+уведомления;
+инфошум;
+цифровую перегрузку.
+
+
+
+
+
+
+SOCIOPERCEPTION
+(способность видеть и понимать своё социальное тело.
+Очень важно.
+Не отношения.
+Социальное тело включает:
+профессию;
+проекты;
+миссию;
+роль;
+вклад;
+репутацию;
+место в сообществе.)
+
+влияет на:
+Stability
+A6
+Energy Regulation
+A7
+Interoception
+A3
+Proprioception
+A2
+Vital Engagement
+F8
+Attention Control
+A5
+Awareness
+A7
+Adaptation Flexibility
+A6
+Execution
+F8
+Technoperception
+A5
+Socioperception
+—
+Relational Awareness
+F8
+Space Awareness
+A5
+
+Если человек не понимает:
+зачем живёт;
+чем занимается;
+куда движется;
+то начинает падать:
+энергия;
+вовлечённость;
+реализация.
+
+
+
+
+
+
+RELATIONAL AWARENESS
+(способность строить, поддерживать и понимать отношения.
+Не харизма.
+Не общительность.
+Не экстраверсия.
+А качество контакта.)
+
+влияет на:
+Stability
+A7
+Energy Regulation
+A7
+Interoception
+A4
+Proprioception
+A2
+Vital Engagement
+F8
+Attention Control
+A4
+Awareness
+A7
+Adaptation Flexibility
+A7
+Execution
+A5
+Technoperception
+A3
+Socioperception
+F8
+Relational Awareness
+—
+Space Awareness
+A4
+
+Relational Awareness оказывается не просто внешним статом.
+Он становится одним из главных источников:
+устойчивости;
+энергии;
+вовлечённости.
+Потому что качество отношений напрямую влияет на нервную систему.
+
+
+
+
+
+
+
+SPACE AWARENESS
+(способность воспринимать, организовывать и использовать физическое пространство как продолжение собственной системы.
+Не чистота.
+Не дизайн.
+Не фен-шуй.
+А:
+насколько пространство помогает жить;
+насколько пространство помогает думать;
+насколько пространство помогает действовать.)
+
+влияет на:
+Stability
+F8
+Energy Regulation
+F8
+Interoception
+A5
+Proprioception
+F8
+Vital Engagement
+A7
+Attention Control
+A7
+Awareness
+A6
+Adaptation Flexibility
+A6
+Execution
+F8
+Technoperception
+A4
+Socioperception
+A5
+Relational Awareness
+A4
+Space Awareness
+—
+
+Space Awareness оказался намного важнее, чем кажется.
+Потому что хаотичное пространство:
+забирает внимание;
+забирает ресурс;
+ухудшает выполнение;
+ухудшает устойчивость.
+
+
+
+
+
+
+
+Узлы первого порядка
+Stability
+Energy Regulation
+Attention Control
+Awareness
+Socioperception
+Space Awareness
+Почему?
+Потому что они соединяют сразу несколько слоёв.
+Узлы второго порядка
+Interoception
+Adaptation Flexibility
+Execution
+Relational Awareness
+Узлы третьего порядка
+Proprioception
+Vital Engagement
+Technoperception
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+КАРТА КОНТУРОВ
+
+КОНТУР №1 — БАЗОВЫЙ КОНТУР СТАБИЛИЗАЦИИ
+Самый фундаментальный.
+Interoception ↓ Energy Regulation ↓ Attention Control ↓ Execution ↓ Stability ↓ Interoception
+Как работает
+Человек лучше чувствует себя → лучше регулирует ресурс → лучше удерживает внимание → лучше делает действия → получает больше устойчивости → ещё лучше начинает чувствовать себя.
+Главная точка входа
+Interoception
+или
+Energy Regulation
+Главная точка поломки
+Execution
+КОНТУР №2 — КОНТУР ОБУЧЕНИЯ
+Attention Control ↓ Awareness ↓ Adaptation Flexibility ↓ Execution ↓ Attention Control
+Как работает
+Увидел паттерн → понял его → изменил → получил результат → стал лучше удерживать внимание.
+Главная точка входа
+Attention Control
+Главная точка поломки
+Adaptation Flexibility
+Очень типичный профиль:
+"Я всё понимаю, но не меняюсь."
+КОНТУР №3 — КОНТУР ЖИВОСТИ
+Interoception ↓ Vital Engagement ↓ Attention Control ↓ Execution ↓ Vital Engagement
+Как работает
+Лучше чувствую жизнь → больше интереса → лучше внимание → больше действий → больше интересных результатов → ещё больше живости.
+Главная точка поломки
+Vital Engagement
+Типичный человек:
+"Мне ничего не интересно."
+КОНТУР №4 — КОНТУР ПРОСТРАНСТВА
+Space Awareness ↓ Energy Regulation ↓ Attention Control ↓ Execution ↓ Space Awareness
+Как работает
+Лучше организовано пространство → меньше утечек ресурса → лучше внимание → больше завершённых действий → пространство становится ещё лучше.
+Очень важный контур
+Я думаю, у NeuroAttention он станет одним из самых недооценённых.
+КОНТУР №5 — КОНТУР ОТНОШЕНИЙ
+Relational Awareness ↓ Stability ↓ Energy Regulation ↓ Vital Engagement ↓ Relational Awareness
+Как работает
+Лучше отношения → больше устойчивости → больше ресурса → больше живости → лучше отношения.
+И обратная сторона:
+плохие отношения → меньше энергии → меньше устойчивости → ещё хуже отношения.
+КОНТУР №6 — КОНТУР СОЦИАЛЬНОЙ РЕАЛИЗАЦИИ
+Socioperception ↓ Vital Engagement ↓ Execution ↓ Socioperception
+Как работает
+Понимаю своё дело → появляется смысл → больше действий → лучше проявление в мире → ещё больше понимания дела.
+Очень сильный контур для взрослых людей.
+КОНТУР №7 — КОНТУР ЦИФРОВОЙ СРЕДЫ
+Technoperception ↓ Attention Control ↓ Execution ↓ Technoperception
+Как работает
+Лучше цифровая гигиена → лучше внимание → больше реализованных задач → ещё лучше цифровая среда.
+Главная точка поломки
+Телефон.
+Серьёзно.
+КОНТУР №8 — ГЛАВНЫЙ МЕТАКОНТУР
+Это уже практически сердце всей системы.
+Awareness ↓ Adaptation Flexibility ↓ Execution ↓ Stability ↓ Energy Regulation ↓ Attention Control ↓ Awareness
+Это контур развития как такового.
+
+
+
+Для будущей архитектуры.
+Статы нужны человеку не сами по себе.
+Человек никогда не приходит с запросом:
+"У меня Adaptation Flexibility 43."
+Он приходит с запросом:
+"Я не могу удерживать изменения."
+То есть проблема находится в контуре.
+Не в стате.
+Поэтому в будущем NeuroAttention может диагностировать:
+слабые статы;
+слабые контуры;
+сильные контуры;
+точки входа в развитие.
+И это уже намного интереснее, чем просто RPG с цифрами.
