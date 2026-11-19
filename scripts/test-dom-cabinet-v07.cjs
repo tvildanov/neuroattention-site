@@ -53,9 +53,35 @@ async function request(route,token,body){
    assert.equal(await page.locator('html').getAttribute('lang'),lang);
    const sidebar=page.locator('.dom-cabinet-toggle');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
-   const courses=page.locator('.dom-cabinet-path-group a[data-tab="courses"]');
+   const nav=page.locator('.dom-cabinet-sidebar');
+   if(role==='user'){
+     await page.waitForFunction(()=>document.querySelector('[aria-controls="dom-nav-tools"]').disabled);
+     assert.equal(await nav.locator('[aria-controls="dom-nav-administration"]').isVisible(),false);
+   }else{
+     await nav.locator('a[data-tab="tools"]').click();
+     await nav.locator('[data-nav-target="tools-mode-pointab"]').click();
+     await page.locator('#tools-pointab-content').waitFor();
+     assert.equal(await page.locator('#tools-mode-nm').isVisible(),false);
+     if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+     await nav.locator('a[data-tab="administration"]').click();
+     await nav.locator('[aria-controls="dom-nav-people"]').click();
+     await nav.locator('[data-nav-target="admin-stats"]').click();
+     await page.locator('#tab-admin-stats.active').waitFor();
+     if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+     await nav.locator('a[data-tab="monad"]').click();
+     await nav.locator('[data-nav-target="architecture"]').click();
+     assert.equal(await nav.locator('#dom-nav-architecture .dom-nav-item').count(),4);
+   }
+   if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+   await nav.locator('a[data-tab="enroll"]').click();
+   await page.waitForFunction(()=>document.querySelectorAll('#dom-nav-enroll .dom-nav-item').length===6);
+   await nav.locator('#dom-nav-enroll .dom-nav-item').nth(4).click();
+   assert.ok(await page.locator('#dom-cabinet-programs .dom-v06-program-card').nth(4).evaluate(el=>el.open));
+   if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+   const courses=page.locator('#dom-nav-evolution a[data-tab="courses"]');
    assert.equal(await courses.count(),1);
-   await page.locator('.dom-cabinet-path-group summary').click();
+   await page.locator('[aria-controls="dom-nav-evolution"]').click();
+   assert.equal(await courses.innerText(),{ru:'Мои программы',en:'My programs',es:'Mis programas'}[lang]);
    await courses.click();
    await page.locator('#tab-courses.active').waitFor();
    if(width<860)assert.equal(await sidebar.getAttribute('aria-expanded'),'false');
@@ -154,9 +180,31 @@ async function request(route,token,body){
        const body=nmNodes.find(n=>n.label==='QA shoulder'),sensation=nmNodes.find(n=>n.label==='QA warmth');
        return body&&sensation&&sensation._anchorIds?.includes(body.id)&&nmGetNodeColor(body)!==nmGetNodeColor(sensation);
      }),true);
+     const focus=String(repeated[0].id);
+     await page.locator('#nm-chain-filter').selectOption(focus);
+     assert.equal(await page.evaluate(()=>nmNodes.filter(n=>n.label==='repeat').length),2);
+     assert.equal(await page.evaluate(()=>nmNodes.filter(n=>n._hl).length),2);
+     const only=page.locator('[data-nm-chain-controls]').filter({has:page.locator('#nm-chain-filter')}).locator('input');
+     await only.check();
+     assert.equal(await page.evaluate(()=>nmNodes.length),2);
+     const release=await page.evaluate(()=>{
+       const canvas=document.getElementById('nm-canvas'), rect=canvas.getBoundingClientRect();
+       const [a,b]=nmNodes;
+       const send=(type,x,y)=>canvas.dispatchEvent(new MouseEvent(type,{bubbles:true,clientX:rect.left+x*rect.width/canvas.width,clientY:rect.top+y*rect.height/canvas.height}));
+       send('mousedown',a.x,a.y);send('mousemove',a.x+140,a.y+50);send('mouseup',a.x,a.y);
+       return {pinned:a.fx!==undefined||a.fy!==undefined,moving:Math.hypot(b.vx,b.vy)>0};
+     });
+     assert.deepEqual(release,{pinned:false,moving:true});
+
+     await page.locator('#nm-chain-filter').selectOption('');
      await page.locator('#nm-3d-toggle').click();
      await page.waitForFunction(()=>nm3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
      await page.locator('#nm-3d-container canvas').first().waitFor();
+     await page.waitForFunction(()=>nm3DGraph.graphData().nodes.some(n=>n.label==='QA joy'&&n.__threeObj?.geometry.userData.domSides===5));
+     await page.locator('#nm-labels-toggle').click();
+     await page.waitForFunction(()=>nmLabelsMode==='all'&&document.querySelectorAll('#nm-3d-container .nm-projected-labels span:not([hidden])').length>0);
+     await page.locator('#nm-labels-toggle').click();
+     assert.equal(await page.locator('#nm-3d-container .nm-projected-labels span:visible').count(),0);
      assert.equal(await page.evaluate(()=>nm3DGraph.graphData().links.some(link=>link.bodyBond&&!nm3DGraph.linkVisibility()(link))),true);
      await page.locator('#nm-3d-toggle').click();
      await page.locator('#nm-canvas').waitFor();
@@ -164,6 +212,8 @@ async function request(route,token,body){
      await page.waitForFunction(()=>nm3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
      await page.locator('#nm-3d-toggle').click();
      await page.locator('#nm-fs-toggle').click();
+     await page.locator('#nm-fs-chain-filter').selectOption(focus);
+     assert.equal(await page.locator('#nm-chain-filter').inputValue(),focus);
      await page.locator('#nm-fs-3d-toggle').click();
      await page.waitForFunction(()=>nmFs3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
      await page.locator('#nm-fs-3d-toggle').click();
@@ -193,7 +243,7 @@ async function request(route,token,body){
      await page.route('**/api/chat/rooms/731/messages',route=>route.fulfill({json:{messages}}));
      if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
      await page.locator('.dom-cabinet-sidebar a[data-tab="domunity"]').click();
-     await page.locator('#dom-subtab-groups').click();
+     await page.locator('[data-nav-target="dom-subtab-groups"]').click();
      await page.evaluate(()=>window.domGroupOpen(731,'DOMunity bubble test'));
      const room=page.locator('#dom-group-messages');
      await room.getByText('Fixture agent · Monad',{exact:true}).waitFor();

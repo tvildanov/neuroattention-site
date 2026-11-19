@@ -681,7 +681,7 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=dom-review-3" defer></script>
+<script src="assets/js/dom-theme.js?v=dom-nav-chains-1" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=1">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
 <style>
@@ -2179,6 +2179,7 @@ a.dash-tab:hover { text-decoration:none; }
             <span data-i18n="a.tools.fullscreen">На весь экран</span>
           </button>
         </div>
+        <div class="nm-chain-choice" data-nm-chain-controls hidden><label><span data-i18n="a.tools.nm_chain_select">Цепочки</span> <select id="nm-chain-filter"></select></label><label><input type="checkbox"> <span class="nm-isolate-label">Только эта цепочка</span></label></div>
         <!-- Graph canvas -->
         <div id="nm-graph-wrap" style="position:relative;width:100%;height:420px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04);">
           <canvas id="nm-canvas" style="width:100%;height:100%;"></canvas>
@@ -6017,7 +6018,7 @@ function savePracticeReflection(btn){
       { type:'practice', label: pTitle ? pTitle.textContent.trim() : 'Практика', valence:'positive', metadata:{ source:'reflection', emoji:'🧠' } },
       { type:'thought', label: note.substring(0,80), valence:'positive', metadata:{ source:'practice-reflection' } }
     ];
-    nmAppendV2(chain);
+    nmAppendV2(chain,null,null);
   }
   // Show confirmation
   panel.innerHTML = '<p style="font-size:13px;color:var(--accent-cyan);margin:0;"><span style="font-size:18px;">✅</span> Рефлексия сохранена</p>';
@@ -7607,6 +7608,8 @@ function saveDiaryEvent(){
 
 function saveAndNext(){
   if(saveDiaryEvent()){
+    // “Add another event” starts an independent recording in the same overlay.
+    nmClearSession();nmEnsureSession();
     resetDiaryForm();
     document.getElementById('diary-event-text').focus();
     if(navigator.vibrate) navigator.vibrate([15,50,15]);
@@ -7645,7 +7648,7 @@ function diaryToGraph(entry, occurredAt){
 function practiceToGraph(practiceId, practiceTitle){
   if(typeof nmAppendV2 !== 'function') return;
   var chain = [{ type:'practice', label: practiceTitle, valence:'positive', metadata:{ source:'practice', practiceId: practiceId, emoji:'🧠' } }];
-  nmAppendV2(chain);
+  nmAppendV2(chain,null,null);
 }
 
 // Diary analysis
@@ -7785,30 +7788,30 @@ var nmCurrentFilter = 'all';
 var nmActiveLayers = {1:true,2:true,3:true,4:true,5:true,6:true}; // layer checkboxes state
 var nmRepeatFilter = false;
 var nmChainFilterId = '';
-function nmChainOptions(chains){
-  var select=document.getElementById('nm-chain-filter');
-  if(!select){
-    var toolbar=document.getElementById('nm-3d-toggle')?.parentElement;
-    if (!toolbar) return;
-    select=document.createElement('select');select.id='nm-chain-filter';
-    select.addEventListener('change',function(){
-      nmChainFilterId=select.value;
-      nmPrevPositions={};
-      buildNmGraph();
+var nmChainIsolate=false;
+function nmSelectChain(value,isolate){
+  if(nmChainIsolate||isolate)nmPrevPositions={};
+  nmChainFilterId=String(value||'');
+  nmChainIsolate=!!nmChainFilterId&&!!isolate;
+  buildNmGraph();
+}
+function nmChainOptions(chains,concepts){
+  if(!chains.some(chain=>String(chain.id)===nmChainFilterId)){nmChainFilterId='';nmChainIsolate=false;}
+  var labels=new Map((concepts||[]).map(node=>[String(node.id),nmTranslate(node.label)]));
+  document.querySelectorAll('[data-nm-chain-controls]').forEach(function(bar){
+    var select=bar.querySelector('select'), isolate=bar.querySelector('input');
+    select.onchange=()=>nmSelectChain(select.value,nmChainIsolate);
+    isolate.onchange=()=>nmSelectChain(select.value,isolate.checked);
+    select.replaceChildren(new Option(_pr95t('a.tools.nm_all_chains','Все цепочки'),''));
+    chains.forEach(function(chain){
+      var title=chain.node_ids.slice(0,3).map(id=>labels.get(String(id))).filter(Boolean).join(' → ');
+      select.add(new Option(new Date(chain.started_at).toLocaleString()+' · '+title,String(chain.id)));
     });
-    toolbar.append(select);
-  }
-  var label=_pr95t('a.tools.nm_chain_select','Цепочки');
-  select.setAttribute('aria-label',label);
-  select.replaceChildren(new Option(_pr95t('a.tools.nm_all_chains','Все цепочки'), ''));
-  var labels=new Map((nmV2Graph?.nodes||[]).map(function(node){return [String(node.id),nmTranslate(node.label)];}));
-  chains.forEach(function(chain){
-    var title=chain.node_ids.slice(0,3).map(function(id){return labels.get(String(id));}).filter(Boolean).join(' → ');
-    select.add(new Option(new Date(chain.started_at).toLocaleString()+' · '+title,String(chain.id)));
+    select.value=nmChainFilterId;
+    bar.querySelector('.nm-isolate-label').textContent=({en:'Only this chain',es:'Solo esta cadena'})[document.documentElement.lang]||'Только эта цепочка';
+    isolate.checked=nmChainIsolate;isolate.disabled=!nmChainFilterId;
+    bar.hidden=!chains.length;
   });
-  select.value=nmChainFilterId;
-  if(!select.value)nmChainFilterId='';
-  select.hidden=!chains.length;
 }
 var nmLabelsAlways = (function(){ try{ return localStorage.getItem('nm_labels_always')==='true'; }catch(e){ return true; } })();
 var nmLabelsMode = (function(){ try{ var v=localStorage.getItem('nm_labels_mode'); return (v==='all'||v==='top'||v==='off') ? v : 'top'; }catch(e){ return 'top'; } })();
@@ -7940,7 +7943,7 @@ function nmThreeLinkConfig(graph){
   graph.d3Force('charge').strength(-28);
   graph.d3Force('center',null);
   graph.d3Force('link')
-    .distance(function(link){return link.bodyBond?nmThreeRadius(link.source)+nmThreeRadius(link.target)-2:60;})
+    .distance(function(link){return link.bodyBond?nmThreeRadius(link.source)+nmThreeRadius(link.target)-2:nmThreeRadius(link.source)+nmThreeRadius(link.target)+36/Math.sqrt(link.count||1);})
     .strength(function(link){return link.kind==='correlation' ? 0 : (link.bodyBond ? .85 : .42);});
 }
 function nmThreeNode(node,label){
@@ -9292,7 +9295,7 @@ async function nmLoadV2Graph(){
 // PR#129 (Bug B): optional occurredAt (ISO) backdates the whole chain — the server
 // applies it to every node's journey_event AND the chain's started_at, so a diary
 // event logged for a past date lands its whole branch on that date on the Path.
-function nmAppendV2(chainItems, occurredAt){
+function nmAppendV2(chainItems, occurredAt, sessionId=nmSessionId){
   var token=naGetToken();
   if(!token) return;
   var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
@@ -9300,7 +9303,7 @@ function nmAppendV2(chainItems, occurredAt){
   // these nodes to the rest of the chained flow.
   var _nmBody = { chain: chainItems };
   if (occurredAt) _nmBody.occurred_at = occurredAt;
-  if (nmSessionId) _nmBody.session_id = nmSessionId;
+  if (sessionId) _nmBody.session_id = sessionId;
   // PR#99 (Phase 2B): when a child target is active, route to the dependent's path.
   var _depTargeted = !!(typeof nmTargetDep !== 'undefined' && nmTargetDep);
   if (_depTargeted) _nmBody.dependent_id = nmTargetDep.id;
@@ -9623,16 +9626,13 @@ function nmToggleFullscreen(){
       if(nm3DMode){ fsBtn3d.classList.add('active'); fsBtn3d.textContent='2D'; }
       else { fsBtn3d.classList.remove('active'); fsBtn3d.innerHTML='<svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 3D'; }
     }
-    // Defer rendering to next frame so layout is complete (fixes mobile race condition)
     requestAnimationFrame(function(){
-      // Re-measure height for iOS Safari after layout
-      overlay.style.height = window.innerHeight + 'px';
-      nmFsStartRender();
-      // If 3D mode was active, rebuild 3D graph after layout too
+      if(!nmFullscreen)return;
+      overlay.style.height=window.innerHeight+'px';
+      document.getElementById('nm-fs-canvas').style.display=nm3DMode?'none':'';
       if(nm3DMode){
-        var fs3d = document.getElementById('nm-fs-3d-container');
-        if(fs3d) nmBuildFs3DGraph(fs3d);
-      }
+        var host=nmFsHost();host.style.display='block';nmStart3D(true,host);
+      }else nmFsStartRender();
     });
   } else {
     overlay.classList.remove('active');
@@ -9647,6 +9647,9 @@ function nmToggleFullscreen(){
     if(fs3d){ fs3d.style.display='none'; fs3d.innerHTML=''; }
     // Close fullscreen drill-down
     closeFsDrilldown();
+    document.getElementById('nm-canvas').style.display=nm3DMode?'none':'';
+    document.getElementById('nm-3d-container').classList.toggle('active',nm3DMode);
+    if(!nm3DMode)nm3DGraph=nmDisposeGraph(nm3DGraph);
     // Rebuild normal graph to refresh positions
     buildNmGraph();
   }
@@ -9755,6 +9758,7 @@ function nmFsFilterToggle(cb){
 
 var nmFsTopNIds = {};
 function nmFsStartRender(){
+  if(nmFsAnimFrame)cancelAnimationFrame(nmFsAnimFrame);
   var canvas = document.getElementById('nm-fs-canvas');
   if(!canvas) return;
   var wrap = canvas.parentElement;
@@ -9762,7 +9766,7 @@ function nmFsStartRender(){
   nmFsTopNIds = nmGetTopNIds();
 
   function fsTick(){
-    if(!nmFullscreen) return;
+    if(!nmFullscreen||nm3DMode){nmFsAnimFrame=null;return;}
     var W = wrap.clientWidth * dpr;
     var H = wrap.clientHeight * dpr;
     // Guard: if layout not ready yet, retry next frame
@@ -9798,7 +9802,7 @@ function nmFsStartRender(){
       var linkFresh=1;
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
       var ec=nmGetEdgeColor(s,t);
-      var edgeAlpha=(0.08+Math.min(l.count*0.06,0.25))*linkFresh;
+      var edgeAlpha=l._hl ? .95 : (0.08+Math.min(l.count*0.06,0.25))*linkFresh*(nmChainFilterId ? .30 : 1);
       ctx.beginPath();
       ctx.moveTo(sx,sy);ctx.lineTo(tx,ty);
       ctx.strokeStyle='rgba('+ec.r+','+ec.g+','+ec.b+','+edgeAlpha+')';
@@ -9831,7 +9835,7 @@ function nmFsStartRender(){
       var col=nmGetNodeColor(n);
       var freshness=(typeof n.freshness==='number')?n.freshness:1;
       var brightness=0.2+freshness*0.7;
-      ctx.globalAlpha=fade;
+      ctx.globalAlpha=fade*(nmChainFilterId&&!n._hl?0.24:1);
       // PR#106: same squished-bubble deformation as the main canvas — clip the sticky
       // sensation bubble against its body anchor's circle (in fullscreen scaled space)
       // so its contact edge hugs the body curve with no gap.
@@ -9864,6 +9868,7 @@ function nmFsStartRender(){
       ctx.fillStyle=col+brightness+')';ctx.fill();
       if(_fsClipped){ ctx.restore(); }
       // Label: show for top-N or all depending on mode
+      if(n._hl){nmTraceNode(ctx,n,nx,ny,drawR+4);ctx.strokeStyle='#61d8f5';ctx.lineWidth=2.5;ctx.stroke();}
       var _fsShowLabel = (nmLabelsMode==='all') || (nmLabelsMode==='top' && nmFsTopNIds && nmFsTopNIds[n.id]);
       if(_fsShowLabel){
         ctx.fillStyle='rgba(255,255,255,0.9)';
@@ -9978,6 +9983,7 @@ function nmFsInitEvents(){
     fsDragNode.x=fsDragNode.fx; fsDragNode.y=fsDragNode.fy;
     fsDragNode.vx=0; fsDragNode.vy=0;
     nmPrevPositions[fsDragNode.id]={x:fsDragNode.fx,y:fsDragNode.fy};
+    delete fsDragNode.fx;delete fsDragNode.fy;nmSimulate(document.getElementById('nm-canvas'),.42);
     fsDragNode=null;
     fsCanvas.style.cursor='';
   }
@@ -10265,22 +10271,99 @@ function nm3DError(fullscreen){
 }
 function nmDisposeGraph(graph){
   if (!graph) return null;
-  try { graph.pauseAnimation?.(); graph._destructor?.(); }
+  try { graph._nmClean?.();graph.pauseAnimation?.(); graph._destructor?.(); }
   catch(error){ console.warn('NeuroMap 3D cleanup',error.message); }
   return null;
 }
+// Use geometry and attribute classes from the renderer's own meshes. The atlas can
+// load a different Three.js revision after the graph has been initialized.
+function nmPrismGeometry(sphere,sides,radius){
+  const Geometry=Object.getPrototypeOf(Object.getPrototypeOf(sphere)).constructor;
+  const geometry=new Geometry();
+  const vertices=[];
+  const depth=radius*(sides===4 ? .73 : .56);
+  function rim(i,z){
+    const a=Math.PI*2*i/sides+(sides===4?Math.PI/4:Math.PI/2);
+    return [radius*Math.cos(a),radius*Math.sin(a),z];
+  }
+  for(let i=0;i<sides;i++){
+    const a=rim(i,depth),b=rim(i+1,depth),c=rim(i,-depth),d=rim(i+1,-depth);
+    vertices.push(0,0,depth,...a,...b,0,0,-depth,...d,...c,...a,...c,...d,...a,...d,...b);
+  }
+  const Attribute=sphere.getAttribute('position').constructor;
+  geometry.setAttribute('position',new Attribute(new Float32Array(vertices),3));
+  geometry.computeVertexNormals();geometry.computeBoundingSphere();
+  geometry.userData.domSides=sides;
+  return geometry;
+}
+function nmStyle3D(graph,container,mini){
+  const overlay=document.createElement('div');
+  overlay.className='nm-projected-labels';overlay.setAttribute('aria-hidden','true');container.append(overlay);
+  const nodes=graph.graphData().nodes;
+  const top=nmGetTopNIds();
+  const labels=new Map();
+  const defaultGeometries=new Set();
+  function update(){
+    const camera=graph.camera(),width=graph.width(),height=graph.height();
+    for(const node of nodes){
+      const mesh=node.__threeObj;
+      if(!mesh?.isMesh)continue;
+      const sides=nmNodeSides(node);
+      if(sides&&mesh.geometry.userData.domSides!==sides){
+        defaultGeometries.add(mesh.geometry);
+        mesh.geometry=nmPrismGeometry(mesh.geometry,sides,nmThreeRadius(node));
+        mesh.rotation.set(.27,-.24,0);
+      }
+      let label=labels.get(node);
+      if(!mini&&(nmLabelsMode==='off'||nmLabelsMode==='top'&&!top[node.id])){
+        if(label)label.hidden=true;
+        continue;
+      }
+      if(!label){
+        label=document.createElement('span');label.textContent=mini?node.label:nmTranslate(node.label);
+        labels.set(node,label);overlay.append(label);
+      }
+      const p=mesh.position.clone().project(camera);
+      label.hidden=!Number.isFinite(p.x)||p.z< -1||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1;
+      label.style.left=((1+p.x)*width/2)+'px';label.style.top=((1-p.y)*height/2)+'px';
+    }
+  }
+  let framed=false;
+  graph.onEngineTick(()=>{
+    update();
+    if(!mini&&!framed&&nodes.length&&nodes.every(node=>node.__threeObj)){
+      framed=true;requestAnimationFrame(()=>{if(overlay.isConnected)graph.zoomToFit(0,36);});
+    }
+  });
+  const controls=graph.controls();
+  controls?.addEventListener('change',update);
+  graph._nmLabels=update;
+  graph._nmClean=()=>{
+    controls?.removeEventListener('change',update);overlay.remove();
+    for(const geometry of defaultGeometries)geometry.dispose();
+  };
+  requestAnimationFrame(()=>{if(overlay.isConnected)update();});
+}
+function nmDepth(node){
+  // Keep each recorded branch legible when orbiting the map.
+  let hash=0;
+  for(const char of String(node.chainIds?.[0]||node.id))hash=(hash*31+char.charCodeAt(0))|0;
+  return ((Math.abs(hash)*.61803398875)%1-.5)*85+12*Math.sin((node.position||0)*.7);
+}
 function nmWatch3D(graph,fullscreen){
+  nmStyle3D(graph,document.getElementById(fullscreen?'nm-fs-3d-container':'nm-3d-container'),false);
   graph.renderer?.()?.domElement?.addEventListener('webglcontextlost',function(){
     if((fullscreen?nmFs3DGraph:nm3DGraph)===graph)nm3DError(fullscreen);
   },{once:true});
   graph.onNodeDrag(function(node,delta){
     var peers=window.nmDragBranch?.(node,graph.graphData().nodes,nmChainFilterId)||[];
     peers.forEach(function(peer){
-      peer.fx=(peer.fx??peer.x)+delta.x;
-      peer.fy=(peer.fy??peer.y)+delta.y;
-      peer.fz=(peer.fz??peer.z)+delta.z;
+      peer.fx=(peer.fx??peer.x)+delta.x*.48;
+      peer.fy=(peer.fy??peer.y)+delta.y*.48;
+      peer.fz=(peer.fz??peer.z)+delta.z*.48;
     });
   }).onNodeDragEnd(function(node){
+    delete node.fx;delete node.fy;delete node.fz;graph.d3ReheatSimulation();
     (window.nmDragBranch?.(node,graph.graphData().nodes,nmChainFilterId)||[]).forEach(function(peer){
       delete peer.fx;delete peer.fy;delete peer.fz;
     });
@@ -10288,8 +10371,10 @@ function nmWatch3D(graph,fullscreen){
 }
 function nmMove2DBranch(node,x,y){
   var dx=x-node.x,dy=y-node.y;
+  if(node.homeX!=null){node.homeX+=dx;node.homeY+=dy;}
   (window.nmDragBranch?.(node,nmNodes,nmChainFilterId)||[]).forEach(function(peer){
-    peer.x+=dx;peer.y+=dy;peer.vx=0;peer.vy=0;
+    peer.x+=dx*.48;peer.y+=dy*.48;peer.vx=0;peer.vy=0;
+    if(peer.homeX!=null){peer.homeX+=dx;peer.homeY+=dy;}
     if(peer.fx!==undefined){peer.fx=peer.x;peer.fy=peer.y;}
     nmPrevPositions[peer.id]={x:peer.x,y:peer.y};
   });
@@ -10323,12 +10408,8 @@ function nmWithForceGraph(host, stillWanted, onReady, onMissing){
 }
 
 // Fullscreen 3D toggle — mirrors main toggle but operates on FS canvas area
-function nmFsToggle3D(){
-  nm3DMode = !nm3DMode;
-  var fsBtn = document.getElementById('nm-fs-3d-toggle');
-  var mainBtn = document.getElementById('nm-3d-toggle');
-  var fsCanvasWrap = document.querySelector('.nm-fs-canvas-wrap');
-  if(!fsCanvasWrap) return;
+function nmFsHost(){
+  var fsCanvasWrap=document.querySelector('.nm-fs-canvas-wrap');
   // Ensure 3d container inside fullscreen
   var fs3d = document.getElementById('nm-fs-3d-container');
   if(!fs3d){
@@ -10337,6 +10418,15 @@ function nmFsToggle3D(){
     fs3d.style.cssText = 'position:absolute;inset:0;z-index:2;display:none;overflow:hidden;';
     fsCanvasWrap.appendChild(fs3d);
   }
+  return fs3d;
+}
+function nmFsToggle3D(){
+  nm3DMode = !nm3DMode;
+  var fsBtn = document.getElementById('nm-fs-3d-toggle');
+  var mainBtn = document.getElementById('nm-3d-toggle');
+  var fsCanvasWrap = document.querySelector('.nm-fs-canvas-wrap');
+  if(!fsCanvasWrap) return;
+  var fs3d=nmFsHost();
   var fsCanvas = document.getElementById('nm-fs-canvas');
   if(nm3DMode){
     fsBtn.classList.add('active');
@@ -10383,7 +10473,7 @@ function nmBuildFs3DGraph(container){
     var hex = '#8899aa';
     if(match) hex = '#' + ((1<<24)+(parseInt(match[1])<<16)+(parseInt(match[2])<<8)+parseInt(match[3])).toString(16).slice(1);
     var r = nmNodeR(n);
-    gNodes.push({ id: n.id, label: n.label, color: hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:0,_origNode: n });
+    gNodes.push({ id: n.id, label: n.label, color: nmChainFilterId&&!n._hl?'#586872':hex, val: Math.max(r * 0.8, 4), type: n.type, valence: n.valence, _layer: n._layer, chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:nmDepth(n),_origNode: n });
   });
   nmLinks.forEach(function(l){
     if(nodeIdx[l.source]!==undefined && nodeIdx[l.target]!==undefined){
@@ -10391,6 +10481,7 @@ function nmBuildFs3DGraph(container){
       var tn = nmNodes[nodeIdx[l.target]];
       var ec = nmGetEdgeColor(sn, tn);
       var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
+      if(nmChainFilterId)hex=l._hl?'#61d8f5':'#54636d';
       gLinks.push({ source: l.source, target: l.target, bodyBond:nmBodyBond(sn,tn),kind:l.kind, count: l.count||1, color: hex, width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2)) });
     }
   });
@@ -10431,12 +10522,7 @@ function nmToggleLabels(){
   var modeText = nmLabelsMode==='all' ? (rpgT('labels_all')||'Подписи: все') : nmLabelsMode==='top' ? (rpgT('labels_top')||'Подписи: топ') : (rpgT('labels_off')||'Подписи: нет');
   var btns = document.querySelectorAll('.nm-labels-toggle');
   btns.forEach(function(b){ b.classList.toggle('active', nmLabelsMode!=='off'); b.textContent = modeText; });
-  // Rebuild 3D graphs if active (labels are sprites that need regeneration)
-  if(nm3DMode && nm3DGraph){ nmBuild3DGraph(); }
-  if(nmFullscreen && nm3DMode && nmFs3DGraph){
-    var fsCont = document.getElementById('nm-fs-3d-container');
-    if(fsCont) nmBuildFs3DGraph(fsCont);
-  }
+  nm3DGraph?._nmLabels?.();nmFs3DGraph?._nmLabels?.();
   // Force 2D re-render if simulation has stopped (labels are drawn in the tick loop)
   if(!nm3DMode){
     if(nmFullscreen && !nmFsAnimFrame){
@@ -10607,12 +10693,12 @@ function nmBuild3DGraph(){
     gNodes.push({
       id: n.id,
       label: n.label,
-      color: hex,
+      color: nmChainFilterId&&!n._hl?'#586872':hex,
       val: Math.max(r * 0.8, 4),
       type: n.type,
       valence: n.valence,
       _layer: n._layer,
-      chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:0,_origNode: n
+      chainIds:n.chainIds||[],x:(n.x-(document.getElementById('nm-canvas')?.width||0)/2)*.62,y:((document.getElementById('nm-canvas')?.height||0)/2-n.y)*.62,z:nmDepth(n),_origNode: n
     });
   });
 
@@ -10622,10 +10708,11 @@ function nmBuild3DGraph(){
       var tn = nmNodes[nodeIdx[l.target]];
       var ec = nmGetEdgeColor(sn, tn);
       var hex = '#' + ((1<<24)+(ec.r<<16)+(ec.g<<8)+ec.b).toString(16).slice(1);
+      if(nmChainFilterId)hex=l._hl?'#61d8f5':'#54636d';
       gLinks.push({
         source: l.source,
         target: l.target,
-        bodyBond:nmBodyBond(sn,tn),kind:l.kind,
+        bodyBond:nmBodyBond(sn,tn),kind:l.kind,count:l.count||1,
         color: hex,
         width: Math.max(1, Math.min(4, Math.log((l.count||1)+1)*1.2))
       });
@@ -10802,6 +10889,7 @@ function nmHoverChain(chainId){
   try{ if(!nm3DMode && !nmAnimFrame){ var c=document.getElementById('nm-canvas'); if(c && typeof nmSimulate==='function') nmSimulate(c, 0.0001); } }catch(e){}
 }
 function nmOpenChainMini(chainId){
+  nmSelectChain(chainId,nmChainIsolate);
   var token=naGetToken(); var base=NM_API_BASE||'https://neuroattention-api-production.up.railway.app';
   // mark the active row
   var rows=document.querySelectorAll('[id^="nm-ch-row-"]');
@@ -10930,7 +11018,7 @@ function nmEnsureThree(cb){
 }
 function nmDestroyMini3D(){
   if(nmNiMini3DRot){ cancelAnimationFrame(nmNiMini3DRot); nmNiMini3DRot=null; }
-  if(nmNiMini3DGraph){ try{ nmNiMini3DGraph._destructor && nmNiMini3DGraph._destructor(); }catch(e){} nmNiMini3DGraph=null; }
+  if(nmNiMini3DGraph){ try{ nmNiMini3DGraph._nmClean?.();nmNiMini3DGraph._destructor && nmNiMini3DGraph._destructor(); }catch(e){} nmNiMini3DGraph=null; }
   var box=document.getElementById('nm-ni-mini-3d'); if(box) box.innerHTML='';
 }
 // Build a persistent "N · label" sprite above a node (only when a real THREE is present).
@@ -10994,12 +11082,7 @@ function nmDrawChainMini3D(data){
   setTimeout(_fit, 400); setTimeout(_fit, 900);
   // Smooth, damped manual orbit.
   setTimeout(function(){ try{ var c=g.controls&&g.controls(); if(c){ c.enableDamping=true; c.dampingFactor=0.14; if('rotateSpeed' in c) c.rotateSpeed=0.85; } }catch(e){} }, 0);
-  // Persistent numbered labels need a real THREE — load it, then attach (graph already
-  // renders spheres+edges meanwhile so the panel is never blank).
-  nmEnsureThree(function(){
-    if(nmNiMini3DGraph!==g) return;   // panel closed / re-rendered while loading
-    if(THREE)g.nodeThreeObjectExtend(false).nodeThreeObject(function(nd){return nmThreeNode(nd,nmMini3DLabelObj(nd));});
-  });
+  nmStyle3D(g,box,true);
 }
 function nmDeleteNode(dbId){
   if(!dbId) return;
@@ -11018,6 +11101,31 @@ function nmDeleteNode(dbId){
     }).catch(function(e){ nmCloseNodeInfo(); alert(rpgT('node_delete_fail')||'Не удалось удалить узел'); console.warn('[NM] delete node failed:',e); });
 }
 
+function nmLegacyRecordings(entries){
+  const nodes=new Map(),chains=[],dailyIndex=new Map();
+  for(const entry of entries){
+    const day=entry.dateKey;
+    const index=dailyIndex.get(day)||0;
+    dailyIndex.set(day,index+1);
+    const started=day+'T'+String(entry.time||'12:00').padStart(5,'0');
+    for(const [row,recording] of (entry.chains||[]).entries()){
+      const id='local:'+day+':'+index+':'+row;
+      const node_ids=[];
+      const emotion=recording.emotion?(isNegEmotion(recording.emotion)?'negative':'positive'):'neutral';
+      for(const type of ['emotion','area','cause','thought']){
+        const label=recording[type];if(!label)continue;
+        const key=JSON.stringify([type,label]);
+        if(!nodes.has(key)){
+          const valence=type==='area'?'neutral':type==='thought'?(NM_THOUGHTS.indexOf(label)<15?'negative':'positive'):emotion;
+          nodes.set(key,{id:'local-node:'+nodes.size,label,type,valence,created_at:started,last_seen_at:started});
+        }
+        node_ids.push(nodes.get(key).id);
+      }
+      if(node_ids.length)chains.push({id,session_id:id,started_at:started,node_ids});
+    }
+  }
+  return {nodes:[...nodes.values()],links:[],chains};
+}
 function buildNmGraph(){
   var entries=getEntriesForView();
   var empty=document.getElementById('nm-empty');
@@ -11033,6 +11141,7 @@ function buildNmGraph(){
     filters.style.display='none';
     analysis.style.display='none';
     var abw=document.getElementById('nm-analyze-btn-wrap');if(abw)abw.style.display='none';
+    nmChainOptions([],[]);
     if(nmAnimFrame){cancelAnimationFrame(nmAnimFrame);nmAnimFrame=null;}
     var c=document.getElementById('nm-canvas');
     var ctx=c.getContext('2d');
@@ -11056,66 +11165,39 @@ function buildNmGraph(){
   // Build node/link data — prefer v2 graph (server-deduplicated) if available
   var nodeMap={};
   var linkMap={};
-  var visibleChains=(nmV2Graph?.chains||[]).filter(function(chain){return nmTsInRange(Date.parse(chain.started_at));});
+  var sourceGraph=hasV2?nmV2Graph:nmLegacyRecordings(entries);
+  var inRange=hasV2?nmTsInRange:()=>true; // cached diary entries were filtered by their recorded day
+  var visibleChains=(sourceGraph.chains||[]).filter(chain=>inRange(Date.parse(chain.started_at)));
   if(window.__nmDeepLink?.session){
     var linked=visibleChains.find(function(chain){return String(chain.session_id)===String(window.__nmDeepLink.session);});
     if(linked)nmChainFilterId=String(linked.id);
   }
-  nmChainOptions(visibleChains);
-  var focusedChains=nmChainFilterId?visibleChains.filter(function(chain){return String(chain.id)===nmChainFilterId;}):visibleChains;
-  if(nmV2Graph && nmV2Graph.nodes.length>0){
+  nmChainOptions(visibleChains,sourceGraph.nodes);
+  var focusedChains=nmChainIsolate?visibleChains.filter(function(chain){return String(chain.id)===nmChainFilterId;}):visibleChains;
+  {
     var now=Date.now();
-    var occurrences=nmV2Graph.chains && nmV2Graph.chains.length && typeof window.nmOccurrenceGraph==='function';
-    var graph=occurrences && typeof window.nmGroupedGraph==='function' ? window.nmGroupedGraph(nmV2Graph,nmTsInRange) : nmV2Graph;
-    var focusedIds=nmChainFilterId?new Set(focusedChains.flatMap(function(chain){return chain.node_ids.map(String);})):null;
-    var repeatedIds=new Set(graph.nodes.filter(function(node){return node.count>1;}).map(function(node){return String(node.id);}));
-    var repeatChains=new Set(visibleChains.filter(function(chain){return chain.node_ids.some(function(id){return repeatedIds.has(String(id));});}).map(function(chain){return String(chain.id);}));
+    var occurrences=sourceGraph.chains && sourceGraph.chains.length && typeof window.nmOccurrenceGraph==='function';
+    var merged=occurrences && nmRepeatFilter && !nmChainIsolate;
+    var graph=occurrences ? (merged?window.nmGroupedGraph:window.nmOccurrenceGraph)(sourceGraph,inRange) : sourceGraph;
+    var repeatedIds=new Set(graph.nodes.filter(n=>n.count>1).map(n=>String(n.concept_id||n.id)));
+    var repeatChains=new Set(visibleChains.filter(chain=>chain.node_ids.some(id=>repeatedIds.has(String(id)))).map(chain=>String(chain.id)));
     graph.nodes.forEach(function(n){
-      if(focusedIds&&!focusedIds.has(String(n.id)))return;
+      var member=(n.chain_ids||[]).some(id=>String(id)===nmChainFilterId);
+      if(nmChainIsolate&&!member)return;
       var lastSeen=n.last_seen_at?new Date(n.last_seen_at).getTime():now;
       if(!occurrences && !nmTsInRange(lastSeen)) return;
       var ageDays=Math.max(0,(now-lastSeen)/86400000);
       var freshness=Math.max(0.3, 1-ageDays/30); // 1.0=today → 0.3=30+ days ago
       var valNum=n.valence==='negative'?-1:(n.valence==='positive'?1:0);
-      nodeMap[n.id]={id:n.id,dbId:n.concept_id||n.id,sessionId:n.session_id,position:n.position,chainIds:n.chain_ids||[],repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
+      nodeMap[n.id]={id:n.id,_hl:member,dbId:hasV2?(n.concept_id||n.id):null,sessionId:n.session_id,position:n.position,chainIds:n.chain_ids||[],repeatContext:(n.chain_ids||[]).some(function(id){return repeatChains.has(String(id));}),type:n.type,label:n.label,count:n.count||1,intensity:5,valence:valNum,freshness:freshness,last_seen:n.last_seen_at||'',first_seen:n.created_at||'',metadata:n.metadata||{},x:0,y:0,vx:0,vy:0};
     });
     graph.links.forEach(function(l){
       var f=l.source, t=l.target;
-      if(nmChainFilterId&&!(l.chain_ids||[]).some(function(id){return String(id)===nmChainFilterId;}))return;
+      var member=(l.chain_ids||[]).some(id=>String(id)===nmChainFilterId);
+      if(nmChainIsolate&&!member)return;
       if(!nodeMap[f]||!nodeMap[t]) return;   // an endpoint fell outside the date window
       var key=f+'||'+t;
-      if(!linkMap[key]) linkMap[key]={source:f,target:t,count:l.count||1,kind:l.kind,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
-    });
-  } else {
-    // Fallback: build from old nmData entries
-    function addNode(id,type,label,intensity,valence,dateKey){
-      if(!nodeMap[id]) nodeMap[id]={id:id,type:type,label:label,count:0,intensity:0,valence:valence||0,freshness:1,first_seen:dateKey||'',last_seen:dateKey||'',x:0,y:0,vx:0,vy:0};
-      nodeMap[id].count++;
-      nodeMap[id].intensity=Math.max(nodeMap[id].intensity,intensity||5);
-      if(dateKey && dateKey>nodeMap[id].last_seen) nodeMap[id].last_seen=dateKey;
-      if(dateKey && (!nodeMap[id].first_seen || dateKey<nodeMap[id].first_seen)) nodeMap[id].first_seen=dateKey;
-    }
-    function addLink(a,b){
-      var key=a+'||'+b;
-      if(!linkMap[key]) linkMap[key]={source:a,target:b,count:0};
-      linkMap[key].count++;
-    }
-    entries.forEach(function(e){
-      var dateKey=e.dateKey||'';
-      e.chains.forEach(function(c){
-        var emValence=c.emotion?(isNegEmotion(c.emotion)?-1:1):0;
-        if(c.emotion) addNode('e:'+c.emotion,'emotion',c.emotion,e.intensity,emValence,dateKey);
-        if(c.area) addNode('a:'+c.area,'area',c.area,e.intensity,0,dateKey);
-        if(c.cause) addNode('c:'+c.cause,'cause',c.cause,e.intensity,emValence,dateKey);
-        if(c.thought){
-          var thIdx=NM_THOUGHTS.indexOf(c.thought);
-          var thValence=thIdx<15?-1:1;
-          addNode('t:'+c.thought,'thought',c.thought,e.intensity,thValence,dateKey);
-        }
-        if(c.emotion&&c.area) addLink('e:'+c.emotion,'a:'+c.area);
-        if(c.area&&c.cause) addLink('a:'+c.area,'c:'+c.cause);
-        if(c.cause&&c.thought) addLink('c:'+c.cause,'t:'+c.thought);
-      });
+      if(!linkMap[key]) linkMap[key]={source:f,target:t,_hl:member,count:l.count||1,kind:l.kind,chain_ids:l.chain_ids||[],_lastSeen:l.last_seen_at||''};
     });
   }
 
@@ -11135,7 +11217,7 @@ function buildNmGraph(){
   });
   Object.keys(linkMap).forEach(function(k){
     var l=linkMap[k];
-    if(nmRepeatFilter && !nmChainFilterId && l.count<2 && !l.chain_ids.length) return;
+    if(nmRepeatFilter && !nmChainFilterId && l.count<2 && !l.chain_ids?.length) return;
     if(validIds[l.source] && validIds[l.target]) nmLinks.push(l);
   });
 
@@ -11187,13 +11269,17 @@ function buildNmGraph(){
     }
     if(allSame || px<5 || py<5) nmPrevPositions={};
   }
-  var branchSeeds=window.nmBranchPositions?.(focusedChains,nmNodes,canvas.width,canvas.height);
+  // Each recording has its own lane. In the repeats view, shared concepts are junctions.
+  var lanes=focusedChains;
+  if(occurrences&&!merged)lanes=focusedChains.map(chain=>({...chain,node_ids:chain.node_ids.map((id,i)=>chain.id+':'+i)}));
+  var branchSeeds=window.nmBranchPositions?.(lanes,nmNodes,canvas.width,canvas.height);
   nmNodes.forEach(function(n,i){
     var seed=branchSeeds?.get(String(n.id));
+    if(seed){n.homeX=seed.x;n.homeY=seed.y;}
     if(nmPrevPositions[n.id]){
       // Existing node — keep position, zero velocity
-      n.x=Math.max(canvas.width*.13,Math.min(canvas.width*.87,nmPrevPositions[n.id].x));
-      n.y=Math.max(canvas.height*.13,Math.min(canvas.height*.87,nmPrevPositions[n.id].y));
+      n.x=Math.max(40,Math.min(canvas.width-40,nmPrevPositions[n.id].x));
+      n.y=Math.max(40,Math.min(canvas.height-40,nmPrevPositions[n.id].y));
       n.vx=0; n.vy=0;
       n._fade=1;
     } else {
@@ -11420,7 +11506,7 @@ function nmSimulate(canvas, initAlpha){
         // anchor) get a WEAK, undrawn cohesion pull instead of the full spring — it
         // gathers the related body region into one cluster without dragging the bubble
         // off its anchor, and (being _sensBody) it is never drawn as an arrow.
-        f = l._sensBody ? alpha*(d-170)*0.004 : alpha*(d-120)*0.01;
+        f = l._sensBody ? alpha*(d-170)*0.004 : alpha*(d-(nmNodeR(s)+nmNodeR(t)+64/Math.sqrt(l.count||1)))*0.018;
       }
       var pull=Math.min(14*alpha,Math.max(-14*alpha,f*55));
       s.vx+=dx/d*pull; s.vy+=dy/d*pull;
@@ -11472,8 +11558,8 @@ function nmSimulate(canvas, initAlpha){
           return;
         }
       }
-      n.vx+=(W/2-n.x)*alpha*0.034;
-      n.vy+=(H/2-n.y)*alpha*0.034;
+      n.vx+=((n.homeX??W/2)-n.x)*alpha*0.018;
+      n.vy+=((n.homeY??H/2)-n.y)*alpha*0.018;
       n.vx*=0.85; n.vy*=0.85;
       n.x+=n.vx; n.y+=n.vy;
       n.x=Math.max(40,Math.min(W-40,n.x));
@@ -11497,7 +11583,7 @@ function nmSimulate(canvas, initAlpha){
       var linkFresh=1;
       if(l._lastSeen){var la=(Date.now()-new Date(l._lastSeen).getTime())/86400000;linkFresh=Math.max(0.3,1-la/30);}
       var ec=nmGetEdgeColor(s,t);
-      var edgeAlpha=(0.08+Math.min(l.count*0.06,0.25))*linkFresh;
+      var edgeAlpha=l._hl ? .95 : (0.08+Math.min(l.count*0.06,0.25))*linkFresh*(nmChainFilterId ? .30 : 1);
       // PR#120: when a chain is hovered in the info-panel list, brighten every edge it
       // carries (chain_ids ride on the v3 links) so the user sees that one flow lit up
       // on the full NeuroMap.
@@ -11538,7 +11624,7 @@ function nmSimulate(canvas, initAlpha){
       // Brightness ~ freshness (recent=bright, old=dim)
       var freshness=(typeof n.freshness==='number')?n.freshness:1;
       var brightness=0.2+freshness*0.7;
-      ctx.globalAlpha=fade;
+      ctx.globalAlpha=fade*(nmChainFilterId&&!n._hl?0.24:1);
       // PR#106: deform a sticky sensation bubble against its body anchor. Clip away the
       // slice that overlaps the body sphere so the bubble's contact edge follows the
       // body's curve — the "squished magnet" contact. The body itself stays a rigid
@@ -11583,7 +11669,7 @@ function nmSimulate(canvas, initAlpha){
         ctx.restore();
       }
       // PR#120: ring the nodes of the chain hovered in the info-panel list.
-      if(nmHoverChainNodes && nmHoverChainNodes[String(n.dbId||n.id)]){
+      if(nmHoverChainId && n.chainIds?.some(id=>String(id)===nmHoverChainId)){
         ctx.save();
         nmTraceNode(ctx,n,n.x,n.y,drawR+5);
         ctx.strokeStyle='rgba(92,200,255,0.9)';ctx.lineWidth=2.5;ctx.stroke();
@@ -11726,10 +11812,11 @@ function nmSimulate(canvas, initAlpha){
       nmSimulate(canvas, 0.05);
       return;
     }
-    // Other nodes stay fixed at the drop position (manual layout).
+    // Release the dragged node and let the chain settle.
     dragNode.x=dragNode.fx; dragNode.y=dragNode.fy;
     dragNode.vx=0; dragNode.vy=0;
     nmPrevPositions[dragNode.id]={x:dragNode.fx,y:dragNode.fy};
+    delete dragNode.fx;delete dragNode.fy;nmSimulate(canvas,.42);
     dragNode=null;
     canvas.style.cursor='';
   }
@@ -13086,6 +13173,7 @@ if('serviceWorker' in navigator){
     </button>
     </div>
   </div>
+  <div class="nm-chain-choice" data-nm-chain-controls hidden><label><span data-i18n="a.tools.nm_chain_select">Цепочки</span> <select id="nm-fs-chain-filter"></select></label><label><input type="checkbox"> <span class="nm-isolate-label">Только эта цепочка</span></label></div>
   <!-- Mobile layer filter bar (horizontal scroll, visible only on mobile) -->
   <div class="nm-fs-mobile-filters" id="nm-fs-mobile-filters"></div>
   <div class="nm-fs-body">
@@ -19019,7 +19107,7 @@ window.pbMove = pbMove;
 <script src="assets/js/fullscreen-overlay.js"></script>
 <script src="assets/js/suncalc-lite.js?v=1"></script>
 <script src="assets/js/course-path-view.js?v=2"></script>
-<script src="assets/js/neuromap-chains.js?v=branches-2"></script>
+<script src="assets/js/neuromap-chains.js?v=recordings-3"></script>
 <script src="assets/js/evolution-path.js?v=graph-shapes-1"></script>
 <script src="assets/js/collective-path.js?v=10"></script>
 <script src="assets/js/family-team.js?v=7"></script>
@@ -21655,7 +21743,7 @@ window.pbMove = pbMove;
             var chain=[];
             if(emo) chain.push({type:'emotion',label:emo,valence:'neutral',metadata:{source:'library_note'}});
             chain.push({type:'thought',label:note.slice(0,120),valence:'neutral',metadata:{source:'library_note',lib_kind:kind,article_slug:it.slug}});
-            window.nmAppendV2(chain);
+            window.nmAppendV2(chain,null,null);
           }
         }catch(e){}
         host.innerHTML=''; reload();
