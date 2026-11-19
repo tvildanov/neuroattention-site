@@ -18,6 +18,9 @@ const handoffs=new Map(),remoteReplies=new Map();
 let roomDispatches=0;
 const mcp=http.createServer(async(req,res)=>{
  if(req.headers['x-api-key']!=='fixture-only'){res.writeHead(403);res.end('{}');return;}
+ if(req.url.startsWith('/api/handoffs?')){
+   res.writeHead(401,{'Content-Type':'application/json'});res.end('{}');return;
+ }
  if(req.url.startsWith('/api/handoffs/')){
    const row=handoffs.get(req.url.split('/').at(-1));
    res.end(JSON.stringify({handoff:row}));return;
@@ -55,6 +58,9 @@ const mcp=http.createServer(async(req,res)=>{
    assert.equal(a.actor_agent,'persona_'+registry.find(x=>x.agent_id===a.agent_id).owner);
    prompts.set(a.agent_id,a.system_prompt);out={agent_id:a.agent_id,version:'0.1.1'};break;
  }
+ case 'read_agent_task_activity':
+   out=a.agent_id==='persona_nikita'?{handoffs:[{handoff_id:'fixture-completed',to_agent:a.agent_id,from_agent:'fixture_source',
+     status:'completed',created_at:new Date().toISOString()}]}:null;break;
  case 'get_inbox':{
    assert.equal(a.mark_read,false);assert.equal(a.ack_handoffs,false);
    out=[{kind:'handoff',item_id:'fixture-pending',agent_id:a.agent_id,from_agent:'fixture_source',
@@ -223,6 +229,9 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const activity=await get(200,'/api/dom-monad/admin/agent/fixture_agent/activity',a);
  assert.equal(activity.handoffs_partial,true);assert.equal(activity.handoffs_available,true);
  assert.ok(activity.handoffs.some(x=>x.handoff_id==='fixture-pending'&&x.status==='pending'));
+ const complete=await get(200,'/api/dom-monad/admin/agent/persona_nikita/activity',a);
+ assert.equal(complete.handoffs_partial,false);
+ assert.ok(complete.handoffs.some(x=>x.handoff_id==='fixture-completed'&&x.status==='completed'));
  await post(200,at+'/agents',a,{agent_id:'fixture_agent',mode:'mention'});
  await post(200,at+'/agents',a,{agent_id:'practice_contour',mode:'listen'});
  await expect(200,'PUT',at+'/harness',a.token,{version:0,context:'Fixture room context'});
