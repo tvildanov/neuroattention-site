@@ -2185,3 +2185,8 @@ Recorded founder's conceptual correction in docs/typology/STABILITY-CLARIFICATIO
 ## 2026-11-18 — Clarify Stability boundary and restore overall task
 
 Recorded founder response to FQ07: selecting a new path after disruption is not by itself Stability; persistence, awareness/boundaries, adaptation and recovery must remain distinct. Internal support is foundational within the founder's conceptual model; external assets alone do not establish Stability. Marked the agent's definition and STA01–STA03 as still unapproved candidates rather than accepted measures. No new score or fourteenth stat. Updated continuation to explain the original 13-stat Body/Mind/World architecture and review blocks without repeated narrow questions. No code, production, account or Monad changes. Existing public journal prefix preserved unchanged.
+
+
+## 2026-11-18 — Review full Body Core before scoring
+
+Published docs/typology/BODY-CORE-REVIEW.md covering all five Body constructs, all 15 existing draft items/options, per-item limitations and proposed revision directions. Distinguished functional capacity, preferred strategy, temporary state and context; none is automatically a numeric score. Applied the founder's Stability boundary: rebuilding after loss is not evidence of retained support during pressure. Prepared three focused founder questions for the whole block rather than repeating an interview per stat. Updated continuation and manifest. No executable bank, scoring, production, account or Monad changes. No code tests added or rerun for documentation-only changes; existing journal prefix preserved.
