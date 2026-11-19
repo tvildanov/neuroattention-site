@@ -1,0 +1,638 @@
+{
+  "schema_version": "0.1",
+  "received_at": "2026-11-19",
+  "status": "recovered-historical-drafts-not-validated",
+  "enabled_for_scoring": false,
+  "sources": [
+    {
+      "uploaded_name": "id376_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id376_note.txt",
+      "original_bytes": 3435,
+      "original_sha256": "4bac8e8b99849dadaab47f663d17a3e46832630e70cfaa0a94a1de7d63460f1c",
+      "published_bytes": 3435,
+      "published_sha256": "4bac8e8b99849dadaab47f663d17a3e46832630e70cfaa0a94a1de7d63460f1c",
+      "published_byte_identical": true,
+      "redactions": [],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    },
+    {
+      "uploaded_name": "id374_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id374_note.txt",
+      "original_bytes": 17731,
+      "original_sha256": "40393c1ea2ca855c5820ca235cc0585d59590de14939fdf9db266ba3530b5841",
+      "published_bytes": 17731,
+      "published_sha256": "40393c1ea2ca855c5820ca235cc0585d59590de14939fdf9db266ba3530b5841",
+      "published_byte_identical": true,
+      "redactions": [],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    },
+    {
+      "uploaded_name": "id379_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id379_note.txt",
+      "original_bytes": 37651,
+      "original_sha256": "949511479053b29d56c6494e11e622059fc90bc40a1a2ad06dbdf80272628a90",
+      "published_bytes": 37597,
+      "published_sha256": "ebab6cf3cd27043f1fcb21ae7eea6e48ca7e699333c582f106caaf7c3fbf9b21",
+      "published_byte_identical": false,
+      "redactions": [
+        "One personal family-history aside replaced with an explicit marker; all project content retained."
+      ],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    },
+    {
+      "uploaded_name": "id328_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id328_note.txt",
+      "original_bytes": 368,
+      "original_sha256": "588fef4371379b29efc1cef82913d211bc71cc2a452cb35643465387239b050c",
+      "published_bytes": 368,
+      "published_sha256": "588fef4371379b29efc1cef82913d211bc71cc2a452cb35643465387239b050c",
+      "published_byte_identical": true,
+      "redactions": [],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    },
+    {
+      "uploaded_name": "id366_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id366_note.txt",
+      "original_bytes": 20198,
+      "original_sha256": "a2e2e5a30e133a3374b96628e3c2bc3b4d144a01b10f5de6fc3744d3188c7db3",
+      "published_bytes": 20198,
+      "published_sha256": "a2e2e5a30e133a3374b96628e3c2bc3b4d144a01b10f5de6fc3744d3188c7db3",
+      "published_byte_identical": true,
+      "redactions": [],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    },
+    {
+      "uploaded_name": "id329_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id329_note.txt",
+      "original_bytes": 19282,
+      "original_sha256": "79faf973d4f180e64bb4c4f323fae124be07d1d2f903ae5ad6df722b8ac79eaf",
+      "published_bytes": 19282,
+      "published_sha256": "79faf973d4f180e64bb4c4f323fae124be07d1d2f903ae5ad6df722b8ac79eaf",
+      "published_byte_identical": true,
+      "redactions": [],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    },
+    {
+      "uploaded_name": "id377_note.txt",
+      "path": "docs/typology/sources/recovered-notes-2026-11-19/id377_note.txt",
+      "original_bytes": 36528,
+      "original_sha256": "f0b208687a8f088e1ded02e498c118f6cecc6fc3535777c60b59a344ee64053f",
+      "published_bytes": 36528,
+      "published_sha256": "f0b208687a8f088e1ded02e498c118f6cecc6fc3535777c60b59a344ee64053f",
+      "published_byte_identical": true,
+      "redactions": [],
+      "source_date": "unknown",
+      "received_at": "2026-11-19"
+    }
+  ],
+  "matrix_counts": {
+    "rows": 13,
+    "cells": 169,
+    "diagonal": 13,
+    "off_diagonal": 156,
+    "asserted_no_direct_dependency": 3,
+    "typed_nonzero": 153
+  },
+  "distinct_stats_with_levels_and_question_fragments": 12,
+  "distinct_level_bands": 60,
+  "duplicates": [
+    {
+      "stat_id": "execution",
+      "files": [
+        "id377_note.txt",
+        "id379_note.txt"
+      ],
+      "same_after_whitespace_normalization": true
+    }
+  ],
+  "profiles": {
+    "id328_named_candidates": [
+      {
+        "name": "HIGH-LOAD ADAPTER",
+        "description": "Держит темп, но платит ресурсом"
+      },
+      {
+        "name": "NERVOUS SYSTEM SENSITIVE",
+        "description": "Тонко чувствует, но легко перегружается"
+      },
+      {
+        "name": "DISTRACTED EXPLORER",
+        "description": "Исследует, но теряет фокус"
+      },
+      {
+        "name": "FUTURE SPECIALIST",
+        "description": "Выходит за рамки работы только с собой"
+      }
+    ],
+    "id329_illustrative_labels": [
+      "Observer / Seer",
+      "Operator / Warrior",
+      "Hermit / Inner Sensor",
+      "Digital Mind"
+    ],
+    "complete_12_profile_definitions_recovered": false,
+    "thresholds_recovered": false
+  },
+  "historical_proposals": {
+    "layer_weights": {
+      "body_core": 0.4,
+      "mind_control": 0.35,
+      "world": 0.25
+    },
+    "body_weights": {
+      "stability": 0.25,
+      "energy_regulation": 0.25,
+      "interoception": 0.2,
+      "proprioception": 0.15,
+      "vital_engagement": 0.15
+    },
+    "body_formula": "stability*0.25 + energy_regulation*0.25 + interoception*0.20 + proprioception*0.15 + vital_engagement*0.15",
+    "source": "sources/recovered-notes-2026-11-19/id329_note.txt",
+    "dependency_adjustment_example": {
+      "source": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "direct": 60,
+      "modifiers": [
+        -5,
+        -3,
+        -4
+      ],
+      "adjusted": 48,
+      "formula_status": "illustration-not-general-rule"
+    },
+    "enabled_for_scoring": false
+  },
+  "unresolved": [
+    "Final item-to-score mappings, normalizations and source combination rules",
+    "Numerical matrix under revised construct meanings",
+    "Complete Space Awareness historical spec",
+    "Complete 12 profiles, signatures and thresholds",
+    "Growth/XP values lack empirical calibration; source numbers are preserved as proposals"
+  ],
+  "stat_sections": [
+    {
+      "stat_id": "stability",
+      "ordinal": 1,
+      "source_file": "id366_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "source_start_line": 54,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Reactive\nСистема постоянно реагирует.\nЛюбой стресс выбивает."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Fragile\nИногда удерживается.\nНо запас устойчивости маленький."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional\nМожет справляться с обычной жизнью."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Adaptive\nВыдерживает серьёзные изменения."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Resilient\nБыстро восстанавливается после нагрузок."
+        }
+      ],
+      "questions_fragment": "Примеры вопросов\n\nКогда происходит неожиданная проблема:\nполностью теряюсь\nтребуется много времени на восстановление\nсохраняю способность действовать\nбыстро адаптируюсь\n\nПосле сложного дня:\nне могу функционировать\nвосстанавливаюсь долго\nобычно возвращаюсь в норму\nбыстро восстанавливаюсь\n\nВопрос №3\nКогда ваши планы неожиданно нарушаются:\nполностью выпадаю из процесса\nтребуется время чтобы вернуться\nобычно быстро возвращаюсь\nбыстро перестраиваюсь и продолжаю",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "energy_regulation",
+      "ordinal": 2,
+      "source_file": "id366_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "source_start_line": 174,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Depleted\nПочти постоянное истощение."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Inconsistent\nТо есть то нет."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Managed\nОбычная управляемая энергия."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Regulated\nХороший баланс нагрузки и восстановления."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Optimized\nОчень эффективное управление ресурсом."
+        }
+      ],
+      "questions_fragment": "Когда усталость накапливается:\nзамечаю слишком поздно\nзамечаю иногда\nобычно замечаю заранее\nпочти всегда замечаю заранее\n\nНасколько часто вы:\nдоводите себя до полного истощения\n\nВопрос №3\nКогда вы замечаете усталость:\nобычно продолжаю давить дальше\nиногда делаю паузу\nчасто корректирую нагрузку\nпочти всегда вовремя перестраиваю режим",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "interoception",
+      "ordinal": 3,
+      "source_file": "id366_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "source_start_line": 307,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Disconnected\nПочти не замечает сигналы тела."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Occasional Awareness\nЗамечает только сильные сигналы."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional Awareness\nЗамечает большинство состояний."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Sensitive\nХорошо различает сигналы."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Highly Attuned\nУлавливает изменения до появления симптомов."
+        }
+      ],
+      "questions_fragment": "Вопросы\n\nСколько различных телесных ощущений вы способны различить прямо сейчас?\n\nКогда возникает напряжение:\nзамечаю только когда становится сильным\nзамечаю умеренно рано\nзамечаю быстро\nзамечаю почти сразу\n\nНасколько легко вам определить:\nголод\nусталость\nтревогу\nрасслабление\nкак разные состояния.",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "proprioception",
+      "ordinal": 4,
+      "source_file": "id366_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "source_start_line": 430,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Disorganized"
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Unstable"
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional"
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Coordinated"
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Highly Integrated"
+        }
+      ],
+      "questions_fragment": "Вопросы\n\nЧасто ли вы задеваете предметы?\n\nНасколько быстро осваиваете новые движения?\n\nНасколько точно можете воспроизвести ритм движения?",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "vital_engagement",
+      "ordinal": 5,
+      "source_file": "id366_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id366_note.txt",
+      "source_start_line": 499,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Numb / Disconnected\nСлабый контакт с жизнью.\nМало интереса, мало удовольствия, ощущение автоматизма."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Low Engagement\nИнтерес появляется редко.\nЧеловек может функционировать, но без ощущения живости."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional Engagement\nЕсть обычная вовлечённость.\nЧеловек способен интересоваться, учиться, включаться в процессы."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Alive / Curious\nХороший контакт с жизнью.\nЕсть любопытство, исследование, вкус к процессам."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Deeply Engaged\nВысокая насыщенность жизни.\nЧеловек активно исследует, включается, чувствует смысл и живой контакт с происходящим."
+        }
+      ],
+      "questions_fragment": "Вопрос 1\nКак часто за последнюю неделю вы испытывали искренний интерес?\nВопрос 2\nКак часто вам хотелось попробовать что-то новое?\nВопрос 3\nКак часто вы ощущали себя по-настоящему вовлечённым в происходящее?\n\nКак часто за последнюю неделю вы:\nиспытывали искренний интерес\nхотели что-то исследовать\nзамечали красоту\nиспытывали вдохновение",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "attention_control",
+      "ordinal": 6,
+      "source_file": "id377_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id377_note.txt",
+      "source_start_line": 6,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Scattered\nВнимание хаотично.\nПостоянно скачет.\nЧеловек редко замечает отвлечения."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Reactive\nСпособен удерживать внимание короткое время.\nВнешние стимулы легко захватывают управление."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional\nМожет удерживать внимание на задаче.\nПериодически отвлекается.\nОбычно способен вернуться."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Directed\nУмеет осознанно направлять внимание.\nПереключается без сильной потери эффективности."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Mastered\nВысокий контроль внимания.\nМинимальная зависимость от случайных стимулов."
+        }
+      ],
+      "questions_fragment": "Вопрос 1\nВо время выполнения важной задачи:\nпостоянно отвлекаюсь\nотвлекаюсь часто\nиногда отвлекаюсь\nобычно удерживаю внимание\nВопрос 2\nКогда замечаю, что отвлёкся:\nпродолжаю отвлекаться\nиногда возвращаюсь\nобычно возвращаюсь\nпочти сразу возвращаю внимание\nВопрос 3\nНасколько легко вам удерживать внимание на одном объекте 5 минут?\nочень трудно\nтрудно\nумеренно\nлегко",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "awareness",
+      "ordinal": 7,
+      "source_file": "id377_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id377_note.txt",
+      "source_start_line": 211,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Blind\nБольшинство процессов происходят автоматически.\nЧеловек редко замечает причины своих состояний."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Reactive Awareness\nЗамечает происходящее только после того, как событие уже произошло."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional Awareness\nСпособен замечать часть паттернов и состояний.\nИногда понимает причинно-следственные связи."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Systemic Awareness\nВидит закономерности.\nПонимает повторяющиеся связи между\nсостояниями\nдействиями\nсредой\nрезультатами\nОбычно замечает процессы во время их развития."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Meta-Awareness\nСпособен наблюдать возникновение процессов практически в момент запуска.\nЗамечает:\nавтоматизмы;\nэмоциональные реакции;\nпереключения внимания;\nформирование намерений\nдо того, как они полностью захватывают поведение."
+        }
+      ],
+      "questions_fragment": "Вопрос 1\nКогда ваше состояние меняется:\nобычно не понимаю почему\nпонимаю задним числом\nчасто понимаю причины\nпочти всегда замечаю причины изменений\nВопрос 2\nКогда в жизни возникает повторяющаяся проблема:\nвоспринимаю её как случайность\nиногда замечаю закономерность\nобычно вижу повторяющийся паттерн\nпочти всегда понимаю механизм возникновения\nВопрос 3\nНасколько часто вы можете объяснить:\nпочему возникло текущее состояние;\nчто на него повлияло;\nчто его поддерживает.",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "adaptation_flexibility",
+      "ordinal": 8,
+      "source_file": "id377_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id377_note.txt",
+      "source_start_line": 478,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Rigid\nВысокая ригидность.\nЧеловек держится за привычные модели даже если они явно не работают."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Reactive\nИногда меняется под давлением обстоятельств.\nНо редко меняется добровольно."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional\nСпособен менять часть привычек и стратегий."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Adaptive\nОтносительно легко перестраивается.\nИспользует изменения как инструмент."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Fluid\nВысокая адаптивность.\nСпособен быстро менять стратегии без потери устойчивости."
+        }
+      ],
+      "questions_fragment": "Вопрос 1\nКогда вы сталкиваетесь с задачей, которую уже пытались решить ранее:\nобычно продолжаю развивать текущий подход;\nнекоторое время придерживаюсь прежнего подхода, затем начинаю искать альтернативы;\nдостаточно быстро начинаю тестировать другие варианты;\nчасто пробую несколько вариантов параллельно.\nВопрос 2\nКогда получаю новую информацию:\nигнорирую её\nпринимаю с трудом\nмогу пересмотреть мнение\nрегулярно обновляю свои модели\nВопрос 3\nКак часто за последний месяц вы осознанно изменяли своё поведение?\nпочти никогда\nредко\nпериодически\nрегулярно",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "execution",
+      "ordinal": 9,
+      "source_file": "id377_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id377_note.txt",
+      "source_start_line": 675,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Inactive\nМного намерений.\nМало завершений.\nБольшинство идей остаются идеями."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Starter\nСпособен начинать.\nТрудно завершать.\nМного незаконченных процессов."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional\nМожет доводить часть задач до результата."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Reliable\nРегулярно завершает начатое.\nВысокая предсказуемость действий."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Integrator\nСпособен системно воплощать намерения в реальность.\nВысокая способность к реализации сложных долгосрочных проектов."
+        }
+      ],
+      "questions_fragment": "Сразу учитывая наш прошлый опыт.\nНе делаем вопросы с очевидно \"правильным\" ответом.\nВопрос 1\nКогда вы начинаете новый проект или задачу:\nобычно сначала собираю много информации;\nнекоторое время готовлюсь и планирую;\nстараюсь быстро переходить к действиям;\nначинаю действовать ещё до полной ясности.\nВопрос 2\nЕсли задача занимает несколько недель:\nинтерес часто снижается;\nпериодически откладываю её;\nобычно возвращаюсь к ней;\nподдерживаю движение до завершения.\nВопрос 3\nЗа последние 30 дней:\nсколько начатых вами задач было полностью завершено?\n(ответ в диапазонах)",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "technoperception",
+      "ordinal": 10,
+      "source_file": "id379_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id379_note.txt",
+      "source_start_line": 230,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Digitally Disconnected\nИспытывает трудности при освоении технологий.\nРедко использует цифровые инструменты.\nНизкая цифровая грамотность."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Basic User\nИспользует базовые технологии.\nОсваивает новое с трудом."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional User\nУверенно использует большинство распространённых цифровых инструментов."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Advanced User\nБыстро осваивает новые технологии.\nЛегко адаптируется к новым цифровым средам."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Technology Native\nТехнологическая среда воспринимается как естественное продолжение деятельности.\nЛегко изучает новые цифровые системы.\nСпособен комбинировать технологии для решения сложных задач."
+        }
+      ],
+      "questions_fragment": "Вопрос 1\nКогда появляется новый цифровой инструмент:\nпредпочитаю не использовать его;\nизучаю только при необходимости;\nобычно быстро осваиваю;\nначинаю исследовать возможности самостоятельно.\nВопрос 2\nЕсли необходимо решить новую задачу с помощью технологий:\nобычно ищу помощь;\nиспользую знакомые инструменты;\nпробую разные решения;\nбыстро нахожу и осваиваю подходящие инструменты.\nВопрос 3\nНасколько комфортно вы чувствуете себя в новой цифровой среде:\nнапример:\nновое приложение;\nновая платформа;\nновый ИИ-инструмент;\nновая операционная система.",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "socioperception",
+      "ordinal": 11,
+      "source_file": "id379_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id379_note.txt",
+      "source_start_line": 413,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Socially Disconnected\nПлохо понимает своё место в социальной среде.\nСлабо понимает собственный вклад и роль."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Searching\nНаходится в поиске социальной идентичности.\nПытается понять своё направление и сферу проявления."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional\nПонимает свою деятельность.\nПонимает свою роль в основных социальных системах."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Social Contributor\nОсознаёт свой вклад.\nПонимает ценность создаваемой деятельности.\nАктивно участвует в развитии сообществ, проектов или команд."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Social Architect\nСпособен создавать новые социальные структуры:\nпроекты;\nсообщества;\nнаправления деятельности;\nобразовательные системы;\nорганизации."
+        }
+      ],
+      "questions_fragment": "Вопрос 1\nКогда вы рассказываете о том, чем занимаетесь:\nобычно описываю только отдельные задачи;\nмогу описать свою деятельность в целом;\nпонимаю ценность своей деятельности;\nясно понимаю свою роль и вклад.\nВопрос 2\nЕсли спросить:\nДля кого существует ваша деятельность?\nредко задумывался об этом;\nесть общее понимание;\nобычно понимаю кому она полезна;\nхорошо понимаю людей, для которых создаю ценность.\nВопрос 3\nВ группах, командах или сообществах я чаще:\nнаблюдаю;\nучаствую;\nвлияю на процессы;\nсоздаю процессы.",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    },
+    {
+      "stat_id": "relational_awareness",
+      "ordinal": 12,
+      "source_file": "id379_note.txt",
+      "source_path": "sources/recovered-notes-2026-11-19/id379_note.txt",
+      "source_start_line": 621,
+      "bands": [
+        {
+          "lower": 0,
+          "upper": 20,
+          "text": "Relationally Isolated\nИспытывает трудности в построении устойчивых отношений.\nЧасто не понимает других людей."
+        },
+        {
+          "lower": 20,
+          "upper": 40,
+          "text": "Transactional\nОтношения строятся преимущественно вокруг функций и задач.\nГлубина контакта ограничена."
+        },
+        {
+          "lower": 40,
+          "upper": 60,
+          "text": "Functional\nСпособен поддерживать стабильные отношения.\nПонимает базовые эмоциональные процессы других людей."
+        },
+        {
+          "lower": 60,
+          "upper": 80,
+          "text": "Connected\nСоздаёт глубокие и устойчивые связи.\nСпособен видеть динамику отношений."
+        },
+        {
+          "lower": 80,
+          "upper": 100,
+          "text": "Relational Integrator\nСпособен создавать пространство доверия, сотрудничества и развития для других людей."
+        }
+      ],
+      "questions_fragment": "Как и раньше, без очевидно \"правильных\" ответов.\nВопрос 1\nКогда близкий человек переживает сложный период:\nобычно стараюсь дать решение;\nстараюсь поддержать и помочь разобраться;\nсначала пытаюсь понять его состояние;\nобычно замечаю и состояние, и потребности человека.\n[Личная отсылка к семейной истории удалена из публичной копии; содержание вопроса сохранено.]\nВопрос 2\nПосле конфликта я чаще:\nстараюсь дистанцироваться;\nжду пока ситуация уляжется;\nвозвращаюсь к обсуждению;\nстараюсь понять, что происходило с обеих сторон.\nВопрос 3\nВ отношениях с людьми я чаще:\nреагирую на события;\nподдерживаю контакт по необходимости;\nосознанно поддерживаю важные отношения;\nрегулярно развиваю и углубляю отношения.",
+      "answer_weights": null,
+      "status": "recovered-historical-draft-not-current-canon",
+      "enabled_for_scoring": false
+    }
+  ],
+  "matrix_path": "DEPENDENCY-MATRIX.draft.json",
+  "stat_question_inventory_status": "12 historical draft sections with primary questions and additional variants; not a recovered numerical answer key",
+  "precedence": "Direct recent founder clarifications > accepted corrected definitions in handoff > historical note proposals. Upload date is not decision date."
+}
