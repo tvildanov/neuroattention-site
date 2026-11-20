@@ -4518,11 +4518,21 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
           finished_at: last.occurred_at, source: first.source, node_ids: ordered };
         chains.push(chain);
       } else if (ordered.length > chain.node_ids.length) {
-        let matched = 0;
-        for (const id of ordered) if (id === chain.node_ids[matched]) matched++;
-        if (matched === chain.node_ids.length) {
-          chain.node_ids = ordered;
-          chain.positions = ordered.map((_, i) => i);
+        // The saved chain is authoritative. Extend it only when those nodes still
+        // sit together, in order, inside the journey. Events that merely share the
+        // session (a concept reused across recordings) are not a subsequence license
+        // to splice them in front of this recording. A tail after the saved run is
+        // the membership an earlier writer can have dropped.
+        let start = -1;
+        for (let i = 0; i <= ordered.length - chain.node_ids.length; i++) {
+          if (chain.node_ids.every((id, offset) => id === ordered[i + offset])) { start = i; break; }
+        }
+        if (start >= 0) {
+          const extended = ordered.slice(start);
+          if (extended.length > chain.node_ids.length) {
+            chain.node_ids = extended;
+            chain.positions = extended.map((_, i) => i);
+          }
         }
       }
       // A sensation entry records its selected body locations. Match by occurrence,

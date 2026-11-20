@@ -68,6 +68,38 @@ async function ddl(name) {
  for(const [email,role,human] of [['qa-owner-a@example.invalid','superadmin','nikita'],['qa-owner-b@example.invalid','superadmin','takhir'],['qa-user@example.invalid','user',null],['qa-admin@example.invalid','admin',null]]){
    await db.query('INSERT INTO users(email,password_hash,display_name,role,monad_human_id,monad_access) VALUES ($1,$2,$3,$4,$5,$6)',[email,password,email.split('@')[0],role,human,!!human]);
  }
+ // A reused concept can leave an older journey row on this session. That row must
+ // not be spliced in front of the saved chain. A node that follows the saved run
+ // is the dropped tail and is still recovered.
+ const ownerEmail='qa-admin@example.invalid';
+ async function fixtureNode(label){
+   const inserted=await db.query(`INSERT INTO nm_nodes(user_id,type,label,normalized_label,valence)
+     SELECT id,'thought',$1,lower($1),'neutral' FROM users WHERE email=$2 RETURNING id`,[label,ownerEmail]);
+   return inserted.rows[0].id;
+ }
+ async function fixtureEvent(session,nodeId){
+   await db.query(`INSERT INTO journey_events(user_id,kind,layer,session_id,payload)
+     SELECT id,'neuromap_node','thought',$1,jsonb_build_object('nm_node_id',$2::text,'source','neuromap')
+     FROM users WHERE email=$3`,[session,nodeId,ownerEmail]);
+ }
+ const stray=await fixtureNode('Stray before');
+ const stableA=await fixtureNode('Stable A');
+ const stableB=await fixtureNode('Stable B');
+ await fixtureEvent('fixture-stable-chain',stray);
+ await fixtureEvent('fixture-stable-chain',stableA);
+ await fixtureEvent('fixture-stable-chain',stableB);
+ const stableChain=await db.query(`INSERT INTO nm_chains(user_id,session_id,started_at,finished_at,source)
+   SELECT id,'fixture-stable-chain',now(),now(),'thought' FROM users WHERE email=$1 RETURNING id`,[ownerEmail]);
+ await db.query('INSERT INTO nm_chain_nodes(chain_id,node_id,position) VALUES ($1,$2,0),($1,$3,1)',[stableChain.rows[0].id,stableA,stableB]);
+ const lead=await fixtureNode('Stray lead');
+ const prefix=await fixtureNode('Kept prefix');
+ const tail=await fixtureNode('Recovered tail');
+ await fixtureEvent('fixture-prefix-tail',lead);
+ await fixtureEvent('fixture-prefix-tail',prefix);
+ await fixtureEvent('fixture-prefix-tail',tail);
+ const prefixChain=await db.query(`INSERT INTO nm_chains(user_id,session_id,started_at,finished_at,source)
+   SELECT id,'fixture-prefix-tail',now(),now(),'thought' FROM users WHERE email=$1 RETURNING id`,[ownerEmail]);
+ await db.query('INSERT INTO nm_chain_nodes(chain_id,node_id,position) VALUES ($1,$2,0)',[prefixChain.rows[0].id,prefix]);
  // Historical production shape: the journey survived but no nm_chains row was saved.
  for (const [type,label] of [['event','Old event'],['emotion','Old emotion']]) {
    await db.query(`WITH n AS (

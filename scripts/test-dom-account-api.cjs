@@ -162,6 +162,10 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const recovered=await get(200,'/api/neuromap/v3/graph',admin);
  const historical=recovered.chains.find(c=>c.session_id==='fixture-old-recording');
  assert.equal(historical.node_ids.length,2);
+ const recoveredNames=new Map(recovered.nodes.map(n=>[n.id,n.label]));
+ const labelsOf=session=>recovered.chains.find(c=>c.session_id===session).node_ids.map(id=>recoveredNames.get(id));
+ assert.deepEqual(labelsOf('fixture-stable-chain'),['Stable A','Stable B']);
+ assert.deepEqual(labelsOf('fixture-prefix-tail'),['Kept prefix','Recovered tail']);
  assert.deepEqual(occurrenceGraph(recovered,()=>true).nodes.filter(n=>n.session_id===historical.session_id).map(n=>n.label),['Old event','Old emotion']);
  assert.ok(!walks.chains.some(c=>c.session_id===historical.session_id));
  console.log('ACCOUNT_API_PASS signed-in profiles, graph occurrences, concurrent appends, Path, record isolation');
