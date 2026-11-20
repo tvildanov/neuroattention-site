@@ -4183,29 +4183,28 @@ async function nmBridgeSession(userId, sessionId, newNodeIds, whenIso, source) {
   // order. This is what makes chains first-class instead of inferred from session_id
   // at render time: the NeuroMap info-panel lists a node's chains, the Personal Path
   // draws one branch per chain, and v3/graph derives links from consecutive members.
-  // `ids` already arrive in flow order (body→sensation→emotion…), so position is just
+  // The input nodes already arrive in flow order (body→sensation→emotion…), so position is just
   // the running index appended to whatever the session already holds.
-  try {
-    await sql.transaction([
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${sid}, 0))`,
-      sql`WITH chain AS (
-        INSERT INTO nm_chains (user_id, session_id, started_at, finished_at, source)
-        VALUES (${userId}, ${sid}, ${when}, ${when}, ${source || null})
-        ON CONFLICT (session_id) DO UPDATE SET
-          finished_at = GREATEST(nm_chains.finished_at, EXCLUDED.finished_at),
-          source = COALESCE(nm_chains.source, EXCLUDED.source)
-        WHERE nm_chains.user_id = EXCLUDED.user_id
-        RETURNING id
-      ), start_position AS (
-        SELECT chain.id, COALESCE(MAX(n.position), -1) AS last_position
-        FROM chain LEFT JOIN nm_chain_nodes n ON n.chain_id = chain.id GROUP BY chain.id
-      )
-      INSERT INTO nm_chain_nodes (chain_id, node_id, position)
-      SELECT chain.id, nodes.node_id, (chain.last_position + nodes.ordinality)::int
-      FROM start_position chain
-      CROSS JOIN unnest(${ids}::uuid[]) WITH ORDINALITY AS nodes(node_id, ordinality)`
-    ]);
-  } catch (e) { console.error('nmBridgeSession chain upsert:', e.message); }
+  const [, members] = await sql.transaction([
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${sid}, 0))`,
+    sql`WITH chain AS (
+      INSERT INTO nm_chains (user_id, session_id, started_at, finished_at, source)
+      VALUES (${userId}, ${sid}, ${when}, ${when}, ${source || null})
+      ON CONFLICT (session_id) DO UPDATE SET
+        finished_at = GREATEST(nm_chains.finished_at, EXCLUDED.finished_at),
+        source = COALESCE(nm_chains.source, EXCLUDED.source)
+      WHERE nm_chains.user_id = EXCLUDED.user_id
+      RETURNING id
+    ), start_position AS (
+      SELECT chain.id, COALESCE(MAX(n.position), -1) AS last_position
+      FROM chain LEFT JOIN nm_chain_nodes n ON n.chain_id = chain.id GROUP BY chain.id
+    )
+    INSERT INTO nm_chain_nodes (chain_id, node_id, position)
+    SELECT chain.id, nodes.node_id, (chain.last_position + nodes.ordinality)::int
+    FROM start_position chain
+    CROSS JOIN unnest(${newNodeIds.filter(Boolean)}::uuid[]) WITH ORDINALITY AS nodes(node_id, ordinality) RETURNING chain_id`
+  ]);
+  if (!members.length) throw new Error("No recording accepted these nodes");
   return made;
 }
 
@@ -4491,6 +4490,54 @@ app.get('/api/neuromap/v3/graph', requireAuth, async (req, res) => {
         positions: members.map(row => row.position)
       };
     });
+
+    // Earlier writers could save the journey and swallow an error writing chain membership.
+    // Event IDs retain insertion order even when all steps share a timestamp or were backdated.
+    const journeyRows = await sql`SELECT j.id, j.session_id, j.occurred_at, n.id AS node_id,
+             j.payload->>'source' AS source, j.payload->'body_locations' AS body_locations,
+             j.payload->'intensity' AS intensity
+      FROM journey_events j JOIN nm_nodes n ON n.user_id = j.user_id
+        AND n.id::text = j.payload->>'nm_node_id'
+      WHERE j.user_id = ${userId} AND j.dependent_id IS NULL AND j.session_id IS NOT NULL
+        AND j.payload ? 'nm_node_id'
+      ORDER BY j.id`;
+    const sessions = new Map();
+    for (const row of journeyRows) {
+      if (!sessions.has(row.session_id)) sessions.set(row.session_id, []);
+      sessions.get(row.session_id).push(row);
+    }
+    const bySession = new Map(chains.map(chain => [chain.session_id, chain]));
+    for (const [session, steps] of sessions) {
+      const ordered = steps.map(row => String(row.node_id));
+      const first = steps[0], last = steps[steps.length - 1];
+      let chain = bySession.get(session);
+      if (!chain) {
+        const time = new Date(first.occurred_at).getTime();
+        if ((from && time < from.getTime()) || (to && time > to.getTime())) continue;
+        chain = { id: 'history-' + first.id, session_id: session, started_at: first.occurred_at,
+          finished_at: last.occurred_at, source: first.source, node_ids: ordered };
+        chains.push(chain);
+      } else if (ordered.length > chain.node_ids.length) {
+        let matched = 0;
+        for (const id of ordered) if (id === chain.node_ids[matched]) matched++;
+        if (matched === chain.node_ids.length) {
+          chain.node_ids = ordered;
+          chain.positions = ordered.map((_, i) => i);
+        }
+      }
+      // A sensation entry records its selected body locations. Match by occurrence,
+      // including a second visit to the same concept during the same recording.
+      chain.body_locations = {};
+      chain.intensities = {};
+      let after = 0;
+      for (const row of steps) {
+        const pos = chain.node_ids.indexOf(String(row.node_id), after);
+        if (pos < 0) continue;
+        after = pos + 1;
+        if (Number.isFinite(row.intensity)) chain.intensities[pos] = row.intensity;
+        if (Array.isArray(row.body_locations)) chain.body_locations[pos] = row.body_locations;
+      }
+    }
 
     // Visible node set: every node that appears in an in-range chain, plus orphan
     // nodes (legacy, no chain) whose last_seen falls in the window.
@@ -7087,6 +7134,10 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
     // Resolve labels
     const sensRows = sensations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'sensation' AND slug = ANY(${sensations}::text[])` : [];
     const locRows = body_locations.length ? await sql`SELECT slug, label_ru FROM vocab_terms WHERE category = 'body_location' AND slug = ANY(${body_locations}::text[])` : [];
+    if (new Set(sensations).size !== sensRows.length) {
+      return res.status(400).json({ error: 'unknown_sensation', message: 'Обновите список ощущений и повторите выбор.' });
+    }
+    sensRows.sort((a, b) => sensations.indexOf(a.slug) - sensations.indexOf(b.slug));
     // PR4 (4.3): accept detailed/custom body-location slugs (e.g. "right_leg__foot")
     // that aren't seeded in vocab_terms. Label comes from the client-sent loc_labels
     // map (the body-part hierarchy lives in the frontend) or a humanized slug.
@@ -7099,6 +7150,8 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
                 : String(slug).replace(/__/g, ' › ').replace(/_/g, ' ');
       locRows.push({ slug, label_ru: lbl });
     }
+
+    locRows.sort((a, b) => body_locations.indexOf(a.slug) - body_locations.indexOf(b.slug));
 
     // PR#106: Tahir wants a clean slate — NO whole_body fallback, NO orphan
     // sensations ever again. A sensation with no body location is rejected outright
@@ -7145,7 +7198,8 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
         VALUES (${userId}, 'area', ${loc.label_ru}, ${norm}, 'neutral', 1, ${when.toISOString()},
                 ${JSON.stringify({ source: 'sensation', slug: loc.slug, area_kind: 'body' })}::jsonb)
         ON CONFLICT (user_id, type, normalized_label, valence)
-        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()}
+        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()},
+          metadata = COALESCE(nm_nodes.metadata, '{}'::jsonb) || EXCLUDED.metadata
         RETURNING id`;
       if (r[0]) nmNodeIds.push(r[0].id);
     }
@@ -7164,7 +7218,8 @@ app.post('/api/neuromap/sensation', requireAuth, async (req, res) => {
         VALUES (${userId}, 'sensation', ${s.label_ru}, ${snorm}, 'neutral', 1, ${when.toISOString()},
                 ${JSON.stringify({ source: 'sensation', slug: s.slug })}::jsonb)
         ON CONFLICT (user_id, type, normalized_label, valence)
-        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()}
+        DO UPDATE SET count = nm_nodes.count + 1, last_seen_at = ${when.toISOString()},
+          metadata = COALESCE(nm_nodes.metadata, '{}'::jsonb) || EXCLUDED.metadata
         RETURNING id`;
       if (sr[0]) sensNodeIds.push(sr[0].id);
     }

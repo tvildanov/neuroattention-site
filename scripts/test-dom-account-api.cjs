@@ -139,6 +139,31 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const mapped=occurrenceGraph(afterLink,()=>true);
  const explicit=mapped.links.find(link=>link.kind==='correlation');
  assert.equal(mapped.nodes.find(node=>node.id===explicit.target).session_id,chosen.session_id);
+ const handoff=crypto.randomUUID(), standalone=crypto.randomUUID();
+ const recordSensation=id=>post(200,'/api/neuromap/sensation',member,{
+   session_id:id,sensations:['warmth'],body_locations:['fixture_arm','fixture_hand'],
+   loc_labels:{fixture_arm:'Arm',fixture_hand:'Hand'},intensity:7
+ });
+ await recordSensation(standalone);
+ await append(member,{session_id:handoff,chain:[{type:'event',label:'Walking'}]});
+ await recordSensation(handoff);
+ await append(member,{session_id:handoff,chain:[{type:'emotion',label:'Relief'},{type:'thought',label:'Easier now'}]});
+ const walks=await get(200,'/api/neuromap/v3/graph',member);
+ const scene=occurrenceGraph(walks,()=>true);
+ function edgesIn(session) {
+   const chain=walks.chains.find(c=>c.session_id===session);
+   const nodes=new Map(scene.nodes.filter(n=>n.session_id===session).map(n=>[n.id,n.label]));
+   assert.ok(chain);
+   return scene.links.filter(l=>l.chain_ids?.includes(chain.id)).map(l=>[nodes.get(l.source),nodes.get(l.target)].join('/')).sort();
+ }
+ assert.equal(scene.nodes.find(n=>n.session_id===standalone&&n.type==='sensation').recorded_intensity,7);
+ assert.deepEqual(edgesIn(standalone),['Arm/тепло','Hand/тепло']);
+ assert.deepEqual(edgesIn(handoff),['Arm/тепло','Hand/тепло','Relief/Easier now','Walking/тепло','тепло/Relief'].sort());
+ const recovered=await get(200,'/api/neuromap/v3/graph',admin);
+ const historical=recovered.chains.find(c=>c.session_id==='fixture-old-recording');
+ assert.equal(historical.node_ids.length,2);
+ assert.deepEqual(occurrenceGraph(recovered,()=>true).nodes.filter(n=>n.session_id===historical.session_id).map(n=>n.label),['Old event','Old emotion']);
+ assert.ok(!walks.chains.some(c=>c.session_id===historical.session_id));
  console.log('ACCOUNT_API_PASS signed-in profiles, graph occurrences, concurrent appends, Path, record isolation');
  for(const [who,id] of [[a,'persona_nikita'],[b,'persona_takhir']]){
    const route='/api/dom-monad/admin/agent/'+id;

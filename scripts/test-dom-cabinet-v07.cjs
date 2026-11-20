@@ -40,6 +40,21 @@ async function request(route,token,body){
      if(u.hostname==='neuroattention-api-production.up.railway.app')return route.fulfill({response:await route.fetch({url:local+u.pathname+u.search})});
      await route.abort();
    });
+   if(lang==='ru'){
+     let mark;
+     for(const path of ['index.html','method.html','account.html']){
+       await page.goto(local+'/'+path,{waitUntil:'domcontentloaded'});
+       const brand=await page.evaluate(()=>{
+         document.documentElement.dataset.domTheme='light';
+         const read=s=>getComputedStyle(document.querySelector('.navbar .nav-logo-dom '+s));
+         const word=read('.dom-brand-name'),end=read('.text-gradient-cyan'),icon=read('.nav-logo-icon');
+         return [word.color,end.color,end.webkitTextFillColor,end.backgroundImage,end.boxShadow,end.textShadow,icon.filter];
+       });
+       assert.deepEqual(brand.slice(0,6),['rgb(20, 36, 52)','rgb(32, 76, 142)','rgb(32, 76, 142)','none','none','none'],path);
+       if(mark)assert.deepEqual(brand,mark,path);
+       mark=brand;
+     }
+   }
    await page.goto(local+'/account.html',{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('.navbar .nav-logo-dom .dom-brand-name').count(),1);
    await page.locator('#login-id').fill('qa-'+role+'@example.invalid');
@@ -131,6 +146,40 @@ async function request(route,token,body){
        await page.locator('#nm-prev').click();
      }
      await page.evaluate(()=>window.closeNmSurvey());
+     await page.evaluate(()=>nmOpenSensationOverlay());
+     await page.locator('#sm-sens-chips [data-slug="warmth"]').click();
+     if(!await page.locator('#sm-loc-chips').isVisible())await page.locator('#tools-sensation-wrap .bp-toggle-list').click();
+     await page.locator('#sm-loc-chips .sm-chip[data-slug]:visible').first().click();
+     const sensationSaved=page.waitForResponse(r=>r.url().includes('/api/neuromap/sensation')&&r.request().method()==='POST');
+     await page.locator('#nm-sens-save-exit').click();
+     assert.equal((await sensationSaved).status(),200);
+     await page.locator('#nm-sens-save-exit').waitFor({state:'detached'});
+     await page.evaluate(()=>nmOpenDiaryOverlay());
+     await page.locator('#diary-event-text').fill('Walk from diary to sensation to emotion');
+     await page.locator('#plus-area button').first().click();
+     await page.locator('button[onclick="nmDiaryLinkSensation()"]').click();
+     await page.locator('#sm-sens-chips [data-slug="warmth"]').click();
+     if(!await page.locator('#sm-loc-chips').isVisible())await page.locator('#tools-sensation-wrap .bp-toggle-list').click();
+     await page.locator('#sm-loc-chips .sm-chip[data-slug]:visible').first().click();
+     await page.locator('#nm-sens-link-stub').click();
+     await emotionPanel.getByRole('button',{name:/^радость$/i}).click();
+     for(let i=0;i<6;i++)await page.locator('#nm-next').click();
+     const endWalk=page.waitForResponse(r=>r.url().includes('/api/neuromap/v2/append')&&r.request().method()==='POST');
+     await page.locator('#nm-step-content button[onclick="nmFinishAndSave()"]').click();
+     assert.equal((await endWalk).status(),200);
+     const actualWalk=(await request('/api/neuromap/v3/graph',token)).body;
+     const names=new Map(actualWalk.nodes.map(n=>[n.id,n]));
+     const visit=actualWalk.chains.find(c=>c.node_ids.some(id=>names.get(id)?.label==='Walk from diary to sensation to emotion'));
+     assert.deepEqual(visit.node_ids.map(id=>names.get(id).type),['event','area','sensation','emotion']);
+     assert.ok(actualWalk.chains.some(c=>c.id!==visit.id&&c.node_ids.length===2&&c.node_ids.includes(visit.node_ids[2])));
+     const mixed=await page.evaluate(()=>{
+       const t=new Date().toISOString();
+       const nodes=[['a','area','Hand'],['s','sensation','Warmth'],['x','thought','Old note']].map(([id,type,label])=>({id,type,label,metadata:id==='a'?{area_kind:'body'}:{},last_seen_at:t}));
+       const g=nmWithArchive({nodes,chains:[],links:[{source:'s',target:'a'},{source:'x',target:'s'}]});
+       const scene=nmOccurrenceGraph(g,()=>true);
+       return [g.chains.map(c=>c.node_ids.length).sort(),scene.links.length,scene.nodes.every(n=>n.chain_ids.length===1)];
+     });
+     assert.deepEqual(mixed,[[1,2],1,true]);
      const drawing=await page.evaluate(()=>{
        const types=['sensation','emotion','area','concept','cause','action'];
        function trace(type){
@@ -234,6 +283,14 @@ async function request(route,token,body){
      await page.waitForFunction(()=>nm3DGraph?.graphData().nodes.some(n=>n.label==='QA warmth'),undefined,{timeout:10000});
      await page.locator('#nm-3d-container canvas').first().waitFor();
      await page.waitForFunction(()=>nm3DGraph.graphData().nodes.some(n=>n.label==='QA joy'&&n.__threeObj?.geometry.userData.domSides===5));
+     const gap=await page.evaluate(()=>{
+       const link=nm3DGraph.graphData().links.find(l=>l.bodyBond&&[l.source.label,l.target.label].includes('QA warmth'));
+       const {source:a,target:b}=link;
+       a.x+=140;
+       for(let i=0;i<15;i++)nm3DGraph.d3Force('body-contact')();
+       return Math.abs(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)-(nmThreeRadius(a)+nmThreeRadius(b)-2));
+     });
+     assert.ok(gap<1,'a dragged sensation rejoins its body location in 3D');
      await page.evaluate(()=>{const n=nm3DGraph.graphData().nodes.find(v=>v.label==='QA joy');nm3DGraph.onNodeClick()(n);nm3DGraph.onNodeClick()(n);});
      assert.ok(await page.evaluate(()=>nmChainFilterId));
      await page.locator('[data-nm-reset]:visible').click();
