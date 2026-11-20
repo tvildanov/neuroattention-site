@@ -7150,6 +7150,9 @@ function nmOpenSensationOverlay(){
     src.style.display = '';
     src.style.flex = '0 0 auto'; // PR#112 (#2): keep the body figures at natural size (no flex-shrink squish)
     colL.appendChild(src);
+    // Start a new entry with freshly loaded options so a late render cannot clear the first pick.
+    document.getElementById('sm-sens-chips').replaceChildren();
+    document.getElementById('sm-loc-chips').replaceChildren();
     if (typeof loadSensationMap === 'function') { try{ loadSensationMap(); }catch(e){} }
     var mini = nmMiniMakeInset(colR, { full:true, title: _pr95t('a.tools.mini_live_map','Карта · вживую') });
     function rerender(){ if(mini) mini.render(nmMiniSensModel()); }
@@ -7427,7 +7430,9 @@ function nmDiaryMiniRerender(){ if(_nmDiaryMini){ try{ _nmDiaryMini.render(nmMin
 window.nmDiaryMiniRerender = nmDiaryMiniRerender;
 function openDiaryInput(prefillDate){
   nmConsumeSessionHandoff(); // PR#96: fresh diary open clears any stale session
-  document.getElementById('diaryModal').classList.add('open');
+  const modal=document.getElementById('diaryModal');
+  if(modal.parentElement!==document.body)document.body.appendChild(modal);
+  modal.classList.add('open');
   // Reset the date to today (or a caller-supplied YYYY-MM-DD) on every fresh open.
   var dEl=document.getElementById('diary-event-date');
   if(dEl) dEl.value = prefillDate || '';

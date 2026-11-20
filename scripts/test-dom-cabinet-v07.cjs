@@ -156,6 +156,7 @@ async function request(route,token,body){
      await page.locator('#nm-sens-save-exit').waitFor({state:'detached'});
      await page.evaluate(()=>nmOpenDiaryOverlay());
      await page.locator('#diary-event-text').fill('Walk from diary to sensation to emotion');
+     await page.locator('#plus-area button').first().click();
      await page.locator('button[onclick="nmDiaryLinkSensation()"]').click();
      await page.locator('#sm-sens-chips [data-slug="warmth"]').click();
      if(!await page.locator('#sm-loc-chips').isVisible())await page.locator('#tools-sensation-wrap .bp-toggle-list').click();
