@@ -1503,6 +1503,8 @@
   }
 
   function wire() {
+    // The cabinet can restore the signed-in user before this module loads.
+    showTabButton(window.currentUser);
     document.getElementById('tab-monad')?.addEventListener('click',function(event){
       var button=event.target.closest('[data-monad-inspect]');
       if(button)window.DOMRoomAgents?.showAgent(button.dataset.monadInspect,button.parentElement);
