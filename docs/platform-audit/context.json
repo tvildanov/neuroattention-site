@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "as_of_local_date": "2026-11-20",
+  "as_of_local_date": "2026-11-21",
   "timezone": "America/Cancun",
   "repository": "tvildanov/neuroattention-site",
   "audited_source_commit": "112b9aa373d197fd97c05442a422b913217c5668",
@@ -9,9 +9,9 @@
     "project_id": "1dd157e4-547e-4b08-9ba3-0be4202bfab3",
     "environment_id": "502fd87d-1730-4c7b-bc36-efc96f082065",
     "service_id": "90c8e681-c84e-4b59-8074-942afde84f7a",
-    "observed_deployment_id": "8f9154ad-bb3e-43d7-9c7b-03c86fd563c7",
+    "observed_deployment_id": "18c5f697-4201-4776-b72e-1602d3b6f2cf",
     "observed_status": "SUCCESS",
-    "observed_commit": "112b9aa373d197fd97c05442a422b913217c5668"
+    "observed_commit": "e708c05ea4334aa45f177615c8c77bc8c1c6b210"
   },
   "scope": [
     "capture",
@@ -32,18 +32,18 @@
   ],
   "status": {
     "audit": "source plus limited authenticated customer walkthrough complete",
-    "implementation": "First personal observation foundation implemented; release verification pending in PR 212",
-    "production_changes": "none",
+    "implementation": "First personal observation foundation released in PR 212; full platform redesign remains incomplete",
+    "production_changes": "Confirmed observations API and capture/source/history UI deployed and live-verified",
     "new_prototype": "not created"
   },
   "evidence": {
     "live_role": "ordinary existing test USER",
-    "synthetic_observation_count": 1,
+    "synthetic_observation_count": 2,
     "paid_tools_live": "not verified",
-    "multi_account_isolation": "not verified",
-    "mobile_and_dark_theme": "not verified this session",
+    "multi_account_isolation": "passed in isolated regression; not exercised using real users on production",
+    "mobile_and_dark_theme": "passed in GitHub CI: 390 and 1360, light/dark, RU/EN/ES; production smoke used existing ordinary test session",
     "real_hardware": "not verified",
-    "save_failure_retry": "source review only"
+    "save_failure_retry": "passed in isolated API/browser CI (lost acknowledgement after committed write, reload retry), not injected on production"
   },
   "proposals": [
     "incremental replacement behind adapters",
@@ -68,6 +68,23 @@
     "transaction_rollback": "passed",
     "operation_conflict_and_session_ownership": "passed",
     "migration_course_rtc_access": "passed in isolated fixture",
-    "browser": "GitHub CI pending; local Chromium restricted"
-  }
+    "browser": "GitHub CI passed on bb261de0adc1e19d1971388b079556ec61e43659: RU 390 light, EN 1360 dark, ES 390 dark; lost-ack/reload retry and literal original-source reopening; cabinet, NeuroMap, social and Monad regressions",
+    "runs": [
+      44961615868,
+      44961615900,
+      44961615933
+    ]
+  },
+  "release": {
+    "implementation_head": "bb261de0adc1e19d1971388b079556ec61e43659",
+    "frontend_commit": "e3cc703ccb8356c8cf4cc91bbecab40dc3f6cdfb",
+    "backend_commit": "e708c05ea4334aa45f177615c8c77bc8c1c6b210",
+    "backend_deployment": "18c5f697-4201-4776-b72e-1602d3b6f2cf",
+    "pages_run": 44962277665,
+    "frontend_merge_railway": "cd07c8e2-667b-4e9e-b43b-80c957b8fbb1 SKIPPED: watched API content already deployed",
+    "pages_status": "SUCCESS",
+    "published_blob_checks": "account.html, assets/js/dom-recording.js, assets/dom-recording.css, assets/js/dom-social.js, sw.js match e3cc703 (200)",
+    "live_walkthrough": "Existing ordinary test USER: synthetic short capture acknowledged, original text and unknown intensity rendered, reload retained one history row, original reopened, Path navigation opened workspace"
+  },
+  "next_step": "Package D: record list, source/occurrence/concept navigation and premium NeuroMap inspector; then E practice-to-result loop. Family idempotency and hardware/XR validation remain open."
 }
