@@ -2434,6 +2434,48 @@ User requested original drop restoration, a reusable export of the new renderer,
 {"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced actual diary, sensation and emotion writes and the legacy graph fallback"],"changed":["Recover missing membership from ordered personal journey events","Keep archival facts separate and bind recorded body locations to the felt sensations","Unify light navigation wordmark across homepage, method and cabinet"],"files":["api/server.js","account.html","assets/js/neuromap-chains.js","assets/dom-interface.css","scripts/test-dom-account-api.cjs","scripts/test-dom-cabinet-v07.cjs","scripts/fixtures/dom-account-server.cjs","index.html","method.html","sw.js"],"decisions":["Preserve existing records and distinguish archived information with unknown recording order"],"followups":["Check Railway revision and Pages deployment"],"next_session":"Verify the release against the owner's historical recordings if available."}
 ```
 
+
+## 2026-11-20 — DOM Platform product and infrastructure audit
+
+```json
+{
+  "project": "neuro",
+  "agent": "codex",
+  "at": "2026-11-20 America/Cancun",
+  "did": [
+    "Refreshed main to 112b9aa in an isolated audit worktree",
+    "Verified Railway production SUCCESS at the same revision",
+    "Walked the existing ordinary test USER capture/path/program/family interfaces",
+    "Saved one clearly synthetic observation and inspected the path after reload",
+    "Inventoried 313 explicit routes, 98 declared table names and parsed 19 inline scripts",
+    "Prepared audit, proposed product blueprint, staged backlog and portable continuity runbook"
+  ],
+  "changed": [
+    "Documentation and read-only source inventory script only"
+  ],
+  "files": [
+    "docs/platform-audit/",
+    "scripts/audit-platform-source.cjs",
+    "JOURNAL.md"
+  ],
+  "decisions": [
+    "Recommend incremental client/write-path replacement while retaining historical data; proposal, not migration",
+    "Preserve independent typology work",
+    "No new agent registered and no production application code changed"
+  ],
+  "followups": [
+    "Paid test role and isolated multi-account/access/retry tests",
+    "Reproduce path focus/period behavior",
+    "Implement confirmed idempotent write contract and reviewable prototype as next packages"
+  ],
+  "next_session": "Read docs/platform-audit/AGENT.md and current main; continue backlog package A/B/C without assuming paid/device checks passed"
+}
+```
+
+### Publication outcome for the 2026-11-20 audit
+
+Public GitHub push of local audit commit 222ff3b was rejected by automatic approval review: general GitHub saving authorization was judged insufficient for public disclosure of platform architecture, access findings and product plans. No connector/API retry or alternate publication was attempted. Audit files, context and source-inventory script were saved together as DOM_Platform_Audit_2026-11-20.zip for owner review. Public publication needs the owner's explicit destination/audience approval or an authorized private repository. Application production state remains unchanged. Next session must not assume that the local branch was published.
+
 ## 2026-11-20 — Restore Monad navigation after early session restoration
 
 ```json
