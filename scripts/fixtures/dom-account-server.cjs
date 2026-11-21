@@ -65,8 +65,12 @@ async function ddl(name) {
    if(await fetch(base+'/health').then(r=>r.ok).catch(()=>false))break;
    await new Promise(resolve=>setTimeout(resolve,100));
  }
- const response=await fetch(base+'/api/run-migrations',{method:'POST'});
+ const bootstrap='00000000-0000-4000-8000-000000000001';
+ await db.query("INSERT INTO users(id,email,password_hash,role) VALUES($1,'fixture-bootstrap@example.invalid','unused','superadmin')",[bootstrap]);
+ const migrationToken=require(path.join(root,'api/node_modules/jsonwebtoken')).sign({sub:bootstrap},config.JWT_SECRET);
+ const response=await fetch(base+'/api/run-migrations',{method:'POST',headers:{Authorization:'Bearer '+migrationToken}});
  console.log('FIXTURE_SCHEMA',response.status, (await response.text()).slice(0,250));
+ await db.query('DELETE FROM users WHERE id=$1',[bootstrap]);
  const bcrypt=require(path.join(root,'api/node_modules/bcryptjs'));
  const password=await bcrypt.hash('local-scenario-password',10);
  for(const [email,role,human] of [['qa-owner-a@example.invalid','superadmin','nikita'],['qa-owner-b@example.invalid','superadmin','takhir'],['qa-user@example.invalid','user',null],['qa-admin@example.invalid','admin',null]]){
@@ -81,5 +85,8 @@ async function ddl(name) {
      INSERT INTO journey_events(user_id,kind,layer,session_id,payload)
      SELECT user_id,'neuromap_node','emotion','fixture-old-recording',jsonb_build_object('nm_node_id',id,'source','neuromap') FROM n`,[type,label]);
  }
+ await db.exec(`CREATE FUNCTION fixture_observation_failure() RETURNS trigger AS $$
+ BEGIN IF NEW.payload->>'label' = 'Fixture force rollback' THEN RAISE EXCEPTION 'fixture-only write failure'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+ CREATE TRIGGER fixture_observation_failure BEFORE INSERT ON journey_events FOR EACH ROW EXECUTE FUNCTION fixture_observation_failure();`);
  console.log('ACCOUNT_FIXTURE_READY');
 })().catch(err=>{console.error(err);process.exit(1)});

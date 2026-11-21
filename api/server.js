@@ -327,8 +327,10 @@ app.get('/health', (req, res) => {
 });
 
 // ── ONE-TIME MIGRATION ENDPOINT (remove after use) ──
-app.post('/api/run-migrations', async (req, res) => {
+app.post('/api/run-migrations', requireAuth, async (req, res) => {
   try {
+    const [actor]=await sql`SELECT role FROM users WHERE id=${req.user.id}`;
+    if(!actor||!['superadmin','founder'].includes(actor.role))return res.status(403).json({error:'Administrator access required'});
     // ⚠️ Critical schema columns FIRST — the course-block constructor (tool_task)
     // breaks hard without these. Kept at the very top of the pipeline so they
     // always apply even if a later (non-critical) migration statement throws and
@@ -8482,6 +8484,14 @@ app.post('/api/courses/:id/blocks/:bid/complete', requireAuth, async (req, res) 
     const userId = req.user.sub || req.user.id;
     const courseId = parseInt(req.params.id, 10);
     const blockId = parseInt(req.params.bid, 10);
+    const [actor]=await sql`SELECT role FROM users WHERE id=${userId}`;
+    const [course]=await sql`SELECT is_published,program_access FROM courses WHERE id=${courseId}`;
+    if(!course)return res.status(404).json({error:'Course not found'});
+    if(!actor||!['superadmin','founder','admin'].includes(actor.role)){
+      if(!course.is_published)return res.status(404).json({error:'Course not found'});
+      const access=await getUserAccessTags(userId);
+      if((course.program_access||[]).length&&!course.program_access.some(tag=>access.includes(tag)))return res.status(403).json({error:'No access to this course'});
+    }
     const { response } = req.body || {};
     const [block] = await sql`SELECT * FROM course_blocks WHERE id = ${blockId} AND course_id = ${courseId}`;
     if (!block) return res.status(404).json({ error: 'Block not found' });
@@ -10338,11 +10348,18 @@ app.post('/api/admin/achievements/:id/award', requireAuth, async (req, res) => {
 // long-poll via GET. Once the peer connection is established WebRTC carries
 // the media stream directly between admin and viewers. No TURN — works on
 // most networks; strict NATs will silently fail.
+async function canUseRtcRoom(roomId,userId){
+ const [member]=await sql`SELECT 1 FROM chat_room_members WHERE room_id=${roomId} AND user_id=${userId}
+  UNION SELECT 1 FROM chat_rooms WHERE id=${roomId} AND created_by=${userId} LIMIT 1`;
+ return !!member;
+}
 app.post('/api/rtc/:roomId/signal', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
-    const rid = parseInt(req.params.roomId, 10);
+    const rid = Number(req.params.roomId);
+    if(!Number.isSafeInteger(rid)||rid<1||!await canUseRtcRoom(rid,me))return res.status(403).json({error:'Room access required'});
     const { kind, payload, to_id } = req.body || {};
+    if(to_id&&!await canUseRtcRoom(rid,to_id))return res.status(403).json({error:'Recipient is not in this room'});
     if (!kind || !payload) return res.status(400).json({ error: 'kind and payload required' });
     await sql`INSERT INTO rtc_signals (room_id, from_id, to_id, kind, payload)
               VALUES (${rid}, ${me}, ${to_id || null}, ${kind}, ${JSON.stringify(payload)}::jsonb)`;
@@ -10353,8 +10370,10 @@ app.post('/api/rtc/:roomId/signal', requireAuth, async (req, res) => {
 app.get('/api/rtc/:roomId/signals', requireAuth, async (req, res) => {
   try {
     const me = req.user.sub || req.user.id;
-    const rid = parseInt(req.params.roomId, 10);
+    const rid = Number(req.params.roomId);
+    if(!Number.isSafeInteger(rid)||rid<1||!await canUseRtcRoom(rid,me))return res.status(403).json({error:'Room access required'});
     const since = req.query.since ? new Date(req.query.since) : new Date(Date.now() - 30000);
+    if(!Number.isFinite(+since))return res.status(400).json({error:'Invalid time'});
     const rows = await sql`SELECT * FROM rtc_signals
       WHERE room_id = ${rid} AND (to_id = ${me} OR to_id IS NULL) AND from_id <> ${me} AND created_at > ${since}
       ORDER BY created_at ASC LIMIT 100`;
@@ -14681,6 +14700,7 @@ app.post('/api/monad/deliver-tahir-handoff', requireAuth, async (req, res) => {
 // DOM v0.7 server-authoritative Monad access, founder harness and DOMunity delivery.
 const domMonadV07=require('./services/dom-monad-v07');
 domMonadV07.install(app,{requireAuth,sql,monadSvc});
+require('./services/dom-observations').install(app,{sql,requireAuth,normalizeLabel,nmTypeToJourney});
 const domChatControls=require('./services/dom-chat-controls');
 domChatControls.install(app,{requireAuth,sql});
 
