@@ -10,11 +10,15 @@ if (!inbox) throw Error('Set DOM_ACCOUNT_TEST_INBOX to a temporary fixture path'
 const originalFetch = global.fetch;
 global.fetch = (input, options) => {
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+  if(url.href==='https://api.anthropic.com/v1/messages'&&options?.headers?.['x-api-key']==='fixture-guide'){
+    const body=JSON.parse(options.body);
+    return Promise.resolve(Response.json({content:[{type:'text',text:body.system.includes('Fixture correction')?'Updated guide':'Fixture guide'}]}));
+  }
   if (url.hostname !== '127.0.0.1') return Promise.reject(Error('External fetch blocked by account fixture'));
   return originalFetch(input, options);
 };
 const config = { DATABASE_URL: 'postgres://fixture:fixture@127.0.0.1/fixture', JWT_SECRET: 'fixture-only', PORT: '4318', SMTP_USER:'subject@.invalid',SMTP_PASS:'fixture-only', MONAD_BASE_URL:'http://127.0.0.1:4319',MONAD_MCP_URL:'http://127.0.0.1:4319/mcp',MONAD_API_KEY:'fixture-only',DOM_ACCOUNT_ADMIN_KEY:'fixture-admin-only' };
-Object.assign(process.env,config);
+Object.assign(process.env,config,{ANTHROPIC_API_KEY:'fixture-guide'});
 
 function tag(db) {
   function sql(parts,...values) {

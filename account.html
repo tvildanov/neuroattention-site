@@ -1004,6 +1004,7 @@ a.dash-tab:hover { text-decoration:none; }
 
   <!-- TAB: Overview -->
   <div class="tab-panel active" id="tab-overview">
+    <section id="dom-social-self"></section>
     <!-- Pack 21: Purchase banner — visible always, outside rpg-dashboard so it shows even before user takes the test -->
     <div id="purchase-banner-outer" style="display:none;padding:1.2rem 1.5rem;border-radius:14px;border:1px solid rgba(0,255,180,0.25);background:linear-gradient(135deg,rgba(0,200,140,0.08),rgba(0,224,255,0.05));margin-bottom:1.5rem;">
       <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
@@ -3533,6 +3534,7 @@ function naAdaptUser(apiUser){
     || ['superadmin', 'founder'].indexOf(serverRole) >= 0
     || monadAccess;
   return {
+    profile_public:apiUser.profile_public, bio:apiUser.bio, notifications_enabled:apiUser.notifications_enabled,
     id: apiUser.id,
     name: apiUser.display_name || (apiUser.email ? apiUser.email.split('@')[0] : 'User'),
     email: apiUser.email,
@@ -3586,6 +3588,7 @@ function showSection(which){
 // After login
 function onLogin(user){
   currentUser = user;
+  window.DOMSocial?.login(user);
   viewAsUser = null;
 
   // STEP 1: Load data from localStorage caches (sync, safe — no DOM needed)
@@ -8151,6 +8154,9 @@ function openNmSurvey(){
   if(!_wasHandoff) nmClearCarriedLive();
   nmCurrentStep=0;
   nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:'',_concept:null};
+  modal.querySelector('.dom-survey-status')?.remove();
+  modal.querySelector('#nm-step-content').inert=false;
+  modal.querySelector('#nm-nav-btns').inert=false;
   nmLivePrevPos={};
   // PR#109 (#1): thought mode is requested by openNmThought — the thought becomes
   // Step 1 of the SAME modal (no separate intro window). The concept is captured on
@@ -9126,6 +9132,8 @@ function nmPrev(){
 async function nmSaveSurvey(linkSensation){
   if(nmSurveyState._saving)return false;
   var saveState=nmSurveyState;
+  if(linkSensation)saveState._linkSensation=true;
+  linkSensation=!!saveState._linkSensation;
   var today=new Date();
   var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   if(!nmData[key]) nmData[key]=[];
@@ -17819,10 +17827,10 @@ function domOpenThread(threadId, peerName){
   document.getElementById('dom-dm-thread').style.display = 'flex';
   document.getElementById('dom-dm-thread-head').textContent = peerName || '—';
   var head=document.getElementById('dom-dm-thread-head');
-  delete head.dataset.agentRoom;
+  delete head.dataset.agentRoom;delete head.dataset.peerThread;
   window.DOMChatControls?.mountComposer(document.getElementById('dom-dm-input'));
   var invite=document.createElement('button');
-  invite.type='button';invite.className='btn btn-ghost';
+  invite.type='button';invite.className='btn btn-ghost dom-invite-agent';
   invite.textContent=window.DOMRoomAgents?.label('invite') || t('a.domunity.add_agent','Подключить Монаду');
   invite.onclick=async function(){
     invite.disabled=true;
@@ -17849,8 +17857,15 @@ function domLoadThreadMessages(forceRender){
     if(!box)return;
     var head=document.getElementById('dom-dm-thread-head');
     if(d.agent_room_id&&head.dataset.agentRoom!==String(d.agent_room_id)){
-      head.dataset.agentRoom=String(d.agent_room_id);head.querySelector('button')?.remove();
+      head.dataset.agentRoom=String(d.agent_room_id);head.querySelector('.dom-invite-agent')?.remove();
       window.DOMRoomAgents?.open(d.agent_room_id,head);
+    }
+    if(head.dataset.peerThread!==String(id)){
+      head.dataset.peerThread=String(id);
+      const peer=d.thread.user_a===currentUser.id?d.thread.user_b:d.thread.user_a;
+      const title=head.firstChild;
+      const link=window.DOMSocial?.peer(peer,title?.nodeType===3?title.textContent:'');
+      if(link){if(title?.nodeType===3)title.replaceWith(link);else head.prepend(link);}
     }
     var messages=d.messages||[];
     var signature=messages.map(function(m){return m.id+':'+(m.edited_at||'');}).join(',');
@@ -17965,29 +17980,7 @@ window.domClickNotif = domClickNotif;
 
 // ── User profile modal — click on a sender name anywhere to view their public card ──
 function domShowUserProfile(userId){
-  Promise.all([
-    domApi('/api/users/' + userId + '/profile'),
-    domApi('/api/users/' + userId + '/achievements')
-  ]).then(function(arr){
-    var u = arr[0].user || {};
-    var ach = arr[1].achievements || [];
-    var lang = (typeof getLang === 'function') ? getLang() : 'ru';
-    var modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10025;padding:2rem 1rem;overflow-y:auto;';
-    var bio = u.bio || '';
-    var roleTag = u.role && u.role !== 'user' ? '<span style="background:rgba(0,229,255,0.15);color:var(--accent-cyan);padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;margin-left:0.5rem;">' + u.role + '</span>' : '';
-    var privacyNote = u.profile_public === false ? '<p style="font-size:11px;color:var(--text-muted);font-style:italic;">Профиль скрыт пользователем — видно только имя.</p>' : '';
-    var achHtml = ach.length ? ach.map(function(a){ return '<div style="display:inline-block;padding:0.4rem 0.6rem;border:1px solid rgba(0,229,255,0.2);border-radius:8px;background:rgba(0,229,255,0.04);margin:0.2rem;text-align:center;"><div style="font-size:22px;">'+(a.badge_emoji||'🏅')+'</div><div style="font-size:11px;margin-top:0.2rem;">'+(a['title_'+lang]||a.title_ru||a.title_en||a.slug)+'</div></div>'; }).join('') : '<p style="font-size:11px;color:var(--text-muted);">Достижений пока нет.</p>';
-    modal.innerHTML = '<div style="max-width:480px;margin:0 auto;background:rgba(15,15,22,0.99);border-radius:14px;padding:1.5rem;border:1px solid rgba(255,255,255,0.08);">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;"><h3 style="margin:0;font-size:16px;">' + (u.display_name||'Пользователь') + roleTag + '</h3><button class="btn btn-ghost" onclick="this.closest(\'div[style*=fixed]\').remove()">✕</button></div>'
-      + privacyNote
-      + (bio ? '<p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0 0 1rem;">' + bio + '</p>' : '')
-      + '<h4 style="margin:0.75rem 0 0.5rem;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Публичные достижения</h4>'
-      + '<div style="display:flex;flex-wrap:wrap;">' + achHtml + '</div>'
-      + (u.profile_public !== false ? '<button class="btn btn-solid" onclick="domStartThreadFromProfile(\'' + userId + '\',\'' + (u.display_name||'').replace(/\'/g,"\\'") + '\'); this.closest(\'div[style*=fixed]\').remove()" style="width:100%;margin-top:1rem;font-size:13px;padding:0.5rem;">💬 Написать сообщение</button>' : '')
-      + '</div>';
-    document.body.appendChild(modal);
-  }).catch(function(e){ alert(e.message); });
+  window.DOMSocial?.open(userId);
 }
 function domStartThreadFromProfile(uid, name){
   domSwitch('dms');
@@ -17998,7 +17991,7 @@ window.domStartThreadFromProfile = domStartThreadFromProfile;
 
 function domLoadProfile(){
   if (!currentUser) return;
-  document.getElementById('dom-prof-name').value = currentUser.display_name || '';
+  document.getElementById('dom-prof-name').value = currentUser.display_name || currentUser.name || '';
   document.getElementById('dom-prof-bio').value = currentUser.bio || '';
   document.getElementById('dom-prof-public').checked = currentUser.profile_public !== false;
   document.getElementById('dom-prof-notifs').checked = currentUser.notifications_enabled !== false;
@@ -18019,7 +18012,7 @@ function domSaveProfile(){
   document.getElementById('dom-prof-status').textContent = 'Сохранение…';
   domApi('/api/users/me/profile', { method:'PATCH', body: body })
     .then(function(d){
-      Object.assign(currentUser, d.user);
+      Object.assign(currentUser, d.user);currentUser.name=d.user.display_name;window.DOMSocial?.login(currentUser);
       // Save mute preferences in parallel
       return domApi('/api/users/me/notif-mute', { method: 'PATCH', body: { mute: muted } });
     })
@@ -18201,7 +18194,7 @@ function domGroupLoadMessages(){
       var time=document.createElement('time');
       time.dateTime=m.created_at;
       time.textContent=new Date(m.created_at).toLocaleString();
-      row.append(sender,body,time);
+      row.append((!m.is_agent&&m.sender_id&&window.DOMSocial?.peer(m.sender_id,m.sender_name))||sender,body,time);
       window.DOMChatControls?.messageActions(row,m,'group',id,function(){domGroupLoadMessages();domLoadGroups();});
       return row;
     });
@@ -18706,6 +18699,11 @@ function loadUserPurchases() {
   fetch(AUTH_API + '/api/users/me/purchases', { headers: { 'Authorization': 'Bearer ' + token } })
     .then(function(r){ return r.json(); })
     .then(function(d){
+      if(token!==localStorage.getItem('na_token'))return;
+      if(currentUser && d?.purchases?.some(p=>p.is_activated)){
+        currentUser.program=d.purchases.find(p=>p.is_activated).product;
+        updateClientAccess(currentUser);
+      }
       var banner = document.getElementById('purchase-banner');
       var bannerOuter = document.getElementById('purchase-banner-outer');
       if (!d || !d.purchases || !d.purchases.length) {
@@ -20867,7 +20865,11 @@ window.pbMove = pbMove;
         try { switchTab(h.main); } catch(e){}
       }
       // After main tab switch, click sub-tab if applicable
-      if (h.sub) {
+      if (h.sub && ['tools','evolution'].includes(h.main) && /^(tools-mode-|evo-subtab-)[a-z-]+$/.test(h.sub)) {
+        var target=document.getElementById(h.sub);
+        var top=document.querySelector('.dash-nav-primary a[data-tab="'+h.main+'"]');
+        if(target && target.closest('#tab-'+h.main) && target.style.display!=='none' && top?.style.pointerEvents!=='none')target.click();
+      } else if (h.sub) {
         setTimeout(function(){
           var subBtn = document.querySelector('[data-tab="' + h.sub + '"]');
           if (subBtn) subBtn.click();
@@ -22978,6 +22980,8 @@ window.pbMove = pbMove;
   }
 })();
 </script>
+<script src="assets/js/dom-social.js?v=1" defer></script>
+<link rel="stylesheet" href="assets/dom-social.css?v=1">
 <script src="assets/js/dom-editorial.js?v=1"></script>
 <link rel="stylesheet" href="assets/dom-recording.css?v=1">
 <script src="assets/js/dom-recording.js?v=1"></script>

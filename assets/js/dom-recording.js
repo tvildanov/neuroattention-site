@@ -23,7 +23,15 @@ async function save(payload,state){
  const result=await request('/api/observations',state.request);
  try{sessionStorage.removeItem(key);}catch{}return result;
 }
-function surveyStatus(state){const modal=document.getElementById('nmSurveyModal');if(!modal)return;let status=modal.querySelector('.dom-survey-status');if(!status){status=el('p','dom-survey-status');status.setAttribute('role','status');modal.querySelector('.modal-box').append(status);}status.dataset.state=state;status.textContent=text(state==='pending'?'pending':'error');}
+function surveyStatus(state){
+ const modal=document.getElementById('nmSurveyModal');if(!modal)return;
+ const content=modal.querySelector('#nm-step-content'),nav=modal.querySelector('#nm-nav-btns');
+ if(content)content.inert=true;if(nav)nav.inert=true;
+ let status=modal.querySelector('.dom-survey-status');
+ if(!status){status=el('div','dom-survey-status');status.setAttribute('role','status');modal.querySelector('.modal-box').append(status);}
+ status.dataset.state=state;status.replaceChildren(el('p','',text(state==='pending'?'pending':'error')));
+ if(state==='error'){const retry=el('button','btn btn-solid',text('retry'));retry.type='button';retry.onclick=()=>nmSaveSurvey(!!nmSurveyState._linkSensation);status.append(retry);}
+}
 function saved(record,show=true){if(record){if(show)setTimeout(()=>open(record.id),0);refresh();}}
 async function open(id){
  document.getElementById('dom-observation-dialog')?.remove();

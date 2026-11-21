@@ -31,7 +31,7 @@
    storeSide();
  }
  const routes = {
-   evolution:'#evo-subtabs [id^="evo-subtab-"]',
+   evolution:'#evo-subtabs [id^="evo-subtab-"], .tools-subtabs a[id^="tools-mode-"]',
    tools:'.tools-subtabs a[id^="tools-mode-"]',
    domunity:'[id^="dom-subtab-"]',
    enroll:'#dom-cabinet-programs .dom-v06-program-card summary',
@@ -89,7 +89,7 @@
          item.onclick=event=>{
            if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
            event.preventDefault();
-           const top=key==='architecture'?'monad':key==='people'?'administration':key;
+           const top=source.id.startsWith('tools-mode-')?'tools':key==='architecture'?'monad':key==='people'?'administration':key;
            const topLink=branches.get(top).owner;
            if(topLink.hidden||topLink.style.display==='none'||topLink.style.pointerEvents==='none')return;
            if(!q('#tab-'+top)?.classList.contains('active'))topLink.click();
@@ -106,6 +106,7 @@
        const label=source.dataset.tab==='admin-tools'?txt('Хранилище','Storage','Almacenamiento'):(source.querySelector('.dom-v06-summary strong')||source).textContent.trim();
        if(item.textContent!==label)item.textContent=label;
        item.hidden=source.hidden||source.style.display==='none';
+       if(source.id.startsWith('tools-mode-'))item.disabled=branches.get('tools')?.owner.style.pointerEvents==='none';
        item.classList.toggle('selected',key==='enroll'?source.parentElement.open:source.classList.contains('active'));
      }
    }
@@ -169,11 +170,56 @@
    const active=q('#client-dashboard>.tab-panel.active')||q('#client-dashboard .tab-panel.active');
    const activeTab=(active?.id||'').replace(/^tab-/,'')||'overview';
    nav.querySelectorAll('a[data-tab]').forEach(a=>{
-     const current=a.dataset.tab===activeTab;
+     const current=a.dataset.tab===activeTab||(activeTab==='tools'&&a.dataset.tab==='evolution');
      a.classList.toggle('dom-cabinet-current',current);
      if(current)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
    });
    syncBranches();
+ }
+ function buildWorkspace(){
+   const dash=q('#client-dashboard'), first=q('#tab-overview');
+   if(!dash||!first||q('#dom-workspace-switch'))return;
+   const bar=el('nav','dom-workspace-switch');bar.id='dom-workspace-switch';
+   bar.setAttribute('aria-label',txt('Путь развития','Development path','Ruta de desarrollo'));
+   first.before(bar);
+   const sources=[...document.querySelectorAll(routes.evolution)];
+   const ordered=['tools-mode-nm','evo-subtab-personal','tools-mode-anatomy'];
+   sources.sort((a,b)=>(ordered.includes(a.id)?ordered.indexOf(a.id):99)-(ordered.includes(b.id)?ordered.indexOf(b.id):99));
+   const sync=()=>{
+     const active=document.body.dataset.accountTab;
+     ask.hidden=!['admin','superadmin','founder'].includes(window.currentUser?.serverRole);
+     for(const source of sources){
+       const b=bar.querySelector('[data-source="'+source.id+'"]');
+       const tab=source.id.startsWith('tools-')?'tools':'evolution';
+       b.textContent=source.textContent.trim();b.hidden=source.hidden||source.style.display==='none';
+       b.disabled=branches.get(tab)?.owner.style.pointerEvents==='none';
+       b.setAttribute('aria-pressed',String(active===tab&&source.classList.contains('active')));
+     }
+     const purchased=q('#purchase-banner-outer');
+     const enrolled=Boolean(purchased&&purchased.style.display!=='none');
+     dash.classList.toggle('dom-has-program',enrolled);
+     const monad=q('#tab-btn-monad');
+     shortcut.hidden=!monad||monad.style.display==='none';
+     shortcut.textContent=monad?.textContent.trim()||'Monad';
+     programs.textContent=q('a[data-tab="enroll"]',nav)?.textContent.trim()||'Programs';
+   };
+   for(const source of sources){
+     const b=el('button');b.type='button';b.dataset.source=source.id;
+     b.onclick=()=>{
+       const tab=source.id.startsWith('tools-')?'tools':'evolution';
+       if(branches.get(tab)?.owner.style.pointerEvents==='none')return;
+       if(document.body.dataset.accountTab!==tab)window.switchTab(tab);
+       source.click();history.replaceState(null,'','#'+tab+'/'+source.id);sync();
+       const panel=q('#tab-'+tab);if(panel)panel.scrollTop=0;
+     };bar.append(b);
+   }
+   const programs=el('button');programs.type='button';programs.onclick=()=>q('a[data-tab="enroll"]',nav)?.click();bar.append(programs);
+   const ask=el('button','',txt('Спросить DOM','Ask DOM','Pregunta a DOM'));ask.type='button';ask.hidden=true;ask.onclick=()=>window.DOMSocial?.ask();bar.append(ask);
+   const shortcut=el('button','dom-nav-item');shortcut.type='button';
+   shortcut.onclick=()=>{q('#tab-btn-monad')?.click();mobileDone();};branches.get('domunity')?.list.append(shortcut);
+   const observer=new MutationObserver(sync);
+   for(const n of [...sources,document.body,q('#tab-btn-monad'),q('#purchase-banner-outer'),q('a[data-tab="tools"]',nav)].filter(Boolean))observer.observe(n,{attributes:true,attributeFilter:['class','style','hidden','lang','data-account-tab']});
+   observer.observe(document.documentElement,{attributes:true,attributeFilter:['lang']});sync();
  }
  function buildQuick(){
    const profile=q('#tab-overview'), actions=q('#nm-entry-actions');
@@ -265,7 +311,7 @@
    if(nav)nav.querySelectorAll('a[data-tab]').forEach(a=>a.title=a.textContent.trim());
  }
  let lastLang=lang();
- function init(){buildNav();buildQuick();}
+ function init(){buildNav();buildQuick();buildWorkspace();}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
  // Account widgets are created before login; these mount points persist across
  // sign in/out. Retry only until they exist instead of watching every mutation.

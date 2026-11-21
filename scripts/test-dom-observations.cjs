@@ -6,6 +6,11 @@ async function call(method,route,token,body){const r=await fetch(base+route,{met
  const a=await login('user'),b=await login('owner-b');assert.ok(a&&b);
  assert.equal((await call('POST','/api/run-migrations',null,{})).status,401);assert.equal((await call('POST','/api/run-migrations',a,{})).status,403);
  assert.equal((await call('POST','/api/rtc/2147483000/signal',a,{kind:'subscribe',payload:{}})).status,403);assert.equal((await call('GET','/api/rtc/2147483000/signals',a)).status,403);
+ const course=await call('POST','/api/admin/courses',b,{slug:'qa-locked-'+crypto.randomUUID(),name_ru:'Fixture restricted course',is_published:true,program_access:['fixture-only-restricted-tag']});
+ assert.equal(course.status,201,JSON.stringify(course.body));
+ const block=await call('POST','/api/admin/courses/'+course.body.course.id+'/blocks',b,{block_type:'text',title_ru:'Fixture block'});assert.equal(block.status,201);
+ assert.equal((await call('POST','/api/courses/'+course.body.course.id+'/blocks/'+block.body.block.id+'/complete',a,{response:{text:'not permitted'}})).status,403);
+ assert.equal((await call('POST','/api/courses/'+course.body.course.id+'/blocks/'+block.body.block.id+'/complete',b,{response:{text:'admin permitted'}})).status,200);
  const p={operation_id:crypto.randomUUID(),session_id:crypto.randomUUID(),occurred_at:'2026-11-20T10:00:00Z',text:'Synthetic original <script>test</script>',context:'Synthetic context',intensity:null,date_key:'2026-11-20',legacy_entry:{chains:[{emotion:'Test calm'}],intensity:null},chain:[{type:'concept',label:'Original',valence:'neutral'},{type:'emotion',label:'Test calm',valence:'positive'},{type:'concept',label:'Original',valence:'neutral'}]};
  assert.equal((await call('POST','/api/observations',null,p)).status,401);
  const replies=await Promise.all(Array.from({length:20},()=>call('POST','/api/observations',a,p)));replies.forEach(r=>assert.equal(r.status,200,JSON.stringify(r.body)));assert.equal(new Set(replies.map(x=>x.body.record.id)).size,1);
