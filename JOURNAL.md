@@ -2433,3 +2433,7 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced actual diary, sensation and emotion writes and the legacy graph fallback"],"changed":["Recover missing membership from ordered personal journey events","Keep archival facts separate and bind recorded body locations to the felt sensations","Unify light navigation wordmark across homepage, method and cabinet"],"files":["api/server.js","account.html","assets/js/neuromap-chains.js","assets/dom-interface.css","scripts/test-dom-account-api.cjs","scripts/test-dom-cabinet-v07.cjs","scripts/fixtures/dom-account-server.cjs","index.html","method.html","sw.js"],"decisions":["Preserve existing records and distinguish archived information with unknown recording order"],"followups":["Check Railway revision and Pages deployment"],"next_session":"Verify the release against the owner's historical recordings if available."}
 ```
+
+## 2026-11-21 — Restore Monad navigation after early account login
+
+Reproduced the hidden Monad link when login finishes before the module loads. The module now applies the current account permissions on startup as well as on later logins. Updated the cabinet script URL and added a regression check to the Monad UI suite.

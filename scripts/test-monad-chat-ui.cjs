@@ -15,6 +15,20 @@ const ctx = { window, document: { readyState: 'loading', documentElement: { lang
     throw Error('unexpected fixture URL');
   }
 };
+// Reproduce a cached login finishing before the module wires the navigation.
+const tab = { style: { display: 'none' } };
+const restoredWindow = { currentUser: { role: 'founder' }, addEventListener() {} };
+vm.runInNewContext(source, {
+  ...ctx,
+  window: restoredWindow,
+  document: { ...ctx.document, readyState: 'complete', getElementById: id => id === 'tab-btn-monad' ? tab : null }
+});
+assert.equal(tab.style.display, '', 'restored founder sees the top-level Monad tab');
+restoredWindow.MonadLK.onLogin({ role: 'client' });
+assert.equal(tab.style.display, 'none', 'an account without access does not see the tab');
+restoredWindow.MonadLK.onLogin({ role: 'client', monad_access: true });
+assert.equal(tab.style.display, '', 'explicit grants apply after the module loads');
+
 vm.runInNewContext(source, ctx);
 const { STATE, openChat, sendMessage, pollReplies, isTechMessage, displayText, renderStatusBar } = window.fixture;
 (async () => {
