@@ -1,0 +1,1819 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-21T03:39:46.518Z",
+  "source_commit": "112b9aa373d197fd97c05442a422b913217c5668",
+  "scope": "Static source inventory, not live DB or endpoint verification",
+  "files": [
+    {
+      "path": "account.html",
+      "bytes": 1559513,
+      "lines": 22992,
+      "sha256": "217bcb8147f9fd83c82b225bb167a38353fa0d0d9b3f8f10fdb00e7c05ceb1b3"
+    },
+    {
+      "path": "api/server.js",
+      "bytes": 824710,
+      "lines": 14840,
+      "sha256": "65bfe798eb26544583f952c50f03ea7dc89d5b7ed28b1c73b8f6e83f3baf7218"
+    },
+    {
+      "path": "assets/js/neuromap-chains.js",
+      "bytes": 10800,
+      "lines": 229,
+      "sha256": "f90269a91bd652725c6034bb139059433a36d644f98f9e441be29930dfa3c3a0"
+    },
+    {
+      "path": "assets/js/evolution-path.js",
+      "bytes": 190258,
+      "lines": 3120,
+      "sha256": "cab79cbbf1e8ad41a95273408aa393d7503ebfd04efd6c47531c8667d9530263"
+    },
+    {
+      "path": "assets/js/dom-cabinet-v07.js",
+      "bytes": 15724,
+      "lines": 274,
+      "sha256": "f04d130009d167002381af4b08c57d8f10ca1c1db2169b4d1e2f3d6bf92f4384"
+    },
+    {
+      "path": "assets/js/external-field.js",
+      "bytes": 89802,
+      "lines": 1174,
+      "sha256": "72fb3d46f93aaa8028156fe3cae00f69ca6b1e67da34b7c0e5fe143f35232af5"
+    },
+    {
+      "path": "assets/js/body-atlas.js",
+      "bytes": 133234,
+      "lines": 2264,
+      "sha256": "f7d152575864690531e06f87b1abba27aa320c22ba1429b0c7e499308c0b9503"
+    },
+    {
+      "path": "assets/js/family-team.js",
+      "bytes": 50063,
+      "lines": 733,
+      "sha256": "06675a078a87696e44ce4d3ea040dca3ce7bacf16c81e157b898dd14cb45eb7f"
+    },
+    {
+      "path": "assets/js/collective-path.js",
+      "bytes": 46646,
+      "lines": 709,
+      "sha256": "eaa948eb7127b1283f240faae6aba5f994e281e4e9ba34000f95c23183230e5f"
+    },
+    {
+      "path": "sw.js",
+      "bytes": 14462,
+      "lines": 222,
+      "sha256": "ddabac65b65166501ae8e393d8d06f705b82fde105465359cd81ebec2f371838"
+    }
+  ],
+  "account_inline_syntax": [
+    {
+      "script": 1,
+      "ok": true
+    },
+    {
+      "script": 2,
+      "ok": true
+    },
+    {
+      "script": 3,
+      "ok": true
+    },
+    {
+      "script": 4,
+      "ok": true
+    },
+    {
+      "script": 5,
+      "ok": true
+    },
+    {
+      "script": 6,
+      "ok": true
+    },
+    {
+      "script": 7,
+      "ok": true
+    },
+    {
+      "script": 8,
+      "ok": true
+    },
+    {
+      "script": 9,
+      "ok": true
+    },
+    {
+      "script": 10,
+      "ok": true
+    },
+    {
+      "script": 11,
+      "ok": true
+    },
+    {
+      "script": 12,
+      "ok": true
+    },
+    {
+      "script": 13,
+      "ok": true
+    },
+    {
+      "script": 14,
+      "ok": true
+    },
+    {
+      "script": 15,
+      "ok": true
+    },
+    {
+      "script": 16,
+      "ok": true
+    },
+    {
+      "script": 17,
+      "ok": true
+    },
+    {
+      "script": 18,
+      "ok": true
+    },
+    {
+      "script": 19,
+      "ok": true
+    }
+  ],
+  "route_count": 313,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/stripe/webhook",
+      "line": 191
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "line": 317
+    },
+    {
+      "method": "POST",
+      "path": "/api/run-migrations",
+      "line": 330
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "line": 3261
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "line": 3311
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "line": 3358
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/avatar",
+      "line": 3394
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/avatar/preset",
+      "line": 3465
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "line": 3481
+    },
+    {
+      "method": "POST",
+      "path": "/api/diagnoses/:slug/claim",
+      "line": 3503
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/diagnoses/:slug/claim",
+      "line": 3531
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/diagnoses",
+      "line": 3540
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/diagnoses/:id/files",
+      "line": 3555
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/medical-files",
+      "line": 3594
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/medical-files/:id/download",
+      "line": 3608
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me/medical-files/:id",
+      "line": 3630
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id/diagnoses",
+      "line": 3642
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id/medical-files",
+      "line": 3658
+    },
+    {
+      "method": "POST",
+      "path": "/api/extensions/request",
+      "line": 3680
+    },
+    {
+      "method": "GET",
+      "path": "/api/extensions/my-requests",
+      "line": 3697
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/extensions/queue",
+      "line": 3709
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/extensions/:id",
+      "line": 3729
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot",
+      "line": 3777
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset",
+      "line": 3809
+    },
+    {
+      "method": "POST",
+      "path": "/api/pointab/save",
+      "line": 3840
+    },
+    {
+      "method": "GET",
+      "path": "/api/pointab/latest",
+      "line": 3894
+    },
+    {
+      "method": "GET",
+      "path": "/api/pointab/history",
+      "line": 3912
+    },
+    {
+      "method": "POST",
+      "path": "/api/pointab/audio",
+      "line": 3933
+    },
+    {
+      "method": "GET",
+      "path": "/api/pointab/audio/:entryId",
+      "line": 3964
+    },
+    {
+      "method": "POST",
+      "path": "/api/pointab/reminders/sync",
+      "line": 3987
+    },
+    {
+      "method": "GET",
+      "path": "/api/pointab/reminders",
+      "line": 4023
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/pointab/reminders/:id",
+      "line": 4054
+    },
+    {
+      "method": "POST",
+      "path": "/api/neuromap/save",
+      "line": 4076
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap",
+      "line": 4093
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/neuromap/:id",
+      "line": 4115
+    },
+    {
+      "method": "POST",
+      "path": "/api/neuromap/v2/append",
+      "line": 4212
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap/v2/graph",
+      "line": 4357
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap/v3/graph",
+      "line": 4448
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap/chains-by-node/:node_id",
+      "line": 4627
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap/chain/:chain_id",
+      "line": 4664
+    },
+    {
+      "method": "POST",
+      "path": "/api/neuromap/v2/migrate-legacy",
+      "line": 4701
+    },
+    {
+      "method": "POST",
+      "path": "/api/diary/save",
+      "line": 4844
+    },
+    {
+      "method": "GET",
+      "path": "/api/diary",
+      "line": 4884
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/diary/:id",
+      "line": 4913
+    },
+    {
+      "method": "POST",
+      "path": "/api/calendar/save",
+      "line": 4930
+    },
+    {
+      "method": "GET",
+      "path": "/api/calendar",
+      "line": 4947
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/calendar/:id/toggle",
+      "line": 4990
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/calendar/:id",
+      "line": 5007
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/manual",
+      "line": 5029
+    },
+    {
+      "method": "GET",
+      "path": "/api/event-templates",
+      "line": 5078
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/event-templates",
+      "line": 5111
+    },
+    {
+      "method": "POST",
+      "path": "/api/progress/save",
+      "line": 5139
+    },
+    {
+      "method": "GET",
+      "path": "/api/progress",
+      "line": 5160
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/soft-delete",
+      "line": 5241
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/cleanup-test-users",
+      "line": 5259
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/bulk-delete",
+      "line": 5280
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/restore",
+      "line": 5301
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/trash",
+      "line": 5314
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/user",
+      "line": 5323
+    },
+    {
+      "method": "POST",
+      "path": "/api/neuromap/v2/merge-aliases",
+      "line": 5339
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/rebuild-graph",
+      "line": 5408
+    },
+    {
+      "method": "POST",
+      "path": "/api/neuromap/v2/rebuild-self",
+      "line": 5590
+    },
+    {
+      "method": "POST",
+      "path": "/api/test-result/save",
+      "line": 5755
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-result/latest",
+      "line": 5775
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats/me",
+      "line": 5808
+    },
+    {
+      "method": "POST",
+      "path": "/api/stats/init",
+      "line": 5820
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/stats/:stat",
+      "line": 5860
+    },
+    {
+      "method": "POST",
+      "path": "/api/rehab/apply",
+      "line": 5921
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rehab/applications",
+      "line": 5952
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/rehab/applications/:id/status",
+      "line": 5987
+    },
+    {
+      "method": "POST",
+      "path": "/api/checkout/create-session",
+      "line": 6032
+    },
+    {
+      "method": "GET",
+      "path": "/api/stripe/status",
+      "line": 6136
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/practices",
+      "line": 6462
+    },
+    {
+      "method": "GET",
+      "path": "/api/practices",
+      "line": 6549
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/practices",
+      "line": 6579
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/practices/:id",
+      "line": 6600
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/practices/:id",
+      "line": 6638
+    },
+    {
+      "method": "GET",
+      "path": "/api/practices/:id",
+      "line": 6944
+    },
+    {
+      "method": "GET",
+      "path": "/api/practices/:id/blocks",
+      "line": 6958
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/practices/:id/blocks",
+      "line": 6971
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/practices/:id/blocks",
+      "line": 6984
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/practices/:id/blocks/:blockId",
+      "line": 7011
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/practices/:id/blocks/:blockId",
+      "line": 7035
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/practices/:id/blocks/reorder",
+      "line": 7048
+    },
+    {
+      "method": "POST",
+      "path": "/api/practices/:id/blocks/:blockId/complete",
+      "line": 7068
+    },
+    {
+      "method": "POST",
+      "path": "/api/neuromap/sensation",
+      "line": 7125
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap/context-candidates",
+      "line": 7327
+    },
+    {
+      "method": "GET",
+      "path": "/api/neuromap/user-vocab",
+      "line": 7406
+    },
+    {
+      "method": "GET",
+      "path": "/api/vocab/:category",
+      "line": 7430
+    },
+    {
+      "method": "POST",
+      "path": "/api/vocab/user",
+      "line": 7445
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/vocab",
+      "line": 7473
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/vocab",
+      "line": 7487
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/vocab/:id",
+      "line": 7507
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/vocab/:id",
+      "line": 7532
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/xp",
+      "line": 7546
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/purchases",
+      "line": 7565
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/diagnostic/templates",
+      "line": 7611
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/diagnostic/templates/:id",
+      "line": 7630
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/diagnostic/templates",
+      "line": 7647
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/diagnostic/templates/clone",
+      "line": 7665
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/diagnostic/templates/:id",
+      "line": 7692
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/diagnostic/templates/:id",
+      "line": 7715
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/diagnostic/templates/:id/items",
+      "line": 7736
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/diagnostic/templates/:id/items/:itemId",
+      "line": 7764
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/diagnostic/templates/:id/items/:itemId",
+      "line": 7797
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/diagnostic/templates/:id/items/replace",
+      "line": 7818
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/diagnostic/templates/:id/items/reorder",
+      "line": 7861
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/diagnostic/sessions",
+      "line": 7879
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/diagnostic/sessions",
+      "line": 7898
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/diagnostic/sessions/:id",
+      "line": 7921
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/courses",
+      "line": 7951
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/courses",
+      "line": 7963
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/courses/:id",
+      "line": 7996
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/courses/:id",
+      "line": 8031
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/courses/:id",
+      "line": 8056
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/courses/:id/blocks",
+      "line": 8068
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/courses/:cid/blocks/:bid",
+      "line": 8092
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/courses/:cid/blocks/:bid",
+      "line": 8132
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/courses/:id/blocks/reorder",
+      "line": 8142
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/courses/:cid/blocks/:bid/branches",
+      "line": 8157
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/courses/:cid/blocks/:bid/branches/:brid",
+      "line": 8173
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/courses/:id/assets",
+      "line": 8183
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/courses/:id/assets",
+      "line": 8206
+    },
+    {
+      "method": "GET",
+      "path": "/api/tools",
+      "line": 8281
+    },
+    {
+      "method": "GET",
+      "path": "/api/tools/:code/access",
+      "line": 8297
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/tools",
+      "line": 8308
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/tools/:id",
+      "line": 8316
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/courses/:id/tools",
+      "line": 8333
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/courses/:id/tools",
+      "line": 8343
+    },
+    {
+      "method": "GET",
+      "path": "/api/courses",
+      "line": 8357
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/resume",
+      "line": 8399
+    },
+    {
+      "method": "GET",
+      "path": "/api/courses/:slug",
+      "line": 8419
+    },
+    {
+      "method": "POST",
+      "path": "/api/courses/:id/blocks/:bid/complete",
+      "line": 8480
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams",
+      "line": 8637
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams/search",
+      "line": 8652
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams/:id",
+      "line": 8672
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams",
+      "line": 8693
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teams/:id",
+      "line": 8725
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teams/:id",
+      "line": 8745
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/:id/members",
+      "line": 8758
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teams/:id/members/:uid",
+      "line": 8781
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/:id/announce",
+      "line": 8807
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teams/:id/leader",
+      "line": 8830
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/:id/invite",
+      "line": 8856
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams/join/:token",
+      "line": 8876
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/join/:token",
+      "line": 8890
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/:id/join",
+      "line": 8912
+    },
+    {
+      "method": "POST",
+      "path": "/api/dependents",
+      "line": 8953
+    },
+    {
+      "method": "GET",
+      "path": "/api/dependents",
+      "line": 8982
+    },
+    {
+      "method": "GET",
+      "path": "/api/dependents/:id",
+      "line": 8992
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/dependents/:id",
+      "line": 9003
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/dependents/:id",
+      "line": 9032
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/journey",
+      "line": 9046
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me/evolution",
+      "line": 9147
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/evolution/backfill",
+      "line": 9485
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/wipe-day",
+      "line": 9558
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/nm-node/:id/delete",
+      "line": 9622
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/journey-event/:id/delete",
+      "line": 9676
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/collective-path",
+      "line": 9723
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/collective-path/publish",
+      "line": 9824
+    },
+    {
+      "method": "GET",
+      "path": "/api/collective-path/status",
+      "line": 9837
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/journeys",
+      "line": 9843
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/journeys/:userId",
+      "line": 9869
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:id/xp",
+      "line": 9901
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:userId/courses/:courseId/completions",
+      "line": 9934
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/blocks/:blockId/completion",
+      "line": 9950
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/search",
+      "line": 10041
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/:id/profile",
+      "line": 10058
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/me/profile",
+      "line": 10071
+    },
+    {
+      "method": "GET",
+      "path": "/api/dm/threads",
+      "line": 10089
+    },
+    {
+      "method": "POST",
+      "path": "/api/dm/threads",
+      "line": 10111
+    },
+    {
+      "method": "POST",
+      "path": "/api/dm/threads/:id/agent-room",
+      "line": 10125
+    },
+    {
+      "method": "GET",
+      "path": "/api/dm/threads/:id/messages",
+      "line": 10142
+    },
+    {
+      "method": "POST",
+      "path": "/api/dm/threads/:id/messages",
+      "line": 10160
+    },
+    {
+      "method": "GET",
+      "path": "/api/feed/posts",
+      "line": 10195
+    },
+    {
+      "method": "POST",
+      "path": "/api/feed/posts",
+      "line": 10209
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/feed/posts/:id",
+      "line": 10228
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/feed/posts/:id",
+      "line": 10252
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/me/notif-mute",
+      "line": 10268
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/achievements",
+      "line": 10281
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/achievements/:id",
+      "line": 10302
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/achievements/:id/award",
+      "line": 10319
+    },
+    {
+      "method": "POST",
+      "path": "/api/rtc/:roomId/signal",
+      "line": 10341
+    },
+    {
+      "method": "GET",
+      "path": "/api/rtc/:roomId/signals",
+      "line": 10353
+    },
+    {
+      "method": "GET",
+      "path": "/api/badges",
+      "line": 10366
+    },
+    {
+      "method": "POST",
+      "path": "/api/feed/posts/:id/react",
+      "line": 10383
+    },
+    {
+      "method": "GET",
+      "path": "/api/feed/posts/:id/comments",
+      "line": 10399
+    },
+    {
+      "method": "POST",
+      "path": "/api/feed/posts/:id/comments",
+      "line": 10409
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/rooms",
+      "line": 10422
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/chat/rooms",
+      "line": 10442
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/rooms/:id/messages",
+      "line": 10463
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/rooms/:id/messages",
+      "line": 10484
+    },
+    {
+      "method": "POST",
+      "path": "/api/donate/checkout",
+      "line": 10520
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "line": 10551
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/seen",
+      "line": 10560
+    },
+    {
+      "method": "GET",
+      "path": "/api/achievements",
+      "line": 10574
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/:id/achievements",
+      "line": 10584
+    },
+    {
+      "method": "POST",
+      "path": "/api/joint-practice",
+      "line": 10595
+    },
+    {
+      "method": "GET",
+      "path": "/api/joint-practice/:id/messages",
+      "line": 10612
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/rooms/:id/recordings",
+      "line": 10623
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/rooms/:id/recordings",
+      "line": 10658
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chat/rooms/:id",
+      "line": 10674
+    },
+    {
+      "method": "POST",
+      "path": "/api/joint-practice/:id/join",
+      "line": 10704
+    },
+    {
+      "method": "POST",
+      "path": "/api/joint-practice/:id/leave",
+      "line": 10718
+    },
+    {
+      "method": "POST",
+      "path": "/api/joint-practice/:id/messages",
+      "line": 10730
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/grant-test-access",
+      "line": 10745
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/revoke-test-access",
+      "line": 10767
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/set-user-role",
+      "line": 10784
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/storage-status",
+      "line": 10800
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/migrate-assets-to-r2",
+      "line": 10859
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/test-email",
+      "line": 10926
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/vocab/import-from-json",
+      "line": 10943
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/purchases",
+      "line": 11058
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "line": 11094
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "line": 11145
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id",
+      "line": 11253
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id/neuromap",
+      "line": 11338
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id/diary",
+      "line": 11355
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/:id/progress",
+      "line": 11373
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/:id/role",
+      "line": 11389
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/users/:id/monad-access",
+      "line": 11433
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/functions",
+      "line": 11565
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/functions/:slug",
+      "line": 11590
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/circuits",
+      "line": 11604
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/relations",
+      "line": 11612
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/regions/:id/links",
+      "line": 11628
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/conditions",
+      "line": 11642
+    },
+    {
+      "method": "GET",
+      "path": "/api/anatomy/conditions/:slug",
+      "line": 11666
+    },
+    {
+      "method": "GET",
+      "path": "/api/diets",
+      "line": 11688
+    },
+    {
+      "method": "GET",
+      "path": "/api/diets/:slug",
+      "line": 11700
+    },
+    {
+      "method": "GET",
+      "path": "/api/diagnoses/:slug/diets",
+      "line": 11723
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/diet",
+      "line": 11739
+    },
+    {
+      "method": "PUT",
+      "path": "/api/me/diet",
+      "line": 11753
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/diet/event",
+      "line": 11774
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/diet/events",
+      "line": 11806
+    },
+    {
+      "method": "GET",
+      "path": "/api/exercises",
+      "line": 11827
+    },
+    {
+      "method": "GET",
+      "path": "/api/exercises/:slug",
+      "line": 11841
+    },
+    {
+      "method": "POST",
+      "path": "/api/exercises/result",
+      "line": 11854
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/exercises/results",
+      "line": 11921
+    },
+    {
+      "method": "GET",
+      "path": "/api/sports",
+      "line": 11949
+    },
+    {
+      "method": "GET",
+      "path": "/api/sports/:slug",
+      "line": 11977
+    },
+    {
+      "method": "GET",
+      "path": "/api/sport-injuries",
+      "line": 11999
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/schedules",
+      "line": 12038
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/schedules",
+      "line": 12052
+    },
+    {
+      "method": "PUT",
+      "path": "/api/me/schedules/:id",
+      "line": 12079
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me/schedules/:id",
+      "line": 12105
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/schedule/events",
+      "line": 12120
+    },
+    {
+      "method": "GET",
+      "path": "/api/medications",
+      "line": 12190
+    },
+    {
+      "method": "GET",
+      "path": "/api/medication-links",
+      "line": 12221
+    },
+    {
+      "method": "GET",
+      "path": "/api/diagnoses/:slug/medications",
+      "line": 12231
+    },
+    {
+      "method": "GET",
+      "path": "/api/medications/:id/diagnoses",
+      "line": 12243
+    },
+    {
+      "method": "GET",
+      "path": "/api/medications/:slug",
+      "line": 12258
+    },
+    {
+      "method": "GET",
+      "path": "/api/library",
+      "line": 12380
+    },
+    {
+      "method": "GET",
+      "path": "/api/library/search",
+      "line": 12396
+    },
+    {
+      "method": "GET",
+      "path": "/api/library/:kind",
+      "line": 12446
+    },
+    {
+      "method": "GET",
+      "path": "/api/library/:kind/:id",
+      "line": 12459
+    },
+    {
+      "method": "POST",
+      "path": "/api/library/:kind",
+      "line": 12472
+    },
+    {
+      "method": "PUT",
+      "path": "/api/library/:kind/:id",
+      "line": 12487
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/library/:kind/:id",
+      "line": 12509
+    },
+    {
+      "method": "POST",
+      "path": "/api/library/:kind/:id/pdf",
+      "line": 12520
+    },
+    {
+      "method": "GET",
+      "path": "/api/library-notes",
+      "line": 12550
+    },
+    {
+      "method": "GET",
+      "path": "/api/library-notes/:kind/:slug",
+      "line": 12565
+    },
+    {
+      "method": "POST",
+      "path": "/api/library-notes",
+      "line": 12578
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/library-notes/:id",
+      "line": 12626
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/atlas-snapshots",
+      "line": 12642
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/atlas-snapshots",
+      "line": 12652
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me/atlas-snapshots/:id",
+      "line": 12673
+    },
+    {
+      "method": "GET",
+      "path": "/api/external/events",
+      "line": 12682
+    },
+    {
+      "method": "GET",
+      "path": "/api/external/history",
+      "line": 12740
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/external/poll",
+      "line": 12814
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/events/auto-import",
+      "line": 13056
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/nudge/sweep",
+      "line": 13124
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/birthdays/seed",
+      "line": 13135
+    },
+    {
+      "method": "GET",
+      "path": "/api/external/subscriptions",
+      "line": 13176
+    },
+    {
+      "method": "POST",
+      "path": "/api/external/subscriptions",
+      "line": 13183
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/me/location",
+      "line": 13195
+    },
+    {
+      "method": "GET",
+      "path": "/api/external/notifications",
+      "line": 13215
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/wearables",
+      "line": 13286
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/wearables/sync-log",
+      "line": 13299
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/health-metrics",
+      "line": 13308
+    },
+    {
+      "method": "GET",
+      "path": "/api/me/health-metrics/daily",
+      "line": 13322
+    },
+    {
+      "method": "GET",
+      "path": "/api/wearables/:provider/authorize",
+      "line": 13335
+    },
+    {
+      "method": "GET",
+      "path": "/api/wearables/:provider/callback",
+      "line": 13348
+    },
+    {
+      "method": "POST",
+      "path": "/api/wearables/:provider/sync",
+      "line": 13374
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me/wearables/:id",
+      "line": 13390
+    },
+    {
+      "method": "GET",
+      "path": "/api/sketches",
+      "line": 13430
+    },
+    {
+      "method": "GET",
+      "path": "/api/sketches/templates",
+      "line": 13451
+    },
+    {
+      "method": "GET",
+      "path": "/api/sketches/:id",
+      "line": 13475
+    },
+    {
+      "method": "POST",
+      "path": "/api/sketches",
+      "line": 13507
+    },
+    {
+      "method": "POST",
+      "path": "/api/sketches/:id/publish",
+      "line": 13591
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/sketches/:id",
+      "line": 13611
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/persona/health",
+      "line": 13648
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/status",
+      "line": 13698
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/agents",
+      "line": 13727
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/humans",
+      "line": 13764
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/architecture",
+      "line": 13789
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/rhythm",
+      "line": 14033
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/live",
+      "line": 14054
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/agents/search",
+      "line": 14067
+    },
+    {
+      "method": "GET",
+      "path": "/api/dom-monad/chats/:id/progress",
+      "line": 14105
+    },
+    {
+      "method": "POST",
+      "path": "/api/monad/message",
+      "line": 14132
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/chats",
+      "line": 14266
+    },
+    {
+      "method": "POST",
+      "path": "/api/monad/chats",
+      "line": 14284
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/chats/:id",
+      "line": 14318
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/monad/chats/:id",
+      "line": 14332
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/monad/chats/:id",
+      "line": 14352
+    },
+    {
+      "method": "POST",
+      "path": "/api/monad/chats/:id/upload",
+      "line": 14368
+    },
+    {
+      "method": "POST",
+      "path": "/api/monad/chats/:id/poll",
+      "line": 14395
+    },
+    {
+      "method": "GET",
+      "path": "/api/monad/inbox",
+      "line": 14468
+    },
+    {
+      "method": "POST",
+      "path": "/api/monad/inbox/sync",
+      "line": 14487
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/monad/inbox/:itemId/read",
+      "line": 14551
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/monad/link",
+      "line": 14569
+    },
+    {
+      "method": "POST",
+      "path": "/api/monad/deliver-tahir-handoff",
+      "line": 14667
+    }
+  ],
+  "declared_tables": [
+    "achievements",
+    "anatomy_circuits",
+    "anatomy_functions",
+    "anatomy_region_relations",
+    "asset_migration_log",
+    "atlas_snapshots",
+    "audit_log",
+    "calendar_events",
+    "chat_room_members",
+    "chat_room_messages",
+    "chat_rooms",
+    "consent_log",
+    "course_assets",
+    "course_block_progress",
+    "course_blocks",
+    "course_branches",
+    "course_progress",
+    "course_tools",
+    "courses",
+    "cycles",
+    "dependent_profiles",
+    "diagnosis_diets",
+    "diagnosis_medications",
+    "diagnosis_sports",
+    "diagnostic_items",
+    "diagnostic_sessions",
+    "diagnostic_templates",
+    "diet_events",
+    "diets",
+    "dm_messages",
+    "dm_threads",
+    "donations",
+    "event_templates",
+    "exercise_definitions",
+    "exercise_results",
+    "extension_requests",
+    "external_field_cache",
+    "external_field_notifications",
+    "external_field_subscriptions",
+    "external_signal_events",
+    "feed_comments",
+    "feed_posts",
+    "feed_reactions",
+    "health_metrics",
+    "human_conditions",
+    "joint_practice_messages",
+    "joint_practice_participants",
+    "joint_practice_sessions",
+    "journey_events",
+    "journey_links",
+    "library_articles",
+    "library_functions",
+    "library_methods",
+    "library_research",
+    "library_terms",
+    "library_theories",
+    "library_user_notes",
+    "medications",
+    "monad_chat_messages",
+    "monad_chats",
+    "monad_inbox_threads",
+    "neuro_map_entries",
+    "neuro_resource_diary",
+    "nm_chain_nodes",
+    "nm_chains",
+    "nm_links",
+    "nm_nodes",
+    "nm_session_nodes",
+    "notifications",
+    "oauth_tokens",
+    "password_resets",
+    "practice_block_completion",
+    "practice_blocks",
+    "practices",
+    "rehab_applications",
+    "room_recordings",
+    "rtc_signals",
+    "shakemap_cache",
+    "site_one_shots",
+    "sport_injuries",
+    "sports",
+    "system_settings",
+    "team_invites",
+    "team_members",
+    "teams",
+    "test_results",
+    "tools",
+    "user_achievements",
+    "user_diagnoses",
+    "user_diet",
+    "user_medical_files",
+    "user_schedules",
+    "user_sketches",
+    "user_stats",
+    "user_template_usage",
+    "vocab_terms",
+    "wearable_sync_log",
+    "xp_events"
+  ],
+  "limits": [
+    "Dynamically registered routes and external modules may add endpoints",
+    "DDL names do not establish live database state",
+    "Syntax parsing is not behavioral or security testing"
+  ]
+}

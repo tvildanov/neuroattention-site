@@ -3009,7 +3009,7 @@
       row(L(CHAR_STR.level, lang), String((st.user && st.user.level) || 1)) +
       row(L(CHAR_STR.xpgrowth, lang), '+' + (data.totals.xp_total || 0) + ' XP') +
       row(L(CHAR_STR.emotion, lang), L(emoLabel, lang)) +
-      row(L(CHAR_STR.state, lang), L(STATE_LABEL[stateKey], lang)) +
+      row(L({ru:'Эмоциональных записей',en:'Emotional entries',es:'Registros emocionales'},lang),String(emo.length)) +
       row(L(CHAR_STR.last, lang), last ? fmtAxis(last.t, lang) : L(CHAR_STR.none, lang));
     canvas.appendChild(box);
   }

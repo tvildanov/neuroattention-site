@@ -9,6 +9,8 @@ on:
       - 'data/i18n/**'
       - 'scripts/test-dom-account-api.cjs'
       - 'scripts/test-dom-cabinet-v07.cjs'
+      - 'scripts/test-dom-observations.cjs'
+      - 'scripts/test-dom-recording-ui.cjs'
       - 'scripts/test-monad-cross.cjs'
       - 'scripts/fixtures/dom-account-server.cjs'
       - '.github/workflows/dom-cabinet-v07.yml'
@@ -41,5 +43,7 @@ jobs:
           done
           grep -q ACCOUNT_FIXTURE_READY /tmp/dom-v07-test-api.log
           node scripts/test-dom-account-api.cjs
+          node scripts/test-dom-observations.cjs
+          node scripts/test-dom-recording-ui.cjs
           node scripts/test-dom-cabinet-v07.cjs
           node scripts/test-monad-cross.cjs
