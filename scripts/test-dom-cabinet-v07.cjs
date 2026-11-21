@@ -73,8 +73,8 @@ async function request(route,token,body){
      await page.waitForFunction(()=>document.querySelector('[aria-controls="dom-nav-tools"]').disabled);
      assert.equal(await nav.locator('[aria-controls="dom-nav-administration"]').isVisible(),false);
    }else{
-     await nav.locator('a[data-tab="tools"]').click();
-     await nav.locator('[data-nav-target="tools-mode-pointab"]').click();
+     await nav.locator('a[data-tab="evolution"]').click();
+     await nav.locator('#dom-nav-evolution [data-nav-target="tools-mode-pointab"]').click();
      await page.locator('#tools-pointab-content').waitFor();
      assert.equal(await page.locator('#tools-mode-nm').isVisible(),false);
      if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
@@ -95,7 +95,7 @@ async function request(route,token,body){
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    const courses=page.locator('#dom-nav-evolution a[data-tab="courses"]');
    assert.equal(await courses.count(),1);
-   await page.locator('[aria-controls="dom-nav-evolution"]').click();
+   if(await page.locator('[aria-controls="dom-nav-evolution"]').getAttribute('aria-expanded')==='false')await page.locator('[aria-controls="dom-nav-evolution"]').click();
    assert.equal(await courses.innerText(),{ru:'Мои программы',en:'My programs',es:'Mis programas'}[lang]);
    await courses.click();
    await page.locator('#tab-courses.active').waitFor();
