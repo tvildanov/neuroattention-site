@@ -133,10 +133,12 @@ async function request(route,token,body){
      await entry.locator('button').nth(1).click();
      const thought=page.locator('#nm-thought-input');
      await thought.fill('Authenticated quick record');
-     const saved=page.waitForResponse(r=>r.url().includes('/api/neuromap/v2/append')&&r.request().method()==='POST');
+     const saved=page.waitForResponse(r=>r.url().includes('/api/observations')&&r.request().method()==='POST');
      await page.locator('#nm-save-thought').click();
      assert.equal((await saved).status(),200);
      await page.locator('#dom-quick-record .dom-quick-status').getByText(/сохранена/i).waitFor();
+     await page.locator('#dom-observation-dialog[open]').waitFor();
+     await page.locator('.dom-record-close').click();
      await quick.click();
      await entry.locator('button').first().click();
      const emotionPanel=page.locator('#nm-step-content');
@@ -173,9 +175,11 @@ async function request(route,token,body){
      await page.locator('#nm-sens-link-stub').click();
      await emotionPanel.getByRole('button',{name:/^радость$/i}).click();
      for(let i=0;i<6;i++)await page.locator('#nm-next').click();
-     const endWalk=page.waitForResponse(r=>r.url().includes('/api/neuromap/v2/append')&&r.request().method()==='POST');
+     const endWalk=page.waitForResponse(r=>r.url().includes('/api/observations')&&r.request().method()==='POST');
      await page.locator('#nm-step-content button[onclick="nmFinishAndSave()"]').click();
      assert.equal((await endWalk).status(),200);
+     await page.locator('#dom-observation-dialog[open]').waitFor();
+     await page.locator('.dom-record-close').click();
      const actualWalk=(await request('/api/neuromap/v3/graph',token)).body;
      const names=new Map(actualWalk.nodes.map(n=>[n.id,n]));
      const visit=actualWalk.chains.find(c=>c.node_ids.some(id=>names.get(id)?.label==='Walk from diary to sensation to emotion'));

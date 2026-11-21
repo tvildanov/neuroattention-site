@@ -8154,6 +8154,9 @@ function openNmSurvey(){
   if(!_wasHandoff) nmClearCarriedLive();
   nmCurrentStep=0;
   nmSurveyState={emotions:[],emotionChains:[],intensity:5,context:'',_concept:null};
+  modal.querySelector('.dom-survey-status')?.remove();
+  modal.querySelector('#nm-step-content').inert=false;
+  modal.querySelector('#nm-nav-btns').inert=false;
   nmLivePrevPos={};
   // PR#109 (#1): thought mode is requested by openNmThought — the thought becomes
   // Step 1 of the SAME modal (no separate intro window). The concept is captured on
@@ -8163,7 +8166,7 @@ function openNmSurvey(){
   nmPendingConcept=null;
   // Pull the user's personal vocabulary so prior custom terms appear in the pickers,
   // coloured by their saved valence. Re-render once it arrives (non-blocking).
-  nmLoadUserVocab(function(){ if(modal.classList.contains('open')) renderNmStep(); });
+  nmLoadUserVocab(function(){ if(modal.classList.contains('open')&&!nmSurveyState._saving)renderNmStep(); });
   modal.classList.add('open');
   renderNmStep();
 }
@@ -8230,6 +8233,7 @@ function nmPromptValenceConfirm(){
 }
 window.nmPromptValenceConfirm = nmPromptValenceConfirm;
 function closeNmSurvey(){
+  if(nmSurveyState._saving&&!nmSurveyState._confirmed)return;
   document.getElementById('nmSurveyModal').classList.remove('open');
   // PR#108: the thought-flow concept is consumed on save/close — don't let it bleed
   // into the next plain emotion walkthrough.
@@ -8402,7 +8406,7 @@ function renderNmStep(){
     var causes=Object.keys(causesSet);
     var selCauses=chain.causes||[];
     var h='<p class="eyebrow" style="margin-bottom:0.5rem;">'+cntTxt+'</p>';
-    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_what_caused')||'Что именно вызвало это состояние?')+'</h3>';
+    h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(window.DOMRecording?DOMRecording.text('association'):'С чем вы связываете это состояние?')+'</h3>';
     h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 0.75rem;">'+(rpgT('nm_up_to_3')||'Можно выбрать до 3')+'</p>';
     h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;" id="nm-causes-wrap">';
     causes.forEach(function(c){
@@ -8415,6 +8419,7 @@ function renderNmStep(){
     if(selCauses.indexOf('другое')!==-1){
       h+='<div style="margin-top:0.75rem;display:flex;gap:0.5rem;"><input type="text" id="nm-custom-cause" class="glass-input" placeholder="'+(rpgT('nm_describe_cause')||'Опишите причину...')+'" style="flex:1;padding:0.65rem 0.85rem;border-radius:10px;font-size:13px;" value="'+(chain.customCause||'')+'" oninput="nmSetCustomCause(this.value)" /><button class="btn btn-primary" style="font-size:11px;padding:0.5rem 0.75rem;white-space:nowrap;" onclick="nmAddCustomVocab(\'cause\')">+</button></div>';
     }
+    h+='<p class="dom-record-note">'+(window.DOMRecording?DOMRecording.text('skipHint'):'Можно продолжить без ответа.')+'</p>';
     content.innerHTML=h;
   }
   else if(es===3){
@@ -8442,6 +8447,7 @@ function renderNmStep(){
     h+='<h3 style="font-size:1.05rem;color:var(--text-primary);margin:0 0 1rem;">'+(rpgT('nm_how_strong')||'Насколько сильным было это состояние?')+'</h3>';
     h+='<div class="nm-slider-wrap"><span style="font-size:11px;color:var(--text-dim);">1</span><input type="range" min="1" max="10" value="'+(nmSurveyState.intensity||5)+'" oninput="nmSetIntensity(this.value)" /><span style="font-size:11px;color:var(--text-dim);">10</span></div>';
     h+='<div style="text-align:center;margin-top:0.5rem;"><span class="nm-slider-val" id="nm-int-val">'+(nmSurveyState.intensity||5)+'</span><span style="font-size:11px;color:var(--text-dim);margin-left:4px;">/10</span></div>';
+    h+='<p class="dom-record-note">'+(window.DOMRecording?DOMRecording.text('intensityHint'):'Измените ползунок или продолжите без оценки.')+'</p>';
     content.innerHTML=h;
   }
   else if(es===5){
@@ -8458,9 +8464,9 @@ function renderNmStep(){
     h+='<div style="width:56px;height:56px;margin:0 auto 1rem;border-radius:50%;background:rgba(0,224,255,0.08);display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,224,255,0.15);">';
     h+='<svg style="width:28px;height:28px;fill:none;stroke:var(--accent-cyan);stroke-width:2;" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>';
     h+='</div>';
-    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(rpgT('nm_chain_recorded')||'Цепочка')+' '+(chainCount)+' '+(rpgT('nm_chain_recorded_suffix')||'записана')+'</h3>';
-    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 0.5rem;line-height:1.6;">'+(rpgT('nm_chain_added_to_map')||'Эмоция и связанная цепочка добавлены на вашу карту.')+'</p>';
-    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">'+(rpgT('nm_more_chains_better')||'Чем больше цепочек, тем точнее будет анализ')+'</p>';
+    h+='<h3 style="font-size:1.1rem;color:var(--text-primary);margin:0 0 0.5rem;">'+(window.DOMRecording?DOMRecording.text('review'):'Проверьте запись')+'</h3>';
+    h+='<p style="font-size:13px;color:var(--text-muted);margin:0 0 0.5rem;line-height:1.6;">'+(window.DOMRecording?DOMRecording.text('reviewHint'):'Сохраните запись, чтобы вернуться к ней позже.')+'</p>';
+    h+='<p style="font-size:11px;color:var(--text-dim);margin:0 0 1.5rem;">'+(window.DOMRecording?DOMRecording.text('optional'):'Уточнения необязательны.')+'</p>';
     h+='<div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">';
     h+='<button class="btn btn-primary" style="font-size:13px;" onclick="nmAddAnotherEmotion()">'+(rpgT('nm_add_another_emotion')||'+ Ещё эмоцию')+'</button>';
     h+='<button class="btn btn-solid" style="font-size:13px;" onclick="nmFinishAndSave()">'+_pr95t('a.tools.emotion_save_exit','Сохранить и выйти')+'</button>';
@@ -9043,6 +9049,7 @@ function nmAddCustomThought(){
 
 function nmSetIntensity(v){
   nmSurveyState.intensity=parseInt(v);
+  nmSurveyState.intensityConfirmed=true;
   var el=document.getElementById('nm-int-val');
   if(el) el.textContent=v;
 }
@@ -9100,23 +9107,14 @@ function nmAddAnotherEmotion(){
   renderNmStep();
 }
 
-function nmFinishAndSave(){
-  document.getElementById('nm-nav-btns').style.display='flex';
-  nmSaveSurvey();
-}
+function nmFinishAndSave(){return nmSaveSurvey();}
 
 // PR#96 (Phase 3.2): emotion walkthrough → sensation map cross-link. Open a
 // session first (so the emotion nodes are registered), save the walkthrough, then
 // hand off to the sensation overlay — its nodes link back to this emotion chain.
 function nmSaveAndLinkSensation(){
   nmEnsureSession();
-  // PR#123 B1: carry the emotion chain into the sensation live map so «Сохранить и
-  // привязать к ощущению» EXTENDS the visible map instead of opening a blank canvas.
-  try { nmSetCarriedLive(nmMiniEmotionModel()); } catch(e){}
-  nmMarkHandoff(); // PR#112 (#1): timestamped handoff (TTL-guarded)
-  document.getElementById('nm-nav-btns').style.display='flex';
-  nmSaveSurvey();
-  setTimeout(function(){ nmOpenSensationOverlay(); }, 80);
+  return nmSaveSurvey(true).then(function(ok){if(ok)nmOpenSensationOverlay();});
 }
 window.nmSaveAndLinkSensation = nmSaveAndLinkSensation;
 
@@ -9131,7 +9129,11 @@ function nmPrev(){
   renderNmStep();
 }
 
-function nmSaveSurvey(){
+async function nmSaveSurvey(linkSensation){
+  if(nmSurveyState._saving)return false;
+  var saveState=nmSurveyState;
+  if(linkSensation)saveState._linkSensation=true;
+  linkSensation=!!saveState._linkSensation;
   var today=new Date();
   var key=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
   if(!nmData[key]) nmData[key]=[];
@@ -9162,7 +9164,7 @@ function nmSaveSurvey(){
   });
   var entry={
     chains:chains,
-    intensity:nmSurveyState.intensity||5,
+    intensity:nmSurveyState.intensityConfirmed?nmSurveyState.intensity:null,
     context:nmSurveyState.context||'',
     time:today.getHours()+':'+String(today.getMinutes()).padStart(2,'0')
   };
@@ -9170,13 +9172,6 @@ function nmSaveSurvey(){
   // via nmAppendV2 (which carries dependent_id). The parent's local store / legacy
   // API / today-summary / graph must NOT change.
   var _emoDep = (typeof nmTargetDep !== 'undefined' && nmTargetDep);
-  if(!_emoDep && chains.length){
-    nmData[key].push(entry);
-    // Persist to old API (backward compat)
-    nmSaveToAPI(key, entry);
-    // Cache to localStorage
-    nmCacheToLocal();
-  }
   // Send to v2/append for graph dedup
   var v2Chain=[];
   // PR#108 (#3): «Заполнить мысль» prepends the captured thought as a `concept` node
@@ -9209,24 +9204,31 @@ function nmSaveSurvey(){
       }
     }
   });
-  if(v2Chain.length) nmAppendV2(v2Chain);
-  // PR#97: if this save hands off to another overlay (cross-link), snapshot the
-  // emotion chain so the next mini-graph shows the faded prior context.
-  if(nmSessionHandoff && v2Chain.length){
-    nmSetPrior(v2Chain.map(function(c){ return {type:c.type,label:c.label,valence:c.valence}; }));
-  }
-  closeNmSurvey();
-  if(navigator.vibrate) navigator.vibrate([20,40,20]);
-  if(!_emoDep){
-    updateNmToday();
-    buildNmGraph();
-  }
-  // Show success toast
-  nmShowToast(!_emoDep && Object.keys(nmData).length<=1 && nmData[key] && nmData[key].length===1);
-  // PR#87: if this survey was embedded inside a course block, also finalize the block.
-  if(window.coursePlayer && coursePlayer._nmEmbed && typeof cpNmEmbedFinalize==='function'){
-    try { cpNmEmbedFinalize(entry); } catch(e){ console.warn('cp neuromap finalize:', e); }
-  }
+  if(!v2Chain.length)return false;
+  saveState._saving=true;
+  var modal=document.getElementById('nmSurveyModal');modal.setAttribute('aria-busy','true');
+  window.DOMRecording?.surveyStatus('pending');
+  try{
+    var receipt;
+    if(_emoDep){receipt=await nmAppendV2(v2Chain);if(!receipt?.ok)throw Error('Save not confirmed');}
+    else{
+      if(!window.DOMRecording)throw Error('Recording module unavailable');
+      receipt=await DOMRecording.save({chain:v2Chain,legacy_entry:chains.length?entry:null,date_key:key,
+        text:(nmPendingConcept&&nmPendingConcept.label)||nmSurveyState.context||'',context:nmSurveyState.context||'',
+        intensity:nmSurveyState.intensityConfirmed?nmSurveyState.intensity:null,session_id:nmEnsureSession()},saveState);
+    }
+    if(nmSurveyState!==saveState)return false;
+    if(!_emoDep&&chains.length){nmData[key].push(entry);nmCacheToLocal();}
+    if(linkSensation){try{nmSetCarriedLive(nmMiniEmotionModel());}catch(e){}nmMarkHandoff();}
+    if(nmSessionHandoff)nmSetPrior(v2Chain.map(function(c){return {type:c.type,label:c.label,valence:c.valence};}));
+    saveState._confirmed=true;closeNmSurvey();
+    if(!_emoDep){try{updateNmToday();await nmLoadV2Graph();buildNmGraph();}catch(e){console.warn('Saved observation; graph refresh unavailable');}}
+    document.dispatchEvent(new CustomEvent('neuromap:save',{detail:{ok:true,record:receipt.record||null}}));
+    window.DOMRecording?.saved(receipt.record,!linkSensation&&!window.coursePlayer?._nmEmbed);
+    if(window.coursePlayer&&coursePlayer._nmEmbed&&typeof cpNmEmbedFinalize==='function')cpNmEmbedFinalize(entry);
+    return true;
+  }catch(e){window.DOMRecording?.surveyStatus('error');return false;}
+  finally{saveState._saving=false;modal.removeAttribute('aria-busy');}
 }
 
 // ── NeuroMap Success Toast ──
@@ -22978,9 +22980,11 @@ window.pbMove = pbMove;
   }
 })();
 </script>
-<script src="assets/js/dom-social.js?v=1" defer></script>
+<script src="assets/js/dom-social.js?v=2" defer></script>
 <link rel="stylesheet" href="assets/dom-social.css?v=1">
 <script src="assets/js/dom-editorial.js?v=1"></script>
+<link rel="stylesheet" href="assets/dom-recording.css?v=1">
+<script src="assets/js/dom-recording.js?v=1"></script>
 <script>
 document.querySelectorAll('.nm-layer-marker').forEach(function(marker){
   marker.innerHTML=nmLayerSymbol(Number(marker.dataset.marker));

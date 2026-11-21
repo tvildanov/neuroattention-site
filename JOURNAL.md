@@ -2446,6 +2446,12 @@ User requested original drop restoration, a reusable export of the new renderer,
 {"project":"neuro","agent":"codex","at":"2026-11-20","did":["Checked the dashboard header, nested navigation and the active account tab set by the router"],"changed":["Hide the client dashboard header outside the overview, reclaiming its height"],"files":["assets/dom-account-skin.css","JOURNAL.md"],"decisions":["Keep role and logout in the profile; defer the DOM agent interface"],"followups":[],"next_session":"Validate the DOM guide separately with representative account scenarios."}
 ```
 
+## 2026-11-21 — DOM observation foundation implementation
+
+Implemented an additive, owner-scoped observations API with an operation ID and a transaction spanning original source, graph occurrence membership, journey and the compatibility view. Added a short capture form, original-source dialog, latest-record history, retry receipts scoped to the current user/tab, explicit save states, optional intensity, keyboard chip choices and light-theme sensory contrast. Added server authorization for migrations, course completion and RTC membership. Preserved the latest Monad tab and profile-header fixes from main.
+
+The earlier uncommitted worktree was removed by workspace maintenance; implementation was recreated from the retained task context and checked again. The server module was checkpointed remotely before further integration. Publication of the audit was explicitly authorized and PR #209 is available. This entry does not claim application deployment; consult the release outcome appended after verification. Existing hardware, dependent idempotency and repeated-practice history remain separate work.
+
 ## 2026-11-21 — Staff DOM guide, development workspace and member profiles
 
 The profile now separates identity from test results. A member chooses audiences for results, recent NeuroMap labels, pulse and wall posts. Authorization also applies to downloading wall files. A closed profile revokes these reads. BLE live samples expire after 15 seconds. The staff pilot uses the account operator's configured model and explicit administrator corrections. Its role is grounded in DOM Agent Core v0.1. Development routes and existing access checks are reused under a shared workspace switcher. Monad remains directly accessible and linked from DOMunity.

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "as_of_local_date": "2026-11-20",
+  "timezone": "America/Cancun",
+  "repository": "tvildanov/neuroattention-site",
+  "audited_source_commit": "112b9aa373d197fd97c05442a422b913217c5668",
+  "frontend": "https://dom.institute/account.html",
+  "railway": {
+    "project_id": "1dd157e4-547e-4b08-9ba3-0be4202bfab3",
+    "environment_id": "502fd87d-1730-4c7b-bc36-efc96f082065",
+    "service_id": "90c8e681-c84e-4b59-8074-942afde84f7a",
+    "observed_deployment_id": "8f9154ad-bb3e-43d7-9c7b-03c86fd563c7",
+    "observed_status": "SUCCESS",
+    "observed_commit": "112b9aa373d197fd97c05442a422b913217c5668"
+  },
+  "scope": [
+    "capture",
+    "neuromap",
+    "personal_path",
+    "internal_field",
+    "external_field",
+    "courses",
+    "knowledge",
+    "exercises",
+    "profile_ui",
+    "family_team",
+    "device_xr_boundaries"
+  ],
+  "protected_parallel_work": [
+    "typology meanings and scoring",
+    "unrelated homepage changes"
+  ],
+  "status": {
+    "audit": "source plus limited authenticated customer walkthrough complete",
+    "implementation": "First personal observation foundation implemented; release verification pending in PR 212",
+    "production_changes": "none",
+    "new_prototype": "not created"
+  },
+  "evidence": {
+    "live_role": "ordinary existing test USER",
+    "synthetic_observation_count": 1,
+    "paid_tools_live": "not verified",
+    "multi_account_isolation": "not verified",
+    "mobile_and_dark_theme": "not verified this session",
+    "real_hardware": "not verified",
+    "save_failure_retry": "source review only"
+  },
+  "proposals": [
+    "incremental replacement behind adapters",
+    "confirmed idempotent record ingestion",
+    "record/source/occurrence/concept separation",
+    "list and source card before advanced graph exploration",
+    "versioned profile adapter"
+  ],
+  "first_packages": [
+    "A: isolated environment and role/access matrix",
+    "B: confirmed observation write contract",
+    "C: reviewable capture-to-result prototype"
+  ],
+  "resume_file": "AGENT.md",
+  "backlog_file": "BACKLOG-RU.md",
+  "inventory_command": "node scripts/audit-platform-source.cjs",
+  "implementation_branch": "platform/recording-foundation",
+  "implementation_pr": "https://github.com/tvildanov/neuroattention-site/pull/212",
+  "implementation_evidence": {
+    "isolated_api_regression": "passed after integrating c6a5fc1",
+    "concurrent_retry_20": "passed",
+    "transaction_rollback": "passed",
+    "operation_conflict_and_session_ownership": "passed",
+    "migration_course_rtc_access": "passed in isolated fixture",
+    "browser": "GitHub CI pending; local Chromium restricted"
+  }
+}

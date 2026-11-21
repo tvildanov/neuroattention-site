@@ -266,7 +266,7 @@
      button.setAttribute('aria-expanded',String(open));
      if(open){
        panel.append(actions);
-       if(focus)actions.querySelector('button')?.focus();
+       if(focus)(panel.querySelector('textarea')||actions.querySelector('button'))?.focus();
      }else{
        placeholder.after(actions);
        setExpanded(false);
@@ -291,7 +291,8 @@
      const open=el('button','dom-quick-secondary',txt('Открыть NeuroMap','Open NeuroMap','Abrir NeuroMap'));
      const another=el('button','dom-quick-secondary',txt('Добавить ещё','Add another','Añadir otro'));
      open.type=another.type='button';
-     open.onclick=()=>{window.switchTab('tools');window.setToolsMode('nm');};
+     if(e.detail.record&&window.DOMRecording){open.textContent=DOMRecording.text('open');open.onclick=()=>DOMRecording.open(e.detail.record.id);}
+     else open.onclick=()=>{window.switchTab('tools');window.setToolsMode('nm');};
      another.onclick=()=>toggle(true,true);
      status.append(open,another);
    });

@@ -83,7 +83,7 @@
       if(avatar)row.append(avatar);
       const img=document.getElementById('rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
     }else if(p.avatar_url)row.append(photo(p.avatar_url,'dom-person-avatar'));
-    const identity=el('div');identity.append(el('h2',p.display_name));
+    const identity=el('div');identity.setAttribute('data-title-case-skip','');identity.append(el('h2',p.display_name));
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
     if(self)box.append(button(tr('Редактировать профиль','Edit profile','Editar perfil'),()=>edit(p)));
     else if(!p.profile_public)box.append(el('p',tr('Закрытый профиль','Private profile','Perfil privado')));
