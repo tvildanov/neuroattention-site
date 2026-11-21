@@ -14,3 +14,7 @@ html[data-dom-theme="light"] #tools-sensation-wrap .sm-chip{color:#264057!import
 #nmSurveyModal .nm-chip:focus-visible,#tools-sensation-wrap .sm-chip:focus-visible{outline:2px solid var(--accent-cyan);outline-offset:3px}
 @media(max-width:600px){.dom-observation-dialog{padding:1.1rem}.dom-record-actions>button{flex:1}.dom-observation-history{padding:1rem}}
 @media(prefers-reduced-motion:reduce){.dom-survey-status[data-state="pending"]::before{animation:none}.dom-observation-row{transition:none}}
+
+html[data-dom-theme="light"] #tools-sensation-wrap .bp-wire>*{stroke:#385b7a}
+html[data-dom-theme="light"] #tools-sensation-wrap .bp-region{stroke:#647b8a;fill:#dbe9f533}
+html[data-dom-theme="light"] #tools-sensation-wrap .bp-region.picked{stroke:#245984;fill:#a9cdeb99}
