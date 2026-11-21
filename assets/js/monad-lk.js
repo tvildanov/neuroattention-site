@@ -1568,6 +1568,9 @@
     isRole: isMonadRole,
   };
 
+  // Session restoration can finish before this script loads on a returning visit.
+  showTabButton(window.currentUser);
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();
 })();

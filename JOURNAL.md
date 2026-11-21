@@ -2433,3 +2433,9 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-19","did":["Traced actual diary, sensation and emotion writes and the legacy graph fallback"],"changed":["Recover missing membership from ordered personal journey events","Keep archival facts separate and bind recorded body locations to the felt sensations","Unify light navigation wordmark across homepage, method and cabinet"],"files":["api/server.js","account.html","assets/js/neuromap-chains.js","assets/dom-interface.css","scripts/test-dom-account-api.cjs","scripts/test-dom-cabinet-v07.cjs","scripts/fixtures/dom-account-server.cjs","index.html","method.html","sw.js"],"decisions":["Preserve existing records and distinguish archived information with unknown recording order"],"followups":["Check Railway revision and Pages deployment"],"next_session":"Verify the release against the owner's historical recordings if available."}
 ```
+
+## 2026-11-20 — Restore Monad navigation after early session restoration
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-20","did":["Reproduced the hidden tab when the session is already restored before MonadLK loads","Tested authorized and unauthorized profiles in both initialization orders"],"changed":["Apply the existing visibility check when registering MonadLK"],"files":["assets/js/monad-lk.js","JOURNAL.md"],"decisions":["Keep existing role and grant checks"],"followups":["Verify Pages publication"],"next_session":"If the owner still reports a missing link, check the signed-in profile grants and sidebar rendering."}
+```
