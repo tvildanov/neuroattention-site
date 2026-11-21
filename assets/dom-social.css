@@ -18,3 +18,8 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 #client-dashboard:has(.dom-workspace-switch) :is(#tab-tools,#tab-evolution).active{height:clamp(360px,74dvh,980px);overflow:auto;overscroll-behavior-y:auto;padding:clamp(8px,1.2vw,18px);box-sizing:border-box;border:1px solid var(--line-soft);border-top:0;border-radius:0 0 14px 14px}
 #client-dashboard:has(.dom-workspace-switch) .dom-cabinet-sidebar>:is(a[data-tab=tools],[aria-controls=dom-nav-tools],#dom-nav-tools),
 #client-dashboard.dom-has-program .dom-cabinet-sidebar>:is(a[data-tab=enroll],[aria-controls=dom-nav-enroll],#dom-nav-enroll){display:none!important}
+.dom-social-dialog[data-member]{width:min(790px,96vw)}
+.dom-recorded-chain{display:flex;align-items:center;overflow-x:auto;list-style:none;margin:.4rem 0 1rem;padding:0}
+.dom-recorded-chain li{display:flex;align-items:center;gap:.4rem;flex:none;max-width:22ch;font-size:.85rem}
+.dom-recorded-chain li::before{content:'';width:.6rem;height:.6rem;flex:none;border-radius:50%;background:var(--cabinet-accent,#78a58e)}
+.dom-recorded-chain li:not(:last-child)::after{content:'→';color:var(--text-muted);margin-right:.4rem}

@@ -10,6 +10,19 @@
   const avatars=new Map();
   const avatarControls=document.getElementById('rpg-avatar-wrap')?.parentElement;
   let serial=0,lastId='',activeDialog;
+  const memberKey=()=>new URL(location.href).searchParams.get('member');
+  const isMemberId=id=>typeof id==='string'&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id);
+  function closeMember(){
+    const url=new URL(location.href);url.searchParams.delete('member');
+    if(history.state?.domMember)history.back();
+    else{history.replaceState(null,'',url);activeDialog?.close();}
+  }
+  function restoreMember(){
+    const id=memberKey();
+    if(isMemberId(id)&&window.currentUser?.id){if(activeDialog?.dataset.member!==id)open(id,false);}
+    else if(activeDialog?.dataset.member)activeDialog.close();
+  }
+  window.addEventListener('popstate',restoreMember);
   function dialog(title){
     activeDialog?.close();
     const d=el('dialog');d.className='dom-social-dialog';d.setAttribute('aria-label',title);
@@ -51,8 +64,13 @@
   }
   function photo(url,cls){const img=el('img');img.className=cls;img.src=url;img.alt='';return img;}
   function block(title){const section=el('section');section.append(el('h3',title));return section;}
-  async function open(id){
+  async function open(id,push=true){
+    if(!isMemberId(id))return;
+    if(push&&memberKey()!==id){const url=new URL(location.href);url.searchParams.set('member',id);history.pushState({domMember:true},'',url);}
     const d=dialog(tr('Профиль участника','Member profile','Perfil de miembro'));
+    d.dataset.member=id;
+    d.firstElementChild.onclick=closeMember;
+    d.addEventListener('cancel',e=>{e.preventDefault();closeMember();});
     const loading=el('p',tr('Загрузка…','Loading…','Cargando…'));d.append(loading);
     try{const data=await api('/api/social/profile/'+encodeURIComponent(id));if(d.open)loading.replaceWith(card(data,false));}catch(e){loading.textContent=e.message;}
   }
@@ -69,7 +87,7 @@
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
     if(self)box.append(button(tr('Редактировать профиль','Edit profile','Editar perfil'),()=>edit(p)));
     else if(!p.profile_public)box.append(el('p',tr('Закрытый профиль','Private profile','Perfil privado')));
-    if(!self&&p.id!==window.currentUser?.id){box.append(button(tr('Написать','Message','Enviar mensaje'),()=>{activeDialog?.close();window.switchTab('domunity');window.domStartThreadFromProfile(p.id,p.display_name);}));}
+    if(!self&&p.id!==window.currentUser?.id){box.append(button(tr('Написать','Message','Enviar mensaje'),()=>{const url=new URL(location.href);url.searchParams.delete('member');history.replaceState(null,'',url);activeDialog?.close();window.switchTab('domunity');window.domStartThreadFromProfile(p.id,p.display_name);}));}
     if(p.result?.profile){const s=block(tr('Результат теста','Test result','Resultado'));s.append(el('p',window.TEST_PROFILES_MAP?.[p.result.profile]?.name||String(p.result.profile)));box.append(s);}
     if(p.pulse){const s=block(p.pulse.metric_kind==='rhr'?tr('Пульс в покое','Resting heart rate','Pulso en reposo'):tr('Пульс','Heart rate','Pulso'));s.append(el('p',Math.round(p.pulse.value)+' bpm · '+new Date(p.pulse.measured_at).toLocaleString()));box.append(s);}
     if(self)box.append(streamButton());
@@ -83,7 +101,11 @@
         if(box.isConnected)setTimeout(watch,5000);
       };setTimeout(watch,0);
     }
-    if(p.map?.length){const s=block(tr('Последние записи Нейрокарты','Recent NeuroMap entries','Registros recientes del NeuroMapa'));for(const entry of p.map)s.append(el('p',String(entry.date).slice(0,10)+' · '+entry.labels.join(' → ')));box.append(s);}
+    if(p.map?.length){const s=block(tr('Последние записи Нейрокарты','Recent NeuroMap entries','Registros recientes del NeuroMapa'));for(const entry of p.map){
+      const chain=el('ol');chain.className='dom-recorded-chain';
+      for(const label of entry.labels)chain.append(el('li',label));
+      s.append(el('small',String(entry.date).slice(0,10)),chain);
+    }box.append(s);}
     if(p.posts){const s=block(tr('Стена','Wall','Muro'));if(self)s.append(button(tr('Добавить запись','New post','Nueva publicación'),compose));
       for(const post of p.posts){const item=el('article');item.append(el('small',new Date(post.created_at).toLocaleString()),el('p',post.body));
         if(post.file_name)item.append(button(post.file_name,async()=>{try{const f=await api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file');const a=el('a');a.download=f.name;a.href='data:application/octet-stream;base64,'+f.base64;a.click();}catch(e){alert(e.message);}}));
@@ -149,6 +171,7 @@
       const profile=card(p,true);host.replaceChildren(profile);Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});
     }catch(e){if(ticket!==serial)return;host.replaceChildren(el('p',e.message),button(tr('Повторить','Retry','Reintentar'),()=>login(user)));}
     if(['admin','superadmin','founder'].includes(user.serverRole))host.prepend(guide());
+    restoreMember();
   }
   function ask(){if(['admin','superadmin','founder'].includes(window.currentUser?.serverRole))dialog('DOM').append(guide());}
   window.DOMSocial={login,open,peer,ask};login(window.currentUser);
