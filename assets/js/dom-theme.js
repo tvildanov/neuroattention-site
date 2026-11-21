@@ -29,4 +29,4 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
 (function(){if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;var el=document.createElement('link');el.rel='stylesheet';el.href='assets/dom-account-graph-readability-v06.css?v=2';document.head.appendChild(el);})();
 
 /* Shared cabinet v0.7 loader (no duplicated NeuroMap handlers). */
-(()=>{if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;const css=document.createElement('link');css.rel='stylesheet';css.href='assets/dom-cabinet-v07.css?v=6';document.head.append(css);const script=document.createElement('script');script.src='assets/js/dom-cabinet-v07.js?v=6';script.defer=true;document.head.append(script);})();
+(()=>{if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;const css=document.createElement('link');css.rel='stylesheet';css.href='assets/dom-cabinet-v07.css?v=6';document.head.append(css);const script=document.createElement('script');script.src='assets/js/dom-cabinet-v07.js?v=7';script.defer=true;document.head.append(script);})();

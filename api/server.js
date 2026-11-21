@@ -3358,7 +3358,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const rows = await sql`
-      SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
+      SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url, bio, profile_public, notifications_enabled,
              location_lat, location_lon, location_city, location_country,
              monad_human_id, monad_access
       FROM users WHERE id = ${req.user.id}
@@ -3373,7 +3373,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
     // Fallback if mig070/071 not applied yet (column missing)
     try {
       const rows = await sql`
-        SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url,
+        SELECT id, email, display_name, phone, role, created_at, last_login_at, avatar_url, bio, profile_public, notifications_enabled,
                location_lat, location_lon, location_city, location_country
         FROM users WHERE id = ${req.user.id}
       `;
@@ -10585,7 +10585,7 @@ app.get('/api/users/:id/achievements', requireAuth, async (req, res) => {
   try {
     const rows = await sql`SELECT a.* FROM user_achievements ua
                             JOIN achievements a ON a.id = ua.achievement_id
-                            WHERE ua.user_id = ${req.params.id}
+                            WHERE ua.user_id = ${req.params.id} AND EXISTS (SELECT 1 FROM users u WHERE u.id=ua.user_id AND (u.profile_public OR u.id=${req.user.id}))
                             ORDER BY ua.earned_at DESC`;
     res.json({ achievements: rows });
   } catch (err) { console.error('GET user achievements:', err); res.status(500).json({ error: err.message }); }
@@ -14684,7 +14684,10 @@ domMonadV07.install(app,{requireAuth,sql,monadSvc});
 const domChatControls=require('./services/dom-chat-controls');
 domChatControls.install(app,{requireAuth,sql});
 
+const domSocial=require('./services/dom-social');
+domSocial.install(app,{requireAuth,sql,callerIsAdmin});
 async function applyDomReviewSchema() {
+  await domSocial.ensureSchema(sql);
   await domChatControls.ensureSchema(sql);
   await sql`ALTER TABLE IF EXISTS rehab_applications ADD COLUMN IF NOT EXISTS contact_name TEXT, ADD COLUMN IF NOT EXISTS contact_email TEXT`;
   await sql`ALTER TABLE IF EXISTS chat_rooms ADD COLUMN IF NOT EXISTS dm_thread_id INTEGER REFERENCES dm_threads(id) ON DELETE CASCADE`;

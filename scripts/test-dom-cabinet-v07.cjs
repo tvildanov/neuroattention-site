@@ -66,6 +66,15 @@ async function request(route,token,body){
    const profile=await request('/api/auth/me',token);
    assert.equal(profile.status,200,JSON.stringify(profile));
    assert.equal(await page.locator('html').getAttribute('lang'),lang);
+   const social=page.locator('#dom-social-self');
+   await social.locator('.dom-person-title h2').waitFor();
+   assert.equal(await social.locator('.dom-person-title h2').textContent(),profile.body.user.display_name);
+   assert.equal(await social.locator('.dom-guide').count(),role==='user'?0:1);
+   if(role!=='user'){
+     await social.locator('.dom-guide input').fill('Open my path');
+     await social.locator('.dom-guide form button').click();
+     await social.locator('.dom-guide [role=status]').filter({hasText:/guide/i}).waitFor();
+   }
    const sidebar=page.locator('.dom-cabinet-toggle');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    const nav=page.locator('.dom-cabinet-sidebar');
@@ -73,8 +82,8 @@ async function request(route,token,body){
      await page.waitForFunction(()=>document.querySelector('[aria-controls="dom-nav-tools"]').disabled);
      assert.equal(await nav.locator('[aria-controls="dom-nav-administration"]').isVisible(),false);
    }else{
-     await nav.locator('a[data-tab="tools"]').click();
-     await nav.locator('[data-nav-target="tools-mode-pointab"]').click();
+     await nav.locator('a[data-tab="evolution"]').click();
+     await nav.locator('#dom-nav-evolution [data-nav-target="tools-mode-pointab"]').click();
      await page.locator('#tools-pointab-content').waitFor();
      assert.equal(await page.locator('#tools-mode-nm').isVisible(),false);
      if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
@@ -95,7 +104,7 @@ async function request(route,token,body){
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    const courses=page.locator('#dom-nav-evolution a[data-tab="courses"]');
    assert.equal(await courses.count(),1);
-   await page.locator('[aria-controls="dom-nav-evolution"]').click();
+   if(await page.locator('[aria-controls="dom-nav-evolution"]').getAttribute('aria-expanded')==='false')await page.locator('[aria-controls="dom-nav-evolution"]').click();
    assert.equal(await courses.innerText(),{ru:'Мои программы',en:'My programs',es:'Mis programas'}[lang]);
    await courses.click();
    await page.locator('#tab-courses.active').waitFor();
