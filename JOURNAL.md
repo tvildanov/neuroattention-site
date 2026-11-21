@@ -2439,3 +2439,9 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-20","did":["Reproduced the hidden tab when the session is already restored before MonadLK loads","Tested authorized and unauthorized profiles in both initialization orders"],"changed":["Apply the existing visibility check when registering MonadLK"],"files":["assets/js/monad-lk.js","JOURNAL.md"],"decisions":["Keep existing role and grant checks"],"followups":["Verify Pages publication"],"next_session":"If the owner still reports a missing link, check the signed-in profile grants and sidebar rendering."}
 ```
+
+## 2026-11-20 — Keep the account greeting on the profile
+
+```json
+{"project":"neuro","agent":"codex","at":"2026-11-20","did":["Checked the dashboard header, nested navigation and the active account tab set by the router"],"changed":["Hide the client dashboard header outside the overview, reclaiming its height"],"files":["assets/dom-account-skin.css","JOURNAL.md"],"decisions":["Keep role and logout in the profile; defer the DOM agent interface"],"followups":[],"next_session":"Validate the DOM guide separately with representative account scenarios."}
+```
