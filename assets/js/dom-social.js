@@ -126,10 +126,18 @@
     const form=el('form'),input=el('input'),answer=el('p'),go=el('button',tr('Спросить','Ask','Preguntar')),feedback=el('details'),note=el('textarea');
     input.placeholder=tr('Что хочешь сделать в кабинете?','What would you like to do?','¿Qué quieres hacer?');input.required=true;input.maxLength=note.maxLength=1500;go.className='btn btn-solid';answer.setAttribute('role','status');
     feedback.append(el('summary',tr('Уточнить инструкцию DOM','Teach DOM a correction','Corregir la guía de DOM')),note);feedback.hidden=true;
-    let question='';
+    let question='';const history=[],next=el('div');
+    const destinations={
+      overview:['overview',null,tr('Открыть профиль','Open profile','Abrir perfil')],
+      personal:['evolution','evo-subtab-personal',tr('Мой путь','My path','Mi ruta')],
+      map:['tools','tools-mode-nm','NeuroMap'],anatomy:['tools','tools-mode-anatomy',tr('Внутреннее воздействие','Internal field','Campo interno')],
+      programs:['enroll',null,tr('Выбрать программу','Choose a program','Elegir programa')],community:['domunity',null,'DOMunity']
+    };
     feedback.append(button(tr('Сохранить для команды','Save for the team','Guardar para el equipo'),async e=>{if(!note.value.trim())return;e.currentTarget.disabled=true;const b=e.currentTarget;try{await api('/api/dom-guide/feedback',{method:'POST',body:{question,instruction:note.value}});note.value='';feedback.open=false;answer.after(el('small',tr('Поправка сохранена','Correction saved','Corrección guardada')));}catch(err){answer.textContent=err.message;}finally{b.disabled=false;}}));
-    form.append(input,go);form.onsubmit=async e=>{e.preventDefault();question=input.value.trim();if(!question)return;go.disabled=true;feedback.hidden=true;answer.textContent=tr('DOM готовит ответ…','DOM is replying…','DOM está respondiendo…');try{const r=await api('/api/dom-guide/ask',{method:'POST',body:{question,screen:document.body.dataset.accountTab,language:document.documentElement.lang}});answer.textContent=r.answer;}catch(err){answer.textContent=err.message;}finally{go.disabled=false;feedback.hidden=false;}};
-    box.append(form,answer,feedback);return box;
+    form.append(input,go);form.onsubmit=async e=>{e.preventDefault();question=input.value.trim();if(!question)return;go.disabled=true;feedback.hidden=true;next.replaceChildren();answer.textContent=tr('DOM готовит ответ…','DOM is replying…','DOM está respondiendo…');try{const r=await api('/api/dom-guide/ask',{method:'POST',body:{question,screen:document.body.dataset.accountTab,language:document.documentElement.lang,history:history.slice(-6)}});answer.textContent=r.answer;
+      history.push({role:'user',content:question},{role:'assistant',content:r.answer});input.value='';
+      const dest=destinations[r.action];if(dest){const top=document.querySelector('.dash-nav-primary a[data-tab="'+dest[0]+'"]');if(top&&top.style.pointerEvents!=='none')next.append(button(dest[2],()=>{activeDialog?.close();window.switchTab(dest[0]);if(dest[1])document.getElementById(dest[1])?.click();window.history.replaceState(null,'','#'+dest[0]+(dest[1]?'/'+dest[1]:''));}));}}catch(err){answer.textContent=err.message;}finally{go.disabled=false;feedback.hidden=false;}};
+    box.append(form,answer,next,feedback);return box;
   }
   async function login(user){
     const host=document.getElementById('dom-social-self');if(!user?.id||!host)return;

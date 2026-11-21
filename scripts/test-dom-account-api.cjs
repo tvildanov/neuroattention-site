@@ -116,6 +116,7 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  await post(201,'/api/social/posts',admin,{body:'Group wall',attachment:{name:'fixture.txt',base64:'aGk='}});
  await expect(200,'PUT','/api/social/live-pulse',admin.token,{bpm:66});
  const view=await get(200,social,member);
+ assert.equal((await get(200,social+'/pulse',member)).sample.bpm,66);assert.equal((await get(200,social+'/pulse',b)).allowed,false);
  assert.equal(view.posts[0].body,'Group wall');assert.equal(view.pulse.value,66);assert.equal(view.result,undefined);
  const file=social+'/posts/'+view.posts[0].id+'/file';
  assert.equal((await get(200,file,member)).base64,'aGk=');

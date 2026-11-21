@@ -97,8 +97,12 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     await sql`DELETE FROM dom_profile_live_pulse WHERE user_id=${me}`;res.json({ok:true});
   });
   route('get','/api/social/profile/:id/pulse',async(req,res,me)=>{
-    const a=await readAccess(req.params.id,me);
-    if(!a?.can('pulse'))return res.json({allowed:false});
+    if(!validId(req.params.id))return res.sendStatus(404);
+    const [permission]=await sql`SELECT 1 FROM users u LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE u.id=${req.params.id} AND u.deleted_at IS NULL AND
+      (u.id=${me} OR (u.profile_public AND (s.sharing->>'pulse'='members' OR EXISTS(
+        SELECT 1 FROM chat_room_members m JOIN chat_room_members v USING(room_id) JOIN chat_rooms r ON r.id=m.room_id
+        WHERE m.user_id=u.id AND v.user_id=${me} AND r.dm_thread_id IS NULL AND s.sharing->>'pulse'=concat('group:',r.id)))))`;
+    if(!permission)return res.json({allowed:false});
     const [sample]=await sql`SELECT bpm,measured_at FROM dom_profile_live_pulse WHERE user_id=${req.params.id} AND measured_at>now()-interval '15 seconds'`;
     res.json({allowed:true,sample:sample||null});
   });
@@ -123,15 +127,16 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   });
   route('post','/api/dom-guide/ask',async(req,res)=>{
     if(!await callerIsAdmin(req))return res.sendStatus(403);
-    const {question,screen,language}=req.body||{};
+    const {question,screen,language,history}=req.body||{};
     if(typeof question!=='string'||!question.trim()||question.length>1500)return res.sendStatus(400);
     const router=process.env.OPENROUTER_API_KEY,anthropic=!router&&process.env.ANTHROPIC_API_KEY,key=router||anthropic||process.env.OPENAI_API_KEY;
     if(!key)return res.status(503).json({error:'DOM guide model unavailable'});
     const notes=await sql`SELECT question,instruction FROM dom_guide_notes ORDER BY id DESC LIMIT 24`;
-    const system='You represent the DOM ecosystem through its platform. DOM Agent Core v0.1, sections 1–4: the Institute is its research, education and practice core; NeuroAttention is the originating method; the platform connects observation, learning and interaction. Distinguish founder decisions, proposals, observations and verified features. Separate the project agent from a member persona and a group agent. Keep participant and project data within their permissions. Human adaptation begins with attention. Help participants, specialists and staff use the real DOM platform. Overview: personal social profile, privacy, wall. Development: personal timeline, collective path if available, family and team, programs. Tools: NeuroMap, anatomy/internal field, external field, exercises and library. DOMunity: DMs, groups and feed. Monad: separate authorized assistant and personal agents. You have no access to private records and cannot take actions. Give one practical next step in the user language. Never invent available features or measurements. Team navigation examples: '+JSON.stringify(notes);
+    const system='You represent the DOM ecosystem through its platform. DOM Agent Core v0.1, sections 1–4: the Institute is its research, education and practice core; NeuroAttention is the originating method; the platform connects observation, learning and interaction. Distinguish founder decisions, proposals, observations and verified features. Separate the project agent from a member persona and a group agent. Keep participant and project data within their permissions. Human adaptation begins with attention. Help participants, specialists and staff use the real DOM platform. Overview: personal social profile, privacy, wall. Development: personal timeline, collective path if available, family and team, programs. Tools: NeuroMap, anatomy/internal field, external field, exercises and library. DOMunity: DMs, groups and feed. Monad: separate authorized assistant and personal agents. You have no access to private records and cannot take actions. Give one practical next step in the user language. Never invent available features or measurements. When one relevant next step exists, end with a separate line ACTION=overview, ACTION=personal, ACTION=map, ACTION=anatomy, ACTION=programs or ACTION=community. Use only directly relevant destinations. Team navigation examples: '+JSON.stringify(notes);
     const input=JSON.stringify({screen:String(screen||'').slice(0,80),language:String(language||'').slice(0,6),question});
     const headers={'Content-Type':'application/json'};
-    const messages=[{role:'user',content:input}];
+    const previous=Array.isArray(history)?history.slice(-6).filter(x=>x&&['user','assistant'].includes(x.role)&&typeof x.content==='string').map(x=>({role:x.role,content:x.content.slice(0,1500)})):[];
+    const messages=[...previous,{role:'user',content:input}];
     const params={model:process.env.DOM_GUIDE_MODEL||process.env.LK_LLM_MODEL||(anthropic?'claude-sonnet-4-5':router?'anthropic/claude-sonnet-4':'gpt-4o-mini'),max_tokens:500,messages};
     let url;
     if(anthropic){
@@ -153,7 +158,8 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     const data=await response.json();
     const answer=anthropic?data.content?.filter(b=>b.type==='text').map(b=>b.text).join(' '):data.choices?.[0]?.message?.content;
     if(typeof answer!=='string'||!answer.trim())return res.sendStatus(503);
-    res.json({answer});
+    const action=answer.match(/(?:^|\n)ACTION=(overview|personal|map|anatomy|programs|community)\s*$/);
+    res.json({answer:action?answer.slice(0,action.index).trim():answer,action:action?.[1]||null});
   });
   route('post','/api/dom-guide/feedback',async(req,res,me)=>{
     if(!await callerIsAdmin(req))return res.sendStatus(403);

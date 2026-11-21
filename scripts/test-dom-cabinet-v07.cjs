@@ -66,6 +66,15 @@ async function request(route,token,body){
    const profile=await request('/api/auth/me',token);
    assert.equal(profile.status,200,JSON.stringify(profile));
    assert.equal(await page.locator('html').getAttribute('lang'),lang);
+   const social=page.locator('#dom-social-self');
+   await social.locator('.dom-person-title h2').waitFor();
+   assert.equal(await social.locator('.dom-person-title h2').textContent(),profile.body.user.display_name);
+   assert.equal(await social.locator('.dom-guide').count(),role==='user'?0:1);
+   if(role!=='user'){
+     await social.locator('.dom-guide input').fill('Open my path');
+     await social.locator('.dom-guide form button').click();
+     await social.locator('.dom-guide [role=status]').filter({hasText:/guide/i}).waitFor();
+   }
    const sidebar=page.locator('.dom-cabinet-toggle');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    const nav=page.locator('.dom-cabinet-sidebar');
