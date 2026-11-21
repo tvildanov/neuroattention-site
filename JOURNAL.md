@@ -2445,3 +2445,9 @@ User requested original drop restoration, a reusable export of the new renderer,
 ```json
 {"project":"neuro","agent":"codex","at":"2026-11-20","did":["Checked the dashboard header, nested navigation and the active account tab set by the router"],"changed":["Hide the client dashboard header outside the overview, reclaiming its height"],"files":["assets/dom-account-skin.css","JOURNAL.md"],"decisions":["Keep role and logout in the profile; defer the DOM agent interface"],"followups":[],"next_session":"Validate the DOM guide separately with representative account scenarios."}
 ```
+
+## 2026-11-21 — Draft a portable correspondence agent skill (no production changes)
+
+```json
+{"project":"neuro","agent":"chatgpt","at":"2026-11-21T04:25:00Z","did":["Read project instructions and the parallel-work protocol","Drafted a task-based communications-agent skill for email support and future Monada integration"],"changed":["Documentation-only isolated skill specification"],"files":["skills/dom-communications-agent/SKILL.md","JOURNAL.md"],"decisions":["No production deployment or automatic sending","Never commit personal mailbox content or tokens to public GitHub","Mailbox access and sending require authenticated connectors and task-specific user authorization"],"followups":["Connect authorized Gmail account","Test email search, draft, and send after connection","Design private case storage and Monada runtime integration separately"],"next_session":"Review draft PR, connect email with user approval, and validate account-specific support workflow."}
+```
