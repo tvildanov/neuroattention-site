@@ -12,7 +12,7 @@ if(dashboard){
     details.className='dom-partner-profile-summary';
     details.hidden=true;
     details.innerHTML='<summary><span data-dom-partner-own></span><span id="dom-partner-profile-count"></span></summary><p id="dom-partner-account-message" role="status"></p><div id="dom-partner-account-list"></div>';
-    const quick=q('#dom-quick-record'), stats=q('#rpg-dashboard');
+    const quick=q('#dom-private-journal')||q('#dom-quick-record'), stats=q('#rpg-dashboard');
     if(quick)quick.after(details);else if(stats)stats.before(details);else profile.prepend(details);
   }
   const admin=q('#admin-dashboard'), people=q('#admin-people-subtabs');

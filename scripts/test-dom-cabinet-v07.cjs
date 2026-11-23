@@ -136,7 +136,7 @@ async function request(route,token,body){
      assert.match(await navItem.evaluate(el=>getComputedStyle(el,'::before').maskImage),/data:image\/svg\+xml/);
      await sidebar.click();
    }
-   await page.locator('#dom-private-journal summary').click();
+   await page.locator('#dom-private-journal > summary').click();
    const quick=page.locator('#dom-quick-record .dom-quick-trigger');
    assert.equal(await quick.getAttribute('aria-describedby'),'dom-quick-hint');
    assert.match(await page.locator('#dom-quick-hint').innerText(),{ru:/мысль, эмоция/i,en:/thought, emotion/i,es:/pensamiento, una emoción/i}[lang]);
