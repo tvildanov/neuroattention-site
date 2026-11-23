@@ -250,11 +250,8 @@
    toolbar.append(heading,expand);
    panel.append(toolbar);
    host.append(button,hint,panel,status);
-   const hero=q('#rpg-hero');
-   if(hero)hero.before(host);else profile.prepend(host);
-   if(hero && !hero.closest('#rpg-dashboard'))hero.after(host);
-   const rpg=q('#rpg-dashboard');
-   if(rpg && rpg.contains(host))rpg.before(host);
+   const social=q('#dom-social-self');
+   if(social)social.after(host);else profile.prepend(host);
    function setExpanded(value){
      panel.classList.toggle('dom-quick-expanded',value);
      expand.setAttribute('aria-expanded',String(value));

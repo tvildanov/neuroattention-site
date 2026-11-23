@@ -70,6 +70,17 @@ async function request(route,token,body){
    await social.locator('.dom-person-title h2').waitFor();
    assert.equal(await social.locator('.dom-person-title h2').textContent(),profile.body.user.display_name);
    assert.equal(await social.locator('.dom-guide').count(),role==='user'?0:1);
+   const profileCard=social.locator('article.dom-person-card').first();
+   const initialPanel=profileCard.locator('section').filter({has:page.locator('.dom-presence-grid')});
+   await initialPanel.getByRole('button').first().click();
+   const editor=page.locator('dialog.dom-social-dialog[open]');
+   await editor.locator('.dom-profile-tabs button').first().click();
+   await editor.locator('fieldset').last().locator('input').first().fill('Fixture presence '+lang);
+   await editor.locator('.dom-profile-tabs button').last().click();
+   await profileCard.getByRole('heading',{name:'Fixture presence '+lang}).waitFor();
+   await profileCard.getByRole('button',{name:'Stream',exact:true}).click();
+   assert.equal(await initialPanel.isVisible(),false);
+   await profileCard.getByRole('button',{name:'Presence',exact:true}).click();
    if(role!=='user'){
      await social.locator('.dom-guide input').fill('Open my path');
      await social.locator('.dom-guide form button').click();

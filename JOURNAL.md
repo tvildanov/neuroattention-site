@@ -2470,3 +2470,5 @@ This completes the first personal recording foundation, not the whole premium pl
 ```
 
 2026-11-23 · Codex · neuro. Compact expandable staff guide, the registered persona_dom project instruction and optional published Monad project knowledge, profile roles and audiences, device chooser and 16 MiB wall attachments. Training clients with authorized Monad write access publish reviewed shareable material to dom.guide.published.v1 as {"text":"…"} (6000 characters); the guide refreshes on questions after 60 seconds. Publish a complete replacement. Keep private personas and raw chats out of this project knowledge. Foundation documents and device adapters await their sources.
+
+2026-11-23 · Codex · neuro. Living Profile integrates the existing typology hero and XP with identity, scopes Presence through the social profile API, and keeps wall posts in Stream. Presence stores ordered cards and named compositions with versioned writes and JSON transfer.

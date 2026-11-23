@@ -33,3 +33,24 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-guide .dom-guide-sr{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
 .dom-social-dialog h2 details{display:inline-block;vertical-align:super;font-size:.8rem;margin-inline-start:.35rem}
 .dom-social-dialog summary,.dom-person-card summary{cursor:pointer}
+
+.dom-person-title>div[data-title-case-skip]{flex:1 1 12rem;min-width:0}
+.dom-person-title p{margin:.35rem 0;font-size:1rem}
+.dom-person-card:not(.dom-guide) .btn,.dom-person-card>details summary,.dom-social-dialog fieldset .btn,.dom-profile-tabs .btn{min-height:32px;padding:.3rem .65rem;font-size:.8rem;line-height:1.3;width:auto}
+.dom-person-card>details{margin-block:.65rem}
+.dom-person-type,#dom-social-self #rpg-profile-name{font-size:clamp(1.1rem,2.5vw,1.4rem);font-weight:600}
+.dom-profile-progress{margin-top:.85rem;border-top:1px solid var(--line-soft)}
+#dom-social-self .dom-profile-progress :is(#rpg-hero,#rpg-xp-card){background:transparent!important;border:0!important;padding:.75rem 0!important;margin:0!important}
+#tab-overview:has(#rpg-dashboard[style*="display: none"]) .dom-profile-progress,#tab-overview:has(#rpg-dashboard[style*="display:none"]) .dom-profile-progress{display:none}
+.dom-profile-tabs{display:flex;flex-wrap:wrap;gap:.45rem;margin:.7rem 0}
+.dom-profile-tabs [aria-pressed=true]{color:var(--text-primary);border-color:var(--cabinet-accent);font-weight:650}
+.dom-person-card [hidden]{display:none!important}
+.dom-presence-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
+.dom-person-card .dom-presence-grid article{min-height:8rem;padding:1.1rem;border:1px solid var(--line-soft);border-radius:14px;background:var(--bg-surface);display:flex;flex-direction:column;justify-content:center}
+.dom-presence-grid h3,.dom-presence-grid p{margin:.3rem 0}
+.dom-presence-grid [data-size=wide]{grid-column:span 2}
+.dom-presence-grid [data-size=full]{grid-column:1/-1}
+.dom-person-card .dom-presence-grid [data-tone=accent]{background:color-mix(in srgb,var(--cabinet-accent,#467ea8) 17%,var(--bg-surface))}
+.dom-person-card .dom-presence-grid [data-tone=warm]{background:color-mix(in srgb,#cb8658 17%,var(--bg-surface))}
+.dom-social-dialog fieldset{min-width:0;margin:1rem 0;padding:1rem;border:1px solid var(--line-soft);border-radius:12px}
+@media(max-width:640px){.dom-presence-grid{grid-template-columns:1fr}.dom-presence-grid [data-size]{grid-column:auto}.dom-person-title{gap:.7rem}}
