@@ -159,7 +159,7 @@
     function add(key,tile,w,h){
       tile.classList.add('dom-board-tile');tile.dataset.key=key;items.set(key,{key,tile,w,h});grid.append(tile);
     }
-    add('identity',identity,8,12);
+    add('identity',identity,window.innerWidth<700?12:8,p.cover?22:13);
     for(const post of p.posts||[]){
       const tile=el('article');
       if(post.title)tile.append(el('h3',post.title));
@@ -360,7 +360,7 @@
     const help=el('details'),star=el('summary','✱'),tip=tr('Выберите, кто в DOM увидит вашу страницу и каждый раздел. Имя остаётся в беседах даже при закрытом профиле.','Choose who can see your page and each section. Your name still appears in conversations when your profile is private.','Elige quién puede ver tu página y cada sección. Tu nombre sigue en las conversaciones con el perfil privado.');
     star.title=tip;star.setAttribute('aria-label',tr('Кто видит профиль?','Who sees my profile?','¿Quién ve mi perfil?'));help.append(star,el('p',tip));f.previousElementSibling.append(help);
     f.append(field(tr('Имя или псевдоним','Display name','Nombre público'),name),field(tr('О себе','Bio','Biografía'),bio));
-    if(p.presence?.length)f.append(button(tr('Редактировать прежние карточки','Edit existing cards','Editar tarjetas anteriores'),()=>editPresence(p)));
+    if(p.presence)f.append(button(tr('Архив карточек · импорт и экспорт','Card archive · import and export','Archivo de tarjetas · importar y exportar'),()=>editPresence(p)));
     if(staff){
       const roles=el('details');roles.open=!!role.value;roles.append(el('summary',tr('Роли в DOM','Roles at DOM','Funciones en DOM')),field(tr('Должность или роль в проекте','Position or project role','Cargo o función en el proyecto'),role));f.append(roles);
     }

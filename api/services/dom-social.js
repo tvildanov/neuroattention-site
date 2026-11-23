@@ -266,4 +266,11 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     res.status(201).json({ok:true});
   });
 }
-module.exports={install,ensureSchema,visible};
+// Called by the assessment service after it has scored a completed internal diagnostic.
+async function recordCompletedDiagnostic(sql,userId,{slot,name,completedAt}){
+  if(!Number.isInteger(slot)||slot<1||slot>12||typeof name!=='string'||!name.trim()||name.length>160||!Number.isFinite(Date.parse(completedAt)))throw Error('Invalid diagnostic result');
+  await sql`INSERT INTO dom_diagnostic_profiles(user_id,slot,name,completed_at) VALUES(${userId},${slot},${name.trim()},${new Date(completedAt).toISOString()})
+    ON CONFLICT(user_id) DO UPDATE SET slot=EXCLUDED.slot,name=EXCLUDED.name,completed_at=EXCLUDED.completed_at
+    WHERE dom_diagnostic_profiles.completed_at<=EXCLUDED.completed_at`;
+}
+module.exports={install,ensureSchema,visible,recordCompletedDiagnostic};

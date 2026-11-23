@@ -79,6 +79,14 @@ async function ddl(name) {
  for(const [email,role,human] of [['qa-owner-a@example.invalid','superadmin','nikita'],['qa-owner-b@example.invalid','superadmin','takhir'],['qa-user@example.invalid','user',null],['qa-admin@example.invalid','admin',null]]){
    await db.query('INSERT INTO users(email,password_hash,display_name,role,monad_human_id,monad_access) VALUES ($1,$2,$3,$4,$5,$6)',[email,password,email.split('@')[0],role,human,!!human]);
  }
+ // Exercise all diagnostic slots without assigning them names from the introductory test.
+ const diagnostic=require(path.join(root,'api/services/dom-social')).recordCompletedDiagnostic;
+ const {rows:[subject]}=await db.query("SELECT id FROM users WHERE email='qa-owner-b@example.invalid'");
+ for(let slot=1;slot<=12;slot++){
+   await diagnostic(tag(db),subject.id,{slot,name:'Fixture diagnostic '+slot,completedAt:new Date(Date.UTC(2026,0,slot)).toISOString()});
+   const {rows:[result]}=await db.query('SELECT slot,name FROM dom_diagnostic_profiles WHERE user_id=$1',[subject.id]);
+   if(result.slot!==slot||result.name!=='Fixture diagnostic '+slot)throw Error('Diagnostic slot mismatch');
+ }
  // Historical production shape: the journey survived but no nm_chains row was saved.
  for (const [type,label] of [['event','Old event'],['emotion','Old emotion']]) {
    await db.query(`WITH n AS (

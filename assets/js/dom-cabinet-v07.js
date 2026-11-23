@@ -252,7 +252,7 @@
    host.append(button,hint,panel,status);
    const journal=el('details','dom-private-journal');journal.id='dom-private-journal';
    journal.append(el('summary','',txt('Личный журнал Нейрокарты','Private NeuroMap journal','Diario privado de NeuroMap')),host);
-   profile.append(journal);
+   const social=q('#dom-social-self');if(social)social.after(journal);else profile.append(journal);
    function setExpanded(value){
      panel.classList.toggle('dom-quick-expanded',value);
      expand.setAttribute('aria-expanded',String(value));

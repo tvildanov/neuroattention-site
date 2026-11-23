@@ -73,4 +73,4 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-profile-grid #rpg-xp-card>div:last-child{height:4px!important;margin-top:.3rem!important}
 #dom-social-self .dom-profile-grid .dom-profile-progress #rpg-xp-card,#dom-social-self .dom-profile-grid .dom-profile-progress #rpg-hero{padding:.2rem 0!important}
 .dom-private-journal{margin-block:1.5rem;padding:1rem;border:1px solid var(--line-soft);border-radius:14px}.dom-private-journal summary{cursor:pointer}
-@media(max-width:600px){.dom-profile-grid>.dom-board-tile[data-key=identity]{grid-column:span 12}.dom-profile-grid .dom-person-title{gap:.5rem}}
+@media(max-width:600px){.dom-profile-grid .dom-person-title{gap:.5rem}}

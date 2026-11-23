@@ -71,13 +71,14 @@ async function request(route,token,body){
    assert.equal(await social.locator('.dom-person-title h2').textContent(),profile.body.user.display_name);
    assert.equal(await social.locator('.dom-guide').count(),role==='user'?0:1);
    const board=social.locator('.dom-profile-field');
+   if(role==='owner-b')await board.getByText('Fixture diagnostic 12',{exact:true}).waitFor();
    await board.locator('.dom-share').click();
    const editor=page.locator('dialog.dom-social-dialog[open]');
    await editor.locator('input:not([type=file])').fill('Fixture publication '+lang);
    await editor.locator('input[type=file]').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jf1sAAAAASUVORK5CYII=','base64')});
    await editor.locator('.btn-solid').click();
    const post=board.locator('article').filter({has:page.getByRole('heading',{name:'Fixture publication '+lang})});
-   await post.locator('img').scrollIntoViewIfNeeded();
+   await post.scrollIntoViewIfNeeded();
    await page.waitForFunction(()=>document.querySelector('.dom-board-media img')?.naturalWidth===1);
    await board.locator('.dom-board-bar button').nth(1).click();
    const handle=post.locator('.dom-grip.resize');
