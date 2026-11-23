@@ -35,6 +35,8 @@ async function ensureSchema(sql) {
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, cover text NOT NULL DEFAULT '',
     sharing jsonb NOT NULL DEFAULT '{}')`;
   await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS org_role text NOT NULL DEFAULT ''`;
+  await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS presence jsonb NOT NULL DEFAULT '[]',
+    ADD COLUMN IF NOT EXISTS presence_version integer NOT NULL DEFAULT 0`;
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_live_pulse (
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, bpm integer NOT NULL, measured_at timestamptz NOT NULL DEFAULT now())`;
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_posts (
@@ -63,7 +65,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   }
   async function readAccess(id,viewer){
     if(!validId(id)) return null;
-    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role FROM users u
+    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role,s.presence,s.presence_version FROM users u
       LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE u.id=${id} AND u.deleted_at IS NULL`;
     if(!user)return null;
     const owner=id===viewer;
@@ -89,6 +91,8 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       data.groups=await sql`SELECT r.id,r.name FROM chat_rooms r JOIN chat_room_members m ON m.room_id=r.id
         WHERE m.user_id=${me} AND r.dm_thread_id IS NULL ORDER BY r.name`;
     }
+    if(can('presence'))data.presence=user.presence||[];
+    if(owner)data.presence_version=user.presence_version||0;
     if(can('results'))data.result=(await sql`SELECT profile,completed_at FROM test_results WHERE user_id=${user.id} ORDER BY completed_at DESC LIMIT 1`)[0]||null;
     if(can('pulse'))data.canReadPulse=true;
     if(can('pulse'))data.pulse=(await sql`SELECT value,measured_at,metric_kind FROM health_metrics WHERE user_id=${user.id}
@@ -115,6 +119,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     const groups=await sql`SELECT room_id FROM chat_room_members m JOIN chat_rooms r ON r.id=m.room_id WHERE user_id=${me} AND r.dm_thread_id IS NULL`;
     const allowed=new Set(['private','members',...groups.map(g=>'group:'+g.room_id),...(await contacts(me)).map(c=>'person:'+c.id)]);
     if(!fields.every(f=>allowed.has(sharing[f])))return res.sendStatus(400);
+    if(sharing.presence!==undefined&&!allowed.has(sharing.presence))return res.sendStatus(400);
     let image=null;
     if(cover!=null){
       if(cover==='')image='';
@@ -124,10 +129,28 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       }
     }
     const scopes=Object.fromEntries(fields.map(f=>[f,sharing[f]]));
+    if(sharing.presence!==undefined)scopes.presence=sharing.presence;
     await sql`WITH changed AS (UPDATE users SET display_name=${name.trim()},bio=${bio},profile_public=${open} WHERE id=${me} RETURNING id)
       INSERT INTO dom_profile_settings(user_id,cover,sharing,org_role) SELECT id,COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,'') FROM changed
-      ON CONFLICT(user_id) DO UPDATE SET cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;
+      ON CONFLICT(user_id) DO UPDATE SET cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=dom_profile_settings.sharing || EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;
     res.json({ok:true});
+  });
+  route('put','/api/social/presence',async(req,res,me)=>{
+    const {cards,version}=req.body||{};
+    if(!Number.isSafeInteger(version)||version<0||!Array.isArray(cards)||cards.length>24)return res.status(400).json({error:'Invalid Presence composition'});
+    const clean=[];
+    for(const card of cards){
+      if(!card || typeof card.title!=='string' || !card.title.trim() || card.title.length>100 ||
+        typeof card.text!=='string' || card.text.length>1500 || typeof card.collection!=='string' ||
+        !card.collection.trim() || card.collection.length>50 || !['small','wide','full'].includes(card.size) ||
+        !['neutral','accent','warm'].includes(card.tone))return res.status(400).json({error:'Invalid Presence composition'});
+      clean.push({title:card.title.trim(),text:card.text,collection:card.collection.trim(),size:card.size,tone:card.tone});
+    }
+    await sql`INSERT INTO dom_profile_settings(user_id) VALUES(${me}) ON CONFLICT DO NOTHING`;
+    const rows=await sql`UPDATE dom_profile_settings SET presence=${JSON.stringify(clean)}::jsonb,
+      presence_version=presence_version+1 WHERE user_id=${me} AND presence_version=${version} RETURNING presence_version`;
+    if(!rows.length)return res.status(409).json({error:'Profile changed. Reopen the editor to load the latest version.'});
+    res.json({version:rows[0].presence_version});
   });
   route('put','/api/social/live-pulse',async(req,res,me)=>{
     const bpm=req.body?.bpm;

@@ -9,6 +9,8 @@
   const fileData=file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
   const avatars=new Map();
   const avatarControls=document.getElementById('rpg-avatar-wrap')?.parentElement;
+  const hero=document.getElementById('rpg-hero'),xp=document.getElementById('rpg-xp-card');
+  let ownerZone='presence';
   let serial=0,lastId='',activeDialog;
   const memberKey=()=>new URL(location.href).searchParams.get('member');
   const isMemberId=id=>typeof id==='string'&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id);
@@ -81,15 +83,28 @@
     if(self){
       const avatar=avatarControls;
       if(avatar)row.append(avatar);
-      const img=document.getElementById('rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
+      const img=avatar?.querySelector('#rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
     }else if(p.avatar_url)row.append(photo(p.avatar_url,'dom-person-avatar'));
     const identity=el('div');identity.setAttribute('data-title-case-skip','');identity.append(el('h2',p.display_name));
     if(p.org_role)identity.append(el('small',p.org_role));
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
-    if(self)box.append(button(tr('Редактировать профиль','Edit profile','Editar perfil'),()=>edit(p)));
-    else if(!p.profile_public)box.append(el('p',tr('Закрытый профиль','Private profile','Perfil privado')));
-    if(!self&&p.id!==window.currentUser?.id){box.append(button(tr('Написать','Message','Enviar mensaje'),()=>{const url=new URL(location.href);url.searchParams.delete('member');history.replaceState(null,'',url);activeDialog?.close();window.switchTab('domunity');window.domStartThreadFromProfile(p.id,p.display_name);}));}
-    if(p.result?.profile){const s=block(tr('Результат теста','Test result','Resultado'));s.append(el('p',window.TEST_PROFILES_MAP?.[p.result.profile]?.name||String(p.result.profile)));box.append(s);}
+    if(self && p.result?.profile && !window.TEST_PROFILES_MAP?.[p.result.profile]){
+      const type=el('p',String(p.result.profile).replaceAll('_',' '));type.className='dom-person-type';identity.append(type);
+    }
+    if(self){
+      row.append(button(tr('Редактировать','Edit profile','Editar perfil'),()=>edit(p)));
+      if(hero&&xp){
+        const progress=el('div');progress.className='dom-profile-progress';
+        progress.append(hero,xp);box.append(progress);
+      }
+    }else{
+      if(p.result?.profile){
+        const type=el('p',window.TEST_PROFILES_MAP?.[p.result.profile]?.name||p.result.profile);
+        type.className='dom-person-type';identity.append(type);
+      }
+      if(!p.profile_public)box.append(el('p',tr('Закрытый профиль','Private profile','Perfil privado')));
+      if(p.id!==window.currentUser?.id)box.append(button(tr('Написать','Message','Enviar mensaje'),()=>{const url=new URL(location.href);url.searchParams.delete('member');history.replaceState(null,'',url);activeDialog?.close();window.switchTab('domunity');window.domStartThreadFromProfile(p.id,p.display_name);}));
+    }
     if(p.pulse){const s=block(p.pulse.metric_kind==='rhr'?tr('Пульс в покое','Resting heart rate','Pulso en reposo'):tr('Пульс','Heart rate','Pulso'));s.append(el('p',Math.round(p.pulse.value)+' bpm · '+new Date(p.pulse.measured_at).toLocaleString()));box.append(s);}
     if(self){
       const devices=el('details'),list=el('div');
@@ -120,13 +135,108 @@
       for(const label of entry.labels)chain.append(el('li',label));
       s.append(el('small',String(entry.date).slice(0,10)),chain);
     }box.append(s);}
-    if(p.posts){const s=block(tr('Стена','Wall','Muro'));if(self)s.append(button(tr('Добавить запись','New post','Nueva publicación'),compose));
+    const tabs=el('nav'),panels=[];
+    tabs.className='dom-profile-tabs';
+    function zone(key,label,panel){
+      const tab=button(label,()=>select(key));panels.push({key,tab,panel});tabs.append(tab);box.append(panel);
+    }
+    function select(key){
+      if(self)ownerZone=key;
+      for(const entry of panels){
+        entry.panel.hidden=entry.key!==key;entry.tab.setAttribute('aria-pressed',String(entry.key===key));
+      }
+    }
+    box.append(tabs);
+    if(p.presence && (self||p.presence.length))zone('presence','Presence',presence(p,self));
+    if(p.posts){const s=block(tr('Публикации','Posts','Publicaciones'));if(self)s.append(button(tr('Написать пост','Write a post','Escribir publicación'),compose));
+      if(!p.posts.length)s.append(el('p',tr('Публикаций пока нет.','No posts yet.','Todavía no hay publicaciones.')));
       for(const post of p.posts){const item=el('article');item.append(el('small',new Date(post.created_at).toLocaleString()),el('p',post.body));
         if(post.file_name)item.append(button(post.file_name,async()=>{try{const f=await api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file');const a=el('a');a.download=f.name;a.href='data:application/octet-stream;base64,'+f.base64;a.click();}catch(e){alert(e.message);}}));
         if(self)item.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить эту запись?','Delete this post?','¿Eliminar esta publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});item.remove();}catch(e){alert(e.message);}}));s.append(item);
-      }box.append(s);
+      }
+      zone('stream','Stream',s);
     }
+    if(panels.length)select(self&&panels.some(x=>x.key===ownerZone)?ownerZone:panels[0].key);
+    tabs.hidden=panels.length<2;
     return box;
+  }
+  function presence(p,self){
+    const section=el('section'),filters=el('div'),grid=el('div');
+    filters.className='dom-profile-tabs';grid.className='dom-presence-grid';
+    let collection=p.presence[0]?.collection;
+    function draw(){
+      filters.replaceChildren();grid.replaceChildren();
+      const names=[...new Set(p.presence.map(card=>card.collection))];
+      if(names.length>1)for(const name of names){
+        const b=button(name,()=>{collection=name;draw();});
+        b.setAttribute('aria-pressed',String(collection===name));filters.append(b);
+      }
+      for(const card of p.presence.filter(card=>card.collection===collection)){
+        const tile=el('article');tile.dataset.size=card.size;tile.dataset.tone=card.tone;
+        tile.append(el('h3',card.title),el('p',card.text));grid.append(tile);
+      }
+    }
+    if(self)section.append(button(tr('Настроить карточки','Customize cards','Editar tarjetas'),()=>editPresence(p)));
+    if(self&&!p.presence.length)section.append(el('p',tr('Что сейчас занимает ваше внимание? Добавьте первую карточку.','What has your attention today? Add your first card.','¿Qué ocupa tu atención hoy? Añade tu primera tarjeta.')));
+    section.append(filters,grid);draw();return section;
+  }
+  function editPresence(p){
+    let cards=p.presence.map(card=>({...card})),draggedIndex=null;
+    const d=dialog('Presence'),list=el('div'),status=el('p'),tools=el('div');
+    status.setAttribute('role','status');tools.className='dom-profile-tabs';
+    function draw(){
+      list.replaceChildren();
+      cards.forEach((card,index)=>{
+        const row=el('fieldset'),title=el('input'),body=el('textarea'),collection=el('input');
+        function bind(input,key,limit){
+          input.value=card[key];input.maxLength=limit;input.oninput=()=>{card[key]=input.value;};
+        }
+        bind(title,'title',100);bind(body,'text',1500);bind(collection,'collection',50);
+        const size=el('select'),tone=el('select');
+        for(const [value,label] of [['small',tr('Обычная','Standard','Normal')],['wide',tr('Широкая','Wide','Ancha')],['full',tr('Во всю строку','Full width','Fila completa')]])size.add(new Option(label,value));
+        for(const [value,label] of [['neutral',tr('Спокойный','Neutral','Neutro')],['accent',tr('Акцентный','Accent','Acento')],['warm',tr('Тёплый','Warm','Cálido')]])tone.add(new Option(label,value));
+        size.value=card.size;tone.value=card.tone;size.onchange=()=>card.size=size.value;tone.onchange=()=>card.tone=tone.value;
+        function move(to){cards.splice(to,0,cards.splice(index,1)[0]);draw();list.children[to]?.querySelector('input')?.focus();}
+        const up=button('↑',()=>move(index-1)),down=button('↓',()=>move(index+1));
+        up.disabled=index===0;down.disabled=index===cards.length-1;
+        up.setAttribute('aria-label',tr('Переместить выше','Move up','Subir'));down.setAttribute('aria-label',tr('Переместить ниже','Move down','Bajar'));
+        const grip=el('legend',tr('Карточка ','Card ','Tarjeta ')+(index+1)+' ⠿');
+        grip.draggable=true;grip.style.cursor='grab';
+        grip.ondragstart=e=>{draggedIndex=index;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(index));};
+        grip.ondragend=()=>{draggedIndex=null;};
+        row.ondragover=e=>{if(draggedIndex!==null)e.preventDefault();};
+        row.ondrop=e=>{
+          if(draggedIndex===null)return;
+          e.preventDefault();cards.splice(index,0,cards.splice(draggedIndex,1)[0]);draggedIndex=null;draw();
+        };
+        row.append(grip,field(tr('Заголовок','Title','Título'),title),field(tr('Текст','Text','Texto'),body),field(tr('Композиция','Collection','Colección'),collection),field(tr('Размер','Size','Tamaño'),size),field(tr('Цвет','Color','Color'),tone),up,down,button(tr('Убрать','Remove','Quitar'),()=>{cards.splice(index,1);draw();}));
+        list.append(row);
+      });
+    }
+    const file=el('input');file.type='file';file.accept='.json,application/json';file.hidden=true;
+    file.onchange=async()=>{
+      try{
+        const selected=file.files[0];if(!selected)return;
+        if(selected.size>300000)throw Error();
+        const data=JSON.parse(await selected.text());
+        if(data.format!=='dom-presence-v1'||!Array.isArray(data.cards)||data.cards.length>24||!data.cards.every(c=>c&&typeof c.title==='string'&&c.title.length<=100&&typeof c.text==='string'&&c.text.length<=1500&&typeof c.collection==='string'&&c.collection.length<=50&&['small','wide','full'].includes(c.size)&&['neutral','accent','warm'].includes(c.tone)))throw Error();
+        cards=data.cards;draw();status.textContent='';
+      }catch{status.textContent=tr('Проверьте формат файла Presence.','Check the Presence file format.','Comprueba el formato del archivo Presence.');}finally{file.value='';}
+    };
+    const save=button(tr('Сохранить','Save','Guardar'),async()=>{
+      if(cards.some(c=>!c.title.trim()||!c.collection.trim())){status.textContent=tr('Укажите заголовок и композицию каждой карточки.','Each card needs a title and collection.','Añade un título y una colección a cada tarjeta.');return;}
+      save.disabled=true;
+      try{await api('/api/social/presence',{method:'PUT',body:{cards,version:p.presence_version}});d.close();await login(window.currentUser);}
+      catch(e){status.textContent=e.message;}finally{save.disabled=false;}
+    });
+    tools.append(button(tr('Добавить карточку','Add card','Añadir tarjeta'),()=>{
+      if(cards.length>=24){status.textContent=tr('Максимум 24 карточки.','Up to 24 cards.','Hasta 24 tarjetas.');return;}
+      cards.push({title:'',text:'',collection:cards.at(-1)?.collection||tr('Сегодня','Today','Hoy'),size:'small',tone:'neutral'});draw();list.lastElementChild.querySelector('input').focus();
+    }),button(tr('Импорт','Import','Importar'),()=>file.click()),button(tr('Экспорт','Export','Exportar'),()=>{
+      const url=URL.createObjectURL(new Blob([JSON.stringify({format:'dom-presence-v1',cards},null,2)],{type:'application/json'}));
+      const a=el('a');a.download='dom-presence.json';a.href=url;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }),save);
+    d.append(el('h2','Presence'),list,tools,file,status);draw();
   }
   function form(title,submit,action){
     const d=dialog(title),f=el('form'),status=el('p'),send=el('button',submit);send.className='btn btn-solid';status.setAttribute('role','status');d.append(el('h2',title),f,status,send);
@@ -134,7 +244,7 @@
   }
   function compose(){
     const body=el('textarea'),file=el('input');body.maxLength=4000;file.type='file';
-    const f=form(tr('Новая запись','New post','Nueva publicación'),tr('Сохранить','Save','Guardar'),async()=>{
+    const f=form(tr('Новый пост','New post','Nueva publicación'),tr('Опубликовать','Publish','Publicar'),async()=>{
       let attachment=null;const selected=file.files[0];
       if(selected){if(selected.size>16*1024*1024)throw Error('Max. 16 MB');attachment={name:selected.name,base64:(await fileData(selected)).split(',')[1]};}
       await api('/api/social/posts',{method:'POST',body:{body:body.value,attachment}});
@@ -159,7 +269,7 @@
     f.append(field(tr('Обложка · до 2 МБ','Cover · up to 2 MB','Portada · hasta 2 MB'),cover));
     if(p.cover)f.append(field(tr('Убрать обложку','Remove cover','Quitar portada'),remove));
     f.append(field(tr('Моё фото, обложку и описание видят все, кто вошёл в DOM','Show my photo, cover and bio to everyone signed in to DOM','Mostrar mi foto, portada y biografía a quienes inicien sesión en DOM'),visible));
-    for(const [key,title] of Object.entries({results:tr('Название профиля по последнему пройденному тесту','Profile from my last completed test','Perfil de mi última prueba completada'),map:tr('Нейрокарта · даты и названия точек в последних восьми цепочках','NeuroMap · dates and point names in my last eight chains','Etiquetas de los últimos 8 registros'),pulse:tr('Пульс · последнее полученное измерение и время, включая сигнал подключённого датчика','Heart rate · latest recorded value and time, including a connected live sensor','Último pulso con fecha'),wall:tr('Мои публикации в профиле и прикреплённые к ним файлы','My profile posts and their attachments','Muro y archivos')})){
+    for(const [key,title] of Object.entries({presence:tr('Карточки Presence','Presence cards','Tarjetas de Presence'),results:tr('Название профиля по последнему пройденному тесту','Profile from my last completed test','Perfil de mi última prueba completada'),map:tr('Нейрокарта · даты и названия точек в последних восьми цепочках','NeuroMap · dates and point names in my last eight chains','Etiquetas de los últimos 8 registros'),pulse:tr('Пульс · последнее полученное измерение и время, включая сигнал подключённого датчика','Heart rate · latest recorded value and time, including a connected live sensor','Último pulso con fecha'),wall:tr('Мои публикации в профиле и прикреплённые к ним файлы','My profile posts and their attachments','Muro y archivos')})){
       const s=el('select');s.add(new Option(tr('Только я','Only me','Solo yo'),'private'));s.add(new Option(tr('Все участники','All members','Todos los miembros'),'members'));for(const g of p.groups||[])s.add(new Option(g.name,'group:'+g.id));
       for(const contact of p.contacts||[])s.add(new Option(tr('Только ','Only ','Solo ')+(contact.display_name||contact.id),'person:'+contact.id));
       s.value=p.sharing?.[key]||'private';if(!s.value)s.value='private';fields[key]=s;f.append(field(title,s));
@@ -198,7 +308,7 @@
     const host=document.getElementById('dom-social-self');if(!user?.id||!host)return;
     const ticket=++serial;
     if(sensor&&streamOwner!==user.id)sensor.disconnect();
-    if(lastId!==user.id){activeDialog?.close();avatars.clear();host.replaceChildren();lastId=user.id;}
+    if(lastId!==user.id){activeDialog?.close();avatars.clear();host.replaceChildren();lastId=user.id;ownerZone='presence';}
     try{const p=await api('/api/social/profile/'+encodeURIComponent(user.id));
       if(ticket!==serial||window.currentUser?.id!==user.id)return;
       const profile=card(p,true);host.replaceChildren(profile);Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});
