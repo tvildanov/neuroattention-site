@@ -2040,7 +2040,7 @@ a.dash-tab:hover { text-decoration:none; }
           <div class="ha-tabs">
             <button class="ha-tab active" id="ha-tab-anatomy" onclick="haSwitchTab('anatomy')"><span class="ha-tab-ic" data-na-ic="anatomy"></span> <span data-i18n="a.ha.tab_anatomy">Анатомический атлас</span></button>
             <button class="ha-tab" id="ha-tab-functions" onclick="haSwitchTab('functions')"><span class="ha-tab-ic" data-na-ic="brain"></span> <span data-i18n="a.ha.tab_functions">Функции человека</span></button>
-            <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')"><span class="ha-tab-ic" data-na-ic="conditions"></span> <span data-i18n="a.ha.tab_conditions">Диагнозы и состояния</span></button>
+            <button class="ha-tab" id="ha-tab-conditions" onclick="haSwitchTab('conditions')" hidden style="display:none" aria-hidden="true"><span class="ha-tab-ic" data-na-ic="conditions"></span> <span data-i18n="a.ha.tab_conditions">Справочник состояний</span></button>
             <button class="ha-tab" id="ha-tab-medications" onclick="haSwitchTab('medications')"><span class="ha-tab-ic" data-na-ic="pills"></span> <span data-i18n="a.ha.tab_medications">Препараты и вещества</span></button>
             <button class="ha-tab" id="ha-tab-diet" onclick="haSwitchTab('diet')"><span class="ha-tab-ic" data-na-ic="diet"></span> <span data-i18n="a.ha.tab_diet">Тип питания</span></button>
           </div>
@@ -2564,23 +2564,20 @@ a.dash-tab:hover { text-decoration:none; }
           </button>
         </div>
 
-        <!-- DRAFT: pending medical review -->
-        <!-- Rehabilitation Program -->
         <div class="dash-card glass-card-elevated" id="rehab-program-card" style="display:flex;flex-direction:column;min-width:0;border-color:rgba(167,139,250,0.15);">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
-            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-violet);text-transform:uppercase;">Rehabilitation</span>
+            <svg style="width:20px;height:20px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/></svg>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:0.12em;color:var(--accent-violet);text-transform:uppercase;">Practice</span>
           </div>
-          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.rehab_title">Rehabilitation Program</h4>
-          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.rehab_desc">Восстановление когнитивных функций при нарушениях работы нервной системы. Только персональная работа, диагностика, адаптивные протоколы.</p>
+          <h4 style="font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:500;color:var(--text-primary);margin:0 0 0.6rem;" data-i18n="a.enroll.rehab_title">Индивидуальная практика</h4>
+          <p style="font-size:13px;line-height:1.7;color:var(--text-muted);margin:0 0 1rem;flex:1;" data-i18n="a.enroll.rehab_desc">Личная работа с ведущим: внимание, дыхание, движение и практики с расслабленными открытыми глазами. Образовательная wellness-практика, не медицинская услуга.</p>
           <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:1rem;">
-            <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">Персональный формат</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:500;color:var(--text-muted);">$199</span>
           </div>
-          <a href="rehabilitation-application.html" class="btn btn-ghost" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;" data-i18n="a.enroll.submit_application">
-            Оставить заявку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <a href="programs.html" class="btn btn-ghost" style="width:100%;justify-content:center;border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;" data-i18n="a.enroll.submit_application">
+            Смотреть программы <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
         </div>
-        <!-- /DRAFT -->
 
         <!-- Specialist Training -->
         <div class="dash-card glass-card-elevated" style="display:flex;flex-direction:column;min-width:0;">
@@ -2607,7 +2604,7 @@ a.dash-tab:hover { text-decoration:none; }
         <div class="dash-card glass-card-elevated" style="border-left:2px solid var(--accent-violet);margin-bottom:1rem;">
           <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
             <svg style="width:18px;height:18px;fill:none;stroke:var(--accent-violet);stroke-width:2;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span style="font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:500;color:var(--text-primary);">Ваш контекст восстановления</span>
+            <span style="font-family:'Unbounded',sans-serif;font-size:0.85rem;font-weight:500;color:var(--text-primary);" data-i18n="a.enroll.rehab_context">Ваш контекст практики</span>
           </div>
           <div id="rehab-context-content" style="font-size:13px;line-height:1.8;color:var(--text-secondary);"></div>
         </div>
@@ -2616,21 +2613,21 @@ a.dash-tab:hover { text-decoration:none; }
         <div class="dash-card glass-card-elevated" style="position:relative;overflow:hidden;margin-bottom:1rem;">
           <div style="position:absolute;inset:0;background:rgba(5,7,10,0.7);backdrop-filter:blur(6px);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;">
             <svg style="width:32px;height:32px;fill:none;stroke:var(--text-muted);stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <p style="font-size:14px;color:var(--text-secondary);text-align:center;margin:0;">Персональный план восстановления</p>
-            <a href="rehabilitation-application.html" class="btn btn-solid" style="font-size:13px;text-decoration:none;">
+            <p style="font-size:14px;color:var(--text-secondary);text-align:center;margin:0;" data-i18n="a.enroll.rehab_plan">Личный план практики</p>
+            <a href="programs.html" class="btn btn-solid" style="font-size:13px;text-decoration:none;">
               Оставить заявку на программу <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </a>
           </div>
           <div style="opacity:0.15;pointer-events:none;padding:1.5rem;">
-            <h4 style="font-family:'Unbounded',sans-serif;font-size:0.95rem;color:var(--text-primary);margin:0 0 1rem;">План восстановления</h4>
+            <h4 style="font-family:'Unbounded',sans-serif;font-size:0.95rem;color:var(--text-primary);margin:0 0 1rem;" data-i18n="a.enroll.rehab_plan_title">План практики</h4>
             <div style="height:120px;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.03) 0px,rgba(255,255,255,0.03) 20px,transparent 20px,transparent 40px);border-radius:8px;"></div>
           </div>
         </div>
 
         <!-- (В) CTA to application page -->
         <div class="dash-card glass-card-elevated" style="border-color:rgba(167,139,250,0.1);text-align:center;padding:1.5rem;">
-          <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;">Оставьте заявку на участие в Rehabilitation Program — мы свяжемся с вами для обсуждения персонального формата.</p>
-          <a href="rehabilitation-application.html" class="btn btn-ghost" style="border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;">
+          <p style="font-size:13px;line-height:1.8;color:var(--text-secondary);margin:0 0 1rem;" data-i18n="a.enroll.rehab_desc_text">Индивидуальная практика NeuroAttention Lab: внимание, спокойствие и ритм дня. Это не медицинская услуга.</p>
+          <a href="programs.html" class="btn btn-ghost" style="border-color:rgba(167,139,250,0.3);color:var(--accent-violet);text-decoration:none;">
             Оставить заявку <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
         </div>
@@ -2933,7 +2930,7 @@ a.dash-tab:hover { text-decoration:none; }
                 <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:0.2rem;">Программа</label>
                 <select id="grant-product" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.4rem 0.7rem;color:var(--text-primary);font-size:13px;">
                   <option value="lab">Self-Guided (lab)</option>
-                  <option value="rehab">Rehabilitation</option>
+                  <option value="rehab">Individual practice</option>
                   <option value="guided">Guided</option>
                   <option value="group">Group</option>
                 </select>
@@ -3309,7 +3306,7 @@ a.dash-tab:hover { text-decoration:none; }
             <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="self" style="accent-color:var(--accent-cyan);"> Self-Guided</label>
             <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="guided" style="accent-color:var(--accent-cyan);"> Guided</label>
             <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="group" style="accent-color:var(--accent-cyan);"> Group</label>
-            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="rehab" style="accent-color:var(--accent-cyan);"> Rehabilitation</label>
+            <label style="display:flex;align-items:center;gap:0.25rem;font-size:12px;color:var(--text-secondary);"><input type="checkbox" class="course-access-cb" value="rehab" style="accent-color:var(--accent-cyan);"> Individual practice</label>
           </div>
 
           <!-- Site-language gating -->
@@ -3403,7 +3400,7 @@ a.dash-tab:hover { text-decoration:none; }
       <label style="display:block;font-size:11px;color:var(--text-dim);margin-bottom:0.3rem;">Продукт</label>
       <select id="test-email-product" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:13px;box-sizing:border-box;margin-bottom:1rem;">
         <option value="lab">NeuroAttention Lab</option>
-        <option value="rehab">NeuroAttention Rehabilitation</option>
+        <option value="rehab">Individual practice</option>
         <option value="guided">Guided Program</option>
       </select>
       <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
@@ -5744,7 +5741,7 @@ function switchTab(id){
     try{ if(history.replaceState) history.replaceState(null,'','#tools'); }catch(e){}
     switchTab('tools');
     setTimeout(function(){ try{ if(window.setToolsMode) setToolsMode('internal-field'); }catch(e){}
-      setTimeout(function(){ try{ if(window.haSwitchTab) haSwitchTab('conditions'); }catch(e){} }, 240); }, 60);
+      setTimeout(function(){ try{ if(window.haSwitchTab) haSwitchTab('anatomy'); }catch(e){} }, 240); }, 60);
     return;
   }
   // When switching to administration tab, move admin panels into embed container
@@ -6171,7 +6168,7 @@ function toggleMethodStrip(){
 function enrollProgram(type){
   // Map UI program types to Stripe product IDs
   var productMap = {self:'lab', guided:'guided', rehab:'rehab'};
-  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Specialist Training',rehab:'Rehabilitation Program'};
+  var names = {self:'Self-Guided Program',guided:'Guided Program',group:'Group Program',specialist:'Specialist Training',rehab:'Individual practice'};
   var hasTBD = (type==='group'||type==='specialist');
   if(hasTBD){
     showEnrollModal('Coming soon','<p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0 0 1rem;">The <strong style="color:var(--text-primary);">'+names[type]+'</strong> program is currently being developed.</p><p style="font-size:14px;line-height:1.7;color:var(--text-secondary);margin:0;">Leave a request and we will contact you when enrollment opens.</p>');
@@ -6192,18 +6189,12 @@ function showEnrollModal(title, bodyHtml){
 // REHABILITATION PROGRAM CONTEXT
 // ══════════════════════════════════════════
 /* <!-- DRAFT: pending medical review --> */
-var REHAB_CONTEXT_TEXTS = {
-  neurodegenerative: 'Нейродегенеративные процессы постепенно нарушают внимание, рабочую память и исполнительный контроль — функции, на которые опирается повседневная самостоятельность. Тренировка внимания и адаптивные когнитивные протоколы помогают замедлить функциональное снижение, поддержать сохранные сети мозга и расширить когнитивный резерв.',
-  stroke: 'После инсульта мозг проходит через окно нейропластичности — период, когда направленная тренировка может восстановить функции, утраченные из-за повреждения. Адаптивные протоколы внимания помогают восстановить контроль над фокусом, скоростью обработки информации и переключением между задачами.',
-  tbi: 'ЧМТ часто оставляет невидимые следствия: рассеянность, утомляемость от умственной нагрузки, проблемы с концентрацией. Тренировка внимания на адаптивных протоколах поддерживает восстановление сетей внимания и исполнительной функции. Постепенное возвращение когнитивной выносливости — реалистичная цель при систематической работе.',
-  neuropathy: 'Хроническая боль и нарушения чувствительности забирают значительную часть когнитивного ресурса — мозг постоянно отвлекается на сигналы тела. Протоколы тренировки внимания помогают научиться удерживать фокус несмотря на телесный шум и снижать субъективное воздействие хронических симптомов на повседневную жизнь.',
-  asd: 'При РАС внимание и сенсорная регуляция часто работают по-другому — это не дефицит, а особенность. Адаптивные протоколы помогают развивать произвольный контроль внимания и регуляцию состояний нервной системы, не подменяя индивидуальные особенности, а опираясь на них.',
-  other: 'Каждое нарушение работы нервной системы влияет на внимание и когнитивный контроль по-своему. Опираясь на ваше описание, мы подберём индивидуальный протокол с учётом вашего состояния и целей восстановления.'
-};
+var REHAB_CONTEXT_TEXTS = {};
 function initRehabSection(){
+  return;
   try {
     var testData = JSON.parse(localStorage.getItem('na_test_result') || '{}');
-    var isRehab = testData.rehab_flag || (new URLSearchParams(window.location.search).get('rehab') === '1');
+    var isRehab = false;
     if(!isRehab) return;
     var section = document.getElementById('rehab-detail-section');
     if(!section) return;
@@ -6921,6 +6912,8 @@ window.toolsExpandActive = toolsExpandActive;
      the user has ≥1 document. Refreshed whenever a file is uploaded/removed. */
   var _profDocs = null;
   window.profileLoadDocs = function(){
+    var card=document.getElementById('profile-docs-card'); if(card) card.style.display='none';
+    return;
     var tok = dxTok(); if(!tok) return;
     fetch(dxApi()+'/api/me/medical-files', { headers:{ 'Authorization':'Bearer '+tok } })
       .then(function(r){ return r.ok?r.json():{files:[]}; }).then(function(d){
@@ -20227,6 +20220,8 @@ window.pbMove = pbMove;
 
   /* ── tab switching ──────────────────────────────────────────────────────── */
   window.haSwitchTab = function(tab){
+    // The diagnoses/conditions tab is hidden: it collected health claims and medical files.
+    if(tab==='conditions') tab='anatomy';
     activeTab = tab;
     ['anatomy','functions','conditions','medications','diet'].forEach(function(t){
       var btn=document.getElementById('ha-tab-'+t); if(btn) btn.classList.toggle('active', t===tab);
@@ -21272,7 +21267,7 @@ window.pbMove = pbMove;
         theories:['Theories','Theory','Hypotheses & theories, including the leading theories of consciousness.'],
         research:['Research','Research entry','Summaries of key research on attention, inhibition and self-regulation.'],
         functions:['Functions','Function','Cognitive functions, each with a mini brain atlas of its regions.'],
-        methods:['Methods','Method','The methods we work with — evidence-based, somatic and contemplative.'] } },
+        methods:['Methods','Method','Reference notes on other methods. Not medical advice. NeuroAttention does not prescribe or stop any treatment.'] } },
     ru: { title:'Библиотека', loading:'Загрузка…', empty:'Пока пусто.', could_not:'Не удалось загрузить',
       sources:'Источники', related:'Смежные термины', key_points:'Ключевые положения', criticisms:'Критика и открытые вопросы',
       steps:'Шаги', findings:'Ключевые выводы', proponents:'Авторы', also:'Также', mechanism:'Как это работает',
@@ -21287,7 +21282,7 @@ window.pbMove = pbMove;
         theories:['Теории','Теория','Гипотезы и теории, включая ведущие теории сознания.'],
         research:['Исследования','Исследование','Обзоры ключевых исследований внимания, торможения и саморегуляции.'],
         functions:['Функции','Функция','Когнитивные функции, каждая — с мини-атласом своих зон мозга.'],
-        methods:['Методы','Метод','Методы, с которыми мы работаем — доказательные, телесные и созерцательные.'] } },
+        methods:['Методы','Метод','Справочные заметки о других методах. Не медицинская рекомендация. NeuroAttention не назначает и не отменяет лечение.'] } },
     es: { title:'Biblioteca', loading:'Cargando…', empty:'Aún no hay nada.', could_not:'No se pudo cargar',
       sources:'Fuentes', related:'Términos relacionados', key_points:'Puntos clave', criticisms:'Críticas y debates abiertos',
       steps:'Pasos', findings:'Hallazgos clave', proponents:'Autores', also:'También', mechanism:'Cómo funciona',
@@ -21302,7 +21297,7 @@ window.pbMove = pbMove;
         theories:['Teorías','Teoría','Hipótesis y teorías, incluidas las principales teorías de la conciencia.'],
         research:['Investigación','Entrada','Resúmenes de investigaciones clave sobre atención, inhibición y autorregulación.'],
         functions:['Funciones','Función','Funciones cognitivas, cada una con un mini-atlas cerebral de sus regiones.'],
-        methods:['Métodos','Método','Los métodos con los que trabajamos — basados en evidencia, somáticos y contemplativos.'] } }
+        methods:['Métodos','Método','Notas de referencia sobre otros métodos. No es consejo médico. NeuroAttention no prescribe ni suspende ningún tratamiento.'] } }
   };
   function LTd(){ return LT[lang()] || LT.en; }
   function L(k){ var d=LTd(); return (d && d[k]!=null) ? d[k] : (LT.en[k]!=null?LT.en[k]:k); }
@@ -22699,8 +22694,8 @@ window.pbMove = pbMove;
   function isScreener(row){ return (row.kind==='screening_test') || (row.category==='screening'); }
 
   var T = {
-    ru:{ title:'Упражнения и тесты', sub:'10 научно обоснованных когнитивных упражнений: внимание, память, управляющие функции.',
-      disc:'Это тренажёры и самопроверки, не медицинская диагностика. Задания основаны на классических научных парадигмах (СДВГ, память, внимание).',
+    ru:{ title:'Упражнения и тесты', sub:'Короткие практики внимания, памяти и сосредоточения.',
+      disc:'Это тренажёры и самопроверки, не медицинская оценка и не замена консультации врача. Практики выполняются с расслабленными открытыми глазами.',
       best:'Рекорд', measuresTitle:'Тренирует', evidence:'Научная основа', level:'Уровень', start:'Начать',
       trains:'Область мозга', brain:'Мозг (когнитивные сети)', back:'← Ко всем упражнениям',
       score:'Очки', acc:'Точность', rt:'Реакция', pb:'Личный рекорд', pct:'Лучше, чем', of:'игроков',
@@ -22710,8 +22705,8 @@ window.pbMove = pbMove;
       startTest:'Пройти тест', items:'вопросов', source:'Источник', validityLbl:'Валидность', yourResult:'Ваш результат',
       interpLbl:'Интерпретация', positive:'Положительный скрининг', negative:'Отрицательный скрининг',
       exitPlay:'← К упражнению' },
-    en:{ title:'Exercises & Tests', sub:'10 evidence-based cognitive exercises: attention, memory, executive function.',
-      disc:'These are trainers and self-checks, not a medical diagnosis. Tasks are based on classic research paradigms (ADHD, memory, attention).',
+    en:{ title:'Exercises & Tests', sub:'Short practices for attention, memory, and focus.',
+      disc:'These are trainers and self-checks, not a medical assessment and not a substitute for a clinician. Practices are done with relaxed, open eyes.',
       best:'Best', measuresTitle:'Trains', evidence:'Evidence base', level:'Level', start:'Start',
       trains:'Brain area', brain:'Brain (cognitive networks)', back:'← All exercises',
       score:'Score', acc:'Accuracy', rt:'Reaction', pb:'Personal best', pct:'Better than', of:'players',
@@ -22721,8 +22716,8 @@ window.pbMove = pbMove;
       startTest:'Take the test', items:'items', source:'Source', validityLbl:'Validity', yourResult:'Your result',
       interpLbl:'Interpretation', positive:'Positive screen', negative:'Negative screen',
       exitPlay:'← Back to exercise' },
-    es:{ title:'Ejercicios y tests', sub:'10 ejercicios cognitivos basados en evidencia: atención, memoria, función ejecutiva.',
-      disc:'Son entrenadores y autoevaluaciones, no un diagnóstico médico. Basados en paradigmas científicos clásicos (TDAH, memoria, atención).',
+    es:{ title:'Ejercicios y tests', sub:'Prácticas breves de atención, memoria y foco.',
+      disc:'Son entrenadores y autoevaluaciones, no una valoración médica ni un sustituto del médico. Las prácticas se hacen con los ojos abiertos y relajados.',
       best:'Récord', measuresTitle:'Entrena', evidence:'Base científica', level:'Nivel', start:'Empezar',
       trains:'Área cerebral', brain:'Cerebro (redes cognitivas)', back:'← Todos los ejercicios',
       score:'Puntos', acc:'Precisión', rt:'Reacción', pb:'Récord personal', pct:'Mejor que', of:'jugadores',
@@ -22777,11 +22772,7 @@ window.pbMove = pbMove;
     else if(!defs.length){ body = '<p style="color:#9aa4b2">'+esc(L('failLoad'))+'</p>'; }
     else {
       body = '<div class="ex-grid">'+cog.map(cardHTML).join('')+'</div>';
-      if(scr.length){
-        body += '<div class="ex-sech">'+exIc('screening','#aeb6be',18)+' '+esc(L('screenTitle'))+'</div>'+
-          '<div class="ex-disc">'+exIc('warn','#aeb6be',16)+' '+esc(L('screenDisc'))+'</div>'+
-          '<div class="ex-grid">'+scr.map(cardHTML).join('')+'</div>';
-      }
+      // Disease screeners (depression, anxiety, PTSD, ADHD, autism) are not offered.
     }
     host.innerHTML =
       '<div class="ex-wrap"><div class="ex-head"><h2>'+exIc('brain','#c5ccd4',26)+' '+esc(L('title'))+'</h2><p>'+esc(L('sub'))+'</p>'+
@@ -22789,7 +22780,7 @@ window.pbMove = pbMove;
     host.querySelectorAll('.ex-card').forEach(function(c){ c.addEventListener('click',function(){
       var slug=c.getAttribute('data-slug');
       var row=defs.filter(function(d){return d.slug===slug;})[0];
-      if(row && isScreener(row)) openScreener(slug); else openLauncher(slug);
+      if(row && isScreener(row)) return; else openLauncher(slug);
     }); });
   }
   function cardHTML(row){
@@ -22804,6 +22795,24 @@ window.pbMove = pbMove;
       '</div>';
   }
 
+  var SAFE_EVIDENCE = {
+    'n-back':'Kirchner (1958); Jaeggi et al. (2008) — a working-memory practice used here for focus.',
+    'stroop':'Stroop (1935) — a classic attention task: name the ink color, not the word.',
+    'ant':'Fan et al. (2002) — a task that separates alerting, orienting, and executive attention.',
+    'sart':'Robertson et al. (1997) — a sustained-attention practice: respond, and pause on the rare cue.',
+    'corsi':'Corsi (1972) — a visuospatial span practice.',
+    'digit-span':'A classic digit-span practice for holding a short sequence in mind.',
+    'go-no-go':'A response-and-pause practice for noticing an impulse before acting.',
+    'task-switching':'Monsell (2003) — a practice in switching rules on cue.',
+    'trail-making':'A connect-the-sequence practice for speed and flexible attention.',
+    'attentional-blink':'Raymond, Shapiro & Arnell (1992) — a practice in noticing two targets in a fast stream.'
+  };
+  function safeEvidence(row){
+    if(row && SAFE_EVIDENCE[row.slug]) return SAFE_EVIDENCE[row.slug];
+    var raw = (row && row.clinical_evidence) || '';
+    if(/adhd|alzheimer|dementia|ptsd|tbi|depression|autism|schizophrenia|parkinson|stroke/i.test(raw)) return 'A classic attention practice. Not a medical assessment.';
+    return raw;
+  }
   function openLauncher(slug){
     var row = defs.filter(function(d){return d.slug===slug;})[0];
     if(!row){ renderGrid(false); return; }
@@ -22819,7 +22828,7 @@ window.pbMove = pbMove;
         '<div style="font-weight:700;margin-top:.8rem;font-size:.85rem;color:#9aa4b2">'+esc(L('measuresTitle'))+'</div>'+
         '<div class="ex-measures">'+meas+'</div>'+
         '<div style="font-weight:700;font-size:.85rem;color:#9aa4b2">'+esc(L('evidence'))+'</div>'+
-        '<div class="ex-cite">'+esc(row.clinical_evidence||'')+'</div>'+
+        '<div class="ex-cite">'+esc(safeEvidence(row))+'</div>'+
         '<div class="ex-level-row"><label style="font-weight:700">'+esc(L('level'))+'</label>'+
           '<input type="range" min="'+lvMin+'" max="'+lvMax+'" value="'+lv+'" class="ex-lvl">'+
           '<span class="ex-lvl-val">'+lv+'</span></div>'+

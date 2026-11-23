@@ -609,7 +609,6 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   // ── Q0 + 10 Questions ──
   // Lazy-load translations at render time
   var QUESTIONS = [
-    { id:'Q0', group:'neuro_filter', key_text:'t.q0.text', key_opts:{A:'t.q0.a1', B:'t.q0.a2', C:'t.q0.a3'} },
     { id:'Q1', group:'state', key_text:'t.q1.text', key_opts:{A:'t.q1.a1', B:'t.q1.a2', C:'t.q1.a3', D:'t.q1.a4'} },
     { id:'Q2', group:'attention', key_text:'t.q2.text', key_opts:{A:'t.q2.a1', B:'t.q2.a2', C:'t.q2.a3', D:'t.q2.a4'} },
     { id:'Q3', group:'state', key_text:'t.q3.text', key_opts:{A:'t.q3.a1', B:'t.q3.a2', C:'t.q3.a3', D:'t.q3.a4'} },
@@ -707,7 +706,7 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
 
   function updateProgress() {
     var pct = Math.round(currentQ / QUESTIONS.length * 100);
-    var label = (currentQ === 0) ? t('t.header.preliminary') : t('t.header.question') + ' ' + currentQ + ' / 10';
+    var label = t('t.header.question') + ' ' + (currentQ + 1) + ' / ' + QUESTIONS.length;
     document.getElementById('chat-step-label').textContent = label;
     document.getElementById('chat-progress-fill').style.width = pct + '%';
   }
@@ -749,10 +748,10 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var q = QUESTIONS[qIdx];
     updateProgress();
 
-    var iconBg = Q_COLORS[qIdx] || 'rgba(163,210,179,0.15)';
-    var iconSvg = Q_ICONS[qIdx] || Q_ICONS[0];
+    var iconBg = Q_COLORS[qIdx + 1] || 'rgba(163,210,179,0.15)';
+    var iconSvg = Q_ICONS[qIdx + 1] || Q_ICONS[0];
 
-    var qLabel = (qIdx === 0) ? t('t.header.preliminary') : t('t.header.question') + ' ' + qIdx;
+    var qLabel = t('t.header.question') + ' ' + (qIdx + 1) + ' / ' + QUESTIONS.length;
     var qText = t(q.key_text);
 
     var html = '<div class="q-icon-wrap">' +
@@ -894,17 +893,6 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
   function handleAnswer(qId, letter, text) {
     answers[qId] = letter;
 
-    // Q0 rehabilitation filter
-    if (qId === 'Q0') {
-      if (letter !== 'A') {
-        rehabFlag = true;
-      } else {
-        rehabFlag = false;
-        rehabConditions = [];
-        rehabOtherDescription = '';
-      }
-    }
-
     var optsWrap = document.getElementById('opts-' + qId);
     if (optsWrap) {
       optsWrap.querySelectorAll('.chat-opt-btn').forEach(function(b) {
@@ -913,16 +901,6 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
       });
     }
     addUserMessage(text);
-
-    // After Q0, if rehab flow activated → show multi-select clarification
-    if (qId === 'Q0' && rehabFlag) {
-      showTyping();
-      setTimeout(function() {
-        removeTyping();
-        renderRehabClarification();
-      }, 800);
-      return; // Don't advance currentQ yet — renderRehabClarification handles it
-    }
 
     showTyping();
     setTimeout(function() {
@@ -969,9 +947,9 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     var testResult = {
       profile: result.profile, answers: answers,
       scores: result.scores, total: result.total,
-      rehab_flag: rehabFlag,
-      rehab_conditions: rehabConditions,
-      rehab_other_description: rehabOtherDescription,
+      rehab_flag: false,
+      rehab_conditions: [],
+      rehab_other_description: '',
       completed_at: new Date().toISOString()
     };
     try { localStorage.setItem('na_test_result', JSON.stringify(testResult)); } catch (e) {}
@@ -1045,37 +1023,14 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
       html += sectionContent;
       html += '</div>';
     });
-    // ── Rehabilitation context block (if rehab flow) ──
-    if (rehabFlag && rehabConditions.length > 0) {
-      /* <!-- DRAFT: pending medical review --> */
-      var conditionKeys = {
-        neurodegenerative: 't.rehab.neurodegen',
-        stroke: 't.rehab.stroke',
-        tbi: 't.rehab.tbi',
-        neuropathy: 't.rehab.neuropathy',
-        asd: 't.rehab.asd',
-        other: 't.rehab.other'
-      };
-      var condText = rehabConditions.map(function(k){ return t(conditionKeys[k] || k); }).join(', ');
-      html += '<div class="result-section" style="border-left:2px solid var(--accent-violet);padding-left:1rem;">';
-      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> ' + t('t.result.context') + '</div>';
-      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;">' + esc(condText) + '</p>';
-      html += '</div>';
-    }
-
     html += '<div class="result-unlock">';
-    if (rehabFlag) {
-      /* <!-- DRAFT: pending medical review --> */
-      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:var(--accent-violet);stroke-width:1.5;" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span></div>';
-      html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin-bottom:1rem;">' + t('t.result.rehab.text') + '</p>';
-      html += '<a href="rehabilitation-application.html" class="result-cta" style="background:linear-gradient(135deg,rgba(163,210,179,0.15),rgba(163,210,179,0.1));border-color:rgba(163,210,179,0.3);">' + t('t.result.rehab.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
-    } else {
-      var unlockPrefix = profile.key_unlock.replace(/unlock$/, 'u');
-      var unlockContent = renderProfileCopy(profile.key_unlock, [unlockPrefix + '1', unlockPrefix + '2', unlockPrefix + '3']);
-      html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> ' + t('t.result.unlock.title') + '</div>';
-      html += unlockContent;
-      html += '<a href="account.html?from_test=1" class="result-cta">' + t('t.result.unlock.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
-    }
+    var unlockPrefix = profile.key_unlock.replace(/unlock$/, 'u');
+    var unlockContent = renderProfileCopy(profile.key_unlock, [unlockPrefix + '1', unlockPrefix + '2', unlockPrefix + '3']);
+    html += '<div class="result-section-title"><span class="result-section-icon"><svg style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg></span> ' + t('t.result.unlock.title') + '</div>';
+    html += unlockContent;
+    html += '<p style="font-size:14px;color:var(--text-secondary);line-height:1.7;margin:1rem 0;">' + t('t.result.rehab.text') + '</p>';
+    html += '<a href="programs.html" class="result-cta">' + t('t.result.rehab.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+    html += '<a href="account.html?from_test=1" class="result-cta">' + t('t.result.unlock.button') + ' <svg style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;margin-left:4px;" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
     html += '</div>';
     html += '<div style="text-align:center;"><span class="result-retake" onclick="location.reload()">' + t('t.result.retake.link') + '</span></div>';
     wrap.innerHTML = html;
@@ -1143,8 +1098,9 @@ button, a, .chat-opt-btn { cursor: pointer !important; }
     } catch(e){}
   }
 
-  // ── Auto-start — skip welcome, go straight to Q0 ──
+  // ── Auto-start — wellness note, then the 10 questions ──
   (function autoStart() {
+    addBotMessage('<p>' + esc(t('t.notice')) + '</p>');
     showTyping();
     setTimeout(function() { removeTyping(); renderQuestionChat(0); }, 600);
   })();

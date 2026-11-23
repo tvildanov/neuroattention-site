@@ -1,7 +1,7 @@
 {
   "name": "DOM Institute for Human Adaptation",
   "short_name": "DOM Institute",
-  "description": "Operating system for human attention — a science-based method of nervous-system regulation, an XR platform, a research lab and the DOM Unity community.",
+  "description": "Operating system for human attention — an original method for training attention and self-regulation, an XR platform, a research lab and the DOM Unity community.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",

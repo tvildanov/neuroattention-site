@@ -5,7 +5,7 @@ window.DOMV04Copy={
       "spaceStatus": "Первое физическое пространство DOM Institute проектируется в США.",
       "concept": "Концепция DOM Space · проектируется в США",
       "spaceLink": "Исследовать DOM Space",
-      "ecoBridge": "Самые сильные идеи требуют не только цифровых инструментов, но и реальной среды, где исследования, обучение, восстановление и совместная жизнь встречаются в одном опыте. Поэтому мы создаём DOM Space — первое физическое воплощение экосистемы: пространство, в котором можно не только изучать адаптацию человека, но и исследовать новые условия для его развития и жизни сообщества.",
+      "ecoBridge": "Самые сильные идеи требуют не только цифровых инструментов, но и реальной среды, где исследования, обучение, практика и совместная жизнь встречаются в одном опыте. Поэтому мы создаём DOM Space — первое физическое воплощение экосистемы: пространство, в котором можно не только изучать адаптацию человека, но и исследовать новые условия для его развития и жизни сообщества.",
       "institute": "Факультеты, которые мы создаём",
       "instituteIntro": "Формируем DOM Institute вместе с исследователями, преподавателями и создателями новых практик.",
       "all": "Ещё направления",
@@ -21,9 +21,9 @@ window.DOMV04Copy={
       "ctaAction": "Присоединиться к созданию института",
       "facultyAction": "Участвовать в создании факультета",
       "spaces": "Что будет внутри DOM Space",
-      "zones": "Пространства: центральный общественный зал, лаборатории, учебные корпуса и аудитории, зоны оценки состояния и индивидуальной работы, тренировочный комплекс, залы практик, SPA и банные пространства, комплекс Dark Retreat, мастерские, гостевые дома, семейные и детские зоны, природные маршруты и места для созерцания.\n\nОпыт: обучение и исследования, персональные и групповые программы восстановления, движение и культура тела, работа с вниманием, творчество, встречи сообщества и совместные проекты. Dark Retreat — самостоятельный формат, который подходит не всем.",
+      "zones": "Пространства: центральный общественный зал, лаборатории, учебные корпуса и аудитории, комнаты для самооценки и индивидуальной работы, тренировочный комплекс, залы практик, SPA и банные пространства, тихая комната для отдыха с открытыми глазами, мастерские, гостевые дома, семейные и детские зоны, природные маршруты и места для созерцания.\n\nОпыт: обучение и исследования, персональные и групповые программы практики, движение и культура тела, работа с вниманием, творчество, встречи сообщества и совместные проекты. Отдых в тишине — по желанию, с расслабленными открытыми глазами.",
       "guestPath": "Как будет устроено ваше пребывание",
-      "path": "Знакомимся с вашим состоянием и целями → предлагаем программу на дни или недели → сопровождаем практики и восстановление → вместе отслеживаем изменения → помогаем продолжить процесс дома.",
+      "path": "Знакомимся с вашим состоянием и целями → предлагаем программу на дни или недели → сопровождаем практики внимания и отдых → вместе отслеживаем изменения → помогаем продолжить процесс дома.",
       "observations": "Что из этого вы уже замечали — у себя или вокруг?",
       "other": "Другое — что вы заметили?",
       "chooseHint": "Отметьте знакомое. Можно добавить своё наблюдение."
@@ -32,22 +32,22 @@ window.DOMV04Copy={
       {
         "label": "Модель будущего мира",
         "title": "DOM Space — модель будущего мира",
-        "body": "Будущее человечества невозможно построить только в презентациях и теориях. Нам нужна реальная среда, в которой можно проживать возможное будущее уже сегодня: создавать новые условия для жизни, обучения, взаимодействия, восстановления и совместного развития.\n\nDOM Space — наша первая физическая модель такой среды. Здесь мы будем исследовать, как новые условия меняют возможности человека, отношения внутри сообщества и само пространство вокруг них. Какие решения действительно раскрывают индивидуальный потенциал? Какие помогают людям вместе создавать больше, чем поодиночке? Какие делают жизнь общества устойчивее и человечнее?\n\nМы хотим проверять это в реальном опыте, отделять сильные решения от ошибок и выводить работающие модели в мир — в образование, городскую среду, организации, центры развития и другие сообщества. Не копировать готовое будущее, а учиться осознанно его создавать."
+        "body": "Будущее человечества невозможно построить только в презентациях и теориях. Нам нужна реальная среда, в которой можно проживать возможное будущее уже сегодня: создавать новые условия для жизни, обучения, взаимодействия, практики и совместного развития.\n\nDOM Space — наша первая физическая модель такой среды. Здесь мы будем исследовать, как новые условия меняют возможности человека, отношения внутри сообщества и само пространство вокруг них. Какие решения действительно раскрывают индивидуальный потенциал? Какие помогают людям вместе создавать больше, чем поодиночке? Какие делают жизнь общества устойчивее и человечнее?\n\nМы хотим проверять это в реальном опыте, отделять сильные решения от ошибок и выводить работающие модели в мир — в образование, городскую среду, организации, центры развития и другие сообщества. Не копировать готовое будущее, а учиться осознанно его создавать."
       },
       {
-        "label": "Реабилитация нового времени",
-        "title": "DOM Space — восстановление нового времени",
-        "body": "Представьте, что можно на время выйти из ритма, который годами забирал силы, и оказаться в пространстве, где всё устроено ради одного — вернуть себе ясность, энергию и свободу действовать. Не просто приехать отдохнуть. А по-настоящему познакомиться со своим состоянием, увидеть, что помогает именно вам, и начать менять качество собственной жизни.\n\nВ DOM Space мы создаём новый формат глубокой восстановительной программы с проживанием: комплексная оценка состояния, внимание опытных специалистов, индивидуально выстроенный маршрут, движение, практика NeuroAttention, технологии, банные и термальные пространства, тишина, природа, творческая работа и пространство для общения. Каждый элемент связан с общей задачей, а не существует как отдельная услуга.\n\nСюда можно будет приехать одному или вместе с семьёй. А после возвращения домой — не потерять достигнутую опору, а продолжать работу через цифровые инструменты и сообщество DOM. Результат, к которому мы стремимся, — не две приятные недели, а изменения, которые человек уносит в свою жизнь."
+        "label": "Практика и отдых",
+        "title": "DOM Space — практика и отдых",
+        "body": "Представьте, что можно на время выйти из ритма, который годами забирал силы, и оказаться в пространстве, где всё устроено ради одного — вернуть себе ясность, энергию и свободу действовать. Не просто приехать отдохнуть. А по-настоящему познакомиться со своим состоянием, увидеть, что помогает именно вам, и начать менять качество собственной жизни.\n\nВ DOM Space мы создаём новый формат программы практики с проживанием: самооценка внимания, внимание опытных специалистов, индивидуально выстроенный маршрут, движение, практика NeuroAttention, технологии, банные и термальные пространства, тишина, природа, творческая работа и пространство для общения. Каждый элемент связан с общей задачей, а не существует как отдельная услуга.\n\nСюда можно будет приехать одному или вместе с семьёй. А после возвращения домой — не потерять достигнутую опору, а продолжать работу через цифровые инструменты и сообщество DOM. После возвращения домой практика может продолжаться через цифровые инструменты и сообщество DOM. Это образовательная wellness-практика, не медицинская услуга."
       },
       {
         "label": "Институт и лаборатория",
         "title": "DOM Space — живой кампус института",
-        "body": "Идеи человеческой адаптации требуют места, где их можно не только обсуждать, но и превращать в знания, технологии и реальные новые практики. DOM Space станет физическим центром DOM Institute for Human Adaptation — с образовательной средой, исследовательскими лабораториями, площадками для практики и разработки.\n\nЗдесь будут учиться будущие специалисты, работать исследователи, преподаватели и инженеры, рождаться новые программы и проверяться гипотезы о том, как человек развивается в меняющемся мире. Жизнь пространства станет источником вопросов для науки, научные результаты — основой образования и технологий, а новые методы смогут возвращаться в реальную практику.\n\nПриехать сюда — не обязательно значит стать клиентом восстановительной программы. Можно приехать учиться, исследовать, создать собственное направление, предложить технологию, найти команду или стать партнёром создания института."
+        "body": "Идеи человеческой адаптации требуют места, где их можно не только обсуждать, но и превращать в знания, технологии и реальные новые практики. DOM Space станет физическим центром DOM Institute for Human Adaptation — с образовательной средой, исследовательскими лабораториями, площадками для практики и разработки.\n\nЗдесь будут учиться будущие специалисты, работать исследователи, преподаватели и инженеры, рождаться новые программы и проверяться гипотезы о том, как человек развивается в меняющемся мире. Жизнь пространства станет источником вопросов для науки, научные результаты — основой образования и технологий, а новые методы смогут возвращаться в реальную практику.\n\nПриехать сюда — не обязательно значит записаться на программу практики. Можно приехать учиться, исследовать, создать собственное направление, предложить технологию, найти команду или стать партнёром создания института."
       },
       {
         "label": "Основа пространства · NeuroAttention",
         "title": "Что связывает всё воедино? NeuroAttention",
-        "body": "DOM Space начинается не со здания и не с набора услуг. Он начинается с внимания. NeuroAttention — наш метод развития навыка сознательного управления вниманием — становится общим принципом, по которому мы проектируем само пространство и способы взаимодействия людей в нём.\n\nЭто касается всего масштаба: от архитектуры, освещения, звука, материалов, движения и мест для тишины — до общения между участниками, работы преподавателя, исследователя, мастера восстановительных практик или сотрудника сервиса. Мы хотим понимать, как каждый элемент и каждый контакт влияют на состояние человека, как человек меняет среду вокруг себя и как вместе из этих связей складывается общий опыт.\n\nПоэтому DOM Space — не коллекция помещений и процедур. Это среда, в которой само пространство, подготовленная команда и человек становятся участниками единого процесса развития."
+        "body": "DOM Space начинается не со здания и не с набора услуг. Он начинается с внимания. NeuroAttention — наш метод развития навыка сознательного управления вниманием — становится общим принципом, по которому мы проектируем само пространство и способы взаимодействия людей в нём.\n\nЭто касается всего масштаба: от архитектуры, освещения, звука, материалов, движения и мест для тишины — до общения между участниками, работы преподавателя, исследователя, ведущего практик или сотрудника сервиса. Мы хотим понимать, как каждый элемент и каждый контакт влияют на состояние человека, как человек меняет среду вокруг себя и как вместе из этих связей складывается общий опыт.\n\nПоэтому DOM Space — не коллекция помещений и отдельных услуг. Это среда, в которой само пространство, подготовленная команда и человек становятся участниками единого процесса развития."
       }
     ],
     "directions": [
@@ -57,7 +57,7 @@ window.DOMV04Copy={
       },
       {
         "title": "Психофизиология и механизмы адаптации",
-        "body": "Как мозг, нервная система, тело и субъективный опыт связаны между собой? Как формируются наши состояния, реакции, привычки и способы адаптации? Соединяем современные исследования с практическими вопросами о том, как человек способен изменяться и восстанавливаться."
+        "body": "Как мозг, нервная система, тело и субъективный опыт связаны между собой? Как формируются наши состояния, реакции, привычки и способы адаптации? Соединяем современные исследования с практическими вопросами о том, как человек способен замечать своё состояние и менять привычки внимания."
       },
       {
         "title": "Физическая культура нового времени",
@@ -78,8 +78,8 @@ window.DOMV04Copy={
     ],
     "pilots": [
       {
-        "title": "Как замедлить старение и продлить годы полноценной жизни?",
-        "body": "Человек живёт всё дольше, но слишком часто значительная часть этих лет проходит с потерей подвижности, ясности мышления, памяти, самостоятельности и желания действовать. Мы привыкли считать это неизбежной ценой возраста. Но где проходит граница между самим старением и последствиями среды, привычек и недостаточной поддержки?\n\nВ DOM мы исследуем, как сохранить и расширить период полноценной жизни — через NeuroAttention, движение, когнитивную активность, работу с нервной системой, восстановительные подходы, индивидуальные и групповые программы, в том числе для людей старшего возраста и домов ухода. Нас интересуют возрастные изменения мозга, нейропластичность, когнитивные функции, способность двигаться, мыслить, чувствовать себя и участвовать в жизни.\n\nМы хотим не просто прибавлять годы к жизни, а возвращать жизнь этим годам — и понять, насколько далеко можно продвинуть границу активного долголетия."
+        "title": "Как сохранять ясность внимания и ритм дня с возрастом?",
+        "body": "Человек живёт всё дольше, но слишком часто значительная часть этих лет проходит с потерей подвижности, ясности мышления, памяти, самостоятельности и желания действовать. Мы привыкли считать это неизбежной ценой возраста. Но где проходит граница между самим старением и последствиями среды, привычек и недостаточной поддержки?\n\nВ DOM мы исследуем, как сохранить и расширить период полноценной жизни — через мягкие практики внимания с расслабленными открытыми глазами, движение, привычку сна и ритм дня — для людей старшего возраста и тех, кто о них заботится. Это спокойствие, контакт и ясность внимания, а не медицинская услуга.\n\nМы не обещаем замедлить старение. Мы исследуем, как практика помогает замечать внимание и сохранять ритм обычного дня."
       },
       {
         "title": "Как выйти из чужого сценария и построить собственную жизнь?",
@@ -116,9 +116,9 @@ window.DOMV04Copy={
       "ctaAction": "Join in creating the institute",
       "facultyAction": "Help create this faculty",
       "spaces": "Inside DOM Space",
-      "zones": "Spaces: a central community hall, laboratories, teaching buildings and classrooms, assessment and individual-work rooms, training facilities, practice halls, spa and thermal spaces, a Dark Retreat complex, workshops, guest houses, family and children’s spaces, nature routes and places for contemplation.\n\nExperiences: education and research, individual and group recovery programmes, movement and body culture, attention practice, creative work, community gatherings and collaborative projects. Dark Retreat is a distinct format that is not suitable for everyone.",
+      "zones": "Spaces: a central community hall, laboratories, teaching buildings and classrooms, rooms for a self-check and individual work, training facilities, practice halls, spa and thermal spaces, a quiet room for rest with open eyes, workshops, guest houses, family and children’s spaces, nature routes and places for contemplation.\n\nExperiences: education and research, individual and group practice programs, movement and body culture, attention practice, creative work, community gatherings and collaborative projects. Quiet rest is optional, with relaxed, open eyes.",
       "guestPath": "How your stay will work",
-      "path": "We explore your situation and goals → propose a programme for days or weeks → support practice and recovery → review changes together → help you continue at home.",
+      "path": "We explore your situation and goals → propose a programme for days or weeks → support attention practice and rest → review changes together → help you continue at home.",
       "observations": "Which of these have you noticed — in yourself or around you?",
       "other": "Something else — what have you noticed?",
       "chooseHint": "Mark what feels familiar. You can add an observation."
@@ -130,19 +130,19 @@ window.DOMV04Copy={
         "body": "Humanity’s future cannot be built in presentations and theories alone. We need a real environment in which to live possible futures today: creating new conditions for living, learning, relating, recovering and developing together.\n\nDOM Space is our first physical model of that environment. Here we will investigate how changing conditions affect individual possibilities, community relationships and the surrounding space. What helps people realise their potential? What enables us to create more together than alone? What makes society more resilient and humane?\n\nWe want to test these questions through lived experience, distinguish strong solutions from mistakes and bring working models into the world — into education, cities, organisations, development centres and other communities. Rather than copying a ready-made future, we learn to create it consciously."
       },
       {
-        "label": "Recovery for a new era",
-        "title": "DOM Space — recovery for a new era",
-        "body": "Imagine stepping out of a rhythm that has drained your energy for years, into a place designed to help you regain clarity, vitality and freedom to act. More than time off: an opportunity to understand your state, discover what supports you and begin changing the quality of your life.\n\nIn DOM Space we are creating an integrated residential recovery programme: a thorough assessment, attentive specialists, an individual path, movement, NeuroAttention practice, technology, thermal and bathing spaces, quiet, nature, creativity and connection. Each element serves a shared purpose rather than standing alone as a service.\n\nPeople will be able to come individually or with family. After returning home, digital tools and the DOM community will help continue the work. Our aim is not two pleasant weeks, but changes people can carry into everyday life."
+        "label": "Practice and rest",
+        "title": "DOM Space — practice and rest",
+        "body": "Imagine stepping out of a rhythm that has drained your energy for years, into a place designed to help you regain clarity, vitality and freedom to act. More than time off: an opportunity to understand your state, discover what supports you and begin changing the quality of your life.\n\nIn DOM Space we are creating a residential practice program: an attention self-check, attentive specialists, an individual path, movement, NeuroAttention practice, technology, thermal and bathing spaces, quiet, nature, creativity and connection. Each element serves a shared purpose rather than standing alone as a service.\n\nPeople will be able to come individually or with family. After returning home, digital tools and the DOM community will help continue the work. After returning home, practice can continue through digital tools and the DOM community. This is an educational wellness practice, not a medical service."
       },
       {
         "label": "Institute and laboratory",
         "title": "DOM Space — a living institute campus",
-        "body": "Ideas about human adaptation need a place where discussion becomes knowledge, technology and new practice. DOM Space will be the physical centre of DOM Institute for Human Adaptation, with a learning environment, research laboratories and places for practice and development.\n\nFuture specialists will learn here; researchers, educators and engineers will work together; new programmes and hypotheses about human development will take shape. Life in the space will generate scientific questions, findings will inform education and technology, and new methods will return to practice.\n\nComing here need not mean becoming a recovery-programme client. You can come to learn, investigate, create a faculty, propose a technology, find a team or become a partner in building the institute."
+        "body": "Ideas about human adaptation need a place where discussion becomes knowledge, technology and new practice. DOM Space will be the physical centre of DOM Institute for Human Adaptation, with a learning environment, research laboratories and places for practice and development.\n\nFuture specialists will learn here; researchers, educators and engineers will work together; new programmes and hypotheses about human development will take shape. Life in the space will generate scientific questions, findings will inform education and technology, and new methods will return to practice.\n\nComing here need not mean joining a practice program. You can come to learn, investigate, create a faculty, propose a technology, find a team or become a partner in building the institute."
       },
       {
         "label": "The foundation · NeuroAttention",
         "title": "What connects everything? NeuroAttention",
-        "body": "DOM Space begins with neither a building nor a collection of services. It begins with attention. NeuroAttention, our method for developing conscious control of attention, becomes a common principle for designing both the environment and how people interact within it.\n\nThis reaches from architecture, light, sound, materials, movement and quiet spaces to relationships between participants and the work of educators, researchers, recovery practitioners and service staff. The team receives training grounded in the method. We want to understand how each element and encounter affects a person, how people change their environment, and how these connections shape shared experience.\n\nDOM Space is therefore not a collection of rooms and treatments. It is an environment in which the space, a prepared team and the person participate in one process of development."
+        "body": "DOM Space begins with neither a building nor a collection of services. It begins with attention. NeuroAttention, our method for developing conscious control of attention, becomes a common principle for designing both the environment and how people interact within it.\n\nThis reaches from architecture, light, sound, materials, movement and quiet spaces to relationships between participants and the work of educators, researchers, practice guides and service staff. The team receives training grounded in the method. We want to understand how each element and encounter affects a person, how people change their environment, and how these connections shape shared experience.\n\nDOM Space is therefore not a collection of rooms and separate services. It is an environment in which the space, a prepared team and the person participate in one process of development."
       }
     ],
     "directions": [
@@ -152,7 +152,7 @@ window.DOMV04Copy={
       },
       {
         "title": "Psychophysiology and adaptation",
-        "body": "How do the brain, nervous system, body and subjective experience connect? How do states, reactions, habits and ways of adapting emerge? We connect contemporary research with practical questions about how people can change and recover."
+        "body": "How do the brain, nervous system, body and subjective experience connect? How do states, reactions, habits and ways of adapting emerge? We connect contemporary research with practical questions about how people can notice their state and change habits of attention."
       },
       {
         "title": "Physical culture for a new era",
@@ -173,8 +173,8 @@ window.DOMV04Copy={
     ],
     "pilots": [
       {
-        "title": "How can we slow ageing and extend the years of a full life?",
-        "body": "People live longer, yet too many of those years come with reduced mobility, clarity, memory, independence and desire to act. We often accept this as the inevitable price of age. But where does ageing itself end and the effects of environment, habits and insufficient support begin?\n\nAt DOM we investigate how to preserve and expand the period of a full life through NeuroAttention, movement, cognitive activity, work with the nervous system, recovery approaches and individual and group programmes, including for older people and care homes. We explore changes in the brain, neuroplasticity, cognition and the ability to move, think, feel and participate.\n\nWe want not merely to add years to life, but life to those years — and discover how far the boundary of active longevity can move."
+        "title": "How can clarity of attention and daily rhythm stay available as we age?",
+        "body": "People live longer, yet too many of those years come with reduced mobility, clarity, memory, independence and desire to act. We often accept this as the inevitable price of age. But where does ageing itself end and the effects of environment, habits and insufficient support begin?\n\nAt DOM we investigate how to preserve and expand the period of a full life through gentle attention practices with relaxed, open eyes, movement, sleep as a habit, and daily rhythm — for older adults and the people who care for them. That is calm, connection, and clarity of attention, not a medical service.\n\nWe do not claim to slow ageing. We are exploring how practice helps people notice attention and keep an ordinary daily rhythm."
       },
       {
         "title": "How can you leave someone else’s script and build your own life?",
@@ -211,9 +211,9 @@ window.DOMV04Copy={
       "ctaAction": "Participar en la creación del instituto",
       "facultyAction": "Ayudar a crear esta facultad",
       "spaces": "Qué habrá en DOM Space",
-      "zones": "Espacios: salón comunitario central, laboratorios, edificios educativos y aulas, salas de evaluación y trabajo individual, instalaciones de entrenamiento, salas de práctica, espacios de spa y baños, complejo Dark Retreat, talleres, casas de huéspedes, zonas familiares e infantiles, senderos naturales y lugares de contemplación.\n\nExperiencias: educación e investigación, programas individuales y grupales de recuperación, movimiento y cultura corporal, práctica de la atención, creatividad, encuentros comunitarios y proyectos compartidos. Dark Retreat es un formato propio que no resulta adecuado para todo el mundo.",
+      "zones": "Espacios: salón comunitario central, laboratorios, edificios educativos y aulas, salas para una autoevaluación y trabajo individual, instalaciones de entrenamiento, salas de práctica, espacios de spa y baños, una sala tranquila para descansar con los ojos abiertos, talleres, casas de huéspedes, zonas familiares e infantiles, senderos naturales y lugares de contemplación.\n\nExperiencias: educación e investigación, programas individuales y grupales de práctica, movimiento y cultura corporal, práctica de la atención, creatividad, encuentros comunitarios y proyectos compartidos. El descanso en silencio es opcional, con los ojos abiertos y relajados.",
       "guestPath": "Cómo será tu estancia",
-      "path": "Conocemos tu situación y tus objetivos → proponemos un programa de días o semanas → acompañamos las prácticas y la recuperación → observamos los cambios juntos → ayudamos a continuar en casa.",
+      "path": "Conocemos tu situación y tus objetivos → proponemos un programa de días o semanas → acompañamos las prácticas de atención y el descanso → observamos los cambios juntos → ayudamos a continuar en casa.",
       "observations": "¿Qué has notado ya — en ti o a tu alrededor?",
       "other": "Algo más — ¿qué has observado?",
       "chooseHint": "Marca lo que reconozcas. Puedes añadir una observación."
@@ -226,18 +226,18 @@ window.DOMV04Copy={
       },
       {
         "label": "Recuperación para una nueva era",
-        "title": "DOM Space — recuperación para una nueva era",
+        "title": "DOM Space — práctica y descanso",
         "body": "Imagina salir por un tiempo de un ritmo que lleva años consumiendo tus fuerzas y llegar a un espacio pensado para recuperar claridad, energía y libertad de actuar. Más que descansar: conocer tu estado, descubrir qué te ayuda y empezar a cambiar la calidad de tu vida.\n\nEn DOM Space creamos un programa residencial integrado: evaluación del estado, especialistas atentos, un recorrido individual, movimiento, NeuroAttention, tecnología, espacios termales y de baño, silencio, naturaleza, creatividad y convivencia. Cada elemento responde a un propósito compartido, en lugar de existir como servicio aislado.\n\nSe podrá acudir individualmente o en familia. Al volver a casa, las herramientas digitales y la comunidad DOM ayudarán a continuar. Aspiramos a algo más que dos semanas agradables: cambios que la persona pueda llevar a su vida cotidiana."
       },
       {
         "label": "Instituto y laboratorio",
         "title": "DOM Space — un campus vivo del instituto",
-        "body": "Las ideas sobre adaptación humana necesitan un lugar donde la conversación se convierta en conocimiento, tecnología y nuevas prácticas. DOM Space será el centro físico de DOM Institute for Human Adaptation, con un entorno educativo, laboratorios y espacios de práctica y desarrollo.\n\nAquí aprenderán futuros especialistas y trabajarán investigadores, docentes e ingenieros. Surgirán programas y se pondrán a prueba hipótesis sobre el desarrollo humano. La vida del espacio generará preguntas científicas; los resultados nutrirán la educación y la tecnología; los métodos volverán a la práctica.\n\nVenir no tiene por qué significar contratar un programa de recuperación. También se podrá aprender, investigar, crear una facultad, proponer tecnología, encontrar equipo o participar como socio en la construcción del instituto."
+        "body": "Las ideas sobre adaptación humana necesitan un lugar donde la conversación se convierta en conocimiento, tecnología y nuevas prácticas. DOM Space será el centro físico de DOM Institute for Human Adaptation, con un entorno educativo, laboratorios y espacios de práctica y desarrollo.\n\nAquí aprenderán futuros especialistas y trabajarán investigadores, docentes e ingenieros. Surgirán programas y se pondrán a prueba hipótesis sobre el desarrollo humano. La vida del espacio generará preguntas científicas; los resultados nutrirán la educación y la tecnología; los métodos volverán a la práctica.\n\nVenir no tiene por qué significar apuntarse a un programa de práctica. También se podrá aprender, investigar, crear una facultad, proponer tecnología, encontrar equipo o participar como socio en la construcción del instituto."
       },
       {
         "label": "La base · NeuroAttention",
         "title": "¿Qué conecta todo? NeuroAttention",
-        "body": "DOM Space no empieza por un edificio ni por un catálogo de servicios. Empieza por la atención. NeuroAttention, nuestro método para desarrollar el control consciente de la atención, se convierte en un principio compartido para diseñar tanto el entorno como la interacción entre las personas.\n\nEsto abarca arquitectura, luz, sonido, materiales, movimiento y lugares de silencio, además de las relaciones y el trabajo de docentes, investigadores, profesionales de recuperación y personal de servicio. El equipo recibe preparación basada en el método. Queremos comprender cómo cada elemento y encuentro influye en la persona, cómo esta transforma su entorno y cómo esas conexiones crean una experiencia común.\n\nDOM Space no es una colección de salas y tratamientos. Es un entorno donde el espacio, un equipo preparado y la persona participan en un mismo proceso de desarrollo."
+        "body": "DOM Space no empieza por un edificio ni por un catálogo de servicios. Empieza por la atención. NeuroAttention, nuestro método para desarrollar el control consciente de la atención, se convierte en un principio compartido para diseñar tanto el entorno como la interacción entre las personas.\n\nEsto abarca arquitectura, luz, sonido, materiales, movimiento y lugares de silencio, además de las relaciones y el trabajo de docentes, investigadores, guías de práctica y personal de servicio. El equipo recibe preparación basada en el método. Queremos comprender cómo cada elemento y encuentro influye en la persona, cómo esta transforma su entorno y cómo esas conexiones crean una experiencia común.\n\nDOM Space no es una colección de salas y servicios sueltos. Es un entorno donde el espacio, un equipo preparado y la persona participan en un mismo proceso de desarrollo."
       }
     ],
     "directions": [
@@ -247,7 +247,7 @@ window.DOMV04Copy={
       },
       {
         "title": "Psicofisiología y adaptación",
-        "body": "¿Cómo se conectan cerebro, sistema nervioso, cuerpo y experiencia subjetiva? ¿Cómo se forman estados, reacciones, hábitos y maneras de adaptarnos? Unimos investigación actual con preguntas prácticas sobre cómo las personas pueden cambiar y recuperarse."
+        "body": "¿Cómo se conectan cerebro, sistema nervioso, cuerpo y experiencia subjetiva? ¿Cómo se forman estados, reacciones, hábitos y maneras de adaptarnos? Unimos investigación actual con preguntas prácticas sobre cómo las personas pueden notar su estado y cambiar hábitos de atención."
       },
       {
         "title": "Cultura física de una nueva era",
@@ -268,8 +268,8 @@ window.DOMV04Copy={
     ],
     "pilots": [
       {
-        "title": "¿Cómo ralentizar el envejecimiento y ampliar los años de vida plena?",
-        "body": "Vivimos más, pero demasiados de esos años llegan con pérdida de movilidad, claridad, memoria, autonomía y ganas de actuar. A menudo lo aceptamos como el precio inevitable de la edad. ¿Dónde termina el envejecimiento y dónde empiezan los efectos del entorno, los hábitos y la falta de apoyo?\n\nEn DOM investigamos cómo conservar y ampliar la vida plena mediante NeuroAttention, movimiento, actividad cognitiva, trabajo con el sistema nervioso y programas individuales y grupales, también para personas mayores y residencias. Nos interesan los cambios cerebrales, la neuroplasticidad y la capacidad de moverse, pensar, sentir y participar.\n\nQueremos añadir no solo años a la vida, sino vida a esos años, e investigar hasta dónde puede desplazarse la frontera de la longevidad activa."
+        "title": "¿Cómo mantener la claridad de la atención y el ritmo del día con la edad?",
+        "body": "Vivimos más, pero demasiados de esos años llegan con pérdida de movilidad, claridad, memoria, autonomía y ganas de actuar. A menudo lo aceptamos como el precio inevitable de la edad. ¿Dónde termina el envejecimiento y dónde empiezan los efectos del entorno, los hábitos y la falta de apoyo?\n\nEn DOM investigamos cómo conservar y ampliar la vida plena mediante prácticas suaves de atención con los ojos abiertos y relajados, movimiento, el sueño como hábito y el ritmo del día, para personas mayores y quienes cuidan de ellas. Es calma, contacto y claridad de la atención, no un servicio médico.\n\nNo prometemos frenar el envejecimiento. Exploramos cómo la práctica ayuda a notar la atención y a mantener el ritmo de un día ordinario."
       },
       {
         "title": "¿Cómo salir de un guion ajeno y construir tu propia vida?",

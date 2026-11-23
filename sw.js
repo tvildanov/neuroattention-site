@@ -150,7 +150,8 @@
 // v94: center the localized DOM cover tab and shorten its countdown to 2.5s.
 // v95: approved institute-question cover and compact facts continuation.
 // v96: approved attention insight, phone composition and thin purpose tab.
-var CACHE_NAME = 'na-practices-recording-1';
+// v97: wellness wording — drop disease and rehabilitation claims from cached pages.
+var CACHE_NAME = 'na-practices-v97';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
