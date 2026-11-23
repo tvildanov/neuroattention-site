@@ -1,8 +1,6 @@
 'use strict';
 
-const maxBytes = 2 * 1024 * 1024;
-
-function parseAttachment(value) {
+function parseAttachment(value, maxBytes = 2 * 1024 * 1024) {
   if (value == null) return null;
   if (typeof value.name !== 'string' || typeof value.base64 !== 'string') throw Error('Invalid attachment');
   const name = value.name.replace(/[\u0000-\u001f\u007f/\\]/g, '_').trim().slice(0,150);

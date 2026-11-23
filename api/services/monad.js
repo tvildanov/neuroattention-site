@@ -23,7 +23,7 @@ function configured() {
   return !!MONAD_API_KEY;
 }
 
-async function mcpCall(toolName, args) {
+async function mcpCall(toolName, args, timeoutMs = 15000) {
   if (!MONAD_API_KEY) {
     const err = new Error('MONAD_API_KEY not configured on Railway');
     err.code = 'MONAD_NOT_CONFIGURED';
@@ -43,7 +43,7 @@ async function mcpCall(toolName, args) {
       'X-API-Key': MONAD_API_KEY,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw Object.assign(new Error('Monad MCP HTTP '+res.status), { status: res.status });
   const raw = await res.text();

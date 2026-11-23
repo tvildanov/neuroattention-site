@@ -29,9 +29,13 @@ const mcp=http.createServer(async(req,res)=>{
  const {id,params}=JSON.parse(Buffer.concat(chunks));const a=params.arguments;
  let out;
  switch(params.name){
+ case 'llm_ask':
+   assert.equal(a.agent_id,'persona_dom');assert.equal(a.task,'chat');
+   assert.ok(a.system.includes('Fixture DOM project voice') && a.system.includes('Fixture published lesson'));
+   out={text:a.system.includes('Fixture correction')?'Updated guide':'Fixture guide'};break;
  case 'list_agents':out=registry;break;
  case 'get_architecture':out={people:[{entry_persona:'persona_nikita'},{entry_persona:'persona_takhir'}],horizontal:{contours:[{persona:'practice_contour',label:'Practice'}]}};break;
- case 'get_agent_prompt':out=prompts.get(a.agent_id);break;
+ case 'get_agent_prompt':out=a.agent_id==='persona_dom'?{agent_id:'persona_dom',system_prompt:'Fixture DOM project voice'}:prompts.get(a.agent_id);break;
  case 'list_canon':out=[{artifact_id:'fixture_canon',title:'Fixture canon'}];break;
  case 'get_canon':out=a.artifact_id===canon.artifact_id?canon:{error:'not_found'};break;
  case 'publish_canon':
@@ -66,7 +70,7 @@ const mcp=http.createServer(async(req,res)=>{
    out=[{kind:'handoff',item_id:'fixture-pending',agent_id:a.agent_id,from_agent:'fixture_source',
      message_type:'pending',created_at:new Date().toISOString(),metadata:{status:'pending'}}];break;
  }
- case 'read_context':out=a.key_prefix==='monad.placement.'?[{value:{agent_id:'fixture_agent',cell:'L4xL2',secondary_cells:['L5xL2'],type:'skill'}}]:[];break;
+ case 'read_context':out=a.key==='dom.guide.published.v1'&&a.reader_agent==='persona_dom'?[{key:a.key,value:{text:'Fixture published lesson'}}]:a.key_prefix==='monad.placement.'?[{value:{agent_id:'fixture_agent',cell:'L4xL2',secondary_cells:['L5xL2'],type:'skill'}}]:[];break;
  case 'read_action_log':out=[{action_type:'update_agent_prompt',created_at:new Date().toISOString(),success:true}];break;
  case 'plant_seed':{
    const handoff_id=crypto.randomUUID(), seed_id=crypto.randomUUID();
@@ -121,6 +125,17 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const file=social+'/posts/'+view.posts[0].id+'/file';
  assert.equal((await get(200,file,member)).base64,'aGk=');
  const outside=await get(200,social,b);assert.equal(outside.posts,undefined);assert.equal(outside.pulse,undefined);
+ await post(200,'/api/dm/threads',admin,{peer_id:member.user.id});
+ const directSettings={...settings,org_role:'Co-founder',sharing:{...sharing,wall:'person:'+member.user.id,pulse:'person:'+member.user.id}};
+ await expect(403,'PUT','/api/social/settings',member.token,{...settings,org_role:'Director'});
+ await expect(200,'PUT','/api/social/settings',admin.token,directSettings);
+ assert.equal((await get(200,social,member)).org_role,'Co-founder');
+ assert.equal((await get(200,social+'/pulse',member)).allowed,true);
+ assert.equal((await get(200,social+'/pulse',b)).allowed,false);
+ await get(200,file,member);
+ assert.equal((await fetch('http://127.0.0.1:'+port+file,{headers:{Authorization:'Bearer '+b.token}})).status,404);
+ const large=Buffer.alloc(3*1024*1024,1).toString('base64');
+ await post(201,'/api/social/posts',admin,{body:'Image',attachment:{name:'fixture.bin',base64:large}});
  await expect(200,'PUT','/api/social/settings',admin.token,{...settings,open:false});
  const closed=await get(200,social,member);assert.equal(closed.bio,undefined);assert.equal(closed.posts,undefined);
  assert.equal((await fetch('http://127.0.0.1:'+port+file,{headers:{Authorization:'Bearer '+member.token}})).status,404);

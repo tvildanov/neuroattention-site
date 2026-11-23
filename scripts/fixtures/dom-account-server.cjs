@@ -12,8 +12,11 @@ global.fetch = (input, options) => {
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
   if(url.href==='https://api.anthropic.com/v1/messages'&&options?.headers?.['x-api-key']==='fixture-guide'){
     const body=JSON.parse(options.body);
+    if(body.messages.at(-1)?.content.includes('"question":"Help"') && (!body.system.includes('Fixture DOM project voice') || !body.system.includes('Fixture published lesson')))return Promise.resolve(new Response('Missing project context',{status:400}));
     return Promise.resolve(Response.json({content:[{type:'text',text:body.system.includes('Fixture correction')?'Updated guide':'Fixture guide'}]}));
   }
+  // UI tests run after the scoped MCP double shuts down. Simulate a pre-router installation.
+  if(url.hostname==='127.0.0.1' && url.port==='4319')return originalFetch(input,options).catch(()=>Response.json({jsonrpc:'2.0',error:{message:'Unknown tool'}}));
   if (url.hostname !== '127.0.0.1') return Promise.reject(Error('External fetch blocked by account fixture'));
   return originalFetch(input, options);
 };
