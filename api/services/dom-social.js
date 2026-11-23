@@ -141,10 +141,10 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   route('put','/api/social/board',async(req,res,me)=>{
     const {tiles,version}=req.body||{};
     if(!Array.isArray(tiles)||tiles.length>100||!Number.isSafeInteger(version)||version<0||
-      tiles.some(t=>!t||!/^(identity|post-\d{1,18}|card-\d{1,2})$/.test(t.key)||!Number.isInteger(t.w)||t.w<1||t.w>12||!Number.isInteger(t.h)||t.h<3||t.h>40)||
+      tiles.some(t=>!t||!/^(identity|post-\d{1,18}|card-\d{1,2})$/.test(t.key)||!Number.isInteger(t.w)||t.w<1||t.w>12||!Number.isInteger(t.h)||t.h<3||t.h>40||(t.x!=null&&(!Number.isInteger(t.x)||t.x<0||t.x>11))||(t.y!=null&&(!Number.isInteger(t.y)||t.y<0||t.y>4000)))||
       new Set(tiles.map(t=>t.key)).size!==tiles.length)return res.status(400).json({error:'Invalid board'});
     await sql`INSERT INTO dom_profile_settings(user_id) VALUES(${me}) ON CONFLICT DO NOTHING`;
-    const saved=await sql`UPDATE dom_profile_settings SET board=${JSON.stringify(tiles.map(({key,w,h})=>({key,w,h})))}::jsonb,board_version=board_version+1 WHERE user_id=${me} AND board_version=${version} RETURNING board_version`;
+    const saved=await sql`UPDATE dom_profile_settings SET board=${JSON.stringify(tiles.map(({key,w,h,x,y})=>({key,w,h,x,y})))}::jsonb,board_version=board_version+1 WHERE user_id=${me} AND board_version=${version} RETURNING board_version`;
     if(!saved.length)return res.status(409).json({error:'Layout changed. Reload the profile.'});
     res.json({version:saved[0].board_version});
   });
