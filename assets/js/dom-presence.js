@@ -46,6 +46,10 @@ export async function presence(host,{p,self,preview,el,button,field,tr,api,strea
     const id=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
     return {id,name,base64,size:file.size};
   }
+  function copyCards(cards){
+    const ids=new Map(cards.map(c=>[c.id,uid()]));
+    return cards.map(c=>({...c,id:ids.get(c.id),items:(c.items||[]).map(id=>ids.get(id)).filter(Boolean)}));
+  }
   function editCard(card,space,isNew){
     const {d,f}=modal(isNew?word('Новая карточка','New card','Nueva tarjeta'):word('Изменить карточку','Edit card','Editar tarjeta'));
     const title=el('input'),text=el('textarea'),url=el('input'),alt=el('input'),file=el('input'),shared=el('input');
@@ -56,12 +60,19 @@ export async function presence(host,{p,self,preview,el,button,field,tr,api,strea
     const fit=option([['cover',word('Заполнить','Fill','Rellenar')],['contain',word('Вписать','Fit','Encajar')]],card.fit);
     const detach=el('input');detach.type='checkbox';
     for(const [label,input] of [[word('Формат','Type','Tipo'),kind],[word('Заголовок','Title','Título'),title],[labels.text,text],[labels.link,url],[word('Вложение до 16 МБ','Attachment up to 16 MB','Adjunto hasta 16 MB'),file],[word('Описание изображения','Image description','Descripción de imagen'),alt],[word('Размер','Size','Tamaño'),size],[word('Оттенок','Color','Color'),tone],[word('Фото в карточке','Photo fit','Ajuste de foto'),fit],[word('Показывать посетителям открытого профиля','Show to visitors of my open profile','Mostrar en mi perfil abierto'),shared]])f.append(field(label,input));
+    const members=el('fieldset'),checks=[];
+    members.append(el('legend',labels.collection));
+    for(const other of space.cards.filter(c=>c.id!==card.id)){
+      const check=el('input');check.type='checkbox';check.checked=card.items?.includes(other.id)||false;
+      checks.push([other.id,check]);members.append(field(other.title,check));
+    }
+    members.hidden=kind.value!=='collection';kind.onchange=()=>{members.hidden=kind.value!=='collection';};f.append(members);
     if(card.media)f.append(field(word('Убрать вложение','Remove attachment','Quitar adjunto'),detach));
     actions(d,f,async()=>{
       if(url.value&&!/^https?:\/\//i.test(url.value))throw Error('HTTPS / HTTP');
       let media=detach.checked?'':card.media;
       if(file.files[0]){const a=await asset(file.files[0]);uploads.set(a.id,a);media=a.id;}
-      Object.assign(card,{title:title.value,text:text.value,alt:alt.value,url:url.value,size:size.value,tone:tone.value,kind:kind.value,fit:fit.value,shared:shared.checked,media});
+      Object.assign(card,{items:kind.value==='collection'?checks.filter(([,check])=>check.checked).map(([id])=>id):[],title:title.value,text:text.value,alt:alt.value,url:url.value,size:size.value,tone:tone.value,kind:kind.value,fit:fit.value,shared:shared.checked,media});
       if(isNew)space.cards.push(card);
     });
   }
@@ -93,7 +104,7 @@ export async function presence(host,{p,self,preview,el,button,field,tr,api,strea
       else if(op.value==='rename')space.name=name.value;
       else{
         if(doc.spaces.length>=12)throw Error('Max. 12');
-        const cards=op.value==='copy'?space.cards.map(c=>({...c,id:uid()})):[];
+        const cards=op.value==='copy'?copyCards(space.cards):[];
         const s={id:uid(),name:name.value,cards};doc.spaces.push(s);scene=s.id;
       }
     });
@@ -129,7 +140,7 @@ export async function presence(host,{p,self,preview,el,button,field,tr,api,strea
     const {d,f}=modal(word('Импорт профиля','Import profile','Importar perfil'));
     const file=el('input'),summary=el('p'),pick=el('select'),withPosts=el('input');
     file.type='file';file.accept='.zip,.json';file.required=true;withPosts.type='checkbox';let bundle;
-    const mode=option([['new',word('Добавить новой композицией','Add as new','Añadir como nueva')],['merge',word('Добавить карточки в текущую','Merge into current','Combinar con actual')],['replace',word('Заменить текущую','Replace current','Reemplazar actual')]],'new');
+    const mode=option([['all',word('Добавить все композиции','Add all compositions','Añadir todas las composiciones')],['new',word('Добавить новой композицией','Add as new','Añadir como nueva')],['merge',word('Добавить карточки в текущую','Merge into current','Combinar con actual')],['replace',word('Заменить текущую','Replace current','Reemplazar actual')]],'new');
     file.onchange=async()=>{
       bundle=null;pick.replaceChildren();
       try{
@@ -146,20 +157,27 @@ export async function presence(host,{p,self,preview,el,button,field,tr,api,strea
       if(!bundle)throw Error(word('Выберите архив','Choose an archive','Elige un archivo'));
       if(mode.value==='replace'&&!confirm(word('Заменить карточки выбранной композиции?','Replace cards in this composition?','¿Reemplazar las tarjetas?')))return;
       const source=bundle.layout.spaces.find(s=>s.id===pick.value);
-      const cards=source.cards.map(c=>({...c,id:uid()}));
+      const adding=(mode.value==='all'?bundle.layout.spaces:[source]).map(s=>({original:s.id,id:uid(),name:s.name,cards:copyCards(s.cards)}));
+      const cards=adding.flatMap(s=>s.cards);
       if(cards.some(c=>!labels[c.kind]||!labels[c.size]||!labels[c.tone]||(c.url&&!/^https?:\/\//i.test(c.url))))throw Error('Invalid card');
       const files=[...new Set(cards.map(c=>c.media).filter(Boolean))].map(id=>{const a=bundle.files.find(f=>f.id===id);if(!a)throw Error('Missing attachment');return a;});
       const posts=withPosts.checked?bundle.posts:[];
       if(new Blob([JSON.stringify([files,posts])]).size>24*1024*1024)throw Error('Max. 24 MB per import');
-      if(mode.value==='new'){const n={id:uid(),name:source.name,cards};doc.spaces.push(n);scene=n.id;}
+      if(['all','new'].includes(mode.value)){
+        const isEmpty=doc.spaces.length===1&&!doc.spaces[0].cards.length&&revision===0;
+        if((isEmpty?0:doc.spaces.length)+adding.length>12)throw Error('Max. 12');
+        if(isEmpty)doc.spaces=[];
+        for(const s of adding)doc.spaces.push({id:s.id,name:s.name,cards:s.cards});
+        scene=(adding.find(s=>s.original===bundle.layout.primary)||adding[0]).id;if(isEmpty)doc.primary=scene;
+      }
       else if(mode.value==='merge')space.cards.push(...cards);else space.cards=cards;
       for(const a of files)uploads.set(a.id,a);importPosts.push(...posts);
     });
   }
-  function mediaNode(c,article){
+  function mediaNode(c,article,fetchFile=()=>getMedia(c.media)){
     const load=async()=>{
       try{
-        const a=await getMedia(c.media);if(!article.isConnected)return;
+        const a=await fetchFile();if(!article.isConnected)return;
         const formats=[['iVBORw0KGgo','image/png'],['/9j/','image/jpeg'],['R0lGOD','image/gif']];
         const mime=formats.find(([prefix])=>a.base64.startsWith(prefix))?.[1]||(a.base64.startsWith('UklGR')&&atob(a.base64.slice(0,24)).slice(8,12)==='WEBP'?'image/webp':'');
         if(mime&&c.kind==='image'){const img=el('img');img.src='data:'+mime+';base64,'+a.base64;img.alt=c.alt||c.title;img.style.objectFit=c.fit;article.append(img);}
@@ -192,21 +210,33 @@ export async function presence(host,{p,self,preview,el,button,field,tr,api,strea
         control(word('Сохранить','Save','Guardar'),save),control(word('Отмена','Cancel','Cancelar'),()=>{stop();render();}));view.append(edit);
     }
     view.append(grid);
-    if(!space.cards.length && self)grid.append(el('p',word('Здесь можно собрать своё пространство из карточек.','Build your space with cards.','Crea tu espacio con tarjetas.')));
+    if(!space.cards.length && self){
+      const first=control(word('+ Первая карточка','+ First card','+ Primera tarjeta'),()=>{start();const current=doc.spaces.find(s=>s.id===space.id);editCard(emptyCard(),current,true);render();});
+      first.classList.add('lp-first');grid.append(first);
+    }
     for(const [i,c] of space.cards.entries()){
-      const card=el('article');card.className='lp-tile';card.dataset.size=c.size;card.dataset.tone=c.tone;
+      const card=el('article');card.className='lp-tile';card.dataset.card=c.id;card.tabIndex=-1;card.dataset.size=c.size;card.dataset.tone=c.tone;
       if(editing){
         card.draggable=true;card.ondragstart=e=>{drag=c.id;e.dataTransfer.setData('text/plain',c.id);};card.ondragend=()=>drag=null;
         card.ondragover=e=>{if(drag)e.preventDefault();};card.ondrop=e=>{e.preventDefault();move(space,space.cards.findIndex(x=>x.id===drag),i);drag=null;};
         const tools=el('div');tools.className='lp-toolbar';
-        for(const [symbol,title,fn] of [['↑',word('Раньше','Earlier','Antes'),()=>move(space,i,i-1)],['↓',word('Позже','Later','Después'),()=>move(space,i,i+1)],['✎',word('Изменить','Edit','Editar'),()=>editCard(c,space,false)],['⧉',word('Копировать','Copy','Copiar'),()=>{space.cards.splice(i+1,0,{...c,id:uid()});render();}],['×',word('Удалить','Delete','Eliminar'),()=>{if(confirm(word('Удалить карточку?','Delete card?','¿Eliminar tarjeta?'))){space.cards.splice(i,1);render();}}]]){
+        for(const [symbol,title,fn] of [['↑',word('Раньше','Earlier','Antes'),()=>move(space,i,i-1)],['↓',word('Позже','Later','Después'),()=>move(space,i,i+1)],['✎',word('Изменить','Edit','Editar'),()=>editCard(c,space,false)],['⧉',word('Копировать','Copy','Copiar'),()=>{space.cards.splice(i+1,0,{...c,id:uid()});render();}],['×',word('Удалить','Delete','Eliminar'),()=>{if(confirm(word('Удалить карточку?','Delete card?','¿Eliminar tarjeta?'))){space.cards.splice(i,1);for(const other of space.cards)if(other.items)other.items=other.items.filter(id=>id!==c.id);render();}}]]){
           const b=control(symbol,fn);b.title=title;b.setAttribute('aria-label',title+' · '+c.title);tools.append(b);
         }card.append(tools,el('small',c.shared?word('В открытом профиле','Shared on open profile','Visible en perfil abierto'):word('Только я','Only me','Solo yo')));
       }
       card.append(el('h3',c.title));if(c.text)card.append(el('p',c.text));
       if(c.url&&/^https?:\/\//i.test(c.url)){const a=el('a',new URL(c.url).hostname+' ↗');a.href=c.url;a.target='_blank';a.rel='noopener noreferrer';card.append(a);}
+      if(c.kind==='collection')for(const id of c.items||[]){
+        const target=space.cards.find(x=>x.id===id);if(target)card.append(control(target.title,()=>{const node=grid.querySelector('[data-card="'+CSS.escape(id)+'"]');node?.focus();node?.scrollIntoView({block:'nearest'});}));
+      }
       grid.append(card);if(c.media)mediaNode(c,card);
     }
+  }
+  if(stream)for(const item of stream.querySelectorAll('[data-post]')){
+    const post=p.posts.find(x=>String(x.id)===item.dataset.post);
+    if(!post?.file_name||! /\.(png|jpe?g|gif|webp|mp4|mp3|ogg)$/i.test(post.file_name))continue;
+    const kind=/\.mp4$/i.test(post.file_name)?'video':/\.(mp3|ogg)$/i.test(post.file_name)?'audio':'image';
+    mediaNode({kind,title:post.file_name,fit:'contain'},item,()=>api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file'));
   }
   if(self&&stream)for(const item of stream.querySelectorAll('[data-post]')){
     const post=p.posts.find(x=>String(x.id)===item.dataset.post);

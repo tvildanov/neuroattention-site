@@ -59,3 +59,6 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-person-title>div>a,.dom-person-title>div>small{display:block;overflow-wrap:anywhere}
 @media(max-width:760px){.dom-person-card .lp-grid article[data-size=wide]{grid-column:1/-1}}
 @media(max-width:520px){.dom-person-card .lp-grid article[data-size=tall]{min-height:10rem}}
+.living-profile .lp-first{grid-column:1/-1;min-height:7rem!important;border-style:dashed;background:transparent;color:var(--text-muted)}
+.lp-stream article img,.lp-stream article video{display:block;max-width:100%;max-height:32rem;border-radius:10px;margin-block:.5rem}.lp-stream article audio{display:block;max-width:100%}
+@media(min-width:521px) and (max-width:760px){.dom-person-card .lp-grid article:is([data-size=small],[data-size=tall]){grid-column:span 1}}

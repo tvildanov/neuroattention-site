@@ -95,13 +95,14 @@
     if(self){const editButton=button(tr('Редактировать профиль','Edit profile','Editar perfil'),()=>edit(p));row.append(editButton);}
     else if(!p.profile_public)box.append(el('p',tr('Закрытый профиль','Private profile','Perfil privado')));
     if(!self&&p.id!==window.currentUser?.id){box.append(button(tr('Написать','Message','Enviar mensaje'),()=>{const url=new URL(location.href);url.searchParams.delete('member');history.replaceState(null,'',url);activeDialog?.close();window.switchTab('domunity');window.domStartThreadFromProfile(p.id,p.display_name);}));}
-    if(self&&growthHero&&experience){
+    if(self&&growthHero&&experience&&(!p.result?.profile||window.TEST_PROFILES_MAP?.[p.result.profile])){
       const growth=el('section');growth.className='lp-development';growth.append(growthHero,experience);box.append(growth);
     }else if(p.result?.profile){
       const type=el('strong',window.TEST_PROFILES_MAP?.[p.result.profile]?.name||String(p.result.profile).replaceAll('_',' '));
       type.className='lp-type';type.title=tr('Тип адаптации','Adaptation type','Tipo de adaptación');identity.append(type);
     }
-    if(p.pulse){const s=block(p.pulse.metric_kind==='rhr'?tr('Пульс в покое','Resting heart rate','Pulso en reposo'):tr('Пульс','Heart rate','Pulso'));s.append(el('p',Math.round(p.pulse.value)+' bpm · '+new Date(p.pulse.measured_at).toLocaleString()));box.append(s);}
+    const more=el('details');more.append(el('summary',tr('Данные профиля','Profile data','Datos de perfil')));
+    if(p.pulse){const s=block(p.pulse.metric_kind==='rhr'?tr('Пульс в покое','Resting heart rate','Pulso en reposo'):tr('Пульс','Heart rate','Pulso'));s.append(el('p',Math.round(p.pulse.value)+' bpm · '+new Date(p.pulse.measured_at).toLocaleString()));more.append(s);}
     if(self){
       const devices=el('details'),list=el('div');
       devices.append(el('summary',tr('Подключить устройство','Connect a device','Conectar dispositivo')),list);
@@ -117,7 +118,7 @@
       box.append(devices);
     }
     if(!self&&!preview&&p.canReadPulse){
-      const current=el('p');box.append(current);
+      const current=el('p');more.append(current);
       const watch=async()=>{if(!box.isConnected)return;
         try{const r=await api('/api/social/profile/'+p.id+'/pulse');if(!box.isConnected)return;
           current.textContent=r.sample?tr('Сейчас','Live','Ahora')+' · '+r.sample.bpm+' bpm':'';
@@ -130,7 +131,7 @@
       const chain=el('ol');chain.className='dom-recorded-chain';
       for(const label of entry.labels)chain.append(el('li',label));
       s.append(el('small',String(entry.date).slice(0,10)),chain);
-    }box.append(s);}
+    }more.append(s);}
     let stream;
     if(p.posts){const s=el('section');stream=s;s.className='lp-stream';if(self){
       const publish=button(tr('Написать пост','Write a post','Publicar'),()=>compose());publish.className='btn btn-solid lp-publish';s.append(publish);
@@ -141,7 +142,7 @@
         if(self)item.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить эту запись?','Delete this post?','¿Eliminar esta publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});item.remove();}catch(e){alert(e.message);}}));s.append(item);
       }
     }
-    const space=el('div');box.append(space);
+    const space=el('div');box.append(space);if(more.children.length>1)box.append(more);
     // Keep Stream available during loading or a temporary error.
     if(stream)space.append(stream);
     const previewProfile=async()=>{

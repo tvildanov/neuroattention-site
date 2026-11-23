@@ -17,8 +17,10 @@ function validate(doc){
       const url=string(c.url||'',2048);
       if(url&&!['https:','http:'].includes(new URL(url).protocol))throw Error('Invalid URL');
       if(c.media && !validId(c.media))throw Error('Invalid attachment');
+      const items=c.kind==='collection'?(c.items||[]):[];
+      if(!Array.isArray(items)||items.length>60||items.some(id=>!validId(id)||!s.cards.some(other=>other.id===id&&other.id!==c.id)))throw Error('Invalid collection');
       return {id:unique(c.id),kind:checked(c.kind,kinds),title:string(c.title,160),text:string(c.text,4000),url,
-        size:checked(c.size,sizes),tone:checked(c.tone,tones),shared:c.shared===true,media:c.media||'',alt:string(c.alt||'',300),fit:checked(c.fit||'cover',['cover','contain'])};
+        items:[...new Set(items)],size:checked(c.size,sizes),tone:checked(c.tone,tones),shared:c.shared===true,media:c.media||'',alt:string(c.alt||'',300),fit:checked(c.fit||'cover',['cover','contain'])};
     })};
   });
   if(!spaces.some(s=>s.id===doc.primary))throw Error('Invalid primary space');
@@ -43,6 +45,10 @@ function install(route,sql,readAccess){
     if(!row)return {revision:0,layout:null};
     if(!owner){
       row.layout.spaces=row.layout.spaces.map(s=>({...s,cards:s.cards.filter(c=>c.shared)})).filter(s=>s.cards.length);
+      for(const space of row.layout.spaces){
+        const allowed=new Set(space.cards.map(c=>c.id));
+        for(const card of space.cards)if(card.items)card.items=card.items.filter(id=>allowed.has(id));
+      }
       if(!row.layout.spaces.some(s=>s.id===row.layout.primary))row.layout.primary=row.layout.spaces[0]?.id;
     }
     return row;
