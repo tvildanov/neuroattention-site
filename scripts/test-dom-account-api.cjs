@@ -121,6 +121,17 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const file=social+'/posts/'+view.posts[0].id+'/file';
  assert.equal((await get(200,file,member)).base64,'aGk=');
  const outside=await get(200,social,b);assert.equal(outside.posts,undefined);assert.equal(outside.pulse,undefined);
+ await post(200,'/api/dm/threads',admin,{peer_id:member.user.id});
+ const directSettings={...settings,org_role:'Co-founder',sharing:{...sharing,wall:'person:'+member.user.id,pulse:'person:'+member.user.id}};
+ await expect(403,'PUT','/api/social/settings',member.token,{...settings,org_role:'Director'});
+ await expect(200,'PUT','/api/social/settings',admin.token,directSettings);
+ assert.equal((await get(200,social,member)).org_role,'Co-founder');
+ assert.equal((await get(200,social+'/pulse',member)).allowed,true);
+ assert.equal((await get(200,social+'/pulse',b)).allowed,false);
+ await get(200,file,member);
+ assert.equal((await fetch('http://127.0.0.1:'+port+file,{headers:{Authorization:'Bearer '+b.token}})).status,404);
+ const large=Buffer.alloc(3*1024*1024,1).toString('base64');
+ await post(201,'/api/social/posts',admin,{body:'Image',attachment:{name:'fixture.bin',base64:large}});
  await expect(200,'PUT','/api/social/settings',admin.token,{...settings,open:false});
  const closed=await get(200,social,member);assert.equal(closed.bio,undefined);assert.equal(closed.posts,undefined);
  assert.equal((await fetch('http://127.0.0.1:'+port+file,{headers:{Authorization:'Bearer '+member.token}})).status,404);

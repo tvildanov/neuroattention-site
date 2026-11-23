@@ -23,3 +23,13 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-recorded-chain li{display:flex;align-items:center;gap:.4rem;flex:none;max-width:22ch;font-size:.85rem}
 .dom-recorded-chain li::before{content:'';width:.6rem;height:.6rem;flex:none;border-radius:50%;background:var(--cabinet-accent,#78a58e)}
 .dom-recorded-chain li:not(:last-child)::after{content:'→';color:var(--text-muted);margin-right:.4rem}
+.dom-person-card.dom-guide{position:relative;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;padding:.55rem .85rem}
+.dom-guide header,.dom-guide form{display:flex;align-items:center;gap:.5rem}
+.dom-guide header h2{font-size:1rem;margin:0}
+.dom-guide form{flex:1 1 16rem}.dom-guide form input{flex:1;min-width:4rem}
+.dom-guide [hidden],.dom-guide p:empty,.dom-guide div:empty{display:none!important}
+.dom-guide-transcript,.dom-guide>details,.dom-guide:has([aria-expanded=true]) header{flex-basis:100%}
+.dom-guide-transcript{overflow:auto;max-height:38dvh;min-height:4rem}.dom-guide-transcript p{margin:.35rem 0 1rem}
+.dom-guide .dom-guide-sr{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+.dom-social-dialog h2 details{display:inline-block;vertical-align:super;font-size:.8rem;margin-inline-start:.35rem}
+.dom-social-dialog summary,.dom-person-card summary{cursor:pointer}
