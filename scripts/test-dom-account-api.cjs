@@ -29,6 +29,10 @@ const mcp=http.createServer(async(req,res)=>{
  const {id,params}=JSON.parse(Buffer.concat(chunks));const a=params.arguments;
  let out;
  switch(params.name){
+ case 'llm_ask':
+   assert.equal(a.agent_id,'persona_dom');assert.equal(a.task,'chat');
+   assert.ok(a.system.includes('Fixture DOM project voice') && a.system.includes('Fixture published lesson'));
+   out={text:a.system.includes('Fixture correction')?'Updated guide':'Fixture guide'};break;
  case 'list_agents':out=registry;break;
  case 'get_architecture':out={people:[{entry_persona:'persona_nikita'},{entry_persona:'persona_takhir'}],horizontal:{contours:[{persona:'practice_contour',label:'Practice'}]}};break;
  case 'get_agent_prompt':out=a.agent_id==='persona_dom'?{agent_id:'persona_dom',system_prompt:'Fixture DOM project voice'}:prompts.get(a.agent_id);break;
