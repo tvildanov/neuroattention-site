@@ -129,16 +129,17 @@
   }
   function showAttachment(host,p,post){
     const ext=post.file_name.split('.').pop().toLowerCase();
-    const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',avif:'image/avif',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime',pdf:'application/pdf',txt:'text/plain'}[ext];
+    const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',avif:'image/avif',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime',pdf:'application/pdf',txt:'text/plain',md:'text/plain',csv:'text/plain',json:'text/plain',aac:'audio/aac',flac:'audio/flac',m4v:'video/mp4'}[ext];
     let pending;
     const load=()=>pending||(pending=api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file').catch(e=>{pending=null;throw e;}));
     const download=button(post.file_name,async()=>{try{const f=await load(),a=el('a');a.href='data:application/octet-stream;base64,'+f.base64;a.download=f.name;a.click();}catch(e){alert(e.message);}});
-    host.append(download);if(!mime)return;
+    host.append(download);
     const preview=el('div');preview.className='dom-board-media';download.before(preview);
     async function render(){
       try{const f=await load();if(!host.isConnected)return;
         let media;
-        if(mime==='text/plain'){media=el('pre',new TextDecoder().decode(Uint8Array.from(atob(f.base64.slice(0,65536)),c=>c.charCodeAt(0))));}
+        if(!mime){media=el('p',f.name+' · '+Math.ceil(f.base64.length*0.75/1024)+' KB');}
+        else if(mime==='text/plain'){media=el('pre',new TextDecoder().decode(Uint8Array.from(atob(f.base64.slice(0,65536)),c=>c.charCodeAt(0))));}
         else{
           media=el(mime.startsWith('image/')?'img':mime.startsWith('video/')?'video':mime.startsWith('audio/')?'audio':'iframe');
           if(media.tagName==='IFRAME'){media.setAttribute('sandbox','');media.title=f.name;}
@@ -148,7 +149,7 @@
         preview.replaceChildren(media);
       }catch(e){preview.replaceChildren(button(tr('Повторить загрузку','Retry preview','Reintentar'),render));}
     }
-    if(['application/pdf','text/plain'].includes(mime)){preview.append(button(tr('Развернуть файл','Expand file','Abrir archivo'),render));return;}
+    if(post.expanded===false){preview.append(button(tr('Развернуть файл','Expand file','Abrir archivo'),render));return;}
     const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){observer.disconnect();render();}},{rootMargin:'160px'});observer.observe(preview);
   }
   function makeBoard(p,self,identity){
@@ -315,6 +316,8 @@
   function compose(p){
     const title=el('input'),body=el('textarea'),file=el('input'),preview=el('div');
     title.maxLength=160;body.maxLength=4000;file.type='file';
+    const expanded=el('input');expanded.type='checkbox';expanded.checked=true;
+    const display=field(tr('Показать вложение развёрнутым','Show attachment expanded','Mostrar archivo expandido'),expanded);display.hidden=true;
     const kind=el('select'),pick=el('select'),excerpt=el('ol'),note=el('p');
     kind.add(new Option(tr('Без фрагмента','No excerpt','Sin fragmento'),''));
     for(const [value,label] of Object.entries(sourceNames()))kind.add(new Option(label,value));
@@ -351,16 +354,16 @@
       let attachment=null;const selected=file.files[0];
       if(selected){if(selected.size>16*1024*1024)throw Error('Max. 16 MB');attachment={name:selected.name,base64:(await fileData(selected)).split(',')[1]};}
       if(!title.value.trim()&&!body.value.trim()&&!attachment&&!snapshot)throw Error(tr('Добавьте текст, файл или фрагмент.','Add text, a file or an excerpt.','Añade texto, archivo o fragmento.'));
-      await api('/api/social/posts',{method:'POST',body:{title:title.value,body:body.value,attachment,snapshot}});
+      await api('/api/social/posts',{method:'POST',body:{title:title.value,body:body.value,attachment,snapshot,expanded:expanded.checked}});
     });
     let url;const clean=()=>{if(url)URL.revokeObjectURL(url);url=null;};f.closest('dialog').addEventListener('close',clean,{once:true});
-    file.onchange=()=>{clean();preview.replaceChildren();const selected=file.files[0];if(!selected)return;
+    file.onchange=()=>{clean();preview.replaceChildren();const selected=file.files[0];display.hidden=!selected;if(!selected)return;
       const tag=/^image\/(jpeg|png|gif|webp|avif)$/.test(selected.type)?'img':selected.type.startsWith('video/')?'video':selected.type.startsWith('audio/')?'audio':null;
       if(tag){url=URL.createObjectURL(selected);const media=el(tag);media.src=url;media.controls=true;media.alt=selected.name;preview.append(media);}
     };preview.className='dom-board-media';
     const audience=p.profile_public?p.sharing?.wall:'private';
     const scope=audience==='members'?tr('Все участники','All members','Todos los miembros'):audience?.startsWith('group:')?p.groups?.find(g=>'group:'+g.id===audience)?.name:audience?.startsWith('person:')?p.contacts?.find(c=>'person:'+c.id===audience)?.display_name:null;
-    f.append(field(tr('Заголовок (по желанию)','Title (optional)','Título (opcional)'),title),field(tr('Текст','Text','Texto'),body),field(tr('Фото, аудио, видео или файл · до 16 МБ','Photo, audio, video or file · up to 16 MB','Foto, audio, vídeo o archivo · hasta 16 MB'),file),preview,field(tr('Фрагмент из DOM','Excerpt from DOM','Fragmento de DOM'),kind),pick,note,excerpt,el('small',tr('Аудитория публикации · ','Post audience · ','Audiencia · ')+(scope||tr('Только я','Only me','Solo yo'))));
+    f.append(field(tr('Заголовок (по желанию)','Title (optional)','Título (opcional)'),title),field(tr('Текст','Text','Texto'),body),field(tr('Фото, аудио, видео или файл · до 16 МБ','Photo, audio, video or file · up to 16 MB','Foto, audio, vídeo o archivo · hasta 16 MB'),file),display,preview,field(tr('Фрагмент из DOM','Excerpt from DOM','Fragmento de DOM'),kind),pick,note,excerpt,el('small',tr('Аудитория публикации · ','Post audience · ','Audiencia · ')+(scope||tr('Только я','Only me','Solo yo'))));
   }
   function edit(p){
     const name=el('input'),bio=el('textarea'),visible=el('input'),cover=el('input'),remove=el('input'),fields={};
@@ -382,7 +385,7 @@
     f.append(field(tr('Обложка · до 2 МБ','Cover · up to 2 MB','Portada · hasta 2 MB'),cover));
     if(p.cover)f.append(field(tr('Убрать обложку','Remove cover','Quitar portada'),remove));
     f.append(field(tr('Моё фото, обложку и описание видят все, кто вошёл в DOM','Show my photo, cover and bio to everyone signed in to DOM','Mostrar mi foto, portada y biografía a quienes inicien sesión en DOM'),visible));
-    for(const [key,title] of Object.entries({presence:tr('Прежние карточки профиля','Existing profile cards','Tarjetas anteriores'),results:tr('Название профиля по последнему пройденному тесту','Profile from my last completed test','Perfil de mi última prueba completada'),pulse:tr('Пульс · последнее полученное измерение и время, включая сигнал подключённого датчика','Heart rate · latest recorded value and time, including a connected live sensor','Último pulso con fecha'),wall:tr('Мои публикации в профиле и прикреплённые к ним файлы','My profile posts and their attachments','Muro y archivos')})){
+    for(const [key,title] of Object.entries({presence:tr('Прежние карточки профиля','Existing profile cards','Tarjetas anteriores'),results:tr('Мой тип по диагностике или вступительному тесту','My diagnostic or introductory type','Mi tipo diagnóstico o inicial'),pulse:tr('Пульс · последнее полученное измерение и время, включая сигнал подключённого датчика','Heart rate · latest recorded value and time, including a connected live sensor','Último pulso con fecha'),wall:tr('Мои публикации в профиле и прикреплённые к ним файлы','My profile posts and their attachments','Muro y archivos')})){
       const s=el('select');s.add(new Option(tr('Только я','Only me','Solo yo'),'private'));s.add(new Option(tr('Все участники','All members','Todos los miembros'),'members'));for(const g of p.groups||[])s.add(new Option(g.name,'group:'+g.id));
       for(const contact of p.contacts||[])s.add(new Option(tr('Только ','Only ','Solo ')+(contact.display_name||contact.id),'person:'+contact.id));
       s.value=p.sharing?.[key]||'private';if(!s.value)s.value='private';fields[key]=s;f.append(field(title,s));

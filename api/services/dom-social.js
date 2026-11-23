@@ -44,7 +44,7 @@ async function ensureSchema(sql) {
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_posts (
     id bigserial PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
     body text NOT NULL, file_name text, file_data text, created_at timestamptz DEFAULT now())`;
-  await sql`ALTER TABLE dom_profile_posts ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS snapshot jsonb`;
+  await sql`ALTER TABLE dom_profile_posts ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS snapshot jsonb, ADD COLUMN IF NOT EXISTS expanded boolean NOT NULL DEFAULT true`;
   await sql`CREATE INDEX IF NOT EXISTS dom_profile_posts_owner ON dom_profile_posts(user_id,id DESC)`;
   await sql`CREATE TABLE IF NOT EXISTS dom_guide_notes (
     id bigserial PRIMARY KEY, author uuid REFERENCES users(id) ON DELETE SET NULL, question text NOT NULL, instruction text NOT NULL)`;
@@ -105,7 +105,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       const [live]=await sql`SELECT bpm AS value,measured_at,'heart_rate' AS metric_kind FROM dom_profile_live_pulse WHERE user_id=${user.id} AND measured_at>now()-interval '15 seconds'`;
       if(live)data.pulse=live;
     }
-    if(can('wall'))data.posts=await sql`SELECT id,title,body,file_name,snapshot,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY id DESC LIMIT 50`;
+    if(can('wall'))data.posts=await sql`SELECT id,title,body,file_name,snapshot,expanded,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY id DESC LIMIT 50`;
     const keys=new Set(['identity',...(data.posts||[]).map(x=>'post-'+x.id),...(data.presence||[]).map((_,i)=>'card-'+i)]);
     data.board=(user.board||[]).filter(tile=>keys.has(tile.key));
     if(owner)data.board_version=user.board_version||0;
@@ -193,7 +193,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       snapshot={kind:source.kind,items:source.items};
     }
     if(!body.trim()&&!title.trim()&&!file&&!snapshot)return res.status(400).json({error:'Empty post'});
-    await sql`INSERT INTO dom_profile_posts(user_id,title,body,file_name,file_data,snapshot) VALUES(${me},${title.trim()},${body.trim()},${file?.name||null},${file?.base64||null},${snapshot?JSON.stringify(snapshot):null}::jsonb)`;
+    await sql`INSERT INTO dom_profile_posts(user_id,title,body,file_name,file_data,snapshot,expanded) VALUES(${me},${title.trim()},${body.trim()},${file?.name||null},${file?.base64||null},${snapshot?JSON.stringify(snapshot):null}::jsonb,${req.body.expanded!==false})`;
     res.status(201).json({ok:true});
   });
   route('delete','/api/social/posts/:id',async(req,res,me)=>{

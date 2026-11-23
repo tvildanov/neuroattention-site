@@ -74,7 +74,7 @@ async function request(route,token,body){
    if(role==='owner-b')await board.getByText('Fixture diagnostic 12',{exact:true}).waitFor();
    await board.locator('.dom-share').click();
    const editor=page.locator('dialog.dom-social-dialog[open]');
-   await editor.locator('input:not([type=file])').fill('Fixture publication '+lang);
+   await editor.locator('input:not([type])').first().fill('Fixture publication '+lang);
    await editor.locator('input[type=file]').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jf1sAAAAASUVORK5CYII=','base64')});
    await editor.locator('.btn-solid').click();
    const post=board.locator('article').filter({has:page.getByRole('heading',{name:'Fixture publication '+lang})});
@@ -82,7 +82,11 @@ async function request(route,token,body){
    await page.waitForFunction(()=>document.querySelector('.dom-board-media img')?.naturalWidth===1);
    await board.locator('.dom-board-bar button').nth(1).click();
    const handle=post.locator('.dom-grip.resize');
-   await handle.focus();await handle.press('ArrowDown');
+   await handle.scrollIntoViewIfNeeded();const corner=await handle.boundingBox();
+   const height=await post.evaluate(n=>n.getBoundingClientRect().height);
+   await page.mouse.move(corner.x+12,corner.y+12);await page.mouse.down();await page.mouse.move(corner.x+12,corner.y+54,{steps:4});await page.mouse.up();
+   assert.ok(await post.evaluate(n=>n.getBoundingClientRect().height)>height);
+   const move=post.locator('.dom-grip.move');await move.focus();await move.press('ArrowDown');
    const saveLayout=page.waitForResponse(r=>r.url().includes('/api/social/board')&&r.request().method()==='PUT');
    await board.locator('.dom-board-bar button').nth(1).click();assert.equal((await saveLayout).status(),200);
    if(role!=='user'){
