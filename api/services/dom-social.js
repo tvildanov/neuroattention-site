@@ -137,13 +137,13 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   });
   route('put','/api/social/presence',async(req,res,me)=>{
     const {cards,version}=req.body||{};
-    if(!Number.isSafeInteger(version)||version<0||!Array.isArray(cards)||cards.length>24)return res.sendStatus(400);
+    if(!Number.isSafeInteger(version)||version<0||!Array.isArray(cards)||cards.length>24)return res.status(400).json({error:'Invalid Presence composition'});
     const clean=[];
     for(const card of cards){
       if(!card || typeof card.title!=='string' || !card.title.trim() || card.title.length>100 ||
         typeof card.text!=='string' || card.text.length>1500 || typeof card.collection!=='string' ||
         !card.collection.trim() || card.collection.length>50 || !['small','wide','full'].includes(card.size) ||
-        !['neutral','accent','warm'].includes(card.tone))return res.sendStatus(400);
+        !['neutral','accent','warm'].includes(card.tone))return res.status(400).json({error:'Invalid Presence composition'});
       clean.push({title:card.title.trim(),text:card.text,collection:card.collection.trim(),size:card.size,tone:card.tone});
     }
     await sql`INSERT INTO dom_profile_settings(user_id) VALUES(${me}) ON CONFLICT DO NOTHING`;

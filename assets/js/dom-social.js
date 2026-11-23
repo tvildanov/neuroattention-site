@@ -83,11 +83,14 @@
     if(self){
       const avatar=avatarControls;
       if(avatar)row.append(avatar);
-      const img=document.getElementById('rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
+      const img=avatar?.querySelector('#rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
     }else if(p.avatar_url)row.append(photo(p.avatar_url,'dom-person-avatar'));
     const identity=el('div');identity.setAttribute('data-title-case-skip','');identity.append(el('h2',p.display_name));
     if(p.org_role)identity.append(el('small',p.org_role));
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
+    if(self && p.result?.profile && !window.TEST_PROFILES_MAP?.[p.result.profile]){
+      const type=el('p',String(p.result.profile).replaceAll('_',' '));type.className='dom-person-type';identity.append(type);
+    }
     if(self){
       row.append(button(tr('Редактировать','Edit profile','Editar perfil'),()=>edit(p)));
       if(hero&&xp){
