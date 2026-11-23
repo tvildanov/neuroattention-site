@@ -31,7 +31,7 @@ const mcp=http.createServer(async(req,res)=>{
  switch(params.name){
  case 'list_agents':out=registry;break;
  case 'get_architecture':out={people:[{entry_persona:'persona_nikita'},{entry_persona:'persona_takhir'}],horizontal:{contours:[{persona:'practice_contour',label:'Practice'}]}};break;
- case 'get_agent_prompt':out=prompts.get(a.agent_id);break;
+ case 'get_agent_prompt':out=a.agent_id==='persona_dom'?{agent_id:'persona_dom',system_prompt:'Fixture DOM project voice'}:prompts.get(a.agent_id);break;
  case 'list_canon':out=[{artifact_id:'fixture_canon',title:'Fixture canon'}];break;
  case 'get_canon':out=a.artifact_id===canon.artifact_id?canon:{error:'not_found'};break;
  case 'publish_canon':
@@ -66,7 +66,7 @@ const mcp=http.createServer(async(req,res)=>{
    out=[{kind:'handoff',item_id:'fixture-pending',agent_id:a.agent_id,from_agent:'fixture_source',
      message_type:'pending',created_at:new Date().toISOString(),metadata:{status:'pending'}}];break;
  }
- case 'read_context':out=a.key_prefix==='monad.placement.'?[{value:{agent_id:'fixture_agent',cell:'L4xL2',secondary_cells:['L5xL2'],type:'skill'}}]:[];break;
+ case 'read_context':out=a.key==='dom.guide.published.v1'&&a.reader_agent==='persona_dom'?[{key:a.key,value:{text:'Fixture published lesson'}}]:a.key_prefix==='monad.placement.'?[{value:{agent_id:'fixture_agent',cell:'L4xL2',secondary_cells:['L5xL2'],type:'skill'}}]:[];break;
  case 'read_action_log':out=[{action_type:'update_agent_prompt',created_at:new Date().toISOString(),success:true}];break;
  case 'plant_seed':{
    const handoff_id=crypto.randomUUID(), seed_id=crypto.randomUUID();
