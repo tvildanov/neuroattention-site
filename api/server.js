@@ -10074,6 +10074,7 @@ app.get('/api/users/:id/profile', requireAuth, async (req, res) => {
     if (!u.profile_public && !isAdmin && !isSelf) {
       return res.json({ user: { id: u.id, display_name: u.display_name, profile_public: false } });
     }
+    if(!isSelf && !(await socialReadAccess(u.id,req.user.sub||req.user.id))?.canIdentity('bio'))delete u.bio;
     res.json({ user: u });
   } catch (err) { console.error('GET profile:', err); res.status(500).json({ error: err.message }); }
 });
@@ -14705,7 +14706,7 @@ const domChatControls=require('./services/dom-chat-controls');
 domChatControls.install(app,{requireAuth,sql});
 
 const domSocial=require('./services/dom-social');
-domSocial.install(app,{requireAuth,sql,callerIsAdmin});
+const socialReadAccess=domSocial.install(app,{requireAuth,sql,callerIsAdmin});
 async function applyDomReviewSchema() {
   await domSocial.ensureSchema(sql);
   await domChatControls.ensureSchema(sql);

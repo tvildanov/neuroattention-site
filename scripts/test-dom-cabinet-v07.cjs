@@ -16,6 +16,46 @@ const server=http.createServer(async(req,res)=>{
  if(!file.startsWith(root+path.sep)){res.writeHead(404);return res.end();}
  fs.readFile(file,(err,buf)=>{if(err){res.writeHead(404);return res.end()}res.setHeader('Content-Type',mime[path.extname(file)]||'application/octet-stream');res.end(buf)});
 });
+async function testPresence(page,lang){
+ const profile=page.locator('#dom-social-self .dom-person-card:not(.dom-guide)').first();
+ const board=profile.locator('.living-profile');
+ const editing=lang==='ru'?'Настроить пространство':lang==='en'?'Customize space':'Personalizar espacio';
+ const add=lang==='ru'?'+ Карточка':lang==='en'?'+ Card':'+ Tarjeta';
+ const apply=lang==='ru'?'Применить':lang==='en'?'Apply':'Aplicar';
+ const save=lang==='ru'?'Сохранить':lang==='en'?'Save':'Guardar';
+ await board.getByRole('button',{name:editing,exact:true}).click();
+ for(const [title,size,tone] of [['Внимание в движении','wide','accent'],['Вопрос недели','small','green'],['Исследования','small','violet']]){
+   await board.getByRole('button',{name:add,exact:true}).click();
+   const form=page.locator('.lp-modal[open] form');
+   await form.locator('input').first().fill(title);
+   await form.locator('textarea').fill(title==='Внимание в движении'?'Наблюдаю, как меняется внимание во время прогулки.':'Заметки из моей практики');
+   await form.locator('select').nth(1).selectOption(size);
+   await form.locator('select').nth(2).selectOption(tone);
+   await form.getByRole('button',{name:apply,exact:true}).click();
+ }
+ const tiles=board.locator('.lp-tile');
+ const count=await tiles.count();
+ await tiles.last().locator('.lp-toolbar button').first().click();
+ assert.equal(await tiles.nth(count-2).locator('h3').textContent(),'Исследования');
+ const snap=async(mode,theme)=>{
+   await page.evaluate(theme=>document.documentElement.dataset.domTheme=theme,theme);
+   fs.mkdirSync('/tmp/living-profile-shots',{recursive:true});
+   await profile.screenshot({path:'/tmp/living-profile-shots/'+lang+'-'+mode+'-'+theme+'.png',animations:'disabled'});
+ };
+ await snap('edit','dark');
+ await board.getByRole('button',{name:save,exact:true}).click();
+ await board.getByRole('button',{name:editing,exact:true}).waitFor();
+ await snap('view','light');
+ const over=await board.evaluate(e=>e.scrollWidth>e.clientWidth+1);
+ assert.equal(over,false,'Presence overflow');
+ assert.equal(await board.locator('[draggable=true]').count(),0);
+ const preview=lang==='ru'?'Предпросмотр':lang==='en'?'Visitor preview':'Vista previa';
+ await board.getByRole('button',{name:preview,exact:true}).click();
+ const visitor=page.locator('dialog[open]');await visitor.locator('.living-profile nav').waitFor();
+ assert.equal(await visitor.getByRole('button',{name:editing,exact:true}).count(),0);
+ assert.equal(await visitor.getByRole('heading',{name:'Внимание в движении'}).count(),0);
+ await visitor.locator('button').first().click();
+}
 async function request(route,token,body){
  const response=await fetch(base+route,{method:body?'POST':'GET',headers:{Authorization:token?'Bearer '+token:'','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
  return {status:response.status,body:await response.json()};
@@ -75,6 +115,7 @@ async function request(route,token,body){
      await social.locator('.dom-guide form button').click();
      await social.locator('.dom-guide [role=status]').filter({hasText:/guide/i}).waitFor();
    }
+   await testPresence(page,lang);
    const sidebar=page.locator('.dom-cabinet-toggle');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    const nav=page.locator('.dom-cabinet-sidebar');
