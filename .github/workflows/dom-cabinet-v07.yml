@@ -47,3 +47,11 @@ jobs:
           node scripts/test-dom-recording-ui.cjs
           node scripts/test-dom-cabinet-v07.cjs
           node scripts/test-monad-cross.cjs
+
+      - name: Save Living Profile previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: living-profile-previews
+          path: /tmp/living-profile-shots/*.png
+          if-no-files-found: ignore

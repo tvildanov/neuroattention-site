@@ -25,16 +25,18 @@ async function publishedGuide(){
   return guideCache;
 }
 const sharp = require('sharp');
+const identityFields=['bio','org_role','tagline','location','links','interests'];
 const fields = ['results','map','pulse','wall'];
 const validId = id => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id);
 function visible(scope, owner, open, rooms) {
   return owner || (open && (scope === 'members' || rooms.some(id => scope === 'group:'+id)));
 }
 async function ensureSchema(sql) {
+  await require('./dom-presence').ensureSchema(sql);
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_settings (
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, cover text NOT NULL DEFAULT '',
     sharing jsonb NOT NULL DEFAULT '{}')`;
-  await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS org_role text NOT NULL DEFAULT ''`;
+  await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS org_role text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS identity jsonb NOT NULL DEFAULT '{}'`;
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_live_pulse (
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, bpm integer NOT NULL, measured_at timestamptz NOT NULL DEFAULT now())`;
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_posts (
@@ -61,28 +63,35 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       u.id=CASE WHEN t.user_a=${me} THEN t.user_b ELSE t.user_a END
       WHERE (t.user_a=${me} OR t.user_b=${me}) AND u.deleted_at IS NULL ORDER BY u.display_name,u.id`;
   }
-  async function readAccess(id,viewer){
+  async function readAccess(id,viewer,preview=false){
     if(!validId(id)) return null;
-    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role FROM users u
+    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role,s.identity FROM users u
       LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE u.id=${id} AND u.deleted_at IS NULL`;
     if(!user)return null;
-    const owner=id===viewer;
+    const owner=id===viewer&&!preview;
     const rows=await sql`SELECT m.room_id FROM chat_room_members m JOIN chat_room_members v USING(room_id)
       JOIN chat_rooms r ON r.id=m.room_id WHERE m.user_id=${id} AND v.user_id=${viewer} AND r.dm_thread_id IS NULL`;
-    const can=field=>(user.profile_public && user.sharing?.[field]==='person:'+viewer) || visible(user.sharing?.[field],owner,user.profile_public,rows.map(r=>r.room_id));
-    return {user,owner,can};
+    const can=field=>preview?(user.profile_public&&user.sharing?.[field]==='members'):(user.profile_public && user.sharing?.[field]==='person:'+viewer) || visible(user.sharing?.[field],owner,user.profile_public,rows.map(r=>r.room_id));
+    const canIdentity=k=>owner||(user.profile_public&&(can(k)||(!user.sharing?.[k]&&['bio','org_role'].includes(k))));
+    return {user,owner,can,canIdentity};
   }
+  require('./dom-presence').install(route,sql,readAccess);
   route('get','/api/social/avatar/:id',async(req,res,me)=>{
     if(!validId(req.params.id))return res.sendStatus(404);
     const [u]=await sql`SELECT CASE WHEN profile_public OR id=${me} THEN avatar_url END AS avatar FROM users WHERE id=${req.params.id} AND deleted_at IS NULL`;
     res.json({avatar:u?.avatar||null});
   });
   route('get','/api/social/profile/:id',async(req,res,me)=>{
-    const access=await readAccess(req.params.id,me);
+    const access=await readAccess(req.params.id,me,req.query.preview==='1'&&req.params.id===me);
     if(!access)return res.sendStatus(404);
     const {user,owner,can}=access;
     const data={id:user.id,display_name:user.display_name,profile_public:user.profile_public};
-    if(owner||user.profile_public)Object.assign(data,{avatar_url:user.avatar_url,cover:user.cover,bio:user.bio,org_role:user.org_role});
+    if(owner||user.profile_public){
+      Object.assign(data,{avatar_url:user.avatar_url,cover:user.cover});
+      for(const k of identityFields){
+        if(access.canIdentity(k))data[k]=['bio','org_role'].includes(k)?user[k]:user.identity?.[k];
+      }
+    }
     if(owner){
       data.contacts=await contacts(me);
       data.sharing=user.sharing||{};
@@ -101,12 +110,15 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       const [live]=await sql`SELECT bpm AS value,measured_at,'heart_rate' AS metric_kind FROM dom_profile_live_pulse WHERE user_id=${user.id} AND measured_at>now()-interval '15 seconds'`;
       if(live)data.pulse=live;
     }
-    if(can('wall'))data.posts=await sql`SELECT id,body,file_name,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY id DESC LIMIT 50`;
+    if(can('wall'))data.posts=await sql`SELECT id,body,file_name,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY created_at DESC,id DESC LIMIT 50`;
     res.json(data);
   });
   route('put','/api/social/settings',async(req,res,me)=>{
     const {name,bio,open,sharing,cover}=req.body||{};
     if(typeof name!=='string'||!name.trim()||name.length>100||typeof bio!=='string'||bio.length>1500||typeof open!=='boolean'||!sharing)return res.sendStatus(400);
+    const identity=req.body.identity;
+    if(identity && (!['tagline','location','links','interests'].every(k=>typeof identity[k]==='string'&&identity[k].length<=400)
+      ||(identity.links && !/^https?:\/\/[^\s]+$/i.test(identity.links))))return res.sendStatus(400);
     const title=req.body.org_role;
     if(title!==undefined){
       if(!await callerIsAdmin(req))return res.status(403).json({error:'Staff access required'});
@@ -115,6 +127,8 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     const groups=await sql`SELECT room_id FROM chat_room_members m JOIN chat_rooms r ON r.id=m.room_id WHERE user_id=${me} AND r.dm_thread_id IS NULL`;
     const allowed=new Set(['private','members',...groups.map(g=>'group:'+g.room_id),...(await contacts(me)).map(c=>'person:'+c.id)]);
     if(!fields.every(f=>allowed.has(sharing[f])))return res.sendStatus(400);
+    const extra=identityFields.filter(k=>sharing[k]!==undefined);
+    if(!extra.every(k=>allowed.has(sharing[k])))return res.sendStatus(400);
     let image=null;
     if(cover!=null){
       if(cover==='')image='';
@@ -123,10 +137,10 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
         try{const bytes=await sharp(Buffer.from(cover.split(',')[1],'base64'),{limitInputPixels:24000000}).rotate().resize({width:1200,height:450,fit:'cover'}).jpeg({quality:80}).toBuffer();image='data:image/jpeg;base64,'+bytes.toString('base64');}catch{return res.sendStatus(400);}
       }
     }
-    const scopes=Object.fromEntries(fields.map(f=>[f,sharing[f]]));
+    const scopes=Object.fromEntries([...fields,...extra].map(f=>[f,sharing[f]]));
     await sql`WITH changed AS (UPDATE users SET display_name=${name.trim()},bio=${bio},profile_public=${open} WHERE id=${me} RETURNING id)
-      INSERT INTO dom_profile_settings(user_id,cover,sharing,org_role) SELECT id,COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,'') FROM changed
-      ON CONFLICT(user_id) DO UPDATE SET cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;
+      INSERT INTO dom_profile_settings(user_id,cover,sharing,org_role,identity) SELECT id,COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,''),COALESCE(${identity?JSON.stringify(identity):null}::jsonb,'{}'::jsonb) FROM changed
+      ON CONFLICT(user_id) DO UPDATE SET cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=dom_profile_settings.sharing || EXCLUDED.sharing,identity=COALESCE(${identity?JSON.stringify(identity):null}::jsonb,dom_profile_settings.identity),org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;
     res.json({ok:true});
   });
   route('put','/api/social/live-pulse',async(req,res,me)=>{
@@ -151,6 +165,19 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     if(typeof body!=='string'||body.length>4000||(!body.trim()&&!file))return res.sendStatus(400);
     await sql`INSERT INTO dom_profile_posts(user_id,body,file_name,file_data) VALUES(${me},${body.trim()},${file?.name||null},${file?.base64||null})`;
     res.status(201).json({ok:true});
+  });
+  route('get','/api/social/export-posts',async(req,res,me)=>{
+    const cursor=req.query.before||'9223372036854775807';
+    if(!/^\d{1,19}$/.test(cursor))return res.status(400).json({error:'Invalid cursor'});
+    const posts=await sql`SELECT id,body,file_name,created_at FROM dom_profile_posts WHERE user_id=${me} AND id<${cursor} ORDER BY id DESC LIMIT 50`;
+    res.json({posts});
+  });
+  route('patch','/api/social/posts/:id',async(req,res,me)=>{
+    const {body}=req.body||{};
+    if(!/^\d{1,18}$/.test(req.params.id)||typeof body!=='string'||body.length>4000)return res.sendStatus(400);
+    const [post]=await sql`UPDATE dom_profile_posts SET body=${body.trim()} WHERE id=${req.params.id} AND user_id=${me}
+      AND (file_data IS NOT NULL OR ${body.trim()}<>'') RETURNING id`;
+    if(!post)return res.sendStatus(404);res.json(post);
   });
   route('delete','/api/social/posts/:id',async(req,res,me)=>{
     if(!/^\d{1,18}$/.test(req.params.id))return res.sendStatus(400);
@@ -221,5 +248,6 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     await sql`INSERT INTO dom_guide_notes(author,question,instruction) VALUES(${me},${question},${instruction})`;
     res.status(201).json({ok:true});
   });
+  return readAccess;
 }
 module.exports={install,ensureSchema,visible};

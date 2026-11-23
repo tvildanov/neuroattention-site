@@ -40,3 +40,11 @@ This completes the first personal recording foundation, not the whole premium pl
 ## 2026-11-23 — Pilot guide and social profile
 
 Generation uses Monad llm_ask with task chat and project identity persona_dom, subject to the shared router budget. The staff guide loads the registered persona_dom project instruction from Monad at runtime and reads its compact NeuroAttention baseline from `api/services/dom-guide-knowledge.json` on release. For updates between releases, a training client with Monad write access can publish a reviewed project summary under `dom.guide.published.v1`, value `{"text":"approved summary"}` (maximum 6000 characters). Preserve existing approved material when replacing it. The guide reads only this exact project key and caches it for one minute. Private chat transcripts are not imported. The profile supports direct-contact audiences and organizational titles. Future device types are marked as planned.
+
+## Living Profile · 23 ноября 2026
+
+«Не захватывать внимание человека, а предоставлять ему среду, в которой он сам выбирает, чему уделять внимание и как выражать себя».
+
+«Человек — это не только его имя, должность, биография, фотографии и список публикаций. Его цифровое присутствие может отражать то, что сейчас занимает его внимание, что он считает важным, чем живёт, что создаёт и как меняется».
+
+Presence хранит композиции с проверкой версии при записи. Автор выбирает основную и видимость карточек. Закрытие профиля ограничивает также прямой доступ к вложениям. Старые публикации читаются в Stream из прежней таблицы. ZIP содержит profile.json и файлы; импорт выбранной композиции поддерживает добавление, объединение и замену. Перенос постов включается отдельно и использует текущую аудиторию получателя. История версий, расписание и вложенные коллекции относятся к следующему этапу.
