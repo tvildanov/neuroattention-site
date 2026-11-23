@@ -4,6 +4,8 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 const TYPES=new Set(['emotion','area','cause','thought','concept','event','sensation','meaning','action','image']);
 async function ensureSchema(sql){
  await sql`CREATE TABLE IF NOT EXISTS dom_observations(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,operation_id UUID NOT NULL,request_hash TEXT NOT NULL,session_id TEXT NOT NULL,source JSONB NOT NULL,chain JSONB NOT NULL,legacy_entry JSONB,occurred_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(user_id,operation_id))`;
+ await sql`ALTER TABLE dom_observations ADD COLUMN IF NOT EXISTS deleted_at timestamptz`;
+ await sql`ALTER TABLE nm_chain_nodes ADD COLUMN IF NOT EXISTS observation_id uuid`;
  await sql`CREATE INDEX IF NOT EXISTS dom_observations_user_time ON dom_observations(user_id,occurred_at DESC,id)`;
 }
 function install(app,{sql,requireAuth,normalizeLabel,nmTypeToJourney}){
@@ -57,8 +59,8 @@ function install(app,{sql,requireAuth,normalizeLabel,nmTypeToJourney}){
     ), prior AS (
      SELECT n.node_id,n.position FROM nm_chain_nodes n JOIN recording r ON r.id=n.chain_id ORDER BY n.position DESC LIMIT 1
     ), members AS (
-     INSERT INTO nm_chain_nodes(chain_id,node_id,position)
-     SELECT recording.id,resolved.id,resolved.pos+COALESCE((SELECT MAX(n.position) FROM nm_chain_nodes n WHERE n.chain_id=recording.id),-1) FROM recording,resolved RETURNING chain_id
+     INSERT INTO nm_chain_nodes(chain_id,node_id,position,observation_id)
+     SELECT recording.id,resolved.id,resolved.pos+COALESCE((SELECT MAX(n.position) FROM nm_chain_nodes n WHERE n.chain_id=recording.id),-1),(SELECT id FROM accepted) FROM recording,resolved RETURNING chain_id
     ), sessions AS (
      INSERT INTO nm_session_nodes(user_id,session_id,node_id,created_at)
      SELECT DISTINCT ${user}::uuid,${session},id,${when.toISOString()}::timestamptz FROM resolved ON CONFLICT(user_id,session_id,node_id) DO NOTHING
@@ -78,18 +80,65 @@ function install(app,{sql,requireAuth,normalizeLabel,nmTypeToJourney}){
      INSERT INTO neuro_map_entries(user_id,date_key,payload) SELECT ${user}::uuid,${dateKey},legacy_entry FROM accepted WHERE legacy_entry IS NOT NULL
     ) SELECT id FROM accepted`
    ]);
-   const [record]=await sql`SELECT id,request_hash,session_id,source,occurred_at,created_at FROM dom_observations WHERE user_id=${user} AND operation_id=${b.operation_id}`;
+   const [record]=await sql`SELECT id,deleted_at,request_hash,session_id,source,occurred_at,created_at FROM dom_observations WHERE user_id=${user} AND operation_id=${b.operation_id}`;
    if(!record||record.request_hash!==hash)return res.status(409).json({error:'Operation or session conflicts with an existing recording'});
-   delete record.request_hash;res.json({ok:true,record,projections:'committed'});
+   if(record.deleted_at)return res.status(410).json({error:'Observation deleted'});
+   delete record.deleted_at;delete record.request_hash;res.json({ok:true,record,projections:'committed'});
   }catch(e){console.warn('[observations] write failed:',e.message);res.status(503).json({error:'Save could not be confirmed; retry the same operation'});}
  });
+ app.delete('/api/observations/:id',requireAuth,async(req,res)=>{
+  const user=req.user.id,id=req.params.id;
+  if(!UUID.test(id))return res.status(404).json({error:'Not found'});
+  try{
+   await schema();
+   const [record]=await sql`SELECT operation_id,session_id FROM dom_observations WHERE user_id=${user} AND id=${id}`;
+   if(!record)return res.status(404).json({error:'Not found'});
+   const session=record.session_id;
+   await sql.transaction([
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${user+':'+record.operation_id},0))`,
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${session},0))`,
+    // Older observations have no marker on graph occurrences. Pair repeated
+    // concepts only when their session event and membership counts agree.
+    sql`CREATE TEMP TABLE removed_dom_members ON COMMIT DROP AS
+      WITH members AS (
+       SELECT n.*,row_number() OVER(PARTITION BY node_id ORDER BY position) AS ordinal,count(*) OVER(PARTITION BY node_id) AS total
+       FROM nm_chain_nodes n JOIN nm_chains c ON c.id=n.chain_id WHERE c.user_id=${user} AND c.session_id=${session}
+      ), events AS (
+       SELECT payload->>'nm_node_id' AS node,payload->>'observation_id' AS observation,
+       row_number() OVER(PARTITION BY payload->>'nm_node_id' ORDER BY id) AS ordinal,count(*) OVER(PARTITION BY payload->>'nm_node_id') AS total
+       FROM journey_events WHERE user_id=${user} AND session_id=${session} AND payload ? 'nm_node_id'
+      ) SELECT m.chain_id,m.node_id,m.position FROM members m LEFT JOIN events e ON e.node=m.node_id::text AND e.ordinal=m.ordinal AND e.total=m.total
+      WHERE m.observation_id=${id}::uuid OR (m.observation_id IS NULL AND e.observation=${id}::text)`,
+    sql`CREATE TEMP TABLE removed_dom_edges ON COMMIT DROP AS
+      WITH seq AS (SELECT n.node_id AS a,lead(n.node_id) OVER(ORDER BY n.position) AS b,
+      r.position IS NOT NULL AS removed,lead(r.position IS NOT NULL) OVER(ORDER BY n.position) AS next_removed
+      FROM nm_chain_nodes n JOIN nm_chains c ON c.id=n.chain_id LEFT JOIN removed_dom_members r USING(chain_id,node_id,position)
+      WHERE c.user_id=${user} AND c.session_id=${session})
+      SELECT a,b,count(*)::int AS n FROM seq WHERE (removed OR next_removed) AND a<>b GROUP BY a,b`,
+    sql`DELETE FROM nm_links l USING removed_dom_edges e WHERE l.user_id=${user} AND l.from_node_id=e.a AND l.to_node_id=e.b AND l.count<=e.n`,
+    sql`UPDATE nm_links l SET count=l.count-e.n FROM removed_dom_edges e WHERE l.user_id=${user} AND l.from_node_id=e.a AND l.to_node_id=e.b`,
+    sql`DELETE FROM nm_chain_nodes n USING removed_dom_members r WHERE n.chain_id=r.chain_id AND n.position=r.position AND n.node_id=r.node_id`,
+    sql`DELETE FROM journey_events WHERE user_id=${user} AND payload->>'observation_id'=${id}`,
+    sql`DELETE FROM nm_session_nodes s WHERE s.user_id=${user} AND s.session_id=${session} AND s.node_id IN(SELECT node_id FROM removed_dom_members)
+      AND NOT EXISTS(SELECT 1 FROM nm_chain_nodes n JOIN nm_chains c ON c.id=n.chain_id WHERE c.session_id=${session} AND n.node_id=s.node_id)`,
+    sql`DELETE FROM nm_chains c WHERE c.user_id=${user} AND c.session_id=${session} AND c.id IN(SELECT chain_id FROM removed_dom_members) AND NOT EXISTS(SELECT 1 FROM nm_chain_nodes n WHERE n.chain_id=c.id)`,
+    sql`DELETE FROM nm_nodes n WHERE n.user_id=${user} AND n.id IN(SELECT node_id FROM removed_dom_members) AND n.count<=1
+      AND NOT EXISTS(SELECT 1 FROM nm_chain_nodes m WHERE m.node_id=n.id) AND NOT EXISTS(SELECT 1 FROM nm_session_nodes s WHERE s.node_id=n.id)
+      AND NOT EXISTS(SELECT 1 FROM nm_links l WHERE l.from_node_id=n.id OR l.to_node_id=n.id)
+      AND NOT EXISTS(SELECT 1 FROM journey_events j WHERE j.user_id=${user} AND j.payload->>'nm_node_id'=n.id::text)`,
+    sql`UPDATE nm_nodes SET count=greatest(1,count-1) WHERE user_id=${user} AND id IN(SELECT node_id FROM removed_dom_members)`,
+    sql`DELETE FROM neuro_map_entries e USING dom_observations o WHERE o.id=${id} AND o.user_id=${user} AND e.user_id=o.user_id AND e.payload=o.legacy_entry AND e.created_at=o.created_at`,
+    sql`UPDATE dom_observations SET deleted_at=now(),source='{}',chain='[]',legacy_entry=NULL WHERE id=${id} AND user_id=${user} AND deleted_at IS NULL`
+   ]);res.json({ok:true});
+  }catch(e){console.warn('[observations] delete:',e.message);res.status(503).json({error:'Deletion could not be confirmed'});}
+ });
  app.get('/api/observations',requireAuth,async(req,res)=>{
-  try{await schema();const records=await sql`SELECT id,session_id,source,chain,occurred_at,created_at FROM dom_observations WHERE user_id=${req.user.id} ORDER BY occurred_at DESC,id DESC LIMIT 50`;res.json({ok:true,records});}
+  try{await schema();const records=await sql`SELECT id,session_id,source,chain,occurred_at,created_at FROM dom_observations WHERE user_id=${req.user.id} AND deleted_at IS NULL ORDER BY occurred_at DESC,id DESC LIMIT 50`;res.json({ok:true,records});}
   catch(e){res.status(503).json({error:'Observations unavailable'});}
  });
  app.get('/api/observations/:id',requireAuth,async(req,res)=>{
   if(!UUID.test(req.params.id))return res.status(404).json({error:'Not found'});
-  try{await schema();const [record]=await sql`SELECT id,session_id,source,chain,occurred_at,created_at FROM dom_observations WHERE id=${req.params.id} AND user_id=${req.user.id}`;
+  try{await schema();const [record]=await sql`SELECT id,session_id,source,chain,occurred_at,created_at FROM dom_observations WHERE id=${req.params.id} AND user_id=${req.user.id} AND deleted_at IS NULL`;
    if(!record)return res.status(404).json({error:'Not found'});res.json({ok:true,record});}
   catch(e){res.status(503).json({error:'Observation unavailable'});}
  });

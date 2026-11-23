@@ -11,10 +11,10 @@ const token=()=>typeof naGetToken==='function'?naGetToken():null;
 let account='',revision=0,history,form,timer;
 function pendingPrefix(){try{return 'dom-observation-pending:'+JSON.parse(atob(token().split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub+':';}catch{return '';}}
 function pendingEntries(){const prefix=pendingPrefix(),out=[];if(!prefix)return out;try{for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key.startsWith(prefix))out.push({key,request:JSON.parse(sessionStorage.getItem(key))});}}catch{}return out;}
-async function request(route,body){
+async function request(route,body,method){
  const auth=token();if(!auth)throw Error('Authentication required');
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
- try{const r=await fetch((window.AUTH_API||'https://neuroattention-api-production.up.railway.app')+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth},signal:controller.signal,body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok||!data.ok||auth!==token())throw Error('Request not confirmed');return data;}finally{clearTimeout(timeout);}
+ try{const r=await fetch((window.AUTH_API||'https://neuroattention-api-production.up.railway.app')+route,{method:method||(body?'POST':'GET'),headers:{'Content-Type':'application/json',Authorization:'Bearer '+auth},signal:controller.signal,body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok||!data.ok||auth!==token())throw Error('Request not confirmed');return data;}finally{clearTimeout(timeout);}
 }
 async function save(payload,state){
  if(!state.request)state.request={...payload,operation_id:crypto.randomUUID(),occurred_at:payload.occurred_at||new Date().toISOString()};
@@ -46,7 +46,12 @@ async function open(id){
   const list=el('ol','dom-observation-chain');record.chain.forEach(item=>{const li=el('li','dom-observation-'+item.type);li.textContent=typeof nmTranslate==='function'?nmTranslate(item.label):item.label;list.append(li);});content.append(list);
   const actions=el('div','dom-record-actions'),tools=document.querySelector('.dom-cabinet-sidebar a[data-tab="tools"]');
   if(tools&&tools.style.pointerEvents!=='none'){const map=el('button','btn btn-solid',text('map'));map.type='button';map.onclick=async()=>{map.disabled=true;try{await nmLoadV2Graph();const chain=nmV2Graph.chains.find(x=>x.session_id===record.session_id);if(!chain)throw Error('Recording unavailable');dialog.close();switchTab('tools');setToolsMode('nm');nmCurrentFilter='all';nmSelectChain(chain.id,true);}catch{map.disabled=false;map.textContent=text('retry');}};actions.append(map);}
-  const path=el('button','btn btn-ghost',text('path'));path.type='button';path.onclick=()=>{dialog.close();switchTab('evolution');};actions.append(path);content.append(actions);
+  const path=el('button','btn btn-ghost',text('path'));path.type='button';path.onclick=()=>{dialog.close();switchTab('evolution');};actions.append(path);
+  const labels=({ru:['Удалить наблюдение','Удалить это наблюдение из журнала, Нейрокарты и Пути?'],en:['Delete observation','Delete this observation from your journal, NeuroMap and Path?'],es:['Eliminar observación','¿Eliminar esta observación del diario, NeuroMap y Camino?']})[lang()]||['Delete observation','Delete observation?'];
+  const remove=el('button','btn btn-ghost',labels[0]);remove.type='button';remove.onclick=async()=>{if(!confirm(labels[1]))return;remove.disabled=true;
+    try{await request('/api/observations/'+encodeURIComponent(id),null,'DELETE');dialog.close();await refresh();window.nmLoadV2Graph?.();}
+    catch{remove.disabled=false;content.append(el('p','dom-record-note',text('retry')));}
+  };actions.append(remove);content.append(actions);
  }catch{content.textContent=text('unavailable');const retry=el('button','btn btn-ghost',text('retry'));retry.onclick=()=>open(id);content.append(retry);}
 }
 async function refresh(){

@@ -25,5 +25,12 @@ async function call(method,route,token,body){const r=await fetch(base+route,{met
  for(const bad of [{chain:[]},{intensity:0},{operation_id:'invalid'},{dependent_id:1},{chain:[{type:'unknown',label:'X'}]}])assert.equal((await call('POST','/api/observations',a,{...p,...bad})).status,400);
  const broken={...p,operation_id:crypto.randomUUID(),session_id:crypto.randomUUID(),chain:[{type:'concept',label:'Fixture force rollback'}]};assert.equal((await call('POST','/api/observations',a,broken)).status,503);assert.equal((await call('GET','/api/observations',a)).body.records.length,2);
  const rolled=(await call('GET','/api/neuromap/v3/graph',a)).body;assert.equal(rolled.nodes.some(n=>n.label==='Fixture force rollback'),false);assert.equal(rolled.chains.some(n=>n.session_id===broken.session_id),false);
+ assert.equal((await call('DELETE','/api/observations/'+record.id,b)).status,404);
+ assert.equal((await call('DELETE','/api/observations/'+record.id,a)).status,200);
+ assert.equal((await call('GET','/api/observations/'+record.id,a)).status,404);
+ assert.equal((await call('POST','/api/observations',a,p)).status,410);
+ const kept=(await call('GET','/api/neuromap/v3/graph',a)).body;
+ assert.equal(kept.chains.find(x=>x.session_id===p.session_id).node_ids.length,3);
+ assert.equal(kept.nodes.find(x=>x.label==='Test calm').count,1);
  console.log('OBSERVATIONS_PASS concurrent retry x20, rollback, source recovery, session ownership, unknown intensity, access denials');
 })().catch(e=>{console.error(e);process.exitCode=1});

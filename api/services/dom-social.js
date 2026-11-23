@@ -37,11 +37,14 @@ async function ensureSchema(sql) {
   await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS org_role text NOT NULL DEFAULT ''`;
   await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS presence jsonb NOT NULL DEFAULT '[]',
     ADD COLUMN IF NOT EXISTS presence_version integer NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS board jsonb NOT NULL DEFAULT '[]', ADD COLUMN IF NOT EXISTS board_version integer NOT NULL DEFAULT 0`;
+  await sql`CREATE TABLE IF NOT EXISTS dom_diagnostic_profiles(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, slot smallint NOT NULL CHECK(slot BETWEEN 1 AND 12), name text NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 160), completed_at timestamptz NOT NULL)`;
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_live_pulse (
     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, bpm integer NOT NULL, measured_at timestamptz NOT NULL DEFAULT now())`;
   await sql`CREATE TABLE IF NOT EXISTS dom_profile_posts (
     id bigserial PRIMARY KEY, user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
     body text NOT NULL, file_name text, file_data text, created_at timestamptz DEFAULT now())`;
+  await sql`ALTER TABLE dom_profile_posts ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS snapshot jsonb`;
   await sql`CREATE INDEX IF NOT EXISTS dom_profile_posts_owner ON dom_profile_posts(user_id,id DESC)`;
   await sql`CREATE TABLE IF NOT EXISTS dom_guide_notes (
     id bigserial PRIMARY KEY, author uuid REFERENCES users(id) ON DELETE SET NULL, question text NOT NULL, instruction text NOT NULL)`;
@@ -65,7 +68,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   }
   async function readAccess(id,viewer){
     if(!validId(id)) return null;
-    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role,s.presence,s.presence_version FROM users u
+    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role,s.presence,s.presence_version,s.board,s.board_version FROM users u
       LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE u.id=${id} AND u.deleted_at IS NULL`;
     if(!user)return null;
     const owner=id===viewer;
@@ -93,19 +96,19 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     }
     if(can('presence'))data.presence=user.presence||[];
     if(owner)data.presence_version=user.presence_version||0;
+    if(can('results'))data.diagnostic=(await sql`SELECT slot,name,completed_at FROM dom_diagnostic_profiles WHERE user_id=${user.id}`)[0]||null;
     if(can('results'))data.result=(await sql`SELECT profile,completed_at FROM test_results WHERE user_id=${user.id} ORDER BY completed_at DESC LIMIT 1`)[0]||null;
     if(can('pulse'))data.canReadPulse=true;
     if(can('pulse'))data.pulse=(await sql`SELECT value,measured_at,metric_kind FROM health_metrics WHERE user_id=${user.id}
       AND metric_kind IN ('rhr','heart_rate') AND value IS NOT NULL ORDER BY measured_at DESC LIMIT 1`)[0]||null;
-    if(can('map'))data.map=await sql`WITH recent AS (SELECT id,started_at FROM nm_chains WHERE user_id=${user.id} ORDER BY started_at DESC LIMIT 8)
-      SELECT c.started_at::date AS date,(array_agg(left(n.label,100) ORDER BY cn.position))[1:12] AS labels FROM recent c
-      JOIN nm_chain_nodes cn ON cn.chain_id=c.id JOIN nm_nodes n ON n.id=cn.node_id AND n.user_id=${user.id}
-      GROUP BY c.id,c.started_at ORDER BY c.started_at DESC`;
     if(can('pulse')){
       const [live]=await sql`SELECT bpm AS value,measured_at,'heart_rate' AS metric_kind FROM dom_profile_live_pulse WHERE user_id=${user.id} AND measured_at>now()-interval '15 seconds'`;
       if(live)data.pulse=live;
     }
-    if(can('wall'))data.posts=await sql`SELECT id,body,file_name,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY id DESC LIMIT 50`;
+    if(can('wall'))data.posts=await sql`SELECT id,title,body,file_name,snapshot,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY id DESC LIMIT 50`;
+    const keys=new Set(['identity',...(data.posts||[]).map(x=>'post-'+x.id),...(data.presence||[]).map((_,i)=>'card-'+i)]);
+    data.board=(user.board||[]).filter(tile=>keys.has(tile.key));
+    if(owner)data.board_version=user.board_version||0;
     res.json(data);
   });
   route('put','/api/social/settings',async(req,res,me)=>{
@@ -134,6 +137,16 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       INSERT INTO dom_profile_settings(user_id,cover,sharing,org_role) SELECT id,COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,'') FROM changed
       ON CONFLICT(user_id) DO UPDATE SET cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=dom_profile_settings.sharing || EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;
     res.json({ok:true});
+  });
+  route('put','/api/social/board',async(req,res,me)=>{
+    const {tiles,version}=req.body||{};
+    if(!Array.isArray(tiles)||tiles.length>100||!Number.isSafeInteger(version)||version<0||
+      tiles.some(t=>!t||!/^(identity|post-\d{1,18}|card-\d{1,2})$/.test(t.key)||!Number.isInteger(t.w)||t.w<1||t.w>12||!Number.isInteger(t.h)||t.h<3||t.h>40)||
+      new Set(tiles.map(t=>t.key)).size!==tiles.length)return res.status(400).json({error:'Invalid board'});
+    await sql`INSERT INTO dom_profile_settings(user_id) VALUES(${me}) ON CONFLICT DO NOTHING`;
+    const saved=await sql`UPDATE dom_profile_settings SET board=${JSON.stringify(tiles.map(({key,w,h})=>({key,w,h})))}::jsonb,board_version=board_version+1 WHERE user_id=${me} AND board_version=${version} RETURNING board_version`;
+    if(!saved.length)return res.status(409).json({error:'Layout changed. Reload the profile.'});
+    res.json({version:saved[0].board_version});
   });
   route('put','/api/social/presence',async(req,res,me)=>{
     const {cards,version}=req.body||{};
@@ -171,8 +184,16 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   route('post','/api/social/posts',async(req,res,me)=>{
     const body=req.body?.body;
     let file;try{file=parseAttachment(req.body?.attachment, 16 * 1024 * 1024);}catch{return res.sendStatus(400);}
-    if(typeof body!=='string'||body.length>4000||(!body.trim()&&!file))return res.sendStatus(400);
-    await sql`INSERT INTO dom_profile_posts(user_id,body,file_name,file_data) VALUES(${me},${body.trim()},${file?.name||null},${file?.base64||null})`;
+    const title=req.body.title||'',source=req.body.snapshot;
+    if(typeof body!=='string'||body.length>4000||typeof title!=='string'||title.length>160)return res.status(400).json({error:'Invalid post'});
+    let snapshot=null;
+    if(source){
+      if(!['chain','path','pattern','atlas'].includes(source.kind)||!Array.isArray(source.items)||!source.items.length||source.items.length>64||
+        source.items.some(x=>typeof x!=='string'||!x.trim()||x.length>500))return res.status(400).json({error:'Invalid excerpt'});
+      snapshot={kind:source.kind,items:source.items};
+    }
+    if(!body.trim()&&!title.trim()&&!file&&!snapshot)return res.status(400).json({error:'Empty post'});
+    await sql`INSERT INTO dom_profile_posts(user_id,title,body,file_name,file_data,snapshot) VALUES(${me},${title.trim()},${body.trim()},${file?.name||null},${file?.base64||null},${snapshot?JSON.stringify(snapshot):null}::jsonb)`;
     res.status(201).json({ok:true});
   });
   route('delete','/api/social/posts/:id',async(req,res,me)=>{

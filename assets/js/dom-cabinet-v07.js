@@ -250,8 +250,9 @@
    toolbar.append(heading,expand);
    panel.append(toolbar);
    host.append(button,hint,panel,status);
-   const social=q('#dom-social-self');
-   if(social)social.after(host);else profile.prepend(host);
+   const journal=el('details','dom-private-journal');journal.id='dom-private-journal';
+   journal.append(el('summary','',txt('Личный журнал Нейрокарты','Private NeuroMap journal','Diario privado de NeuroMap')),host);
+   profile.append(journal);
    function setExpanded(value){
      panel.classList.toggle('dom-quick-expanded',value);
      expand.setAttribute('aria-expanded',String(value));
@@ -298,7 +299,7 @@
  }
  function refreshTranslations(){
    const trigger=q('#dom-quick-record .dom-quick-trigger');
-   if(trigger)trigger.textContent=txt('Добавить запись','Add an entry','Añadir un registro');
+   if(trigger)trigger.textContent=txt('Записать наблюдение','Record observation','Registrar observación');
    const hint=q('#dom-quick-hint');
    if(hint)hint.textContent=txt('Мысль, эмоция, ощущение или событие','A thought, emotion, sensation or event','Un pensamiento, una emoción, una sensación o un evento');
    const expand=q('.dom-quick-expand');

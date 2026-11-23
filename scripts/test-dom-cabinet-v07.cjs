@@ -70,17 +70,20 @@ async function request(route,token,body){
    await social.locator('.dom-person-title h2').waitFor();
    assert.equal(await social.locator('.dom-person-title h2').textContent(),profile.body.user.display_name);
    assert.equal(await social.locator('.dom-guide').count(),role==='user'?0:1);
-   const profileCard=social.locator('article.dom-person-card').first();
-   const initialPanel=profileCard.locator('section').filter({has:page.locator('.dom-presence-grid')});
-   await initialPanel.getByRole('button').first().click();
+   const board=social.locator('.dom-profile-field');
+   await board.locator('.dom-share').click();
    const editor=page.locator('dialog.dom-social-dialog[open]');
-   await editor.locator('.dom-profile-tabs button').first().click();
-   await editor.locator('fieldset').last().locator('input').first().fill('Fixture presence '+lang);
-   await editor.locator('.dom-profile-tabs button').last().click();
-   await profileCard.getByRole('heading',{name:'Fixture presence '+lang}).waitFor();
-   await profileCard.getByRole('button',{name:'Stream',exact:true}).click();
-   assert.equal(await initialPanel.isVisible(),false);
-   await profileCard.getByRole('button',{name:'Presence',exact:true}).click();
+   await editor.locator('input:not([type=file])').fill('Fixture publication '+lang);
+   await editor.locator('input[type=file]').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jf1sAAAAASUVORK5CYII=','base64')});
+   await editor.locator('.btn-solid').click();
+   const post=board.locator('article').filter({has:page.getByRole('heading',{name:'Fixture publication '+lang})});
+   await post.locator('img').scrollIntoViewIfNeeded();
+   await page.waitForFunction(()=>document.querySelector('.dom-board-media img')?.naturalWidth===1);
+   await board.locator('.dom-board-bar button').nth(1).click();
+   const handle=post.locator('.dom-grip.resize');
+   await handle.focus();await handle.press('ArrowDown');
+   const saveLayout=page.waitForResponse(r=>r.url().includes('/api/social/board')&&r.request().method()==='PUT');
+   await board.locator('.dom-board-bar button').nth(1).click();assert.equal((await saveLayout).status(),200);
    if(role!=='user'){
      await social.locator('.dom-guide input').fill('Open my path');
      await social.locator('.dom-guide form button').click();
@@ -132,6 +135,7 @@ async function request(route,token,body){
      assert.match(await navItem.evaluate(el=>getComputedStyle(el,'::before').maskImage),/data:image\/svg\+xml/);
      await sidebar.click();
    }
+   await page.locator('#dom-private-journal summary').click();
    const quick=page.locator('#dom-quick-record .dom-quick-trigger');
    assert.equal(await quick.getAttribute('aria-describedby'),'dom-quick-hint');
    assert.match(await page.locator('#dom-quick-hint').innerText(),{ru:/мысль, эмоция/i,en:/thought, emotion/i,es:/pensamiento, una emoción/i}[lang]);
