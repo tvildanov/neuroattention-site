@@ -190,7 +190,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     if(source){
       if(!['chain','path','pattern','atlas'].includes(source.kind)||!Array.isArray(source.items)||!source.items.length||source.items.length>64||
         source.items.some(x=>typeof x!=='string'||!x.trim()||x.length>500))return res.status(400).json({error:'Invalid excerpt'});
-      snapshot={kind:source.kind,items:source.items};
+      snapshot={kind:source.kind,caption:typeof source.caption==='string'?source.caption.slice(0,160):'',items:source.items};
     }
     if(!body.trim()&&!title.trim()&&!file&&!snapshot)return res.status(400).json({error:'Empty post'});
     await sql`INSERT INTO dom_profile_posts(user_id,title,body,file_name,file_data,snapshot,expanded) VALUES(${me},${title.trim()},${body.trim()},${file?.name||null},${file?.base64||null},${snapshot?JSON.stringify(snapshot):null}::jsonb,${req.body.expanded!==false})`;

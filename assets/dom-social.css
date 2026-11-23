@@ -74,3 +74,9 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 #dom-social-self .dom-profile-grid .dom-profile-progress #rpg-xp-card,#dom-social-self .dom-profile-grid .dom-profile-progress #rpg-hero{padding:.2rem 0!important}
 .dom-private-journal{margin-block:1.5rem;padding:1rem;border:1px solid var(--line-soft);border-radius:14px}.dom-private-journal summary{cursor:pointer}
 @media(max-width:600px){.dom-profile-grid .dom-person-title{gap:.5rem}}
+
+.dom-atlas-excerpt{max-width:100%;max-height:240px;object-fit:contain}.dom-board-excerpt>small{display:block;color:var(--text-muted)}
+.dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) ol{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;padding:0;list-style:none}
+.dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) li{padding:.25rem .45rem;background:color-mix(in srgb,var(--cabinet-accent,#428599) 14%,transparent);border-radius:6px}
+.dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) li+li::before{content:'→ ';color:var(--text-muted)}
+.dom-board-excerpt[data-kind=path] ol{border-inline-start:1px solid var(--line-soft);padding-inline-start:1.4rem}.dom-board-excerpt[data-kind=path] li{padding:.1rem 0}

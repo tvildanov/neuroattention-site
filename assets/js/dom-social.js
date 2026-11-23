@@ -166,7 +166,7 @@
       if(post.title)tile.append(el('h3',post.title));
       if(post.file_name)showAttachment(tile,p,post);
       if(post.body)tile.append(el('p',post.body));
-      if(post.snapshot){const excerpt=el('section'),list=el('ol');excerpt.className='dom-board-excerpt';excerpt.append(el('strong',sourceNames()[post.snapshot.kind]),list);
+      if(post.snapshot){const excerpt=el('section'),list=el('ol');excerpt.className='dom-board-excerpt';excerpt.dataset.kind=post.snapshot.kind;excerpt.append(el('strong',sourceNames()[post.snapshot.kind]));if(post.snapshot.caption)excerpt.append(el('small',post.snapshot.caption));excerpt.append(list);
         for(const line of post.snapshot.items)list.append(el('li',line));tile.append(excerpt);}
       tile.append(el('small',new Date(post.created_at).toLocaleString()));
       if(self)tile.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить публикацию?','Delete this post?','¿Eliminar publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});tile.remove();items.delete('post-'+post.id);layout();}catch(e){alert(e.message);}}));
@@ -321,13 +321,23 @@
     const kind=el('select'),pick=el('select'),excerpt=el('ol'),note=el('p');
     kind.add(new Option(tr('Без фрагмента','No excerpt','Sin fragmento'),''));
     for(const [value,label] of Object.entries(sourceNames()))kind.add(new Option(label,value));
-    let choices=[],snapshot=null,ticket=0;
+    let choices=[],snapshot=null,capture=null,ticket=0;
     pick.hidden=true;
-    pick.onchange=()=>{const choice=choices[Number(pick.value)];snapshot=pick.value!==''&&choice?{kind:kind.value,items:choice.items}:null;excerpt.replaceChildren();
+    pick.onchange=()=>{const choice=choices[Number(pick.value)];snapshot=pick.value!==''&&choice?{kind:kind.value,caption:choice.label,items:choice.items}:null;
+      capture=null;excerpt.replaceChildren();
+      if(choice?.liveAtlas){
+        try{const a=window._anatomyAtlas;a.renderer.render(a.scene,a.camera);
+          const canvas=a.renderer.domElement;
+          if(!canvas.width||!canvas.height)throw Error();
+          const image=el('canvas'),scale=Math.min(1,1000/Math.max(canvas.width,canvas.height));image.width=Math.max(1,Math.round(canvas.width*scale));image.height=Math.max(1,Math.round(canvas.height*scale));
+          image.getContext('2d').drawImage(canvas,0,0,image.width,image.height);
+          capture=image.toDataURL('image/png');const thumb=photo(capture,'dom-atlas-excerpt');excerpt.append(thumb);
+        }catch{snapshot=null;note.textContent=tr('Откройте атлас и выберите вид ещё раз.','Open the atlas and select the view again.','Abre el atlas y vuelve a elegir la vista.');}
+      }
       for(const line of snapshot?.items||[])excerpt.append(el('li',line));};
     kind.onchange=async()=>{
       const current=++ticket,mode=kind.value;
-      snapshot=null;choices=[];pick.hidden=true;pick.replaceChildren();excerpt.replaceChildren();note.textContent='';
+      snapshot=null;capture=null;choices=[];pick.hidden=true;pick.replaceChildren();excerpt.replaceChildren();note.textContent='';
       if(!mode)return;
       try{
         let options=[];
@@ -342,6 +352,7 @@
         }else{
           const {snapshots}=await api('/api/me/atlas-snapshots');
           options=snapshots.map(s=>({label:s.label||new Date(s.taken_at).toLocaleDateString(),items:[...(s.state?.positive||[]),...(s.state?.negative||[])].filter(x=>typeof x==='string')}));
+          if(window._anatomyAtlas?.renderer?.domElement?.width){const label=tr('Текущий вид атласа','Current atlas view','Vista actual del atlas');options.unshift({label,items:[label],liveAtlas:true});}
         }
         if(current!==ticket)return;choices=options.filter(x=>x.items.length).map(x=>({...x,items:x.items.slice(0,64).map(line=>String(line).slice(0,500))}));
         if(!choices.length){note.textContent=tr('Сохранённых фрагментов пока нет.','No saved excerpts yet.','Todavía no hay fragmentos.');return;}
@@ -351,7 +362,7 @@
     };
     const f=form(tr('Поделиться','Share','Compartir'),tr('Опубликовать','Publish','Publicar'),async()=>{
       if(kind.value&&!snapshot)throw Error(tr('Выберите фрагмент для публикации.','Choose the excerpt to publish.','Elige un fragmento.'));
-      let attachment=null;const selected=file.files[0];
+      let attachment=capture?{name:'atlas.png',base64:capture.split(',')[1]}:null;const selected=file.files[0];
       if(selected){if(selected.size>16*1024*1024)throw Error('Max. 16 MB');attachment={name:selected.name,base64:(await fileData(selected)).split(',')[1]};}
       if(!title.value.trim()&&!body.value.trim()&&!attachment&&!snapshot)throw Error(tr('Добавьте текст, файл или фрагмент.','Add text, a file or an excerpt.','Añade texto, archivo o fragmento.'));
       await api('/api/social/posts',{method:'POST',body:{title:title.value,body:body.value,attachment,snapshot,expanded:expanded.checked}});
