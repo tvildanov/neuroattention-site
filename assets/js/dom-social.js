@@ -10,7 +10,7 @@
   const avatars=new Map();
   const avatarControls=document.getElementById('rpg-avatar-wrap')?.parentElement;
   const hero=document.getElementById('rpg-hero'),xp=document.getElementById('rpg-xp-card');
-  let ownerZone='presence';
+
   let serial=0,lastId='',activeDialog;
   const memberKey=()=>new URL(location.href).searchParams.get('member');
   const isMemberId=id=>typeof id==='string'&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id);
@@ -88,9 +88,8 @@
     const identity=el('div');identity.setAttribute('data-title-case-skip','');identity.append(el('h2',p.display_name));
     if(p.org_role)identity.append(el('small',p.org_role));
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
-    if(self && p.result?.profile && !window.TEST_PROFILES_MAP?.[p.result.profile]){
-      const type=el('p',String(p.result.profile).replaceAll('_',' '));type.className='dom-person-type';identity.append(type);
-    }
+    const typeName=p.diagnostic?.name||window.TEST_PROFILES_MAP?.[p.result?.profile]?.name||p.result?.profile?.replaceAll('_',' ');
+    if(typeName){const type=el('p',typeName);type.className='dom-person-type';identity.append(type);box.classList.add('dom-has-type');}
     if(self){
       row.append(button(tr('Редактировать','Edit profile','Editar perfil'),()=>edit(p)));
       if(hero&&xp){
@@ -98,10 +97,6 @@
         progress.append(hero,xp);box.append(progress);
       }
     }else{
-      if(p.result?.profile){
-        const type=el('p',window.TEST_PROFILES_MAP?.[p.result.profile]?.name||p.result.profile);
-        type.className='dom-person-type';identity.append(type);
-      }
       if(!p.profile_public)box.append(el('p',tr('Закрытый профиль','Private profile','Perfil privado')));
       if(p.id!==window.currentUser?.id)box.append(button(tr('Написать','Message','Enviar mensaje'),()=>{const url=new URL(location.href);url.searchParams.delete('member');history.replaceState(null,'',url);activeDialog?.close();window.switchTab('domunity');window.domStartThreadFromProfile(p.id,p.display_name);}));
     }
@@ -130,56 +125,132 @@
         if(box.isConnected)setTimeout(watch,5000);
       };setTimeout(watch,0);
     }
-    if(p.map?.length){const s=block(tr('Последние записи Нейрокарты','Recent NeuroMap entries','Registros recientes del NeuroMapa'));for(const entry of p.map){
-      const chain=el('ol');chain.className='dom-recorded-chain';
-      for(const label of entry.labels)chain.append(el('li',label));
-      s.append(el('small',String(entry.date).slice(0,10)),chain);
-    }box.append(s);}
-    const tabs=el('nav'),panels=[];
-    tabs.className='dom-profile-tabs';
-    function zone(key,label,panel){
-      const tab=button(label,()=>select(key));panels.push({key,tab,panel});tabs.append(tab);box.append(panel);
-    }
-    function select(key){
-      if(self)ownerZone=key;
-      for(const entry of panels){
-        entry.panel.hidden=entry.key!==key;entry.tab.setAttribute('aria-pressed',String(entry.key===key));
-      }
-    }
-    box.append(tabs);
-    if(p.presence && (self||p.presence.length))zone('presence','Presence',presence(p,self));
-    if(p.posts){const s=block(tr('Публикации','Posts','Publicaciones'));if(self)s.append(button(tr('Написать пост','Write a post','Escribir publicación'),compose));
-      if(!p.posts.length)s.append(el('p',tr('Публикаций пока нет.','No posts yet.','Todavía no hay publicaciones.')));
-      for(const post of p.posts){const item=el('article');item.append(el('small',new Date(post.created_at).toLocaleString()),el('p',post.body));
-        if(post.file_name)item.append(button(post.file_name,async()=>{try{const f=await api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file');const a=el('a');a.download=f.name;a.href='data:application/octet-stream;base64,'+f.base64;a.click();}catch(e){alert(e.message);}}));
-        if(self)item.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить эту запись?','Delete this post?','¿Eliminar esta publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});item.remove();}catch(e){alert(e.message);}}));s.append(item);
-      }
-      zone('stream','Stream',s);
-    }
-    if(panels.length)select(self&&panels.some(x=>x.key===ownerZone)?ownerZone:panels[0].key);
-    tabs.hidden=panels.length<2;
-    return box;
+    return makeBoard(p,self,box);
   }
-  function presence(p,self){
-    const section=el('section'),filters=el('div'),grid=el('div');
-    filters.className='dom-profile-tabs';grid.className='dom-presence-grid';
-    let collection=p.presence[0]?.collection;
-    function draw(){
-      filters.replaceChildren();grid.replaceChildren();
-      const names=[...new Set(p.presence.map(card=>card.collection))];
-      if(names.length>1)for(const name of names){
-        const b=button(name,()=>{collection=name;draw();});
-        b.setAttribute('aria-pressed',String(collection===name));filters.append(b);
-      }
-      for(const card of p.presence.filter(card=>card.collection===collection)){
-        const tile=el('article');tile.dataset.size=card.size;tile.dataset.tone=card.tone;
-        tile.append(el('h3',card.title),el('p',card.text));grid.append(tile);
+  function showAttachment(host,p,post){
+    const ext=post.file_name.split('.').pop().toLowerCase();
+    const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',avif:'image/avif',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime',pdf:'application/pdf',txt:'text/plain',md:'text/plain',csv:'text/plain',json:'text/plain',aac:'audio/aac',flac:'audio/flac',m4v:'video/mp4'}[ext];
+    let pending;
+    const load=()=>pending||(pending=api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file').catch(e=>{pending=null;throw e;}));
+    const download=button(post.file_name,async()=>{try{const f=await load(),a=el('a');a.href='data:application/octet-stream;base64,'+f.base64;a.download=f.name;a.click();}catch(e){alert(e.message);}});
+    host.append(download);
+    const preview=el('div');preview.className='dom-board-media';download.before(preview);
+    async function render(){
+      try{const f=await load();if(!host.isConnected)return;
+        let media;
+        if(!mime){media=el('p',f.name+' · '+Math.ceil(f.base64.length*0.75/1024)+' KB');}
+        else if(mime==='text/plain'){media=el('pre',new TextDecoder().decode(Uint8Array.from(atob(f.base64.slice(0,65536)),c=>c.charCodeAt(0))));}
+        else{
+          media=el(mime.startsWith('image/')?'img':mime.startsWith('video/')?'video':mime.startsWith('audio/')?'audio':'iframe');
+          if(media.tagName==='IFRAME'){media.setAttribute('sandbox','');media.title=f.name;}
+          if(media.tagName==='IMG')media.alt=post.title||f.name;else{media.controls=true;media.preload='metadata';}
+          media.src='data:'+mime+';base64,'+f.base64;
+        }
+        preview.replaceChildren(media);
+      }catch(e){preview.replaceChildren(button(tr('Повторить загрузку','Retry preview','Reintentar'),render));}
+    }
+    if(post.expanded===false){preview.append(button(tr('Развернуть файл','Expand file','Abrir archivo'),render));return;}
+    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){observer.disconnect();render();}},{rootMargin:'160px'});observer.observe(preview);
+  }
+  function makeBoard(p,self,identity){
+    const root=el('div'),grid=el('div'),bar=el('div'),status=el('span'),items=new Map();
+    root.className='dom-profile-field';grid.className='dom-profile-grid';bar.className='dom-board-bar';status.setAttribute('role','status');
+    root.append(bar,grid);let editing=false,busy=false;
+    const mobile=()=>grid.clientWidth<560;
+    function add(key,tile,w,h){
+      tile.classList.add('dom-board-tile');tile.dataset.key=key;items.set(key,{key,tile,w,h});grid.append(tile);
+    }
+    add('identity',identity,window.innerWidth<700?12:8,p.cover?22:13);
+    for(const post of p.posts||[]){
+      const tile=el('article');
+      if(post.title)tile.append(el('h3',post.title));
+      if(post.file_name)showAttachment(tile,p,post);
+      if(post.body)tile.append(el('p',post.body));
+      if(post.snapshot){const excerpt=el('section'),list=el('ol');excerpt.className='dom-board-excerpt';excerpt.dataset.kind=post.snapshot.kind;excerpt.append(el('strong',sourceNames()[post.snapshot.kind]));if(post.snapshot.caption)excerpt.append(el('small',post.snapshot.caption));excerpt.append(list);
+        for(const line of post.snapshot.items)list.append(el('li',line));tile.append(excerpt);}
+      tile.append(el('small',new Date(post.created_at).toLocaleString()));
+      if(self)tile.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить публикацию?','Delete this post?','¿Eliminar publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});tile.remove();items.delete('post-'+post.id);layout();}catch(e){alert(e.message);}}));
+      add('post-'+post.id,tile,6,post.file_name?14:8);
+    }
+    (p.presence||[]).forEach((card,i)=>{const tile=el('article');tile.dataset.tone=card.tone;
+      tile.append(el('h3',card.title),el('p',card.text));add('card-'+i,tile,{full:12,wide:8,small:4}[card.size]||4,9);});
+    const saved=p.board||[];
+    const ordered=saved.map(t=>items.get(t.key)).filter(Boolean);
+    for(const entry of saved){const item=items.get(entry.key);if(item)Object.assign(item,{w:entry.w,h:entry.h,x:entry.x,y:entry.y});}
+    const missing=[...items.values()].filter(x=>!ordered.includes(x));
+    if(ordered.length)ordered.splice(Math.max(0,ordered.findIndex(x=>x.key==='identity')+1),0,...missing);else ordered.push(...missing);
+    for(const item of ordered)grid.append(item.tile);
+    function layout(priority,commit=false){
+      const occupied=[],all=[...grid.children].map(tile=>items.get(tile.dataset.key));
+      const pinned=all.filter(i=>i!==priority&&Number.isInteger(i.x));
+      const flow=all.filter(i=>i!==priority&&!Number.isInteger(i.x));
+      for(const item of [...(priority?[priority]:[]),...pinned,...flow]){
+        const width=mobile()?Math.max(6,item.w):item.w,height=item.h;
+        let x=Math.min(item.x??0,12-width),y=item.y??0;
+        function fits(){const mask=((1<<width)-1)<<x;for(let j=y;j<y+height;j++)if((occupied[j]||0)&mask)return false;return true;}
+        while(!fits()){if(++x>12-width){x=0;y++;}}
+        for(let j=y;j<y+height;j++)occupied[j]=(occupied[j]||0)|(((1<<width)-1)<<x);
+        item.tile.style.gridColumn=(x+1)+' / span '+width;item.tile.style.gridRow=(y+1)+' / span '+height;
+        item.column=x;item.row=y;
+        if(commit){item.x=x;item.y=y;}
       }
     }
-    if(self)section.append(button(tr('Настроить карточки','Customize cards','Editar tarjetas'),()=>editPresence(p)));
-    if(self&&!p.presence.length)section.append(el('p',tr('Что сейчас занимает ваше внимание? Добавьте первую карточку.','What has your attention today? Add your first card.','¿Qué ocupa tu atención hoy? Añade tu primera tarjeta.')));
-    section.append(filters,grid);draw();return section;
+    let lastWidth=-1;
+    const observer=new ResizeObserver(()=>{if(!grid.isConnected){observer.disconnect();return;}if(grid.clientWidth!==lastWidth){lastWidth=grid.clientWidth;layout();}});observer.observe(grid);
+    layout();
+    if(!self)return root;
+    const share=button(tr('Поделиться','Share','Compartir'),()=>compose(p));share.classList.add('dom-share');
+    const arrange=button(tr('Расставить блоки','Arrange blocks','Organizar bloques'),()=>editing?finish():start());
+    bar.append(share,arrange,status);
+    let hold;
+    grid.addEventListener('pointerdown',e=>{
+      if(editing||e.button!==0||e.target.closest('button,a,input,summary,video,audio'))return;
+      const origin=[e.clientX,e.clientY];
+      const cancel=()=>{clearTimeout(hold);grid.removeEventListener('pointermove',move);window.removeEventListener('pointerup',cancel);window.removeEventListener('pointercancel',cancel);};
+      const move=m=>{if(Math.hypot(m.clientX-origin[0],m.clientY-origin[1])>8)cancel();};
+      grid.addEventListener('pointermove',move);window.addEventListener('pointerup',cancel);window.addEventListener('pointercancel',cancel);
+      hold=setTimeout(()=>{cancel();if(root.isConnected&&!editing)start();},480);
+    });
+    function start(){
+      editing=true;root.classList.add('dom-arranging');arrange.textContent=tr('Сохранить расположение','Save layout','Guardar diseño');share.disabled=true;
+      for(const item of items.values())handles(item);
+    }
+    async function finish(){
+      if(busy)return;busy=true;arrange.disabled=true;grid.inert=true;
+      try{
+        const tiles=[...grid.children].map(node=>{const {key,w,h,x,y}=items.get(node.dataset.key);return {key,w,h,x,y};});
+        const r=await api('/api/social/board',{method:'PUT',body:{tiles,version:p.board_version||0}});
+        p.board_version=r.version;editing=false;root.classList.remove('dom-arranging');grid.querySelectorAll('.dom-grip').forEach(n=>n.remove());arrange.textContent=tr('Расставить блоки','Arrange blocks','Organizar bloques');share.disabled=false;status.textContent='';
+      }catch(e){status.textContent=e.message;}finally{busy=false;arrange.disabled=false;grid.inert=false;}
+    }
+    function handles(item){
+      const tile=item.tile;
+      for(const resize of [false,true]){
+        const grip=button(resize?'↘':'✥',()=>{});grip.className='dom-grip '+(resize?'resize':'move');grip.title=resize?tr('Размер · стрелки','Resize · arrow keys','Tamaño · flechas'):tr('Переместить · стрелки','Move · arrow keys','Mover · flechas');grip.setAttribute('aria-label',grip.title);tile.append(grip);
+        function size(w,h){item.w=Math.max(mobile()?6:2,Math.min(12,w));item.h=Math.max(3,Math.min(40,h));item.x=item.column;item.y=item.row;layout(item);}
+        grip.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();
+          if(resize)size(item.w+(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0),item.h+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0));
+          else{item.x=Math.max(0,Math.min(11,item.column+(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0)));item.y=Math.max(0,Math.min(2000,item.row+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0)));layout(item,true);}
+        };
+        grip.onpointerdown=e=>{
+          if(e.button!==0)return;e.preventDefault();grip.setPointerCapture(e.pointerId);
+          const col=item.column,row=item.row,x=e.clientX,y=e.clientY,w=mobile()?Math.max(6,item.w):item.w,h=item.h;
+          tile.classList.add('dom-dragging');
+          grip.onpointermove=move=>{if(resize){size(w+Math.round((move.clientX-x)/((grid.clientWidth+8)/12)),h+Math.round((move.clientY-y)/20));}
+            else{tile.style.translate=(move.clientX-x)+'px '+(move.clientY-y)+'px';}};
+          const end=up=>{tile.style.translate='';tile.classList.remove('dom-dragging');grip.onpointermove=null;grip.onpointerup=null;grip.onpointercancel=null;
+            if(up.type==='pointerup'){
+              if(!resize){item.x=Math.max(0,Math.min(12-w,col+Math.round((up.clientX-x)/((grid.clientWidth+8)/12))));
+                item.y=Math.max(0,Math.min(2000,row+Math.round((up.clientY-y)/20)));}
+              layout(item,true);
+            }
+          };grip.onpointerup=end;grip.onpointercancel=end;
+        };
+      }
+    }
+    return root;
   }
+  function sourceNames(){return {chain:tr('Цепочка Нейрокарты','NeuroMap chain','Cadena de NeuroMap'),path:tr('Личный путь','Personal path','Camino personal'),pattern:tr('Повторяющаяся связь','Recurring connection','Conexión recurrente'),atlas:tr('Снимок атласа','Atlas snapshot','Captura del atlas')};}
   function editPresence(p){
     let cards=p.presence.map(card=>({...card})),draggedIndex=null;
     const d=dialog('Presence'),list=el('div'),status=el('p'),tools=el('div');
@@ -242,13 +313,68 @@
     const d=dialog(title),f=el('form'),status=el('p'),send=el('button',submit);send.className='btn btn-solid';status.setAttribute('role','status');d.append(el('h2',title),f,status,send);
     send.onclick=()=>f.requestSubmit();f.onsubmit=async e=>{e.preventDefault();send.disabled=true;try{await action();d.close();await login(window.currentUser);}catch(err){status.textContent=err.message;}finally{send.disabled=false;}};return f;
   }
-  function compose(){
-    const body=el('textarea'),file=el('input');body.maxLength=4000;file.type='file';
-    const f=form(tr('Новый пост','New post','Nueva publicación'),tr('Опубликовать','Publish','Publicar'),async()=>{
-      let attachment=null;const selected=file.files[0];
+  function compose(p){
+    const title=el('input'),body=el('textarea'),file=el('input'),preview=el('div');
+    title.maxLength=160;body.maxLength=4000;file.type='file';
+    const expanded=el('input');expanded.type='checkbox';expanded.checked=true;
+    const display=field(tr('Показать вложение развёрнутым','Show attachment expanded','Mostrar archivo expandido'),expanded);display.hidden=true;
+    const kind=el('select'),pick=el('select'),excerpt=el('ol'),note=el('p');
+    kind.add(new Option(tr('Без фрагмента','No excerpt','Sin fragmento'),''));
+    for(const [value,label] of Object.entries(sourceNames()))kind.add(new Option(label,value));
+    let choices=[],snapshot=null,capture=null,ticket=0;
+    pick.hidden=true;
+    pick.onchange=()=>{const choice=choices[Number(pick.value)];snapshot=pick.value!==''&&choice?{kind:kind.value,caption:choice.label,items:choice.items}:null;
+      capture=null;excerpt.replaceChildren();
+      if(choice?.liveAtlas){
+        try{const a=window._anatomyAtlas;a.renderer.render(a.scene,a.camera);
+          const canvas=a.renderer.domElement;
+          if(!canvas.width||!canvas.height)throw Error();
+          const image=el('canvas'),scale=Math.min(1,1000/Math.max(canvas.width,canvas.height));image.width=Math.max(1,Math.round(canvas.width*scale));image.height=Math.max(1,Math.round(canvas.height*scale));
+          image.getContext('2d').drawImage(canvas,0,0,image.width,image.height);
+          capture=image.toDataURL('image/png');const thumb=photo(capture,'dom-atlas-excerpt');excerpt.append(thumb);
+        }catch{snapshot=null;note.textContent=tr('Откройте атлас и выберите вид ещё раз.','Open the atlas and select the view again.','Abre el atlas y vuelve a elegir la vista.');}
+      }
+      for(const line of snapshot?.items||[])excerpt.append(el('li',line));};
+    kind.onchange=async()=>{
+      const current=++ticket,mode=kind.value;
+      snapshot=null;capture=null;choices=[];pick.hidden=true;pick.replaceChildren();excerpt.replaceChildren();note.textContent='';
+      if(!mode)return;
+      try{
+        let options=[];
+        if(mode==='chain'||mode==='pattern'){
+          const graph=await api('/api/neuromap/v3/graph'),names=new Map(graph.nodes.map(n=>[String(n.id),n.label]));
+          if(mode==='chain')options=graph.chains.map(c=>({label:new Date(c.started_at).toLocaleDateString(),items:c.node_ids.map(id=>names.get(String(id))).filter(Boolean)}));
+          else options=graph.links.filter(l=>l.count>1).map(l=>({label:'×'+l.count,items:[names.get(String(l.source)),names.get(String(l.target))].filter(Boolean)}));
+        }else if(mode==='path'){
+          const path=await api('/api/users/me/evolution?period=all'),days=new Map();
+          for(const event of path.events||[]){if(!event.label||!event.occurred_at)continue;const day=new Date(event.occurred_at).toLocaleDateString();if(!days.has(day))days.set(day,[]);days.get(day).push(event.label);}
+          options=[...days].map(([label,items])=>({label,items}));
+        }else{
+          const {snapshots}=await api('/api/me/atlas-snapshots');
+          options=snapshots.map(s=>({label:s.label||new Date(s.taken_at).toLocaleDateString(),items:[...(s.state?.positive||[]),...(s.state?.negative||[])].filter(x=>typeof x==='string')}));
+          if(window._anatomyAtlas?.renderer?.domElement?.width){const label=tr('Текущий вид атласа','Current atlas view','Vista actual del atlas');options.unshift({label,items:[label],liveAtlas:true});}
+        }
+        if(current!==ticket)return;choices=options.filter(x=>x.items.length).map(x=>({...x,items:x.items.slice(0,64).map(line=>String(line).slice(0,500))}));
+        if(!choices.length){note.textContent=tr('Сохранённых фрагментов пока нет.','No saved excerpts yet.','Todavía no hay fragmentos.');return;}
+        pick.add(new Option(tr('Выбрать фрагмент','Choose an excerpt','Elegir fragmento'),''));
+        choices.forEach((x,i)=>pick.add(new Option(x.label+' · '+x.items.join(' → ').slice(0,85),String(i))));pick.hidden=false;
+      }catch(e){if(current===ticket)note.textContent=e.message;}
+    };
+    const f=form(tr('Поделиться','Share','Compartir'),tr('Опубликовать','Publish','Publicar'),async()=>{
+      if(kind.value&&!snapshot)throw Error(tr('Выберите фрагмент для публикации.','Choose the excerpt to publish.','Elige un fragmento.'));
+      let attachment=capture?{name:'atlas.png',base64:capture.split(',')[1]}:null;const selected=file.files[0];
       if(selected){if(selected.size>16*1024*1024)throw Error('Max. 16 MB');attachment={name:selected.name,base64:(await fileData(selected)).split(',')[1]};}
-      await api('/api/social/posts',{method:'POST',body:{body:body.value,attachment}});
-    });f.append(field(tr('Текст','Text','Texto'),body),field(tr('Файл до 16 МБ','File up to 16 MB','Archivo de hasta 16 MB'),file));
+      if(!title.value.trim()&&!body.value.trim()&&!attachment&&!snapshot)throw Error(tr('Добавьте текст, файл или фрагмент.','Add text, a file or an excerpt.','Añade texto, archivo o fragmento.'));
+      await api('/api/social/posts',{method:'POST',body:{title:title.value,body:body.value,attachment,snapshot,expanded:expanded.checked}});
+    });
+    let url;const clean=()=>{if(url)URL.revokeObjectURL(url);url=null;};f.closest('dialog').addEventListener('close',clean,{once:true});
+    file.onchange=()=>{clean();preview.replaceChildren();const selected=file.files[0];display.hidden=!selected;if(!selected)return;
+      const tag=/^image\/(jpeg|png|gif|webp|avif)$/.test(selected.type)?'img':selected.type.startsWith('video/')?'video':selected.type.startsWith('audio/')?'audio':null;
+      if(tag){url=URL.createObjectURL(selected);const media=el(tag);media.src=url;media.controls=true;media.alt=selected.name;preview.append(media);}
+    };preview.className='dom-board-media';
+    const audience=p.profile_public?p.sharing?.wall:'private';
+    const scope=audience==='members'?tr('Все участники','All members','Todos los miembros'):audience?.startsWith('group:')?p.groups?.find(g=>'group:'+g.id===audience)?.name:audience?.startsWith('person:')?p.contacts?.find(c=>'person:'+c.id===audience)?.display_name:null;
+    f.append(field(tr('Заголовок (по желанию)','Title (optional)','Título (opcional)'),title),field(tr('Текст','Text','Texto'),body),field(tr('Фото, аудио, видео или файл · до 16 МБ','Photo, audio, video or file · up to 16 MB','Foto, audio, vídeo o archivo · hasta 16 MB'),file),display,preview,field(tr('Фрагмент из DOM','Excerpt from DOM','Fragmento de DOM'),kind),pick,note,excerpt,el('small',tr('Аудитория публикации · ','Post audience · ','Audiencia · ')+(scope||tr('Только я','Only me','Solo yo'))));
   }
   function edit(p){
     const name=el('input'),bio=el('textarea'),visible=el('input'),cover=el('input'),remove=el('input'),fields={};
@@ -257,19 +383,20 @@
     role.value=p.org_role||'';role.maxLength=160;
     const f=form(tr('Профиль','Profile','Perfil'),tr('Сохранить','Save','Guardar'),async()=>{
       const file=cover.files[0];if(file?.size>2200000)throw Error('Max. 2 MB');
-      await api('/api/social/settings',{method:'PUT',body:{name:name.value,bio:bio.value,...(staff?{org_role:role.value}:{}),open:visible.checked,cover:file?await fileData(file):(remove.checked?'':null),sharing:Object.fromEntries(Object.entries(fields).map(([k,s])=>[k,s.value]))}});
+      await api('/api/social/settings',{method:'PUT',body:{name:name.value,bio:bio.value,...(staff?{org_role:role.value}:{}),open:visible.checked,cover:file?await fileData(file):(remove.checked?'':null),sharing:{map:'private',...Object.fromEntries(Object.entries(fields).map(([k,s])=>[k,s.value]))}}});
       Object.assign(window.currentUser,{name:name.value,display_name:name.value,bio:bio.value,profile_public:visible.checked});avatars.clear();
     });
     const help=el('details'),star=el('summary','✱'),tip=tr('Выберите, кто в DOM увидит вашу страницу и каждый раздел. Имя остаётся в беседах даже при закрытом профиле.','Choose who can see your page and each section. Your name still appears in conversations when your profile is private.','Elige quién puede ver tu página y cada sección. Tu nombre sigue en las conversaciones con el perfil privado.');
     star.title=tip;star.setAttribute('aria-label',tr('Кто видит профиль?','Who sees my profile?','¿Quién ve mi perfil?'));help.append(star,el('p',tip));f.previousElementSibling.append(help);
     f.append(field(tr('Имя или псевдоним','Display name','Nombre público'),name),field(tr('О себе','Bio','Biografía'),bio));
+    if(p.presence)f.append(button(tr('Архив карточек · импорт и экспорт','Card archive · import and export','Archivo de tarjetas · importar y exportar'),()=>editPresence(p)));
     if(staff){
       const roles=el('details');roles.open=!!role.value;roles.append(el('summary',tr('Роли в DOM','Roles at DOM','Funciones en DOM')),field(tr('Должность или роль в проекте','Position or project role','Cargo o función en el proyecto'),role));f.append(roles);
     }
     f.append(field(tr('Обложка · до 2 МБ','Cover · up to 2 MB','Portada · hasta 2 MB'),cover));
     if(p.cover)f.append(field(tr('Убрать обложку','Remove cover','Quitar portada'),remove));
     f.append(field(tr('Моё фото, обложку и описание видят все, кто вошёл в DOM','Show my photo, cover and bio to everyone signed in to DOM','Mostrar mi foto, portada y biografía a quienes inicien sesión en DOM'),visible));
-    for(const [key,title] of Object.entries({presence:tr('Карточки Presence','Presence cards','Tarjetas de Presence'),results:tr('Название профиля по последнему пройденному тесту','Profile from my last completed test','Perfil de mi última prueba completada'),map:tr('Нейрокарта · даты и названия точек в последних восьми цепочках','NeuroMap · dates and point names in my last eight chains','Etiquetas de los últimos 8 registros'),pulse:tr('Пульс · последнее полученное измерение и время, включая сигнал подключённого датчика','Heart rate · latest recorded value and time, including a connected live sensor','Último pulso con fecha'),wall:tr('Мои публикации в профиле и прикреплённые к ним файлы','My profile posts and their attachments','Muro y archivos')})){
+    for(const [key,title] of Object.entries({presence:tr('Прежние карточки профиля','Existing profile cards','Tarjetas anteriores'),results:tr('Мой тип по диагностике или вступительному тесту','My diagnostic or introductory type','Mi tipo diagnóstico o inicial'),pulse:tr('Пульс · последнее полученное измерение и время, включая сигнал подключённого датчика','Heart rate · latest recorded value and time, including a connected live sensor','Último pulso con fecha'),wall:tr('Мои публикации в профиле и прикреплённые к ним файлы','My profile posts and their attachments','Muro y archivos')})){
       const s=el('select');s.add(new Option(tr('Только я','Only me','Solo yo'),'private'));s.add(new Option(tr('Все участники','All members','Todos los miembros'),'members'));for(const g of p.groups||[])s.add(new Option(g.name,'group:'+g.id));
       for(const contact of p.contacts||[])s.add(new Option(tr('Только ','Only ','Solo ')+(contact.display_name||contact.id),'person:'+contact.id));
       s.value=p.sharing?.[key]||'private';if(!s.value)s.value='private';fields[key]=s;f.append(field(title,s));
@@ -308,7 +435,7 @@
     const host=document.getElementById('dom-social-self');if(!user?.id||!host)return;
     const ticket=++serial;
     if(sensor&&streamOwner!==user.id)sensor.disconnect();
-    if(lastId!==user.id){activeDialog?.close();avatars.clear();host.replaceChildren();lastId=user.id;ownerZone='presence';}
+    if(lastId!==user.id){activeDialog?.close();avatars.clear();host.replaceChildren();lastId=user.id;}
     try{const p=await api('/api/social/profile/'+encodeURIComponent(user.id));
       if(ticket!==serial||window.currentUser?.id!==user.id)return;
       const profile=card(p,true);host.replaceChildren(profile);Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});

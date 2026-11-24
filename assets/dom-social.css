@@ -54,3 +54,29 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-person-card .dom-presence-grid [data-tone=warm]{background:color-mix(in srgb,#cb8658 17%,var(--bg-surface))}
 .dom-social-dialog fieldset{min-width:0;margin:1rem 0;padding:1rem;border:1px solid var(--line-soft);border-radius:12px}
 @media(max-width:640px){.dom-presence-grid{grid-template-columns:1fr}.dom-presence-grid [data-size]{grid-column:auto}.dom-person-title{gap:.7rem}}
+
+.dom-profile-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:12px;gap:8px;align-items:stretch}
+.dom-profile-grid>.dom-board-tile{grid-column:span var(--tile-width,6);grid-row:span var(--tile-height,10);min-width:0;min-height:0;box-sizing:border-box;overflow:auto;position:relative;margin:0;padding:clamp(12px,1.8vw,24px);background:var(--bg-surface,#112019);color:var(--text-primary);border:1px solid var(--line-soft);border-radius:16px;overflow-wrap:anywhere;scrollbar-width:thin}
+.dom-board-tile[data-tone=accent]{background:color-mix(in srgb,var(--cabinet-accent,#428599) 15%,var(--bg-surface))}
+.dom-board-tile[data-tone=warm]{background:color-mix(in srgb,#cb8658 16%,var(--bg-surface))}
+.dom-board-tile>p{white-space:pre-wrap;margin:.4rem 0}.dom-board-tile>small{display:block;margin:.5rem 0;color:var(--text-muted)}
+.dom-board-tile h3{margin:.15rem 0 .5rem}.dom-board-bar{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin:0 0 .75rem}
+.dom-board-bar button,.dom-board-tile .btn{min-height:32px;padding:.3rem .65rem;font-size:.8rem;line-height:1.3}
+.dom-board-bar .dom-share{font-weight:650;border-color:var(--cabinet-accent)}
+.dom-board-media img,.dom-board-media video,.dom-board-media iframe,.dom-board-media audio{display:block;width:100%;max-width:100%;border:0;border-radius:10px}
+.dom-board-media img,.dom-board-media video{max-height:100%;object-fit:contain}.dom-board-media{min-height:1px}.dom-board-tile:has(.dom-board-media){display:flex;flex-direction:column;gap:.28rem}.dom-board-tile>.dom-board-media{flex:1;min-height:50px}.dom-board-tile>.dom-board-media :is(img,video,iframe){height:100%}.dom-board-media pre{white-space:pre-wrap}
+.dom-board-tile:has(.dom-board-media)>.btn{align-self:flex-start}.dom-board-excerpt{border-inline-start:2px solid var(--cabinet-accent);padding-inline-start:.75rem}
+.dom-profile-grid .dom-grip{position:absolute;z-index:2;font:1.15rem/1 sans-serif;color:var(--text-primary);background:var(--bg-surface);border:1px solid var(--cabinet-accent);border-radius:8px;width:34px;height:34px;touch-action:none;user-select:none}
+.dom-grip.move{top:4px;right:4px;cursor:grab}.dom-grip.resize{bottom:4px;right:4px;cursor:nwse-resize}.dom-arranging .dom-board-tile{outline:1px dashed var(--cabinet-accent);outline-offset:-3px}
+.dom-board-tile.dom-dragging{z-index:3;opacity:.86;will-change:translate}
+.dom-profile-grid #rpg-profile-subtitle,.dom-profile-grid [data-i18n="a.profile.xp_title"],.dom-profile-grid .dom-has-type #rpg-profile-name{display:none}
+.dom-profile-grid #rpg-xp-card>div:last-child{height:4px!important;margin-top:.3rem!important}
+#dom-social-self .dom-profile-grid .dom-profile-progress #rpg-xp-card,#dom-social-self .dom-profile-grid .dom-profile-progress #rpg-hero{padding:.2rem 0!important}
+.dom-private-journal{margin-block:1.5rem;padding:1rem;border:1px solid var(--line-soft);border-radius:14px}.dom-private-journal summary{cursor:pointer}
+@media(max-width:600px){.dom-profile-grid .dom-person-title{gap:.5rem}}
+
+.dom-atlas-excerpt{max-width:100%;max-height:240px;object-fit:contain}.dom-board-excerpt>small{display:block;color:var(--text-muted)}
+.dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) ol{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;padding:0;list-style:none}
+.dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) li{padding:.25rem .45rem;background:color-mix(in srgb,var(--cabinet-accent,#428599) 14%,transparent);border-radius:6px}
+.dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) li+li::before{content:'→ ';color:var(--text-muted)}
+.dom-board-excerpt[data-kind=path] ol{border-inline-start:1px solid var(--line-soft);padding-inline-start:1.4rem}.dom-board-excerpt[data-kind=path] li{padding:.1rem 0}
