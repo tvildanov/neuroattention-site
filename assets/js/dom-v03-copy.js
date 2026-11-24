@@ -26,7 +26,7 @@ window.DOMV03Copy={
       "ctaBody": "Приглашаем исследователей, преподавателей, инженеров, специалистов и инициаторов проектов создавать направления института, предлагать исследования и превращать знания в решения для человеческой адаптации.",
       "continueLab": "К институту и лаборатории",
       "spaces": "Пространства и форматы",
-      "zones": "Общий восьмиугольный зал · лаборатории и аудитории · консультации · движение и тренировки · спа и термальные практики · отдельный добровольный Dark Retreat · мастерские · проживание и семейные пространства · природа и забота о земле. Всё — часть проектируемой среды; форматы, допуск и сопровождение разрабатываются отдельно.",
+      "zones": "Общий восьмиугольный зал · лаборатории и аудитории · консультации · движение и тренировки · спа и термальные практики · тихая комната для отдыха с открытыми глазами · мастерские · проживание и семейные пространства · природа и забота о земле. Всё — часть проектируемой среды; форматы, допуск и сопровождение разрабатываются отдельно.",
       "guestPath": "Путь участника",
       "path": "Понять запрос и состояние → составить программу → прожить её в реальной среде → оценить изменения → перенести навыки и поддержку в обычную жизнь.",
       "demoProfile": "Учебный пример — не результат вашей диагностики.",
@@ -50,8 +50,8 @@ window.DOMV03Copy={
       },
       {
         "id": "restoration",
-        "title": "Восстановление и развитие",
-        "body": "Глубокая персональная работа с проживанием: оценка состояния, поддержка специалистов, обучение, движение, практики и восстановление. Индивидуальные и семейные форматы объединят тишину, тренировки и общение в продуманной среде. После программы — понятное продолжение пути через цифровые инструменты и поддержку."
+        "title": "Практика и отдых",
+        "body": "Программа практики с проживанием: самооценка внимания, ведущие практик, обучение, движение и практики с расслабленными открытыми глазами. Индивидуальные и семейные форматы объединяют тишину, движение и общение. После программы практика может продолжаться через цифровые инструменты. Это не медицинская услуга."
       },
       {
         "id": "institute",
@@ -99,7 +99,7 @@ window.DOMV03Copy={
     "catalogue": [
       {
         "id": "longevity",
-        "title": "Здоровое долголетие и нейрореабилитация"
+        "title": "Здоровое долголетие и практика внимания"
       },
       {
         "id": "youth",
@@ -146,7 +146,7 @@ window.DOMV03Copy={
       {
         "id": "longevity",
         "title": "Как сохранить качество жизни с возрастом?",
-        "body": "Как продлить годы высокого качества жизни? Разрабатываем исследования и программы, объединяющие внимание, движение, когнитивную активность, работу специалистов и повседневную среду. Цель — поддерживать ясность мышления, подвижность, самостоятельность и вовлечённость людей старшего возраста, в том числе в домах престарелых.",
+        "body": "Как поддерживать ясность внимания, движение и самостоятельность с возрастом? Разрабатываем практики, которые соединяют внимание, движение и повседневную среду. Это мягкие практики для людей старшего возраста и тех, кто о них заботится: спокойствие, контакт, ясность внимания. Не медицинская услуга.",
         "topicTitle": "Долголетие и качество жизни"
       },
       {
@@ -250,7 +250,7 @@ window.DOMV03Copy={
       "ctaBody": "We invite researchers, educators, engineers, practitioners and project creators to build institute directions, propose research and turn knowledge into solutions for human adaptation.",
       "continueLab": "Continue to Institute & Lab",
       "spaces": "Spaces and formats",
-      "zones": "An octagonal shared hall · laboratories and classrooms · consultations · movement and training · spa and thermal practices · a separate optional Dark Retreat · workshops · residential and family spaces · nature and land stewardship. All are planned; formats, eligibility and support are being developed separately.",
+      "zones": "An octagonal shared hall · laboratories and classrooms · consultations · movement and training · spa and thermal practices · a quiet room for rest with open eyes · workshops · residential and family spaces · nature and land stewardship. All are planned; formats, eligibility and support are being developed separately.",
       "guestPath": "Participant path",
       "path": "Understand needs and current state → build a programme → experience it in a real environment → review changes → transfer skills and support to everyday life.",
       "demoProfile": "Educational example — not your assessment result.",
@@ -274,8 +274,8 @@ window.DOMV03Copy={
       },
       {
         "id": "restoration",
-        "title": "Recovery and development",
-        "body": "In-depth residential work will combine assessment, specialist support, learning, movement, practice and recovery. Individual and family formats will bring quiet, training and connection into a considered environment, with a clear path to continue through digital tools and support."
+        "title": "Practice and rest",
+        "body": "A residential practice program: an attention self-check, practice guides, learning, movement, and practices with relaxed, open eyes. Individual and family formats bring quiet, movement, and conversation together. Practice can continue afterward through digital tools. This is not a medical service."
       },
       {
         "id": "institute",
@@ -323,7 +323,7 @@ window.DOMV03Copy={
     "catalogue": [
       {
         "id": "longevity",
-        "title": "Healthy longevity and neurorehabilitation"
+        "title": "Healthy longevity and attention practice"
       },
       {
         "id": "youth",
@@ -370,7 +370,7 @@ window.DOMV03Copy={
       {
         "id": "longevity",
         "title": "How can we maintain quality of life as we age?",
-        "body": "How can we extend years of high-quality life? We are developing research and programmes combining attention, movement, cognitive activity, specialist input and everyday environments, aiming to support clarity, mobility, independence and engagement in older people, including care-home residents.",
+        "body": "How can attention, movement, and daily rhythm stay available as we age? We are developing gentle practices for older adults and the people who care for them: calm, connection, and clarity of attention. This is not a medical service.",
         "topicTitle": "Healthy longevity and quality of life"
       },
       {
@@ -474,7 +474,7 @@ window.DOMV03Copy={
       "ctaBody": "Invitamos a investigadores, docentes, ingenieros, especialistas y creadores de proyectos a formar áreas del instituto, proponer investigaciones y convertir conocimientos en soluciones para la adaptación humana.",
       "continueLab": "Continuar a Institute & Lab",
       "spaces": "Espacios y formatos",
-      "zones": "Sala octagonal común · laboratorios y aulas · consultas · movimiento y entrenamiento · spa y prácticas termales · Dark Retreat opcional y separado · talleres · alojamiento y espacios familiares · naturaleza y cuidado de la tierra. Todo está proyectado; los formatos, la admisión y el acompañamiento se desarrollan por separado.",
+      "zones": "Sala octagonal común · laboratorios y aulas · consultas · movimiento y entrenamiento · spa y prácticas termales · una sala tranquila para descansar con los ojos abiertos · talleres · alojamiento y espacios familiares · naturaleza y cuidado de la tierra. Todo está proyectado; los formatos, la admisión y el acompañamiento se desarrollan por separado.",
       "guestPath": "Recorrido del participante",
       "path": "Comprender necesidades y estado → diseñar un programa → vivirlo en un entorno real → revisar cambios → trasladar habilidades y apoyo a la vida cotidiana.",
       "demoProfile": "Ejemplo educativo: no es el resultado de tu evaluación.",
@@ -498,8 +498,8 @@ window.DOMV03Copy={
       },
       {
         "id": "restoration",
-        "title": "Recuperación y desarrollo",
-        "body": "El trabajo residencial personalizado combinará evaluación, apoyo profesional, aprendizaje, movimiento, práctica y recuperación. Los formatos individuales y familiares reunirán tranquilidad, entrenamiento y convivencia, con continuidad mediante herramientas digitales y acompañamiento."
+        "title": "Práctica y descanso",
+        "body": "Un programa de práctica con alojamiento: autoevaluación de la atención, guías de práctica, aprendizaje, movimiento y prácticas con los ojos abiertos y relajados. Los formatos individuales y familiares reúnen silencio, movimiento y conversación. Después, la práctica puede continuar con herramientas digitales. No es un servicio médico."
       },
       {
         "id": "institute",
@@ -547,7 +547,7 @@ window.DOMV03Copy={
     "catalogue": [
       {
         "id": "longevity",
-        "title": "Longevidad saludable y neurorrehabilitación"
+        "title": "Longevidad saludable y práctica de la atención"
       },
       {
         "id": "youth",
@@ -594,7 +594,7 @@ window.DOMV03Copy={
       {
         "id": "longevity",
         "title": "¿Cómo mantener la calidad de vida al envejecer?",
-        "body": "¿Cómo prolongar los años de buena calidad de vida? Desarrollamos investigación y programas que combinan atención, movimiento, actividad cognitiva, apoyo profesional y entorno cotidiano para favorecer claridad, movilidad, autonomía y participación en personas mayores, también en residencias.",
+        "body": "¿Cómo mantener la atención, el movimiento y el ritmo del día con la edad? Desarrollamos prácticas suaves para personas mayores y quienes cuidan de ellas: calma, contacto y claridad de la atención. No es un servicio médico.",
         "topicTitle": "Longevidad saludable y calidad de vida"
       },
       {

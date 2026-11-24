@@ -79,7 +79,7 @@ async function sendEmail(to, subject, html) {
 
 async function sendConfirmationEmail(email, product, sessionId) {
   if (!email) return;
-  const productNames = { lab: 'NeuroAttention Lab Program', guided: 'NeuroAttention Lab — Guided Program', rehab: 'Rehabilitation Program' };
+  const productNames = { lab: 'NeuroAttention Lab Program', guided: 'NeuroAttention Lab — Guided Program', rehab: 'Individual practice' };
   const productName = productNames[product] || product;
 
   // Generate magic-link token for guest users (valid 7 days)
@@ -877,18 +877,18 @@ app.post('/api/run-migrations', requireAuth, async (req, res) => {
         { ru: 'Оцени по 10-балльной шкале удовлетворённость в настоящем моменте: Работа, Семья, Здоровье, Отдых (не саморазвитие), Друзья, Хобби, Саморазвитие, Духовность (Контакт с собой)', en: 'Rate present-moment satisfaction on a 10-point scale across: Work, Family, Health, Rest (not self-development), Friends, Hobby, Self-development, Spirituality (contact with self)', es: 'Califica del 1 al 10 tu satisfacción actual en: Trabajo, Familia, Salud, Descanso (no autodesarrollo), Amigos, Hobbies, Autodesarrollo, Espiritualidad (contacto contigo mismo)', type: 'scale_grid', options: { rows: [
           {ru:'Работа',en:'Work',es:'Trabajo'},{ru:'Семья',en:'Family',es:'Familia'},{ru:'Здоровье',en:'Health',es:'Salud'},{ru:'Отдых',en:'Rest',es:'Descanso'},{ru:'Друзья',en:'Friends',es:'Amigos'},{ru:'Хобби',en:'Hobby',es:'Hobby'},{ru:'Саморазвитие',en:'Self-development',es:'Autodesarrollo'},{ru:'Духовность',en:'Spirituality',es:'Espiritualidad'}
         ], min: 1, max: 10 } },
-        { ru: 'Есть ли хронические заболевания / перенесённые тяжёлые травмы или болезни?', en: 'Any chronic conditions or serious past injuries / illnesses?', es: '¿Enfermedades crónicas o traumas/enfermedades graves pasadas?', type: 'multiline' },
-        { ru: 'Есть ли зависимости?', en: 'Any addictions?', es: '¿Tienes adicciones?', type: 'multiline' },
-        { ru: 'Есть ли что-то, что вас беспокоит по вашему здоровью / физическому или ментальному состоянию?', en: 'Anything bothering you about your health, physical or mental state?', es: '¿Algo que te preocupe sobre tu salud, estado físico o mental?', type: 'multiline' },
+        { ru: 'Есть ли что-то в самочувствии, о чём вы хотите сказать ведущему до практики? Не указывайте диагноз.', en: 'Anything about how you feel that you want the guide to know before practice? Please do not include a diagnosis.', es: '¿Algo sobre cómo te sientes que quieras decirle al guía antes de la práctica? No incluyas un diagnóstico.', type: 'multiline' },
+        { ru: 'Есть ли привычка, от которой трудно оторваться?', en: 'Is there a habit that is hard to step away from?', es: '¿Hay un hábito del que te cuesta despegarte?', type: 'multiline' },
+        { ru: 'Что в обычном дне больше всего занимает внимание?', en: 'What takes up the most attention in an ordinary day?', es: '¿Qué ocupa más tu atención en un día ordinario?', type: 'multiline' },
         { ru: 'Как вы считаете, вы пессимист, реалист или оптимист?', en: 'Do you consider yourself a pessimist, realist or optimist?', es: '¿Te consideras pesimista, realista u optimista?', type: 'choice', options: [{ru:'Пессимист',en:'Pessimist',es:'Pesimista'},{ru:'Реалист',en:'Realist',es:'Realista'},{ru:'Оптимист',en:'Optimist',es:'Optimista'}] },
-        { ru: 'Сталкивались ли вы с ухудшением когнитивных способностей? Внимание, память, рассеянность, забывчивость', en: 'Have you experienced cognitive decline? Attention, memory, distractibility, forgetfulness', es: '¿Has experimentado deterioro cognitivo? Atención, memoria, distracción, olvidos', type: 'multiline' },
+        { ru: 'Как сейчас с ясностью внимания? Легко ли удерживать фокус?', en: 'How is clarity of attention right now? Is it easy to keep a focus?', es: '¿Cómo está ahora la claridad de la atención? ¿Te resulta fácil sostener el foco?', type: 'multiline' },
         { ru: 'Много ли стресса в вашей жизни?', en: 'Is there a lot of stress in your life?', es: '¿Hay mucho estrés en tu vida?', type: 'multiline' },
         { ru: 'Считаете себя стрессоустойчивым? Оценка по 10 баллам', en: 'Do you consider yourself stress-resilient? Rate 1–10', es: '¿Te consideras resiliente al estrés? Califica 1-10', type: 'scale', options: { min: 1, max: 10 } },
         { ru: 'Считаете своё повседневное состояние стабильным? (Если нет — что именно нестабильно?)', en: 'Do you consider your daily state stable? (If not — what specifically is unstable?)', es: '¿Consideras tu estado diario estable? (Si no, ¿qué es inestable?)', type: 'multiline' },
         { ru: 'Занимаетесь физической активностью?', en: 'Do you do physical activity?', es: '¿Haces actividad física?', type: 'multiline' },
         { ru: 'Активность ума по 10-балльной шкале', en: 'Mental activity on a 10-point scale', es: 'Actividad mental en una escala de 10', type: 'scale', options: { min: 1, max: 10 } },
         { ru: 'Бывает ли у вас, что вы проснулись уже уставшим?', en: 'Do you ever wake up already tired?', es: '¿Te despiertas ya cansado a veces?', type: 'multiline' },
-        { ru: 'Часто ли вы испытываете ощущение тревоги / волнения / беспокойства?', en: 'Do you often feel anxiety / worry / unease?', es: '¿Sientes a menudo ansiedad / preocupación / inquietud?', type: 'multiline' },
+        { ru: 'Часто ли вы замечаете напряжение или беспокойство?', en: 'Do you often notice tension or restlessness?', es: '¿Notas a menudo tensión o inquietud?', type: 'multiline' },
         { ru: 'Ваша работа — это то, что вы любите?', en: 'Is your work something you love?', es: '¿Es tu trabajo algo que amas?', type: 'multiline' },
         { ru: 'Вы любите себя?', en: 'Do you love yourself?', es: '¿Te amas a ti mismo?', type: 'multiline' },
         { ru: 'Как вы считаете, вы управляете своей жизнью?', en: 'Do you feel you are in charge of your own life?', es: '¿Sientes que controlas tu vida?', type: 'multiline' },
@@ -910,7 +910,7 @@ app.post('/api/run-migrations', requireAuth, async (req, res) => {
         { ru: 'Стоя на одной ноге, носок второй ноги опущен — поворот головы по 8 направлениям', en: 'Standing on one leg with the other toe pointed down — head turns in 8 directions', es: 'De pie sobre una pierna, con la punta del otro pie hacia abajo — gira la cabeza en 8 direcciones' },
         { ru: 'Стоим на одной ноге 30 сек (голову плавно поворачиваем влево-вправо), меняем ногу', en: 'Stand on one leg 30s (smoothly turning the head left–right), switch legs', es: 'De pie sobre una pierna 30 s (girando suavemente la cabeza izquierda-derecha), cambia de pierna' },
         { ru: 'Медленный наклон, округляя позвонок за позвонком, и такой же медленный подъём', en: 'Slow forward bend rolling vertebra by vertebra, and equally slow rise', es: 'Inclinación lenta hacia delante vértebra por vértebra, y subida igualmente lenta' },
-        { ru: 'Шаг на месте с закрытыми глазами — 50 шагов', en: 'March in place with eyes closed — 50 steps', es: 'Marcha en el lugar con ojos cerrados — 50 pasos' },
+        { ru: 'Шаг на месте с расслабленными открытыми глазами — 50 шагов', en: 'March in place with relaxed, open eyes — 50 steps', es: 'Marcha en el lugar con los ojos abiertos y relajados — 50 pasos' },
         { ru: 'Дополнительное наблюдение специалиста', en: 'Additional specialist observation', es: 'Observación adicional del especialista' }
       ];
       let idx = 0;
@@ -6025,7 +6025,7 @@ const STRIPE_PRODUCTS = {
     currency: 'usd'
   },
   rehab: {
-    name: 'Rehabilitation Program',
+    name: 'Individual practice',
     price: 19900, // $199
     currency: 'usd'
   }
@@ -6041,7 +6041,7 @@ app.post('/api/checkout/create-session', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'All consent checkboxes must be accepted' });
     }
     if (product === 'rehab' && !rehab) {
-      return res.status(400).json({ error: 'Rehabilitation consent must be accepted' });
+      return res.status(400).json({ error: 'Please confirm the wellness notice' });
     }
 
     const prod = STRIPE_PRODUCTS[product];

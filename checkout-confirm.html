@@ -420,6 +420,7 @@ button, a, input { cursor: pointer !important; }
       <!-- Error message area -->
       <div class="error-msg" id="error-msg"></div>
 
+      <p data-i18n="footer.wellness" style="font-size:12px;line-height:1.55;color:var(--text-dim);margin:0 0 1.25rem;">NeuroAttention — образовательная wellness-практика. Не является медицинской услугой, не диагностирует и не лечит заболевания. При проблемах со здоровьем обратитесь к врачу.</p>
       <!-- Consent checkboxes -->
       <div class="consent-section">
         <h2 data-i18n="checkout.consent_title">Please confirm before proceeding</h2>
@@ -452,9 +453,9 @@ button, a, input { cursor: pointer !important; }
         <div class="consent-item rehab-consent" id="consent-rehab-wrap" style="display:none;">
           <input type="checkbox" id="consent-rehab" />
           <label for="consent-rehab" data-i18n="checkout.consent_rehab">
-            I understand that NeuroAttention Lab does not provide medical rehabilitation.
-            This program is research-based and educational; it does not replace clinical treatment.
-            I take full responsibility for my participation.
+            I understand that this is an educational wellness practice, not a medical service.
+            It does not diagnose or treat any condition and does not replace a clinician.
+            I am responsible for my participation.
           </label>
         </div>
       </div>
@@ -498,8 +499,8 @@ button, a, input { cursor: pointer !important; }
       requireRehab: false
     },
     rehab: {
-      label: 'Rehabilitation Program',
-      name: 'Rehabilitation Program',
+      label: 'Individual practice',
+      name: 'Individual practice — one-to-one wellness sessions',
       price: '$199',
       priceId: null,
       requireRehab: true
