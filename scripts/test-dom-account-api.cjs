@@ -98,7 +98,7 @@ const mcp=http.createServer(async(req,res)=>{
 });
 const call=async(method,url,token,body)=>{
  const r=await fetch('http://127.0.0.1:'+port+url,{method,headers:{'Content-Type':'application/json',Authorization:token?'Bearer '+token:''},body:body===undefined?undefined:JSON.stringify(body)});
- return {status:r.status,body:await r.json()};
+ return {status:r.status,body:r.headers.get('content-type')?.includes('application/json')?await r.json():await r.text()};
 };
 const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.status,status,args.slice(0,2).join(' ')+': '+JSON.stringify(x.body));return x.body;};
 (async()=>{
@@ -132,6 +132,17 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  assert.deepEqual(view.presence,cards);
  assert.equal((await get(200,social,b)).presence,undefined);
  assert.equal(view.posts[0].body,'Group wall');assert.equal(view.pulse.value,66);assert.equal(view.result,undefined);
+ const thread=social+'/blocks/post-'+view.posts[0].id;
+ await expect(200,'PUT',thread+'/reaction',member.token,{reaction:'resonates'});
+ await post(201,thread+'/comments',member,{body:'Fixture response'});
+ const feedback=await get(200,thread,admin);
+ assert.deepEqual(feedback.reactions,[{reaction:'resonates',total:1,mine:false}]);
+ assert.equal(feedback.comments[0].author,member.user.id);
+ await get(404,thread,b);
+ await expect(200,'PUT','/api/social/settings',admin.token,{...settings,handle:'fixture-guide'});
+ assert.equal((await get(200,'/api/social/handle/fixture-guide',member)).id,admin.user.id);
+ assert.ok((await get(200,'/api/social/discover?q=fixture-guide',member)).profiles.some(p=>p.id===admin.user.id));
+ assert.ok(!(await get(200,'/api/social/discover',member)).posts.some(p=>p.owner_id===admin.user.id));
  const file=social+'/posts/'+view.posts[0].id+'/file';
  assert.equal((await get(200,file,member)).base64,'aGk=');
  const outside=await get(200,social,b);assert.equal(outside.posts,undefined);assert.equal(outside.pulse,undefined);
@@ -147,6 +158,8 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const large=Buffer.alloc(3*1024*1024,1).toString('base64');
  await post(201,'/api/social/posts',admin,{body:'Image',attachment:{name:'fixture.bin',base64:large}});
  await expect(200,'PUT','/api/social/settings',admin.token,{...settings,open:false});
+ await get(404,thread,member);
+ await get(404,'/api/social/handle/fixture-guide',member);
  const closed=await get(200,social,member);assert.equal(closed.presence,undefined);assert.equal(closed.bio,undefined);assert.equal(closed.posts,undefined);
  assert.equal((await fetch('http://127.0.0.1:'+port+file,{headers:{Authorization:'Bearer '+member.token}})).status,404);
  await expect(200,'DELETE','/api/social/live-pulse',admin.token);

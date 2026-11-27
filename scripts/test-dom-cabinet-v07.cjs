@@ -102,6 +102,7 @@ async function request(route,token,body){
      assert.equal(await nav.locator('[aria-controls="dom-nav-administration"]').isVisible(),false);
    }else{
      await nav.locator('a[data-tab="evolution"]').click();
+     await nav.locator('#dom-nav-evolution .dom-tools-group summary').click();
      await nav.locator('#dom-nav-evolution [data-nav-target="tools-mode-pointab"]').click();
      await page.locator('#tools-pointab-content').waitFor();
      assert.equal(await page.locator('#tools-mode-nm').isVisible(),false);

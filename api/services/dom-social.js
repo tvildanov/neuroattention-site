@@ -46,6 +46,11 @@ async function ensureSchema(sql) {
     body text NOT NULL, file_name text, file_data text, created_at timestamptz DEFAULT now())`;
   await sql`ALTER TABLE dom_profile_posts ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS snapshot jsonb, ADD COLUMN IF NOT EXISTS expanded boolean NOT NULL DEFAULT true`;
   await sql`CREATE INDEX IF NOT EXISTS dom_profile_posts_owner ON dom_profile_posts(user_id,id DESC)`;
+  await sql`ALTER TABLE dom_profile_settings ADD COLUMN IF NOT EXISTS handle text`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS dom_profile_handle ON dom_profile_settings(handle)`;
+  await sql`CREATE TABLE IF NOT EXISTS dom_tile_reactions(owner_id uuid REFERENCES users(id) ON DELETE CASCADE, tile text NOT NULL, author uuid REFERENCES users(id) ON DELETE CASCADE, reaction text NOT NULL, PRIMARY KEY(owner_id,tile,author))`;
+  await sql`CREATE TABLE IF NOT EXISTS dom_tile_comments(id bigserial PRIMARY KEY,owner_id uuid REFERENCES users(id) ON DELETE CASCADE, tile text NOT NULL, author uuid REFERENCES users(id) ON DELETE CASCADE, body text NOT NULL)`;
+  await sql`CREATE INDEX IF NOT EXISTS dom_tile_comment_thread ON dom_tile_comments(owner_id,tile,id)`;
   await sql`CREATE TABLE IF NOT EXISTS dom_guide_notes (
     id bigserial PRIMARY KEY, author uuid REFERENCES users(id) ON DELETE SET NULL, question text NOT NULL, instruction text NOT NULL)`;
 }
@@ -68,7 +73,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   }
   async function readAccess(id,viewer){
     if(!validId(id)) return null;
-    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.cover,s.sharing,s.org_role,s.presence,s.presence_version,s.board,s.board_version FROM users u
+    const [user]=await sql`SELECT u.id,u.display_name,u.avatar_url,u.bio,u.profile_public,s.handle,s.cover,s.sharing,s.org_role,s.presence,s.presence_version,s.board,s.board_version FROM users u
       LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE u.id=${id} AND u.deleted_at IS NULL`;
     if(!user)return null;
     const owner=id===viewer;
@@ -77,6 +82,57 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     const can=field=>(user.profile_public && user.sharing?.[field]==='person:'+viewer) || visible(user.sharing?.[field],owner,user.profile_public,rows.map(r=>r.room_id));
     return {user,owner,can};
   }
+  const defaultHandle=id=>'dom-'+id.replaceAll('-','');
+  const cardKey=(card,i)=>card._key??String(i);
+  route('get','/api/social/discover',async(req,res,me)=>{
+    const query=String(req.query.q||'').trim().toLowerCase().replace(/^@/,'').slice(0,64);
+    const before=String(req.query.before||'9223372036854775807');
+    if(!/^\d{1,19}$/.test(before)||BigInt(before)>9223372036854775807n)return res.sendStatus(400);
+    const profiles=await sql`SELECT u.id,u.display_name,coalesce(s.handle,'dom-'||replace(u.id::text,'-','')) AS handle
+      FROM users u LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE u.deleted_at IS NULL AND u.profile_public AND u.id<>${me}
+      AND (strpos(lower(u.display_name),${query})>0 OR strpos(coalesce(s.handle,'dom-'||replace(u.id::text,'-','')),${query})>0)
+      ORDER BY handle LIMIT 30`;
+    const posts=query?[]:await sql`SELECT p.id,p.title,p.body,p.file_name,p.expanded,p.snapshot,p.created_at,u.id AS owner_id,u.display_name
+      FROM dom_profile_posts p JOIN users u ON u.id=p.user_id JOIN dom_profile_settings s ON s.user_id=u.id
+      WHERE u.profile_public AND u.deleted_at IS NULL AND s.sharing->>'wall'='members' AND u.id<>${me} AND p.id<${before}
+      ORDER BY p.id DESC LIMIT 20`;
+    res.json({profiles,posts});
+  });
+  route('get','/api/social/handle/:handle',async(req,res,me)=>{
+    const [u]=await sql`SELECT u.id FROM users u LEFT JOIN dom_profile_settings s ON s.user_id=u.id WHERE
+      coalesce(s.handle,'dom-'||replace(u.id::text,'-',''))=${req.params.handle.toLowerCase()} AND (u.profile_public OR u.id=${me}) AND u.deleted_at IS NULL`;
+    return u?res.json(u):res.sendStatus(404);
+  });
+  const thread='/api/social/profile/:id/blocks/:tile';
+  async function mayDiscuss(req,me){
+    const a=await readAccess(req.params.id,me),key=req.params.tile;
+    if(!a)return false;
+    if(key==='identity')return a.owner||a.user.profile_public;
+    if(key.startsWith('card-'))return a.can('presence')&&(a.user.presence||[]).some((c,i)=>'card-'+cardKey(c,i)===key);
+    return /^post-\d{1,18}$/.test(key)&&a.can('wall')&&(await sql`SELECT 1 FROM dom_profile_posts WHERE user_id=${a.user.id} AND id=${key.slice(5)}`).length>0;
+  }
+  route('get',thread,async(req,res,me)=>{
+    if(!await mayDiscuss(req,me))return res.sendStatus(404);
+    const {id,tile}=req.params;
+    const reactions=await sql`SELECT reaction,count(*)::int AS total,bool_or(author=${me}) AS mine FROM dom_tile_reactions WHERE owner_id=${id} AND tile=${tile} GROUP BY reaction`;
+    const comments=await sql`SELECT c.id,c.body,c.author,u.display_name FROM dom_tile_comments c JOIN users u ON u.id=c.author WHERE c.owner_id=${id} AND c.tile=${tile} AND u.deleted_at IS NULL ORDER BY c.id DESC LIMIT 100`;
+    res.json({reactions,comments:comments.reverse()});
+  });
+  route('put',thread+'/reaction',async(req,res,me)=>{
+    if(!await mayDiscuss(req,me))return res.sendStatus(404);
+    const {id,tile}=req.params,r=req.body?.reaction;
+    if(r===null)await sql`DELETE FROM dom_tile_reactions WHERE owner_id=${id} AND tile=${tile} AND author=${me}`;
+    else if(['like','dislike','resonates','discuss'].includes(r))await sql`INSERT INTO dom_tile_reactions VALUES(${id},${tile},${me},${r}) ON CONFLICT(owner_id,tile,author) DO UPDATE SET reaction=excluded.reaction`;
+    else return res.sendStatus(400);
+    res.json({ok:true});
+  });
+  route('post',thread+'/comments',async(req,res,me)=>{
+    if(!await mayDiscuss(req,me))return res.sendStatus(404);
+    const body=req.body?.body;
+    if(typeof body!=='string'||!body.trim()||body.length>1500)return res.sendStatus(400);
+    await sql`INSERT INTO dom_tile_comments(owner_id,tile,author,body) VALUES(${req.params.id},${req.params.tile},${me},${body.trim()})`;
+    res.status(201).json({ok:true});
+  });
   route('get','/api/social/avatar/:id',async(req,res,me)=>{
     if(!validId(req.params.id))return res.sendStatus(404);
     const [u]=await sql`SELECT CASE WHEN profile_public OR id=${me} THEN avatar_url END AS avatar FROM users WHERE id=${req.params.id} AND deleted_at IS NULL`;
@@ -87,14 +143,17 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     if(!access)return res.sendStatus(404);
     const {user,owner,can}=access;
     const data={id:user.id,display_name:user.display_name,profile_public:user.profile_public};
-    if(owner||user.profile_public)Object.assign(data,{avatar_url:user.avatar_url,cover:user.cover,bio:user.bio,org_role:user.org_role});
+    if(owner||user.profile_public)Object.assign(data,{handle:user.handle||defaultHandle(user.id),avatar_url:user.avatar_url,cover:user.cover,bio:user.bio,org_role:user.org_role});
     if(owner){
       data.contacts=await contacts(me);
       data.sharing=user.sharing||{};
       data.groups=await sql`SELECT r.id,r.name FROM chat_rooms r JOIN chat_room_members m ON m.room_id=r.id
         WHERE m.user_id=${me} AND r.dm_thread_id IS NULL ORDER BY r.name`;
     }
-    if(can('presence'))data.presence=user.presence||[];
+    if(can('presence')){
+      data.card_keys=(user.presence||[]).map(cardKey);
+      data.presence=(user.presence||[]).map(({_key,...card})=>card);
+    }
     if(owner)data.presence_version=user.presence_version||0;
     if(can('results'))data.diagnostic=(await sql`SELECT slot,name,completed_at FROM dom_diagnostic_profiles WHERE user_id=${user.id}`)[0]||null;
     if(can('results'))data.result=(await sql`SELECT profile,completed_at FROM test_results WHERE user_id=${user.id} ORDER BY completed_at DESC LIMIT 1`)[0]||null;
@@ -106,7 +165,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       if(live)data.pulse=live;
     }
     if(can('wall'))data.posts=await sql`SELECT id,title,body,file_name,snapshot,expanded,created_at FROM dom_profile_posts WHERE user_id=${user.id} ORDER BY id DESC LIMIT 50`;
-    const keys=new Set(['identity',...(data.posts||[]).map(x=>'post-'+x.id),...(data.presence||[]).map((_,i)=>'card-'+i)]);
+    const keys=new Set(['identity',...(data.posts||[]).map(x=>'post-'+x.id),...(data.card_keys||[]).map(id=>'card-'+id)]);
     data.board=(user.board||[]).filter(tile=>keys.has(tile.key));
     if(owner)data.board_version=user.board_version||0;
     res.json(data);
@@ -133,15 +192,18 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     }
     const scopes=Object.fromEntries(fields.map(f=>[f,sharing[f]]));
     if(sharing.presence!==undefined)scopes.presence=sharing.presence;
-    await sql`WITH changed AS (UPDATE users SET display_name=${name.trim()},bio=${bio},profile_public=${open} WHERE id=${me} RETURNING id)
-      INSERT INTO dom_profile_settings(user_id,cover,sharing,org_role) SELECT id,COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,'') FROM changed
-      ON CONFLICT(user_id) DO UPDATE SET cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=dom_profile_settings.sharing || EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;
+    let handle=req.body.handle?.toLowerCase?.();
+    if(handle===defaultHandle(me))handle=null;
+    if(handle!=null&&(!/^[a-z0-9][a-z0-9_-]{2,31}$/.test(handle)||handle.startsWith('dom-')))return res.status(400).json({error:'Use 3–32 letters a–z, numbers, _ or -. Prefix dom- is reserved.'});
+    try{await sql`WITH changed AS (UPDATE users SET display_name=${name.trim()},bio=${bio},profile_public=${open} WHERE id=${me} RETURNING id)
+      INSERT INTO dom_profile_settings(user_id,handle,cover,sharing,org_role) SELECT id,${handle??null},COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,'') FROM changed
+      ON CONFLICT(user_id) DO UPDATE SET handle=CASE WHEN ${req.body.handle!==undefined} THEN EXCLUDED.handle ELSE dom_profile_settings.handle END,cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=dom_profile_settings.sharing || EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;}catch(e){if(e.code==='23505')return res.status(409).json({error:'Этот ник уже занят'});throw e;}
     res.json({ok:true});
   });
   route('put','/api/social/board',async(req,res,me)=>{
     const {tiles,version}=req.body||{};
     if(!Array.isArray(tiles)||tiles.length>100||!Number.isSafeInteger(version)||version<0||
-      tiles.some(t=>!t||!/^(identity|post-\d{1,18}|card-\d{1,2})$/.test(t.key)||!Number.isInteger(t.w)||t.w<1||t.w>12||!Number.isInteger(t.h)||t.h<3||t.h>40||(t.x!=null&&(!Number.isInteger(t.x)||t.x<0||t.x>11))||(t.y!=null&&(!Number.isInteger(t.y)||t.y<0||t.y>4000)))||
+      tiles.some(t=>!t||!/^(identity|post-\d{1,18}|card-(?:\d{1,2}|[a-f0-9-]{36}))$/.test(t.key)||!Number.isInteger(t.w)||t.w<1||t.w>12||!Number.isInteger(t.h)||t.h<3||t.h>40||(t.x!=null&&(!Number.isInteger(t.x)||t.x<0||t.x>11))||(t.y!=null&&(!Number.isInteger(t.y)||t.y<0||t.y>4000)))||
       new Set(tiles.map(t=>t.key)).size!==tiles.length)return res.status(400).json({error:'Invalid board'});
     await sql`INSERT INTO dom_profile_settings(user_id) VALUES(${me}) ON CONFLICT DO NOTHING`;
     const saved=await sql`UPDATE dom_profile_settings SET board=${JSON.stringify(tiles.map(({key,w,h,x,y})=>({key,w,h,x,y})))}::jsonb,board_version=board_version+1 WHERE user_id=${me} AND board_version=${version} RETURNING board_version`;
@@ -151,13 +213,18 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
   route('put','/api/social/presence',async(req,res,me)=>{
     const {cards,version}=req.body||{};
     if(!Number.isSafeInteger(version)||version<0||!Array.isArray(cards)||cards.length>24)return res.status(400).json({error:'Invalid Presence composition'});
+    const [old]=await sql`SELECT presence FROM dom_profile_settings WHERE user_id=${me}`;
+    const previous=old?.presence||[],used=new Set();
     const clean=[];
     for(const card of cards){
       if(!card || typeof card.title!=='string' || !card.title.trim() || card.title.length>100 ||
         typeof card.text!=='string' || card.text.length>1500 || typeof card.collection!=='string' ||
         !card.collection.trim() || card.collection.length>50 || !['small','wide','full'].includes(card.size) ||
         !['neutral','accent','warm'].includes(card.tone))return res.status(400).json({error:'Invalid Presence composition'});
-      clean.push({title:card.title.trim(),text:card.text,collection:card.collection.trim(),size:card.size,tone:card.tone});
+      const original=previous.findIndex((c,i)=>!used.has(i)&&(card._key!=null?cardKey(c,i)===card._key:c.title===card.title&&c.text===card.text));
+      const key=original<0?require('crypto').randomUUID():cardKey(previous[original],original);
+      used.add(original);
+      clean.push({_key:key,title:card.title.trim(),text:card.text,collection:card.collection.trim(),size:card.size,tone:card.tone});
     }
     await sql`INSERT INTO dom_profile_settings(user_id) VALUES(${me}) ON CONFLICT DO NOTHING`;
     const rows=await sql`UPDATE dom_profile_settings SET presence=${JSON.stringify(clean)}::jsonb,
@@ -229,8 +296,11 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       }catch(e){
         // Only use the legacy provider for installations without the shared router.
         // Budget limits, ambiguous timeouts and provider failures must not trigger a second paid call.
-        if(!/unknown tool|tool.*not found|method not found/i.test(e.message)){
-          const budget=/budget|quota/i.test(e.message);
+        const auth=[401,403].includes(e.status)||/authentication_required/i.test(e.message);
+        const budget=/budget|quota|credit|payment|balance/i.test(e.message);
+        console.warn('[dom-guide] llm_ask failed', {status:e.status||null, category:budget?'budget':auth?'service_auth':/timeout/i.test(e.name+e.message)?'timeout':'upstream'});
+        if(budget||(!auth&&!/unknown tool|tool.*not found|method not found/i.test(e.message))){
+
           return res.status(503).json({error:budget?'Достигнут лимит модели DOM. Повторите позже.':'Модель DOM временно недоступна. Сообщение можно отправить повторно.'});
         }
       }

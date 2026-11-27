@@ -21,7 +21,7 @@
   }
   function restoreMember(){
     const id=memberKey();
-    if(isMemberId(id)&&window.currentUser?.id){if(activeDialog?.dataset.member!==id)open(id,false);}
+    if((isMemberId(id)||/^@[a-z0-9_-]{3,40}$/.test(id))&&window.currentUser?.id){if(activeDialog?.dataset.member!==id)open(id,false);}
     else if(activeDialog?.dataset.member)activeDialog.close();
   }
   window.addEventListener('popstate',restoreMember);
@@ -67,14 +67,18 @@
   function photo(url,cls){const img=el('img');img.className=cls;img.src=url;img.alt='';return img;}
   function block(title){const section=el('section');section.append(el('h3',title));return section;}
   async function open(id,push=true){
-    if(!isMemberId(id))return;
+    if(!isMemberId(id)&&!/^@[a-z0-9_-]{3,40}$/.test(id))return;
     if(push&&memberKey()!==id){const url=new URL(location.href);url.searchParams.set('member',id);history.pushState({domMember:true},'',url);}
     const d=dialog(tr('Профиль участника','Member profile','Perfil de miembro'));
     d.dataset.member=id;
     d.firstElementChild.onclick=closeMember;
     d.addEventListener('cancel',e=>{e.preventDefault();closeMember();});
     const loading=el('p',tr('Загрузка…','Loading…','Cargando…'));d.append(loading);
-    try{const data=await api('/api/social/profile/'+encodeURIComponent(id));if(d.open)loading.replaceWith(card(data,false));}catch(e){loading.textContent=e.message;}
+    try{
+      const uuid=isMemberId(id)?id:(await api('/api/social/handle/'+encodeURIComponent(id.slice(1)))).id;
+      const data=await api('/api/social/profile/'+encodeURIComponent(uuid));
+      if(d.open){if(data.handle){const url=new URL(location.href);url.searchParams.set('member','@'+data.handle);history.replaceState(history.state,'',url);d.dataset.member='@'+data.handle;}loading.replaceWith(card(data,false));}
+    }catch(e){loading.textContent=e.message;}
   }
   function card(p,self){
     const box=el('article');box.className='dom-person-card';
@@ -86,6 +90,7 @@
       const img=avatar?.querySelector('#rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
     }else if(p.avatar_url)row.append(photo(p.avatar_url,'dom-person-avatar'));
     const identity=el('div');identity.setAttribute('data-title-case-skip','');identity.append(el('h2',p.display_name));
+    if(p.handle)identity.append(el('small','@'+p.handle));
     if(p.org_role)identity.append(el('small',p.org_role));
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
     const typeName=p.diagnostic?.name||window.TEST_PROFILES_MAP?.[p.result?.profile]?.name||p.result?.profile?.replaceAll('_',' ');
@@ -133,7 +138,9 @@
     let pending;
     const load=()=>pending||(pending=api('/api/social/profile/'+p.id+'/posts/'+post.id+'/file').catch(e=>{pending=null;throw e;}));
     const download=button(post.file_name,async()=>{try{const f=await load(),a=el('a');a.href='data:application/octet-stream;base64,'+f.base64;a.download=f.name;a.click();}catch(e){alert(e.message);}});
-    host.append(download);
+    const imageOnly=mime?.startsWith('image/')&&!post.title&&!post.body&&!post.snapshot&&post.expanded!==false;
+    if(imageOnly)host.classList.add('dom-image-post');
+    host.append(download);download.hidden=!!imageOnly;
     const preview=el('div');preview.className='dom-board-media';download.before(preview);
     async function render(){
       try{const f=await load();if(!host.isConnected)return;
@@ -152,6 +159,63 @@
     if(post.expanded===false){preview.append(button(tr('Развернуть файл','Expand file','Abrir archivo'),render));return;}
     const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){observer.disconnect();render();}},{rootMargin:'160px'});observer.observe(preview);
   }
+  function icon(name){
+    const paths={move:'M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4',resize:'M5 5l14 14M10 19h9v-9',chevron:'m6 9 6 6 6-6'};
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS(svg.namespaceURI,'path');
+    svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',paths[name]);svg.append(path);return svg;
+  }
+  function discuss(p,key){
+    return button(tr('Отклики','Responses','Respuestas'),()=>{
+      // Keep the member dialog mounted while the thread is open.
+      const d=el('dialog'),panel=el('div'),status=el('p'),input=el('textarea'),form=el('form');
+      d.className='dom-social-dialog';const title=tr('Отклики','Responses','Respuestas');d.setAttribute('aria-label',title);
+      input.required=true;input.maxLength=1500;input.placeholder=tr('Оставить комментарий','Add a comment','Añadir comentario');input.setAttribute('aria-label',input.placeholder);
+      const send=el('button',tr('Отправить','Send','Enviar'));form.append(input,send);
+      d.append(button(tr('Закрыть','Close','Cerrar'),()=>d.close()),el('h2',title),panel,form,status);document.body.append(d);d.onclose=()=>d.remove();d.showModal();
+      const base='/api/social/profile/'+p.id+'/blocks/'+key;
+      const labels={like:tr('Нравится','Like','Me gusta'),dislike:tr('Не нравится','Dislike','No me gusta'),resonates:tr('Откликается','Resonates','Me resuena'),discuss:tr('Хочу обсудить','Let’s discuss','Quiero conversar')};
+      async function load(){
+        const thread=await api(base),row=el('div');row.className='dom-profile-tabs';panel.replaceChildren(row);
+        for(const [id,label] of Object.entries(labels)){
+          const reaction=thread.reactions.find(r=>r.reaction===id);
+          const b=button(label+' · '+(reaction?.total||0),async()=>{
+            row.inert=true;try{await api(base+'/reaction',{method:'PUT',body:{reaction:reaction?.mine?null:id}});await load();}catch(e){status.textContent=e.message;}finally{row.inert=false;}
+          });b.setAttribute('aria-pressed',String(!!reaction?.mine));row.append(b);
+        }
+        for(const c of thread.comments){const author=peer(c.author,c.display_name);author.onclick=()=>{d.close();open(c.author);};panel.append(author,el('p',c.body));}
+      }
+      form.onsubmit=async e=>{e.preventDefault();if(!input.value.trim())return;send.disabled=true;
+        try{await api(base+'/comments',{method:'POST',body:{body:input.value}});input.value='';await load();}catch(err){status.textContent=err.message;}finally{send.disabled=false;}
+      };load().catch(e=>status.textContent=e.message);
+    });
+  }
+  function communityTabs(profile){
+    const root=el('section'),nav=el('nav'),feed=el('section'),search=el('input'),results=el('div'),posts=el('div'),status=el('p');
+    nav.className='dom-profile-tabs';feed.className='dom-community';feed.hidden=true;
+    search.type='search';search.placeholder=tr('Найти участника по @нику или имени','Find a member by @handle or name','Buscar por @usuario o nombre');search.setAttribute('aria-label',search.placeholder);
+    let generation=0,timer;
+    const mine=button(tr('Мой профиль','My profile','Mi perfil'),()=>select(false)),community=button(tr('Лента сообщества','Community feed','Comunidad'),()=>select(true));
+    function select(show){profile.hidden=show;feed.hidden=!show;mine.setAttribute('aria-pressed',String(!show));community.setAttribute('aria-pressed',String(show));if(show)read();}
+    async function read(before){
+      const ticket=++generation;if(!before){results.replaceChildren();posts.replaceChildren();}more.hidden=true;
+      status.textContent=tr('Загрузка…','Loading…','Cargando…');
+      try{const data=await api('/api/social/discover?q='+encodeURIComponent(search.value)+(before?'&before='+before:''));
+        if(ticket!==generation)return;
+        if(!before)for(const u of data.profiles)results.append(peer(u.id,u.display_name+' · @'+u.handle));
+        for(const post of data.posts){const article=el('article');article.className='dom-person-card';article.append(peer(post.owner_id,post.display_name));
+          if(post.title)article.append(el('h3',post.title));if(post.body)article.append(el('p',post.body));
+          if(post.file_name){const media=el('section');article.append(media);showAttachment(media,{id:post.owner_id},post);}
+          if(post.snapshot)article.append(el('strong',sourceNames()[post.snapshot.kind]),el('p',post.snapshot.items.join(' · ')));
+          article.append(discuss({id:post.owner_id},'post-'+post.id));posts.append(article);
+        }
+        status.textContent=search.value&&!data.profiles.length?tr('Участников не найдено','No members found','Sin resultados'):!search.value&&!posts.children.length?tr('Открытых публикаций пока нет','No public posts yet','Aún no hay publicaciones públicas'):'';
+        more.hidden=data.posts.length<20;more.onclick=()=>read(data.posts.at(-1).id);
+      }catch(e){if(ticket===generation)status.textContent=e.message;}
+    }
+    const more=button(tr('Показать ещё','Load more','Ver más'),()=>{});more.hidden=true;
+    search.oninput=()=>{generation++;clearTimeout(timer);timer=setTimeout(()=>read(),200);};
+    nav.append(mine,community);feed.append(search,results,posts,status,more);root.append(nav,profile,feed);select(false);return root;
+  }
   function makeBoard(p,self,identity){
     const root=el('div'),grid=el('div'),bar=el('div'),status=el('span'),items=new Map();
     root.className='dom-profile-field';grid.className='dom-profile-grid';bar.className='dom-board-bar';status.setAttribute('role','status');
@@ -160,7 +224,11 @@
     function add(key,tile,w,h){
       tile.classList.add('dom-board-tile');tile.dataset.key=key;items.set(key,{key,tile,w,h});grid.append(tile);
     }
-    add('identity',identity,window.innerWidth<700?12:8,p.cover?22:13);
+    const identityHeight=p.cover?22:13;
+    add('identity',identity,8,identityHeight);
+    if(self||p.profile_public)identity.append(discuss(p,'identity'));
+    const firstPost=p.posts?.at(-1);
+
     for(const post of p.posts||[]){
       const tile=el('article');
       if(post.title)tile.append(el('h3',post.title));
@@ -168,12 +236,21 @@
       if(post.body)tile.append(el('p',post.body));
       if(post.snapshot){const excerpt=el('section'),list=el('ol');excerpt.className='dom-board-excerpt';excerpt.dataset.kind=post.snapshot.kind;excerpt.append(el('strong',sourceNames()[post.snapshot.kind]));if(post.snapshot.caption)excerpt.append(el('small',post.snapshot.caption));excerpt.append(list);
         for(const line of post.snapshot.items)list.append(el('li',line));tile.append(excerpt);}
-      tile.append(el('small',new Date(post.created_at).toLocaleString()));
-      if(self)tile.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить публикацию?','Delete this post?','¿Eliminar publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});tile.remove();items.delete('post-'+post.id);layout();}catch(e){alert(e.message);}}));
-      add('post-'+post.id,tile,6,post.file_name?14:8);
+      const controls=el('footer');controls.append(discuss(p,'post-'+post.id));tile.append(controls);
+      if(self)controls.append(button(tr('Удалить','Delete','Eliminar'),async()=>{if(!confirm(tr('Удалить публикацию?','Delete this post?','¿Eliminar publicación?')))return;try{await api('/api/social/posts/'+post.id,{method:'DELETE'});tile.remove();items.delete('post-'+post.id);layout();}catch(e){alert(e.message);}}));
+      add('post-'+post.id,tile,post===firstPost?4:6,post===firstPost?identityHeight:post.file_name?12:8);
     }
     (p.presence||[]).forEach((card,i)=>{const tile=el('article');tile.dataset.tone=card.tone;
-      tile.append(el('h3',card.title),el('p',card.text));add('card-'+i,tile,{full:12,wide:8,small:4}[card.size]||4,9);});
+      const key='card-'+(p.card_keys?.[i]??i),controls=el('footer');
+      controls.append(discuss(p,key));
+      if(self)controls.append(button(tr('Удалить','Delete','Eliminar'),async()=>{
+        if(!confirm(tr('Удалить карточку?','Delete this card?','¿Eliminar tarjeta?')))return;
+        try{const cards=p.presence.map((c,j)=>({...c,_key:p.card_keys?.[j]})).filter((_,j)=>j!==i);
+          await api('/api/social/presence',{method:'PUT',body:{cards,version:p.presence_version}});await login(window.currentUser);
+        }catch(e){alert(e.message);}
+      }));
+      tile.append(el('h3',card.title),el('p',card.text),controls);
+      add(key,tile,!firstPost&&i===0?4:{full:12,wide:8,small:4}[card.size]||4,!firstPost&&i===0?identityHeight:9);});
     const saved=p.board||[];
     const ordered=saved.map(t=>items.get(t.key)).filter(Boolean);
     for(const entry of saved){const item=items.get(entry.key);if(item)Object.assign(item,{w:entry.w,h:entry.h,x:entry.x,y:entry.y});}
@@ -185,7 +262,7 @@
       const pinned=all.filter(i=>i!==priority&&Number.isInteger(i.x));
       const flow=all.filter(i=>i!==priority&&!Number.isInteger(i.x));
       for(const item of [...(priority?[priority]:[]),...pinned,...flow]){
-        const width=mobile()?Math.max(6,item.w):item.w,height=item.h;
+        const width=mobile()?12:item.w,height=item.h;
         let x=Math.min(item.x??0,12-width),y=item.y??0;
         function fits(){const mask=((1<<width)-1)<<x;for(let j=y;j<y+height;j++)if((occupied[j]||0)&mask)return false;return true;}
         while(!fits()){if(++x>12-width){x=0;y++;}}
@@ -199,7 +276,7 @@
     const observer=new ResizeObserver(()=>{if(!grid.isConnected){observer.disconnect();return;}if(grid.clientWidth!==lastWidth){lastWidth=grid.clientWidth;layout();}});observer.observe(grid);
     layout();
     if(!self)return root;
-    const share=button(tr('Поделиться','Share','Compartir'),()=>compose(p));share.classList.add('dom-share');
+    const share=button(tr('Добавить пост','Add post','Añadir publicación'),()=>compose(p));share.classList.add('dom-share');
     const arrange=button(tr('Расставить блоки','Arrange blocks','Organizar bloques'),()=>editing?finish():start());
     bar.append(share,arrange,status);
     let hold;
@@ -225,8 +302,15 @@
     }
     function handles(item){
       const tile=item.tile;
+      if(item.key!=='identity'){
+        const pin=button(tr('Закрепить рядом','Pin beside profile','Fijar junto al perfil'),()=>{
+          const person=items.get('identity');Object.assign(person,{w:8,h:identityHeight,x:0,y:0});
+          Object.assign(item,{w:4,h:identityHeight,x:8,y:0});grid.prepend(person.tile,item.tile);
+          if(!mobile())layout(null,true);else layout();
+        });pin.className='dom-pin dom-grip';tile.append(pin);
+      }
       for(const resize of [false,true]){
-        const grip=button(resize?'↘':'✥',()=>{});grip.className='dom-grip '+(resize?'resize':'move');grip.title=resize?tr('Размер · стрелки','Resize · arrow keys','Tamaño · flechas'):tr('Переместить · стрелки','Move · arrow keys','Mover · flechas');grip.setAttribute('aria-label',grip.title);tile.append(grip);
+        const grip=button('',()=>{});grip.append(icon(resize?'resize':'move'));grip.className='dom-grip '+(resize?'resize':'move');grip.title=resize?tr('Размер · стрелки','Resize · arrow keys','Tamaño · flechas'):tr('Переместить · стрелки','Move · arrow keys','Mover · flechas');grip.setAttribute('aria-label',grip.title);tile.append(grip);
         function size(w,h){item.w=Math.max(mobile()?6:2,Math.min(12,w));item.h=Math.max(3,Math.min(40,h));item.x=item.column;item.y=item.row;layout(item);}
         grip.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();
           if(resize)size(item.w+(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0),item.h+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0));
@@ -252,7 +336,7 @@
   }
   function sourceNames(){return {chain:tr('Цепочка Нейрокарты','NeuroMap chain','Cadena de NeuroMap'),path:tr('Личный путь','Personal path','Camino personal'),pattern:tr('Повторяющаяся связь','Recurring connection','Conexión recurrente'),atlas:tr('Снимок атласа','Atlas snapshot','Captura del atlas')};}
   function editPresence(p){
-    let cards=p.presence.map(card=>({...card})),draggedIndex=null;
+    let cards=p.presence.map((card,i)=>({...card,_key:p.card_keys?.[i]})),draggedIndex=null;
     const d=dialog('Presence'),list=el('div'),status=el('p'),tools=el('div');
     status.setAttribute('role','status');tools.className='dom-profile-tabs';
     function draw(){
@@ -360,7 +444,7 @@
         choices.forEach((x,i)=>pick.add(new Option(x.label+' · '+x.items.join(' → ').slice(0,85),String(i))));pick.hidden=false;
       }catch(e){if(current===ticket)note.textContent=e.message;}
     };
-    const f=form(tr('Поделиться','Share','Compartir'),tr('Опубликовать','Publish','Publicar'),async()=>{
+    const f=form(tr('Добавить пост','Add post','Añadir publicación'),tr('Опубликовать','Publish','Publicar'),async()=>{
       if(kind.value&&!snapshot)throw Error(tr('Выберите фрагмент для публикации.','Choose the excerpt to publish.','Elige un fragmento.'));
       let attachment=capture?{name:'atlas.png',base64:capture.split(',')[1]}:null;const selected=file.files[0];
       if(selected){if(selected.size>16*1024*1024)throw Error('Max. 16 MB');attachment={name:selected.name,base64:(await fileData(selected)).split(',')[1]};}
@@ -379,16 +463,17 @@
   function edit(p){
     const name=el('input'),bio=el('textarea'),visible=el('input'),cover=el('input'),remove=el('input'),fields={};
     name.value=p.display_name||'';name.maxLength=100;name.required=true;bio.value=p.bio||'';bio.maxLength=1500;visible.type=remove.type='checkbox';visible.checked=p.profile_public;cover.type='file';cover.accept='image/jpeg,image/png,image/webp';
+    const handle=el('input');handle.value=p.handle||'';handle.autocapitalize='none';handle.spellcheck=false;
     const role=el('input'),staff=['admin','superadmin','founder'].includes(window.currentUser?.serverRole);
     role.value=p.org_role||'';role.maxLength=160;
     const f=form(tr('Профиль','Profile','Perfil'),tr('Сохранить','Save','Guardar'),async()=>{
       const file=cover.files[0];if(file?.size>2200000)throw Error('Max. 2 MB');
-      await api('/api/social/settings',{method:'PUT',body:{name:name.value,bio:bio.value,...(staff?{org_role:role.value}:{}),open:visible.checked,cover:file?await fileData(file):(remove.checked?'':null),sharing:{map:'private',...Object.fromEntries(Object.entries(fields).map(([k,s])=>[k,s.value]))}}});
+      await api('/api/social/settings',{method:'PUT',body:{handle:handle.value.trim().replace(/^@/,''),name:name.value,bio:bio.value,...(staff?{org_role:role.value}:{}),open:visible.checked,cover:file?await fileData(file):(remove.checked?'':null),sharing:{map:'private',...Object.fromEntries(Object.entries(fields).map(([k,s])=>[k,s.value]))}}});
       Object.assign(window.currentUser,{name:name.value,display_name:name.value,bio:bio.value,profile_public:visible.checked});avatars.clear();
     });
     const help=el('details'),star=el('summary','✱'),tip=tr('Выберите, кто в DOM увидит вашу страницу и каждый раздел. Имя остаётся в беседах даже при закрытом профиле.','Choose who can see your page and each section. Your name still appears in conversations when your profile is private.','Elige quién puede ver tu página y cada sección. Tu nombre sigue en las conversaciones con el perfil privado.');
     star.title=tip;star.setAttribute('aria-label',tr('Кто видит профиль?','Who sees my profile?','¿Quién ve mi perfil?'));help.append(star,el('p',tip));f.previousElementSibling.append(help);
-    f.append(field(tr('Имя или псевдоним','Display name','Nombre público'),name),field(tr('О себе','Bio','Biografía'),bio));
+    f.append(field(tr('Имя или псевдоним','Display name','Nombre público'),name),field(tr('Уникальный ник (@)','Unique handle (@)','Usuario único (@)'),handle),field(tr('О себе','Bio','Biografía'),bio));
     if(p.presence)f.append(button(tr('Архив карточек · импорт и экспорт','Card archive · import and export','Archivo de tarjetas · importar y exportar'),()=>editPresence(p)));
     if(staff){
       const roles=el('details');roles.open=!!role.value;roles.append(el('summary',tr('Роли в DOM','Roles at DOM','Funciones en DOM')),field(tr('Должность или роль в проекте','Position or project role','Cargo o función en el proyecto'),role));f.append(roles);
@@ -413,7 +498,8 @@
     const expand=button('',()=>setExpanded(expand.getAttribute('aria-expanded')!=='true'));
     function setExpanded(on){
       expand.setAttribute('aria-expanded',String(on));
-      expand.textContent=on?tr('Свернуть','Collapse','Contraer'):tr('Развернуть','Expand','Ampliar');
+      expand.replaceChildren(icon('chevron'));expand.hidden=!history.length;expand.className='dom-fold';
+      expand.setAttribute('aria-label',on?tr('Свернуть историю','Collapse history','Contraer historial'):tr('Развернуть историю','Expand history','Ampliar historial'));
       transcript.hidden=!on;next.hidden=!on;feedback.hidden=!on||!question||go.disabled||history.at(-2)?.content!==question;
     }
     heading.append(expand);setExpanded(false);
@@ -424,10 +510,10 @@
       programs:['enroll',null,tr('Выбрать программу','Choose a program','Elegir programa')],community:['domunity',null,'DOMunity']
     };
     feedback.append(button(tr('Сохранить для команды','Save for the team','Guardar para el equipo'),async e=>{if(!note.value.trim())return;e.currentTarget.disabled=true;const b=e.currentTarget;try{await api('/api/dom-guide/feedback',{method:'POST',body:{question,instruction:note.value}});note.value='';feedback.open=false;answer.after(el('small',tr('Поправка сохранена','Correction saved','Corrección guardada')));}catch(err){answer.textContent=err.message;}finally{b.disabled=false;}}));
-    form.append(input,go);form.onsubmit=async e=>{e.preventDefault();question=input.value.trim();if(!question)return;note.value='';feedback.open=false;go.disabled=true;setExpanded(true);feedback.hidden=true;next.replaceChildren();answer.classList.remove('dom-guide-sr');answer.textContent=tr('DOM готовит ответ…','DOM is replying…','DOM está respondiendo…');try{const r=await api('/api/dom-guide/ask',{method:'POST',body:{question,screen:document.body.dataset.accountTab,language:document.documentElement.lang,history:history.slice(-6)}});if(!r.answer?.trim())throw Error(tr('DOM не прислал ответ. Попробуйте ещё раз.','DOM returned an empty answer. Try again.','DOM no envió respuesta. Inténtalo de nuevo.'));
+    form.append(input,go);form.onsubmit=async e=>{e.preventDefault();question=input.value.trim();if(!question)return;note.value='';feedback.open=false;go.disabled=true;setExpanded(!!history.length);feedback.hidden=true;next.replaceChildren();answer.classList.remove('dom-guide-sr');answer.textContent=tr('DOM готовит ответ…','DOM is replying…','DOM está respondiendo…');try{const r=await api('/api/dom-guide/ask',{method:'POST',body:{question,screen:document.body.dataset.accountTab,language:document.documentElement.lang,history:history.slice(-6)}});if(!r.answer?.trim())throw Error(tr('DOM не прислал ответ. Попробуйте ещё раз.','DOM returned an empty answer. Try again.','DOM no envió respuesta. Inténtalo de nuevo.'));
       transcript.append(el('strong',question),el('p',r.answer));transcript.scrollTop=transcript.scrollHeight;answer.textContent=r.answer;answer.classList.add('dom-guide-sr');
       feedback.hidden=expand.getAttribute('aria-expanded')!=='true';
-      history.push({role:'user',content:question},{role:'assistant',content:r.answer});input.value='';
+      history.push({role:'user',content:question},{role:'assistant',content:r.answer});input.value='';setExpanded(true);feedback.hidden=false;
       const dest=destinations[r.action];if(dest){const top=document.querySelector('.dash-nav-primary a[data-tab="'+dest[0]+'"]');if(top&&top.style.pointerEvents!=='none')next.append(button(dest[2],()=>{activeDialog?.close();window.switchTab(dest[0]);if(dest[1])document.getElementById(dest[1])?.click();window.history.replaceState(null,'','#'+dest[0]+(dest[1]?'/'+dest[1]:''));}));}}catch(err){answer.textContent=err.message;}finally{go.disabled=false;}};
     box.append(transcript,form,answer,next,feedback);return box;
   }
@@ -438,7 +524,7 @@
     if(lastId!==user.id){activeDialog?.close();avatars.clear();host.replaceChildren();lastId=user.id;}
     try{const p=await api('/api/social/profile/'+encodeURIComponent(user.id));
       if(ticket!==serial||window.currentUser?.id!==user.id)return;
-      const profile=card(p,true);host.replaceChildren(profile);Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});
+      const profile=card(p,true);host.replaceChildren(communityTabs(profile));Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});
     }catch(e){if(ticket!==serial)return;host.replaceChildren(el('p',e.message),button(tr('Повторить','Retry','Reintentar'),()=>login(user)));}
     if(['admin','superadmin','founder'].includes(user.serverRole))host.prepend(guide());
     restoreMember();

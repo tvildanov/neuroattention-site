@@ -84,7 +84,10 @@
          item=el(source.matches('a')?'a':'button','dom-nav-item');
          if(item.tagName==='A')item.href=source.href;else item.type='button';
          item.dataset.navTarget=source.id||source.dataset.tab||source.dataset.monadSub||source.dataset.monadArch||String(sources.indexOf(source));
-         list.insertBefore(item,list.querySelector('a[data-tab="courses"]'));
+         if(key==='evolution'){
+           const tools=source.id.startsWith('tools-'),group=list.querySelector(tools?'.dom-tools-group':'.dom-path-group');
+           if(source.id==='evo-subtab-personal')group.querySelector('summary').after(item);else group.append(item);
+         }else list.append(item);
          if(nested)makeBranch(nested,item);
          item.onclick=event=>{
            if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
@@ -130,9 +133,13 @@
      original.append(link);
      if(!routes[id]){link.addEventListener('click',mobileDone);continue;}
      const list=makeBranch(id,link);
-     if(id==='evolution'&&courseItem){
+     if(id==='evolution'){
+       const path=el('details','dom-path-group'),tools=el('details','dom-tools-group');path.open=true;
+       path.append(el('summary','',txt('Мой путь','My path','Mi camino')));tools.append(el('summary','',txt('Мои инструменты','My tools','Mis herramientas')));
+       list.append(path,tools);
+       if(courseItem){
        courseItem.removeAttribute('data-i18n');courseItem.className='dash-tab dom-nav-item';
-       list.append(courseItem);courseItem.addEventListener('click',mobileDone);
+       path.append(courseItem);courseItem.addEventListener('click',mobileDone);}
      }
      link.addEventListener('click',event=>{
        if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
@@ -183,15 +190,20 @@
    bar.setAttribute('aria-label',txt('Путь развития','Development path','Ruta de desarrollo'));
    first.before(bar);
    const sources=[...document.querySelectorAll(routes.evolution)];
-   const ordered=['tools-mode-nm','evo-subtab-personal','tools-mode-anatomy'];
+   let toolsOpen=document.body.dataset.accountTab==='tools';
+   const pathButton=el('button','',txt('Мой путь','My path','Mi camino')),toolsButton=el('button','',txt('Мои инструменты','My tools','Mis herramientas'));
+   pathButton.onclick=()=>{toolsOpen=false;sync();};toolsButton.onclick=()=>{toolsOpen=true;sync();};bar.append(pathButton,toolsButton);
+   const ordered=['evo-subtab-personal','evo-subtab-collective','evo-subtab-family','tools-mode-nm'];
    sources.sort((a,b)=>(ordered.includes(a.id)?ordered.indexOf(a.id):99)-(ordered.includes(b.id)?ordered.indexOf(b.id):99));
    const sync=()=>{
      const active=document.body.dataset.accountTab;
+     pathButton.setAttribute('aria-pressed',String(!toolsOpen));toolsButton.setAttribute('aria-pressed',String(toolsOpen));
+     courses.hidden=toolsOpen;
      ask.hidden=!['admin','superadmin','founder'].includes(window.currentUser?.serverRole);
      for(const source of sources){
        const b=bar.querySelector('[data-source="'+source.id+'"]');
        const tab=source.id.startsWith('tools-')?'tools':'evolution';
-       b.textContent=source.textContent.trim();b.hidden=source.hidden||source.style.display==='none';
+       b.textContent=source.textContent.trim();b.hidden=(toolsOpen!==(tab==='tools'))||source.hidden||source.style.display==='none';
        b.disabled=branches.get(tab)?.owner.style.pointerEvents==='none';
        b.setAttribute('aria-pressed',String(active===tab&&source.classList.contains('active')));
      }
@@ -213,6 +225,7 @@
        const panel=q('#tab-'+tab);if(panel)panel.scrollTop=0;
      };bar.append(b);
    }
+   const courses=el('button','',txt('Мои программы','My programs','Mis programas'));courses.onclick=()=>q('a[data-tab="courses"]',nav)?.click();bar.querySelector('[data-source="evo-subtab-personal"]')?.after(courses);
    const programs=el('button');programs.type='button';programs.onclick=()=>q('a[data-tab="enroll"]',nav)?.click();bar.append(programs);
    const ask=el('button','',txt('Спросить DOM','Ask DOM','Pregunta a DOM'));ask.type='button';ask.hidden=true;ask.onclick=()=>window.DOMSocial?.ask();bar.append(ask);
    const shortcut=el('button','dom-nav-item');shortcut.type='button';
