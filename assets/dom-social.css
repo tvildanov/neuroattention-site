@@ -80,3 +80,25 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) li{padding:.25rem .45rem;background:color-mix(in srgb,var(--cabinet-accent,#428599) 14%,transparent);border-radius:6px}
 .dom-board-excerpt:is([data-kind=pattern],[data-kind=chain]) li+li::before{content:'→ ';color:var(--text-muted)}
 .dom-board-excerpt[data-kind=path] ol{border-inline-start:1px solid var(--line-soft);padding-inline-start:1.4rem}.dom-board-excerpt[data-kind=path] li{padding:.1rem 0}
+.dom-profile-grid>.dom-image-post{padding:0;overflow:hidden}
+.dom-profile-grid>.dom-image-post>.dom-board-media{position:absolute;inset:0;min-height:0}
+.dom-profile-grid>.dom-image-post>.dom-board-media img{height:100%;width:100%;object-fit:cover;border-radius:0}
+.dom-board-tile footer{display:flex;gap:.35rem;flex-wrap:wrap;margin-block-start:.5rem}
+.dom-image-post footer{position:absolute;bottom:.45rem;left:.45rem;right:.45rem}
+.dom-image-post footer button,.dom-grip{background:var(--bg-surface);color:var(--text-primary)}
+.dom-arranging .dom-image-post footer{right:42px}
+.dom-profile-grid .dom-pin{top:4px;left:4px;width:auto;font-size:.75rem;height:32px}
+.dom-fold svg,.dom-grip svg{display:block;width:16px;height:16px;margin:auto;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.dom-fold[aria-expanded=true] svg{transform:rotate(180deg)}
+.dom-guide .dom-fold{padding:.25rem;min-width:28px;min-height:28px}
+.dom-community input{width:min(100%,28rem);margin:.75rem 0}.dom-community .dom-person-link{margin:.25rem}
+.dom-community article{margin:.75rem 0}.dom-community .dom-board-media img{max-height:26rem}
+.dom-profile-field[hidden],.dom-community[hidden],.dom-image-post>[hidden]{display:none!important}
+#dom-nav-evolution details summary{cursor:pointer;font-weight:600;padding:.5rem}
+#dom-nav-evolution details>.dom-nav-item{display:block;margin-inline-start:.5rem}
+#dom-nav-evolution .dom-nav-item[hidden],#dom-workspace-switch [hidden]{display:none!important}
+
+.dom-photo-open{display:block;width:100%;height:100%;border:0;padding:0;background:transparent;cursor:zoom-in}
+.dom-full-photo{width:fit-content;max-width:94vw}.dom-full-photo img{display:block;max-width:100%;max-height:75dvh;object-fit:contain}
+#dom-nav-evolution>details{grid-column:1/-1;min-width:0}
+#dom-nav-evolution details>.dom-nav-item{box-sizing:border-box;width:calc(100% - .5rem)}

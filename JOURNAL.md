@@ -2474,3 +2474,6 @@ This completes the first personal recording foundation, not the whole premium pl
 2026-11-23 · Codex · neuro. Living Profile integrates the existing typology hero and XP with identity, scopes Presence through the social profile API, and keeps wall posts in Stream. Presence stores ordered cards and named compositions with versioned writes and JSON transfer.
 
 2026-11-23 · Codex · neuro. One profile board for identity, previous cards, inline media and deliberately shared DOM excerpts. Layout persists on the account. Private observation journal has owner-scoped deletion and retry tombstones. Internal diagnostic slots 1–12 take precedence over introductory results.
+
+### 2026-11-27 · Codex · Стена профиля и лента сообщества
+Добавлены уникальные ники, поиск, лента открытых публикаций, отклики с проверкой аудитории, удаление прежних карточек и закрепление рядом с профилем. Разделены группы пути и инструментов. Обновлены фотокарточки и сворачивание истории DOM. Расширены сценарии проверки кабинета и API.
