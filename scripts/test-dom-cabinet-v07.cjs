@@ -89,6 +89,27 @@ async function request(route,token,body){
    const move=post.locator('.dom-grip.move');await move.focus();await move.press('ArrowDown');
    const saveLayout=page.waitForResponse(r=>r.url().includes('/api/social/board')&&r.request().method()==='PUT');
    await board.locator('.dom-board-bar button').nth(1).click();assert.equal((await saveLayout).status(),200);
+   if(role==='user'){
+     await board.locator('.dom-share').click();
+     await editor.locator('input[type=file]').setInputFiles({name:'full-frame.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jf1sAAAAASUVORK5CYII=','base64')});
+     await editor.locator('.btn-solid').click();
+     const photo=board.locator('.dom-image-post').first(),image=photo.locator('img');
+     await image.scrollIntoViewIfNeeded();await image.waitFor();
+     const rect=await photo.boundingBox(),picture=await image.boundingBox();
+     assert.ok(Math.abs(rect.width-picture.width)<=3&&Math.abs(rect.height-picture.height)<=3);
+     assert.equal(await photo.getByRole('button',{name:'full-frame.png',exact:true}).isVisible(),false);
+     await photo.getByRole('button',{name:'Отклики'}).click();
+     await editor.getByRole('button',{name:/Откликается/}).click();
+     await editor.locator('button[aria-pressed=true]').waitFor();
+     await editor.locator('textarea').fill('Вижу деталь');
+     await editor.getByRole('button',{name:'Отправить'}).click();
+     await editor.getByText('Вижу деталь',{exact:true}).waitFor();
+     await editor.getByRole('button',{name:'Закрыть'}).click();
+     await social.getByRole('button',{name:'Лента сообщества'}).click();
+     await social.getByRole('searchbox').fill('@fixture-guide');
+     await social.getByText('Участников не найдено').waitFor();
+     await social.getByRole('button',{name:'Мой профиль'}).click();
+   }
    if(role!=='user'){
      await social.locator('.dom-guide input').fill('Open my path');
      await social.locator('.dom-guide form button').click();

@@ -190,13 +190,14 @@
    bar.setAttribute('aria-label',txt('Путь развития','Development path','Ruta de desarrollo'));
    first.before(bar);
    const sources=[...document.querySelectorAll(routes.evolution)];
-   let toolsOpen=document.body.dataset.accountTab==='tools';
+   let lastTab=document.body.dataset.accountTab,toolsOpen=lastTab==='tools';
    const pathButton=el('button','',txt('Мой путь','My path','Mi camino')),toolsButton=el('button','',txt('Мои инструменты','My tools','Mis herramientas'));
    pathButton.onclick=()=>{toolsOpen=false;sync();};toolsButton.onclick=()=>{toolsOpen=true;sync();};bar.append(pathButton,toolsButton);
    const ordered=['evo-subtab-personal','evo-subtab-collective','evo-subtab-family','tools-mode-nm'];
    sources.sort((a,b)=>(ordered.includes(a.id)?ordered.indexOf(a.id):99)-(ordered.includes(b.id)?ordered.indexOf(b.id):99));
    const sync=()=>{
      const active=document.body.dataset.accountTab;
+     if(lastTab!==active){if(active==='tools'||active==='evolution')toolsOpen=active==='tools';lastTab=active;}
      pathButton.setAttribute('aria-pressed',String(!toolsOpen));toolsButton.setAttribute('aria-pressed',String(toolsOpen));
      courses.hidden=toolsOpen;
      ask.hidden=!['admin','superadmin','founder'].includes(window.currentUser?.serverRole);
