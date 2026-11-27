@@ -296,7 +296,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
       }catch(e){
         // Only use the legacy provider for installations without the shared router.
         // Budget limits, ambiguous timeouts and provider failures must not trigger a second paid call.
-        const auth=[401,403].includes(e.status)||/authentication_required/i.test(e.message);
+        const auth=[401,403].includes(e.status)||/authentication_required|HTTP 401: authentication_error|llm_router: no usable model for task=/i.test(e.message);
         const budget=/budget|quota|credit|payment|balance/i.test(e.message);
         console.warn('[dom-guide] llm_ask failed', {status:e.status||null, category:budget?'budget':auth?'service_auth':/timeout/i.test(e.name+e.message)?'timeout':'upstream'});
         if(budget||(!auth&&!/unknown tool|tool.*not found|method not found/i.test(e.message))){
@@ -323,7 +323,11 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
         if(model){params.model=model.id;response=await ask();}
       }
     }
-    if(!response.ok)return res.status(503).json({error:'DOM guide model unavailable'});
+    if(!response.ok){
+      console.warn('[dom-guide] fallback rejected', {status:response.status,provider:router?'openrouter':anthropic?'anthropic':'openai'});
+      const reason=[401,403].includes(response.status)?'Провайдер модели отклонил авторизацию DOM.':response.status===429?'Провайдер модели достиг лимита запросов.':'Провайдер модели DOM временно недоступен.';
+      return res.status(503).json({error:reason});
+    }
     const data=await response.json();
     const answer=anthropic?data.content?.filter(b=>b.type==='text').map(b=>b.text).join(' '):data.choices?.[0]?.message?.content;
     sendGuideReply(res,answer);

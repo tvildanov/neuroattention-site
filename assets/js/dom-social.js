@@ -64,6 +64,14 @@
       }catch(e){sensor?.disconnect();if(e.name!=='NotFoundError')alert(e.message);}
     });if(sensor)b.textContent=tr('Остановить датчик','Stop sensor','Detener sensor');return b;
   }
+  function postText(body){
+    const paragraph=el('p');
+    for(const part of body.split(/(https?:\/\/[^\s<>"']+)/gi)){
+      if(/^https?:\/\//i.test(part)){const link=el('a',part);link.href=part;link.rel='noopener noreferrer';link.target='_blank';paragraph.append(link);}
+      else paragraph.append(document.createTextNode(part));
+    }
+    return paragraph;
+  }
   function photo(url,cls){const img=el('img');img.className=cls;img.src=url;img.alt='';return img;}
   function block(title){const section=el('section');section.append(el('h3',title));return section;}
   async function open(id,push=true){
@@ -153,7 +161,13 @@
           if(media.tagName==='IMG')media.alt=post.title||f.name;else{media.controls=true;media.preload='metadata';}
           media.src='data:'+mime+';base64,'+f.base64;
         }
-        preview.replaceChildren(media);
+        if(imageOnly&&media.tagName==='IMG'){
+          const enlarge=button('',()=>{
+            const viewer=el('dialog');viewer.className='dom-social-dialog dom-full-photo';viewer.setAttribute('aria-label',tr('Фотография','Photo','Foto'));
+            viewer.append(button(tr('Закрыть','Close','Cerrar'),()=>viewer.close()),photo(media.src,''));
+            document.body.append(viewer);viewer.onclose=()=>viewer.remove();viewer.showModal();
+          });enlarge.className='dom-photo-open';enlarge.setAttribute('aria-label',tr('Открыть фото целиком','View full photo','Ver foto completa'));enlarge.append(media);preview.replaceChildren(enlarge);
+        }else preview.replaceChildren(media);
       }catch(e){preview.replaceChildren(button(tr('Повторить загрузку','Retry preview','Reintentar'),render));}
     }
     if(post.expanded===false){preview.append(button(tr('Развернуть файл','Expand file','Abrir archivo'),render));return;}
@@ -203,7 +217,7 @@
         if(ticket!==generation)return;
         if(!before)for(const u of data.profiles)results.append(peer(u.id,u.display_name+' · @'+u.handle));
         for(const post of data.posts){const article=el('article');article.className='dom-person-card';article.append(peer(post.owner_id,post.display_name));
-          if(post.title)article.append(el('h3',post.title));if(post.body)article.append(el('p',post.body));
+          if(post.title)article.append(el('h3',post.title));if(post.body)article.append(postText(post.body));
           if(post.file_name){const media=el('section');article.append(media);showAttachment(media,{id:post.owner_id},post);}
           if(post.snapshot)article.append(el('strong',sourceNames()[post.snapshot.kind]),el('p',post.snapshot.items.join(' · ')));
           article.append(discuss({id:post.owner_id},'post-'+post.id));posts.append(article);
@@ -233,7 +247,7 @@
       const tile=el('article');
       if(post.title)tile.append(el('h3',post.title));
       if(post.file_name)showAttachment(tile,p,post);
-      if(post.body)tile.append(el('p',post.body));
+      if(post.body)tile.append(postText(post.body));
       if(post.snapshot){const excerpt=el('section'),list=el('ol');excerpt.className='dom-board-excerpt';excerpt.dataset.kind=post.snapshot.kind;excerpt.append(el('strong',sourceNames()[post.snapshot.kind]));if(post.snapshot.caption)excerpt.append(el('small',post.snapshot.caption));excerpt.append(list);
         for(const line of post.snapshot.items)list.append(el('li',line));tile.append(excerpt);}
       const controls=el('footer');controls.append(discuss(p,'post-'+post.id));tile.append(controls);
