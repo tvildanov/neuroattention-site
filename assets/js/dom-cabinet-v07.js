@@ -71,7 +71,7 @@
      const {owner,arrow,list,entries}=branch;
      arrow.hidden=owner.hidden||owner.style.display==='none';
      arrow.setAttribute('aria-label',txt('Подразделы','Subsections','Subsecciones')+' · '+owner.textContent.trim());
-     arrow.disabled=key!=='evolution'&&(owner.style.pointerEvents==='none'||owner.disabled===true);
+     arrow.disabled=owner.style.pointerEvents==='none'||owner.disabled===true;
      if(arrow.hidden||arrow.disabled)openBranch(key,false);
      const sources=[...document.querySelectorAll(routes[key])];
      for(const [source,item] of entries){

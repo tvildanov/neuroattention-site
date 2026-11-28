@@ -171,6 +171,7 @@ async function request(route,token,body){
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
    await page.locator('.dom-cabinet-sidebar a[data-tab="overview"]').click();
    await page.locator('#tab-overview.active').waitFor();
+   if(width<860)await profileAction('mine');
    const avatar=page.locator('#rpg-avatar-wrap');
    assert.match(await avatar.evaluate(el=>getComputedStyle(el).clipPath),/^polygon\(/);
    const navItem=page.locator('.dom-cabinet-sidebar a[data-tab="overview"]');

@@ -106,3 +106,4 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-person-handle{display:block;margin:.15rem 0 .4rem;font-size:.95rem;font-weight:600;color:var(--cabinet-accent);overflow-wrap:anywhere}
 #client-dashboard:has(#dom-nav-overview .dom-nav-item) #dom-social-self [data-profile-action]{display:none}
 #dom-nav-overview .selected{font-weight:650}
+body:has(dialog[data-member][open]) #client-dashboard{visibility:hidden}
