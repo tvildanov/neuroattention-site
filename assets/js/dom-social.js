@@ -98,7 +98,7 @@
       const img=avatar?.querySelector('#rpg-avatar-img');if(img)img.src=p.avatar_url||'assets/avatars/stars-default.gif';
     }else if(p.avatar_url)row.append(photo(p.avatar_url,'dom-person-avatar'));
     const identity=el('div');identity.setAttribute('data-title-case-skip','');identity.append(el('h2',p.display_name));
-    if(p.handle)identity.append(el('small','@'+p.handle));
+    if(p.handle){const handle=el('span','@'+p.handle);handle.className='dom-person-handle';identity.append(handle);}
     if(p.org_role)identity.append(el('small',p.org_role));
     if(p.bio)identity.append(el('p',p.bio));row.append(identity);box.append(row);
     const typeName=p.diagnostic?.name||window.TEST_PROFILES_MAP?.[p.result?.profile]?.name||p.result?.profile?.replaceAll('_',' ');
@@ -140,7 +140,7 @@
     }
     return makeBoard(p,self,box);
   }
-  function showAttachment(host,p,post){
+  function showAttachment(host,p,post,onPhotoSize){
     const ext=post.file_name.split('.').pop().toLowerCase();
     const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',avif:'image/avif',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime',pdf:'application/pdf',txt:'text/plain',md:'text/plain',csv:'text/plain',json:'text/plain',aac:'audio/aac',flac:'audio/flac',m4v:'video/mp4'}[ext];
     let pending;
@@ -159,6 +159,7 @@
           media=el(mime.startsWith('image/')?'img':mime.startsWith('video/')?'video':mime.startsWith('audio/')?'audio':'iframe');
           if(media.tagName==='IFRAME'){media.setAttribute('sandbox','');media.title=f.name;}
           if(media.tagName==='IMG')media.alt=post.title||f.name;else{media.controls=true;media.preload='metadata';}
+          if(imageOnly && onPhotoSize)media.onload=()=>onPhotoSize(media.naturalWidth,media.naturalHeight);
           media.src='data:'+mime+';base64,'+f.base64;
         }
         if(imageOnly&&media.tagName==='IMG'){
@@ -228,6 +229,8 @@
     }
     const more=button(tr('Показать ещё','Load more','Ver más'),()=>{});more.hidden=true;
     search.oninput=()=>{generation++;clearTimeout(timer);timer=setTimeout(()=>read(),200);};
+    mine.dataset.profileAction='mine';community.dataset.profileAction='community';
+    for(const action of profile.querySelectorAll('[data-profile-action]'))action.addEventListener('click',()=>select(false),{capture:true});
     nav.append(mine,community);feed.append(search,results,posts,status,more);root.append(nav,profile,feed);select(false);return root;
   }
   function makeBoard(p,self,identity){
@@ -246,7 +249,12 @@
     for(const post of p.posts||[]){
       const tile=el('article');
       if(post.title)tile.append(el('h3',post.title));
-      if(post.file_name)showAttachment(tile,p,post);
+      if(post.file_name)showAttachment(tile,p,post,(width,height)=>{
+        const item=items.get('post-'+post.id);
+        if(!item||!width||!height)return;
+        item.photoRatio=width/height;
+        layout();
+      });
       if(post.body)tile.append(postText(post.body));
       if(post.snapshot){const excerpt=el('section'),list=el('ol');excerpt.className='dom-board-excerpt';excerpt.dataset.kind=post.snapshot.kind;excerpt.append(el('strong',sourceNames()[post.snapshot.kind]));if(post.snapshot.caption)excerpt.append(el('small',post.snapshot.caption));excerpt.append(list);
         for(const line of post.snapshot.items)list.append(el('li',line));tile.append(excerpt);}
@@ -267,7 +275,7 @@
       add(key,tile,!firstPost&&i===0?4:{full:12,wide:8,small:4}[card.size]||4,!firstPost&&i===0?identityHeight:9);});
     const saved=p.board||[];
     const ordered=saved.map(t=>items.get(t.key)).filter(Boolean);
-    for(const entry of saved){const item=items.get(entry.key);if(item)Object.assign(item,{w:entry.w,h:entry.h,x:entry.x,y:entry.y});}
+    for(const entry of saved){const item=items.get(entry.key);if(item)Object.assign(item,{hasSavedSize:true,w:entry.w,h:entry.h,x:entry.x,y:entry.y});}
     const missing=[...items.values()].filter(x=>!ordered.includes(x));
     if(ordered.length)ordered.splice(Math.max(0,ordered.findIndex(x=>x.key==='identity')+1),0,...missing);else ordered.push(...missing);
     for(const item of ordered)grid.append(item.tile);
@@ -276,7 +284,12 @@
       const pinned=all.filter(i=>i!==priority&&Number.isInteger(i.x));
       const flow=all.filter(i=>i!==priority&&!Number.isInteger(i.x));
       for(const item of [...(priority?[priority]:[]),...pinned,...flow]){
-        const width=mobile()?12:item.w,height=item.h;
+        const width=mobile()?12:item.w;
+        if(item.photoRatio && !item.hasSavedSize && grid.clientWidth){
+          const tileWidth=(grid.clientWidth+8)*width/12-8;
+          item.h=Math.max(3,Math.min(40,Math.round((tileWidth/item.photoRatio+8)/20)));
+        }
+        const height=item.h;
         let x=Math.min(item.x??0,12-width),y=item.y??0;
         function fits(){const mask=((1<<width)-1)<<x;for(let j=y;j<y+height;j++)if((occupied[j]||0)&mask)return false;return true;}
         while(!fits()){if(++x>12-width){x=0;y++;}}
@@ -292,6 +305,7 @@
     if(!self)return root;
     const share=button(tr('Добавить пост','Add post','Añadir publicación'),()=>compose(p));share.classList.add('dom-share');
     const arrange=button(tr('Расставить блоки','Arrange blocks','Organizar bloques'),()=>editing?finish():start());
+    share.dataset.profileAction='post';arrange.dataset.profileAction='arrange';
     bar.append(share,arrange,status);
     let hold;
     grid.addEventListener('pointerdown',e=>{
@@ -319,13 +333,13 @@
       if(item.key!=='identity'){
         const pin=button(tr('Закрепить рядом','Pin beside profile','Fijar junto al perfil'),()=>{
           const person=items.get('identity');Object.assign(person,{w:8,h:identityHeight,x:0,y:0});
-          Object.assign(item,{w:4,h:identityHeight,x:8,y:0});grid.prepend(person.tile,item.tile);
+          Object.assign(item,{hasSavedSize:true,w:4,h:identityHeight,x:8,y:0});grid.prepend(person.tile,item.tile);
           if(!mobile())layout(null,true);else layout();
         });pin.className='dom-pin dom-grip';tile.append(pin);
       }
       for(const resize of [false,true]){
         const grip=button('',()=>{});grip.append(icon(resize?'resize':'move'));grip.className='dom-grip '+(resize?'resize':'move');grip.title=resize?tr('Размер · стрелки','Resize · arrow keys','Tamaño · flechas'):tr('Переместить · стрелки','Move · arrow keys','Mover · flechas');grip.setAttribute('aria-label',grip.title);tile.append(grip);
-        function size(w,h){item.w=Math.max(mobile()?6:2,Math.min(12,w));item.h=Math.max(3,Math.min(40,h));item.x=item.column;item.y=item.row;layout(item);}
+        function size(w,h){item.hasSavedSize=true;item.w=Math.max(mobile()?6:2,Math.min(12,w));item.h=Math.max(3,Math.min(40,h));item.x=item.column;item.y=item.row;layout(item);}
         grip.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();
           if(resize)size(item.w+(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0),item.h+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0));
           else{item.x=Math.max(0,Math.min(11,item.column+(e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0)));item.y=Math.max(0,Math.min(2000,item.row+(e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0)));layout(item,true);}
@@ -538,7 +552,9 @@
     if(lastId!==user.id){activeDialog?.close();avatars.clear();host.replaceChildren();lastId=user.id;}
     try{const p=await api('/api/social/profile/'+encodeURIComponent(user.id));
       if(ticket!==serial||window.currentUser?.id!==user.id)return;
-      const profile=card(p,true);host.replaceChildren(communityTabs(profile));Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});
+      const own=p.id===user.id&&Object.hasOwn(p,'sharing');
+      const profile=card(p,own);host.replaceChildren(own?communityTabs(profile):profile);
+      document.dispatchEvent(new Event('dom-profile-actions-ready'));Object.assign(user,{display_name:p.display_name,bio:p.bio,profile_public:p.profile_public});
     }catch(e){if(ticket!==serial)return;host.replaceChildren(el('p',e.message),button(tr('Повторить','Retry','Reintentar'),()=>login(user)));}
     if(['admin','superadmin','founder'].includes(user.serverRole))host.prepend(guide());
     restoreMember();

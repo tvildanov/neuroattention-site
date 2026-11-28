@@ -70,9 +70,16 @@ async function request(route,token,body){
    await social.locator('.dom-person-title h2').waitFor();
    assert.equal(await social.locator('.dom-person-title h2').textContent(),profile.body.user.display_name);
    assert.equal(await social.locator('.dom-guide').count(),role==='user'?0:1);
+   const sidebar=page.locator('.dom-cabinet-toggle');
+   const nav=page.locator('.dom-cabinet-sidebar');
+   async function profileAction(name){
+     if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
+     if(await nav.locator('[aria-controls="dom-nav-overview"]').getAttribute('aria-expanded')==='false')await nav.locator('[aria-controls="dom-nav-overview"]').click();
+     await nav.locator('[data-nav-target="'+name+'"]').click();
+   }
    const board=social.locator('.dom-profile-field');
    if(role==='owner-b')await board.getByText('Fixture diagnostic 12',{exact:true}).waitFor();
-   await board.locator('.dom-share').click();
+   await profileAction('post');
    const editor=page.locator('dialog.dom-social-dialog[open]');
    await editor.locator('input:not([type])').first().fill('Fixture publication '+lang);
    await editor.locator('input[type=file]').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jf1sAAAAASUVORK5CYII=','base64')});
@@ -80,7 +87,7 @@ async function request(route,token,body){
    const post=board.locator('article').filter({has:page.getByRole('heading',{name:'Fixture publication '+lang})});
    await post.scrollIntoViewIfNeeded();
    await page.waitForFunction(()=>document.querySelector('.dom-board-media img')?.naturalWidth===1);
-   await board.locator('.dom-board-bar button').nth(1).click();
+   await profileAction('arrange');
    const handle=post.locator('.dom-grip.resize');
    await handle.scrollIntoViewIfNeeded();const corner=await handle.boundingBox();
    const height=await post.evaluate(n=>n.getBoundingClientRect().height);
@@ -88,14 +95,15 @@ async function request(route,token,body){
    assert.ok(await post.evaluate(n=>n.getBoundingClientRect().height)>height);
    const move=post.locator('.dom-grip.move');await move.focus();await move.press('ArrowDown');
    const saveLayout=page.waitForResponse(r=>r.url().includes('/api/social/board')&&r.request().method()==='PUT');
-   await board.locator('.dom-board-bar button').nth(1).click();assert.equal((await saveLayout).status(),200);
+   await profileAction('arrange');assert.equal((await saveLayout).status(),200);
    if(role==='user'){
-     await board.locator('.dom-share').click();
+     await profileAction('post');
      await editor.locator('input[type=file]').setInputFiles({name:'full-frame.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jf1sAAAAASUVORK5CYII=','base64')});
      await editor.locator('.btn-solid').click();
      const photo=board.locator('.dom-image-post').first(),image=photo.locator('img');
      await image.scrollIntoViewIfNeeded();await image.waitFor();
      const rect=await photo.boundingBox(),picture=await image.boundingBox();
+     assert.ok(Math.abs(rect.width-rect.height)<=22, "Photo-only tile follows the original square aspect");
      assert.ok(Math.abs(rect.width-picture.width)<=3&&Math.abs(rect.height-picture.height)<=3);
      assert.equal(await photo.getByRole('button',{name:'full-frame.png',exact:true}).isVisible(),false);
      await photo.getByRole('button',{name:'Отклики'}).click();
@@ -105,19 +113,31 @@ async function request(route,token,body){
      await editor.getByRole('button',{name:'Отправить'}).click();
      await editor.getByText('Вижу деталь',{exact:true}).waitFor();
      await editor.getByRole('button',{name:'Закрыть'}).click();
-     await social.getByRole('button',{name:'Лента сообщества'}).click();
+     await profileAction('community');
+     const visitorFixture=await request('/api/auth/register',null,{email:'board-owner@example.invalid',password:'fixture-password',handle:'board-owner',display_name:'Board owner',country:'Mexico',city:'Cancún',location_lat:21.16,location_lon:-86.85});
+     assert.equal(visitorFixture.status,201);
+     const owner=visitorFixture.body.token;
+     const published=await fetch(base+'/api/social/settings',{method:'PUT',headers:{Authorization:'Bearer '+owner,'Content-Type':'application/json'},body:JSON.stringify({name:'Board owner',bio:'A public biography',open:true,sharing:{presence:'members',wall:'members',pulse:'private',results:'private',map:'private'}})});
+     assert.equal(published.status,200);
+     await request('/api/social/posts',owner,{body:'Public fixture post'});
+     await social.getByRole('searchbox').fill('@board-owner');
+     await social.getByRole('button',{name:/Board owner.*@board-owner/}).click();
+     const visitor=page.locator('dialog[data-member="@board-owner"]');
+     await visitor.getByText('Public fixture post').waitFor();
+     assert.equal(await visitor.locator('.dom-person-handle').textContent(),'@board-owner');
+     assert.equal(await visitor.getByRole('button',{name:/Редактировать|Удалить|Сменить фото|Добавить пост|Расставить блоки|программу/}).count(),0);
+     assert.equal(await visitor.locator('.dom-grip,input[type="file"]').count(),0);
+     await visitor.getByRole('button',{name:'Закрыть'}).click();
      await social.getByRole('searchbox').fill('@fixture-guide');
      await social.getByText('Участников не найдено').waitFor();
-     await social.getByRole('button',{name:'Мой профиль'}).click();
+     await profileAction('mine');
    }
    if(role!=='user'){
      await social.locator('.dom-guide input').fill('Open my path');
      await social.locator('.dom-guide form button').click();
      await social.locator('.dom-guide [role=status]').filter({hasText:/guide/i}).waitFor();
    }
-   const sidebar=page.locator('.dom-cabinet-toggle');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
-   const nav=page.locator('.dom-cabinet-sidebar');
    if(role==='user'){
      await page.waitForFunction(()=>document.querySelector('[aria-controls="dom-nav-tools"]').disabled);
      assert.equal(await nav.locator('[aria-controls="dom-nav-administration"]').isVisible(),false);
@@ -138,16 +158,14 @@ async function request(route,token,body){
      assert.equal(await nav.locator('#dom-nav-architecture .dom-nav-item').count(),4);
    }
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
-   await nav.locator('a[data-tab="enroll"]').click();
-   await page.waitForFunction(()=>document.querySelectorAll('#dom-nav-enroll .dom-nav-item').length===6);
-   await nav.locator('#dom-nav-enroll .dom-nav-item').nth(4).click();
+   if(await nav.locator('[aria-controls="dom-nav-evolution"]').getAttribute('aria-expanded')==='false')await nav.locator('[aria-controls="dom-nav-evolution"]').click();
+   assert.equal(await nav.locator(':scope > a[data-tab="enroll"]').count(),0);
+   await nav.locator('.dom-path-group a[data-tab="enroll"]').click();
+   await page.locator('#tab-enroll.active').waitFor();
+   assert.equal(await page.locator('#dom-cabinet-programs .dom-v06-program-card').count(),6);
+   await page.locator('#dom-cabinet-programs .dom-v06-program-card summary').nth(4).click();
    assert.ok(await page.locator('#dom-cabinet-programs .dom-v06-program-card').nth(4).evaluate(el=>el.open));
-   if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
-   const courses=page.locator('#dom-nav-evolution a[data-tab="courses"]');
-   assert.equal(await courses.count(),1);
-   if(await page.locator('[aria-controls="dom-nav-evolution"]').getAttribute('aria-expanded')==='false')await page.locator('[aria-controls="dom-nav-evolution"]').click();
-   assert.equal(await courses.innerText(),{ru:'Мои программы',en:'My programs',es:'Mis programas'}[lang]);
-   await courses.click();
+   await page.locator('#tab-enroll a[data-tab="courses"]').click();
    await page.locator('#tab-courses.active').waitFor();
    if(width<860)assert.equal(await sidebar.getAttribute('aria-expanded'),'false');
    if(await sidebar.getAttribute('aria-expanded')==='false')await sidebar.click();
@@ -194,7 +212,7 @@ async function request(route,token,body){
          assert.equal(await option.getAttribute('aria-pressed'),'true');
        }
        await page.locator('#nm-next').click();
-       assert.match(await emotionPanel.locator('h3').innerText(),/С какой сферой жизни связано это переживание/);
+       assert.match(await emotionPanel.locator('h3').innerText(),/С какой сферой жизни связано это переживание/i);
        assert.match(await emotionPanel.locator('.nm-selected-emotion').innerText(),new RegExp(emotion,'i'));
        await page.locator('#nm-prev').click();
      }

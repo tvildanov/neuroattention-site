@@ -3259,12 +3259,25 @@ require('./partner').install(app,{
 
 // ── AUTH ENDPOINTS ──
 
+// Registration and profile edits share a case-insensitive handle namespace.
+app.get('/api/auth/handle-availability', async (req,res)=>{
+  const handle=String(req.query.handle||'').trim().toLowerCase();
+  res.set('Cache-Control','no-store');
+  if(!domSocial.validHandle(handle))return res.status(400).json({code:'handle_invalid'});
+  try{
+    const rows=await sql`SELECT 1 FROM dom_profile_settings WHERE handle=${handle} LIMIT 1`;
+    res.json({available:rows.length===0});
+  }catch{res.sendStatus(503);}
+});
+
 // Register
 app.post('/api/auth/register', async (req, res) => {
   try {
     let { email, password, display_name, phone, country, city, location_lat, location_lon } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const handle = typeof req.body.handle === 'string' ? req.body.handle.trim().toLowerCase() : '';
+    if (!domSocial.validHandle(handle)) return res.status(400).json({code:'handle_invalid', error:'Choose a valid handle.'});
     // PR4 (4.4): residence is required at registration so External Field has a
     // location immediately. Coordinates come from the city autocomplete (Open-Meteo).
     const lat = (location_lat != null && !isNaN(parseFloat(location_lat))) ? parseFloat(location_lat) : null;
@@ -3284,11 +3297,13 @@ app.post('/api/auth/register', async (req, res) => {
     // An unverified email must never grant a privileged role.
     const role = 'user';
 
-    const inserted = await sql`
+    const inserted = await sql`WITH new_user AS (
       INSERT INTO users (email, password_hash, display_name, phone, role, location_country, location_city, location_lat, location_lon)
       VALUES (${email}, ${passwordHash}, ${display_name || null}, ${phone || null}, ${role}, ${country}, ${city}, ${lat}, ${lon})
       RETURNING id, email, display_name, phone, role, created_at, location_country, location_city, location_lat, location_lon
-    `;
+    ), claimed AS (
+      INSERT INTO dom_profile_settings(user_id,handle) SELECT id,${handle} FROM new_user RETURNING user_id
+    ) SELECT new_user.* FROM new_user JOIN claimed ON claimed.user_id=new_user.id`;
     const user = inserted[0];
     // Privileged identity links require explicit administrative verification.
     const token = signToken(user);
@@ -3301,7 +3316,9 @@ app.post('/api/auth/register', async (req, res) => {
               monad_tab: ['superadmin', 'founder', 'admin'].includes(user.role) || !!user.monad_access }
     });
   } catch (err) {
-    console.error('POST /api/auth/register:', err);
+    if (err.code==='23505' && (err.constraint==='dom_profile_handle' || err.message?.includes('dom_profile_handle')))
+      return res.status(409).json({code:'handle_taken', error:'This handle is taken. Choose another.'});
+    console.error('POST /api/auth/register:', err.code || err.name);
     if (err.message?.includes('unique') || err.message?.includes('duplicate')) {
       return res.status(409).json({ error: 'Email already registered' });
     }

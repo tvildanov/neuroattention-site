@@ -26,6 +26,7 @@ async function publishedGuide(){
 }
 const sharp = require('sharp');
 const fields = ['results','map','pulse','wall'];
+const validHandle = handle => typeof handle==='string' && /^[a-z0-9][a-z0-9_-]{2,31}$/.test(handle) && !handle.startsWith('dom-');
 const validId = id => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id);
 function visible(scope, owner, open, rooms) {
   return owner || (open && (scope === 'members' || rooms.some(id => scope === 'group:'+id)));
@@ -194,7 +195,7 @@ function install(app,{requireAuth,sql,callerIsAdmin}) {
     if(sharing.presence!==undefined)scopes.presence=sharing.presence;
     let handle=req.body.handle?.toLowerCase?.();
     if(handle===defaultHandle(me))handle=null;
-    if(handle!=null&&(!/^[a-z0-9][a-z0-9_-]{2,31}$/.test(handle)||handle.startsWith('dom-')))return res.status(400).json({error:'Use 3–32 letters a–z, numbers, _ or -. Prefix dom- is reserved.'});
+    if(handle!=null&&!validHandle(handle))return res.status(400).json({error:'Use 3–32 letters a–z, numbers, _ or -. Prefix dom- is reserved.'});
     try{await sql`WITH changed AS (UPDATE users SET display_name=${name.trim()},bio=${bio},profile_public=${open} WHERE id=${me} RETURNING id)
       INSERT INTO dom_profile_settings(user_id,handle,cover,sharing,org_role) SELECT id,${handle??null},COALESCE(${image}::text,''),${JSON.stringify(scopes)}::jsonb,COALESCE(${title??null}::text,'') FROM changed
       ON CONFLICT(user_id) DO UPDATE SET handle=CASE WHEN ${req.body.handle!==undefined} THEN EXCLUDED.handle ELSE dom_profile_settings.handle END,cover=COALESCE(${image}::text,dom_profile_settings.cover),sharing=dom_profile_settings.sharing || EXCLUDED.sharing,org_role=COALESCE(${title??null}::text,dom_profile_settings.org_role)`;}catch(e){if(e.code==='23505')return res.status(409).json({error:'Этот ник уже занят'});throw e;}
@@ -347,4 +348,4 @@ async function recordCompletedDiagnostic(sql,userId,{slot,name,completedAt}){
     ON CONFLICT(user_id) DO UPDATE SET slot=EXCLUDED.slot,name=EXCLUDED.name,completed_at=EXCLUDED.completed_at
     WHERE dom_diagnostic_profiles.completed_at<=EXCLUDED.completed_at`;
 }
-module.exports={install,ensureSchema,visible,recordCompletedDiagnostic};
+module.exports={validHandle,install,ensureSchema,visible,recordCompletedDiagnostic};

@@ -681,7 +681,7 @@ a.dash-tab:hover { text-decoration:none; }
 <link rel="stylesheet" href="assets/dom-site-theme.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-light.css?v=site-theme-20261116">
 <link rel="stylesheet" href="assets/dom-account-skin.css?v=site-theme-20261116">
-<script src="assets/js/dom-theme.js?v=community-feed" defer></script>
+<script src="assets/js/dom-theme.js?v=profile-path-2" defer></script>
 <link rel="stylesheet" href="assets/dom-interface.css?v=2">
 <script src="assets/js/dom-interface.js?v=1" defer></script>
 <style>
@@ -928,6 +928,12 @@ a.dash-tab:hover { text-decoration:none; }
     <h1 data-i18n="a.auth.title_register">Создать аккаунт</h1>
     <p class="sub" data-i18n="a.auth.subtitle_register">Зарегистрируйтесь, чтобы начать работу с NeuroAttention.</p>
     <form id="register-form">
+      <div class="auth-field">
+        <label for="reg-handle" data-i18n="a.auth.label_handle">Уникальный ник</label>
+        <input id="reg-handle" type="text" class="glass-input" placeholder="nik_ivanov" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="32" pattern="(?![Dd][Oo][Mm]\-)[A-Za-z0-9][A-Za-z0-9_\-]{2,31}" required aria-describedby="reg-handle-hint" />
+        <span id="reg-handle-status" role="status"></span>
+        <small id="reg-handle-hint" data-i18n="a.auth.handle_hint">От 3 до 32 символов. Латинские буквы, цифры, дефис и подчёркивание. Начните с буквы или цифры. Начало dom- зарезервировано.</small>
+      </div>
       <div class="auth-field">
         <label for="reg-name" data-i18n="a.auth.label_name">Имя</label>
         <input id="reg-name" type="text" class="glass-input" placeholder="Ваше имя" data-i18n-placeholder="a.auth.placeholder_name" />
@@ -5579,6 +5585,24 @@ function initRegLocation(){
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRegLocation);
 else initRegLocation();
 
+(function(){
+  var input=document.getElementById('reg-handle'),status=document.getElementById('reg-handle-status');
+  var revision=0;
+  input.addEventListener('input',function(){revision++;input.setCustomValidity('');status.textContent='';});
+  input.addEventListener('blur',async function(){
+    if(!input.value || !input.validity.valid)return;
+    var ticket=++revision;
+    try{
+      var response=await fetch(AUTH_API+'/api/auth/handle-availability?handle='+encodeURIComponent(input.value));
+      if(!response.ok)return;
+      var result=await response.json();
+      if(ticket===revision && result.available===false){
+        status.textContent=window.t?.('a.auth.handle_taken','Этот ник уже занят. Выберите другой.')||'Этот ник уже занят. Выберите другой.';
+        input.setCustomValidity(status.textContent);
+      }
+    }catch{} // Submission is authoritative even when the early check is unavailable.
+  });
+})();
 document.getElementById('register-form').addEventListener('submit',async function(e){
   e.preventDefault();
   var name=document.getElementById('reg-name').value.trim();
@@ -5596,9 +5620,16 @@ document.getElementById('register-form').addEventListener('submit',async functio
     return;
   }
   try {
-    var resp=await fetch(AUTH_API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass,display_name:name||null,country:country,city:city,location_lat:parseFloat(lat),location_lon:parseFloat(lon)})});
+    var resp=await fetch(AUTH_API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass,handle:document.getElementById('reg-handle').value,display_name:name||null,country:country,city:city,location_lat:parseFloat(lat),location_lon:parseFloat(lon)})});
     var data=await resp.json();
-    if(!resp.ok){errEl.textContent=data.error||'Ошибка регистрации';return;}
+    if(!resp.ok){
+      if(data.code==='handle_taken'||data.code==='handle_invalid'){
+        var input=document.getElementById('reg-handle');
+        errEl.textContent=window.t?.('a.auth.'+data.code,data.error)||data.error;
+        input.focus();input.select();
+      }else errEl.textContent=data.error||'Ошибка регистрации';
+      return;
+    }
     naSetAuth(data.token,data.user);
     // After registration, send pending test result if exists
     var pendingTest = localStorage.getItem('na_test_result');
@@ -22980,8 +23011,8 @@ window.pbMove = pbMove;
   }
 })();
 </script>
-<script src="assets/js/dom-social.js?v=5" defer></script>
-<link rel="stylesheet" href="assets/dom-social.css?v=4">
+<script src="assets/js/dom-social.js?v=6" defer></script>
+<link rel="stylesheet" href="assets/dom-social.css?v=5">
 <script src="assets/js/dom-editorial.js?v=1"></script>
 <link rel="stylesheet" href="assets/dom-recording.css?v=1">
 <script src="assets/js/dom-recording.js?v=2"></script>

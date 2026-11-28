@@ -107,6 +107,15 @@ const expect=async(status,...args)=>{const x=await call(...args);assert.equal(x.
  const a=await login('owner-a'), b=await login('owner-b'), member=await login('user'), admin=await login('admin');
  const get=(status,url,who)=>expect(status,'GET',url,who?.token);
  const post=(status,url,who,body)=>expect(status,'POST',url,who?.token,body);
+ const registration={password:'fixture-registration',city:'Cancún',country:'Mexico',location_lat:21.16,location_lon:-86.85};
+ const register=(email,handle)=>call('POST','/api/auth/register',null,{...registration,email,handle});
+ assert.equal((await register('handle-test@example.invalid','dom-reserved')).status,400);
+ const attempts=await Promise.all(['first','second'].map((key,i)=>register(key+'@example.invalid',i?'NEW-MEMBER':'new-member')));
+ assert.deepEqual(attempts.map(r=>r.status).sort(),[201,409]);
+ assert.equal(attempts.find(r=>r.status===409).body.code,'handle_taken');
+ const retryEmail=attempts[0].status===409?'first@example.invalid':'second@example.invalid';
+ assert.equal((await register(retryEmail,'another-member')).status,201);
+ assert.equal((await get(200,'/api/auth/handle-availability?handle=new-member')).available,false);
  const social='/api/social/profile/'+admin.user.id;
  const guide=await post(200,'/api/dom-guide/ask',admin,{question:'Help',screen:'overview'});
  assert.equal(guide.answer,'Fixture guide');

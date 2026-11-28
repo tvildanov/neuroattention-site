@@ -22,11 +22,11 @@ button.addEventListener('click',async()=>{if(switching)return;clearPeek();const 
 (function(){
   if(!document.body||!document.body.matches('.dom-site,.dom-account-matrix')||document.body.classList.contains('home-matrix'))return;
   var link=document.createElement('link');link.rel='stylesheet';link.href='assets/dom-inner-pages-v06.css?v=3';document.head.appendChild(link);
-  var script=document.createElement('script');script.src='assets/js/dom-inner-pages-v06.js?v=3';script.defer=true;document.head.appendChild(script);
+  var script=document.createElement('script');script.src='assets/js/dom-inner-pages-v06.js?v=4';script.defer=true;document.head.appendChild(script);
 })();
 
 /* Keep graph text legible in both cabinet themes without changing typology styles. */
 (function(){if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;var el=document.createElement('link');el.rel='stylesheet';el.href='assets/dom-account-graph-readability-v06.css?v=2';document.head.appendChild(el);})();
 
 /* Shared cabinet v0.7 loader (no duplicated NeuroMap handlers). */
-(()=>{if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;const css=document.createElement('link');css.rel='stylesheet';css.href='assets/dom-cabinet-v07.css?v=6';document.head.append(css);const script=document.createElement('script');script.src='assets/js/dom-cabinet-v07.js?v=10';script.defer=true;document.head.append(script);})();
+(()=>{if(!document.body||!document.body.classList.contains('dom-account-matrix'))return;const css=document.createElement('link');css.rel='stylesheet';css.href='assets/dom-cabinet-v07.css?v=6';document.head.append(css);const script=document.createElement('script');script.src='assets/js/dom-cabinet-v07.js?v=11';script.defer=true;document.head.append(script);})();
