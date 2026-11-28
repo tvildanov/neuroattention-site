@@ -34,7 +34,7 @@
    evolution:'#evo-subtabs [id^="evo-subtab-"], .tools-subtabs a[id^="tools-mode-"]',
    tools:'.tools-subtabs a[id^="tools-mode-"]',
    domunity:'[id^="dom-subtab-"]',
-   enroll:'#dom-cabinet-programs .dom-v06-program-card summary',
+   overview:'#dom-social-self [data-profile-action]',
    monad:'.monad-subtabs [data-monad-sub]',
    architecture:'.monad-arch-subtabs [data-monad-arch]',
    administration:'#admin-tabs [data-tab]',
@@ -83,7 +83,7 @@
        if(!item){
          item=el(source.matches('a')?'a':'button','dom-nav-item');
          if(item.tagName==='A')item.href=source.href;else item.type='button';
-         item.dataset.navTarget=source.id||source.dataset.tab||source.dataset.monadSub||source.dataset.monadArch||String(sources.indexOf(source));
+         item.dataset.navTarget=source.id||source.dataset.tab||source.dataset.monadSub||source.dataset.monadArch||source.dataset.profileAction||String(sources.indexOf(source));
          if(key==='evolution'){
            const tools=source.id.startsWith('tools-'),group=list.querySelector(tools?'.dom-tools-group':'.dom-path-group');
            if(source.id==='evo-subtab-personal')group.querySelector('summary').after(item);else group.append(item);
@@ -97,10 +97,7 @@
            if(topLink.hidden||topLink.style.display==='none'||topLink.style.pointerEvents==='none')return;
            if(!q('#tab-'+top)?.classList.contains('active'))topLink.click();
            if(key==='architecture'&&!q('[data-monad-sub="architecture"]').classList.contains('active'))q('[data-monad-sub="architecture"]').click();
-           if(key==='enroll'){
-             source.parentElement.open=true;
-             requestAnimationFrame(()=>source.scrollIntoView({block:'start',behavior:'smooth'}));
-           }else source.click();
+           source.click();
            if(nested)openBranch(nested,true);else mobileDone();
            syncBranches();
          };
@@ -110,7 +107,8 @@
        if(item.textContent!==label)item.textContent=label;
        item.hidden=source.hidden||source.style.display==='none';
        if(source.id.startsWith('tools-mode-'))item.disabled=branches.get('tools')?.owner.style.pointerEvents==='none';
-       item.classList.toggle('selected',key==='enroll'?source.parentElement.open:source.classList.contains('active'));
+       if(key==='overview')item.disabled=source.disabled;
+       item.classList.toggle('selected',source.getAttribute('aria-pressed')==='true'||source.classList.contains('active'));
      }
    }
  }
@@ -127,23 +125,24 @@
    links.forEach(a=>{const id=a.dataset.tab||'';a.classList.add('dom-cabinet-link');a.setAttribute('title',a.textContent.trim());setNavIcon(a,id);});
    // This is the same original tab navigation, moved and reordered, not cloned.
    const byTab=Object.fromEntries(links.map(a=>[a.dataset.tab,a]));
-   const courseItem=byTab.courses;
-   for(const id of ['overview','evolution','tools','domunity','enroll','monad','administration']){
+   const enroll=byTab.enroll;
+   for(const id of ['overview','evolution','tools','domunity','monad','administration']){
      const link=byTab[id];if(!link)continue;
      original.append(link);
      if(!routes[id]){link.addEventListener('click',mobileDone);continue;}
      const list=makeBranch(id,link);
+     if(id==='overview')openBranch(id,true);
      if(id==='evolution'){
        const path=el('details','dom-path-group'),tools=el('details','dom-tools-group');path.open=true;
-       path.append(el('summary','',txt('Мой путь','My path','Mi camino')));tools.append(el('summary','',txt('Мои инструменты','My tools','Mis herramientas')));
+       path.append(el('summary','',txt('Мой путь','My path','Mi camino')));tools.append(el('summary','',txt('Инструменты','Tools','Herramientas')));
        list.append(path,tools);
-       if(courseItem){
-       courseItem.removeAttribute('data-i18n');courseItem.className='dash-tab dom-nav-item';
-       path.append(courseItem);courseItem.addEventListener('click',mobileDone);}
+       if(enroll){enroll.className='dash-tab dom-nav-item';path.append(enroll);enroll.addEventListener('click',mobileDone);}
+       if(byTab.courses){q('#dom-cabinet-programs').after(byTab.courses);byTab.courses.onclick=()=>window.switchTab('courses');}
      }
      link.addEventListener('click',event=>{
        if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
        sidebarOpen=true;syncSide();openBranch(id,true);
+       if(id==='overview')q('[data-profile-action="mine"]')?.click();
        if(id==='evolution')q('#evo-subtab-personal')?.click();
        if(id==='tools')q('#tools-mode-nm')?.click();
        if(id==='domunity')q('#dom-subtab-feed')?.click();
@@ -151,6 +150,7 @@
        syncBranches();
      });
    }
+   document.addEventListener('dom-profile-actions-ready',syncBranches);
    original.addEventListener('click',event=>{
      const link=event.target.closest('a[data-tab]');
      if(link?.style.pointerEvents==='none'){event.preventDefault();event.stopImmediatePropagation();}
@@ -177,7 +177,7 @@
    const active=q('#client-dashboard>.tab-panel.active')||q('#client-dashboard .tab-panel.active');
    const activeTab=(active?.id||'').replace(/^tab-/,'')||'overview';
    nav.querySelectorAll('a[data-tab]').forEach(a=>{
-     const current=a.dataset.tab===activeTab||(activeTab==='tools'&&a.dataset.tab==='evolution');
+     const current=a.dataset.tab===activeTab||(['tools','enroll'].includes(activeTab)&&a.dataset.tab==='evolution');
      a.classList.toggle('dom-cabinet-current',current);
      if(current)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
    });
@@ -191,7 +191,7 @@
    first.before(bar);
    const sources=[...document.querySelectorAll(routes.evolution)];
    let lastTab=document.body.dataset.accountTab,toolsOpen=lastTab==='tools';
-   const pathButton=el('button','',txt('Мой путь','My path','Mi camino')),toolsButton=el('button','',txt('Мои инструменты','My tools','Mis herramientas'));
+   const pathButton=el('button','',txt('Мой путь','My path','Mi camino')),toolsButton=el('button','',txt('Инструменты','Tools','Herramientas'));
    pathButton.onclick=()=>{toolsOpen=false;sync();};toolsButton.onclick=()=>{toolsOpen=true;sync();};bar.append(pathButton,toolsButton);
    const ordered=['evo-subtab-personal','evo-subtab-collective','evo-subtab-family','tools-mode-nm'];
    sources.sort((a,b)=>(ordered.includes(a.id)?ordered.indexOf(a.id):99)-(ordered.includes(b.id)?ordered.indexOf(b.id):99));
@@ -199,7 +199,7 @@
      const active=document.body.dataset.accountTab;
      if(lastTab!==active){if(active==='tools'||active==='evolution')toolsOpen=active==='tools';lastTab=active;}
      pathButton.setAttribute('aria-pressed',String(!toolsOpen));toolsButton.setAttribute('aria-pressed',String(toolsOpen));
-     courses.hidden=toolsOpen;
+     programs.hidden=toolsOpen;
      ask.hidden=!['admin','superadmin','founder'].includes(window.currentUser?.serverRole);
      for(const source of sources){
        const b=bar.querySelector('[data-source="'+source.id+'"]');
@@ -226,8 +226,7 @@
        const panel=q('#tab-'+tab);if(panel)panel.scrollTop=0;
      };bar.append(b);
    }
-   const courses=el('button','',txt('Мои программы','My programs','Mis programas'));courses.onclick=()=>q('a[data-tab="courses"]',nav)?.click();bar.querySelector('[data-source="evo-subtab-personal"]')?.after(courses);
-   const programs=el('button');programs.type='button';programs.onclick=()=>q('a[data-tab="enroll"]',nav)?.click();bar.append(programs);
+   const programs=el('button');programs.type='button';programs.onclick=()=>q('a[data-tab="enroll"]',nav)?.click();bar.querySelector('[data-source="evo-subtab-personal"]')?.after(programs);
    const ask=el('button','',txt('Спросить DOM','Ask DOM','Pregunta a DOM'));ask.type='button';ask.hidden=true;ask.onclick=()=>window.DOMSocial?.ask();bar.append(ask);
    const shortcut=el('button','dom-nav-item');shortcut.type='button';
    shortcut.onclick=()=>{q('#tab-btn-monad')?.click();mobileDone();};branches.get('domunity')?.list.append(shortcut);
@@ -319,7 +318,6 @@
    const expand=q('.dom-quick-expand');
    if(expand)expand.textContent=expand.getAttribute('aria-expanded')==='true'
      ?txt('Свернуть','Collapse','Contraer'):txt('Развернуть','Expand','Ampliar');
-   const mine=q('a[data-tab="courses"]',nav||document);if(mine)mine.textContent=txt('Мои программы','My programs','Mis programas');
    if(nav)nav.querySelectorAll('a[data-tab]').forEach(a=>a.title=a.textContent.trim());
  }
  let lastLang=lang();

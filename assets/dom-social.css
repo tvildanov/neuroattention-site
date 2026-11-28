@@ -102,3 +102,8 @@ body:is([data-account-tab=tools],[data-account-tab=evolution]) .dom-workspace-sw
 .dom-full-photo{width:fit-content;max-width:94vw}.dom-full-photo img{display:block;max-width:100%;max-height:75dvh;object-fit:contain}
 #dom-nav-evolution>details{grid-column:1/-1;min-width:0}
 #dom-nav-evolution details>.dom-nav-item{box-sizing:border-box;width:calc(100% - .5rem)}
+
+.dom-person-handle{display:block;margin:.15rem 0 .4rem;font-size:.95rem;font-weight:600;color:var(--cabinet-accent);overflow-wrap:anywhere}
+#client-dashboard:has(#dom-nav-overview .dom-nav-item) #dom-social-self [data-profile-action]{display:none}
+#dom-nav-overview .selected{font-weight:650}
+body:has(dialog[data-member][open]) #client-dashboard{visibility:hidden}
