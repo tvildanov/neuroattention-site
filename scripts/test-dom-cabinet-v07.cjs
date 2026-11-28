@@ -57,6 +57,18 @@ async function request(route,token,body){
    }
    await page.goto(local+'/account.html',{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('.navbar .nav-logo-dom .dom-brand-name').count(),1);
+   if(lang==='ru'){
+     await page.locator('#auth-login a[onclick*="register"]').click();
+     const input=page.locator('#reg-handle');
+     for(const [handle,valid] of [['xy',false],['dom-reserved',false],['9ab_c-d',true],['Женя',false]]){
+       await input.fill(handle);
+       assert.equal(await input.evaluate(e=>e.checkValidity()),valid,handle);
+     }
+     await input.fill('new-member');await input.press('Tab');
+     await page.waitForFunction(()=>document.querySelector('#reg-handle').validity.customError);
+     await input.fill('new-free-member');assert.equal(await input.evaluate(e=>e.validity.valid),true);
+     await page.locator('#auth-register a[onclick*="login"]').click();
+   }
    await page.locator('#login-id').fill('qa-'+role+'@example.invalid');
    await page.locator('#login-pass').fill('local-scenario-password');
    await page.locator('form').filter({has:page.locator('#login-id')}).locator('button[type="submit"]').click();
